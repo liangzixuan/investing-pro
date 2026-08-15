@@ -8,7 +8,12 @@ import Decimal from "decimal.js";
 
 import { syntheticFixture } from "./fixture";
 import { evaluateMetrics } from "./metric-engine";
-import type { FinancialFact, ResearchSnapshot } from "./model";
+import type {
+  FinancialFact,
+  HistoricalPointRecord,
+  ResearchSnapshot,
+  TimelineEventRecord,
+} from "./model";
 import {
   getPolicy,
   isRightsAllowed,
@@ -20,7 +25,11 @@ export const PRE_RESTATEMENT_KNOWN_AT = "2026-04-15T12:00:00Z";
 const ISO_UTC_PATTERN =
   /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?Z$/;
 
-export interface ResearchSnapshotRepository {
+/**
+ * Closed, complete-synthetic-fixture seam for the current demo only.
+ * PostgreSQL/RLS adapters must use OperationScopedProjectionSource instead.
+ */
+export interface CompleteSyntheticSnapshotRepository {
   findBySymbol(symbol: string): Promise<ResearchSnapshot | null>;
 }
 
@@ -34,7 +43,7 @@ const deterministicAuthorizationClock: AuthorizationClock = {
 
 export class GetDossier {
   public constructor(
-    private readonly repository: ResearchSnapshotRepository,
+    private readonly repository: CompleteSyntheticSnapshotRepository,
     private readonly authorizationClock: AuthorizationClock = deterministicAuthorizationClock,
   ) {}
 
@@ -54,7 +63,7 @@ export class GetDossier {
 
 /**
  * Compatibility wrapper for the current synchronous, in-memory demo API.
- * Persistence adapters should use the repository/use-case seam above.
+ * Database adapters must not implement the complete-fixture seam above.
  */
 export function buildDossier(
   symbol: string,
@@ -65,10 +74,10 @@ export function buildDossier(
 }
 
 /**
- * Pure deterministic composition for the single synthetic fixture.
+ * Pure deterministic composition for a synthetic instrument snapshot.
  * `authorizationAt` is a trusted server-clock input; request handlers should
- * enter through GetDossier. Fixed history/timeline records move into the
- * snapshot contract before a multi-instrument adapter is allowed.
+ * enter through GetDossier. The composer only projects history and timeline
+ * records supplied by that snapshot.
  */
 export function composeDossier(
   snapshot: ResearchSnapshot,
@@ -95,8 +104,11 @@ export function composeDossier(
     ),
     knownAt,
   );
+  const evidenceOrder = instrumentEvidenceOrder(snapshot);
+  const boundEvidenceIds = new Set(evidenceOrder.keys());
   const displayableEvidence = uniqueEvidence(snapshot.evidence).filter(
     (evidence) =>
+      boundEvidenceIds.has(evidence.id) &&
       isEvidenceAvailableBy(evidence, knownAt) &&
       isEvidenceDisplayAllowed(snapshot, evidence, displayContext),
   );
@@ -112,21 +124,32 @@ export function composeDossier(
     ),
   );
   const metrics = evaluateMetrics(allowedFacts);
-  const availableEvidenceIds = new Set(
-    snapshot.evidence
-      .filter((evidence) => isEvidenceAvailableBy(evidence, knownAt))
-      .map((evidence) => evidence.id),
+  const eligibleHistoryRecords = historicalPointsAsKnown(
+    snapshot.historicalPoints.filter(
+      (point) => point.instrumentId === snapshot.instrument.id,
+    ),
+    knownAt,
   );
-  const candidateHistory = buildHistory(eligibleFacts, availableEvidenceIds);
-  const history = buildHistory(allowedFacts, displayableEvidenceIds);
-  const candidateTimeline = buildTimeline(knownAt);
-  const timeline = candidateTimeline.filter((event) =>
-    event.evidenceIds.every((id) => displayableEvidenceIds.has(id)),
+  const history = eligibleHistoryRecords
+    .filter((point) =>
+      point.evidenceIds.every((id) => displayableEvidenceIds.has(id)),
+    )
+    .map(toHistoricalPointDto);
+  const candidateTimeline = timelineEventsAsKnown(
+    snapshot.timelineEvents.filter(
+      (event) => event.instrumentId === snapshot.instrument.id,
+    ),
+    knownAt,
   );
+  const timeline = candidateTimeline
+    .filter((event) =>
+      event.evidenceIds.every((id) => displayableEvidenceIds.has(id)),
+    )
+    .map(toTimelineEventDto);
   const deniedCount =
     eligibleFacts.length -
     allowedFacts.length +
-    (candidateHistory.length - history.length) +
+    (eligibleHistoryRecords.length - history.length) +
     (candidateTimeline.length - timeline.length);
   const hasOmissions = deniedCount > 0;
   const valuationDefaults = buildValuationDefaults(allowedFacts);
@@ -136,9 +159,14 @@ export function composeDossier(
     ...timeline.flatMap((event) => event.evidenceIds),
     ...valuationDefaults.evidenceIds,
   ]);
-  const evidence = displayableEvidence.filter((item) =>
-    referencedEvidenceIds.has(item.id),
-  );
+  const evidence = displayableEvidence
+    .filter((item) => referencedEvidenceIds.has(item.id))
+    .sort(
+      (left, right) =>
+        (evidenceOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+          (evidenceOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER) ||
+        compareStrings(left.id, right.id),
+    );
 
   const dossier: DossierDto = {
     schemaVersion: "1.0.0",
@@ -207,6 +235,7 @@ export function getEvidencePassportFromSnapshot(
       "snapshot.generatedAt cannot be later than the trusted authorization clock",
     );
   }
+  if (!instrumentEvidenceOrder(snapshot).has(id)) return null;
   const matches = snapshot.evidence.filter((item) => item.id === id);
   const [evidence] = matches;
   if (matches.length !== 1 || !evidence) return null;
@@ -251,72 +280,94 @@ function factsAsKnown(
   return [...latestByKey.values()];
 }
 
-function buildHistory(
-  facts: FinancialFact[],
-  displayableEvidenceIds: ReadonlySet<string>,
-): HistoricalPointDto[] {
-  const currentRevenue = requiredFact(facts, "revenue");
-  const currentEbitda = requiredFact(facts, "ebitda");
-  const historicEvidence = ["evidence.synthetic.history"];
-  const fixed = [
-    ["2022", "74.0", "10.4"],
-    ["2023", "86.0", "13.8"],
-    ["2024", "100.0", "16.5"],
-  ] as const;
-
-  const fixedHistory = displayableEvidenceIds.has(historicEvidence[0]!)
-    ? fixed.map(([period, revenue, ebitda]) =>
-        historyPoint(period, revenue, ebitda, historicEvidence),
-      )
-    : [];
-  return [
-    ...fixedHistory,
-    historyPoint("2025", currentRevenue.value, currentEbitda.value, [
-      currentRevenue.evidenceId,
-      currentEbitda.evidenceId,
-    ]),
-  ];
-}
-
-function historyPoint(
-  period: string,
-  revenue: string,
-  ebitda: string,
-  evidenceIds: string[],
+function toHistoricalPointDto(
+  point: HistoricalPointRecord,
 ): HistoricalPointDto {
   return {
-    period,
-    revenue,
-    ebitda,
-    revenueDisplay: `$${new Decimal(revenue).toFixed(1)}M`,
-    ebitdaDisplay: `$${new Decimal(ebitda).toFixed(1)}M`,
-    evidenceIds: [...new Set(evidenceIds)],
+    period: point.period,
+    revenue: point.revenue,
+    ebitda: point.ebitda,
+    revenueDisplay: `$${new Decimal(point.revenue).toFixed(1)}M`,
+    ebitdaDisplay: `$${new Decimal(point.ebitda).toFixed(1)}M`,
+    evidenceIds: [...new Set(point.evidenceIds)],
   };
 }
 
-function buildTimeline(knownAt: string): TimelineEventDto[] {
-  const allEvents: TimelineEventDto[] = [
-    {
-      id: "timeline.original-filing",
-      occurredAt: "2026-02-20T14:30:00Z",
-      kind: "filing",
-      title: "Original synthetic annual record",
-      summary:
-        "Initial 2025 fixture became available to the demo research system.",
-      evidenceIds: ["evidence.synthetic.2025-original"],
-    },
-    {
-      id: "timeline.restatement",
-      occurredAt: "2026-05-10T12:00:00Z",
-      kind: "restatement",
-      title: "Synthetic revenue recognition restatement",
-      summary:
-        "Revenue, EBITDA, and free cash flow were revised for the 2025 fixture period.",
-      evidenceIds: ["evidence.synthetic.2025-restated"],
-    },
-  ];
+function historicalPointsAsKnown(
+  points: HistoricalPointRecord[],
+  knownAt: string,
+): HistoricalPointRecord[] {
   const instant = Date.parse(knownAt);
-  return allEvents.filter((event) => Date.parse(event.occurredAt) <= instant);
+  const candidates = points.filter((point) => {
+    const starts =
+      Date.parse(point.systemRecordedFrom) <= instant &&
+      Date.parse(point.publicKnownFrom) <= instant;
+    const systemOpen =
+      point.systemRecordedTo === null ||
+      instant < Date.parse(point.systemRecordedTo);
+    const publicKnowledgeOpen =
+      point.publicKnownTo === null || instant < Date.parse(point.publicKnownTo);
+    return (
+      starts &&
+      systemOpen &&
+      publicKnowledgeOpen &&
+      Date.parse(point.sourceAvailableAt) <= instant
+    );
+  });
+
+  const uniqueByPeriod = new Map<string, HistoricalPointRecord>();
+  const identifiers = new Set<string>();
+  for (const point of candidates) {
+    if (identifiers.has(point.id))
+      throw new Error(`Ambiguous historical point identifier: ${point.id}`);
+    if (uniqueByPeriod.has(point.period))
+      throw new Error(
+        `Ambiguous active historical points for period: ${point.period}`,
+      );
+    identifiers.add(point.id);
+    uniqueByPeriod.set(point.period, point);
+  }
+  return [...uniqueByPeriod.values()].sort(
+    (left, right) =>
+      compareStrings(left.period, right.period) ||
+      compareStrings(left.id, right.id),
+  );
+}
+
+function timelineEventsAsKnown(
+  events: TimelineEventRecord[],
+  knownAt: string,
+): TimelineEventRecord[] {
+  const instant = Date.parse(knownAt);
+  const candidates = events.filter(
+    (event) => Date.parse(event.occurredAt) <= instant,
+  );
+  const identifiers = new Set<string>();
+  for (const event of candidates) {
+    if (identifiers.has(event.id))
+      throw new Error(`Ambiguous timeline event identifier: ${event.id}`);
+    identifiers.add(event.id);
+  }
+  return candidates.sort(
+    (left, right) =>
+      compareStrings(left.occurredAt, right.occurredAt) ||
+      compareStrings(left.id, right.id),
+  );
+}
+
+function toTimelineEventDto(event: TimelineEventRecord): TimelineEventDto {
+  return {
+    id: event.id,
+    occurredAt: event.occurredAt,
+    kind: event.kind,
+    title: event.title,
+    summary: event.summary,
+    evidenceIds: [...new Set(event.evidenceIds)],
+  };
+}
+
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function requiredFact(facts: FinancialFact[], key: string): FinancialFact {
@@ -340,7 +391,6 @@ function isFactDisplayAllowed(
   const requiredUses: RightsDecisionContext[] = [
     context,
     { ...context, purpose: "derive", channel: "api" },
-    { ...context, purpose: "alert", channel: "local_alert" },
   ];
   return (
     requiredUses.every((requiredUse) => isRightsAllowed(policy, requiredUse)) &&
@@ -355,6 +405,16 @@ function uniqueEvidence(
   for (const item of evidence)
     counts.set(item.id, (counts.get(item.id) ?? 0) + 1);
   return evidence.filter((item) => counts.get(item.id) === 1);
+}
+
+function instrumentEvidenceOrder(
+  snapshot: ResearchSnapshot,
+): ReadonlyMap<string, number> {
+  return new Map(
+    snapshot.evidenceBindings
+      .filter((binding) => binding.instrumentId === snapshot.instrument.id)
+      .map((binding) => [binding.evidenceId, binding.projectionOrder]),
+  );
 }
 
 // A superseded document remains citeable for historical timeline events; its
@@ -444,8 +504,86 @@ function assertSyntheticSnapshot(snapshot: ResearchSnapshot): void {
         evidence?.synthetic === true &&
         (evidence.sourceType === "synthetic_filing" ||
           evidence.sourceType === "synthetic_price_record"),
+    ) ||
+    !Array.isArray(candidate.evidenceBindings) ||
+    !hasValidEvidenceBindings(candidate.evidenceBindings) ||
+    !Array.isArray(candidate.historicalPoints) ||
+    !candidate.historicalPoints.every(
+      (point) =>
+        point !== null &&
+        typeof point === "object" &&
+        typeof point.id === "string" &&
+        typeof point.instrumentId === "string" &&
+        point.synthetic === true &&
+        typeof point.period === "string" &&
+        typeof point.revenue === "string" &&
+        typeof point.ebitda === "string" &&
+        typeof point.sourceAvailableAt === "string" &&
+        typeof point.publicKnownFrom === "string" &&
+        (point.publicKnownTo === null ||
+          typeof point.publicKnownTo === "string") &&
+        typeof point.systemRecordedFrom === "string" &&
+        (point.systemRecordedTo === null ||
+          typeof point.systemRecordedTo === "string") &&
+        isNonEmptyUniqueStringArray(point.evidenceIds),
+    ) ||
+    !Array.isArray(candidate.timelineEvents) ||
+    !candidate.timelineEvents.every(
+      (event) =>
+        event !== null &&
+        typeof event === "object" &&
+        typeof event.id === "string" &&
+        typeof event.instrumentId === "string" &&
+        event.synthetic === true &&
+        typeof event.occurredAt === "string" &&
+        (event.kind === "filing" || event.kind === "restatement") &&
+        typeof event.title === "string" &&
+        typeof event.summary === "string" &&
+        isNonEmptyUniqueStringArray(event.evidenceIds),
     )
   ) {
     throw new Error("Only complete synthetic research snapshots are accepted.");
   }
+}
+
+function isNonEmptyUniqueStringArray(value: unknown): value is string[] {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  const identifiers = new Set<string>();
+  for (const identifier of value) {
+    if (
+      typeof identifier !== "string" ||
+      identifier.trim().length === 0 ||
+      identifiers.has(identifier)
+    )
+      return false;
+    identifiers.add(identifier);
+  }
+  return true;
+}
+
+function hasValidEvidenceBindings(
+  value: ResearchSnapshot["evidenceBindings"],
+): boolean {
+  const keys = new Set<string>();
+  const orderKeys = new Set<string>();
+  for (const binding of value) {
+    if (
+      binding === null ||
+      typeof binding !== "object" ||
+      typeof binding.instrumentId !== "string" ||
+      binding.instrumentId.trim().length === 0 ||
+      typeof binding.evidenceId !== "string" ||
+      binding.evidenceId.trim().length === 0 ||
+      !Number.isSafeInteger(binding.projectionOrder) ||
+      binding.projectionOrder < 0 ||
+      binding.synthetic !== true
+    )
+      return false;
+    const key = `${binding.instrumentId}\u0000${binding.evidenceId}`;
+    const orderKey = `${binding.instrumentId}\u0000${binding.projectionOrder}`;
+    if (keys.has(key) || orderKeys.has(orderKey)) return false;
+    keys.add(key);
+    orderKeys.add(orderKey);
+  }
+  return true;
 }

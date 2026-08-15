@@ -1,6 +1,6 @@
 # Canonical data and tenancy contract
 
-Status: Cycle 1a design contract; synthetic data only.
+Status: Cycle 1b-a design contract; synthetic data only.
 
 ## Identity
 
@@ -77,3 +77,27 @@ backup/restore, or deletion until the real PostgreSQL acceptance lane exists.
 A database adapter must not infer “no omissions” merely because RLS hid rows;
 it needs an explicit completeness signal and must use `count: null` when an
 exact count cannot be disclosed or established.
+
+## Projection boundary
+
+The complete source-controlled snapshot port and a future RLS database port are
+different capabilities. An RLS read is operation-scoped to one exact
+purpose/channel tuple and must return its instrument ID, public-knowledge
+cutoff, system-recorded cutoff, and operation for core-side equality checks.
+Candidate rows carry an instrument ID and frozen rights-policy ID/version; core
+resolves the matching policy and does not trust a policy object attached by an
+adapter. Display/API, derive/API, and alert/local-alert decisions are separate.
+Authorization territory and evaluation time come from a trusted context
+provider; a historical projection request supplies neither and therefore cannot
+backdate policy expiry.
+
+RLS projection completeness is only `known_incomplete` or `unknown`; neither
+state may contain an expected or missing row count, and both serialize an
+unknown omission count. The exact count in the memory dossier is evidence only
+for the closed fixture, not a database adapter precedent.
+
+Historical points and timeline events are instrument-scoped, synthetic snapshot
+records. Evidence reuse is many-to-many through explicit instrument/evidence
+bindings, and only bound citations can cross an instrument projection boundary.
+Production adapter normalization of timestamps, interval order, decimals, and
+text remains outside the source-controlled fixture validator.

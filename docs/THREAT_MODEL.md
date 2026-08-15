@@ -1,10 +1,14 @@
-# Sprint 0 and Cycle 1a threat model
+# Sprint 0 through Cycle 1b-a threat model
 
 ## Current trust boundaries
 
 The browser accepts dossier JSON only from the local Fastify API. The API reads only source-controlled synthetic fixtures and remains GET-only. Browser thesis and alert state remains local. There is no authentication, customer tenant data, live database, file upload, external fetch, email, broker, payment, model, or filing-parser boundary in the running profile.
 
 Cycle 1a adds an isolated synthetic authorization harness and unexecuted PostgreSQL migration contract. Neither is imported by the API or web application. Synthetic actor context is test-controlled and trusted; it does not establish identity.
+
+Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
+database implementation. The complete synthetic fixture port is explicitly not
+a database adapter seam.
 
 Assets at risk are source integrity, fixture provenance, rights-policy behavior, browser-local thesis text, and the guarantee that restricted fixture data does not leave the server projection.
 
@@ -24,6 +28,11 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   while retaining only a tenant- and resource-type-scoped ID marker to prevent
   same-type delete/recreate ABA.
 - PostgreSQL migrations have ordered SHA-256 checksums and static guards for synthetic-only constraints, fixed numeric values, exact rights-policy versions, tenant composite keys, forced RLS, transaction-local context, public privilege revocation, and read-only runtime grants.
+- Operation-scoped projections bind candidates to one instrument and exact
+  rights-policy version, validate returned scope and temporal cutoffs in core,
+  take policy evaluation time from an injected trusted provider, expose no
+  denied row IDs, accept no caller-complete/count state, and force an unknown
+  public omission count for every incomplete or RLS-unknown view.
 - Exact dependency pins, a lockfile, a single allowed install script, an allowlisted production-license gate, dependency review, and two-OS CI reduce supply-chain drift.
 - The evidence dialog traps/restores focus; chart values have a semantic table; reduced-motion and high-contrast preferences are respected.
 

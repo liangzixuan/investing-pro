@@ -26,13 +26,19 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 Target: 1–2 weeks after a pinned PostgreSQL CI service is approved.
 
 1. Execute migrations from an empty database using distinct bootstrap/migrator, non-owner runtime, synthetic test-loader, and backup roles.
-2. Freeze the database-to-core projection contract before writing an adapter. Move the current code-constant history and timeline records into the instrument snapshot and prove a second synthetic symbol cannot inherit SYN1 events. SQL currently evaluates one transaction purpose/channel while dossier projection needs display, derive, and local-alert decisions. Define operation-aware loading/evaluation, keep RLS as defense in depth, and return an explicit completeness state. If RLS makes omissions unknowable, emit `hasOmissions: true` with `count: null` rather than a false zero.
+2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
 4. Run cross-tenant direct-ID/list/join/count/subquery probes, missing/malformed context, membership and principal deactivation, and at least 1,000 alternating/concurrent reads. If the separate writer capability is added in this cycle, also test viewer writes, composite-FK attacks, idempotency races, and rollback before enabling it anywhere outside the isolated acceptance harness.
 5. Prove transaction-local context clears on commit, rollback, cancellation, timeout, and pooled-connection reuse.
 6. Prove clean migration, checksum drift failure, injected mid-migration rollback, logical dump/restore, and post-restore authorization behavior against an exact PostgreSQL image digest.
 
 Exit gate: all live-database authorization and restore tests pass from a clean checkout. This is a harness restore target, not a production RPO/RTO.
+
+The remaining live steps are Cycle 1b-b. Add a separate Ubuntu-only acceptance
+job rather than a service container inside the current Windows/Linux matrix.
+The PostgreSQL server and its `psql`/dump/restore clients must come from one
+exact major/minor/distro image digest. A client driver remains gated until the
+adapter-normalization contract and pool/cancellation tests are ready.
 
 ## Cycle 1c — demo identity and API contract proof
 

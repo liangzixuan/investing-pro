@@ -28,10 +28,8 @@ enabled:
 - non-owner runtime role and `FORCE RLS` behavior;
 - cross-tenant list/direct-ID/join/count/subquery and composite-FK attacks;
 - missing/malformed context, commit/rollback/cancellation, and pool reuse;
-- operation-aware display/derive/alert rights loading and an RLS-aware
-  completeness/unknown-omission contract;
-- instrument-generic history/timeline snapshot records plus a second-symbol
-  isolation test;
+- a live PostgreSQL implementation of the operation-aware projection contract
+  frozen in Cycle 1b-a;
 - at least 1,000 alternating/concurrent tenant operations;
 - migration replay, injected failure rollback, logical dump/restore, and
   post-restore authorization parity; and

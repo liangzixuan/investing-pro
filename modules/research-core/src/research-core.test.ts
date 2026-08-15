@@ -28,6 +28,32 @@ describe("as-known synthetic dossier", () => {
     expect(metric(after, "revenue").value).toBe("116.400");
     expect(metric(after, "ebitda_margin").displayValue).toBe("16.0%");
     expect(after?.timeline).toHaveLength(2);
+    expect(
+      before?.history.map(({ period, revenue, ebitda }) => ({
+        period,
+        revenue,
+        ebitda,
+      })),
+    ).toEqual([
+      { period: "2022", revenue: "74.0", ebitda: "10.4" },
+      { period: "2023", revenue: "86.0", ebitda: "13.8" },
+      { period: "2024", revenue: "100.0", ebitda: "16.5" },
+      { period: "2025", revenue: "120.0", ebitda: "21.6" },
+    ]);
+    expect(after?.history.at(-1)).toMatchObject({
+      period: "2025",
+      revenue: "116.4",
+      ebitda: "18.624",
+    });
+    expect(after?.evidence.map((evidence) => evidence.id)).toEqual([
+      "evidence.synthetic.history",
+      "evidence.synthetic.2024-report",
+      "evidence.synthetic.2025-original",
+      "evidence.synthetic.2025-restated",
+      "evidence.synthetic.balance-sheet",
+      "evidence.synthetic.share-record",
+      "evidence.synthetic.price",
+    ]);
   });
 
   it("treats public-known and system-recorded intervals as half-open", () => {
@@ -36,6 +62,8 @@ describe("as-known synthetic dossier", () => {
 
     expect(metric(immediatelyBefore, "revenue").value).toBe("120.000");
     expect(metric(atBoundary, "revenue").value).toBe("116.400");
+    expect(immediatelyBefore?.history.at(-1)?.revenue).toBe("120.0");
+    expect(atBoundary?.history.at(-1)?.revenue).toBe("116.4");
 
     const original = syntheticFixture.facts.find(
       (fact) => fact.id === "fact.revenue.2025.original",
@@ -104,9 +132,131 @@ describe("as-known synthetic dossier", () => {
         ),
       }),
     ],
+    [
+      "evidence binding marker",
+      () => ({
+        ...syntheticFixture,
+        evidenceBindings: syntheticFixture.evidenceBindings.map(
+          (binding, index) =>
+            index === 0 ? { ...binding, synthetic: false } : binding,
+        ),
+      }),
+    ],
+    [
+      "historical point",
+      () => ({
+        ...syntheticFixture,
+        historicalPoints: syntheticFixture.historicalPoints.map(
+          (point, index) =>
+            index === 0 ? { ...point, synthetic: false } : point,
+        ),
+      }),
+    ],
+    [
+      "timeline event",
+      () => ({
+        ...syntheticFixture,
+        timelineEvents: syntheticFixture.timelineEvents.map((event, index) =>
+          index === 0 ? { ...event, synthetic: false } : event,
+        ),
+      }),
+    ],
+    [
+      "empty historical evidence",
+      () => ({
+        ...syntheticFixture,
+        historicalPoints: syntheticFixture.historicalPoints.map(
+          (point, index) =>
+            index === 0 ? { ...point, evidenceIds: [] } : point,
+        ),
+      }),
+    ],
+    [
+      "duplicate timeline evidence",
+      () => ({
+        ...syntheticFixture,
+        timelineEvents: syntheticFixture.timelineEvents.map((event, index) =>
+          index === 0
+            ? {
+                ...event,
+                evidenceIds: [event.evidenceIds[0]!, event.evidenceIds[0]!],
+              }
+            : event,
+        ),
+      }),
+    ],
   ] as const)("rejects a runtime-tampered synthetic %s", (_label, snapshot) => {
     expect(() => composeDossier(snapshot() as never, DEFAULT_KNOWN_AT)).toThrow(
       /synthetic/i,
+    );
+  });
+
+  it("canonicalizes supplied fact, evidence, history, timeline, and policy ordering", () => {
+    const expected = composeDossier(syntheticFixture, DEFAULT_KNOWN_AT);
+    const reordered = composeDossier(
+      {
+        ...syntheticFixture,
+        rightsPolicies: [...syntheticFixture.rightsPolicies].reverse(),
+        facts: [...syntheticFixture.facts].reverse(),
+        evidence: [...syntheticFixture.evidence].reverse(),
+        evidenceBindings: [...syntheticFixture.evidenceBindings].reverse(),
+        historicalPoints: [...syntheticFixture.historicalPoints].reverse(),
+        timelineEvents: [...syntheticFixture.timelineEvents].reverse(),
+      },
+      DEFAULT_KNOWN_AT,
+    );
+
+    expect(reordered).toEqual(expected);
+    expect(JSON.stringify(reordered)).toBe(JSON.stringify(expected));
+  });
+
+  it("fails closed when an active timeline identifier is duplicated", () => {
+    const [event] = syntheticFixture.timelineEvents;
+    expect(event).toBeDefined();
+
+    expect(() =>
+      composeDossier(
+        {
+          ...syntheticFixture,
+          timelineEvents: [...syntheticFixture.timelineEvents, { ...event! }],
+        },
+        DEFAULT_KNOWN_AT,
+      ),
+    ).toThrow(/ambiguous timeline event identifier/i);
+  });
+
+  it("fails closed instead of serializing an authorized malformed history value", () => {
+    expect(() =>
+      composeDossier(
+        {
+          ...syntheticFixture,
+          historicalPoints: syntheticFixture.historicalPoints.map(
+            (point, index) =>
+              index === 0 ? { ...point, revenue: "not-a-decimal" } : point,
+          ),
+        },
+        DEFAULT_KNOWN_AT,
+      ),
+    ).toThrow();
+  });
+
+  it("projects no history or timeline records that the snapshot did not supply", () => {
+    const dossier = composeDossier(
+      {
+        ...syntheticFixture,
+        historicalPoints: [],
+        timelineEvents: [],
+      },
+      DEFAULT_KNOWN_AT,
+    );
+
+    expect(dossier.history).toEqual([]);
+    expect(dossier.timeline).toEqual([]);
+    expect(dossier.evidence.map((evidence) => evidence.id)).not.toContain(
+      "evidence.synthetic.history",
+    );
+    expect(dossier.evidence.map((evidence) => evidence.id)).not.toContain(
+      "evidence.synthetic.2025-original",
     );
   });
 
@@ -136,6 +286,10 @@ describe("as-known synthetic dossier", () => {
           ? { ...evidence, rightsPolicyVersion: "missing-version" }
           : evidence,
       ),
+      evidenceBindings: syntheticFixture.evidenceBindings.map((binding) => ({
+        ...binding,
+        instrumentId: "instrument.synthetic.isolated",
+      })),
     };
 
     const dossier = composeDossier(isolatedSnapshot, DEFAULT_KNOWN_AT);
@@ -156,6 +310,150 @@ describe("as-known synthetic dossier", () => {
       ),
     ).toBeNull();
     expect(getEvidencePassport("evidence.synthetic.price")).not.toBeNull();
+  });
+
+  it("does not inherit SYN1 research records when a second symbol supplies only foreign records", () => {
+    const secondSymbol = secondSymbolSnapshot();
+    const foreignRecordsSnapshot = {
+      ...secondSymbol,
+      evidence: [...secondSymbol.evidence, ...syntheticFixture.evidence],
+      historicalPoints: syntheticFixture.historicalPoints,
+      timelineEvents: syntheticFixture.timelineEvents,
+    };
+    const dossier = composeDossier(foreignRecordsSnapshot, DEFAULT_KNOWN_AT);
+
+    expect(dossier.instrument.symbol).toBe("SYN2");
+    expect(dossier.history).toEqual([]);
+    expect(dossier.timeline).toEqual([]);
+    expect(
+      dossier.evidence.every((evidence) =>
+        evidence.id.startsWith("evidence.synthetic.syn2."),
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(dossier.evidence)).not.toContain("SYN1");
+    expect(
+      getEvidencePassportFromSnapshot(
+        foreignRecordsSnapshot,
+        "evidence.synthetic.history",
+      ),
+    ).toBeNull();
+    expect(
+      getEvidencePassportFromSnapshot(
+        foreignRecordsSnapshot,
+        "evidence.synthetic.2025-original",
+      ),
+    ).toBeNull();
+  });
+
+  it("selects only SYN2 history, events, and evidence from a mixed-instrument snapshot", () => {
+    const secondSymbol = secondSymbolSnapshot();
+    const mixedSnapshot = {
+      ...secondSymbol,
+      facts: [...syntheticFixture.facts, ...secondSymbol.facts],
+      evidence: [...syntheticFixture.evidence, ...secondSymbol.evidence],
+      evidenceBindings: [
+        ...syntheticFixture.evidenceBindings,
+        ...secondSymbol.evidenceBindings,
+      ],
+      historicalPoints: [
+        ...syntheticFixture.historicalPoints,
+        ...secondSymbol.historicalPoints,
+      ],
+      timelineEvents: [
+        ...syntheticFixture.timelineEvents,
+        ...secondSymbol.timelineEvents,
+      ],
+    };
+    const dossier = composeDossier(mixedSnapshot, DEFAULT_KNOWN_AT);
+
+    expect(dossier.history.map((point) => point.period)).toEqual([
+      "2022",
+      "2023",
+      "2024",
+      "2025",
+    ]);
+    expect(dossier.history.map((point) => point.revenue)).toEqual([
+      "200.0",
+      "201.0",
+      "202.0",
+      "204.0",
+    ]);
+    expect(dossier.timeline.map((event) => event.id)).toEqual([
+      "timeline.syn2.original-filing",
+      "timeline.syn2.restatement",
+    ]);
+    expect(
+      dossier.evidence.every((evidence) =>
+        evidence.id.startsWith("evidence.synthetic.syn2."),
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(dossier)).not.toContain("SYN1-");
+    expect(
+      getEvidencePassportFromSnapshot(
+        mixedSnapshot,
+        "evidence.synthetic.price",
+      ),
+    ).toBeNull();
+  });
+
+  it("denies SYN2 facts, history, and events that reuse SYN1-only evidence bindings", () => {
+    const secondSymbol = secondSymbolSnapshot();
+    const snapshot = {
+      ...secondSymbol,
+      facts: secondSymbol.facts.map((fact) =>
+        fact.key === "synthetic_price"
+          ? { ...fact, evidenceId: "evidence.synthetic.price" }
+          : fact,
+      ),
+      evidence: [...syntheticFixture.evidence, ...secondSymbol.evidence],
+      evidenceBindings: [
+        ...syntheticFixture.evidenceBindings,
+        ...secondSymbol.evidenceBindings,
+      ],
+      historicalPoints: secondSymbol.historicalPoints.map((point, index) =>
+        index === 0
+          ? {
+              ...point,
+              revenue: "denied-malformed-value",
+              evidenceIds: ["evidence.synthetic.history"],
+            }
+          : point,
+      ),
+      timelineEvents: secondSymbol.timelineEvents.map((event, index) =>
+        index === 0
+          ? {
+              ...event,
+              evidenceIds: ["evidence.synthetic.2025-original"],
+            }
+          : event,
+      ),
+    };
+
+    const dossier = composeDossier(snapshot, DEFAULT_KNOWN_AT);
+
+    expect(
+      dossier.metrics.some((metric) => metric.key === "synthetic_price"),
+    ).toBe(false);
+    expect(dossier.history.map((point) => point.period)).toEqual([
+      "2023",
+      "2024",
+      "2025",
+    ]);
+    expect(dossier.timeline.map((event) => event.id)).toEqual([
+      "timeline.syn2.restatement",
+    ]);
+    expect(
+      dossier.evidence.every((evidence) =>
+        evidence.id.startsWith("evidence.synthetic.syn2."),
+      ),
+    ).toBe(true);
+    expect(
+      getEvidencePassportFromSnapshot(
+        snapshot,
+        "evidence.synthetic.2025-original",
+      ),
+    ).toBeNull();
+    expect(dossier.omissions.hasOmissions).toBe(true);
   });
 
   it("loads snapshots through the dossier use-case seam", async () => {
@@ -340,7 +638,7 @@ describe("as-known synthetic dossier", () => {
     ).toBeNull();
   });
 
-  it("requires exact display, derive, and local-alert grants before projecting a metric", () => {
+  it("requires display and derive grants while leaving alert authorization operation-scoped", () => {
     const displayDerivePolicy: (typeof syntheticFixture.rightsPolicies)[number] =
       {
         id: "rights.synthetic.display-derive-only.v1",
@@ -382,7 +680,7 @@ describe("as-known synthetic dossier", () => {
       DEFAULT_KNOWN_AT,
     );
     expect(dossier.metrics.some((item) => item.key === "synthetic_price")).toBe(
-      false,
+      true,
     );
   });
 
@@ -542,6 +840,54 @@ describe("local alert evaluation", () => {
     expect(first.deliveryMode).toBe("local_demo_only");
   });
 });
+
+function secondSymbolSnapshot() {
+  const instrumentId = "instrument.synthetic.syn2";
+  const evidenceId = (id: string) =>
+    id.replace("evidence.synthetic.", "evidence.synthetic.syn2.");
+
+  return {
+    ...syntheticFixture,
+    instrument: {
+      ...syntheticFixture.instrument,
+      id: instrumentId,
+      symbol: "SYN2",
+      name: "Contoso Sensor Systems",
+      description:
+        "A second fictional company used to prove instrument isolation.",
+    },
+    facts: syntheticFixture.facts.map((fact) => ({
+      ...fact,
+      id: `fact.syn2.${fact.id.slice("fact.".length)}`,
+      instrumentId,
+      evidenceId: evidenceId(fact.evidenceId),
+    })),
+    evidence: syntheticFixture.evidence.map((evidence) => ({
+      ...evidence,
+      id: evidenceId(evidence.id),
+      documentId: evidence.documentId.replaceAll("SYN1", "SYN2"),
+    })),
+    evidenceBindings: syntheticFixture.evidenceBindings.map((binding) => ({
+      ...binding,
+      instrumentId,
+      evidenceId: evidenceId(binding.evidenceId),
+    })),
+    historicalPoints: syntheticFixture.historicalPoints.map((point, index) => ({
+      ...point,
+      id: `history.syn2.${point.id.slice("history.".length)}`,
+      instrumentId,
+      revenue: `${200 + index}.0`,
+      ebitda: `${20 + index}.0`,
+      evidenceIds: point.evidenceIds.map(evidenceId),
+    })),
+    timelineEvents: syntheticFixture.timelineEvents.map((event) => ({
+      ...event,
+      id: `timeline.syn2.${event.id.slice("timeline.".length)}`,
+      instrumentId,
+      evidenceIds: event.evidenceIds.map(evidenceId),
+    })),
+  };
+}
 
 function metric(dossier: ReturnType<typeof buildDossier>, key: string) {
   const result = dossier?.metrics.find((candidate) => candidate.key === key);

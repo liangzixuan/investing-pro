@@ -32,7 +32,7 @@ export function isRightsAllowed(
 }
 
 export function getPolicy(
-  policies: RightsPolicy[],
+  policies: readonly RightsPolicy[],
   id: string,
   version: string,
 ): RightsPolicy | null {

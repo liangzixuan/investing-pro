@@ -1,4 +1,8 @@
-import type { SyntheticFixture } from "./model";
+import type {
+  HistoricalPointRecord,
+  InstrumentEvidenceBinding,
+  SyntheticFixture,
+} from "./model";
 
 const PUBLIC_POLICY_ID = "rights.synthetic.display.v1";
 const RESTRICTED_POLICY_ID = "rights.synthetic.restricted.v1";
@@ -19,6 +23,49 @@ export const syntheticFixture: SyntheticFixture = {
     currency: "USD",
     isSynthetic: true,
   },
+  historicalPoints: [
+    historicalPoint("2022", "74.0", "10.4"),
+    historicalPoint("2023", "86.0", "13.8"),
+    historicalPoint("2024", "100.0", "16.5"),
+    historicalPointVersion(
+      "original",
+      "120.0",
+      "21.6",
+      "2026-02-20T14:30:00Z",
+      "2026-05-10T12:00:00Z",
+    ),
+    historicalPointVersion(
+      "restated",
+      "116.4",
+      "18.624",
+      "2026-05-10T12:00:00Z",
+      null,
+    ),
+  ],
+  timelineEvents: [
+    {
+      id: "timeline.original-filing",
+      instrumentId: "instrument.synthetic.syn1",
+      synthetic: true,
+      occurredAt: "2026-02-20T14:30:00Z",
+      kind: "filing",
+      title: "Original synthetic annual record",
+      summary:
+        "Initial 2025 fixture became available to the demo research system.",
+      evidenceIds: ["evidence.synthetic.2025-original"],
+    },
+    {
+      id: "timeline.restatement",
+      instrumentId: "instrument.synthetic.syn1",
+      synthetic: true,
+      occurredAt: "2026-05-10T12:00:00Z",
+      kind: "restatement",
+      title: "Synthetic revenue recognition restatement",
+      summary:
+        "Revenue, EBITDA, and free cash flow were revised for the 2025 fixture period.",
+      evidenceIds: ["evidence.synthetic.2025-restated"],
+    },
+  ],
   rightsPolicies: [
     {
       id: PUBLIC_POLICY_ID,
@@ -176,6 +223,18 @@ export const syntheticFixture: SyntheticFixture = {
       synthetic: true,
     },
   ],
+  evidenceBindings: [
+    "evidence.synthetic.history",
+    "evidence.synthetic.2024-report",
+    "evidence.synthetic.2025-original",
+    "evidence.synthetic.2025-restated",
+    "evidence.synthetic.balance-sheet",
+    "evidence.synthetic.share-record",
+    "evidence.synthetic.price",
+    "evidence.synthetic.restricted-estimate",
+  ].map((evidenceId, projectionOrder) =>
+    evidenceBinding(evidenceId, projectionOrder),
+  ),
   facts: [
     {
       id: "fact.revenue.2024",
@@ -305,5 +364,61 @@ function staticFact(
     rightsPolicyId: PUBLIC_POLICY_ID,
     rightsPolicyVersion: "1.0.0",
     qualityState: "verified_fixture" as const,
+  };
+}
+
+function historicalPoint(
+  period: string,
+  revenue: string,
+  ebitda: string,
+): HistoricalPointRecord {
+  return {
+    id: `history.${period}`,
+    instrumentId: "instrument.synthetic.syn1",
+    synthetic: true,
+    period,
+    revenue,
+    ebitda,
+    sourceAvailableAt: "2025-02-20T14:30:00Z",
+    publicKnownFrom: "2025-02-20T14:30:00Z",
+    publicKnownTo: null,
+    systemRecordedFrom: "2025-02-20T14:30:00Z",
+    systemRecordedTo: null,
+    evidenceIds: ["evidence.synthetic.history"],
+  };
+}
+
+function historicalPointVersion(
+  version: "original" | "restated",
+  revenue: string,
+  ebitda: string,
+  knownFrom: string,
+  knownTo: string | null,
+): HistoricalPointRecord {
+  return {
+    id: `history.2025.${version}`,
+    instrumentId: "instrument.synthetic.syn1",
+    synthetic: true,
+    period: "2025",
+    revenue,
+    ebitda,
+    sourceAvailableAt: knownFrom,
+    publicKnownFrom: knownFrom,
+    publicKnownTo: knownTo,
+    systemRecordedFrom: knownFrom,
+    systemRecordedTo: knownTo,
+    evidenceIds: [`evidence.synthetic.2025-${version}`],
+  };
+}
+
+function evidenceBinding(
+  evidenceId: string,
+  projectionOrder: number,
+): InstrumentEvidenceBinding {
+  return {
+    instrumentId: "instrument.synthetic.syn1",
+    evidenceId,
+    projectionOrder,
+    synthetic: true,
   };
 }

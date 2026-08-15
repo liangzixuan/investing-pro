@@ -3,6 +3,7 @@ import type {
   InstrumentDto,
   MetricUnit,
   QualityState,
+  TimelineEventDto,
 } from "@research-cockpit/contracts";
 
 export type AuthorizedPurpose =
@@ -47,6 +48,53 @@ export interface FinancialFact {
   qualityState: QualityState;
 }
 
+/**
+ * One instrument-scoped historical series version. Knowledge and system
+ * intervals are half-open so a restatement can replace the point without the
+ * composer manufacturing a value from a different record collection.
+ */
+export interface HistoricalPointRecord {
+  id: string;
+  instrumentId: string;
+  synthetic: true;
+  period: string;
+  revenue: string;
+  ebitda: string;
+  sourceAvailableAt: string;
+  publicKnownFrom: string;
+  publicKnownTo: string | null;
+  systemRecordedFrom: string;
+  systemRecordedTo: string | null;
+  evidenceIds: string[];
+}
+
+/**
+ * An immutable, instrument-scoped event supplied by the snapshot adapter.
+ * Its cited evidence's publication time is the event-text availability gate.
+ */
+export interface TimelineEventRecord {
+  id: string;
+  instrumentId: string;
+  synthetic: true;
+  occurredAt: string;
+  kind: TimelineEventDto["kind"];
+  title: string;
+  summary: string;
+  evidenceIds: string[];
+}
+
+/**
+ * Explicit shared-evidence membership for an instrument snapshot. Evidence
+ * passports remain reusable source records; a binding determines whether one
+ * may cross this instrument projection boundary.
+ */
+export interface InstrumentEvidenceBinding {
+  instrumentId: string;
+  evidenceId: string;
+  projectionOrder: number;
+  synthetic: true;
+}
+
 export interface ResearchSnapshot {
   dataMode: "synthetic";
   /** Deterministic snapshot/composition time; this is not a live clock. */
@@ -55,6 +103,9 @@ export interface ResearchSnapshot {
   rightsPolicies: RightsPolicy[];
   facts: FinancialFact[];
   evidence: EvidencePassportDto[];
+  evidenceBindings: InstrumentEvidenceBinding[];
+  historicalPoints: HistoricalPointRecord[];
+  timelineEvents: TimelineEventRecord[];
 }
 
 export type SyntheticFixture = ResearchSnapshot;

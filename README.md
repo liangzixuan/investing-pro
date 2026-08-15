@@ -22,6 +22,12 @@ a statically checked PostgreSQL migration contract. They are development proof
 artifacts only: the running API remains GET-only, browser state remains local,
 and no database or identity provider is connected.
 
+Cycle 1b-a moves history, timeline, and evidence membership into
+instrument-scoped snapshots and freezes a separate operation-scoped port for a
+future RLS reader. That port cannot claim complete coverage or disclose hidden
+row counts. It is still disconnected; the current app continues to use only
+the closed SYN1 fixture.
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -58,4 +64,6 @@ checks do not replace the pending real-PostgreSQL RLS and restore suite.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
-[canonical model](./docs/CANONICAL_MODEL.md), and [architecture decisions](./docs/adr/).
+[canonical model](./docs/CANONICAL_MODEL.md),
+[Cycle 1b-a exit matrix](./docs/CYCLE_1BA_EXIT_MATRIX.md), and
+[architecture decisions](./docs/adr/).
