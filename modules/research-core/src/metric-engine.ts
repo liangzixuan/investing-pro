@@ -115,7 +115,8 @@ export function evaluateMetrics(facts: FinancialFact[]): MetricDto[] {
       ? "restated_fixture"
       : "verified_fixture";
     const asOf = sourceFacts.reduce(
-      (latest, fact) => (fact.availableAt > latest ? fact.availableAt : latest),
+      (latest, fact) =>
+        fact.sourceAvailableAt > latest ? fact.sourceAvailableAt : latest,
       "1970-01-01T00:00:00Z",
     );
 

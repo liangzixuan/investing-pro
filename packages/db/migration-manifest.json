@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256",
+  "migrations": [
+    {
+      "id": "0001",
+      "file": "0001_schemas_context_and_ledger.sql",
+      "sha256": "e46088d6915fda15fdbc281c48463b7f9478effc90d8aa26d5fcfe84cf6c4890"
+    },
+    {
+      "id": "0002",
+      "file": "0002_canonical_entities.sql",
+      "sha256": "41e8164fb29c1d823f4bc65b600dbea6ed5e96d0256f77c7604baf8c2ff6c1ef"
+    },
+    {
+      "id": "0003",
+      "file": "0003_temporal_constraints_and_indexes.sql",
+      "sha256": "c3d9dc4c015b3727e98f66e0ab4440a0fcd95821e1863fcf2953f82dc2601dc8"
+    },
+    {
+      "id": "0004",
+      "file": "0004_row_security_and_runtime_grants.sql",
+      "sha256": "179188d037fc671c891f0d2d81f5df4748d839a943a2734a7f176f6759271282"
+    },
+    {
+      "id": "0005",
+      "file": "0005_non_reusable_resource_ids.sql",
+      "sha256": "a537000c692ea246e8bce9dd5aaa73a576127455aa0ba412db5cbfdf3161889a"
+    }
+  ]
+}

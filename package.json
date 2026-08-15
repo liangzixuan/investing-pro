@@ -14,9 +14,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "guardrails": "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:licenses",
+    "guardrails": "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:migrations && pnpm guardrails:licenses",
     "guardrails:boundaries": "tsx scripts/verify-boundaries.ts",
     "guardrails:fixtures": "tsx scripts/verify-fixtures.ts",
+    "guardrails:migrations": "tsx packages/db/src/check-migrations.ts",
     "guardrails:licenses": "tsx scripts/verify-licenses.ts",
     "test": "pnpm -r --if-present test",
     "verify": "pnpm format:check && pnpm lint && pnpm guardrails && pnpm typecheck && pnpm test && pnpm build"

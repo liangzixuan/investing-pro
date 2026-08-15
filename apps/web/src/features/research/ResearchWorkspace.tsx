@@ -231,10 +231,7 @@ export function ResearchWorkspace({
               </ol>
               <div className="rights-summary">
                 <span>Server-side rights filter</span>
-                <strong>
-                  {dossier.omissions.count} field
-                  {dossier.omissions.count === 1 ? "" : "s"} withheld
-                </strong>
+                <strong>{formatOmissionSummary(dossier.omissions)}</strong>
                 <p>{dossier.omissions.explanation}</p>
               </div>
             </aside>
@@ -257,6 +254,13 @@ export function ResearchWorkspace({
       />
     </>
   );
+}
+
+function formatOmissionSummary(omissions: DossierDto["omissions"]): string {
+  if (!omissions.hasOmissions) return "No eligible fields withheld";
+  if (omissions.count === null)
+    return "Fields withheld · exact count unavailable";
+  return `${omissions.count} field${omissions.count === 1 ? "" : "s"} withheld`;
 }
 
 function formatKnownAt(value: string): string {

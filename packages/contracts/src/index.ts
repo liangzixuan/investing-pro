@@ -59,7 +59,9 @@ export interface EvidencePassportDto {
   locator: string;
   excerpt: string;
   contentHash: string;
+  /** Underlying synthetic source-publication time. */
   availableAt: string;
+  /** Half-open public-knowledge interval; not database system time. */
   knownFrom: string;
   knownTo: string | null;
   rightsPolicyId: string;
@@ -68,7 +70,9 @@ export interface EvidencePassportDto {
 }
 
 export interface OmissionSummaryDto {
-  count: number;
+  hasOmissions: boolean;
+  /** Exact in memory; nullable when a future repository cannot disclose a count. */
+  count: number | null;
   reasonCode: "RIGHTS_DENIED";
   explanation: string;
 }

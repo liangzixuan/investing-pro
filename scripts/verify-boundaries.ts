@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const sourceRoots = [
+  ".github",
   "apps",
+  "config",
   "modules",
   "packages",
   "fixtures",
@@ -14,9 +16,13 @@ const sourceRoots = [
 const textExtensions = new Set([
   ".css",
   ".json",
+  ".md",
   ".mjs",
   ".conf",
   ".sql",
+  ".ps1",
+  ".sh",
+  ".toml",
   ".ts",
   ".tsx",
   ".yaml",
@@ -32,7 +38,6 @@ const forbiddenText = [
   /yahoo finance/i,
   /@?openbb/i,
 ];
-const extensionlessTextFiles = new Set(["dockerfile"]);
 const forbiddenDatabaseText = [
   /\bcopy\b[\s\S]*?\bfrom\b\s+(?:program\b|['"])/i,
   /\b(?:file_fdw|postgres_fdw|dblink|lo_import|pg_read_file|pg_read_binary_file|pg_ls_dir)\b/i,
@@ -65,36 +70,75 @@ const ignoredDirectories = new Set([
   "node_modules",
 ]);
 const violations: string[] = [];
+const filesToInspect = new Set<string>();
 
 for (const sourceRoot of sourceRoots) {
-  for (const file of await walk(join(root, sourceRoot))) {
-    const relativePath = relative(root, file).replaceAll("\\", "/");
-    const extension = extname(file).toLowerCase();
-    if (copiedAssetExtensions.has(extension)) {
-      violations.push(
-        `${relativePath}: raster assets require provenance review`,
-      );
-      continue;
-    }
-    if (
-      !textExtensions.has(extension) &&
-      !extensionlessTextFiles.has(basename(file).toLowerCase())
-    )
-      continue;
-    const content = await readFile(file, "utf8");
-    for (const pattern of forbiddenText) {
+  for (const file of await walk(join(root, sourceRoot)))
+    filesToInspect.add(file);
+}
+for (const entry of await readdir(root, { withFileTypes: true })) {
+  if (entry.isFile() && isRootBoundaryFile(entry.name))
+    filesToInspect.add(join(root, entry.name));
+}
+
+// Release-gate regression cases: these common root-level surfaces must remain
+// classified even when their files are not present in a given checkout.
+for (const expected of [
+  "Dockerfile",
+  "Dockerfile.production",
+  "compose.yml",
+  "compose.override.yaml",
+  "docker-compose.test.yml",
+  "postgresql.conf",
+  "bootstrap.sql",
+  "package.json",
+]) {
+  if (!isRootBoundaryFile(expected))
+    throw new Error(`Boundary root-surface classifier missed ${expected}`);
+}
+
+for (const file of filesToInspect) {
+  const relativePath = relative(root, file).replaceAll("\\", "/");
+  const extension = extname(file).toLowerCase();
+  if (copiedAssetExtensions.has(extension)) {
+    violations.push(`${relativePath}: raster assets require provenance review`);
+    continue;
+  }
+  if (
+    !textExtensions.has(extension) &&
+    !isDockerfileName(basename(file).toLowerCase())
+  )
+    continue;
+  const content = await readFile(file, "utf8");
+  for (const pattern of forbiddenText) {
+    if (pattern.test(content))
+      violations.push(`${relativePath}: matched ${pattern}`);
+  }
+  const fileName = basename(file).toLowerCase();
+  const isInfrastructureFile =
+    (!relativePath.includes("/") && isRootInfrastructureFile(fileName)) ||
+    relativePath.startsWith(".github/") ||
+    relativePath.startsWith("config/") ||
+    relativePath.startsWith("db/") ||
+    relativePath.startsWith("infra/") ||
+    relativePath.startsWith("packages/db/");
+  const isDatabaseOrContainerSurface =
+    extension === ".sql" ||
+    extension === ".conf" ||
+    isDockerfileName(fileName) ||
+    isComposeFileName(fileName) ||
+    (isInfrastructureFile &&
+      [".ps1", ".sh", ".toml", ".yaml", ".yml"].includes(extension));
+  if (isDatabaseOrContainerSurface) {
+    for (const pattern of forbiddenDatabaseText) {
       if (pattern.test(content))
-        violations.push(`${relativePath}: matched ${pattern}`);
+        violations.push(
+          `${relativePath}: prohibited database import ${pattern}`,
+        );
     }
-    if (extension === ".sql" || extension === ".conf") {
-      for (const pattern of forbiddenDatabaseText) {
-        if (pattern.test(content))
-          violations.push(`${relativePath}: prohibited database import ${pattern}`);
-      }
-    }
-    if (file.endsWith("package.json")) {
-      inspectDependencies(relativePath, JSON.parse(content) as unknown);
-    }
+  }
+  if (file.endsWith("package.json")) {
+    inspectDependencies(relativePath, JSON.parse(content) as unknown);
   }
 }
 
@@ -130,17 +174,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isDockerfileName(fileName: string): boolean {
+  return /^dockerfile(?:[.-].+)?$/i.test(fileName);
+}
+
+function isRootBoundaryFile(fileName: string): boolean {
+  const lowerName = fileName.toLowerCase();
+  return (
+    lowerName === "package.json" ||
+    lowerName === "pnpm-workspace.yaml" ||
+    isRootInfrastructureFile(lowerName)
+  );
+}
+
+function isRootInfrastructureFile(fileName: string): boolean {
+  return (
+    isDockerfileName(fileName) ||
+    isComposeFileName(fileName) ||
+    [".conf", ".sql"].includes(extname(fileName))
+  );
+}
+
+function isComposeFileName(fileName: string): boolean {
+  return /^(?:docker-)?compose(?:[.-].*)?\.ya?ml$/i.test(fileName);
+}
+
 async function walk(directory: string): Promise<string[]> {
   const output: string[] = [];
   let entries;
   try {
     entries = await readdir(directory, { withFileTypes: true });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "ENOENT"
-    )
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
       return output;
     throw error;
   }
