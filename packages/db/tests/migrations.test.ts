@@ -47,6 +47,72 @@ describe("static SQL security harness", () => {
     expect(
       detectProhibitedSql("DROP TRIGGER theses_tombstone_after_delete;"),
     ).toContain("destructive DROP is prohibited");
+    expect(
+      detectProhibitedSql(
+        "CREATE OR REPLACE VIEW private_data.escape AS SELECT 1;",
+      ),
+    ).toContain("forward migrations may not replace unreviewed objects");
+    expect(
+      detectProhibitedSql(
+        "CREATE OR REPLACE PROCEDURE private_data.set_request_context() LANGUAGE sql AS 'SELECT 1';",
+      ),
+    ).not.toContain("forward migrations may not replace unreviewed objects");
+    expect(
+      detectProhibitedSql("CREATE ROLE acceptance_escape LOGIN BYPASSRLS;"),
+    ).toContain("unreviewed role creation is prohibited");
+    expect(
+      detectProhibitedSql(
+        "CREATE VIEW private_data.runtime_escape AS SELECT * FROM private_data.theses;",
+      ),
+    ).toContain("unreviewed relation types are prohibited");
+    expect(
+      detectProhibitedSql(
+        "GRANT SELECT ON private_data.theses TO research_cockpit_runtime WITH GRANT OPTION;",
+      ),
+    ).toContain("grant options are prohibited");
+    expect(detectProhibitedSql("CREATE SCHEMA runtime_escape;")).toContain(
+      "unreviewed schema creation is prohibited",
+    );
+    expect(
+      detectProhibitedSql(
+        "GRANT CREATE ON SCHEMA public TO research_cockpit_runtime;",
+      ),
+    ).toContain(
+      "capability roles may not receive schema or database creation privileges",
+    );
+    expect(
+      detectProhibitedSql(
+        "CREATE TRIGGER disabled AFTER DELETE ON private_data.theses FOR EACH ROW WHEN (false) EXECUTE FUNCTION private_data.tombstone_resource_id_after_delete('thesis');",
+      ),
+    ).toContain("conditional triggers are prohibited in this harness");
+  });
+
+  it("requires database-level PUBLIC creation privileges to be revoked", async () => {
+    const files = await loadMigrationFiles();
+    const mutated = mutate(
+      files,
+      "0007_database_privilege_lockdown.sql",
+      (sql) => sql.replace("REVOKE CREATE, TEMPORARY", "REVOKE CREATE"),
+    );
+    expect(inspectSqlBundle(mutated)).toContain(
+      "PUBLIC must lose database CREATE and TEMPORARY privileges",
+    );
+  });
+
+  it("requires extension routines to lose default PUBLIC execution", async () => {
+    const files = await loadMigrationFiles();
+    const mutated = mutate(
+      files,
+      "0004_row_security_and_runtime_grants.sql",
+      (sql) =>
+        sql.replace(
+          "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA shared_data FROM PUBLIC;",
+          "",
+        ),
+    );
+    expect(inspectSqlBundle(mutated)).toContain(
+      "PUBLIC must lose extension-routine execution in shared_data",
+    );
   });
 
   it("detects removal of forced RLS from a protected table", async () => {
@@ -120,6 +186,28 @@ describe("static SQL security harness", () => {
     );
     expect(inspectSqlBundle(mutated)).toContain(
       "request context app.principal_id must be transaction-local",
+    );
+  });
+
+  it("requires null-safe request-context validation", async () => {
+    const files = await loadMigrationFiles();
+    const mutated = mutate(files, "0006_null_safe_request_context.sql", (sql) =>
+      sql
+        .replace("purpose IS NULL\n    OR ", "")
+        .replace("channel IS NULL OR ", "")
+        .replace("territory IS DISTINCT FROM", "territory <>")
+        .replace(
+          "data_classification IS DISTINCT FROM",
+          "data_classification <>",
+        ),
+    );
+    expect(inspectSqlBundle(mutated)).toEqual(
+      expect.arrayContaining([
+        "request context must reject a null purpose",
+        "request context must reject a null channel",
+        "request context must reject a null or foreign territory",
+        "request context must reject a null or foreign classification",
+      ]),
     );
   });
 
@@ -576,7 +664,7 @@ describe("static SQL security harness", () => {
     );
   });
 
-  it("requires the unexecuted-contract warning and live-gate disclosure", () => {
+  it("requires the unexecuted-live-workflow warning and gate disclosure", () => {
     expect(inspectStaticContractNotice("")).not.toEqual([]);
   });
 });

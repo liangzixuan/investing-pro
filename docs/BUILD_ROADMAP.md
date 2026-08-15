@@ -25,7 +25,17 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 
 Target: 1–2 weeks after a pinned PostgreSQL CI service is approved.
 
-1. Execute migrations from an empty database using distinct bootstrap/migrator, non-owner runtime, synthetic test-loader, and backup roles.
+**Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
+PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
+impersonated capability/RLS probes are implemented. The workflow has not run,
+so every engine-dependent gate remains pending. The current role bootstrap
+must run as the ephemeral container superuser and does not satisfy the distinct
+migrator or authenticated runtime/backup requirements.
+
+1. Execute migrations from an empty database. First use b1's explicitly limited
+   ephemeral-superuser bootstrap and impersonated `NOLOGIN` capabilities; then
+   split/redesign role bootstrap so a distinct migrator and authenticated
+   non-owner runtime/test-loader/backup sessions can be proven.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
 4. Run cross-tenant direct-ID/list/join/count/subquery probes, missing/malformed context, membership and principal deactivation, and at least 1,000 alternating/concurrent reads. If the separate writer capability is added in this cycle, also test viewer writes, composite-FK attacks, idempotency races, and rollback before enabling it anywhere outside the isolated acceptance harness.

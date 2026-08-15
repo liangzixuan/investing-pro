@@ -1,15 +1,42 @@
-# PostgreSQL static security contract
+# PostgreSQL security contract and acceptance harness
 
-> **UNEXECUTED STATIC CONTRACT — NOT DEPLOYED PERSISTENCE**
+> **LIVE WORKFLOW NOT YET EXECUTED — NOT DEPLOYED PERSISTENCE**
 
-This package contains forward SQL and static security checks for the future
-synthetic-only PostgreSQL persistence boundary. The migrations have not been
-executed against PostgreSQL in this workspace. Passing the package tests does
-not prove PostgreSQL syntax, row-level security behavior, backup viability, or
-production readiness.
+This package contains forward SQL, static security checks, and a clean-only
+synthetic acceptance harness for the future PostgreSQL persistence boundary.
+The migrations have not been executed against PostgreSQL in this workspace or
+in the new remote workflow. Passing the package tests therefore does not prove
+PostgreSQL syntax, row-level security behavior, backup viability, or production
+readiness.
 
-There is deliberately no database driver, migration runner, seed payload, live
-credential, or application adapter in this package.
+There is deliberately no database driver, production or incremental migration
+runner, live credential, or application adapter in this package. The
+acceptance-only renderer validates the immutable manifest and emits all seven
+migration bodies plus their ledger entries inside one locked transaction for a
+fresh, fixed-name CI database. The insert-only fixture is deterministic and
+synthetic.
+
+The separate Ubuntu workflow pins PostgreSQL 17.11 Bookworm by OCI image-index
+digest, publishes no host port, and runs every client command inside that
+service container. Current migrations must bootstrap as the ephemeral
+container superuser: on PostgreSQL 17, a non-superuser `CREATEROLE` migrator
+would receive automatic membership in newly created roles and immediately
+violate migration `0001`'s zero-membership invariant. Runtime, seed, and backup
+checks use superuser `SET SESSION AUTHORIZATION` to impersonate the declared
+`NOLOGIN` capabilities. This can prove engine grant/RLS semantics, but it is not
+authenticated least-privilege or production identity evidence.
+
+Migration `0006` replaces the request-context procedure with null-safe
+validation. It explicitly rejects null purpose/channel values and uses `IS
+DISTINCT FROM` for the fixed synthetic territory/classification, avoiding SQL
+three-valued-logic acceptance of nulls. Direct custom-GUC mutation remains a
+trusted-session boundary rather than an authentication control.
+
+Migration `0007` revokes database-level `CREATE` and `TEMPORARY` from `PUBLIC`
+for the deployment database. Together with the existing `public`-schema revoke,
+the exact schema inventory, and the capability ACL fingerprint, this prevents a
+nominally read-only capability from acquiring an unreviewed persistent or
+temporary DDL path through PostgreSQL defaults.
 
 ## Capability roles
 
@@ -44,8 +71,9 @@ tests.
 
 The package checker verifies ordered immutable SHA-256 migration hashes,
 transaction wrapping, owner/runtime capability properties, read-only runtime
-grants, no capability-role chaining, no public grants, no destructive forward
-SQL, shared/private schema separation, forced RLS, explicit policy targeting for
+grants, no capability-role chaining, no public grants or grant options, no
+unreviewed roles/schemas/relation kinds, no destructive forward SQL,
+shared/private schema separation, forced RLS, explicit policy targeting for
 runtime/test-seed/backup, write-policy `WITH CHECK` guards, exact rights-policy
 versions, stable tenant/principal composite foreign keys, fixed numeric facts,
 public-known/system temporal separation, bidirectional pre-existing
@@ -108,6 +136,12 @@ pnpm --filter @research-cockpit/db test
 pnpm --filter @research-cockpit/db typecheck
 ```
 
+`pnpm --filter @research-cockpit/db acceptance:postgres:ci` is intentionally
+restricted to the GitHub Actions service-container boundary. It accepts only
+the workflow-provided hexadecimal container ID and the fixed
+`research_cockpit_acceptance_test` database; it has no local reset, host/port,
+or connection-string mode.
+
 ## Mandatory live PostgreSQL gates
 
 Before this contract can be described as deployed persistence, a pinned target
@@ -116,17 +150,20 @@ PostgreSQL service must prove all of the following:
 1. Apply every migration to a clean database and validate all SQL, role,
    extension, generated-column, exclusion-constraint, ownership, grant, and
    policy statements.
-2. Query `pg_roles`, `information_schema.role_table_grants`, `pg_policy`, and
-   ownership catalogs to confirm declared capabilities exactly; runtime must
-   have no write or role-membership path, and every policy must target only its
-   declared runtime, test-seed, or backup capability. Pre-create an unsafe
+2. Query `pg_roles`, ACL catalogs, `pg_policy`, and ownership catalogs to
+   confirm the complete non-system role/schema inventory plus database,
+   schema, table, column, and routine privileges exactly; runtime must have no
+   write, object-creation, grant-option, or role-membership path, and every
+   policy must target only its declared runtime, test-seed, or backup
+   capability. Pre-create an unsafe
    same-named role in an isolated database—including a role with
    `rolreplication = true`—and prove bootstrap fails atomically. Separately grant
    each same-named role to another role and grant another role to it; both
    `pg_auth_members` directions must make bootstrap fail without attempting
    automatic repair or revocation.
-3. Run as a non-owner runtime login and prove missing or malformed request
-   context fails closed.
+3. Introduce and run as a separately reviewed non-owner runtime login, then
+   prove missing or malformed request context fails closed. The b1 harness can
+   prove only impersonated `NOLOGIN` capability semantics.
 4. Prove `set_request_context` is transaction-local across commit, rollback,
    errors, and pooled-connection reuse.
 5. Test cross-tenant `SELECT`, direct-object lookup, and every future write path
@@ -159,9 +196,10 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     remains independent in a different tenant or resource type. Attempt direct
     tombstone deletion, revival, identity mutation, trigger disabling, and
     `TRUNCATE`; all non-owner paths must fail closed.
-12. Perform an authenticated logical backup and isolated restore with the
-    backup capability; compare schema, row counts, hashes, RLS, grants, and
-    ownership within the declared RPO/RTO.
+12. Design an authenticatable backup path, then perform a logical backup and
+    isolated restore; compare schema, row counts, hashes, RLS, grants, and
+    ownership within the declared RPO/RTO. The current backup capability is
+    `NOLOGIN` and has no permitted membership edge.
 13. Prove migration ledger locking, checksum mismatch refusal, one-time replay,
     failure rollback, and concurrent deploy behavior.
 14. Run query plans and load tests for fact-as-known and tenant reads, including

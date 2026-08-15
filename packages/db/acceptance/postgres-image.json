@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "repository": "docker.io/library/postgres",
+  "tag": "17.11-bookworm",
+  "indexDigest": "sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad",
+  "reference": "docker.io/library/postgres:17.11-bookworm@sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad",
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "expectedServerVersion": "17.11",
+  "expectedServerVersionNumber": 170011,
+  "databaseName": "research_cockpit_acceptance_test",
+  "workflowSha256": "edc2398ab0ca756dd1895b5747ee7fbb5af016699e8e1705ff294dade2e30cb0",
+  "fixtureSha256": "69974bf2996cbdd0078d509db933fe89d670005e177b7f57187df54b201b99bf",
+  "verifiedOn": "2026-08-15",
+  "runner": {
+    "label": "ubuntu-24.04",
+    "os": "linux",
+    "architecture": "amd64"
+  }
+}

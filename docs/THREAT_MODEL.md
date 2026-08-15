@@ -10,6 +10,14 @@ Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
 a database adapter seam.
 
+Cycle 1b-b1 adds a disconnected, clean-only PostgreSQL acceptance harness and a
+digest-pinned Ubuntu service workflow. The workflow is unexecuted. Its future
+live checks bootstrap through the ephemeral container superuser and impersonate
+the migration-defined `NOLOGIN` capabilities, so they do not establish
+production authentication, identity binding, network security, or migrator
+separation. `set_request_context` still accepts trusted synthetic IDs and must
+not be treated as an identity resolver.
+
 Assets at risk are source integrity, fixture provenance, rights-policy behavior, browser-local thesis text, and the guarantee that restricted fixture data does not leave the server projection.
 
 ## Implemented controls
@@ -40,7 +48,11 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
 
 Local storage and the in-memory authorization harness are not encrypted and have no production identity boundary. Users are explicitly told not to enter sensitive information. The demo must not be exposed as a public service, connected to real data, or used for investment decisions.
 
-Static SQL tests do not prove PostgreSQL syntax, `FORCE RLS`, role ownership, transaction-context cleanup, connection pooling, concurrency, or backup/restore. Those remain Cycle 1b release blockers and must use real pinned PostgreSQL, not an emulator.
+Static SQL and acceptance-harness tests do not prove PostgreSQL syntax, `FORCE
+RLS`, role ownership, transaction-context cleanup, connection pooling,
+concurrency, or backup/restore. Those remain Cycle 1b release blockers until the
+relevant digest-pinned workflow probes are green; an emulator is not a
+substitute.
 
 ## Gates before adding new trust boundaries
 

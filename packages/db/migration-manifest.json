@@ -26,6 +26,16 @@
       "id": "0005",
       "file": "0005_non_reusable_resource_ids.sql",
       "sha256": "a537000c692ea246e8bce9dd5aaa73a576127455aa0ba412db5cbfdf3161889a"
+    },
+    {
+      "id": "0006",
+      "file": "0006_null_safe_request_context.sql",
+      "sha256": "1b6ab85eff6dab4a9016278233a333b9d1f819b1d29828c916ad314198146c07"
+    },
+    {
+      "id": "0007",
+      "file": "0007_database_privilege_lockdown.sql",
+      "sha256": "7887f8066cff3b0bf22397a2f5ee19352c1c678a7619b6588a5c95e28430c0e6"
     }
   ]
 }

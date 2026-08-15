@@ -28,6 +28,14 @@ future RLS reader. That port cannot claim complete coverage or disclose hidden
 row counts. It is still disconnected; the current app continues to use only
 the closed SYN1 fixture.
 
+Cycle 1b-b1 adds an executable, clean-database PostgreSQL acceptance harness
+for a separate Ubuntu CI job. It atomically renders the seven reviewed
+migrations and ledger records, loads only source-controlled synthetic fixtures,
+and probes impersonated capability-role/RLS semantics against one exact
+PostgreSQL 17.11 image digest. The workflow has not run yet, so this is an
+executable contract—not live database evidence—and it remains disconnected from
+the app.
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -49,9 +57,10 @@ pnpm verify
 ```
 
 The release gate checks formatting, lint, clean-room/database boundaries,
-fixture and migration hashes, production licenses, strict types, tests, and both
-production builds. CI runs the same gate on Windows and Linux. Static migration
-checks do not replace the pending real-PostgreSQL RLS and restore suite.
+fixture and migration hashes, the acceptance-harness declaration, production
+licenses, strict types, tests, and both production builds. CI runs the same gate
+on Windows and Linux. A separate digest-pinned Ubuntu workflow is the pending
+real-PostgreSQL proof; static checks do not substitute for a green run.
 
 ## Safety boundary
 
@@ -65,5 +74,6 @@ checks do not replace the pending real-PostgreSQL RLS and restore suite.
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
 [canonical model](./docs/CANONICAL_MODEL.md),
-[Cycle 1b-a exit matrix](./docs/CYCLE_1BA_EXIT_MATRIX.md), and
+[Cycle 1b-a exit matrix](./docs/CYCLE_1BA_EXIT_MATRIX.md),
+[Cycle 1b-b1 exit matrix](./docs/CYCLE_1BB1_EXIT_MATRIX.md), and
 [architecture decisions](./docs/adr/).

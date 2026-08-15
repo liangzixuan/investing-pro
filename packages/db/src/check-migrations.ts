@@ -141,6 +141,18 @@ export function inspectSqlBundle(files: MigrationFile[]): string[] {
   );
   requirePattern(
     combined,
+    /REVOKE\s+CREATE\s*,\s*TEMPORARY\s+ON\s+DATABASE\s+%I\s+FROM\s+PUBLIC/i,
+    "PUBLIC must lose database CREATE and TEMPORARY privileges",
+    violations,
+  );
+  requirePattern(
+    combined,
+    /REVOKE\s+ALL\s+ON\s+ALL\s+FUNCTIONS\s+IN\s+SCHEMA\s+shared_data\s+FROM\s+PUBLIC\s*;/i,
+    "PUBLIC must lose extension-routine execution in shared_data",
+    violations,
+  );
+  requirePattern(
+    combined,
     /CREATE\s+ROLE\s+research_cockpit_runtime[\s\S]*?NOBYPASSRLS\s*;/i,
     "runtime role must be explicitly NOBYPASSRLS",
     violations,
@@ -164,6 +176,15 @@ export function inspectSqlBundle(files: MigrationFile[]): string[] {
       `request context app.${setting} must be transaction-local`,
       violations,
     );
+    const sessionWidePattern = new RegExp(
+      `set_config\\(\\s*'app\\.${setting}'\\s*,[^,]+,\\s*false\\s*\\)`,
+      "i",
+    );
+    if (sessionWidePattern.test(combined)) {
+      violations.push(
+        `request context app.${setting} must be transaction-local`,
+      );
+    }
   }
 
   for (const table of protectedTables) {
@@ -267,6 +288,10 @@ export function detectProhibitedSql(sql: string): string[] {
     [/DISABLE\s+ROW\s+LEVEL\s+SECURITY/i, "RLS may not be disabled"],
     [/\bDISABLE\s+TRIGGER\b/i, "triggers may not be disabled"],
     [
+      /\bCREATE\s+TRIGGER\b[^;]*\bWHEN\s*\(/i,
+      "conditional triggers are prohibited in this harness",
+    ],
+    [
       /\bSECURITY\s+DEFINER\b/i,
       "SECURITY DEFINER is prohibited in this harness",
     ],
@@ -275,10 +300,19 @@ export function detectProhibitedSql(sql: string): string[] {
       "non-durable tables are prohibited",
     ],
     [
-      /\bCREATE\s+OR\s+REPLACE\b/i,
-      "forward migrations may not replace existing objects",
+      /\bCREATE\s+(?:(?:OR\s+REPLACE|MATERIALIZED)\s+)?VIEW\b|\bCREATE\s+FOREIGN\s+TABLE\b|\bCREATE\s+SEQUENCE\b/i,
+      "unreviewed relation types are prohibited",
+    ],
+    [
+      /\bCREATE\s+SCHEMA\s+(?!shared_data\b|private_data\b)[a-z_][a-z0-9_]*\b/i,
+      "unreviewed schema creation is prohibited",
     ],
     [/\bGRANT\b[^;]*\bTO\s+PUBLIC\b/i, "grants to PUBLIC are prohibited"],
+    [/\bWITH\s+GRANT\s+OPTION\b/i, "grant options are prohibited"],
+    [
+      /\bGRANT\b[^;]*\b(?:CREATE|TEMPORARY|TEMP|ALL(?:\s+PRIVILEGES)?)\b[^;]*\bON\s+(?:SCHEMA|DATABASE)\b[^;]*\bTO\s+research_cockpit_(?:owner|runtime|test_seed|backup)\b/i,
+      "capability roles may not receive schema or database creation privileges",
+    ],
     [
       /\bGRANT\s+(?![^;]*\bON\b)[^;]+\bTO\s+research_cockpit_(?:owner|runtime|test_seed|backup)\b/i,
       "capability-role chaining is prohibited",
@@ -287,16 +321,34 @@ export function detectProhibitedSql(sql: string): string[] {
       /\bALTER\s+ROLE\s+research_cockpit_(?:owner|runtime|test_seed|backup)[^;]*\b(?:LOGIN|SUPERUSER|CREATEDB|CREATEROLE|REPLICATION|INHERIT|BYPASSRLS)\b/i,
       "capability-role privilege escalation is prohibited",
     ],
+    [
+      /\bCREATE\s+ROLE\s+(?!research_cockpit_(?:owner|runtime|test_seed|backup)\b)[a-z_][a-z0-9_]*\b/i,
+      "unreviewed role creation is prohibited",
+    ],
   ];
-  return checks.flatMap(([pattern, message]) =>
+  const violations = checks.flatMap(([pattern, message]) =>
     pattern.test(sql) ? [message] : [],
   );
+  const reviewedContextReplacement =
+    /\bCREATE\s+OR\s+REPLACE\s+PROCEDURE\s+private_data\.set_request_context\s*\(/gi;
+  const replacementCount = [...sql.matchAll(reviewedContextReplacement)].length;
+  const unreviewedReplacements = sql.replace(
+    reviewedContextReplacement,
+    "CREATE PROCEDURE private_data.set_request_context(",
+  );
+  if (/\bCREATE\s+OR\s+REPLACE\b/i.test(unreviewedReplacements)) {
+    violations.push("forward migrations may not replace unreviewed objects");
+  }
+  if (replacementCount > 1) {
+    violations.push("request-context replacement may appear only once");
+  }
+  return violations;
 }
 
 export function inspectStaticContractNotice(readme: string): string[] {
   const violations: string[] = [];
   for (const required of [
-    /UNEXECUTED STATIC CONTRACT/i,
+    /LIVE WORKFLOW NOT YET EXECUTED/i,
     /NOT DEPLOYED PERSISTENCE/i,
     /authenticated bootstrap\/migrator account is external/i,
     /do not grant any capability role to any other role/i,
@@ -496,6 +548,26 @@ function inspectCapabilityRoles(sql: string, violations: string[]): void {
     "request-context procedure must be a terminated PL/pgSQL block",
     violations,
   );
+  for (const [pattern, message] of [
+    [
+      /\bpurpose\s+IS\s+NULL\s+OR\s+purpose\s+NOT\s+IN\s*\(/i,
+      "request context must reject a null purpose",
+    ],
+    [
+      /\bchannel\s+IS\s+NULL\s+OR\s+channel\s+NOT\s+IN\s*\(/i,
+      "request context must reject a null channel",
+    ],
+    [
+      /\bterritory\s+IS\s+DISTINCT\s+FROM\s+'demo_only'/i,
+      "request context must reject a null or foreign territory",
+    ],
+    [
+      /\bdata_classification\s+IS\s+DISTINCT\s+FROM\s+'synthetic'/i,
+      "request context must reject a null or foreign classification",
+    ],
+  ] as const) {
+    requirePattern(sql, pattern, message, violations);
+  }
 }
 
 function inspectRuntimeReadOnly(sql: string, violations: string[]): void {
