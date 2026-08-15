@@ -37,6 +37,7 @@ a display query. The browser-local alert remains synthetic demonstration state
 only.
 
 This ADR freezes a core contract, not a production adapter or ingestion
-validator. Full RFC 3339, interval-ordering, decimal-bound, and text
-normalization at an untrusted adapter boundary remains mandatory before any
-database or provider source is composed.
+validator. ADR 0011 now defines the disconnected fail-closed normalizer for the
+narrow dimensionless PostgreSQL financial-fact row subset. The reviewed query,
+identity/unit mapping, driver, and complete dossier sources remain mandatory
+before any database source is composed.

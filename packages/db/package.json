@@ -9,5 +9,8 @@
     "acceptance:postgres:ci": "tsx src/run-postgres-acceptance.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@research-cockpit/research-core": "workspace:*"
   }
 }

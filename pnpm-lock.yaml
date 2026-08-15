@@ -97,7 +97,11 @@ importers:
 
   packages/contracts: {}
 
-  packages/db: {}
+  packages/db:
+    dependencies:
+      '@research-cockpit/research-core':
+        specifier: workspace:*
+        version: link:../../modules/research-core
 
 packages:
 

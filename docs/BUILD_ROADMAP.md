@@ -37,18 +37,20 @@ migrator or authenticated runtime/backup requirements.
    split/redesign role bootstrap so a distinct migrator and authenticated
    non-owner runtime/test-loader/backup sessions can be proven.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
-3. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
-4. Run cross-tenant direct-ID/list/join/count/subquery probes, missing/malformed context, membership and principal deactivation, and at least 1,000 alternating/concurrent reads. If the separate writer capability is added in this cycle, also test viewer writes, composite-FK attacks, idempotency races, and rollback before enabling it anywhere outside the isolated acceptance harness.
-5. Prove transaction-local context clears on commit, rollback, cancellation, timeout, and pooled-connection reuse.
-6. Prove clean migration, checksum drift failure, injected mid-migration rollback, logical dump/restore, and post-restore authorization behavior against an exact PostgreSQL image digest.
+3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
+4. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. Its query must perform the reviewed listing/share-class/security join, supply an explicit semantic unit mapping, and enter core only through the a2 normalizer and operation-scoped port. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
+5. Run cross-tenant direct-ID/list/join/count/subquery probes, missing/malformed context, membership and principal deactivation, and at least 1,000 alternating/concurrent reads. If the separate writer capability is added in this cycle, also test viewer writes, composite-FK attacks, idempotency races, and rollback before enabling it anywhere outside the isolated acceptance harness.
+6. Prove transaction-local context clears on commit, rollback, cancellation, timeout, and pooled-connection reuse.
+7. Prove clean migration, checksum drift failure, injected mid-migration rollback, logical dump/restore, and post-restore authorization behavior against an exact PostgreSQL image digest.
 
 Exit gate: all live-database authorization and restore tests pass from a clean checkout. This is a harness restore target, not a production RPO/RTO.
 
 The remaining live steps are Cycle 1b-b. Add a separate Ubuntu-only acceptance
 job rather than a service container inside the current Windows/Linux matrix.
 The PostgreSQL server and its `psql`/dump/restore clients must come from one
-exact major/minor/distro image digest. A client driver remains gated until the
-adapter-normalization contract and pool/cancellation tests are ready.
+exact major/minor/distro image digest. The row-normalization contract is now
+frozen, but a client driver remains gated on a real green b1 run, the reviewed
+query/unit mapping, and pool/cancellation tests.
 
 ## Cycle 1c — demo identity and API contract proof
 

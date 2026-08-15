@@ -1,6 +1,6 @@
 # Canonical data and tenancy contract
 
-Status: Cycle 1b-a design contract; synthetic data only.
+Status: Cycle 1b-a2 design contract; synthetic data only.
 
 ## Identity
 
@@ -99,5 +99,12 @@ for the closed fixture, not a database adapter precedent.
 Historical points and timeline events are instrument-scoped, synthetic snapshot
 records. Evidence reuse is many-to-many through explicit instrument/evidence
 bindings, and only bound citations can cross an instrument projection boundary.
-Production adapter normalization of timestamps, interval order, decimals, and
-text remains outside the source-controlled fixture validator.
+
+The disconnected PostgreSQL wire normalizer covers only dimensionless
+financial facts already joined to a listing, exact policy, and one
+operation-specific grant. It validates lossless zoned timestamps, interval and
+causal order, fixed decimals, canonical text/enums, identity echoes, and cutoff
+membership before producing core candidates. The listing ID is the core
+instrument ID; a fact's security ID or ticker may not be substituted. General
+unit mapping, dimensions, a real query/driver, and complete dossier projection
+remain adapter-enablement blockers.

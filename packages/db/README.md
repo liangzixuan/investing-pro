@@ -16,6 +16,15 @@ migration bodies plus their ledger entries inside one locked transaction for a
 fresh, fixed-name CI database. The insert-only fixture is deterministic and
 synthetic.
 
+The package also contains a disconnected, pure normalizer for the exact flat
+financial-fact join rows a future read-only adapter must emit. It accepts only
+the current synthetic, dimensionless core subset; separates listing and
+security identity; normalizes fixed decimal and lossless zoned timestamp text;
+and rejects a whole malformed batch with one value-free error. It performs no
+SQL and cannot accept source completeness or counts. The current schema and
+acceptance fixture do not yet establish the semantic unit mapping or reviewed
+listing/share-class/security query required to call it.
+
 The separate Ubuntu workflow pins PostgreSQL 17.11 Bookworm by OCI image-index
 digest, publishes no host port, and runs every client command inside that
 service container. Current migrations must bootstrap as the ephemeral

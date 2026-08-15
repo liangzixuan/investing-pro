@@ -21,8 +21,8 @@ PostgreSQL service, API write path, identity provider, or real data was added.
 
 - live migration, RLS, role, pool-reuse, cancellation, concurrency, and restore
   evidence against a digest-pinned PostgreSQL image;
-- a read-only adapter that normalizes full RFC 3339, half-open interval,
-  fixed-decimal, nonempty-text, and exact-enum semantics before calling core;
+- the read-only query/driver that invokes the Cycle 1b-a2 fail-closed row
+  normalizer and supplies reviewed identity/unit mappings;
 - a core composition policy for combining multiple operation views in one
   request without mixing scopes or snapshots;
 - production alert execution through the alert-specific view;

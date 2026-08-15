@@ -1,4 +1,4 @@
-# Sprint 0 through Cycle 1b-a threat model
+# Sprint 0 through Cycle 1b-a2 threat model
 
 ## Current trust boundaries
 
@@ -9,6 +9,10 @@ Cycle 1a adds an isolated synthetic authorization harness and unexecuted Postgre
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
 a database adapter seam.
+
+Cycle 1b-a2 adds a disconnected PostgreSQL-row normalizer for dimensionless
+synthetic financial facts. It accepts no connection or SQL capability and is
+not imported by either running app.
 
 Cycle 1b-b1 adds a disconnected, clean-only PostgreSQL acceptance harness and a
 digest-pinned Ubuntu service workflow. The workflow is unexecuted. Its future
@@ -41,6 +45,11 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   take policy evaluation time from an injected trusted provider, expose no
   denied row IDs, accept no caller-complete/count state, and force an unknown
   public omission count for every incomplete or RLS-unknown view.
+- The PostgreSQL wire boundary accepts only exact plain data rows, keeps
+  listing and security identities separate, validates lossless timestamps,
+  fixed decimals, intervals, cutoffs, units, and exact policy/grant echoes, and
+  rejects an entire malformed batch with a value-free error. It cannot accept
+  completeness or count input.
 - Exact dependency pins, a lockfile, a single allowed install script, an allowlisted production-license gate, dependency review, and two-OS CI reduce supply-chain drift.
 - The evidence dialog traps/restores focus; chart values have a semantic table; reduced-motion and high-contrast preferences are respected.
 
