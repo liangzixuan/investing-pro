@@ -1,0 +1,38 @@
+{
+  "name": "research-cockpit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "scripts": {
+    "dev:demo": "pnpm --parallel --stream --filter @research-cockpit/api --filter @research-cockpit/web dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "tsc --noEmit && pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "guardrails": "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:licenses",
+    "guardrails:boundaries": "tsx scripts/verify-boundaries.ts",
+    "guardrails:fixtures": "tsx scripts/verify-fixtures.ts",
+    "guardrails:licenses": "tsx scripts/verify-licenses.ts",
+    "test": "pnpm -r --if-present test",
+    "verify": "pnpm format:check && pnpm lint && pnpm guardrails && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.2.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint": "10.8.1",
+    "globals": "17.11.0",
+    "prettier": "3.9.6",
+    "tsup": "8.5.1",
+    "tsx": "4.23.12",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.10"
+  }
+}

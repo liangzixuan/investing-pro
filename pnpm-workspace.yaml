@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - modules/*
+  - packages/*
+allowBuilds:
+  # esbuild is the only dependency allowed to run an install script. It installs
+  # its platform-specific binary and is required by tsup/tsx/Vitest.
+  esbuild: true
+
+# Next.js declares sharp as an optional image-optimization dependency. This app
+# has no image pipeline, so exclude sharp and its mixed-license native payload.
+ignoredOptionalDependencies:
+  - sharp

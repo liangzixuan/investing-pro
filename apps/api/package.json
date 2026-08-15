@@ -1,0 +1,20 @@
+{
+  "name": "@research-cockpit/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup --config tsup.config.ts",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.0",
+    "@fastify/helmet": "13.1.0",
+    "@research-cockpit/contracts": "workspace:*",
+    "@research-cockpit/research-core": "workspace:*",
+    "fastify": "5.12.0"
+  }
+}

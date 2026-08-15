@@ -1,0 +1,60 @@
+openapi: 3.1.0
+info:
+  title: Research Cockpit Demo API
+  version: 0.1.0
+  description: Synthetic-only evidence-first research API.
+servers:
+  - url: http://localhost:3100
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      responses:
+        "200":
+          description: Process is alive.
+  /health/ready:
+    get:
+      operationId: getReadiness
+      responses:
+        "200":
+          description: Synthetic fixture is ready.
+  /v1/instruments/{symbol}/dossier:
+    get:
+      operationId: getDossier
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: knownAt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Rights-filtered synthetic dossier.
+          headers:
+            X-Data-As-Of:
+              schema:
+                type: string
+        "400":
+          description: Invalid request.
+        "404":
+          description: Unknown synthetic instrument.
+  /v1/evidence/{evidenceId}:
+    get:
+      operationId: getEvidencePassport
+      parameters:
+        - name: evidenceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rights-cleared evidence passport.
+        "404":
+          description: Evidence is unknown or not display-authorized.

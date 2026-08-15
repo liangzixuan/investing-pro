@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureSet": "synthetic/v1",
+  "createdAt": "2026-08-15T12:00:00-05:00",
+  "creator": "Research Cockpit Sprint 0",
+  "status": "synthetic_demo_only",
+  "generationMethod": "Hand-authored deterministic fictional records; no market or competitor data.",
+  "allowedUses": [
+    "local_demo",
+    "unit_test",
+    "build_test",
+    "accessibility_test"
+  ],
+  "prohibitedUses": [
+    "investment_decision",
+    "customer_display",
+    "model_training",
+    "benchmark_claim"
+  ],
+  "evidenceHashes": {
+    "evidence.synthetic.history": "sha256:98f886f691fd3a888eea95326dbec6c359cc9ac2a63ba475a8d224522bfc7971",
+    "evidence.synthetic.2024-report": "sha256:d9a7f30b4dc3a3352b937c59d5170d6169be5d66fe17aff516840c451023d1a7",
+    "evidence.synthetic.2025-original": "sha256:9efe337e8573729a7a290e16cbdb7dccb50d4a381879a1a24ede7b101970bed6",
+    "evidence.synthetic.2025-restated": "sha256:fb73eac6d9e700673235359bce1f568f2be48795bb2c7f793134626e568318ba",
+    "evidence.synthetic.balance-sheet": "sha256:563aeb294751775d6374d3c446e528755b340a5b782424e51f3a6a0c314641b3",
+    "evidence.synthetic.share-record": "sha256:4fe6d1c4db7dcfa923ed8ef28d99dc071e61da12ff80efc6fb78f8c4c807b8dc",
+    "evidence.synthetic.price": "sha256:cc89bcb0a97ebbbec0648301efb7930c90a5ec0a962dcd11c3d3ec0730aa864a",
+    "evidence.synthetic.restricted-estimate": "sha256:dd7d31da3db956fa4f7a106931c239a2dd25c5a6227e135588e2497d85c76582"
+  }
+}
