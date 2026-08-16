@@ -49,6 +49,13 @@ const CAPABILITY_ROLES = [
   "research_cockpit_runtime",
   "research_cockpit_test_seed",
 ] as const;
+const CATALOG_FALSE = "false";
+const CATALOG_TRUE = "true";
+export const EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS = Object.freeze(
+  CAPABILITY_ROLES.map((role) =>
+    [role, ...Array<string>(7).fill(CATALOG_FALSE)].join("|"),
+  ),
+);
 const APPLICATION_TABLES = [
   "private_data.alert_rules",
   "private_data.audit_events",
@@ -697,7 +704,7 @@ ORDER BY rolname;`,
   );
   assertJsonEqual(
     roles,
-    CAPABILITY_ROLES.map((role) => `${role}|f|f|f|f|f|f|f`),
+    EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
     "capability role attributes",
   );
 
@@ -752,7 +759,11 @@ ORDER BY namespace.nspname, class.relname;`,
     relationState,
     APPLICATION_TABLES.map(
       (table) =>
-        `${table}|r|research_cockpit_owner|${table === "shared_data.schema_migrations" ? "f|f" : "t|t"}`,
+        `${table}|r|research_cockpit_owner|${
+          table === "shared_data.schema_migrations"
+            ? `${CATALOG_FALSE}|${CATALOG_FALSE}`
+            : `${CATALOG_TRUE}|${CATALOG_TRUE}`
+        }`,
     ),
     "application table and prohibited relation-kind inventory, ownership, and RLS state",
   );
@@ -787,11 +798,13 @@ ORDER BY 1;`,
       (table) => `${table}|research_cockpit_runtime|SELECT`,
     ),
     ...PROTECTED_TABLES.flatMap((table) => [
-      `${table}|research_cockpit_test_seed|INSERT|f`,
-      `${table}|research_cockpit_test_seed|SELECT|f`,
+      `${table}|research_cockpit_test_seed|INSERT|${CATALOG_FALSE}`,
+      `${table}|research_cockpit_test_seed|SELECT|${CATALOG_FALSE}`,
     ]),
   ]
-    .map((line) => (line.endsWith("|f") ? line : `${line}|f`))
+    .map((line) =>
+      line.endsWith(`|${CATALOG_FALSE}`) ? line : `${line}|${CATALOG_FALSE}`,
+    )
     .sort();
   assertJsonEqual(
     tablePrivileges,
@@ -827,7 +840,7 @@ ORDER BY 1;`,
         "research_cockpit_backup",
         "research_cockpit_runtime",
         "research_cockpit_test_seed",
-      ].map((role) => `${schema}|${role}|USAGE|f`),
+      ].map((role) => `${schema}|${role}|USAGE|${CATALOG_FALSE}`),
     ),
     "exact capability schema ACLs",
   );
@@ -853,7 +866,7 @@ ORDER BY 1;`,
   );
   assertJsonEqual(
     databasePrivileges,
-    ["PUBLIC|CONNECT|f"],
+    [`PUBLIC|CONNECT|${CATALOG_FALSE}`],
     "exact acceptance-database non-owner ACLs",
   );
 
@@ -898,7 +911,8 @@ ORDER BY 1;`,
   assertJsonEqual(
     routinePrivileges,
     RUNTIME_EXECUTE_ROUTINES.map(
-      (routine) => `${routine}|research_cockpit_runtime|EXECUTE|f`,
+      (routine) =>
+        `${routine}|research_cockpit_runtime|EXECUTE|${CATALOG_FALSE}`,
     ).sort(),
     "exact capability routine ACLs",
   );

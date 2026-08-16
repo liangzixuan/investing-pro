@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertExpectedPsqlFailure,
   checkPostgresAcceptanceHarness,
+  EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
   injectBootstrapFailure,
   inspectPostgresAcceptanceHarness,
   runPostgresAcceptance,
@@ -12,6 +13,15 @@ import {
 } from "../src/postgres-acceptance";
 
 describe("PostgreSQL acceptance harness guardrails", () => {
+  it("matches PostgreSQL boolean-to-text catalog serialization", () => {
+    expect(EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS).toEqual([
+      "research_cockpit_backup|false|false|false|false|false|false|false",
+      "research_cockpit_owner|false|false|false|false|false|false|false",
+      "research_cockpit_runtime|false|false|false|false|false|false|false",
+      "research_cockpit_test_seed|false|false|false|false|false|false|false",
+    ]);
+  });
+
   it("accepts the reviewed immutable workflow and synthetic fixture", async () => {
     await expect(checkPostgresAcceptanceHarness()).resolves.toEqual([]);
   });
