@@ -44,6 +44,12 @@ inputs, observed versions, completed checks, and explicit limitations. The
 workflow has not run yet, so no such record exists: this is an executable
 contract—not live database evidence—and it remains disconnected from the app.
 
+The final local Cycle 1b-b1 review gate verifies a downloaded run record against
+independently supplied repository/run/hash anchors and fixed source blobs read
+from its exact Git commit. Its only success verdict is `offline_consistent`;
+it cannot authenticate GitHub, inspect logs, or prove PostgreSQL executed. No
+artifact exists to review yet.
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -69,7 +75,9 @@ fixture and migration hashes, the acceptance-harness declaration, production
 licenses, strict types, tests, and both production builds. CI runs the same gate
 on Windows and Linux. A separate digest-pinned Ubuntu workflow is the pending
 real-PostgreSQL proof; static checks and the unexecuted run-record contract do
-not substitute for a green run and its linked artifact.
+not substitute for a green run and its linked artifact. The offline verifier
+checks record/source consistency after download, but also cannot substitute for
+that run.
 
 ## Safety boundary
 

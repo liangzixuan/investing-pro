@@ -43,7 +43,9 @@ No live result is claimed by adopting this decision. This checkout has no Git
 remote and no local PostgreSQL or container runtime, so the first record remains
 pending. The next database milestone is to run the existing workflow from an
 approved remote at the exact reviewed commit and retain the resulting run and
-artifact. Until that happens, every engine-dependent exit row remains pending.
+artifact. ADR 0013 defines the offline consistency review for that downloaded
+record. Until the run and review happen, every engine-dependent exit row remains
+pending.
 
 ## Primary sources
 

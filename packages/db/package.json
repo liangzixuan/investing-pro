@@ -7,6 +7,7 @@
     "build": "tsc --noEmit",
     "check": "tsx src/check-migrations.ts && tsx src/check-postgres-acceptance.ts",
     "acceptance:postgres:ci": "tsx src/run-postgres-acceptance.ts",
+    "review:postgres-evidence": "tsx src/run-postgres-acceptance-evidence-review.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

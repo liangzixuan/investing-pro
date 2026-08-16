@@ -249,11 +249,14 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const finalProbe = source.indexOf("await verifyWriteDenials");
     const buildEvidence = source.indexOf("buildPostgresAcceptanceEvidence");
     const writeEvidence = source.indexOf("writePostgresAcceptanceEvidence");
+    const evidenceHash = source.indexOf("writtenEvidence.sha256");
     const successMessage = source.indexOf("process.stdout.write");
     expect(finalProbe).toBeGreaterThan(-1);
     expect(buildEvidence).toBeGreaterThan(finalProbe);
     expect(writeEvidence).toBeGreaterThan(buildEvidence);
     expect(successMessage).toBeGreaterThan(writeEvidence);
+    expect(evidenceHash).toBeGreaterThan(successMessage);
+    expect(source).not.toContain("writtenEvidence.path");
   });
 
   it("injects a deterministic error immediately before final commit", () => {

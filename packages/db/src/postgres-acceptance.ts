@@ -445,10 +445,14 @@ export async function runPostgresAcceptance(
     sourceHashes,
     completedAt: new Date().toISOString(),
   });
-  await writePostgresAcceptanceEvidence(evidence, environment);
+  const writtenEvidence = await writePostgresAcceptanceEvidence(
+    evidence,
+    environment,
+  );
 
   process.stdout.write(
-    "PostgreSQL 17.11 clean-bootstrap and impersonated-capability acceptance passed; the success-only run record was written.\n",
+    `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
+      "PostgreSQL 17.11 clean-bootstrap and impersonated-capability acceptance passed; the success-only run record was written.\n",
   );
 }
 

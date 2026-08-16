@@ -21,6 +21,7 @@ successful local or remote database run.
 | Capability semantics        | Runtime, seed, and backup reads/writes are probed through ephemeral-superuser impersonation of migration-defined non-login roles                 | Declared limitation; remote execution pending  |
 | Run-to-commit binding       | After all probes pass, an exact-schema record binds the checkout SHA, GitHub run/attempt, reviewed inputs, observed versions, checks, and limits | Implemented; first successful artifact pending |
 | Failure/stale-file safety   | No record is written after a failed probe; the fixed runner-temp file is exclusive-create and the workflow uploads it only on success            | Implemented statically; remote proof pending   |
+| Offline record consistency  | Canonical artifact bytes match independent hash/run/repository anchors and fixed source/migration blobs at the explicit Git commit               | Implemented; first artifact review pending     |
 | Production session proof    | Least-privileged migration credentials, external authentication, identity mapping, TLS, secrets, and a production pooler are demonstrated        | Out of scope                                   |
 
 ## Exit rule
@@ -35,6 +36,14 @@ the record cannot change an engine row to Pass. Rows explicitly marked deferred
 require a future harness extension and cannot be certified by the current
 workflow. Static checks, mocks, SQLite, and PGlite are not substitutes for live
 evidence.
+
+After download, the offline verifier must be given the expected artifact hash,
+repository name and ID, commit, run ID, and run attempt from independently
+reviewed run information. Its `offline_consistent` verdict establishes only
+that those anchors, canonical record bytes, reviewed target, and committed
+source/migration hashes agree. It does not authenticate GitHub, inspect the
+workflow logs, prove database execution, validate a commit signature or branch,
+or establish where the supplied anchors came from.
 
 The current machine cannot execute this gate because it has no PostgreSQL
 client/service or container runtime. That environmental limitation does not

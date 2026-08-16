@@ -33,6 +33,10 @@ observed tool versions, and explicit limitations. The workflow has not run, so
 no record exists and every engine-dependent gate remains pending. The current
 role bootstrap must run as the ephemeral container superuser and does not
 satisfy the distinct migrator or authenticated runtime/backup requirements.
+The final offline review gate is also implemented: it requires independent
+run/repository/hash anchors, canonical artifact bytes, and fixed source blobs
+from the exact local Git commit, and can report only `offline_consistent`. No
+artifact has been produced or reviewed.
 
 1. Execute migrations from an empty database. First use b1's explicitly limited
    ephemeral-superuser bootstrap and impersonated `NOLOGIN` capabilities; then
@@ -57,10 +61,14 @@ query/unit mapping, and pool/cancellation tests.
 The immediate next milestone is operational rather than another disconnected
 code expansion: publish the exact reviewed commit to an approved remote, run
 the PostgreSQL acceptance workflow from a clean checkout, and retain the linked
-GitHub run and exact-schema record. This workspace has no configured remote, so
-that external step is not inferred or claimed here. After the first green run,
-design the distinct migrator and authenticated runtime/backup session boundary
-before adding dump/restore or a production adapter.
+GitHub run and exact-schema record. Supply the record verifier's expected
+metadata and byte hash from independently reviewed run information, then review
+its `offline_consistent` result alongside the workflow logs. This workspace has
+no configured remote, so that external step is not inferred or claimed here.
+No further disconnected database scaffolding should be added before it. After
+the first green run, design the distinct migrator and authenticated
+runtime/backup session boundary before adding dump/restore or a production
+adapter.
 
 ## Cycle 1c — demo identity and API contract proof
 

@@ -31,6 +31,17 @@ secrets, raw environment values, SQL/logs, data identities, and counts. Pull
 request artifacts and expired/deleted artifacts remain an external trust and
 retention boundary.
 
+The offline record verifier accepts only a small regular non-symlink file,
+requires independent repository/run/hash anchors, and compares canonical bytes
+with fixed source blobs read from the explicit local Git commit. It never
+consults a remote or mutable worktree and emits only `offline_consistent`.
+Malicious or mistaken trust anchors, forged GitHub runs/artifacts, compromised
+workflow logs, unsigned/unreachable commits, and a dishonest database execution
+remain outside that result and require operator review.
+The operator-controlled local Git database and PATH-resolved Git executable are
+part of this verifier's trusted computing base; the CLI is not a sandbox for an
+untrusted repository.
+
 Assets at risk are source integrity, fixture provenance, rights-policy behavior, browser-local thesis text, and the guarantee that restricted fixture data does not leave the server projection.
 
 ## Implemented controls
@@ -71,7 +82,9 @@ RLS`, role ownership, transaction-context cleanup, connection pooling,
 concurrency, or backup/restore. Those remain Cycle 1b release blockers until the
 relevant digest-pinned workflow probes are green; an emulator is not a
 substitute. A unit-tested run-record schema without a successful workflow run
-does not prove any engine behavior either.
+does not prove any engine behavior either. Neither does an
+`offline_consistent` result without the independently reviewed GitHub run and
+logs.
 
 ## Gates before adding new trust boundaries
 

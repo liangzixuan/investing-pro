@@ -45,6 +45,32 @@ logs, tenant/row identifiers, and data counts. This is an unsigned run record,
 not a compliance archive or independent proof, and none exists until the
 workflow actually runs successfully.
 
+After downloading a future artifact, review it from a local clone that already
+contains the recorded commit. Every expected anchor is mandatory and must be
+copied from independently reviewed run information; do not copy expected values
+from the JSON being checked. Use an operator-controlled clone and a trusted
+PATH-resolved Git executable; do not point the command at untrusted Git
+metadata:
+
+```powershell
+pnpm --filter @research-cockpit/db review:postgres-evidence -- `
+  --evidence <absolute-artifact-path> `
+  --repo <absolute-git-root> `
+  --expected-evidence-sha256 <sha256-from-reviewed-run-log> `
+  --expected-repository <owner/repository> `
+  --expected-repository-id <numeric-repository-id> `
+  --expected-commit <40-character-commit> `
+  --expected-run-id <numeric-run-id> `
+  --expected-run-attempt <positive-run-attempt>
+```
+
+The evidence file must be a regular non-symlink file of at most 32 KiB. The
+command reads only fixed source paths from the explicit local Git commit and
+does not fetch or trust a remote. Success emits a machine-readable
+`offline_consistent` result. It does not authenticate GitHub, inspect logs,
+prove PostgreSQL execution, validate commit signatures/branch reachability, or
+establish the provenance of the supplied anchors.
+
 Migration `0006` replaces the request-context procedure with null-safe
 validation. It explicitly rejects null purpose/channel values and uses `IS
 DISTINCT FROM` for the fixed synthetic territory/classification, avoiding SQL
