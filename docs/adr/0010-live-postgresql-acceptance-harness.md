@@ -40,7 +40,8 @@ No live result is claimed by this ADR. The current development machine has no
 container runtime or PostgreSQL service, and the new remote workflow has not
 yet run. The implemented migration, adversarial RLS, ACL, rights, and
 sequential-session probes remain pending until a successful workflow run
-supplies reviewable logs tied to a repository commit. Cancellation, concurrent
+supplies reviewable logs and the success-only run record defined by ADR 0012,
+both tied to a repository commit. Cancellation, concurrent
 backends, a real application pool, dump, and restore are not implemented by
 this workflow and remain explicitly deferred. The acceptance command is
 `pnpm --filter @research-cockpit/db acceptance:postgres:ci`; the ordinary

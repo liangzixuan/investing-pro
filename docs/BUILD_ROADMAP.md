@@ -27,10 +27,12 @@ Target: 1–2 weeks after a pinned PostgreSQL CI service is approved.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
-impersonated capability/RLS probes are implemented. The workflow has not run,
-so every engine-dependent gate remains pending. The current role bootstrap
-must run as the ephemeral container superuser and does not satisfy the distinct
-migrator or authenticated runtime/backup requirements.
+impersonated capability/RLS probes are implemented. A success-only run-record
+contract now binds a future green run to its exact commit, reviewed inputs,
+observed tool versions, and explicit limitations. The workflow has not run, so
+no record exists and every engine-dependent gate remains pending. The current
+role bootstrap must run as the ephemeral container superuser and does not
+satisfy the distinct migrator or authenticated runtime/backup requirements.
 
 1. Execute migrations from an empty database. First use b1's explicitly limited
    ephemeral-superuser bootstrap and impersonated `NOLOGIN` capabilities; then
@@ -51,6 +53,14 @@ The PostgreSQL server and its `psql`/dump/restore clients must come from one
 exact major/minor/distro image digest. The row-normalization contract is now
 frozen, but a client driver remains gated on a real green b1 run, the reviewed
 query/unit mapping, and pool/cancellation tests.
+
+The immediate next milestone is operational rather than another disconnected
+code expansion: publish the exact reviewed commit to an approved remote, run
+the PostgreSQL acceptance workflow from a clean checkout, and retain the linked
+GitHub run and exact-schema record. This workspace has no configured remote, so
+that external step is not inferred or claimed here. After the first green run,
+design the distinct migrator and authenticated runtime/backup session boundary
+before adding dump/restore or a production adapter.
 
 ## Cycle 1c — demo identity and API contract proof
 

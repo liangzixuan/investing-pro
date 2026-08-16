@@ -1,4 +1,4 @@
-# Sprint 0 through Cycle 1b-a2 threat model
+# Sprint 0 through Cycle 1b-b1 threat model
 
 ## Current trust boundaries
 
@@ -21,6 +21,15 @@ the migration-defined `NOLOGIN` capabilities, so they do not establish
 production authentication, identity binding, network security, or migrator
 separation. `set_request_context` still accepts trusted synthetic IDs and must
 not be treated as an identity resolver.
+
+After all implemented probes pass, the acceptance entry point may create one
+exact-schema, success-only run record and the workflow may upload exactly that
+file. Exclusive creation and success-only upload reduce stale or false-green
+records; exact source hashes bind the record to reviewed inputs. The record is
+unsigned metadata, not independent provenance. It intentionally excludes
+secrets, raw environment values, SQL/logs, data identities, and counts. Pull
+request artifacts and expired/deleted artifacts remain an external trust and
+retention boundary.
 
 Assets at risk are source integrity, fixture provenance, rights-policy behavior, browser-local thesis text, and the guarantee that restricted fixture data does not leave the server projection.
 
@@ -61,7 +70,8 @@ Static SQL and acceptance-harness tests do not prove PostgreSQL syntax, `FORCE
 RLS`, role ownership, transaction-context cleanup, connection pooling,
 concurrency, or backup/restore. Those remain Cycle 1b release blockers until the
 relevant digest-pinned workflow probes are green; an emulator is not a
-substitute.
+substitute. A unit-tested run-record schema without a successful workflow run
+does not prove any engine behavior either.
 
 ## Gates before adding new trust boundaries
 

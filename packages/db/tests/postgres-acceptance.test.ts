@@ -79,6 +79,98 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     ).toContain("workflow must rerun when tsconfig.base.json changes");
   });
 
+  it("requires the immutable upload-artifact action pin", async () => {
+    const artifacts = await loadArtifacts();
+    for (const mutableAction of [
+      "actions/upload-artifact@v7",
+      "actions/upload-artifact@main",
+      "actions/upload-artifact@7.0.1",
+      "actions/upload-artifact",
+    ]) {
+      const workflow = artifacts.workflow.replace(
+        /actions\/upload-artifact@[0-9a-f]{40}/,
+        mutableAction,
+      );
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain("evidence upload action must use the reviewed immutable SHA");
+    }
+  });
+
+  it("uploads evidence only after successful acceptance", async () => {
+    const artifacts = await loadArtifacts();
+    for (const unsafeCondition of [
+      "${{ always() }}",
+      "${{ failure() }}",
+      "${{ !cancelled() }}",
+    ]) {
+      const workflow = artifacts.workflow.replace(
+        "if: ${{ success() }}",
+        `if: ${unsafeCondition}`,
+      );
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain("evidence upload must run only after successful acceptance");
+    }
+  });
+
+  it("requires the exact evidence file rather than a wildcard or alternate path", async () => {
+    const artifacts = await loadArtifacts();
+    for (const unsafePath of [
+      "${{ runner.temp }}/research-cockpit-postgres-acceptance-*.json",
+      "./research-cockpit-postgres-acceptance-v1.json",
+    ]) {
+      const workflow = artifacts.workflow.replace(
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v1.json",
+        unsafePath,
+      );
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain(
+        "evidence upload path must be the exact runner-temporary evidence file",
+      );
+    }
+  });
+
+  it("fails closed when evidence is absent or upload fails", async () => {
+    const artifacts = await loadArtifacts();
+    for (const missingFileBehavior of ["warn", "ignore"]) {
+      const workflow = artifacts.workflow.replace(
+        "if-no-files-found: error",
+        `if-no-files-found: ${missingFileBehavior}`,
+      );
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain(
+        "evidence upload must fail when the evidence file is missing",
+      );
+    }
+
+    for (const continueOnError of ["true", "false"]) {
+      const workflow = artifacts.workflow.replace(
+        "        if: ${{ success() }}",
+        "        if: ${{ success() }}\n        continue-on-error: " +
+          continueOnError,
+      );
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain("evidence upload must not continue on error");
+    }
+  });
+
+  it("binds the evidence artifact name to the commit and run attempt", async () => {
+    const artifacts = await loadArtifacts();
+    const workflow = artifacts.workflow.replace(
+      "postgres-acceptance-evidence-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-latest",
+    );
+    expect(
+      inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+    ).toContain(
+      "evidence artifact name must include the commit SHA and run attempt",
+    );
+  });
+
   it("rejects decoy markers and unused workflow changes by reviewed hash", async () => {
     const artifacts = await loadArtifacts();
     const pinnedLine = artifacts.workflow.match(
@@ -142,6 +234,26 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     await expect(
       runPostgresAcceptance({ CI: "true", GITHUB_ACTIONS: "true" }),
     ).rejects.toThrow(/container ID is required/i);
+    await expect(
+      runPostgresAcceptance({
+        CI: "true",
+        GITHUB_ACTIONS: "true",
+        RESEARCH_COCKPIT_PG_CONTAINER_ID: "a".repeat(12),
+        GITHUB_SHA: "not-a-canonical-commit",
+      }),
+    ).rejects.toThrow(/canonical GitHub checkout commit is required/i);
+  });
+
+  it("writes success evidence only after the final implemented probe", () => {
+    const source = runPostgresAcceptance.toString();
+    const finalProbe = source.indexOf("await verifyWriteDenials");
+    const buildEvidence = source.indexOf("buildPostgresAcceptanceEvidence");
+    const writeEvidence = source.indexOf("writePostgresAcceptanceEvidence");
+    const successMessage = source.indexOf("process.stdout.write");
+    expect(finalProbe).toBeGreaterThan(-1);
+    expect(buildEvidence).toBeGreaterThan(finalProbe);
+    expect(writeEvidence).toBeGreaterThan(buildEvidence);
+    expect(successMessage).toBeGreaterThan(writeEvidence);
   });
 
   it("injects a deterministic error immediately before final commit", () => {

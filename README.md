@@ -38,9 +38,11 @@ Cycle 1b-b1 adds an executable, clean-database PostgreSQL acceptance harness
 for a separate Ubuntu CI job. It atomically renders the seven reviewed
 migrations and ledger records, loads only source-controlled synthetic fixtures,
 and probes impersonated capability-role/RLS semantics against one exact
-PostgreSQL 17.11 image digest. The workflow has not run yet, so this is an
-executable contract—not live database evidence—and it remains disconnected from
-the app.
+PostgreSQL 17.11 image digest. A future green run writes and uploads a
+success-only, exact-schema record bound to the commit, GitHub run, reviewed
+inputs, observed versions, completed checks, and explicit limitations. The
+workflow has not run yet, so no such record exists: this is an executable
+contract—not live database evidence—and it remains disconnected from the app.
 
 ## Requirements
 
@@ -66,7 +68,8 @@ The release gate checks formatting, lint, clean-room/database boundaries,
 fixture and migration hashes, the acceptance-harness declaration, production
 licenses, strict types, tests, and both production builds. CI runs the same gate
 on Windows and Linux. A separate digest-pinned Ubuntu workflow is the pending
-real-PostgreSQL proof; static checks do not substitute for a green run.
+real-PostgreSQL proof; static checks and the unexecuted run-record contract do
+not substitute for a green run and its linked artifact.
 
 ## Safety boundary
 

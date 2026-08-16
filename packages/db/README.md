@@ -35,6 +35,16 @@ checks use superuser `SET SESSION AUTHORIZATION` to impersonate the declared
 `NOLOGIN` capabilities. This can prove engine grant/RLS semantics, but it is not
 authenticated least-privilege or production identity evidence.
 
+Only after every implemented probe succeeds, the acceptance entry point writes
+one fixed-name, exact-schema JSON run record under `RUNNER_TEMP`; the workflow
+uploads exactly that file only on success. Exclusive creation rejects stale
+files. The record allowlists commit/run metadata, reviewed source hashes,
+observed PostgreSQL tool versions, completed check identifiers, and explicit
+limitations. It excludes container IDs, environment dumps, credentials, SQL,
+logs, tenant/row identifiers, and data counts. This is an unsigned run record,
+not a compliance archive or independent proof, and none exists until the
+workflow actually runs successfully.
+
 Migration `0006` replaces the request-context procedure with null-safe
 validation. It explicitly rejects null purpose/channel values and uses `IS
 DISTINCT FROM` for the fixed synthetic territory/classification, avoiding SQL

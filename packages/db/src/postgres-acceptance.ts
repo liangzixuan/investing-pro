@@ -10,10 +10,24 @@ import {
   renderReviewedCleanBootstrap,
 } from "./clean-bootstrap";
 import { loadMigrationFiles } from "./check-migrations";
+import {
+  buildPostgresAcceptanceEvidence,
+  writePostgresAcceptanceEvidence,
+  type PostgresAcceptanceSourceHashes,
+  type PostgresAcceptanceToolVersions,
+} from "./postgres-acceptance-evidence";
 
-const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const acceptanceRunnerPath = fileURLToPath(import.meta.url);
+const packageRoot = join(dirname(acceptanceRunnerPath), "..");
 const repositoryRoot = join(packageRoot, "..", "..");
 const imageConfigPath = join(packageRoot, "acceptance", "postgres-image.json");
+const migrationManifestPath = join(packageRoot, "migration-manifest.json");
+const workflowPath = join(
+  repositoryRoot,
+  ".github",
+  "workflows",
+  "postgres-acceptance.yml",
+);
 const syntheticFixturePath = join(
   packageRoot,
   "acceptance",
@@ -23,6 +37,12 @@ const syntheticFixturePath = join(
 const EXPECTED_IMAGE_REFERENCE =
   "docker.io/library/postgres:17.11-bookworm@sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad";
 const EXPECTED_SERVER_VERSION = "17.11";
+const EXPECTED_UPLOAD_ARTIFACT_ACTION =
+  "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
+const EXPECTED_EVIDENCE_ARTIFACT_NAME =
+  "postgres-acceptance-evidence-${{ github.sha }}-${{ github.run_attempt }}";
+const EXPECTED_EVIDENCE_ARTIFACT_PATH =
+  "${{ runner.temp }}/research-cockpit-postgres-acceptance-v1.json";
 const CAPABILITY_ROLES = [
   "research_cockpit_backup",
   "research_cockpit_owner",
@@ -282,6 +302,7 @@ export function inspectPostgresAcceptanceHarness(
     "workflow must invoke the reviewed package acceptance command",
     violations,
   );
+  violations.push(...inspectEvidenceUploadStep(artifacts.workflow));
   for (const triggerPath of [
     "package.json",
     "packages/db/**",
@@ -367,6 +388,7 @@ export async function runPostgresAcceptance(
   if (!containerId) {
     throw new Error("GitHub service container ID is required");
   }
+  await verifyCheckedOutCommit(environment);
 
   const violations = await checkPostgresAcceptanceHarness();
   if (violations.length > 0) {
@@ -383,7 +405,7 @@ export async function runPostgresAcceptance(
   });
 
   await verifyContainerIdentity(containerId, config);
-  await verifyToolVersions(
+  const toolVersions = await verifyToolVersions(
     containerId,
     config.expectedServerVersion,
     config.expectedServerVersionNumber,
@@ -413,9 +435,78 @@ export async function runPostgresAcceptance(
   await verifyOperationRights(containerId);
   await verifyWriteDenials(containerId);
 
+  await verifyCheckedOutCommit(environment);
+  const sourceHashes = await collectAcceptanceSourceHashes(config);
+  const evidence = buildPostgresAcceptanceEvidence({
+    githubEnvironment: environment,
+    reviewedImageReference: config.reference,
+    reviewedImageIndexDigest: config.indexDigest,
+    toolVersions,
+    sourceHashes,
+    completedAt: new Date().toISOString(),
+  });
+  await writePostgresAcceptanceEvidence(evidence, environment);
+
   process.stdout.write(
-    "PostgreSQL 17.11 clean-bootstrap and impersonated-capability acceptance passed.\n",
+    "PostgreSQL 17.11 clean-bootstrap and impersonated-capability acceptance passed; the success-only run record was written.\n",
   );
+}
+
+async function verifyCheckedOutCommit(
+  environment: NodeJS.ProcessEnv,
+): Promise<void> {
+  const expectedCommit = environment.GITHUB_SHA;
+  if (expectedCommit === undefined || !/^[0-9a-f]{40}$/.test(expectedCommit)) {
+    throw new Error("A canonical GitHub checkout commit is required");
+  }
+  const result = await executeGit(["rev-parse", "HEAD"]);
+  assertSuccess(result, "resolve the checked-out commit");
+  if (result.stdout.trim() !== expectedCommit) {
+    throw new Error("The checked-out commit does not match GITHUB_SHA");
+  }
+  const status = await executeGit([
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=all",
+  ]);
+  assertSuccess(status, "verify the acceptance checkout is clean");
+  if (status.stdout.trim().length > 0) {
+    throw new Error("PostgreSQL acceptance requires a clean checkout");
+  }
+}
+
+async function collectAcceptanceSourceHashes(
+  config: AcceptanceImageConfig,
+): Promise<PostgresAcceptanceSourceHashes> {
+  const [
+    workflowSha256,
+    fixtureSha256,
+    migrationManifestSha256,
+    acceptanceRunnerSha256,
+  ] = await Promise.all([
+    exactFileSha256(workflowPath),
+    exactFileSha256(syntheticFixturePath),
+    exactFileSha256(migrationManifestPath),
+    exactFileSha256(acceptanceRunnerPath),
+  ]);
+  if (
+    workflowSha256 !== config.workflowSha256 ||
+    fixtureSha256 !== config.fixtureSha256
+  ) {
+    throw new Error("Reviewed acceptance source bytes changed during the run");
+  }
+  return Object.freeze({
+    workflowSha256,
+    fixtureSha256,
+    migrationManifestSha256,
+    acceptanceRunnerSha256,
+  });
+}
+
+async function exactFileSha256(path: string): Promise<string> {
+  return createHash("sha256")
+    .update(await readFile(path))
+    .digest("hex");
 }
 
 async function verifyBackupCapability(containerId: string): Promise<void> {
@@ -520,7 +611,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<void> {
+): Promise<PostgresAcceptanceToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -530,6 +621,12 @@ async function verifyToolVersions(
     String(expectedVersionNumber),
     "server version number",
   );
+  const versions: {
+    postgres?: string;
+    psql?: string;
+    pgDump?: string;
+    pgRestore?: string;
+  } = {};
   for (const tool of ["postgres", "psql", "pg_dump", "pg_restore"] as const) {
     const result = await dockerExec(containerId, [tool, "--version"]);
     assertSuccess(result, `${tool} version`);
@@ -538,7 +635,26 @@ async function verifyToolVersions(
     ) {
       throw new Error(`${tool} does not report PostgreSQL ${expectedVersion}`);
     }
+    const observed = result.stdout.trim();
+    if (tool === "postgres") versions.postgres = observed;
+    if (tool === "psql") versions.psql = observed;
+    if (tool === "pg_dump") versions.pgDump = observed;
+    if (tool === "pg_restore") versions.pgRestore = observed;
   }
+  if (
+    versions.postgres === undefined ||
+    versions.psql === undefined ||
+    versions.pgDump === undefined ||
+    versions.pgRestore === undefined
+  ) {
+    throw new Error("PostgreSQL tool-version collection was incomplete");
+  }
+  return Object.freeze({
+    postgres: versions.postgres,
+    psql: versions.psql,
+    pgDump: versions.pgDump,
+    pgRestore: versions.pgRestore,
+  });
 }
 
 async function verifyMigrationLedger(containerId: string): Promise<void> {
@@ -1627,6 +1743,31 @@ async function executeDocker(
   });
 }
 
+async function executeGit(
+  arguments_: readonly string[],
+): Promise<CommandResult> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("git", arguments_, {
+      cwd: repositoryRoot,
+      shell: false,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+    child.once("error", reject);
+    child.once("close", (code) => {
+      resolve({
+        exitCode: code ?? -1,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
+      });
+    });
+  });
+}
+
 function parseImageConfig(value: unknown): AcceptanceImageConfig {
   if (!isRecord(value))
     throw new Error("PostgreSQL image config must be an object");
@@ -1665,7 +1806,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "edc2398ab0ca756dd1895b5747ee7fbb5af016699e8e1705ff294dade2e30cb0" ||
+      "bfece7be518f8842ec11b8b6070a841883cf1969613ff0cac1e3380e5a07816c" ||
     value.fixtureSha256 !==
       "69974bf2996cbdd0078d509db933fe89d670005e177b7f57187df54b201b99bf" ||
     typeof value.verifiedOn !== "string" ||
@@ -1724,6 +1865,74 @@ function requireText(
   violations: string[],
 ): void {
   if (!value.includes(marker)) violations.push(message);
+}
+
+function inspectEvidenceUploadStep(workflow: string): string[] {
+  const violations: string[] = [];
+  const uploadSteps = workflowStepBlocks(workflow).filter((step) =>
+    /^\s*uses:\s*actions\/upload-artifact(?:@|\s|$)/m.test(step),
+  );
+  if (uploadSteps.length !== 1) {
+    violations.push(
+      "workflow must define exactly one PostgreSQL evidence upload step",
+    );
+    return violations;
+  }
+
+  const uploadStep = uploadSteps[0];
+  if (!uploadStep) return violations;
+  for (const [line, message] of [
+    [
+      "      - name: Upload PostgreSQL acceptance evidence",
+      "evidence upload step must retain its reviewed identity",
+    ],
+    [
+      "        if: ${{ success() }}",
+      "evidence upload must run only after successful acceptance",
+    ],
+    [
+      `        uses: ${EXPECTED_UPLOAD_ARTIFACT_ACTION} # v7.0.1`,
+      "evidence upload action must use the reviewed immutable SHA",
+    ],
+    [
+      `          name: ${EXPECTED_EVIDENCE_ARTIFACT_NAME}`,
+      "evidence artifact name must include the commit SHA and run attempt",
+    ],
+    [
+      `          path: ${EXPECTED_EVIDENCE_ARTIFACT_PATH}`,
+      "evidence upload path must be the exact runner-temporary evidence file",
+    ],
+    [
+      "          if-no-files-found: error",
+      "evidence upload must fail when the evidence file is missing",
+    ],
+    [
+      "          retention-days: 30",
+      "evidence artifact retention must be exactly 30 days",
+    ],
+  ] as const) {
+    if (!uploadStep.split("\n").includes(line)) violations.push(message);
+  }
+  if (/^\s*continue-on-error\s*:/m.test(uploadStep)) {
+    violations.push("evidence upload must not continue on error");
+  }
+  return violations;
+}
+
+function workflowStepBlocks(workflow: string): string[] {
+  const lines = workflow.replaceAll("\r\n", "\n").split("\n");
+  const steps: string[] = [];
+  let step: string[] | undefined;
+  for (const line of lines) {
+    if (/^ {6}- /.test(line)) {
+      if (step) steps.push(step.join("\n"));
+      step = [line];
+    } else if (step) {
+      step.push(line);
+    }
+  }
+  if (step) steps.push(step.join("\n"));
+  return steps;
 }
 
 function splitLines(value: string): string[] {
