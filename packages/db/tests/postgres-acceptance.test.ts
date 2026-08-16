@@ -323,6 +323,19 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     );
     expect(runner).not.toMatch(/\bpg_catalog\.(?:coalesce|nullif)\s*\(/i);
   });
+
+  it("casts internal catalog char columns before text fingerprints", async () => {
+    const runner = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    expect(runner).toContain("class.relkind::text ||");
+    expect(runner).toContain("constraint_row.contype::text ||");
+    expect(runner).toContain("trigger.tgenabled::text ||");
+    expect(runner).not.toMatch(
+      /\b(?:class\.relkind|constraint_row\.contype|trigger\.tgenabled)\s*\|\|/,
+    );
+  });
 });
 
 async function loadArtifacts(): Promise<AcceptanceArtifacts> {

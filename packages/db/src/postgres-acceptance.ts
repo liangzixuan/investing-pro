@@ -746,7 +746,7 @@ ORDER BY nspname;`,
     await psqlScalar(
       containerId,
       `SELECT namespace.nspname || '.' || class.relname || '|' ||
-  class.relkind || '|' || pg_catalog.pg_get_userbyid(class.relowner) || '|' ||
+  class.relkind::text || '|' || pg_catalog.pg_get_userbyid(class.relowner) || '|' ||
   class.relrowsecurity || '|' || class.relforcerowsecurity
 FROM pg_catalog.pg_class AS class
 JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = class.relnamespace
@@ -995,7 +995,7 @@ WHERE extension.extname = 'btree_gist';`,
       await psqlScalar(
         containerId,
         `SELECT namespace.nspname || '.' || class.relname || '|' ||
-  constraint_row.contype || '|' || count(*)
+  constraint_row.contype::text || '|' || count(*)
 FROM pg_catalog.pg_constraint AS constraint_row
 JOIN pg_catalog.pg_class AS class ON class.oid = constraint_row.conrelid
 JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = class.relnamespace
@@ -1038,7 +1038,7 @@ ORDER BY 1;`,
       await psqlScalar(
         containerId,
         `SELECT namespace.nspname || '.' || class.relname || '|' ||
-  trigger.tgname || '|' || trigger.tgenabled || '|' || trigger.tgtype || '|' ||
+  trigger.tgname || '|' || trigger.tgenabled::text || '|' || trigger.tgtype || '|' ||
   function_namespace.nspname || '.' || procedure.proname || '|' ||
   coalesce(
     pg_catalog.pg_get_expr(trigger.tgqual, trigger.tgrelid),

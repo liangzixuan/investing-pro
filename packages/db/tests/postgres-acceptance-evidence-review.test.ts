@@ -41,6 +41,7 @@ const REPOSITORY = "example/research-cockpit";
 const REPOSITORY_ID = "123456789";
 const RUN_ID = "9876543210";
 const RUN_ATTEMPT = 2;
+const GIT_INTEGRATION_TEST_TIMEOUT_MILLISECONDS = 30_000;
 const TEMP_DIRECTORIES: string[] = [];
 
 interface ReviewFixture {
@@ -60,7 +61,13 @@ afterEach(async () => {
   );
 });
 
-describe("PostgreSQL acceptance evidence Git/file review adapter", () => {
+describe(
+  "PostgreSQL acceptance evidence Git/file review adapter",
+  { timeout: GIT_INTEGRATION_TEST_TIMEOUT_MILLISECONDS },
+  evidenceAdapterTests,
+);
+
+function evidenceAdapterTests(): void {
   it("reviews a historical commit and ignores a dirty worktree", async () => {
     const fixture = await createFixture();
     await writeFile(
@@ -322,9 +329,15 @@ describe("PostgreSQL acceptance evidence Git/file review adapter", () => {
       }),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
-});
+}
 
-describe("PostgreSQL acceptance evidence review CLI", () => {
+describe(
+  "PostgreSQL acceptance evidence review CLI",
+  { timeout: GIT_INTEGRATION_TEST_TIMEOUT_MILLISECONDS },
+  evidenceReviewCliTests,
+);
+
+function evidenceReviewCliTests(): void {
   it("requires the closed flag set with no defaults, duplicates, or extras", async () => {
     const fixture = await createFixture();
     const arguments_ = cliArguments(fixture.input);
@@ -393,7 +406,7 @@ describe("PostgreSQL acceptance evidence review CLI", () => {
     expect(stderr.join("")).not.toContain(fixture.evidencePath);
     expect(stderr.join("")).not.toContain(fixture.commit);
   });
-});
+}
 
 async function createFixture(
   repositoryDirectoryName = "repository",
