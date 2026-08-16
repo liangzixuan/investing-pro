@@ -1,7 +1,7 @@
 # Cycle 1b-a exit matrix
 
-Scope: database-to-core projection contract only. No database driver, live
-PostgreSQL service, API write path, identity provider, or real data was added.
+Scope: database-to-core projection contract only. No database driver, API write
+path, identity provider, or real data was added.
 
 | Gate                        | Evidence                                                                                                                                            | Status |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
@@ -19,8 +19,7 @@ PostgreSQL service, API write path, identity provider, or real data was added.
 
 ## Deliberately pending
 
-- live migration, RLS, role, pool-reuse, cancellation, concurrency, and restore
-  evidence against a digest-pinned PostgreSQL image;
+- adapter-level pool reuse, cancellation, concurrency, and restore evidence;
 - the read-only query/driver that invokes the Cycle 1b-a2 fail-closed row
   normalizer and supplies reviewed identity/unit mappings;
 - a core composition policy for combining multiple operation views in one
@@ -29,7 +28,8 @@ PostgreSQL service, API write path, identity provider, or real data was added.
 - production identity, tenant API writes, real/vendor data, and external
   notifications.
 
-The local machine has no PostgreSQL client/service or container runtime. The
-next database proof therefore requires an approved, separate Ubuntu CI
-acceptance job; it must not be represented by SQLite, PGlite, mocks, or static
-SQL checks.
+The later Cycle 1b-b1 Ubuntu run supplied bounded live migration, role, RLS, and
+sequential-context evidence. It did not execute this projection port or a
+database adapter and did not prove a real pool, cancellation, concurrency, or
+restore. SQLite, PGlite, mocks, and static SQL checks remain unacceptable
+substitutes for those later gates.

@@ -664,7 +664,7 @@ describe("static SQL security harness", () => {
     );
   });
 
-  it("requires the unexecuted-live-workflow warning and gate disclosure", () => {
+  it("requires the bounded-live-workflow warning and gate disclosure", () => {
     expect(inspectStaticContractNotice("")).not.toEqual([]);
   });
 });

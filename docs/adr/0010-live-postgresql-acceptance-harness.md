@@ -1,6 +1,6 @@
 # ADR 0010: Digest-pinned live PostgreSQL acceptance harness
 
-Status: accepted for Cycle 1b-b1; local and remote live execution pending
+Status: accepted for Cycle 1b-b1; first remote clean-only run completed
 
 Cycle 1a established a static PostgreSQL security contract, and Cycle 1b-a
 froze the operation-scoped projection boundary. Neither increment executed the
@@ -36,14 +36,12 @@ those impersonated capabilities. It does **not** prove a production
 least-privileged migrator, an authenticated external session, identity-to-role
 mapping, network authentication, TLS, secret management, or pooler behavior.
 
-No live result is claimed by this ADR. The current development machine has no
-container runtime or PostgreSQL service, and the new remote workflow has not
-yet run. The implemented migration, adversarial RLS, ACL, rights, and
-sequential-session probes remain pending until a successful workflow run
-supplies reviewable logs and the success-only run record defined by ADR 0012,
-both tied to a repository commit. Cancellation, concurrent
-backends, a real application pool, dump, and restore are not implemented by
-this workflow and remain explicitly deferred. The acceptance command is
+The first remote workflow completed successfully at commit `611c93d`; its
+reviewed logs and success-only record are linked in the
+[evidence note](../POSTGRESQL_ACCEPTANCE_EVIDENCE.md). The current development
+machine still has no container runtime or PostgreSQL service. Cancellation,
+concurrent backends, a real application pool, dump, and restore are not
+implemented by this workflow and remain explicitly deferred. The acceptance command is
 `pnpm --filter @research-cockpit/db acceptance:postgres:ci`; the ordinary
 cross-platform release gate remains separate.
 

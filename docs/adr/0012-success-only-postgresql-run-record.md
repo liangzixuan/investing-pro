@@ -1,6 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; source contract implemented, first live record pending
+Status: accepted; first live record produced and retained
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -39,13 +39,11 @@ retention is not a compliance archive, and an artifact from an untrusted pull
 request is not automatically trusted. A record is useful only when reviewed
 with its linked GitHub run and immutable commit.
 
-No live result is claimed by adopting this decision. This checkout has no Git
-remote and no local PostgreSQL or container runtime, so the first record remains
-pending. The next database milestone is to run the existing workflow from an
-approved remote at the exact reviewed commit and retain the resulting run and
-artifact. ADR 0013 defines the offline consistency review for that downloaded
-record. Until the run and review happen, every engine-dependent exit row remains
-pending.
+The first record was produced by successful run `31961988213`, attempt 1, at
+commit `611c93d` and retained outside the repository. ADR 0013's offline review
+returned `offline_consistent`; exact links and hashes are in the
+[evidence note](../POSTGRESQL_ACCEPTANCE_EVIDENCE.md). This remains unsigned
+run metadata and does not promote any limitation recorded in the artifact.
 
 ## Primary sources
 

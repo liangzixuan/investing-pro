@@ -348,7 +348,7 @@ export function detectProhibitedSql(sql: string): string[] {
 export function inspectStaticContractNotice(readme: string): string[] {
   const violations: string[] = [];
   for (const required of [
-    /LIVE WORKFLOW NOT YET EXECUTED/i,
+    /CLEAN-ONLY LIVE ACCEPTANCE PASSED/i,
     /NOT DEPLOYED PERSISTENCE/i,
     /authenticated bootstrap\/migrator account is external/i,
     /do not grant any capability role to any other role/i,

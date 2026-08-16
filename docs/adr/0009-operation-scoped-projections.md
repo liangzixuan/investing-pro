@@ -1,6 +1,6 @@
 # ADR 0009: Instrument-bound, operation-scoped projections
 
-Status: accepted for Cycle 1b-a; live PostgreSQL execution pending
+Status: accepted for Cycle 1b-a; database adapter/query integration pending
 
 The source-controlled demo snapshot is complete by construction, but an RLS
 query cannot prove that the rows it can see are the complete candidate set.
@@ -41,3 +41,7 @@ validator. ADR 0011 now defines the disconnected fail-closed normalizer for the
 narrow dimensionless PostgreSQL financial-fact row subset. The reviewed query,
 identity/unit mapping, driver, and complete dossier sources remain mandatory
 before any database source is composed.
+
+The later Cycle 1b-b1 PostgreSQL run exercised the migration/RLS harness, not
+this projection port. It therefore does not establish adapter integration or
+projection-query correctness.

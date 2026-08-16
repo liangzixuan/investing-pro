@@ -1,6 +1,6 @@
 # ADR 0011: Fail-closed PostgreSQL projection-row normalization
 
-Status: accepted for Cycle 1b-a2; database query and live execution pending
+Status: accepted for Cycle 1b-a2; database query/adapter integration pending
 
 The operation-scoped core port accepts already typed candidates. A database
 driver, however, returns untrusted runtime values whose timestamp precision,
@@ -46,3 +46,7 @@ acceptance fixture's `USD` value do not prove a `USD_MILLIONS` semantic mapping,
 so they are intentionally rejected. General dimensions, complete dossiers,
 history/timeline persistence, evidence-binding queries, and a query/result-size
 limit remain later adapter work.
+
+The later Cycle 1b-b1 PostgreSQL run exercised the migration/RLS harness only;
+it did not execute this normalizer or a projection query and does not change
+this decision's proof boundary.

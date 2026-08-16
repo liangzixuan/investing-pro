@@ -71,9 +71,10 @@ counting bypass may reveal rows hidden by policy.
 ## Proof boundary
 
 The in-memory adapter proves use-case and repository behavior under deterministic
-tests. The SQL package is a statically checked migration contract only. Neither
-proves production identity, PostgreSQL RLS, connection-pool context clearing,
-backup/restore, or deletion until the real PostgreSQL acceptance lane exists.
+tests. The SQL package also has a reviewed clean-only b1 run covering its recorded
+PostgreSQL catalog, RLS, authorization, and sequential-context probes. Neither
+proves production identity, authenticated sessions, connection-pool context
+clearing, concurrent behavior, backup/restore, or the future deletion path.
 A database adapter must not infer “no omissions” merely because RLS hid rows;
 it needs an explicit completeness signal and must use `count: null` when an
 exact count cannot be disclosed or established.

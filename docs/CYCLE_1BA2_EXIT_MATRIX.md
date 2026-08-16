@@ -23,7 +23,6 @@ was added.
   join, enforces a reviewed result-size bound, and emits this exact flat row
   shape;
 - a reviewed semantic mapping from stored unit/currency values to core units;
-- live execution of the already implemented PostgreSQL 17.11 acceptance job;
 - an authenticated non-owner session, client driver, pool cleanup,
   cancellation, concurrency, and logical restore proof;
 - dimensioned facts, complete dossier/history/timeline/evidence projections,
@@ -31,3 +30,7 @@ was added.
 
 Passing this matrix proves only a pure parser contract. It is not live
 PostgreSQL evidence and is not a production adapter.
+
+The later Cycle 1b-b1 PostgreSQL acceptance run passed its migration/RLS
+harness, but it did not execute this normalizer, a projection query, or an
+adapter. The a2 proof boundary therefore remains unchanged.

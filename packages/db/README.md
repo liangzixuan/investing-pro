@@ -1,13 +1,15 @@
 # PostgreSQL security contract and acceptance harness
 
-> **LIVE WORKFLOW NOT YET EXECUTED — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
-The migrations have not been executed against PostgreSQL in this workspace or
-in the new remote workflow. Passing the package tests therefore does not prove
-PostgreSQL syntax, row-level security behavior, backup viability, or production
-readiness.
+The seven migrations and implemented probes passed in the first reviewed run against the pinned
+PostgreSQL 17.11 service at commit `611c93d`; see the
+[retained evidence note](../../docs/POSTGRESQL_ACCEPTANCE_EVIDENCE.md). That run
+is bounded engine evidence for its recorded checks. It does not prove backup
+viability, authenticated sessions, pooling, concurrency, real-data behavior, or
+production readiness.
 
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
@@ -42,10 +44,10 @@ files. The record allowlists commit/run metadata, reviewed source hashes,
 observed PostgreSQL tool versions, completed check identifiers, and explicit
 limitations. It excludes container IDs, environment dumps, credentials, SQL,
 logs, tenant/row identifiers, and data counts. This is an unsigned run record,
-not a compliance archive or independent proof, and none exists until the
-workflow actually runs successfully.
+not a compliance archive or independent proof. The first reviewed record is
+identified in the retained evidence note.
 
-After downloading a future artifact, review it from a local clone that already
+After downloading an artifact, review it from a local clone that already
 contains the recorded commit. Every expected anchor is mandatory and must be
 copied from independently reviewed run information; do not copy expected values
 from the JSON being checked. Use an operator-controlled clone and a trusted
@@ -162,9 +164,9 @@ concurrency/authorization tests.
 
 Migration `0005` is a clean-database contract: it adds validated foreign keys
 without backfilling IDs for pre-existing thesis or alert rows. That is coherent
-with this package's wholly unexecuted state, but it is not a safe in-place
-upgrade for a populated database at migration `0004`. Any such deployment needs
-a separate, audited allocation/backfill/cutover design before `0005` is applied.
+with the clean-only acceptance database, but it is not a safe in-place upgrade
+for a populated database at migration `0004`. Any such deployment needs a
+separate, audited allocation/backfill/cutover design before `0005` is applied.
 
 Even without a payload, a permanent tenant/resource identifier can be
 pseudonymous or otherwise regulated metadata. This package is synthetic-only;
@@ -257,4 +259,5 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     and cutover under concurrent-write controls before adding the live-state
     foreign keys; this static `0005` migration assumes empty live tables.
 
-Until every gate passes, this package is design evidence only.
+Until every gate passes, this package is not deployed persistence. Current live
+evidence is limited to the exact clean-only b1 checks in the retained run record.

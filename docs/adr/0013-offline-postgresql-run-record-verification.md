@@ -1,6 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; verifier source implemented, first artifact review pending
+Status: accepted; first retained artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -41,8 +41,9 @@ copied from the same compromised run is not an independent trust source. Review
 the GitHub run, event, actor, logs, commit, and artifact together before changing
 any engine-dependent exit row.
 
-No live result is claimed by this decision. The current checkout still has no
-approved Git remote or local container/PostgreSQL runtime, so the first remote
-run and first offline artifact review remain pending. This is the final local
-database-evidence scaffolding increment; migrator, authenticated-session,
-restore, pool, and adapter work remain gated on a successful real run.
+The retained artifact from run `31961988213`, attempt 1, at commit `611c93d`
+returned `offline_consistent` against independently supplied metadata and the
+producer-log byte hash. The [evidence note](../POSTGRESQL_ACCEPTANCE_EVIDENCE.md)
+records the exact anchors and limitations. This completes the first remote-run
+consistency milestone; migrator, authenticated-session, restore, pool, and
+adapter work remain separate gated work.

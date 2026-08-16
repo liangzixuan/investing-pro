@@ -38,17 +38,19 @@ Cycle 1b-b1 adds an executable, clean-database PostgreSQL acceptance harness
 for a separate Ubuntu CI job. It atomically renders the seven reviewed
 migrations and ledger records, loads only source-controlled synthetic fixtures,
 and probes impersonated capability-role/RLS semantics against one exact
-PostgreSQL 17.11 image digest. A future green run writes and uploads a
+PostgreSQL 17.11 image digest. A green run writes and uploads a
 success-only, exact-schema record bound to the commit, GitHub run, reviewed
 inputs, observed versions, completed checks, and explicit limitations. The
-workflow has not run yet, so no such record exists: this is an executable
-contract—not live database evidence—and it remains disconnected from the app.
+first reviewed run passed at commit `611c93d`; its retained run record is linked
+in [the Cycle 1b-b1 evidence note](./docs/POSTGRESQL_ACCEPTANCE_EVIDENCE.md).
+The harness remains disconnected from the app and is not deployed persistence.
 
 The final local Cycle 1b-b1 review gate verifies a downloaded run record against
 independently supplied repository/run/hash anchors and fixed source blobs read
 from its exact Git commit. Its only success verdict is `offline_consistent`;
-it cannot authenticate GitHub, inspect logs, or prove PostgreSQL executed. No
-artifact exists to review yet.
+it cannot authenticate GitHub, inspect logs, or independently prove PostgreSQL
+executed. The first retained artifact produced that verdict after the linked run
+and logs were reviewed separately.
 
 ## Requirements
 
@@ -73,11 +75,12 @@ pnpm verify
 The release gate checks formatting, lint, clean-room/database boundaries,
 fixture and migration hashes, the acceptance-harness declaration, production
 licenses, strict types, tests, and both production builds. CI runs the same gate
-on Windows and Linux. A separate digest-pinned Ubuntu workflow is the pending
-real-PostgreSQL proof; static checks and the unexecuted run-record contract do
-not substitute for a green run and its linked artifact. The offline verifier
-checks record/source consistency after download, but also cannot substitute for
-that run.
+on Windows and Linux. The digest-pinned Ubuntu PostgreSQL workflow and both CI
+platforms passed for `611c93d`. That reviewed clean-only synthetic run is bounded
+engine evidence; it does not substitute for authenticated sessions, concurrent
+pool behavior, dump/restore, production identity, or deployment readiness. The
+offline verifier checks record/source consistency after download but cannot
+authenticate the run by itself.
 
 ## Safety boundary
 
@@ -86,7 +89,7 @@ that run.
 - Financial values cross domain/API boundaries as decimal strings.
 - Browser-local state is for demonstration only and must not contain real holdings or personal information.
 - Production data, identity, billing, persistence, SEC ingestion, external alerts, and AI remain gated work.
-- Synthetic repository tests and unexecuted SQL are not production authentication or persistence evidence.
+- Synthetic tests and a clean-only acceptance run are not production authentication or deployed-persistence evidence.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),

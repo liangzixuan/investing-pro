@@ -23,52 +23,57 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 
 ## Cycle 1b — real PostgreSQL proof
 
-Target: 1–2 weeks after a pinned PostgreSQL CI service is approved.
+Status: first clean-only b1 run complete; authenticated-session,
+pool/concurrency, and restore gates pending.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
 impersonated capability/RLS probes are implemented. A success-only run-record
-contract now binds a future green run to its exact commit, reviewed inputs,
-observed tool versions, and explicit limitations. The workflow has not run, so
-no record exists and every engine-dependent gate remains pending. The current
-role bootstrap must run as the ephemeral container superuser and does not
-satisfy the distinct migrator or authenticated runtime/backup requirements.
-The final offline review gate is also implemented: it requires independent
-run/repository/hash anchors, canonical artifact bytes, and fixed source blobs
-from the exact local Git commit, and can report only `offline_consistent`. No
-artifact has been produced or reviewed.
+contract binds a green run to its exact commit, reviewed inputs, observed tool
+versions, and explicit limitations. The first clean-only workflow passed at
+`611c93d`, and its retained artifact produced `offline_consistent` against
+independently supplied run/repository/hash anchors and the exact committed
+source blobs. See the [evidence note](./POSTGRESQL_ACCEPTANCE_EVIDENCE.md). The
+current role bootstrap still runs as the ephemeral container superuser and does
+not satisfy the distinct migrator or authenticated runtime/backup requirements.
 
-1. Execute migrations from an empty database. First use b1's explicitly limited
-   ephemeral-superuser bootstrap and impersonated `NOLOGIN` capabilities; then
+1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
+   empty database through the explicitly limited ephemeral superuser, and the
+   declared `NOLOGIN` capabilities were exercised through impersonation. Next,
    split/redesign role bootstrap so a distinct migrator and authenticated
    non-owner runtime/test-loader/backup sessions can be proven.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
 4. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. Its query must perform the reviewed listing/share-class/security join, supply an explicit semantic unit mapping, and enter core only through the a2 normalizer and operation-scoped port. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
-5. Run cross-tenant direct-ID/list/join/count/subquery probes, missing/malformed context, membership and principal deactivation, and at least 1,000 alternating/concurrent reads. If the separate writer capability is added in this cycle, also test viewer writes, composite-FK attacks, idempotency races, and rollback before enabling it anywhere outside the isolated acceptance harness.
-6. Prove transaction-local context clears on commit, rollback, cancellation, timeout, and pooled-connection reuse.
-7. Prove clean migration, checksum drift failure, injected mid-migration rollback, logical dump/restore, and post-restore authorization behavior against an exact PostgreSQL image digest.
+5. **Bounded isolation probes complete:** b1 covers direct-ID/list/join/count/
+   subquery access, missing/malformed context, deactivation fixtures, and
+   alternating prepared reads. At least 1,000 concurrent reads remain pending.
+   If a writer capability is added, also test viewer writes, composite-FK
+   attacks, idempotency races, and rollback before enabling it elsewhere.
+6. **Sequential cleanup complete:** b1 proves transaction-local context clears
+   after commit, rollback, and a handled error on one backend. Cancellation,
+   timeout, simultaneous backends, and real pooled-connection reuse remain.
+7. **Clean migration/replay/rollback complete:** b1 proves clean bootstrap,
+   ledger state, replay refusal, and injected final rollback. A live
+   checksum-drift case, logical dump/restore, and post-restore authorization
+   behavior remain pending.
 
 Exit gate: all live-database authorization and restore tests pass from a clean checkout. This is a harness restore target, not a production RPO/RTO.
 
-The remaining live steps are Cycle 1b-b. Add a separate Ubuntu-only acceptance
-job rather than a service container inside the current Windows/Linux matrix.
-The PostgreSQL server and its `psql`/dump/restore clients must come from one
-exact major/minor/distro image digest. The row-normalization contract is now
-frozen, but a client driver remains gated on a real green b1 run, the reviewed
-query/unit mapping, and pool/cancellation tests.
+The separate Ubuntu-only acceptance job now exists and its first reviewed run
+passed. Its PostgreSQL server and `psql`/dump/restore clients come from one exact
+major/minor/distro image reference and index digest. Remaining Cycle 1b-b work
+is authenticated role separation, restore, concurrency/cancellation, and the
+real pool boundary. The row-normalization contract is frozen, but a client
+driver remains gated on the reviewed query/unit mapping and those session/pool
+controls.
 
-The immediate next milestone is operational rather than another disconnected
-code expansion: publish the exact reviewed commit to an approved remote, run
-the PostgreSQL acceptance workflow from a clean checkout, and retain the linked
-GitHub run and exact-schema record. Supply the record verifier's expected
-metadata and byte hash from independently reviewed run information, then review
-its `offline_consistent` result alongside the workflow logs. This workspace has
-no configured remote, so that external step is not inferred or claimed here.
-No further disconnected database scaffolding should be added before it. After
-the first green run, design the distinct migrator and authenticated
-runtime/backup session boundary before adding dump/restore or a production
-adapter.
+The first green-run milestone is complete. The immediate next database
+milestone is to design the distinct migrator and authenticated runtime/backup
+session boundary. Only then should the harness add a bounded dump/restore probe;
+application-pool cancellation/concurrency belongs with a real adapter and pool.
+Do not treat the clean-only impersonated-capability result as permission to wire
+the database into the app or accept real data.
 
 ## Cycle 1c — demo identity and API contract proof
 
