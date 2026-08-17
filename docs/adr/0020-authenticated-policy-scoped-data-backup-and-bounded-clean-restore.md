@@ -1,6 +1,6 @@
 # ADR 0020: Authenticated policy-scoped data backup and bounded clean restore
 
-Status: accepted for Cycle 1b-b8; source implementation and local verification complete; live version 8 evidence pending
+Status: accepted; bounded live version 8 evidence retained and reviewed
 
 ## Context
 
@@ -23,9 +23,10 @@ disaster-recovery backup.
 ## Decision
 
 Cycle 1b-b8 is one milestone with separately reviewable backup and restore
-phases. Its source and local verification are complete, but neither phase has a
-live PostgreSQL result. No version 8 success record may be written unless both
-phases and all cleanup checks pass in the same acceptance run.
+phases. No version 8 success record may be written unless both phases and all
+cleanup checks pass in the same acceptance run. That exact composite path later
+passed in PostgreSQL run `32076642878` at commit `49d3a96`; the downloaded
+record returned `offline_consistent` under the review boundary below.
 
 ### Authenticated policy-scoped dump
 
@@ -115,11 +116,10 @@ evidence.
 
 ## Evidence contract
 
-The implemented source and local tests are not live evidence. Local verification
+The source and local tests alone are not live evidence. Local verification
 passed all 409 tests across the 10 database test files, database typechecking,
 the migration and static PostgreSQL guardrails, ESLint, Prettier, and the diff
-check. No local Docker or live PostgreSQL execution is claimed. B8 requires a
-distinct version 8 record named
+check. B8 also required a distinct version 8 record named
 `research-cockpit-postgres-acceptance-v8.json` and a commit/attempt-bound
 `postgres-acceptance-evidence-v8-${sha}-${attempt}` artifact. Version 8 must
 preserve the exact parser behavior, source shapes, checks, limitations, and
@@ -142,11 +142,12 @@ latter becomes, in order,
 `disaster_recovery_storage_encryption_retention_rpo_or_rto`. Every other
 version 7 limitation remains unchanged and ordered.
 
-A B8 live row may become `Pass` only after the dedicated workflow succeeds from
-a clean checkout against the pinned PostgreSQL 17 image, the exact run, logs,
-artifact, and source hashes are independently reviewed, and the downloaded
-version 8 record returns `offline_consistent`. The source/local rows now pass;
-the live execution and artifact-review rows remain pending.
+A B8 live row became `Pass` only after the dedicated workflow succeeded from a
+clean checkout against the pinned PostgreSQL 17 image, the exact run, logs,
+artifact, and source hashes were independently reviewed, and the downloaded
+version 8 record returned `offline_consistent`. Run `32076642878`, attempt 1, at
+commit `49d3a96` satisfied that rule. Its exact anchors are retained in the
+[B8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md).
 
 ## Explicit exclusions
 
@@ -179,11 +180,10 @@ contract and live evidence.
 
 The implementation keeps authentication of the reader, independent
 provisioning of the restore target, and authorization of the data loader visible
-as separate boundaries while withholding the composite live B8 claim until all
-three have been exercised together. It closes no current limitation until
-reviewed version 8
-live evidence exists. A single-client read-only adapter and the later
-pool/concurrency/cancellation boundary remain separate milestones.
+as separate boundaries. The reviewed version 8 result closes only the exact
+bounded composite acceptance gate after all three were exercised together. A
+single-client read-only adapter and the later pool/concurrency/cancellation
+boundary remain separate milestones.
 
 ## Related decisions and primary sources
 
@@ -192,6 +192,7 @@ pool/concurrency/cancellation boundary remain separate milestones.
 - [ADR 0013: Offline PostgreSQL run-record verification](./0013-offline-postgresql-run-record-verification.md)
 - [ADR 0019: Versioned authenticated migration phase](./0019-versioned-authenticated-migration-phase.md)
 - [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md)
+- [Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
 - [PostgreSQL 17 `pg_dump`](https://www.postgresql.org/docs/17/app-pgdump.html)
 - [PostgreSQL 17 `pg_restore`](https://www.postgresql.org/docs/17/app-pgrestore.html)
 - [PostgreSQL 17 SQL-dump backup and restore](https://www.postgresql.org/docs/17/backup-dump.html)

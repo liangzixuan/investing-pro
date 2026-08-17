@@ -174,3 +174,8 @@ authenticated backup, dump/restore or disaster recovery, end-user identity or
 tenant binding, real or licensed data, a driver or pool, application/API
 integration, deployed persistence, production privacy controls, or production
 readiness.
+
+The later [B8 evidence](./POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
+separately records one bounded authenticated policy-scoped data dump and clean
+same-cluster restore. It does not widen this version 7 migration result or alter
+any version 7 check, source shape, or nonclaim.

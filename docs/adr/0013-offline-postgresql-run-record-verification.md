@@ -1,6 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 7 artifact reviewed successfully; version 8 source/local verification complete with live artifact review pending
+Status: accepted; retained version 8 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,11 +14,11 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v6 support and accepts the current v7 schema without
+historical v1 through v7 support and accepts the current v8 schema without
 mixing any version's closed check, limitation, or source-hash lists. Retained
-version 6 and version 7 artifacts have been reviewed. Canonical comparison
-rejects byte-order marks, CRLF or alternate whitespace, trailing content,
-reordered members, and duplicate JSON member names.
+version 6, version 7, and version 8 artifacts have been reviewed. Canonical
+comparison rejects byte-order marks, CRLF or alternate whitespace, trailing
+content, reordered members, and duplicate JSON member names.
 
 Source validation uses only fixed paths read as raw Git blobs from the explicit
 40-character commit. It does not read source from the mutable worktree and does
@@ -31,12 +31,13 @@ recorded in the artifact; validates the reviewed PostgreSQL target against the
 commit's image declaration; and checks the exact ordered migration inventory
 and every migration-body hash.
 
-For version 7 only, the reviewer also requires the fixed v2 platform plan,
+For versions 7 and 8, the reviewer also requires the fixed v2 platform plan,
 application manifest, authenticated renderer, and the exact manifest-listed
-application bodies from the anchored commit. It rejects missing, extra,
-non-regular, or mixed-version v2 tree entries and validates each body against
-the closed manifest. Versions 1 through 6 retain their historical source
-shapes and do not acquire these inputs retroactively.
+application bodies from the anchored commit. Version 8 additionally requires
+the fixed restore-platform asset and authenticated backup/restore renderer. It
+rejects missing, extra, non-regular, or mixed-version tree entries and validates
+each body against the closed manifest. Versions 1 through 6 retain their
+historical source shapes and do not acquire these inputs retroactively.
 
 The CLI performs no fetch, network request, archive extraction, glob expansion,
 source write, or database operation. It emits a fixed-schema
@@ -122,11 +123,10 @@ authenticated application phases executed. See
 [ADR 0019](./0019-versioned-authenticated-migration-phase.md) for the bounded
 claim and explicit nonclaims.
 
-The implemented Cycle 1b-b8 source includes a separate V8 verifier branch, but
-a retained V8 artifact and its offline review remain pending. That branch
+The Cycle 1b-b8 source includes a separate V8 verifier branch. That branch
 preserves exact v1-v7 parsing; requires the appended
 `authenticated_policy_scoped_application_data_dump_and_bounded_clean_restore`
-check and the exact three narrower nonclaims; and read
+check and the exact three narrower nonclaims; and reads
 `restore-platform.sql` plus `authenticated-backup-restore-plan.ts` from the
 anchored commit under the exact `restorePlatformV1Sha256` and
 `authenticatedBackupRestorePlanV1Sha256` keys. Missing, extra, reordered, or
@@ -134,10 +134,15 @@ mixed-version checks, limitations, source keys, or source files fail closed.
 Its parser, verifier, and reviewer paths are included in the 409 passing tests
 across the 10 database test files; database typechecking, the migration and
 static PostgreSQL guardrails, ESLint, Prettier, and the diff check also pass
-locally. These checks do not substitute for a retained live artifact.
+locally. Those checks alone did not substitute for a retained live artifact.
 
-Even a future V8 `offline_consistent` result will prove only that the retained
-record, independently supplied anchors, and fixed source blobs agree. It cannot
+A retained version 8 record from run `32076642878`, attempt 1, at commit
+`49d3a96` returned `offline_consistent` against the independently supplied
+anchors. The
+[Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
+records the exact artifact, evidence, source, and offline-output digests. That
+verdict proves only that the retained record, supplied anchors, and fixed source
+blobs agree. It cannot
 prove that `pg_dump` authenticated as designed, that RLS limited the archive,
 that `pg_restore` rolled back or restored the 21 data tables, or that cleanup
 completed without separate review of the pinned run and logs. The temporary

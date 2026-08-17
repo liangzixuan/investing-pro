@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B7 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B8 SOURCE/LOCAL VERIFICATION PASSED, LIVE V8 PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B8 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -82,25 +82,23 @@ and authenticated renderer. See the
 [ADR 0019](../../docs/adr/0019-versioned-authenticated-migration-phase.md), and
 the [Cycle 1b-b7 exit matrix](../../docs/CYCLE_1BB7_EXIT_MATRIX.md).
 
-Cycle 1b-b8 has an accepted design and implemented, locally verified source but
-no live PostgreSQL claim. Its first phase uses an ephemeral SCRAM login with one
-exact set-only edge to
-`research_cockpit_backup` to create a custom, RLS-enabled,
-column-insert, data-only archive of the 21 reviewed synthetic application data
-tables; `shared_data.schema_migrations` data is excluded. Its second phase
-creates a separate database from `template0` in the same pinned cluster,
-applies the reviewed restore platform and exact v2 application migrations, and
-uses a different ephemeral SCRAM login with one exact set-only test-seed edge
-to restore the archive in one transaction. Failure rollback, successful
-restore, source/target fingerprints, catalog and authorization equivalence, and
-zero residue are required before version 8 evidence. Local verification passed
-all 409 tests across the 10 database test files, database typechecking, the
-migration and static PostgreSQL guardrails, ESLint, Prettier, and the diff
-check. No local Docker or live PostgreSQL execution is claimed. This does not
-prove a
+Cycle 1b-b8 is complete for its bounded recorded scope. Its first phase used an
+ephemeral SCRAM login with one exact set-only edge to
+`research_cockpit_backup` to create a custom, RLS-enabled, column-insert,
+data-only archive of the 21 reviewed synthetic application data tables;
+`shared_data.schema_migrations` data was excluded. Its second phase created a
+separate database from `template0` in the same pinned cluster, applied the
+reviewed restore platform and exact v2 application migrations, and used a
+different ephemeral SCRAM login with one exact set-only test-seed edge to
+restore the archive in one transaction. PostgreSQL run `32076642878` at commit
+`49d3a96` covered transactional failure rollback, successful restore, replay
+denial, source/target fingerprints, catalog and authorization equivalence,
+source isolation, and zero residue. Its retained version 8 record returned
+`offline_consistent` against separately supplied anchors. This does not prove a
 full-schema/global, cross-cluster/version, production/incremental/continuous,
-encrypted/retained, disaster-recovery, or RPO/RTO backup. See
-[ADR 0020](../../docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
+encrypted/retained, disaster-recovery, or RPO/RTO backup. See the
+[B8 evidence note](../../docs/POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md),
+[ADR 0020](../../docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and the [Cycle 1b-b8 exit matrix](../../docs/CYCLE_1BB8_EXIT_MATRIX.md).
 
 There is deliberately no database driver, production or incremental migration
@@ -428,7 +426,7 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     remains independent in a different tenant or resource type. Attempt direct
     tombstone deletion, revival, identity mutation, trigger disabling, and
     `TRUNCATE`; all non-owner paths must fail closed.
-12. Live-review the implemented B8 contract: authenticate one
+12. Retain the reviewed B8 live contract: authenticate one
     ephemeral login that may select only the `NOBYPASSRLS` backup capability;
     dump exactly the 21 policy-visible synthetic application data tables to a
     custom data-only archive while excluding the migration ledger; independently
@@ -450,18 +448,17 @@ resource_type, resource_id)` can never back a live row, while the same UUID
 
 Until every gate passes, this package is not deployed persistence. Historical
 live evidence remains limited to the exact b1-b6 checks in their retained run
-records. B7 passed for its separately recorded version 7 scope at commit
-`41d13dd` without widening those records. The
+records. B7 and B8 passed for their separately recorded version 7 and version 8
+scopes at commits `41d13dd` and `49d3a96` without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
 authentication, end-user identity binding, production secret handling, a
 driver or pool, concurrency/cancellation/timeouts, complete dossier projections,
 external/production/incremental migrator and backup credentials, global
-platform/application atomicity, and production readiness remain unproven. B8's
-source and local checks are complete, but its policy-scoped data-only dump and
-same-cluster clean restore remain engine-unproven until reviewed version 8 live
-evidence exists.
+platform/application atomicity, and production readiness remain unproven. B8
+proves only its reviewed policy-scoped data-only dump and same-cluster clean
+restore in the disposable acceptance environment.
 Full-schema/global/cross-cluster/version restore, continuous backup, disaster
 recovery, storage encryption/retention, secure passfile or archive erasure, and
 RPO/RTO remain outside B8.

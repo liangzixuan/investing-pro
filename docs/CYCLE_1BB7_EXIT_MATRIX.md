@@ -55,3 +55,8 @@ trusted-extension provenance, incremental upgrades, cluster-wide or
 multi-database migration safety, external/TLS authentication, managed secrets,
 backup/restore, concurrency, driver/pool integration, real data, deployment,
 and production readiness remain unproven.
+
+The later [B8 evidence](./POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
+separately records one bounded authenticated policy-scoped data dump and clean
+same-cluster restore. It does not widen any B7 row or historical version 7
+claim.

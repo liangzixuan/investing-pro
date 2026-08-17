@@ -138,25 +138,23 @@ or deployment readiness. See the
 [ADR 0019](./docs/adr/0019-versioned-authenticated-migration-phase.md), and the
 [Cycle 1b-b7 exit matrix](./docs/CYCLE_1BB7_EXIT_MATRIX.md).
 
-Cycle 1b-b8 has an accepted design, implemented source, and completed local
-verification; the pinned live version 8 execution and independent artifact
-review remain pending. The implementation provisions one ephemeral SCRAM login
-that may select only the existing `NOBYPASSRLS` backup capability to create a
+Cycle 1b-b8 is complete for its bounded recorded scope at commit `49d3a96`.
+PostgreSQL run `32076642878` produced a retained version 8 record that returned
+`offline_consistent` against separately supplied anchors. One ephemeral SCRAM
+login selected only the existing `NOBYPASSRLS` backup capability to create a
 custom, policy-scoped, column-insert, data-only archive of the 21 reviewed
-synthetic application data tables. The migration ledger is excluded. A
-different ephemeral SCRAM login may select only the test-seed capability to
+synthetic application data tables; the migration ledger was excluded. A
+different ephemeral SCRAM login selected only the test-seed capability to
 restore that archive in one transaction into a same-cluster database created
 from `template0` and independently provisioned with the reviewed platform and
-exact v2 application plan. Local verification passed all 409 tests across the
-10 database test files, database typechecking, the migration and static
-PostgreSQL guardrails, ESLint, Prettier, and the diff check. Those checks are
-source evidence, not PostgreSQL engine evidence. B8 cannot become live-complete
-without rollback, successful restore, fingerprint/catalog equivalence,
-source-isolation, zero-residue checks, and retained version 8 review. It does
-not cover full-schema/global or cross-cluster/version restore,
+exact v2 application plan. The run covered transactional failure rollback,
+successful restore, replay denial, fingerprint/catalog/authorization
+equivalence, source isolation, and mandatory zero-residue cleanup. It does not
+cover full-schema/global or cross-cluster/version restore,
 production/incremental/continuous backup, storage encryption/retention,
-disaster recovery, or RPO/RTO. See
-[ADR 0020](./docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
+disaster recovery, or RPO/RTO. See the
+[B8 evidence note](./docs/POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md),
+[ADR 0020](./docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and the [Cycle 1b-b8 exit matrix](./docs/CYCLE_1BB8_EXIT_MATRIX.md).
 
 ## Requirements
@@ -197,8 +195,10 @@ bounded owner-DDL canary passed in run `32058853521` at commit `7aac502`; its
 retained version 6 record also returned `offline_consistent`. B7's bounded
 authenticated application-migration path passed in run `32068159652` at
 commit `41d13dd`; its retained version 7 record returned
-`offline_consistent`. These remain sequential, synthetic, container-local
-acceptance results. The offline verifier checks record/source consistency
+`offline_consistent`. B8's bounded authenticated policy-scoped dump and clean
+restore passed in run `32076642878` at commit `49d3a96`; its retained version 8
+record returned `offline_consistent`. These remain sequential, synthetic,
+container-local acceptance results. The offline verifier checks record/source consistency
 after download but cannot authenticate the GitHub run or independently prove
 PostgreSQL execution.
 
@@ -227,11 +227,10 @@ PostgreSQL execution.
   from an acceptance-only authenticated application migration phase. It cannot
   authorize production/incremental migration or make the two phases globally
   atomic.
-- The B8 source implementation and local verification are not engine evidence.
-  Even after its bounded live gate passes, it will cover only RLS-visible
-  synthetic application data restored inside the same ephemeral cluster, not a
-  full backup, production schedule, encrypted/retained archive, disaster
-  recovery plan, or RPO/RTO.
+- The reviewed B8 result covers only RLS-visible synthetic application data
+  restored inside the same ephemeral cluster. It is not a full backup,
+  production schedule, encrypted/retained archive, disaster-recovery plan, or
+  RPO/RTO result.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -252,5 +251,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b7 exit matrix](./docs/CYCLE_1BB7_EXIT_MATRIX.md),
 [Cycle 1b-b7 evidence note](./docs/POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md),
 [Cycle 1b-b8 exit matrix](./docs/CYCLE_1BB8_EXIT_MATRIX.md),
+[Cycle 1b-b8 evidence note](./docs/POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md),
 [ADR 0020](./docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and [architecture decisions](./docs/adr/).

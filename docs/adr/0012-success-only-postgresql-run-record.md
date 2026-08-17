@@ -1,6 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 7 live record retained and reviewed; version 8 source/local verification complete with live evidence pending
+Status: accepted; version 8 live record retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -27,11 +27,14 @@ the authenticated test-loader fixture-load check and splits the remaining
 migrator and backup session limitations; its first record is retained and
 live-reviewed. Version 6 appends only the authenticated owner-DDL canary while
 retaining the exact version 5 limitations and six-source-hash shape; its first
-record is retained and live-reviewed. The current source producer writes
-`research-cockpit-postgres-acceptance-v7.json`. Version 7 preserves exact v1
-through v6 parsing, appends only the clean authenticated application-migration
-check, and binds three additional v2 plan inputs. Its pinned live run and
-review are retained below; source presence alone is not evidence.
+record is retained and live-reviewed. Version 7 preserves exact v1 through v6
+parsing, appends only the clean authenticated application-migration check, and
+binds three additional v2 plan inputs. Its pinned live run and review are
+retained below. The current source producer writes
+`research-cockpit-postgres-acceptance-v8.json`. Version 8 preserves exact v1
+through v7 parsing, appends only the policy-scoped data dump and bounded clean
+restore check, and binds the two additional B8 plan inputs. Its pinned live run
+and review are also retained below; source presence alone is not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -127,21 +130,27 @@ authenticated migration renderer; the manifest in turn binds every exact
 application body. The later documentation commit does not retest or expand the
 recorded run. See [ADR 0019](./0019-versioned-authenticated-migration-phase.md).
 
-Cycle 1b-b8 has an accepted and locally verified version 8 source/evidence
-contract but no live PostgreSQL claim. V8 preserves exact v1-v7 parsing and
-meanings, appends only
+Cycle 1b-b8 has a reviewed version 8 source/evidence contract and live record.
+V8 preserves exact v1-v7 parsing and meanings, appends only
 `authenticated_policy_scoped_application_data_dump_and_bounded_clean_restore`,
-and add exactly `restorePlatformV1Sha256` and
+and adds exactly `restorePlatformV1Sha256` and
 `authenticatedBackupRestorePlanV1Sha256` to the ordered source-hash bundle. It
 replaces only `authenticated_backup_sessions` with
 `external_production_incremental_or_continuous_authenticated_backups`, and
-replace only `dump_restore_or_disaster_recovery` with
+replaces only `dump_restore_or_disaster_recovery` with
 `full_schema_global_object_cross_cluster_or_cross_version_restore` followed by
 `disaster_recovery_storage_encryption_retention_rpo_or_rto`. Every other V7
 check, limitation, source key, and historical interpretation remains fixed.
 This source contract passed all 409 tests across the 10 database test files,
 database typechecking, the migration and static PostgreSQL guardrails, ESLint,
 Prettier, and the diff check.
+
+The version 8 record from successful run `32076642878`, attempt 1, at commit
+`49d3a96` was retained after the complete B8 path and mandatory cleanup passed.
+Its downloaded bytes returned `offline_consistent`; the
+[Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
+records the exact anchors and bounded claim. That later result does not alter
+the source shape or interpretation of any version 1 through version 7 record.
 
 The configured version 8 record name is
 `research-cockpit-postgres-acceptance-v8.json`, and its artifact name is bound

@@ -2,8 +2,8 @@
 
 Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
 runtime authentication, b3 authorization-matrix, b4 projection-query, b5
-test-loader, b6 owner-DDL canary, and b7 authenticated application-migration
-boundaries; synthetic data only.
+test-loader, b6 owner-DDL canary, b7 authenticated application-migration, and
+b8 policy-scoped backup/restore boundaries; synthetic data only.
 
 ## Identity
 
@@ -143,7 +143,7 @@ version 7 record returned `offline_consistent`. See the
 [ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md), and the
 [Cycle 1b-b7 exit matrix](./CYCLE_1BB7_EXIT_MATRIX.md).
 
-The accepted and implemented Cycle 1b-b8 source likewise changes no canonical
+The reviewed Cycle 1b-b8 result likewise changes no canonical
 entity, tenancy, time, numeric, evidence, rights, deletion, or projection
 semantics. It defines an authenticated, RLS-scoped, data-only archive of the 21
 current synthetic application data tables, excluding the migration ledger,
@@ -151,11 +151,10 @@ followed by a bounded restore into a second database in the same pinned cluster.
 The restore target's platform, exact v2 application schema, ownership, grants,
 RLS, policies, constraints, routines, triggers, defaults, and ledger are
 established independently before a separate authenticated test-seed session
-restores the archive. Source implementation and local verification are
-complete: 409 tests across the 10 database test files, database typechecking,
-the migration and static PostgreSQL guardrails, ESLint, Prettier, and the diff
-check passed. The pinned live version 8 execution and artifact review remain
-pending; see
+restores the archive. That bounded path passed in PostgreSQL run `32076642878`
+at commit `49d3a96`; the retained version 8 record returned
+`offline_consistent`. See the
+[B8 evidence note](./POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md),
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
@@ -165,16 +164,16 @@ it does not bind an end user to a principal or organization, and
 `set_request_context` remains a trusted runtime operation rather than an
 identity resolver. External/TLS transport, production secrets, connection-pool
 cleanup, concurrency, external/production/incremental migrator and
-authenticated backup operation, bounded restore, and the future deletion path
-remain separate engine gates until B8 has reviewed live evidence. Even a future
-bounded B8 pass would leave external/production/incremental/continuous
-backup, full-schema/global/cross-cluster/version restore, disaster recovery,
-storage encryption/retention, and RPO/RTO unproven. B5 closes
-only one sequential, synthetic, container-local acceptance-only test-loader
-result. B6 does not execute a migration or close the authenticated-migrator
-gate. The reviewed B7 result proves only the bounded clean application
-migration after a separately committed local platform bootstrap; it does not
-prove production/incremental migration or global cross-phase atomicity.
+external/production/incremental/continuous authenticated backup, full-schema/
+global/cross-cluster/version restore, disaster recovery, storage encryption or
+retention, RPO/RTO, and the future deletion path remain separate engine gates.
+B8 closes only the exact synthetic, data-only, same-cluster acceptance result.
+B5 closes only one sequential, synthetic, container-local acceptance-only
+test-loader result. B6 does not execute a migration or close the
+authenticated-migrator gate. The reviewed B7 result proves only the bounded
+clean application migration after a separately committed local platform
+bootstrap; it does not prove production/incremental migration or global
+cross-phase atomicity.
 The successful b3 run closes only the recorded synthetic authenticated
 tenant/rights/prepared-read gap; it does not change any of these remaining
 identity, transport, operational, or deployment gates.

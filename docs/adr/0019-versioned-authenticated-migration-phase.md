@@ -130,8 +130,10 @@ production readiness.
 B7 closes the narrow historical `authenticated_migrator_sessions` gap only for
 the exact container-local migration phase recorded by a reviewed version 7
 run. External or production migrator operation remains a distinct nonclaim.
-Authenticated backup and restore follow B7; a single-client application adapter
-and the pool/concurrency boundary remain later milestones.
+The later reviewed B8 result separately covers one bounded authenticated
+policy-scoped data dump and clean same-cluster restore; it does not widen B7.
+A single-client application adapter and the pool/concurrency boundary remain
+later milestones.
 
 Historical b1 through b6 records retain their exact source shapes, completed
 checks, limitations, and interpretation. This decision does not retroactively
@@ -144,6 +146,7 @@ widen any of them.
 - [ADR 0018: Authenticated owner-DDL canary](./0018-authenticated-owner-ddl-canary.md)
 - [Cycle 1b-b7 exit matrix](../CYCLE_1BB7_EXIT_MATRIX.md)
 - [Cycle 1b-b7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md)
+- [Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
 - [PostgreSQL 17 extension packaging](https://www.postgresql.org/docs/17/extend-extensions.html)

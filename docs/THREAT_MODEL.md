@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b7 plus Cycle 1b-b8 source threat model
+# Sprint 0 through bounded live Cycle 1b-b8 threat model
 
 ## Current trust boundaries
 
@@ -124,8 +124,7 @@ gates before V7 evidence. That bounded path passed in PostgreSQL run
 [ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md), and the
 [Cycle 1b-b7 exit matrix](./CYCLE_1BB7_EXIT_MATRIX.md).
 
-Cycle 1b-b8 has an accepted design and implemented, locally verified source but
-no live PostgreSQL result. Its backup phase adds one ephemeral container-local
+Cycle 1b-b8 adds one ephemeral container-local
 SCRAM login with one exact set-only edge to the existing `NOBYPASSRLS` backup
 capability. The pinned `pg_dump` retains row security and creates a custom,
 column-insert, data-only archive containing exactly the 21 reviewed synthetic
@@ -138,9 +137,10 @@ archive file, privileged target provisioning, restore login, and temporary
 database are new acceptance-only trust boundaries. Their source contracts,
 negative probes, and cleanup orchestration passed 409 tests across the 10
 database test files plus database typechecking, the migration and static
-PostgreSQL guardrails, ESLint, Prettier, and the diff check. The pinned live
-execution and artifact review remain pending; no local Docker result is claimed.
-See
+PostgreSQL guardrails, ESLint, Prettier, and the diff check. The bounded live
+path then passed in PostgreSQL run `32076642878` at commit `49d3a96`; its
+retained version 8 record returned `offline_consistent`. See the
+[B8 evidence note](./POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md),
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
@@ -150,10 +150,10 @@ compromised service account could choose another synthetic context unless a
 future verified identity resolver prevents it. B2 therefore does not establish
 end-user binding, production BOLA protection, external/TLS transport, secret
 management, an application pool, or deployed persistence. External,
-production, or incremental migrator operation plus backup and restore remain
-deferred until separately reviewed evidence exists. The implemented B8 source
-is strictly narrower than that broad production gate. The B5 test-loader
-result establishes only one sequential, synthetic, container-local
+production, or incremental migrator operation plus external/production/
+incremental/continuous backup and full-scope restore remain deferred. The
+reviewed B8 result is strictly narrower than that broad production gate. The B5
+test-loader result establishes only one sequential, synthetic, container-local
 acceptance-only session, not a production loader or identity boundary. The
 reviewed B6 canary does not execute a migration, redesign role bootstrap, or
 close `authenticated_migrator_sessions`. B7 targets only the exact
@@ -227,12 +227,11 @@ evidence without separate review of the GitHub run and logs. B2 does not
 retroactively expand the historical b1 result, and b3 does not promote b1's
 additional null/malformed/unsupported-context cases.
 
-The B8 source implementation does not change those current facts. Until a
-successful pinned run, retained version 8 evidence, and independent review
-exist, authenticated backup and bounded restore remain engine-unproven. Even a
-future B8 pass will cover only policy-visible synthetic application rows in a
-data-only archive restored into an independently provisioned database in the
-same cluster. Full-schema/global or cross-cluster/version restore, untrusted
+The reviewed B8 run adds only one authenticated, policy-scoped dump of
+synthetic application rows and bounded restore into an independently
+provisioned database in the same cluster. It does not establish an end-user,
+external, production, or application trust boundary. Full-schema/global or
+cross-cluster/version restore, untrusted
 archive handling, external/production/incremental/continuous backup, storage
 encryption or retention, backup deletion, disaster recovery, and RPO/RTO remain
 release blockers outside B8.
