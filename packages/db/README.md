@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); BOUNDED RUNTIME-AUTH PASSED (B2); AUTHENTICATED-MATRIX PASSED (B3) — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); BOUNDED RUNTIME-AUTH PASSED (B2); AUTHENTICATED MATRIX PASSED (B3); DRIVERLESS PROJECTION QUERY PASSED (B4) — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -30,6 +30,15 @@ returned `offline_consistent` against separately supplied anchors. See the
 [ADR 0015](../../docs/adr/0015-authenticated-runtime-authorization-matrix.md),
 and the [Cycle 1b-b3 exit matrix](../../docs/CYCLE_1BB3_EXIT_MATRIX.md).
 
+Cycle 1b-b4 executes one driverless, operation-specific financial-fact query
+through that SCRAM login and passes its untrusted JSON-lines output through the
+all-or-nothing normalizer. The exact B4 path passed in PostgreSQL run
+`32007521395` at commit `55c61ec`; the downloaded version 4 success record
+returned `offline_consistent` against separately supplied anchors. See the
+[B4 evidence note](../../docs/POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md),
+[ADR 0016](../../docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md),
+and the [Cycle 1b-b4 exit matrix](../../docs/CYCLE_1BB4_EXIT_MATRIX.md).
+
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
 acceptance-only renderer validates the immutable manifest and emits all seven
@@ -42,11 +51,11 @@ financial-fact join rows a future read-only adapter must emit. It accepts only
 the current synthetic, dimensionless core subset; separates listing and
 security identity; normalizes fixed decimal and lossless zoned timestamp text;
 and rejects a whole malformed batch with one value-free error. It cannot accept
-source completeness or counts. Cycle 1b-b4 source now adds the driverless
+source completeness or counts. Cycle 1b-b4 adds the driverless
 listing/share-class/security query, closed semantic unit mapping, bounded raw
-result, and authenticated `psql`-to-normalizer probe. The pinned live run and
-reviewed version 4 evidence remain pending, and B4 adds no client driver, pool,
-or application import; see
+result, and authenticated `psql`-to-normalizer probe. Its pinned live run and
+reviewed version 4 evidence passed for the exact retained scope, and B4 adds no
+client driver, pool, or application import; see
 [ADR 0016](../../docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
 and the [Cycle 1b-b4 exit matrix](../../docs/CYCLE_1BB4_EXIT_MATRIX.md).
 
@@ -337,9 +346,10 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact b1 and bounded b2 checks in their retained run
-records plus the exact authenticated matrix in the retained b3 record. The
-b2/b3 results cover only one container-local runtime service account;
+evidence is limited to the exact b1-b4 checks in their retained run records. The
+b2-b4 results cover only one sequential, synthetic, container-local runtime
+service account and one narrow dimensionless financial-fact projection;
 external/TLS authentication, end-user identity binding, production secret
-handling, pooling, distinct migrator/test-loader/backup credentials, logical
-restore, and disaster recovery remain unproven.
+handling, a driver or pool, concurrency/cancellation/timeouts, complete dossier
+projections, distinct migrator/test-loader/backup credentials, logical restore,
+and disaster recovery remain unproven.

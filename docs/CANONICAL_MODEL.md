@@ -93,6 +93,17 @@ supplied anchors. Exact scope and limits are in the
 [exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md). The result does not promote b1's
 additional null/malformed/unsupported-context failures.
 
+Cycle 1b-b4 passed a separate driverless query-to-normalizer path through the
+same authenticated service account in PostgreSQL run `32007521395` at commit
+`55c61ec`. The query used the reviewed listing -> share class -> security ->
+financial fact and exact policy/grant joins, closed operation and unit mappings,
+temporal cutoffs, and 100/101 fail-closed bound. The downloaded version 4 record
+returned `offline_consistent`; see the
+[Cycle 1b-b4 evidence note](./POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md) and
+[exit matrix](./CYCLE_1BB4_EXIT_MATRIX.md). This is not an application adapter,
+pool, composition root, complete/dimensioned projection, writer, or real-data
+proof.
+
 That bounded result does not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -135,5 +146,5 @@ operation-specific grant. It validates lossless zoned timestamps, interval and
 causal order, fixed decimals, canonical text/enums, identity echoes, and cutoff
 membership before producing core candidates. The listing ID is the core
 instrument ID; a fact's security ID or ticker may not be substituted. General
-unit mapping, dimensions, a real query/driver, and complete dossier projection
-remain adapter-enablement blockers.
+dimensioned unit mapping, a real database driver and application composition,
+and complete dossier projection remain adapter-enablement blockers.

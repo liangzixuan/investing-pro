@@ -1,7 +1,7 @@
 # ADR 0011: Fail-closed PostgreSQL projection-row normalization
 
-Status: accepted for Cycle 1b-a2; B4 query source implemented and live pending;
-database adapter integration pending
+Status: accepted for Cycle 1b-a2; separate B4 query-to-normalizer live proof
+reviewed; database adapter integration pending
 
 The operation-scoped core port accepts already typed candidates. A database
 driver, however, returns untrusted runtime values whose timestamp precision,
@@ -51,5 +51,5 @@ later work.
 
 The later Cycle 1b-b1 through b3 PostgreSQL runs did not execute this normalizer
 or a projection query and do not change this decision's proof boundary. B4 now
-implements a separate query-to-normalizer source path; its pinned live execution
-and reviewed evidence remain pending and will not retroactively widen a2.
+has a separate reviewed live query-to-normalizer path; it does not retroactively
+widen a2 or prove an application adapter.

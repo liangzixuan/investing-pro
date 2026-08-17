@@ -1,6 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; first version 3 live record produced, retained, and reviewed
+Status: accepted; first version 4 live record produced, retained, and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -19,11 +19,13 @@ important properties the workflow does not prove.
 The runner derives its output path from `RUNNER_TEMP` and uses a filename tied
 to the schema version. The first retained record is
 `research-cockpit-postgres-acceptance-v1.json`; version 2 adds the bounded
-container-local SCRAM runtime probe, and the current producer writes
-`research-cockpit-postgres-acceptance-v3.json`. Version 3 adds the authenticated
-runtime authorization matrix while retaining the remaining identity,
-production, pool, restore, and data limitations. The parser retains exact
-historical v1 and v2 support. The writer creates the current file with
+container-local SCRAM runtime probe; version 3 adds the authenticated runtime
+authorization matrix; and the current producer writes
+`research-cockpit-postgres-acceptance-v4.json`. Version 4 adds the authenticated
+financial-fact projection-query check plus the query and normalizer source
+hashes while retaining the remaining identity, production, pool, restore, and
+data limitations. The parser retains exact historical v1 through v3 support.
+The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
 pre-created record cannot be overwritten. The entry point validates that the
 clean checked-out Git commit equals `GITHUB_SHA`, awaits the complete
@@ -68,6 +70,16 @@ records its exact anchors and bounded claim. Version 3 adds exactly
 2 limitation, and remains unsigned run metadata. External/production and
 end-user authentication, migrator/test-loader/backup sessions, pool and
 concurrency behavior, restore, and real-data boundaries remain unproven.
+
+The first version 4 record was produced by successful run `32007521395`,
+attempt 1, at commit `55c61ec` after the driverless financial-fact projection
+query and fail-closed normalizer path passed. Its downloaded bytes returned
+`offline_consistent`; the
+[Cycle 1b-b4 evidence note](../POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md) records
+its exact anchors and bounded claim. Version 4 adds exactly
+`authenticated_financial_fact_projection_query` and the two new source hashes,
+retains every version 3 check and limitation, and adds explicit driver/pool and
+complete-projection nonclaims. It remains unsigned run metadata.
 
 ## Primary sources
 

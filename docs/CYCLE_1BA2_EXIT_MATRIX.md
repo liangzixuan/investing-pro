@@ -22,7 +22,8 @@ was added.
 - Cycle 1b-b4 source now contains the SQL query that performs the explicit listing
   -> share class -> security join, enforces a reviewed result-size bound, emits
   this exact flat row shape, and applies the closed stored-unit/currency mapping;
-  its pinned live execution and version 4 artifact review remain pending;
+  its pinned live execution and version 4 artifact review later passed for a
+  separate recorded scope;
 - b2/b3 completed a bounded authenticated non-owner runtime service-account
   path; a client driver, application identity/tenant resolution, pool cleanup,
   cancellation, concurrency, and logical restore remain pending;
@@ -35,5 +36,5 @@ PostgreSQL evidence and is not a production adapter.
 The later b1-b3 PostgreSQL acceptance runs passed their recorded migration,
 RLS, service-account, and authorization checks, but they did not execute this
 normalizer, a projection query, or an adapter. The a2 proof boundary remains
-unchanged. B4 now has a separate query-to-normalizer source implementation; its
-live proof remains pending and will not retroactively widen a2.
+unchanged. B4 later passed a separate live query-to-normalizer proof; it does
+not retroactively widen a2 or prove an adapter.

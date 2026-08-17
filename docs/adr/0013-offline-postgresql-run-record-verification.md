@@ -1,6 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; first retained version 3 artifact reviewed successfully
+Status: accepted; first retained version 4 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,7 +14,7 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 and v2 support and accepts the current v3 schema without mixing
+historical v1 through v3 support and accepts the current v4 schema without mixing
 any version's closed check or limitation lists. Canonical comparison rejects
 byte-order marks, CRLF or alternate whitespace, trailing content, reordered
 members, and duplicate JSON member names.
@@ -24,10 +24,11 @@ Source validation uses only fixed paths read as raw Git blobs from the explicit
 not consult or trust a Git remote. The commit must exist locally as a commit
 object. The local Git database and PATH-resolved Git executable must be
 operator-controlled; this tool is not an untrusted-repository sandbox. The
-verifier compares the workflow, synthetic fixture, migration
-manifest, and acceptance-runner hashes recorded in the artifact; validates the
-reviewed PostgreSQL target against the commit's image declaration; and checks
-the exact ordered migration inventory and every migration-body hash.
+verifier compares the workflow, synthetic fixture, migration manifest,
+acceptance runner, and version-specific projection-query and normalizer hashes
+recorded in the artifact; validates the reviewed PostgreSQL target against the
+commit's image declaration; and checks the exact ordered migration inventory
+and every migration-body hash.
 
 The CLI performs no fetch, network request, archive extraction, glob expansion,
 source write, or database operation. It emits a fixed-schema
@@ -64,3 +65,13 @@ External/production and end-user authentication,
 migrator/test-loader/backup sessions, restore, pool/concurrency, and adapter
 work remain separate gated work. `offline_consistent` still does not prove the
 database execution without separate review of the run and logs.
+
+The version 4 artifact from run `32007521395`, attempt 1, at commit `55c61ec`
+also returned `offline_consistent`; see the
+[Cycle 1b-b4 evidence note](../POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md). That
+reviewed run adds the exact authenticated driverless financial-fact
+query-to-normalizer path. It does not prove an application driver or pool,
+complete or dimensioned projections, external/end-user identity, concurrency,
+restore, or real data. `offline_consistent` remains a source/record consistency
+result, not database-execution proof without the separately reviewed run and
+logs.

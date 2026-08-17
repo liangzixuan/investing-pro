@@ -1,15 +1,15 @@
 # ADR 0016: Driverless projection query and semantic unit mapping
 
-Status: accepted; source implemented and locally verified; live evidence pending
+Status: accepted; source implemented; first live version 4 evidence reviewed
 
 ## Context
 
 Cycle 1b-a froze an operation-scoped database-to-core port, and Cycle 1b-a2
 froze an all-or-nothing normalizer for a narrow financial-fact wire shape. B2
 and b3 proved a bounded authenticated runtime service account and the reviewed
-synthetic authorization matrix. No slice has yet executed a production-shaped
-projection query or passed its untrusted PostgreSQL output through the
-normalizer.
+synthetic authorization matrix. Before B4, no slice had executed a
+production-shaped projection query or passed its untrusted PostgreSQL output
+through the normalizer.
 
 Before B4, the acceptance fixture stored the ambiguous pair `USD` / `USD` for
 its two financial facts, while the core distinguishes `USD_MILLIONS` from
@@ -88,6 +88,15 @@ immutable version 4 success record that:
 The version 4 filename and artifact path must be new. A B4 row becomes live
 `Pass` only after a clean pinned PostgreSQL 17 run, retained success artifact
 and logs, matching byte hashes, and offline review.
+
+Tested commit
+[`55c61ececb39136c1ef86c925f47ca7075633ec6`](https://github.com/liangzixuan/investing-pro/commit/55c61ececb39136c1ef86c925f47ca7075633ec6)
+satisfied that rule in PostgreSQL [run `32007521395`, attempt 1](https://github.com/liangzixuan/investing-pro/actions/runs/32007521395).
+The downloaded version 4 record was retained and returned
+`offline_consistent`; exact anchors, byte hashes, source hashes, completed
+checks, and nonclaims are recorded in the
+[B4 evidence note](../POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md). The later
+documentation commit does not retest or expand the recorded run.
 
 ## Explicit exclusions
 

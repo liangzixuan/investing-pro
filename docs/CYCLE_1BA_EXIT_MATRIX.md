@@ -19,9 +19,9 @@ path, identity provider, or real data was added.
 
 ## Later gates
 
-- the Cycle 1b-b4 query's pinned live execution and reviewed version 4 evidence;
-  its driverless read-only query, semantic unit mapping, and Cycle
-  1b-a2 normalizer invocation are implemented in source;
+- the Cycle 1b-b4 query's pinned live execution and reviewed version 4 evidence
+  are now complete for their separate recorded scope; they do not compose this
+  port into the application;
 - a later client driver, adapter-level pool reuse, cancellation, concurrency,
   and restore evidence;
 - a core composition policy for combining multiple operation views in one
@@ -32,8 +32,8 @@ path, identity provider, or real data was added.
 
 The later Cycle 1b-b1 Ubuntu run supplied bounded live migration, role, RLS, and
 sequential-context evidence; b2/b3 added bounded authenticated service-account
-and authorization-matrix evidence. None executed this projection port or the B4
-query/unit slice. B4 now implements that separate source path, but its live run
-is pending; no milestone has proved a database adapter, real pool,
-cancellation, concurrency, or restore. SQLite, PGlite, mocks, and static SQL
-checks remain unacceptable substitutes for those later gates.
+and authorization-matrix evidence. None executed this projection port. B4 later
+executed the separate driverless query-to-normalizer path, but no milestone has
+proved a database adapter, application composition, real pool, cancellation,
+concurrency, or restore. SQLite, PGlite, mocks, and static SQL checks remain
+unacceptable substitutes for those later gates.

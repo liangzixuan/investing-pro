@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b3 threat model
+# Sprint 0 through bounded live Cycle 1b-b4 threat model
 
 ## Current trust boundaries
 
@@ -62,6 +62,17 @@ separately supplied anchors. See the
 [Cycle 1b-b3 evidence note](./POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md),
 [exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md), and
 [ADR 0015](./adr/0015-authenticated-runtime-authorization-matrix.md).
+
+Cycle 1b-b4 then exercised the narrow driverless financial-fact projection
+query through that authenticated service account and passed the untrusted
+JSON-lines rows through the fail-closed normalizer. The reviewed PostgreSQL run
+`32007521395` at commit `55c61ec` retained an offline-consistent version 4
+record. Exact scope and limitations are in the
+[Cycle 1b-b4 evidence note](./POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md),
+[exit matrix](./CYCLE_1BB4_EXIT_MATRIX.md), and
+[ADR 0016](./adr/0016-driverless-projection-query-and-semantic-unit-mapping.md).
+This does not add an application driver, pool, composition root, complete
+projection, write path, or real data.
 
 That database login is not a user identity. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a

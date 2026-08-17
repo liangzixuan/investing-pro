@@ -25,10 +25,8 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
 complete and reviewed; b3 authenticated authorization matrix run complete and
-reviewed. Cycle 1b-b4 driverless projection-query and semantic-unit-mapping
-source is implemented and locally verified; its pinned live execution and
-reviewed version 4 evidence remain pending. Pool/concurrency and restore gates
-remain later work.
+reviewed; b4 driverless projection-query and semantic-unit-mapping run complete
+and reviewed. Pool/concurrency and restore gates remain later work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -75,15 +73,16 @@ null/malformed/unsupported-context cases. See the
 [ADR 0015](./adr/0015-authenticated-runtime-authorization-matrix.md), and the
 [Cycle 1b-b3 exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md).
 
-**Cycle 1b-b4 source status:** one source-controlled, parameterized, read-only
+**Cycle 1b-b4 status:** one source-controlled, parameterized, read-only
 query now covers the exact listing -> share class -> security -> financial fact
 -> rights policy/current-operation grant path. A closed semantic mapping from
 stored unit/currency pairs to the narrow core units, the exact Cycle 1b-a2 wire
 shape, a reviewed result bound, and fail-closed normalization are implemented.
-The source executes only through the existing container-local authenticated
-`psql` acceptance path; the pinned live run and reviewed version 4 artifact are
-still pending. B4 adds no database driver, pool, application import or
-composition, migration, writer capability, API route, or real data. See
+The source executed through the existing container-local authenticated `psql`
+acceptance path; the pinned live run and version 4 artifact were reviewed. B4
+adds no database driver, pool, application import or composition, migration,
+writer capability, API route, or real data. See the
+[B4 evidence note](./POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md),
 [ADR 0016](./adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
 and the [Cycle 1b-b4 exit matrix](./CYCLE_1BB4_EXIT_MATRIX.md).
 
@@ -95,13 +94,13 @@ and the [Cycle 1b-b4 exit matrix](./CYCLE_1BB4_EXIT_MATRIX.md).
    identities remain separate later gates.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
-4. **Cycle 1b-b4 source implemented; live review pending:** the exact read-only
+4. **Cycle 1b-b4 complete for its recorded scope:** the exact read-only
    projection query and closed semantic unit mapping run through authenticated
-   `psql`, then pass the bounded result through the a2 normalizer. The source
-   and local gates are complete; the pinned PostgreSQL run and version 4
-   artifact review remain. This is a query contract and live acceptance slice,
-   not an adapter. A driver, pool, application import, composition-root switch,
-   mutation, and real data are prohibited in B4.
+   `psql`, then pass the bounded result through the a2 normalizer. The pinned
+   PostgreSQL run and offline-consistent version 4 record are retained. This is
+   a query contract and live acceptance slice, not an adapter. A driver, pool,
+   application import, composition-root switch, mutation, and real data remain
+   outside B4.
 5. **Bounded isolation probes complete:** b1 covers direct-ID/list/join/count/
    subquery access, missing/malformed context, deactivation fixtures, and
    alternating prepared reads through capability impersonation. B3 implements
@@ -128,21 +127,20 @@ reference and index digest. The reviewed b2 run passed its bounded
 container-local SCRAM rows; the historical b1 run did not satisfy them.
 The reviewed b3 run passed its exact authenticated tenant-isolation,
 operation-rights, and one-backend prepared matrix and retained the remaining
-version 3 limitations. B4 query/unit source is now implemented, with its live
-review pending. Remaining Cycle 1b-b work after B4 is authenticated test-loader
-proof, the
+version 3 limitations. The reviewed b4 run passed the exact driverless
+query-to-normalizer path and retained the version 4 limitations. Remaining
+Cycle 1b-b work is authenticated test-loader proof, the
 platform/migrator split and live migrator proof, authenticated backup and
 restore, a single-client read-only adapter, and finally the real
 pool/concurrency/cancellation boundary. The row-normalization contract is
-already frozen; a client driver remains prohibited until the B4 query and unit
-contract passes.
+already frozen; the B4 query and unit contract now provides a reviewed input to
+the later single-client adapter milestone without proving that adapter.
 
-The first b1 green-run, bounded b2 runtime-authentication, and b3 authenticated
-authorization-matrix milestones are complete for their recorded scopes. B4
-driverless projection-query and semantic-unit-mapping source is implemented;
-its pinned live review remains pending. B5 is reserved for authenticated
-non-owner test-loader proof. A later single-client read adapter must remain
-separate from both B4 and the pool/concurrency milestone.
+The first b1 green-run, bounded b2 runtime-authentication, b3 authenticated
+authorization-matrix, and b4 driverless query/normalizer milestones are
+complete for their recorded scopes. B5 is next and is reserved for
+authenticated non-owner test-loader proof. A later single-client read adapter
+must remain separate from both B4 and the pool/concurrency milestone.
 The distinct migrator is still blocked by the current migration `0001`
 design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
 administrative membership edge on a role it creates, while `0001` rejects every

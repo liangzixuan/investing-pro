@@ -38,12 +38,12 @@ only.
 
 This ADR freezes a core contract, not a production adapter or ingestion
 validator. ADR 0011 defines the disconnected fail-closed normalizer for the
-narrow dimensionless PostgreSQL financial-fact row subset. B4 now implements a
-separate reviewed query and identity/unit mapping with live review pending. A
-driver, pool boundary, and complete dossier sources remain mandatory before any
-database source is composed.
+narrow dimensionless PostgreSQL financial-fact row subset. B4 later passed a
+separate reviewed query and identity/unit mapping. A driver, pool boundary, and
+complete dossier sources remain mandatory before any database source is
+composed.
 
 The later Cycle 1b-b1 through b3 PostgreSQL runs did not exercise this
-projection port. B4 source now does so through the driverless query, but its
-pinned live execution remains pending and it does not establish adapter
+projection port. B4 later exercised the separate driverless
+query-to-normalizer path, but it did not establish application adapter
 integration.
