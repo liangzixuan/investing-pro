@@ -1,6 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 7 artifact reviewed successfully
+Status: accepted; retained version 7 artifact reviewed successfully; version 8 source/local verification complete with live artifact review pending
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -121,3 +121,27 @@ cannot authenticate GitHub or independently establish that the platform and
 authenticated application phases executed. See
 [ADR 0019](./0019-versioned-authenticated-migration-phase.md) for the bounded
 claim and explicit nonclaims.
+
+The implemented Cycle 1b-b8 source includes a separate V8 verifier branch, but
+a retained V8 artifact and its offline review remain pending. That branch
+preserves exact v1-v7 parsing; requires the appended
+`authenticated_policy_scoped_application_data_dump_and_bounded_clean_restore`
+check and the exact three narrower nonclaims; and read
+`restore-platform.sql` plus `authenticated-backup-restore-plan.ts` from the
+anchored commit under the exact `restorePlatformV1Sha256` and
+`authenticatedBackupRestorePlanV1Sha256` keys. Missing, extra, reordered, or
+mixed-version checks, limitations, source keys, or source files fail closed.
+Its parser, verifier, and reviewer paths are included in the 409 passing tests
+across the 10 database test files; database typechecking, the migration and
+static PostgreSQL guardrails, ESLint, Prettier, and the diff check also pass
+locally. These checks do not substitute for a retained live artifact.
+
+Even a future V8 `offline_consistent` result will prove only that the retained
+record, independently supplied anchors, and fixed source blobs agree. It cannot
+prove that `pg_dump` authenticated as designed, that RLS limited the archive,
+that `pg_restore` rolled back or restored the 21 data tables, or that cleanup
+completed without separate review of the pinned run and logs. The temporary
+data archive is not an evidence artifact and is not examined by the offline
+verifier. See
+[ADR 0020](./0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
+and the [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md).

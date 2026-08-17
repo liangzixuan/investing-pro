@@ -19,6 +19,7 @@ import {
 import { loadMigrationFiles } from "./check-migrations";
 import {
   AUTHENTICATED_MIGRATION_IDENTITY_MARKER,
+  AUTHENTICATED_MIGRATION_DATABASE_NAME,
   AUTHENTICATED_MIGRATION_ROLE_RESET_MARKER,
   AUTHENTICATED_MIGRATOR_LOGIN_ROLE,
   expectedAuthenticatedMigrationLedgerRows,
@@ -26,14 +27,59 @@ import {
   renderAuthenticatedApplicationMigration,
   renderAuthenticatedPlatformMigration,
   type AuthenticatedMigrationLedgerRow,
+  type AuthenticatedMigrationDatabaseName,
   type AuthenticatedMigrationPlan,
 } from "./authenticated-migration-plan";
+import {
+  AUTHENTICATED_BACKUP_ARCHIVE,
+  AUTHENTICATED_BACKUP_CAPABILITY_ROLE,
+  AUTHENTICATED_BACKUP_LOGIN_ROLE,
+  AUTHENTICATED_BACKUP_NO_RLS_ARCHIVE,
+  AUTHENTICATED_BACKUP_NO_ROLE_ARCHIVE,
+  AUTHENTICATED_BACKUP_PASSFILE,
+  AUTHENTICATED_BACKUP_RESTORABLE_TABLES,
+  AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+  AUTHENTICATED_BACKUP_WRONG_PASSWORD_ARCHIVE,
+  AUTHENTICATED_RESTORE_CAPABILITY_ROLE,
+  AUTHENTICATED_RESTORE_DATABASE,
+  AUTHENTICATED_RESTORE_FAILURE_MESSAGE,
+  AUTHENTICATED_RESTORE_FAILURE_TABLE,
+  AUTHENTICATED_RESTORE_LOGIN_ROLE,
+  AUTHENTICATED_RESTORE_PASSFILE,
+  AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+  assertAuthenticatedBackupWrongPasswordRejection,
+  assertAuthenticatedRestoreWrongPasswordRejection,
+  buildAuthenticatedBackupDumpInvocation,
+  buildAuthenticatedBackupPsqlInvocation,
+  buildAuthenticatedRestoreInvocation,
+  buildAuthenticatedRestorePsqlInvocation,
+  generateAuthenticatedBackupRestorePassword,
+  loadAuthenticatedBackupRestorePlan,
+  parseAuthenticatedBackupArchiveToc,
+  renderAuthenticatedBackupBackendDrainSql,
+  renderAuthenticatedBackupCleanupSql,
+  renderAuthenticatedBackupFingerprintQueries,
+  renderAuthenticatedBackupPassfile,
+  renderAuthenticatedBackupProvisioningSql,
+  renderAuthenticatedRestoreBackendDrainSql,
+  renderAuthenticatedRestoreCleanupSql,
+  renderAuthenticatedRestoreFailureCleanupSql,
+  renderAuthenticatedRestoreFailureCreateSql,
+  renderAuthenticatedRestoreFailureResidueSql,
+  renderAuthenticatedRestorePassfile,
+  renderAuthenticatedRestorePlatform,
+  renderAuthenticatedRestoreProvisioningSql,
+  renderCreateAuthenticatedRestoreDatabaseSql,
+  renderDropAuthenticatedRestoreDatabaseSql,
+  renderRestorableApplicationTablesEmptySql,
+  type AuthenticatedBackupRestorePlan,
+} from "./authenticated-backup-restore-plan";
 import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
   type PostgresAcceptanceToolVersions,
-  type PostgresAcceptanceV7SourceHashes,
+  type PostgresAcceptanceV8SourceHashes,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -85,6 +131,17 @@ const authenticatedMigrationRendererV2Path = join(
   "src",
   "authenticated-migration-plan.ts",
 );
+const restorePlatformV1Path = join(
+  packageRoot,
+  "backup-restore-plans",
+  "v1",
+  "restore-platform.sql",
+);
+const authenticatedBackupRestorePlanV1Path = join(
+  packageRoot,
+  "src",
+  "authenticated-backup-restore-plan.ts",
+);
 
 const EXPECTED_IMAGE_REFERENCE =
   "docker.io/library/postgres:17.11-bookworm@sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad";
@@ -92,7 +149,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
@@ -122,6 +179,32 @@ export const MIGRATOR_AUTH_PASSFILE =
   "/tmp/research-cockpit-migrator-login.pgpass" as const;
 export const MIGRATOR_AUTH_WRONG_PASSFILE =
   "/tmp/research-cockpit-migrator-login-wrong.pgpass" as const;
+export const AUTHENTICATED_BACKUP_FORBIDDEN_SET_ROLES = Object.freeze([
+  "research_cockpit_owner",
+  "research_cockpit_runtime",
+  "research_cockpit_test_seed",
+  "postgres",
+] as const);
+export const AUTHENTICATED_RESTORE_FORBIDDEN_SET_ROLES = Object.freeze([
+  "research_cockpit_owner",
+  "research_cockpit_runtime",
+  "research_cockpit_backup",
+  "postgres",
+] as const);
+const AUTHENTICATED_BACKUP_MAX_ARCHIVE_BYTES = 16 * 1024 * 1024;
+const AUTHENTICATED_BACKUP_ARCHIVE_PATHS = Object.freeze([
+  AUTHENTICATED_BACKUP_ARCHIVE,
+  AUTHENTICATED_BACKUP_NO_ROLE_ARCHIVE,
+  AUTHENTICATED_BACKUP_NO_RLS_ARCHIVE,
+  AUTHENTICATED_BACKUP_WRONG_PASSWORD_ARCHIVE,
+] as const);
+const AUTHENTICATED_BACKUP_RESTORE_FILE_PATHS = Object.freeze([
+  AUTHENTICATED_BACKUP_PASSFILE,
+  AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+  AUTHENTICATED_RESTORE_PASSFILE,
+  AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+  ...AUTHENTICATED_BACKUP_ARCHIVE_PATHS,
+] as const);
 export const OWNER_DDL_AUTH_CANARY_TABLE =
   "private_data.b6_owner_ddl_canary" as const;
 export const OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
@@ -359,6 +442,12 @@ interface RuntimeProjectionAcceptanceCase {
   readonly expectedPolicyIds: readonly string[];
 }
 
+interface AuthenticatedBackupTableFingerprint {
+  readonly table: (typeof AUTHENTICATED_BACKUP_RESTORABLE_TABLES)[number];
+  readonly rowCount: number;
+  readonly sha256: string;
+}
+
 interface AcceptanceImageConfig {
   schemaVersion: 1;
   repository: "docker.io/library/postgres";
@@ -423,6 +512,7 @@ export interface MigratorAuthPsqlInvocation {
 export interface MigratorAuthPsqlInvocationOptions {
   readonly requireScram?: boolean;
   readonly verboseErrors?: boolean;
+  readonly databaseName?: AuthenticatedMigrationDatabaseName;
 }
 
 export interface RuntimeAuthBestEffortOperation {
@@ -902,9 +992,12 @@ COMMIT;
 `;
 }
 
-export function renderMigratorAuthPassfile(password: string): string {
+export function renderMigratorAuthPassfile(
+  password: string,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
+): string {
   assertMigratorAuthPassword(password);
-  return `127.0.0.1:5432:${CLEAN_BOOTSTRAP_DATABASE_NAME}:${MIGRATOR_AUTH_LOGIN_ROLE}:${password}\n`;
+  return `127.0.0.1:5432:${databaseName}:${MIGRATOR_AUTH_LOGIN_ROLE}:${password}\n`;
 }
 
 export function renderMigratorAuthCleanupSql(): string {
@@ -942,7 +1035,11 @@ export function buildMigratorAuthPsqlInvocation(
   passfile: typeof MIGRATOR_AUTH_PASSFILE | typeof MIGRATOR_AUTH_WRONG_PASSFILE,
   options: MigratorAuthPsqlInvocationOptions = {},
 ): MigratorAuthPsqlInvocation {
-  const { requireScram = true, verboseErrors = false } = options;
+  const {
+    requireScram = true,
+    verboseErrors = false,
+    databaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
+  } = options;
   const environment: Record<string, string> = {
     PGPASSFILE: passfile,
     PGSSLMODE: "disable",
@@ -964,7 +1061,7 @@ export function buildMigratorAuthPsqlInvocation(
       "--host=127.0.0.1",
       "--port=5432",
       `--username=${MIGRATOR_AUTH_LOGIN_ROLE}`,
-      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+      `--dbname=${databaseName}`,
     ]),
   });
 }
@@ -1511,6 +1608,8 @@ export async function runPostgresAcceptance(
     containerId,
   });
   const authenticatedMigrationPlan = await loadAuthenticatedMigrationPlan();
+  const authenticatedBackupRestorePlan =
+    await loadAuthenticatedBackupRestorePlan();
   const fixtureSql = await readFile(syntheticFixturePath, "utf8");
 
   await verifyContainerIdentity(containerId, config);
@@ -1553,6 +1652,11 @@ export async function runPostgresAcceptance(
     authenticatedMigrationPlan,
     fixtureSql,
   );
+  await verifyAuthenticatedBackupAndBoundedRestore(
+    containerId,
+    authenticatedMigrationPlan,
+    authenticatedBackupRestorePlan,
+  );
 
   await verifyCheckedOutCommit(environment);
   const sourceHashes = await collectAcceptanceSourceHashes(config);
@@ -1571,7 +1675,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 7 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 8 success-only run record was written.\n",
   );
 }
 
@@ -1653,10 +1757,1762 @@ async function verifyVersionedAuthenticatedMigrationPlan(
   await verifyB7PlatformArtifactsAfterApplication(containerId);
 }
 
+async function verifyAuthenticatedBackupAndBoundedRestore(
+  containerId: string,
+  migrationPlan: AuthenticatedMigrationPlan,
+  backupRestorePlan: AuthenticatedBackupRestorePlan,
+): Promise<void> {
+  await verifyAuthenticatedBackupRestoreResidueAbsent(containerId);
+  const sourceBefore = await collectAuthenticatedBackupFingerprints(
+    containerId,
+    CLEAN_BOOTSTRAP_DATABASE_NAME,
+  );
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    const archiveSha256 =
+      await createAuthenticatedPolicyScopedBackup(containerId);
+    const sourceAfterDump = await collectAuthenticatedBackupFingerprints(
+      containerId,
+      CLEAN_BOOTSTRAP_DATABASE_NAME,
+    );
+    assertAuthenticatedBackupFingerprintsEqual(
+      sourceAfterDump,
+      sourceBefore,
+      "source data changed while producing the authenticated backup",
+    );
+
+    await createBoundedRestoreTarget(
+      containerId,
+      migrationPlan,
+      backupRestorePlan,
+    );
+    await verifyRestorableApplicationTablesEmpty(containerId);
+    await restoreAuthenticatedPolicyScopedBackup(containerId, archiveSha256);
+
+    const restored = await collectAuthenticatedBackupFingerprints(
+      containerId,
+      AUTHENTICATED_RESTORE_DATABASE,
+    );
+    assertAuthenticatedBackupFingerprintsEqual(
+      restored,
+      sourceBefore,
+      "restored application data differs from the authenticated backup source",
+    );
+    const expectedLedgerRows = expectedAuthenticatedMigrationLedgerRows(
+      migrationPlan.manifest,
+    );
+    const expectedLedger = expectedLedgerRows.map(
+      ({ migrationId, fileName, sha256 }) =>
+        `${migrationId}|${fileName}|${sha256}`,
+    );
+    await verifyMigrationLedger(
+      containerId,
+      expectedLedger,
+      AUTHENTICATED_RESTORE_DATABASE,
+    );
+    await verifyCatalogContract(containerId, AUTHENTICATED_RESTORE_DATABASE);
+    await verifyB7PlatformArtifactsAfterApplication(
+      containerId,
+      AUTHENTICATED_RESTORE_DATABASE,
+    );
+    await verifyBackupCapability(containerId, AUTHENTICATED_RESTORE_DATABASE);
+    await verifyContextCleanup(containerId, AUTHENTICATED_RESTORE_DATABASE);
+    await verifyRuntimeAuthorizationMatrix(
+      runtimeAuthorizationMatrixClient(
+        containerId,
+        "impersonated",
+        AUTHENTICATED_RESTORE_DATABASE,
+      ),
+    );
+    await verifyWriteDenials(containerId, AUTHENTICATED_RESTORE_DATABASE);
+
+    const sourceAfterRestore = await collectAuthenticatedBackupFingerprints(
+      containerId,
+      CLEAN_BOOTSTRAP_DATABASE_NAME,
+    );
+    assertAuthenticatedBackupFingerprintsEqual(
+      sourceAfterRestore,
+      sourceBefore,
+      "source data changed during bounded restore verification",
+    );
+    assertEqual(
+      await authenticatedBackupArchiveSha256(containerId),
+      archiveSha256,
+      "authenticated backup archive after restore verification",
+    );
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "B8 ephemeral principals and files cleanup",
+            run: () =>
+              cleanupAuthenticatedBackupRestoreFilesAndRoles(containerId),
+          },
+          {
+            label: "B8 bounded restore database cleanup",
+            run: () => dropBoundedRestoreTargetIfPresent(containerId),
+          },
+          {
+            label: "B8 final residue verification",
+            run: () =>
+              verifyAuthenticatedBackupRestoreResidueAbsent(containerId),
+          },
+        ]),
+        "Authenticated backup/restore cleanup failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated backup/restore probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+}
+
+async function createBoundedRestoreTarget(
+  containerId: string,
+  migrationPlan: AuthenticatedMigrationPlan,
+  backupRestorePlan: AuthenticatedBackupRestorePlan,
+): Promise<void> {
+  await psqlMaintenance(
+    containerId,
+    renderCreateAuthenticatedRestoreDatabaseSql(),
+  );
+  await verifyB8PristineRestoreTarget(containerId);
+  await expectPsqlFailure(
+    containerId,
+    renderAuthenticatedRestorePlatform(backupRestorePlan, true),
+    {
+      label: "injected B8 restore-platform rollback",
+      sqlState: "22012",
+      message: "division by zero",
+    },
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+  await verifyB8PristineRestoreTarget(containerId);
+
+  const platformResult = await psql(
+    containerId,
+    renderAuthenticatedRestorePlatform(backupRestorePlan),
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+  assertEqual(
+    platformResult.stderr.trim(),
+    "",
+    "B8 restore-platform diagnostics",
+  );
+  await verifyAuthenticatedMigrationPlatformState(
+    containerId,
+    0,
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+  await expectPsqlFailure(
+    containerId,
+    renderAuthenticatedRestorePlatform(backupRestorePlan),
+    {
+      label: "B8 restore-platform replay",
+      sqlState: "P0001",
+      message: "restore platform bootstrap requires a pristine target",
+    },
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+  await verifyAuthenticatedMigrationPlatformState(
+    containerId,
+    0,
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+
+  const expectedLedgerRows = expectedAuthenticatedMigrationLedgerRows(
+    migrationPlan.manifest,
+  );
+  await verifyAuthenticatedApplicationMigrationSession(
+    containerId,
+    migrationPlan,
+    expectedLedgerRows,
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+  await verifyAuthenticatedMigrationLedger(
+    containerId,
+    expectedLedgerRows,
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+  await verifyCatalogContract(containerId, AUTHENTICATED_RESTORE_DATABASE);
+  await verifyB7PlatformArtifactsAfterApplication(
+    containerId,
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+}
+
+async function verifyB8PristineRestoreTarget(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT datname || '|' || pg_catalog.pg_get_userbyid(datdba) || '|' ||
+  datistemplate || '|' || datallowconn || '|' || datconnlimit || '|' ||
+  pg_catalog.pg_encoding_to_char(encoding)
+FROM pg_catalog.pg_database
+WHERE datname = '${AUTHENTICATED_RESTORE_DATABASE}';`,
+    ),
+    `${AUTHENTICATED_RESTORE_DATABASE}|postgres|false|true|-1|UTF8`,
+    "B8 pristine restore database identity",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT (
+  SELECT count(*) FROM pg_catalog.pg_namespace
+  WHERE nspname IN ('private_data', 'shared_data')
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_extension
+  WHERE extname = 'btree_gist'
+) || '|' || (
+  SELECT count(*)
+  FROM pg_catalog.pg_default_acl AS defaults
+  JOIN pg_catalog.pg_roles AS role ON role.oid = defaults.defaclrole
+  WHERE role.rolname = 'research_cockpit_owner'
+);`,
+      AUTHENTICATED_RESTORE_DATABASE,
+    ),
+    "0|0|0",
+    "B8 pristine restore platform artifacts",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT CASE privilege.grantee
+    WHEN 0 THEN 'PUBLIC'
+    ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
+  END || '|' || privilege.privilege_type || '|' || privilege.is_grantable
+FROM pg_catalog.pg_database AS database
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(database.datacl, pg_catalog.acldefault('d', database.datdba))
+) AS privilege
+WHERE database.datname = pg_catalog.current_database()
+  AND privilege.grantee <> database.datdba
+ORDER BY 1;`,
+        AUTHENTICATED_RESTORE_DATABASE,
+      ),
+    ),
+    [`PUBLIC|CONNECT|${CATALOG_FALSE}`, `PUBLIC|TEMPORARY|${CATALOG_FALSE}`],
+    "B8 pristine restore database ACL",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT CASE privilege.grantee
+    WHEN 0 THEN 'PUBLIC'
+    ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
+  END || '|' || privilege.privilege_type || '|' || privilege.is_grantable
+FROM pg_catalog.pg_namespace AS namespace
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(namespace.nspacl, pg_catalog.acldefault('n', namespace.nspowner))
+) AS privilege
+WHERE namespace.nspname = 'public'
+  AND privilege.grantee <> namespace.nspowner
+ORDER BY 1;`,
+        AUTHENTICATED_RESTORE_DATABASE,
+      ),
+    ),
+    [`PUBLIC|USAGE|${CATALOG_FALSE}`],
+    "B8 pristine restore public-schema ACL",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls
+FROM pg_catalog.pg_roles
+WHERE rolname <> 'postgres'
+  AND pg_catalog.left(rolname, 3) <> 'pg_'
+ORDER BY rolname;`,
+        AUTHENTICATED_RESTORE_DATABASE,
+      ),
+    ),
+    EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
+    "B8 pristine restore capability roles",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname LIKE 'research_cockpit_%'
+   OR member_role.rolname LIKE 'research_cockpit_%';`,
+      AUTHENTICATED_RESTORE_DATABASE,
+    ),
+    "0",
+    "B8 pristine restore capability membership edges",
+  );
+}
+
+async function createAuthenticatedPolicyScopedBackup(
+  containerId: string,
+): Promise<string> {
+  const password = generateAuthenticatedBackupRestorePassword();
+  let wrongPassword = generateAuthenticatedBackupRestorePassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateAuthenticatedBackupRestorePassword();
+  }
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  let archiveSha256 = "";
+  try {
+    await provisionAuthenticatedBackupLogin(containerId, password);
+    await verifyAuthenticatedBackupLoginCatalog(containerId);
+    await writeAuthenticatedBackupRestoreFile(
+      containerId,
+      AUTHENTICATED_BACKUP_PASSFILE,
+      renderAuthenticatedBackupPassfile(password),
+    );
+    await writeAuthenticatedBackupRestoreFile(
+      containerId,
+      AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+      renderAuthenticatedBackupPassfile(wrongPassword),
+    );
+    for (const archive of AUTHENTICATED_BACKUP_ARCHIVE_PATHS) {
+      await createAuthenticatedBackupArchivePath(containerId, archive);
+    }
+
+    await verifyAuthenticatedBackupWrongPassword(containerId);
+    await verifyAuthenticatedBackupLoginBeforeSetRole(containerId);
+    await verifyAuthenticatedBackupRoleEscalationDenials(containerId);
+    await verifyAuthenticatedBackupCapabilitySession(containerId);
+    await verifyAuthenticatedBackupFailClosedVariants(containerId);
+
+    const invocation = buildAuthenticatedBackupDumpInvocation();
+    const result = await runRuntimeAuthCommandWithDrain(
+      () =>
+        dockerExecWithEnvironment(
+          containerId,
+          invocation.environment,
+          invocation.command,
+        ),
+      () => waitForAuthenticatedBackupBackendDrain(containerId),
+    );
+    if (
+      result.exitCode !== 0 ||
+      result.stdout.trim() !== "" ||
+      result.stderr.trim() !== ""
+    ) {
+      throw new Error("Authenticated policy-scoped pg_dump failed");
+    }
+    await verifyAuthenticatedBackupArchiveFile(containerId);
+    const tocResult = await dockerExec(containerId, [
+      "pg_restore",
+      "--list",
+      AUTHENTICATED_BACKUP_ARCHIVE,
+    ]);
+    assertSuccess(tocResult, "inspect authenticated backup archive TOC");
+    if (tocResult.stderr.trim() !== "") {
+      throw new Error("Authenticated backup archive TOC returned diagnostics");
+    }
+    const toc = parseAuthenticatedBackupArchiveToc(tocResult.stdout);
+    assertEqual(
+      String(toc.length),
+      String(AUTHENTICATED_BACKUP_RESTORABLE_TABLES.length),
+      "authenticated backup archive TABLE DATA count",
+    );
+    if (
+      toc.findIndex(
+        ({ qualifiedTable }) =>
+          qualifiedTable === AUTHENTICATED_RESTORE_FAILURE_TABLE,
+      ) <= 0
+    ) {
+      throw new Error(
+        "Authenticated backup archive cannot exercise a late restore failure",
+      );
+    }
+    archiveSha256 = await authenticatedBackupArchiveSha256(containerId);
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "authenticated backup backend drain",
+            run: () => waitForAuthenticatedBackupBackendDrain(containerId),
+          },
+          ...[
+            AUTHENTICATED_BACKUP_PASSFILE,
+            AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+            AUTHENTICATED_BACKUP_NO_ROLE_ARCHIVE,
+            AUTHENTICATED_BACKUP_NO_RLS_ARCHIVE,
+            AUTHENTICATED_BACKUP_WRONG_PASSWORD_ARCHIVE,
+          ].map((path) => ({
+            label: `remove authenticated backup probe file: ${path}`,
+            run: () => removeContainerPath(containerId, path),
+          })),
+          {
+            label: "drop authenticated backup login",
+            run: () =>
+              psql(containerId, renderAuthenticatedBackupCleanupSql()).then(
+                () => undefined,
+              ),
+          },
+          {
+            label: "verify authenticated backup login residue",
+            run: () =>
+              verifyEphemeralLoginResidueAbsent(
+                containerId,
+                AUTHENTICATED_BACKUP_LOGIN_ROLE,
+                [
+                  AUTHENTICATED_BACKUP_PASSFILE,
+                  AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+                  AUTHENTICATED_BACKUP_NO_ROLE_ARCHIVE,
+                  AUTHENTICATED_BACKUP_NO_RLS_ARCHIVE,
+                  AUTHENTICATED_BACKUP_WRONG_PASSWORD_ARCHIVE,
+                ],
+              ),
+          },
+        ]),
+        "Authenticated backup cleanup failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated backup probe and cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+  if (!/^[0-9a-f]{64}$/.test(archiveSha256)) {
+    throw new Error("Authenticated backup archive hash was not collected");
+  }
+  return archiveSha256;
+}
+
+async function provisionAuthenticatedBackupLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderAuthenticatedBackupProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(result, "provision authenticated backup login");
+}
+
+async function verifyAuthenticatedBackupLoginCatalog(
+  containerId: string,
+): Promise<void> {
+  await verifyEphemeralLoginCatalog(
+    containerId,
+    AUTHENTICATED_BACKUP_LOGIN_ROLE,
+    AUTHENTICATED_BACKUP_CAPABILITY_ROLE,
+  );
+}
+
+async function verifyAuthenticatedBackupWrongPassword(
+  containerId: string,
+): Promise<void> {
+  const invocation = buildAuthenticatedBackupPsqlInvocation({
+    passfile: AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+    requireScram: false,
+  });
+  const result = await runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        "SELECT 1;",
+      ),
+    () => waitForAuthenticatedBackupBackendDrain(containerId),
+  );
+  assertAuthenticatedBackupWrongPasswordRejection(result);
+}
+
+async function verifyAuthenticatedBackupLoginBeforeSetRole(
+  containerId: string,
+): Promise<void> {
+  const identity = parseJsonObject(
+    await authenticatedBackupPsqlScalar(
+      containerId,
+      renderAuthenticatedLoginIdentitySql(
+        AUTHENTICATED_BACKUP_CAPABILITY_ROLE,
+        "backup",
+      ),
+    ),
+  );
+  assertJsonEqual(
+    identity,
+    authenticatedLoginIdentityExpectation(
+      AUTHENTICATED_BACKUP_LOGIN_ROLE,
+      "backup",
+    ),
+    "authenticated backup login identity before SET ROLE",
+  );
+  for (const [label, sql, message] of [
+    [
+      "backup login data access before SET ROLE",
+      "SELECT count(*) FROM private_data.organizations;",
+      "permission denied for schema private_data",
+    ],
+    [
+      "backup login context routine before SET ROLE",
+      `CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'display', 'api', 'demo_only', 'synthetic'
+);`,
+      "permission denied for schema private_data",
+    ],
+    [
+      "backup login temporary DDL before SET ROLE",
+      "CREATE TEMPORARY TABLE b8_backup_pre_role_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectAuthenticatedBackupPsqlFailure(containerId, sql, {
+      label,
+      sqlState: "42501",
+      message,
+    });
+  }
+}
+
+async function verifyAuthenticatedBackupRoleEscalationDenials(
+  containerId: string,
+): Promise<void> {
+  for (const role of AUTHENTICATED_BACKUP_FORBIDDEN_SET_ROLES) {
+    await expectAuthenticatedBackupPsqlFailure(
+      containerId,
+      `SET ROLE ${role};`,
+      {
+        label: `backup login SET ROLE ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set role",
+      },
+    );
+  }
+  for (const role of [
+    AUTHENTICATED_BACKUP_CAPABILITY_ROLE,
+    "postgres",
+  ] as const) {
+    await expectAuthenticatedBackupPsqlFailure(
+      containerId,
+      `SET SESSION AUTHORIZATION ${role};`,
+      {
+        label: `backup login SET SESSION AUTHORIZATION ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set session authorization",
+      },
+    );
+  }
+}
+
+async function verifyAuthenticatedBackupCapabilitySession(
+  containerId: string,
+): Promise<void> {
+  const visibility = parseJsonObject(
+    await authenticatedBackupPsqlScalar(
+      containerId,
+      `BEGIN;
+SET LOCAL ROLE ${AUTHENTICATED_BACKUP_CAPABILITY_ROLE};
+SELECT pg_catalog.json_build_object(
+  'organizations', (SELECT count(*) FROM private_data.organizations),
+  'evidence', (SELECT count(*) FROM shared_data.evidence)
+)::text;
+COMMIT;`,
+    ),
+  );
+  assertJsonEqual(
+    visibility,
+    { organizations: 2, evidence: 5 },
+    "authenticated backup synthetic visibility",
+  );
+  await expectAuthenticatedBackupPsqlFailure(
+    containerId,
+    `BEGIN;
+SET LOCAL ROLE ${AUTHENTICATED_BACKUP_CAPABILITY_ROLE};
+INSERT INTO private_data.organizations (id, slug, name, created_at)
+VALUES (
+  '10000000-0000-4000-8000-000000000094',
+  'authenticated-backup-write-probe',
+  'Authenticated backup write probe',
+  transaction_timestamp()
+);
+ROLLBACK;`,
+    {
+      label: "authenticated backup write",
+      sqlState: "42501",
+      message: "permission denied for table organizations",
+    },
+  );
+
+  for (const [label, sql, message] of [
+    [
+      "authenticated backup update",
+      "UPDATE private_data.organizations SET name = name WHERE false;",
+      "permission denied for table organizations",
+    ],
+    [
+      "authenticated backup delete",
+      "DELETE FROM private_data.organizations WHERE false;",
+      "permission denied for table organizations",
+    ],
+    [
+      "authenticated backup truncate",
+      "TRUNCATE private_data.organizations;",
+      "permission denied for table organizations",
+    ],
+    [
+      "authenticated backup context mutation",
+      `CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'display', 'api', 'demo_only', 'synthetic'
+);`,
+      "permission denied for procedure set_request_context",
+    ],
+    [
+      "authenticated backup persistent DDL",
+      "CREATE TABLE private_data.b8_backup_escape (id integer);",
+      "permission denied for schema private_data",
+    ],
+    [
+      "authenticated backup temporary DDL",
+      "CREATE TEMPORARY TABLE b8_backup_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectAuthenticatedBackupPsqlFailure(
+      containerId,
+      `BEGIN;
+SET LOCAL ROLE ${AUTHENTICATED_BACKUP_CAPABILITY_ROLE};
+${sql}
+ROLLBACK;`,
+      { label, sqlState: "42501", message },
+    );
+  }
+}
+
+async function verifyAuthenticatedBackupFailClosedVariants(
+  containerId: string,
+): Promise<void> {
+  const wrongPassword = buildAuthenticatedBackupDumpInvocation({
+    archive: AUTHENTICATED_BACKUP_WRONG_PASSWORD_ARCHIVE,
+    passfile: AUTHENTICATED_BACKUP_WRONG_PASSFILE,
+    requireScram: false,
+  });
+  const wrongPasswordResult = await runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        wrongPassword.environment,
+        wrongPassword.command,
+      ),
+    () => waitForAuthenticatedBackupBackendDrain(containerId),
+  );
+  if (
+    wrongPasswordResult.exitCode !== 1 ||
+    wrongPasswordResult.stdout.trim() !== "" ||
+    !wrongPasswordResult.stderr
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .includes(
+        `fatal: password authentication failed for user "${AUTHENTICATED_BACKUP_LOGIN_ROLE}"`,
+      )
+  ) {
+    throw new Error(
+      "Wrong-password authenticated pg_dump did not fail for the expected reason",
+    );
+  }
+
+  const noRole = buildAuthenticatedBackupDumpInvocation({
+    archive: AUTHENTICATED_BACKUP_NO_ROLE_ARCHIVE,
+    selectCapabilityRole: false,
+  });
+  const noRoleResult = await runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        noRole.environment,
+        noRole.command,
+      ),
+    () => waitForAuthenticatedBackupBackendDrain(containerId),
+  );
+  if (
+    noRoleResult.exitCode !== 1 ||
+    noRoleResult.stdout.trim() !== "" ||
+    !noRoleResult.stderr.toLowerCase().includes("permission denied")
+  ) {
+    throw new Error(
+      "Authenticated pg_dump without the backup role did not fail closed",
+    );
+  }
+
+  const noRowSecurity = buildAuthenticatedBackupDumpInvocation({
+    archive: AUTHENTICATED_BACKUP_NO_RLS_ARCHIVE,
+    enableRowSecurity: false,
+  });
+  const noRowSecurityResult = await runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        noRowSecurity.environment,
+        noRowSecurity.command,
+      ),
+    () => waitForAuthenticatedBackupBackendDrain(containerId),
+  );
+  if (
+    noRowSecurityResult.exitCode !== 1 ||
+    noRowSecurityResult.stdout.trim() !== "" ||
+    !noRowSecurityResult.stderr
+      .toLowerCase()
+      .includes("would be affected by row-level security policy")
+  ) {
+    throw new Error(
+      "Authenticated pg_dump without row-security enablement did not fail closed",
+    );
+  }
+}
+
+async function authenticatedBackupPsqlScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await authenticatedBackupPsql(containerId, sql);
+  assertSuccess(result, "execute authenticated backup SQL");
+  return result.stdout.trim();
+}
+
+async function expectAuthenticatedBackupPsqlFailure(
+  containerId: string,
+  sql: string,
+  expectation: PsqlFailureExpectation,
+): Promise<void> {
+  const result = await authenticatedBackupPsql(containerId, sql, true);
+  assertExpectedPsqlFailure(result, expectation);
+}
+
+async function authenticatedBackupPsql(
+  containerId: string,
+  sql: string,
+  verboseErrors = false,
+): Promise<CommandResult> {
+  const invocation = buildAuthenticatedBackupPsqlInvocation({ verboseErrors });
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        sql,
+      ),
+    () => waitForAuthenticatedBackupBackendDrain(containerId),
+  );
+}
+
+async function waitForAuthenticatedBackupBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderAuthenticatedBackupBackendDrainSql());
+}
+
+async function createAuthenticatedBackupArchivePath(
+  containerId: string,
+  path: (typeof AUTHENTICATED_BACKUP_ARCHIVE_PATHS)[number],
+): Promise<void> {
+  await verifyContainerPathAbsent(containerId, path);
+  const install = await dockerExec(containerId, [
+    "install",
+    "--mode=0600",
+    "/dev/null",
+    path,
+  ]);
+  assertSuccess(install, "create authenticated backup archive path");
+  await verifyContainerRegularFile(containerId, path, "backup archive");
+}
+
+async function verifyAuthenticatedBackupArchiveFile(
+  containerId: string,
+): Promise<void> {
+  await verifyContainerRegularFile(
+    containerId,
+    AUTHENTICATED_BACKUP_ARCHIVE,
+    "authenticated backup archive",
+  );
+  const size = await dockerExec(containerId, [
+    "stat",
+    "--format=%s",
+    AUTHENTICATED_BACKUP_ARCHIVE,
+  ]);
+  assertSuccess(size, "inspect authenticated backup archive size");
+  const parsed = Number(size.stdout.trim());
+  if (
+    !Number.isSafeInteger(parsed) ||
+    parsed <= 0 ||
+    parsed > AUTHENTICATED_BACKUP_MAX_ARCHIVE_BYTES
+  ) {
+    throw new Error("Authenticated backup archive size is outside the bound");
+  }
+}
+
+async function authenticatedBackupArchiveSha256(
+  containerId: string,
+): Promise<string> {
+  const result = await dockerExec(containerId, [
+    "sha256sum",
+    "--",
+    AUTHENTICATED_BACKUP_ARCHIVE,
+  ]);
+  assertSuccess(result, "hash authenticated backup archive");
+  if (result.stderr.trim() !== "") {
+    throw new Error("Authenticated backup archive hash returned diagnostics");
+  }
+  const hash = result.stdout.trim().split(/\s+/)[0] ?? "";
+  if (!/^[0-9a-f]{64}$/.test(hash)) {
+    throw new Error("Authenticated backup archive hash is malformed");
+  }
+  return hash;
+}
+
+async function restoreAuthenticatedPolicyScopedBackup(
+  containerId: string,
+  archiveSha256: string,
+): Promise<void> {
+  const password = generateAuthenticatedBackupRestorePassword();
+  let wrongPassword = generateAuthenticatedBackupRestorePassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateAuthenticatedBackupRestorePassword();
+  }
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    await provisionAuthenticatedRestoreLogin(containerId, password);
+    await verifyAuthenticatedRestoreLoginCatalog(containerId);
+    await writeAuthenticatedBackupRestoreFile(
+      containerId,
+      AUTHENTICATED_RESTORE_PASSFILE,
+      renderAuthenticatedRestorePassfile(password),
+    );
+    await writeAuthenticatedBackupRestoreFile(
+      containerId,
+      AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+      renderAuthenticatedRestorePassfile(wrongPassword),
+    );
+    await verifyAuthenticatedRestoreWrongPassword(containerId);
+    await verifyAuthenticatedRestoreLoginBeforeSetRole(containerId);
+    await verifyAuthenticatedRestoreRoleEscalationDenials(containerId);
+    await verifyAuthenticatedRestoreFailClosedVariants(
+      containerId,
+      archiveSha256,
+    );
+
+    await psql(
+      containerId,
+      renderAuthenticatedRestoreFailureCreateSql(),
+      AUTHENTICATED_RESTORE_DATABASE,
+    );
+    const failedRestore = await runAuthenticatedRestoreCommand(containerId);
+    if (
+      failedRestore.exitCode !== 1 ||
+      failedRestore.stdout.trim() !== "" ||
+      !failedRestore.stderr.includes(AUTHENTICATED_RESTORE_FAILURE_MESSAGE)
+    ) {
+      throw new Error(
+        "Injected authenticated restore did not fail for the reviewed reason",
+      );
+    }
+    assertEqual(
+      await authenticatedBackupArchiveSha256(containerId),
+      archiveSha256,
+      "authenticated backup archive after failed restore",
+    );
+    await verifyRestorableApplicationTablesEmpty(containerId);
+    await psql(
+      containerId,
+      renderAuthenticatedRestoreFailureCleanupSql(),
+      AUTHENTICATED_RESTORE_DATABASE,
+    );
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        renderAuthenticatedRestoreFailureResidueSql(),
+        AUTHENTICATED_RESTORE_DATABASE,
+      ),
+      "0|0",
+      "B8 restore-failure trigger and routine residue",
+    );
+
+    const restored = await runAuthenticatedRestoreCommand(containerId);
+    if (
+      restored.exitCode !== 0 ||
+      restored.stdout.trim() !== "" ||
+      restored.stderr.trim() !== ""
+    ) {
+      throw new Error("Authenticated bounded pg_restore failed");
+    }
+    assertEqual(
+      await authenticatedBackupArchiveSha256(containerId),
+      archiveSha256,
+      "authenticated backup archive after successful restore",
+    );
+
+    const replay = await runAuthenticatedRestoreCommand(containerId);
+    if (
+      replay.exitCode !== 1 ||
+      replay.stdout.trim() !== "" ||
+      !replay.stderr.toLowerCase().includes("duplicate key")
+    ) {
+      throw new Error(
+        "Authenticated bounded restore replay did not fail closed",
+      );
+    }
+    assertEqual(
+      await authenticatedBackupArchiveSha256(containerId),
+      archiveSha256,
+      "authenticated backup archive after restore replay",
+    );
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "authenticated restore backend drain",
+            run: () => waitForAuthenticatedRestoreBackendDrain(containerId),
+          },
+          ...[
+            AUTHENTICATED_RESTORE_PASSFILE,
+            AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+          ].map((path) => ({
+            label: `remove authenticated restore passfile: ${path}`,
+            run: () => removeContainerPath(containerId, path),
+          })),
+          {
+            label: "drop authenticated restore login",
+            run: () =>
+              psql(containerId, renderAuthenticatedRestoreCleanupSql()).then(
+                () => undefined,
+              ),
+          },
+          {
+            label: "verify authenticated restore login residue",
+            run: () =>
+              verifyEphemeralLoginResidueAbsent(
+                containerId,
+                AUTHENTICATED_RESTORE_LOGIN_ROLE,
+                [
+                  AUTHENTICATED_RESTORE_PASSFILE,
+                  AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+                ],
+              ),
+          },
+        ]),
+        "Authenticated restore cleanup failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated restore probe and cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+}
+
+async function provisionAuthenticatedRestoreLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${AUTHENTICATED_RESTORE_DATABASE}`,
+    ],
+    renderAuthenticatedRestoreProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision authenticated restore login",
+  );
+}
+
+async function verifyAuthenticatedRestoreLoginCatalog(
+  containerId: string,
+): Promise<void> {
+  await verifyEphemeralLoginCatalog(
+    containerId,
+    AUTHENTICATED_RESTORE_LOGIN_ROLE,
+    AUTHENTICATED_RESTORE_CAPABILITY_ROLE,
+    AUTHENTICATED_RESTORE_DATABASE,
+  );
+}
+
+async function verifyAuthenticatedRestoreWrongPassword(
+  containerId: string,
+): Promise<void> {
+  const invocation = buildAuthenticatedRestorePsqlInvocation({
+    passfile: AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+    requireScram: false,
+  });
+  const result = await runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        "SELECT 1;",
+      ),
+    () => waitForAuthenticatedRestoreBackendDrain(containerId),
+  );
+  assertAuthenticatedRestoreWrongPasswordRejection(result);
+}
+
+async function verifyAuthenticatedRestoreLoginBeforeSetRole(
+  containerId: string,
+): Promise<void> {
+  const identity = parseJsonObject(
+    await authenticatedRestorePsqlScalar(
+      containerId,
+      renderAuthenticatedLoginIdentitySql(
+        AUTHENTICATED_RESTORE_CAPABILITY_ROLE,
+        "restore",
+      ),
+    ),
+  );
+  assertJsonEqual(
+    identity,
+    authenticatedLoginIdentityExpectation(
+      AUTHENTICATED_RESTORE_LOGIN_ROLE,
+      "restore",
+    ),
+    "authenticated restore login identity before SET ROLE",
+  );
+  for (const [label, sql, message] of [
+    [
+      "restore login data access before SET ROLE",
+      "SELECT count(*) FROM private_data.organizations;",
+      "permission denied for schema private_data",
+    ],
+    [
+      "restore login context routine before SET ROLE",
+      `CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'display', 'api', 'demo_only', 'synthetic'
+);`,
+      "permission denied for schema private_data",
+    ],
+    [
+      "restore login temporary DDL before SET ROLE",
+      "CREATE TEMPORARY TABLE b8_restore_pre_role_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectAuthenticatedRestorePsqlFailure(containerId, sql, {
+      label,
+      sqlState: "42501",
+      message,
+    });
+  }
+}
+
+async function verifyAuthenticatedRestoreRoleEscalationDenials(
+  containerId: string,
+): Promise<void> {
+  for (const role of AUTHENTICATED_RESTORE_FORBIDDEN_SET_ROLES) {
+    await expectAuthenticatedRestorePsqlFailure(
+      containerId,
+      `SET ROLE ${role};`,
+      {
+        label: `restore login SET ROLE ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set role",
+      },
+    );
+  }
+  for (const role of [
+    AUTHENTICATED_RESTORE_CAPABILITY_ROLE,
+    "postgres",
+  ] as const) {
+    await expectAuthenticatedRestorePsqlFailure(
+      containerId,
+      `SET SESSION AUTHORIZATION ${role};`,
+      {
+        label: `restore login SET SESSION AUTHORIZATION ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set session authorization",
+      },
+    );
+  }
+}
+
+async function verifyAuthenticatedRestoreFailClosedVariants(
+  containerId: string,
+  archiveSha256: string,
+): Promise<void> {
+  const wrongPassword = buildAuthenticatedRestoreInvocation({
+    passfile: AUTHENTICATED_RESTORE_WRONG_PASSFILE,
+    requireScram: false,
+  });
+  const wrongPasswordResult = await runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        wrongPassword.environment,
+        wrongPassword.command,
+      ),
+    () => waitForAuthenticatedRestoreBackendDrain(containerId),
+  );
+  if (
+    wrongPasswordResult.exitCode !== 1 ||
+    wrongPasswordResult.stdout.trim() !== "" ||
+    !wrongPasswordResult.stderr
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .includes(
+        `fatal: password authentication failed for user "${AUTHENTICATED_RESTORE_LOGIN_ROLE}"`,
+      )
+  ) {
+    throw new Error(
+      "Wrong-password authenticated pg_restore did not fail for the expected reason",
+    );
+  }
+  await verifyRestorableApplicationTablesEmpty(containerId);
+  assertEqual(
+    await authenticatedBackupArchiveSha256(containerId),
+    archiveSha256,
+    "wrong-password authenticated restore archive integrity",
+  );
+
+  for (const [label, invocation, marker] of [
+    [
+      "authenticated restore without test-seed role",
+      buildAuthenticatedRestoreInvocation({ selectCapabilityRole: false }),
+      "permission denied",
+    ],
+    [
+      "authenticated restore without row-security enablement",
+      buildAuthenticatedRestoreInvocation({ enableRowSecurity: false }),
+      "row-level security policy",
+    ],
+  ] as const) {
+    const result = await runRuntimeAuthCommandWithDrain(
+      () =>
+        dockerExecWithEnvironment(
+          containerId,
+          invocation.environment,
+          invocation.command,
+        ),
+      () => waitForAuthenticatedRestoreBackendDrain(containerId),
+    );
+    if (
+      result.exitCode !== 1 ||
+      result.stdout.trim() !== "" ||
+      !result.stderr.toLowerCase().includes(marker)
+    ) {
+      throw new Error(`${label} did not fail closed`);
+    }
+    await verifyRestorableApplicationTablesEmpty(containerId);
+    assertEqual(
+      await authenticatedBackupArchiveSha256(containerId),
+      archiveSha256,
+      `${label} archive integrity`,
+    );
+  }
+}
+
+async function runAuthenticatedRestoreCommand(
+  containerId: string,
+): Promise<CommandResult> {
+  const invocation = buildAuthenticatedRestoreInvocation();
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+      ),
+    () => waitForAuthenticatedRestoreBackendDrain(containerId),
+  );
+}
+
+async function authenticatedRestorePsqlScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await authenticatedRestorePsql(containerId, sql);
+  assertSuccess(result, "execute authenticated restore SQL");
+  return result.stdout.trim();
+}
+
+async function expectAuthenticatedRestorePsqlFailure(
+  containerId: string,
+  sql: string,
+  expectation: PsqlFailureExpectation,
+): Promise<void> {
+  const result = await authenticatedRestorePsql(containerId, sql, true);
+  assertExpectedPsqlFailure(result, expectation);
+}
+
+async function authenticatedRestorePsql(
+  containerId: string,
+  sql: string,
+  verboseErrors = false,
+): Promise<CommandResult> {
+  const invocation = buildAuthenticatedRestorePsqlInvocation({ verboseErrors });
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        sql,
+      ),
+    () => waitForAuthenticatedRestoreBackendDrain(containerId),
+  );
+}
+
+async function waitForAuthenticatedRestoreBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderAuthenticatedRestoreBackendDrainSql());
+}
+
+async function verifyRestorableApplicationTablesEmpty(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      renderRestorableApplicationTablesEmptySql(),
+      AUTHENTICATED_RESTORE_DATABASE,
+    ),
+    "0",
+    "B8 bounded restore data-table rollback",
+  );
+}
+
+function renderAuthenticatedLoginIdentitySql(
+  capabilityRole:
+    | typeof AUTHENTICATED_BACKUP_CAPABILITY_ROLE
+    | typeof AUTHENTICATED_RESTORE_CAPABILITY_ROLE,
+  label: "backup" | "restore",
+): string {
+  return `SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'clientAddress', pg_catalog.host(pg_catalog.inet_client_addr()),
+  'serverAddress', pg_catalog.host(pg_catalog.inet_server_addr()),
+  'ssl', EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  ),
+  '${label}Member', pg_catalog.pg_has_role(
+    session_user, '${capabilityRole}', 'MEMBER'
+  ),
+  '${label}Usage', pg_catalog.pg_has_role(
+    session_user, '${capabilityRole}', 'USAGE'
+  ),
+  '${label}Set', pg_catalog.pg_has_role(
+    session_user, '${capabilityRole}', 'SET'
+  )
+)::text;`;
+}
+
+function authenticatedLoginIdentityExpectation(
+  loginRole:
+    | typeof AUTHENTICATED_BACKUP_LOGIN_ROLE
+    | typeof AUTHENTICATED_RESTORE_LOGIN_ROLE,
+  label: "backup" | "restore",
+): Record<string, unknown> {
+  return {
+    sessionUser: loginRole,
+    currentUser: loginRole,
+    systemUser: `scram-sha-256:${loginRole}`,
+    clientAddress: "127.0.0.1",
+    serverAddress: "127.0.0.1",
+    ssl: false,
+    [`${label}Member`]: true,
+    [`${label}Usage`]: false,
+    [`${label}Set`]: true,
+  };
+}
+
+async function verifyEphemeralLoginCatalog(
+  containerId: string,
+  loginRole:
+    | typeof AUTHENTICATED_BACKUP_LOGIN_ROLE
+    | typeof AUTHENTICATED_RESTORE_LOGIN_ROLE,
+  capabilityRole:
+    | typeof AUTHENTICATED_BACKUP_CAPABILITY_ROLE
+    | typeof AUTHENTICATED_RESTORE_CAPABILITY_ROLE,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${loginRole}';`,
+      databaseName,
+    ),
+    `${loginRole}|true|false|false|false|false|false|false|1|true`,
+    `${loginRole} attributes and SCRAM verifier`,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${loginRole}'
+   OR member_role.rolname = '${loginRole}';`,
+      databaseName,
+    ),
+    `${capabilityRole}|${loginRole}|false|false|true`,
+    `${loginRole} exact SET-only membership`,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles WHERE rolname = '${loginRole}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_attribute AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.attacl) AS privilege
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole = (SELECT oid FROM login)
+) || '|' || (
+  SELECT count(*) FROM direct_acl WHERE grantee = (SELECT oid FROM login)
+);`,
+      databaseName,
+    ),
+    "0|0",
+    `${loginRole} settings and direct ACLs`,
+  );
+}
+
+async function writeAuthenticatedBackupRestoreFile(
+  containerId: string,
+  path: string,
+  contents: string,
+): Promise<void> {
+  await verifyContainerPathAbsent(containerId, path);
+  const install = await dockerExec(containerId, [
+    "install",
+    "--mode=0600",
+    "/dev/null",
+    path,
+  ]);
+  assertSensitiveCommandSuccess(
+    install,
+    "create authenticated backup/restore file",
+  );
+  const write = await dockerExec(
+    containerId,
+    ["dd", `of=${path}`, "status=none"],
+    contents,
+  );
+  assertSensitiveCommandSuccess(
+    write,
+    "write authenticated backup/restore file",
+  );
+  await verifyContainerRegularFile(
+    containerId,
+    path,
+    "authenticated backup/restore file",
+  );
+}
+
+async function verifyContainerRegularFile(
+  containerId: string,
+  path: string,
+  label: string,
+): Promise<void> {
+  const regular = await dockerExec(containerId, ["test", "-f", path]);
+  assertSuccess(regular, `verify ${label} is regular`);
+  const notSymlink = await dockerExec(containerId, ["test", "!", "-L", path]);
+  assertSuccess(notSymlink, `verify ${label} is not a symlink`);
+  const mode = await dockerExec(containerId, ["stat", "--format=%a", path]);
+  assertSuccess(mode, `inspect ${label} mode`);
+  assertEqual(mode.stdout.trim(), "600", `${label} mode`);
+}
+
+async function verifyContainerPathAbsent(
+  containerId: string,
+  path: string,
+): Promise<void> {
+  const absent = await dockerExec(containerId, ["test", "!", "-e", path]);
+  assertSuccess(absent, "verify reviewed container path is absent");
+  const noSymlink = await dockerExec(containerId, ["test", "!", "-L", path]);
+  assertSuccess(noSymlink, "verify reviewed container symlink is absent");
+}
+
+async function removeContainerPath(
+  containerId: string,
+  path: string,
+): Promise<void> {
+  const result = await dockerExec(containerId, ["rm", "-f", "--", path]);
+  assertSuccess(result, "remove reviewed container path");
+}
+
+async function collectAuthenticatedBackupFingerprints(
+  containerId: string,
+  databaseName:
+    | typeof CLEAN_BOOTSTRAP_DATABASE_NAME
+    | typeof AUTHENTICATED_RESTORE_DATABASE,
+): Promise<readonly AuthenticatedBackupTableFingerprint[]> {
+  const fingerprints: AuthenticatedBackupTableFingerprint[] = [];
+  for (const query of renderAuthenticatedBackupFingerprintQueries()) {
+    const result = await psql(containerId, query.sql, databaseName);
+    if (result.stderr.trim() !== "") {
+      throw new Error("Authenticated backup fingerprint returned diagnostics");
+    }
+    const canonical = result.stdout.replace(/\r?\n$/, "");
+    if (
+      canonical.length === 0 ||
+      canonical.includes("\n") ||
+      canonical.includes("\r")
+    ) {
+      throw new Error(
+        "Authenticated backup fingerprint is not one canonical row",
+      );
+    }
+    const parsed = parseJsonObject(canonical);
+    if (parsed.table !== query.table || !Array.isArray(parsed.rows)) {
+      throw new Error("Authenticated backup fingerprint shape is invalid");
+    }
+    fingerprints.push(
+      Object.freeze({
+        table: query.table,
+        rowCount: parsed.rows.length,
+        sha256: createHash("sha256").update(canonical).digest("hex"),
+      }),
+    );
+  }
+  return Object.freeze(fingerprints);
+}
+
+function assertAuthenticatedBackupFingerprintsEqual(
+  actual: readonly AuthenticatedBackupTableFingerprint[],
+  expected: readonly AuthenticatedBackupTableFingerprint[],
+  label: string,
+): void {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(label);
+  }
+}
+
+async function cleanupAuthenticatedBackupRestoreFilesAndRoles(
+  containerId: string,
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "drain authenticated backup backends",
+      run: () => waitForAuthenticatedBackupBackendDrain(containerId),
+    },
+    {
+      label: "drain authenticated restore backends",
+      run: () => waitForAuthenticatedRestoreBackendDrain(containerId),
+    },
+    {
+      label: "drain authenticated migrator backends",
+      run: () => waitForMigratorAuthBackendDrain(containerId),
+    },
+    ...AUTHENTICATED_BACKUP_RESTORE_FILE_PATHS.map((path) => ({
+      label: `remove B8 reviewed path: ${path}`,
+      run: () => removeContainerPath(containerId, path),
+    })),
+    {
+      label: "drop residual authenticated backup login",
+      run: () =>
+        psql(containerId, renderAuthenticatedBackupCleanupSql()).then(
+          () => undefined,
+        ),
+    },
+    {
+      label: "drop residual authenticated restore login",
+      run: () =>
+        psql(containerId, renderAuthenticatedRestoreCleanupSql()).then(
+          () => undefined,
+        ),
+    },
+    {
+      label: "drop residual authenticated migrator login",
+      run: () =>
+        psql(containerId, renderMigratorAuthCleanupSql()).then(() => undefined),
+    },
+  ];
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "B8 files and ephemeral-principal cleanup failed",
+  );
+}
+
+async function dropBoundedRestoreTargetIfPresent(
+  containerId: string,
+): Promise<void> {
+  const exists = await psqlMaintenanceScalar(
+    containerId,
+    `SELECT count(*) FROM pg_catalog.pg_database
+WHERE datname = '${AUTHENTICATED_RESTORE_DATABASE}';`,
+  );
+  if (exists === "0") return;
+  if (exists !== "1") {
+    throw new Error("Bounded restore target inventory is invalid");
+  }
+  await waitForBoundedRestoreDatabaseDrain(containerId);
+  await psqlMaintenance(
+    containerId,
+    renderDropAuthenticatedRestoreDatabaseSql(),
+  );
+}
+
+async function waitForBoundedRestoreDatabaseDrain(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(
+    containerId,
+    `DO $bounded_restore_database_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_stat_activity
+      WHERE datname = '${AUTHENTICATED_RESTORE_DATABASE}'
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'bounded restore database backends did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END;
+$bounded_restore_database_drain$;`,
+  );
+}
+
+async function verifyEphemeralLoginResidueAbsent(
+  containerId: string,
+  loginRole:
+    | typeof AUTHENTICATED_BACKUP_LOGIN_ROLE
+    | typeof AUTHENTICATED_RESTORE_LOGIN_ROLE,
+  paths: readonly string[],
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: `verify ${loginRole} is absent`,
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*) FROM pg_catalog.pg_roles
+WHERE rolname = '${loginRole}';`,
+          ),
+          "0",
+          `${loginRole} role residue`,
+        );
+      },
+    },
+    {
+      label: `verify ${loginRole} membership is absent`,
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${loginRole}'
+   OR member_role.rolname = '${loginRole}';`,
+          ),
+          "0",
+          `${loginRole} membership residue`,
+        );
+      },
+    },
+    {
+      label: `verify ${loginRole} backend is absent`,
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE usename = '${loginRole}';`,
+          ),
+          "0",
+          `${loginRole} backend residue`,
+        );
+      },
+    },
+    ...paths.map((path) => ({
+      label: `verify reviewed path is absent: ${path}`,
+      run: () => verifyContainerPathAbsent(containerId, path),
+    })),
+  ];
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    `${loginRole} residue verification failed`,
+  );
+}
+
+async function verifyAuthenticatedBackupRestoreResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "verify B8 ephemeral roles and membership residue",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `WITH named_roles AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname IN (
+    '${AUTHENTICATED_BACKUP_LOGIN_ROLE}',
+    '${AUTHENTICATED_RESTORE_LOGIN_ROLE}',
+    '${MIGRATOR_AUTH_LOGIN_ROLE}'
+  )
+)
+SELECT (
+  SELECT count(*) FROM named_roles
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_auth_members
+  WHERE roleid IN (SELECT oid FROM named_roles)
+     OR member IN (SELECT oid FROM named_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_stat_activity
+  WHERE usename IN (
+    '${AUTHENTICATED_BACKUP_LOGIN_ROLE}',
+    '${AUTHENTICATED_RESTORE_LOGIN_ROLE}',
+    '${MIGRATOR_AUTH_LOGIN_ROLE}'
+  )
+);`,
+          ),
+          "0|0|0",
+          "B8 ephemeral role, edge, and backend residue",
+        );
+      },
+    },
+    {
+      label: "verify B8 bounded restore database is absent",
+      run: async () => {
+        assertEqual(
+          await psqlMaintenanceScalar(
+            containerId,
+            `SELECT count(*) FROM pg_catalog.pg_database
+WHERE datname = '${AUTHENTICATED_RESTORE_DATABASE}';`,
+          ),
+          "0",
+          "B8 bounded restore database residue",
+        );
+      },
+    },
+    ...AUTHENTICATED_BACKUP_RESTORE_FILE_PATHS.map((path) => ({
+      label: `verify B8 path is absent: ${path}`,
+      run: () => verifyContainerPathAbsent(containerId, path),
+    })),
+    {
+      label: "verify source catalog after B8 cleanup",
+      run: () => verifyCatalogContract(containerId),
+    },
+    {
+      label: "verify source platform artifacts after B8 cleanup",
+      run: () => verifyB7PlatformArtifactsAfterApplication(containerId),
+    },
+  ];
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "B8 residue verification failed",
+  );
+}
+
 async function verifyAuthenticatedApplicationMigrationSession(
   containerId: string,
   plan: AuthenticatedMigrationPlan,
   expectedLedgerRows: readonly AuthenticatedMigrationLedgerRow[],
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<void> {
   await verifyMigratorAuthResidueAbsent(containerId);
   const password = generateMigratorAuthPassword();
@@ -1675,23 +3531,27 @@ async function verifyAuthenticatedApplicationMigrationSession(
     await writeMigratorAuthPassfile(
       containerId,
       MIGRATOR_AUTH_PASSFILE,
-      renderMigratorAuthPassfile(password),
+      renderMigratorAuthPassfile(password, databaseName),
     );
     await writeMigratorAuthPassfile(
       containerId,
       MIGRATOR_AUTH_WRONG_PASSFILE,
-      renderMigratorAuthPassfile(wrongPassword),
+      renderMigratorAuthPassfile(wrongPassword, databaseName),
     );
-    await verifyMigratorWrongPasswordRejection(containerId);
-    await verifyMigratorLoginBeforeSetRole(containerId);
-    await verifyMigratorRoleEscalationDenials(containerId);
-    await verifyAuthenticatedMigrationPlatformState(containerId, 1);
+    await verifyMigratorWrongPasswordRejection(containerId, databaseName);
+    await verifyMigratorLoginBeforeSetRole(containerId, databaseName);
+    await verifyMigratorRoleEscalationDenials(containerId, databaseName);
+    await verifyAuthenticatedMigrationPlatformState(
+      containerId,
+      1,
+      databaseName,
+    );
 
     const rollbackResult = await migratorAuthenticatedPsql(
       containerId,
       MIGRATOR_AUTH_PASSFILE,
-      renderAuthenticatedApplicationMigration(plan, true),
-      { verboseErrors: true },
+      renderAuthenticatedApplicationMigration(plan, true, databaseName),
+      { verboseErrors: true, databaseName },
     );
     assertExpectedPsqlFailure(rollbackResult, {
       label: "injected authenticated application-migration rollback",
@@ -1703,12 +3563,17 @@ async function verifyAuthenticatedApplicationMigrationSession(
         "Authenticated application rollback returned unexpected output",
       );
     }
-    await verifyAuthenticatedMigrationPlatformState(containerId, 1);
+    await verifyAuthenticatedMigrationPlatformState(
+      containerId,
+      1,
+      databaseName,
+    );
 
     const successResult = await migratorAuthenticatedPsql(
       containerId,
       MIGRATOR_AUTH_PASSFILE,
-      renderAuthenticatedApplicationMigration(plan),
+      renderAuthenticatedApplicationMigration(plan, false, databaseName),
+      { databaseName },
     );
     if (successResult.exitCode !== 0 || successResult.stderr.trim() !== "") {
       throw new Error("Authenticated application migration failed");
@@ -1721,20 +3586,29 @@ async function verifyAuthenticatedApplicationMigrationSession(
       ],
       "authenticated application migration markers",
     );
-    await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);
-    await verifyMigratorOwnsNoObjects(containerId);
+    await verifyAuthenticatedMigrationLedger(
+      containerId,
+      expectedLedgerRows,
+      databaseName,
+    );
+    await verifyMigratorOwnsNoObjects(containerId, databaseName);
 
     await expectMigratorAuthenticatedPsqlFailure(
       containerId,
-      renderAuthenticatedApplicationMigration(plan),
+      renderAuthenticatedApplicationMigration(plan, false, databaseName),
       {
         label: "authenticated application-migration replay",
         sqlState: "P0001",
         message: "versioned application migration requires an empty ledger",
       },
+      databaseName,
     );
-    await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);
-    await verifyMigratorOwnsNoObjects(containerId);
+    await verifyAuthenticatedMigrationLedger(
+      containerId,
+      expectedLedgerRows,
+      databaseName,
+    );
+    await verifyMigratorOwnsNoObjects(containerId, databaseName);
   } catch (error) {
     probeFailed = true;
     probeError = error;
@@ -1773,6 +3647,7 @@ async function verifyAuthenticatedApplicationMigrationSession(
 async function verifyAuthenticatedMigrationLedger(
   containerId: string,
   expectedRows: readonly AuthenticatedMigrationLedgerRow[],
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): Promise<void> {
   assertJsonEqual(
     splitLines(
@@ -1781,6 +3656,7 @@ async function verifyAuthenticatedMigrationLedger(
         `SELECT migration_id || '|' || file_name || '|' || sha256 || '|' || applied_by
 FROM shared_data.schema_migrations
 ORDER BY migration_id;`,
+        databaseName,
       ),
     ),
     expectedRows.map(
@@ -1793,10 +3669,11 @@ ORDER BY migration_id;`,
 
 async function verifyB7PlatformArtifactsAfterApplication(
   containerId: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): Promise<void> {
+  const scalar = (sql: string) => psqlScalar(containerId, sql, databaseName);
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT extension.extname || '|' || namespace.nspname || '|' ||
   pg_catalog.pg_get_userbyid(extension.extowner) || '|' ||
   (extension.extversion = available.default_version)
@@ -1811,8 +3688,7 @@ WHERE extension.extname = 'btree_gist';`,
     "B7 final platform extension identity",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_extension AS extension
 JOIN pg_catalog.pg_depend AS dependency
@@ -1832,8 +3708,7 @@ WHERE extension.extname = 'btree_gist'
     "B7 final extension routine PUBLIC privileges",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(DISTINCT defaults.oid) FILTER (
     WHERE defaults.defaclnamespace = 0
       AND defaults.defaclobjtype = 'f'
@@ -1878,7 +3753,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV7SourceHashes> {
+): Promise<PostgresAcceptanceV8SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -1889,6 +3764,8 @@ async function collectAcceptanceSourceHashes(
     platformBootstrapV2Sha256,
     applicationMigrationManifestV2Sha256,
     authenticatedMigrationRendererV2Sha256,
+    restorePlatformV1Sha256,
+    authenticatedBackupRestorePlanV1Sha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -1899,6 +3776,8 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(platformBootstrapV2Path),
     exactFileSha256(applicationMigrationManifestV2Path),
     exactFileSha256(authenticatedMigrationRendererV2Path),
+    exactFileSha256(restorePlatformV1Path),
+    exactFileSha256(authenticatedBackupRestorePlanV1Path),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
@@ -1916,6 +3795,8 @@ async function collectAcceptanceSourceHashes(
     platformBootstrapV2Sha256,
     applicationMigrationManifestV2Sha256,
     authenticatedMigrationRendererV2Sha256,
+    restorePlatformV1Sha256,
+    authenticatedBackupRestorePlanV1Sha256,
   });
 }
 
@@ -1925,7 +3806,10 @@ async function exactFileSha256(path: string): Promise<string> {
     .digest("hex");
 }
 
-async function verifyBackupCapability(containerId: string): Promise<void> {
+async function verifyBackupCapability(
+  containerId: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<void> {
   const visibility = parseJsonObject(
     await psqlScalar(
       containerId,
@@ -1935,6 +3819,7 @@ SELECT pg_catalog.json_build_object(
   'evidence', (SELECT count(*) FROM shared_data.evidence)
 )::text;
 RESET SESSION AUTHORIZATION;`,
+      databaseName,
     ),
   );
   assertJsonEqual(
@@ -1961,6 +3846,7 @@ RESET SESSION AUTHORIZATION;`,
       sqlState: "42501",
       message: "permission denied for table organizations",
     },
+    databaseName,
   );
 }
 
@@ -2078,11 +3964,12 @@ ORDER BY 1;`,
 async function verifyAuthenticatedMigrationPlatformState(
   containerId: string,
   expectedMembershipEdges = 0,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): Promise<void> {
+  const scalar = (sql: string) => psqlScalar(containerId, sql, databaseName);
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
   rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
   rolinherit || '|' || rolbypassrls
@@ -2100,8 +3987,7 @@ ORDER BY rolname;`,
     "B7 platform capability roles",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_auth_members AS membership
 JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
@@ -2114,8 +4000,7 @@ WHERE granted_role.rolname LIKE 'research_cockpit_%'
   );
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT nspname || '|' || pg_catalog.pg_get_userbyid(nspowner)
 FROM pg_catalog.pg_namespace
 WHERE nspname IN ('private_data', 'shared_data')
@@ -2130,8 +4015,7 @@ ORDER BY nspname;`,
   );
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT namespace.nspname || '|' ||
   CASE privilege.grantee
     WHEN 0 THEN 'PUBLIC'
@@ -2150,8 +4034,7 @@ ORDER BY 1;`,
     "B7 platform non-owner schema ACLs",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT extension.extname || '|' || namespace.nspname || '|' ||
   pg_catalog.pg_get_userbyid(extension.extowner) || '|' ||
   (extension.extversion = available.default_version)
@@ -2166,8 +4049,7 @@ WHERE extension.extname = 'btree_gist';`,
     "B7 platform trusted extension identity",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_extension AS extension
 JOIN pg_catalog.pg_depend AS dependency
@@ -2193,8 +4075,7 @@ WHERE extension.extname = 'btree_gist'
     (table) => `'${table}'`,
   ).join(",\n  ");
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.unnest(ARRAY[
   ${expectedApplicationRelations}
@@ -2205,8 +4086,7 @@ WHERE pg_catalog.to_regclass(expected.relation_name) IS NOT NULL;`,
     "B7 platform application relation absence",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_proc AS procedure
 JOIN pg_catalog.pg_namespace AS namespace
@@ -2232,8 +4112,7 @@ WHERE namespace.nspname IN ('private_data', 'shared_data')
     "B7 platform application routine absence",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_policy AS policy
 JOIN pg_catalog.pg_class AS class ON class.oid = policy.polrelid
@@ -2244,8 +4123,7 @@ WHERE namespace.nspname IN ('private_data', 'shared_data');`,
     "B7 platform application policy absence",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_default_acl AS defaults
 JOIN pg_catalog.pg_roles AS role ON role.oid = defaults.defaclrole
@@ -2256,8 +4134,7 @@ WHERE role.rolname = 'research_cockpit_owner';`,
   );
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT CASE privilege.grantee
     WHEN 0 THEN 'PUBLIC'
     ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
@@ -2370,6 +4247,7 @@ async function verifyToolVersions(
 async function verifyMigrationLedger(
   containerId: string,
   expected: readonly string[] = LEGACY_MIGRATION_LEDGER_ROWS,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): Promise<void> {
   const actual = splitLines(
     await psqlScalar(
@@ -2377,6 +4255,7 @@ async function verifyMigrationLedger(
       `SELECT migration_id || '|' || file_name || '|' || sha256
 FROM shared_data.schema_migrations
 ORDER BY migration_id;`,
+      databaseName,
     ),
   );
   assertJsonEqual(actual, expected, "migration ledger");
@@ -3720,18 +5599,20 @@ async function writeMigratorAuthPassfile(
 
 async function verifyMigratorWrongPasswordRejection(
   containerId: string,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<void> {
   const result = await migratorAuthenticatedPsql(
     containerId,
     MIGRATOR_AUTH_WRONG_PASSFILE,
     "SELECT 1;",
-    { requireScram: false },
+    { requireScram: false, databaseName },
   );
   assertMigratorWrongPasswordRejection(result);
 }
 
 async function verifyMigratorLoginBeforeSetRole(
   containerId: string,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<void> {
   const identity = parseJsonObject(
     await migratorAuthenticatedPsqlScalar(
@@ -3756,6 +5637,7 @@ async function verifyMigratorLoginBeforeSetRole(
     session_user, '${MIGRATOR_AUTH_CAPABILITY_ROLE}', 'SET'
   )
 )::text;`,
+      databaseName,
     ),
   );
   assertJsonEqual(
@@ -3788,7 +5670,7 @@ async function verifyMigratorLoginBeforeSetRole(
     [
       "migrator schema DDL before SET ROLE",
       "CREATE SCHEMA b7_migrator_schema_escape;",
-      "permission denied for database research_cockpit_acceptance_test",
+      `permission denied for database ${databaseName}`,
     ],
     [
       "migrator trusted extension DDL before SET ROLE",
@@ -3801,16 +5683,18 @@ async function verifyMigratorLoginBeforeSetRole(
       "permission denied to create temporary tables",
     ],
   ] as const) {
-    await expectMigratorAuthenticatedPsqlFailure(containerId, sql, {
-      label,
-      sqlState: "42501",
-      message,
-    });
+    await expectMigratorAuthenticatedPsqlFailure(
+      containerId,
+      sql,
+      { label, sqlState: "42501", message },
+      databaseName,
+    );
   }
 }
 
 async function verifyMigratorRoleEscalationDenials(
   containerId: string,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<void> {
   for (const role of MIGRATOR_AUTH_FORBIDDEN_SET_ROLES) {
     await expectMigratorAuthenticatedPsqlFailure(
@@ -3821,6 +5705,7 @@ async function verifyMigratorRoleEscalationDenials(
         sqlState: "42501",
         message: "permission denied to set role",
       },
+      databaseName,
     );
   }
   for (const role of MIGRATOR_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES) {
@@ -3832,11 +5717,15 @@ async function verifyMigratorRoleEscalationDenials(
         sqlState: "42501",
         message: "permission denied to set session authorization",
       },
+      databaseName,
     );
   }
 }
 
-async function verifyMigratorOwnsNoObjects(containerId: string): Promise<void> {
+async function verifyMigratorOwnsNoObjects(
+  containerId: string,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
+): Promise<void> {
   assertEqual(
     await psqlScalar(
       containerId,
@@ -3855,6 +5744,7 @@ async function verifyMigratorOwnsNoObjects(containerId: string): Promise<void> {
   UNION ALL SELECT collowner FROM pg_catalog.pg_collation
 )
 SELECT count(*) FROM owned WHERE owner = (SELECT oid FROM login);`,
+      databaseName,
     ),
     "0",
     "ephemeral migrator owned objects",
@@ -3975,11 +5865,13 @@ WHERE usename = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
 async function migratorAuthenticatedPsqlScalar(
   containerId: string,
   sql: string,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<string> {
   const result = await migratorAuthenticatedPsql(
     containerId,
     MIGRATOR_AUTH_PASSFILE,
     sql,
+    { databaseName },
   );
   assertSuccess(result, "execute authenticated migrator SQL");
   return result.stdout.trim();
@@ -3989,12 +5881,13 @@ async function expectMigratorAuthenticatedPsqlFailure(
   containerId: string,
   sql: string,
   expectation: PsqlFailureExpectation,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<void> {
   const result = await migratorAuthenticatedPsql(
     containerId,
     MIGRATOR_AUTH_PASSFILE,
     sql,
-    { verboseErrors: true },
+    { verboseErrors: true, databaseName },
   );
   assertExpectedPsqlFailure(result, expectation);
 }
@@ -4077,10 +5970,13 @@ async function waitForOwnerDdlAuthBackendDrain(
   await psql(containerId, renderOwnerDdlAuthBackendDrainSql());
 }
 
-async function verifyCatalogContract(containerId: string): Promise<void> {
+async function verifyCatalogContract(
+  containerId: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<void> {
+  const scalar = (sql: string) => psqlScalar(containerId, sql, databaseName);
   const roles = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
   rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
   rolinherit || '|' || rolbypassrls
@@ -4097,8 +5993,7 @@ ORDER BY rolname;`,
   );
 
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_auth_members AS membership
 JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
@@ -4111,8 +6006,7 @@ WHERE granted_role.rolname LIKE 'research_cockpit_%'
   );
 
   const schemas = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT nspname || '|' || pg_catalog.pg_get_userbyid(nspowner)
 FROM pg_catalog.pg_namespace
 WHERE nspname <> 'information_schema'
@@ -4131,8 +6025,7 @@ ORDER BY nspname;`,
   );
 
   const relationState = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '.' || class.relname || '|' ||
   class.relkind::text || '|' || pg_catalog.pg_get_userbyid(class.relowner) || '|' ||
   class.relrowsecurity || '|' || class.relforcerowsecurity
@@ -4157,8 +6050,7 @@ ORDER BY namespace.nspname, class.relname;`,
   );
 
   const tablePrivileges = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '.' || class.relname || '|' ||
   CASE privilege.grantee
     WHEN 0 THEN 'PUBLIC'
@@ -4201,8 +6093,7 @@ ORDER BY 1;`,
   );
 
   const schemaPrivileges = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '|' ||
   CASE privilege.grantee
     WHEN 0 THEN 'PUBLIC'
@@ -4234,8 +6125,7 @@ ORDER BY 1;`,
   );
 
   const databasePrivileges = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT CASE privilege.grantee
     WHEN 0 THEN 'PUBLIC'
     ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
@@ -4259,8 +6149,7 @@ ORDER BY 1;`,
   );
 
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT count(*)
 FROM pg_catalog.pg_attribute AS attribute
 JOIN pg_catalog.pg_class AS class ON class.oid = attribute.attrelid
@@ -4276,8 +6165,7 @@ WHERE namespace.nspname IN ('private_data', 'shared_data')
   );
 
   const routinePrivileges = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '.' || procedure.proname || '|' ||
   CASE privilege.grantee
     WHEN 0 THEN 'PUBLIC'
@@ -4306,8 +6194,7 @@ ORDER BY 1;`,
   );
 
   const routineOwners = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '.' || procedure.proname || '|' ||
   pg_catalog.pg_get_userbyid(procedure.proowner)
 FROM pg_catalog.pg_proc AS procedure
@@ -4340,8 +6227,7 @@ ORDER BY 1;`,
   );
 
   const policies = splitLines(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '.' || class.relname || '|' ||
   policy.polname || '|' ||
   CASE policy.polcmd
@@ -4368,8 +6254,7 @@ ORDER BY 1;`,
     "exact RLS policy table, command, and role bindings",
   );
   assertEqual(
-    await psqlScalar(
-      containerId,
+    await scalar(
       `SELECT namespace.nspname || '|' || extension.extversion
 FROM pg_catalog.pg_extension AS extension
 JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = extension.extnamespace
@@ -4380,8 +6265,7 @@ WHERE extension.extname = 'btree_gist';`,
   );
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT namespace.nspname || '.' || class.relname || '|' ||
   constraint_row.contype::text || '|' || count(*)
 FROM pg_catalog.pg_constraint AS constraint_row
@@ -4397,8 +6281,7 @@ ORDER BY 1;`,
   );
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT class.relname || '|' || constraint_row.conname
 FROM pg_catalog.pg_constraint AS constraint_row
 JOIN pg_catalog.pg_class AS class ON class.oid = constraint_row.conrelid
@@ -4423,8 +6306,7 @@ ORDER BY 1;`,
   );
   assertJsonEqual(
     splitLines(
-      await psqlScalar(
-        containerId,
+      await scalar(
         `SELECT namespace.nspname || '.' || class.relname || '|' ||
   trigger.tgname || '|' || trigger.tgenabled::text || '|' || trigger.tgtype || '|' ||
   function_namespace.nspname || '.' || procedure.proname || '|' ||
@@ -4478,10 +6360,15 @@ async function expectedPolicyCatalogLines(): Promise<string[]> {
   return lines.sort();
 }
 
-async function verifyContextCleanup(containerId: string): Promise<void> {
+async function verifyContextCleanup(
+  containerId: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<void> {
+  const scalar = (sql: string) => psqlScalar(containerId, sql, databaseName);
+  const expectFailure = (sql: string, expectation: PsqlFailureExpectation) =>
+    expectPsqlFailure(containerId, sql, expectation, databaseName);
   const missing = parseJsonObject(
-    await psqlScalar(
-      containerId,
+    await scalar(
       runtimeWithoutContextSql(`SELECT pg_catalog.json_build_object(
   'privateRows',
     (SELECT count(*) FROM private_data.alert_rules) +
@@ -4514,16 +6401,14 @@ async function verifyContextCleanup(containerId: string): Promise<void> {
     "missing context visibility",
   );
 
-  const cleanup = splitLines(
-    await psqlScalar(containerId, contextCleanupSql()),
-  );
+  const cleanup = splitLines(await scalar(contextCleanupSql()));
   assertJsonEqual(
     cleanup,
     ["cleared", "cleared", "cleared"],
     "context cleanup",
   );
 
-  const malformed = await psqlScalar(containerId, malformedContextSql());
+  const malformed = await scalar(malformedContextSql());
   assertEqual(malformed, "cleared", "malformed context side effects");
   for (const [label, arguments_, message] of [
     [
@@ -4563,8 +6448,7 @@ async function verifyContextCleanup(containerId: string): Promise<void> {
       "the static harness accepts synthetic demo context only",
     ],
   ] as const) {
-    await expectPsqlFailure(
-      containerId,
+    await expectFailure(
       `SET SESSION AUTHORIZATION research_cockpit_runtime;
 BEGIN;
 CALL private_data.set_request_context(${arguments_});
@@ -4573,8 +6457,7 @@ RESET SESSION AUTHORIZATION;`,
       { label, sqlState: "P0001", message },
     );
   }
-  await expectPsqlFailure(
-    containerId,
+  await expectFailure(
     `SET SESSION AUTHORIZATION research_cockpit_runtime;
 BEGIN;
 SELECT pg_catalog.set_config('app.principal_id', 'not-a-uuid', true);
@@ -4790,9 +6673,13 @@ async function verifyOperationRights(
   }
 }
 
-async function verifyWriteDenials(containerId: string): Promise<void> {
-  await expectPsqlFailure(
-    containerId,
+async function verifyWriteDenials(
+  containerId: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<void> {
+  const expectFailure = (sql: string, expectation: PsqlFailureExpectation) =>
+    expectPsqlFailure(containerId, sql, expectation, databaseName);
+  await expectFailure(
     renderRuntimeContextSql(
       "impersonated",
       PRINCIPAL_ALPHA,
@@ -4838,8 +6725,7 @@ WHERE organization_id = '${ORGANIZATION_ALPHA}';`,
       "permission denied for table schema_migrations",
     ],
   ] as const) {
-    await expectPsqlFailure(
-      containerId,
+    await expectFailure(
       `SET SESSION AUTHORIZATION research_cockpit_test_seed;
 BEGIN;
 ${sql}
@@ -4854,6 +6740,7 @@ RESET SESSION AUTHORIZATION;`,
       containerId,
       `SELECT count(*) FROM private_data.organizations
 WHERE id = '10000000-0000-4000-8000-000000000099';`,
+      databaseName,
     ),
     "0",
     "failed runtime write rollback",
@@ -5683,13 +7570,22 @@ function assertSensitiveCommandSuccess(
 function runtimeAuthorizationMatrixClient(
   containerId: string,
   mode: RuntimeAuthorizationMatrixMode,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): RuntimeAuthorizationMatrixClient {
+  if (
+    mode === "authenticated" &&
+    databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME
+  ) {
+    throw new Error(
+      "Authenticated runtime matrix is restricted to the reviewed source database",
+    );
+  }
   return Object.freeze({
     mode,
     scalar: (sql: string) =>
       mode === "authenticated"
         ? runtimeAuthenticatedPsqlScalar(containerId, sql)
-        : psqlScalar(containerId, sql),
+        : psqlScalar(containerId, sql, databaseName),
   });
 }
 
@@ -5916,8 +7812,12 @@ ${matrix}
 RESET SESSION AUTHORIZATION;`;
 }
 
-async function psqlScalar(containerId: string, sql: string): Promise<string> {
-  const result = await psql(containerId, sql);
+async function psqlScalar(
+  containerId: string,
+  sql: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<string> {
+  const result = await psql(containerId, sql, databaseName);
   return result.stdout.trim();
 }
 
@@ -5951,7 +7851,11 @@ async function psqlMaintenance(
   return result;
 }
 
-async function psql(containerId: string, sql: string): Promise<CommandResult> {
+async function psql(
+  containerId: string,
+  sql: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<CommandResult> {
   const result = await dockerExec(
     containerId,
     [
@@ -5962,7 +7866,7 @@ async function psql(containerId: string, sql: string): Promise<CommandResult> {
       "--no-align",
       "--set=ON_ERROR_STOP=1",
       "--username=postgres",
-      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+      `--dbname=${databaseName}`,
     ],
     sql,
   );
@@ -5974,6 +7878,7 @@ async function expectPsqlFailure(
   containerId: string,
   sql: string,
   expectation: PsqlFailureExpectation,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): Promise<void> {
   const result = await dockerExec(
     containerId,
@@ -5986,7 +7891,7 @@ async function expectPsqlFailure(
       "--set=ON_ERROR_STOP=1",
       "--set=VERBOSITY=verbose",
       "--username=postgres",
-      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+      `--dbname=${databaseName}`,
     ],
     sql,
   );
@@ -6135,7 +8040,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "c39a9e2f24300f05e30f26e41bf72b8bf264513e90a1e1bebdf4efbc4f1b64ec" ||
+      "63db230689987f7a927b56e2b2768206a45def3ed0c66e6c61e96279d22adff0" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||

@@ -51,6 +51,11 @@ const V7_SOURCE_KEYS = [
   "authenticatedMigrationRendererV2",
   "applicationMigrationsV2",
 ] as const;
+const V8_SOURCE_KEYS = [
+  ...V7_SOURCE_KEYS,
+  "restorePlatformV1",
+  "authenticatedBackupRestorePlanV1",
+] as const;
 const MIGRATION_SOURCE_KEYS = ["id", "file", "bytes"] as const;
 const IMAGE_CONFIG_KEYS = [
   "schemaVersion",
@@ -96,6 +101,8 @@ const MAX_PROJECTION_NORMALIZER_BYTES = 2 * 1024 * 1024;
 const MAX_PLATFORM_BOOTSTRAP_V2_BYTES = 2 * 1024 * 1024;
 const MAX_APPLICATION_MANIFEST_V2_BYTES = 64 * 1024;
 const MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES = 2 * 1024 * 1024;
+const MAX_RESTORE_PLATFORM_V1_BYTES = 2 * 1024 * 1024;
+const MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATION_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATIONS = 100;
 
@@ -140,6 +147,8 @@ export interface PostgresAcceptanceEvidenceSourceBundle {
   readonly applicationMigrationManifestV2?: Uint8Array;
   readonly authenticatedMigrationRendererV2?: Uint8Array;
   readonly applicationMigrationsV2?: readonly PostgresAcceptanceMigrationSource[];
+  readonly restorePlatformV1?: Uint8Array;
+  readonly authenticatedBackupRestorePlanV1?: Uint8Array;
 }
 
 export interface VerifyPostgresAcceptanceEvidenceOfflineInput {
@@ -177,6 +186,8 @@ interface NormalizedSources {
   readonly applicationMigrationManifestV2?: Uint8Array;
   readonly authenticatedMigrationRendererV2?: Uint8Array;
   readonly applicationMigrationsV2?: readonly NormalizedMigrationSource[];
+  readonly restorePlatformV1?: Uint8Array;
+  readonly authenticatedBackupRestorePlanV1?: Uint8Array;
 }
 
 interface NormalizedMigrationSource {
@@ -256,7 +267,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 4 ||
       evidence.schemaVersion === 5 ||
       evidence.schemaVersion === 6 ||
-      evidence.schemaVersion === 7
+      evidence.schemaVersion === 7 ||
+      evidence.schemaVersion === 8
     ) {
       if (
         sources.projectionQuery === undefined ||
@@ -270,7 +282,7 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 7) {
+    if (evidence.schemaVersion === 7 || evidence.schemaVersion === 8) {
       if (
         sources.platformBootstrapV2 === undefined ||
         sources.applicationMigrationManifestV2 === undefined ||
@@ -289,6 +301,19 @@ export function verifyPostgresAcceptanceEvidenceOffline(
         sources.applicationMigrationManifestV2,
         sources.applicationMigrationsV2,
       );
+    }
+
+    if (evidence.schemaVersion === 8) {
+      if (
+        sources.restorePlatformV1 === undefined ||
+        sources.authenticatedBackupRestorePlanV1 === undefined ||
+        evidence.sourceHashes.restorePlatformV1Sha256 !==
+          sha256(sources.restorePlatformV1) ||
+        evidence.sourceHashes.authenticatedBackupRestorePlanV1Sha256 !==
+          sha256(sources.authenticatedBackupRestorePlanV1)
+      ) {
+        invalid();
+      }
     }
 
     const workflowSha256 = sha256(sources.workflow);
@@ -347,6 +372,51 @@ function normalizeSources(
   value: unknown,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): NormalizedSources {
+  if (schemaVersion === 8) {
+    const sources = exactPlainDataRecord(value, V8_SOURCE_KEYS);
+    return normalizeSourceFields(
+      sources,
+      {
+        projectionQuery: exactBytes(
+          sources.projectionQuery,
+          MAX_PROJECTION_QUERY_BYTES,
+        ),
+        projectionNormalizer: exactBytes(
+          sources.projectionNormalizer,
+          MAX_PROJECTION_NORMALIZER_BYTES,
+        ),
+      },
+      {
+        platformBootstrapV2: exactBytes(
+          sources.platformBootstrapV2,
+          MAX_PLATFORM_BOOTSTRAP_V2_BYTES,
+        ),
+        applicationMigrationManifestV2: exactBytes(
+          sources.applicationMigrationManifestV2,
+          MAX_APPLICATION_MANIFEST_V2_BYTES,
+        ),
+        authenticatedMigrationRendererV2: exactBytes(
+          sources.authenticatedMigrationRendererV2,
+          MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES,
+        ),
+        applicationMigrationsV2: Object.freeze(
+          exactDataArray(
+            sources.applicationMigrationsV2,
+            APPLICATION_MIGRATION_V2_FILES.length,
+            false,
+          ).map((migration) => normalizeApplicationMigrationV2(migration)),
+        ),
+        restorePlatformV1: exactBytes(
+          sources.restorePlatformV1,
+          MAX_RESTORE_PLATFORM_V1_BYTES,
+        ),
+        authenticatedBackupRestorePlanV1: exactBytes(
+          sources.authenticatedBackupRestorePlanV1,
+          MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES,
+        ),
+      },
+    );
+  }
   if (schemaVersion === 7) {
     const sources = exactPlainDataRecord(value, V7_SOURCE_KEYS);
     return normalizeSourceFields(
@@ -404,12 +474,13 @@ function normalizeSources(
 
 function usesProjectionSources(
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
-): schemaVersion is 4 | 5 | 6 | 7 {
+): schemaVersion is 4 | 5 | 6 | 7 | 8 {
   return (
     schemaVersion === 4 ||
     schemaVersion === 5 ||
     schemaVersion === 6 ||
-    schemaVersion === 7
+    schemaVersion === 7 ||
+    schemaVersion === 8
   );
 }
 
@@ -432,6 +503,8 @@ function normalizeSourceFields(
     | "applicationMigrationManifestV2"
     | "authenticatedMigrationRendererV2"
     | "applicationMigrationsV2"
+    | "restorePlatformV1"
+    | "authenticatedBackupRestorePlanV1"
   > = {},
 ): NormalizedSources {
   const migrations = exactDataArray(sources.migrations, MAX_MIGRATIONS, false);

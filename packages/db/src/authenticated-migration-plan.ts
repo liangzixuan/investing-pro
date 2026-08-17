@@ -35,6 +35,11 @@ export const AUTHENTICATED_MIGRATOR_LOGIN_ROLE =
   "research_cockpit_migrator_login" as const;
 export const AUTHENTICATED_MIGRATION_DATABASE_NAME =
   CLEAN_BOOTSTRAP_DATABASE_NAME;
+export const AUTHENTICATED_MIGRATION_RESTORE_DATABASE_NAME =
+  "research_cockpit_acceptance_restore_test" as const;
+export type AuthenticatedMigrationDatabaseName =
+  | typeof AUTHENTICATED_MIGRATION_DATABASE_NAME
+  | typeof AUTHENTICATED_MIGRATION_RESTORE_DATABASE_NAME;
 export const AUTHENTICATED_MIGRATION_IDENTITY_MARKER =
   "b7-authenticated-migrator-identity-ok" as const;
 export const AUTHENTICATED_MIGRATION_ROLE_RESET_MARKER =
@@ -250,14 +255,16 @@ export function renderAuthenticatedPlatformMigration(
 export function renderAuthenticatedApplicationMigration(
   plan: AuthenticatedMigrationPlan,
   injectFailure = false,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): string {
   assertBoolean(injectFailure, "application injectFailure");
+  assertAuthenticatedMigrationDatabaseName(databaseName);
   validateAuthenticatedMigrationPlan(plan);
   const lines = [
     "BEGIN;",
     `SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK}::bigint);`,
     `SET LOCAL ROLE ${AUTHENTICATED_MIGRATION_OWNER_ROLE};`,
-    renderAuthenticatedApplicationPreflight(),
+    renderAuthenticatedApplicationPreflight(databaseName),
   ];
 
   for (const [index, entry] of plan.manifest.migrations.entries()) {
@@ -299,10 +306,12 @@ export async function renderReviewedAuthenticatedPlatformMigration(
 export async function renderReviewedAuthenticatedApplicationMigration(
   injectFailure = false,
   root = reviewedPlanRoot,
+  databaseName: AuthenticatedMigrationDatabaseName = AUTHENTICATED_MIGRATION_DATABASE_NAME,
 ): Promise<string> {
   return renderAuthenticatedApplicationMigration(
     await loadAuthenticatedMigrationPlan(root),
     injectFailure,
+    databaseName,
   );
 }
 
@@ -551,7 +560,9 @@ function validateApplicationBundle(
   }
 }
 
-function renderAuthenticatedApplicationPreflight(): string {
+function renderAuthenticatedApplicationPreflight(
+  databaseName: AuthenticatedMigrationDatabaseName,
+): string {
   const capabilityRoles = [
     "research_cockpit_owner",
     "research_cockpit_runtime",
@@ -566,7 +577,7 @@ DECLARE
   exact_membership_count integer;
   related_membership_count integer;
 BEGIN
-  IF pg_catalog.current_database() <> '${AUTHENTICATED_MIGRATION_DATABASE_NAME}' THEN
+  IF pg_catalog.current_database() <> '${databaseName}' THEN
     RAISE EXCEPTION 'authenticated migration refused for database %',
       pg_catalog.current_database();
   END IF;
@@ -690,6 +701,17 @@ BEGIN
   END IF;
 END;
 $authenticated_migration_preflight$;`;
+}
+
+function assertAuthenticatedMigrationDatabaseName(
+  value: string,
+): asserts value is AuthenticatedMigrationDatabaseName {
+  if (
+    value !== AUTHENTICATED_MIGRATION_DATABASE_NAME &&
+    value !== AUTHENTICATED_MIGRATION_RESTORE_DATABASE_NAME
+  ) {
+    throw new Error("Authenticated migration database target is unsupported");
+  }
 }
 
 function renderAuthenticatedIdentityAssertion(): string {

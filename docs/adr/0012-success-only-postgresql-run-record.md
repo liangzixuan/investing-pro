@@ -1,6 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 7 live record retained and reviewed
+Status: accepted; version 7 live record retained and reviewed; version 8 source/local verification complete with live evidence pending
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -126,6 +126,34 @@ source bundle binds the v2 platform bootstrap, exact application manifest, and
 authenticated migration renderer; the manifest in turn binds every exact
 application body. The later documentation commit does not retest or expand the
 recorded run. See [ADR 0019](./0019-versioned-authenticated-migration-phase.md).
+
+Cycle 1b-b8 has an accepted and locally verified version 8 source/evidence
+contract but no live PostgreSQL claim. V8 preserves exact v1-v7 parsing and
+meanings, appends only
+`authenticated_policy_scoped_application_data_dump_and_bounded_clean_restore`,
+and add exactly `restorePlatformV1Sha256` and
+`authenticatedBackupRestorePlanV1Sha256` to the ordered source-hash bundle. It
+replaces only `authenticated_backup_sessions` with
+`external_production_incremental_or_continuous_authenticated_backups`, and
+replace only `dump_restore_or_disaster_recovery` with
+`full_schema_global_object_cross_cluster_or_cross_version_restore` followed by
+`disaster_recovery_storage_encryption_retention_rpo_or_rto`. Every other V7
+check, limitation, source key, and historical interpretation remains fixed.
+This source contract passed all 409 tests across the 10 database test files,
+database typechecking, the migration and static PostgreSQL guardrails, ESLint,
+Prettier, and the diff check.
+
+The configured version 8 record name is
+`research-cockpit-postgres-acceptance-v8.json`, and its artifact name is bound
+to the exact commit and attempt as
+`postgres-acceptance-evidence-v8-${sha}-${attempt}`. It may be written only
+after the authenticated RLS-scoped data-only dump, independently provisioned
+same-cluster restore, transactional failure and successful restore, 21-table
+fingerprints, source isolation, and complete cleanup all pass. The archive
+itself is temporary application data and is not uploaded with the evidence
+record. See
+[ADR 0020](./0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
+and the [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md).
 
 ## Primary sources
 

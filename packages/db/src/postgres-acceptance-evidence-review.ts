@@ -22,6 +22,8 @@ const MAX_PROJECTION_NORMALIZER_BYTES = 2 * 1_024 * 1_024;
 const MAX_PLATFORM_BOOTSTRAP_V2_BYTES = 2 * 1_024 * 1_024;
 const MAX_APPLICATION_MANIFEST_V2_BYTES = 64 * 1_024;
 const MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES = 2 * 1_024 * 1_024;
+const MAX_RESTORE_PLATFORM_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -45,6 +47,11 @@ const AUTHENTICATED_MIGRATION_RENDERER_V2_PATH =
 const APPLICATION_MIGRATION_V2_DIRECTORY =
   "packages/db/migration-plans/v2/application";
 const MIGRATION_PLAN_V2_DIRECTORY = "packages/db/migration-plans/v2";
+const BACKUP_RESTORE_PLAN_V1_DIRECTORY = "packages/db/backup-restore-plans/v1";
+const RESTORE_PLATFORM_V1_PATH =
+  "packages/db/backup-restore-plans/v1/restore-platform.sql";
+const AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_PATH =
+  "packages/db/src/authenticated-backup-restore-plan.ts";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -188,12 +195,20 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 4 ||
       evidence.schemaVersion === 5 ||
       evidence.schemaVersion === 6 ||
-      evidence.schemaVersion === 7
+      evidence.schemaVersion === 7 ||
+      evidence.schemaVersion === 8
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
-      evidence.schemaVersion === 7
+      evidence.schemaVersion === 7 || evidence.schemaVersion === 8
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
+        : {};
+    const backupRestorePlanV1Sources =
+      evidence.schemaVersion === 8
+        ? await readBackupRestorePlanV1Sources(
+            repositoryPath,
+            input.expectedCommit,
+          )
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -215,10 +230,70 @@ export async function reviewPostgresAcceptanceEvidence(
         migrations,
         ...projectionSources,
         ...migrationPlanV2Sources,
+        ...backupRestorePlanV1Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
+  }
+}
+
+async function readBackupRestorePlanV1Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly restorePlatformV1: Uint8Array;
+  readonly authenticatedBackupRestorePlanV1: Uint8Array;
+}> {
+  await requireExactBackupRestorePlanV1Tree(repositoryPath, commit);
+  const [restorePlatformV1, authenticatedBackupRestorePlanV1] =
+    await Promise.all([
+      readFixedGitBlob(
+        repositoryPath,
+        commit,
+        RESTORE_PLATFORM_V1_PATH,
+        MAX_RESTORE_PLATFORM_V1_BYTES,
+      ),
+      readFixedGitBlob(
+        repositoryPath,
+        commit,
+        AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_PATH,
+        MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES,
+      ),
+    ]);
+  return Object.freeze({
+    restorePlatformV1: Uint8Array.from(restorePlatformV1),
+    authenticatedBackupRestorePlanV1: Uint8Array.from(
+      authenticatedBackupRestorePlanV1,
+    ),
+  });
+}
+
+async function requireExactBackupRestorePlanV1Tree(
+  repositoryPath: string,
+  commit: string,
+): Promise<void> {
+  const treeOutput = await executeGit(
+    repositoryPath,
+    [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      commit,
+      "--",
+      BACKUP_RESTORE_PLAN_V1_DIRECTORY,
+    ],
+    MAX_GIT_METADATA_BYTES,
+  );
+  const treeEntries = parseGitTree(treeOutput);
+  if (
+    treeEntries.length !== 1 ||
+    treeEntries[0]?.mode !== "100644" ||
+    treeEntries[0]?.type !== "blob" ||
+    treeEntries[0]?.path !== RESTORE_PLATFORM_V1_PATH
+  ) {
+    invalid();
   }
 }
 

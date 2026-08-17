@@ -1239,15 +1239,15 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "c39a9e2f24300f05e30f26e41bf72b8bf264513e90a1e1bebdf4efbc4f1b64ec",
+        "63db230689987f7a927b56e2b2768206a45def3ed0c66e6c61e96279d22adff0",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v7.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v8.json",
     );
     expect(artifacts.workflow).toContain(
       '--health-cmd "pg_isready --username=postgres --dbname=postgres"',
@@ -1383,7 +1383,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v7.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v8.json",
         unsafePath,
       );
       expect(
@@ -1423,7 +1423,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1558,7 +1558,156 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).not.toContain("writtenEvidence.path");
     expect(source).toContain("authenticated test-loader");
     expect(source).toContain("driverless financial-fact projection");
-    expect(source).toContain("version 7 success-only run record");
+    expect(source).toContain("version 8 success-only run record");
+  });
+
+  it("finishes mandatory B8 cleanup and hashes its exact sources before v8 evidence", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const orchestrator = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    const b7 = orchestrator.indexOf(
+      "await verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    const b8 = orchestrator.indexOf(
+      "await verifyAuthenticatedBackupAndBoundedRestore(",
+    );
+    const finalCheckout = orchestrator.indexOf(
+      "await verifyCheckedOutCommit(environment);",
+      b8,
+    );
+    const sourceHashes = orchestrator.indexOf(
+      "await collectAcceptanceSourceHashes(config);",
+    );
+    const buildEvidence = orchestrator.indexOf(
+      "buildPostgresAcceptanceEvidence",
+    );
+    const writeEvidence = orchestrator.indexOf(
+      "writePostgresAcceptanceEvidence",
+    );
+    expect(b7).toBeGreaterThan(-1);
+    expect(b8).toBeGreaterThan(b7);
+    expect(finalCheckout).toBeGreaterThan(b8);
+    expect(sourceHashes).toBeGreaterThan(finalCheckout);
+    expect(buildEvidence).toBeGreaterThan(sourceHashes);
+    expect(writeEvidence).toBeGreaterThan(buildEvidence);
+
+    const b8Probe = section(
+      "async function verifyAuthenticatedBackupAndBoundedRestore(",
+      "async function createBoundedRestoreTarget(",
+    );
+    const initialResidue = b8Probe.indexOf(
+      "await verifyAuthenticatedBackupRestoreResidueAbsent(containerId);",
+    );
+    const cleanupBoundary = b8Probe.indexOf("} finally {");
+    const cleanup = b8Probe.indexOf(
+      "cleanupAuthenticatedBackupRestoreFilesAndRoles(containerId)",
+      cleanupBoundary,
+    );
+    const dropTarget = b8Probe.indexOf(
+      "dropBoundedRestoreTargetIfPresent(containerId)",
+      cleanup,
+    );
+    const finalResidue = b8Probe.indexOf(
+      "verifyAuthenticatedBackupRestoreResidueAbsent(containerId)",
+      dropTarget,
+    );
+    const combinedFailure = b8Probe.indexOf(
+      "if (probeFailed && cleanupFailed)",
+      finalResidue,
+    );
+    const probeFailure = b8Probe.indexOf(
+      "if (probeFailed) throw probeError;",
+      combinedFailure,
+    );
+    const cleanupFailure = b8Probe.indexOf(
+      "if (cleanupFailed) throw cleanupError;",
+      probeFailure,
+    );
+    expect(initialResidue).toBeGreaterThan(-1);
+    expect(cleanupBoundary).toBeGreaterThan(initialResidue);
+    expect(cleanup).toBeGreaterThan(cleanupBoundary);
+    expect(dropTarget).toBeGreaterThan(cleanup);
+    expect(finalResidue).toBeGreaterThan(dropTarget);
+    expect(combinedFailure).toBeGreaterThan(finalResidue);
+    expect(probeFailure).toBeGreaterThan(combinedFailure);
+    expect(cleanupFailure).toBeGreaterThan(probeFailure);
+    expect(b8Probe).not.toContain("buildPostgresAcceptanceEvidence");
+    expect(b8Probe).not.toContain("writePostgresAcceptanceEvidence");
+
+    const pathDeclarations = section(
+      "const restorePlatformV1Path = join(",
+      "const EXPECTED_IMAGE_REFERENCE",
+    );
+    expect(pathDeclarations).toContain(`const restorePlatformV1Path = join(
+  packageRoot,
+  "backup-restore-plans",
+  "v1",
+  "restore-platform.sql",
+);`);
+    expect(pathDeclarations)
+      .toContain(`const authenticatedBackupRestorePlanV1Path = join(
+  packageRoot,
+  "src",
+  "authenticated-backup-restore-plan.ts",
+);`);
+
+    const hashCollector = section(
+      "async function collectAcceptanceSourceHashes(",
+      "async function exactFileSha256(",
+    );
+    const tupleRenderer = hashCollector.indexOf(
+      "authenticatedMigrationRendererV2Sha256,",
+    );
+    const tupleRestore = hashCollector.indexOf(
+      "restorePlatformV1Sha256,",
+      tupleRenderer + 1,
+    );
+    const tuplePlan = hashCollector.indexOf(
+      "authenticatedBackupRestorePlanV1Sha256,",
+      tupleRestore + 1,
+    );
+    const rendererPath = hashCollector.indexOf(
+      "exactFileSha256(authenticatedMigrationRendererV2Path)",
+    );
+    const restorePath = hashCollector.indexOf(
+      "exactFileSha256(restorePlatformV1Path)",
+      rendererPath + 1,
+    );
+    const planPath = hashCollector.indexOf(
+      "exactFileSha256(authenticatedBackupRestorePlanV1Path)",
+      restorePath + 1,
+    );
+    const returned = hashCollector.indexOf("return Object.freeze({");
+    const returnedRestore = hashCollector.indexOf(
+      "restorePlatformV1Sha256,",
+      returned,
+    );
+    const returnedPlan = hashCollector.indexOf(
+      "authenticatedBackupRestorePlanV1Sha256,",
+      returnedRestore + 1,
+    );
+    expect(tupleRenderer).toBeGreaterThan(-1);
+    expect(tupleRestore).toBeGreaterThan(tupleRenderer);
+    expect(tuplePlan).toBeGreaterThan(tupleRestore);
+    expect(rendererPath).toBeGreaterThan(tuplePlan);
+    expect(restorePath).toBeGreaterThan(rendererPath);
+    expect(planPath).toBeGreaterThan(restorePath);
+    expect(returned).toBeGreaterThan(planPath);
+    expect(returnedRestore).toBeGreaterThan(returned);
+    expect(returnedPlan).toBeGreaterThan(returnedRestore);
   });
 
   it("loads the reviewed fixture only through the bounded authenticated test-loader boundary", async () => {
@@ -1816,7 +1965,7 @@ CREATE DATABASE research_cockpit_acceptance_test
     }
   });
 
-  it("runs the versioned platform and authenticated application phases before v7 evidence", async () => {
+  it("runs the versioned platform and authenticated application phases before current evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -1867,19 +2016,19 @@ CREATE DATABASE research_cockpit_acceptance_test
       "await verifyMigratorAuthRoleCatalog(containerId);",
       "MIGRATOR_AUTH_PASSFILE,",
       "MIGRATOR_AUTH_WRONG_PASSFILE,",
-      "await verifyMigratorWrongPasswordRejection(containerId);",
-      "await verifyMigratorLoginBeforeSetRole(containerId);",
-      "await verifyMigratorRoleEscalationDenials(containerId);",
-      "await verifyAuthenticatedMigrationPlatformState(containerId, 1);",
-      "renderAuthenticatedApplicationMigration(plan, true),",
+      "await verifyMigratorWrongPasswordRejection(containerId, databaseName);",
+      "await verifyMigratorLoginBeforeSetRole(containerId, databaseName);",
+      "await verifyMigratorRoleEscalationDenials(containerId, databaseName);",
+      "await verifyAuthenticatedMigrationPlatformState(",
+      "renderAuthenticatedApplicationMigration(plan, true, databaseName),",
       'label: "injected authenticated application-migration rollback"',
-      "await verifyAuthenticatedMigrationPlatformState(containerId, 1);",
-      "renderAuthenticatedApplicationMigration(plan),",
-      "await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);",
-      "await verifyMigratorOwnsNoObjects(containerId);",
+      "await verifyAuthenticatedMigrationPlatformState(",
+      "renderAuthenticatedApplicationMigration(plan, false, databaseName),",
+      "await verifyAuthenticatedMigrationLedger(",
+      "await verifyMigratorOwnsNoObjects(containerId, databaseName);",
       'label: "authenticated application-migration replay"',
-      "await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);",
-      "await verifyMigratorOwnsNoObjects(containerId);",
+      "await verifyAuthenticatedMigrationLedger(",
+      "await verifyMigratorOwnsNoObjects(containerId, databaseName);",
       "run: () => cleanupMigratorAuthProbe(containerId)",
       "run: () => verifyMigratorAuthResidueAbsent(containerId)",
     ];
@@ -1949,6 +2098,175 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(finalPlatform).toContain("defaults.defaclobjtype = 'f'");
     expect(finalPlatform).toContain("privilege.grantee = 0");
     expect(finalPlatform).toContain('"1|0"');
+  });
+
+  it("runs the authenticated backup and bounded restore before v8 evidence", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+    const expectOrdered = (body: string, markers: readonly string[]) => {
+      let previous = -1;
+      for (const marker of markers) {
+        const position = body.indexOf(marker, previous + 1);
+        expect(position, marker).toBeGreaterThan(previous);
+        previous = position;
+      }
+    };
+
+    const entrypoint = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    expectOrdered(entrypoint, [
+      "await verifyVersionedAuthenticatedMigrationPlan(",
+      "await verifyAuthenticatedBackupAndBoundedRestore(",
+      "await verifyCheckedOutCommit(environment);",
+      "const sourceHashes = await collectAcceptanceSourceHashes(config);",
+      "const evidence = buildPostgresAcceptanceEvidence({",
+      "const writtenEvidence = await writePostgresAcceptanceEvidence(",
+      "the version 8 success-only run record was written",
+    ]);
+
+    const orchestrator = section(
+      "async function verifyAuthenticatedBackupAndBoundedRestore(",
+      "async function createBoundedRestoreTarget(",
+    );
+    expectOrdered(orchestrator, [
+      "await verifyAuthenticatedBackupRestoreResidueAbsent(containerId);",
+      "const sourceBefore = await collectAuthenticatedBackupFingerprints(",
+      "await createAuthenticatedPolicyScopedBackup(containerId);",
+      "const sourceAfterDump = await collectAuthenticatedBackupFingerprints(",
+      "await createBoundedRestoreTarget(",
+      "await verifyRestorableApplicationTablesEmpty(containerId);",
+      "await restoreAuthenticatedPolicyScopedBackup(containerId, archiveSha256);",
+      "const restored = await collectAuthenticatedBackupFingerprints(",
+      "await verifyMigrationLedger(",
+      "await verifyCatalogContract(containerId, AUTHENTICATED_RESTORE_DATABASE);",
+      "await verifyB7PlatformArtifactsAfterApplication(",
+      "await verifyBackupCapability(containerId, AUTHENTICATED_RESTORE_DATABASE);",
+      "await verifyContextCleanup(containerId, AUTHENTICATED_RESTORE_DATABASE);",
+      "await verifyRuntimeAuthorizationMatrix(",
+      "await verifyWriteDenials(containerId, AUTHENTICATED_RESTORE_DATABASE);",
+      "const sourceAfterRestore = await collectAuthenticatedBackupFingerprints(",
+      "await authenticatedBackupArchiveSha256(containerId)",
+      'label: "B8 ephemeral principals and files cleanup"',
+      'label: "B8 bounded restore database cleanup"',
+      'label: "B8 final residue verification"',
+    ]);
+
+    const backup = section(
+      "async function createAuthenticatedPolicyScopedBackup(",
+      "async function provisionAuthenticatedBackupLogin(",
+    );
+    expectOrdered(backup, [
+      "await provisionAuthenticatedBackupLogin(containerId, password);",
+      "await verifyAuthenticatedBackupLoginCatalog(containerId);",
+      "AUTHENTICATED_BACKUP_PASSFILE,",
+      "AUTHENTICATED_BACKUP_WRONG_PASSFILE,",
+      "for (const archive of AUTHENTICATED_BACKUP_ARCHIVE_PATHS)",
+      "await verifyAuthenticatedBackupWrongPassword(containerId);",
+      "await verifyAuthenticatedBackupLoginBeforeSetRole(containerId);",
+      "await verifyAuthenticatedBackupRoleEscalationDenials(containerId);",
+      "await verifyAuthenticatedBackupCapabilitySession(containerId);",
+      "await verifyAuthenticatedBackupFailClosedVariants(containerId);",
+      "const invocation = buildAuthenticatedBackupDumpInvocation();",
+      "await verifyAuthenticatedBackupArchiveFile(containerId);",
+      '"pg_restore",',
+      "const toc = parseAuthenticatedBackupArchiveToc(tocResult.stdout);",
+      "archiveSha256 = await authenticatedBackupArchiveSha256(containerId);",
+      'label: "authenticated backup backend drain"',
+      'label: "drop authenticated backup login"',
+      'label: "verify authenticated backup login residue"',
+    ]);
+
+    const backupCapability = section(
+      "async function verifyAuthenticatedBackupCapabilitySession(",
+      "async function verifyAuthenticatedBackupFailClosedVariants(",
+    );
+    for (const marker of [
+      "authenticated backup synthetic visibility",
+      "authenticated backup write",
+      "authenticated backup update",
+      "authenticated backup delete",
+      "authenticated backup truncate",
+      "authenticated backup context mutation",
+      "authenticated backup persistent DDL",
+      "authenticated backup temporary DDL",
+      `SET LOCAL ROLE \${AUTHENTICATED_BACKUP_CAPABILITY_ROLE};`,
+      'sqlState: "42501"',
+    ]) {
+      expect(backupCapability).toContain(marker);
+    }
+
+    const restore = section(
+      "async function restoreAuthenticatedPolicyScopedBackup(",
+      "async function provisionAuthenticatedRestoreLogin(",
+    );
+    expectOrdered(restore, [
+      "await provisionAuthenticatedRestoreLogin(containerId, password);",
+      "await verifyAuthenticatedRestoreLoginCatalog(containerId);",
+      "AUTHENTICATED_RESTORE_PASSFILE,",
+      "AUTHENTICATED_RESTORE_WRONG_PASSFILE,",
+      "await verifyAuthenticatedRestoreWrongPassword(containerId);",
+      "await verifyAuthenticatedRestoreLoginBeforeSetRole(containerId);",
+      "await verifyAuthenticatedRestoreRoleEscalationDenials(containerId);",
+      "await verifyAuthenticatedRestoreFailClosedVariants(",
+      "renderAuthenticatedRestoreFailureCreateSql()",
+      "const failedRestore = await runAuthenticatedRestoreCommand(containerId);",
+      "await verifyRestorableApplicationTablesEmpty(containerId);",
+      "renderAuthenticatedRestoreFailureCleanupSql()",
+      "renderAuthenticatedRestoreFailureResidueSql()",
+      "const restored = await runAuthenticatedRestoreCommand(containerId);",
+      "const replay = await runAuthenticatedRestoreCommand(containerId);",
+      'label: "authenticated restore backend drain"',
+      'label: "drop authenticated restore login"',
+      'label: "verify authenticated restore login residue"',
+    ]);
+
+    const finalCleanup = section(
+      "async function cleanupAuthenticatedBackupRestoreFilesAndRoles(",
+      "async function dropBoundedRestoreTargetIfPresent(",
+    );
+    expectOrdered(finalCleanup, [
+      'label: "drain authenticated backup backends"',
+      'label: "drain authenticated restore backends"',
+      'label: "drain authenticated migrator backends"',
+      "...AUTHENTICATED_BACKUP_RESTORE_FILE_PATHS.map",
+      'label: "drop residual authenticated backup login"',
+      'label: "drop residual authenticated restore login"',
+      'label: "drop residual authenticated migrator login"',
+    ]);
+    expect(finalCleanup).not.toMatch(/DROP OWNED|REASSIGN OWNED/i);
+
+    const dropTarget = section(
+      "async function dropBoundedRestoreTargetIfPresent(",
+      "async function waitForBoundedRestoreDatabaseDrain(",
+    );
+    expect(dropTarget).toContain("await waitForBoundedRestoreDatabaseDrain");
+    expect(dropTarget).toContain("renderDropAuthenticatedRestoreDatabaseSql()");
+    expect(dropTarget).not.toMatch(/\bFORCE\b/i);
+
+    const residue = section(
+      "async function verifyAuthenticatedBackupRestoreResidueAbsent(",
+      "async function verifyAuthenticatedApplicationMigrationSession(",
+    );
+    for (const marker of [
+      "B8 ephemeral role, edge, and backend residue",
+      "B8 bounded restore database residue",
+      "AUTHENTICATED_BACKUP_RESTORE_FILE_PATHS.map",
+      "verify source catalog after B8 cleanup",
+      "verify source platform artifacts after B8 cleanup",
+    ]) {
+      expect(residue).toContain(marker);
+    }
   });
 
   it("reuses the exact authorization matrix inside the authenticated cleanup boundary", async () => {
@@ -2054,7 +2372,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "async function privateVisibility(",
     );
     expect(matrixClient).toContain(
-      'mode === "authenticated"\n        ? runtimeAuthenticatedPsqlScalar(containerId, sql)\n        : psqlScalar(containerId, sql)',
+      'mode === "authenticated"\n        ? runtimeAuthenticatedPsqlScalar(containerId, sql)\n        : psqlScalar(containerId, sql, databaseName)',
     );
 
     const tenantMatrix = section(

@@ -21,6 +21,8 @@ import {
   POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -58,6 +60,8 @@ interface MutableInput {
     platformBootstrapV2?: Uint8Array;
     applicationMigrationManifestV2?: Uint8Array;
     authenticatedMigrationRendererV2?: Uint8Array;
+    restorePlatformV1?: Uint8Array;
+    authenticatedBackupRestorePlanV1?: Uint8Array;
     applicationMigrationsV2?: Array<{
       id: string;
       file: string;
@@ -101,6 +105,10 @@ function cloneInput(): MutableInput {
       ),
       authenticatedMigrationRendererV2: exactCopy(
         BASE_INPUT.sources.authenticatedMigrationRendererV2!,
+      ),
+      restorePlatformV1: exactCopy(BASE_INPUT.sources.restorePlatformV1!),
+      authenticatedBackupRestorePlanV1: exactCopy(
+        BASE_INPUT.sources.authenticatedBackupRestorePlanV1!,
       ),
       applicationMigrationsV2: BASE_INPUT.sources.applicationMigrationsV2!.map(
         (migration) => ({
@@ -182,6 +190,12 @@ function removeV7SourceHashes(record: Record<string, unknown>): void {
   delete hashes.authenticatedMigrationRendererV2Sha256;
 }
 
+function removeV8SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.restorePlatformV1Sha256;
+  delete hashes.authenticatedBackupRestorePlanV1Sha256;
+}
+
 function removeV7Sources(input: MutableInput): void {
   delete input.sources.platformBootstrapV2;
   delete input.sources.applicationMigrationManifestV2;
@@ -189,8 +203,24 @@ function removeV7Sources(input: MutableInput): void {
   delete input.sources.applicationMigrationsV2;
 }
 
-function v6Input(): MutableInput {
+function removeV8Sources(input: MutableInput): void {
+  delete input.sources.restorePlatformV1;
+  delete input.sources.authenticatedBackupRestorePlanV1;
+}
+
+function v7Input(): MutableInput {
   const input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 7;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V7_NOT_PROVEN];
+    removeV8SourceHashes(record);
+  });
+  removeV8Sources(input);
+  return input;
+}
+
+function v6Input(): MutableInput {
+  const input = mutateEvidence(v7Input(), (record) => {
     record.schemaVersion = 6;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN];
@@ -283,6 +313,18 @@ function cloneFrom(
         : {
             authenticatedMigrationRendererV2: exactCopy(
               input.sources.authenticatedMigrationRendererV2,
+            ),
+          }),
+      ...(input.sources.restorePlatformV1 === undefined
+        ? {}
+        : {
+            restorePlatformV1: exactCopy(input.sources.restorePlatformV1),
+          }),
+      ...(input.sources.authenticatedBackupRestorePlanV1 === undefined
+        ? {}
+        : {
+            authenticatedBackupRestorePlanV1: exactCopy(
+              input.sources.authenticatedBackupRestorePlanV1,
             ),
           }),
       ...(input.sources.applicationMigrationsV2 === undefined
@@ -486,6 +528,21 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v7 evidence with its exact nine-source bundle", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v7Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_policy_scoped_application_data_dump_and_bounded_clean_restore",
+    );
+    expect(result.recordedNotProven).toContain("authenticated_backup_sessions");
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -521,8 +578,11 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(v6Input(), (record) => {
         record.schemaVersion = 7;
       }),
+      mutateEvidence(v7Input(), (record) => {
+        record.schemaVersion = 8;
+      }),
       mutateEvidence(cloneInput(), (record) => {
-        record.schemaVersion = 6;
+        record.schemaVersion = 7;
       }),
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 5;
@@ -542,7 +602,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("requires the exact version-specific source bundle", () => {
-    const missingV7 = cloneInput();
+    const missingV8 = cloneInput();
+    delete missingV8.sources.restorePlatformV1;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV8),
+    );
+
+    const missingV7 = v7Input();
     delete missingV7.sources.platformBootstrapV2;
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(missingV7),
@@ -586,11 +652,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       verifyPostgresAcceptanceEvidenceOffline(extraV6),
     );
 
+    const extraV7 = v7Input();
+    (extraV7.sources as unknown as Record<string, unknown>).restorePlatformV1 =
+      exactCopy(BASE_INPUT.sources.restorePlatformV1!);
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraV7),
+    );
+
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
     );
   });
 
@@ -830,6 +903,8 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "platformBootstrapV2",
       "applicationMigrationManifestV2",
       "authenticatedMigrationRendererV2",
+      "restorePlatformV1",
+      "authenticatedBackupRestorePlanV1",
     ] as const) {
       const input = cloneInput();
       input.sources = {
@@ -1204,6 +1279,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     platformBootstrapV2,
     applicationMigrationManifestV2,
     authenticatedMigrationRendererV2,
+    restorePlatformV1,
+    authenticatedBackupRestorePlanV1,
   ] = await Promise.all([
     readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
     readExact(
@@ -1228,6 +1305,15 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     ),
     readExact(
       new URL("../src/authenticated-migration-plan.ts", import.meta.url),
+    ),
+    readExact(
+      new URL(
+        "../backup-restore-plans/v1/restore-platform.sql",
+        import.meta.url,
+      ),
+    ),
+    readExact(
+      new URL("../src/authenticated-backup-restore-plan.ts", import.meta.url),
     ),
   ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
@@ -1322,6 +1408,10 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       authenticatedMigrationRendererV2Sha256: sha256(
         authenticatedMigrationRendererV2,
       ),
+      restorePlatformV1Sha256: sha256(restorePlatformV1),
+      authenticatedBackupRestorePlanV1Sha256: sha256(
+        authenticatedBackupRestorePlanV1,
+      ),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -1347,6 +1437,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       platformBootstrapV2,
       applicationMigrationManifestV2,
       authenticatedMigrationRendererV2,
+      restorePlatformV1,
+      authenticatedBackupRestorePlanV1,
       applicationMigrationsV2,
       migrations,
     },

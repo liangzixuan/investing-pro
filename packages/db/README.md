@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B7 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B7 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B8 SOURCE/LOCAL VERIFICATION PASSED, LIVE V8 PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -82,6 +82,27 @@ and authenticated renderer. See the
 [ADR 0019](../../docs/adr/0019-versioned-authenticated-migration-phase.md), and
 the [Cycle 1b-b7 exit matrix](../../docs/CYCLE_1BB7_EXIT_MATRIX.md).
 
+Cycle 1b-b8 has an accepted design and implemented, locally verified source but
+no live PostgreSQL claim. Its first phase uses an ephemeral SCRAM login with one
+exact set-only edge to
+`research_cockpit_backup` to create a custom, RLS-enabled,
+column-insert, data-only archive of the 21 reviewed synthetic application data
+tables; `shared_data.schema_migrations` data is excluded. Its second phase
+creates a separate database from `template0` in the same pinned cluster,
+applies the reviewed restore platform and exact v2 application migrations, and
+uses a different ephemeral SCRAM login with one exact set-only test-seed edge
+to restore the archive in one transaction. Failure rollback, successful
+restore, source/target fingerprints, catalog and authorization equivalence, and
+zero residue are required before version 8 evidence. Local verification passed
+all 409 tests across the 10 database test files, database typechecking, the
+migration and static PostgreSQL guardrails, ESLint, Prettier, and the diff
+check. No local Docker or live PostgreSQL execution is claimed. This does not
+prove a
+full-schema/global, cross-cluster/version, production/incremental/continuous,
+encrypted/retained, disaster-recovery, or RPO/RTO backup. See
+[ADR 0020](../../docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
+and the [Cycle 1b-b8 exit matrix](../../docs/CYCLE_1BB8_EXIT_MATRIX.md).
+
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The historical
 clean-bootstrap renderer validates its immutable manifest and emits all seven
@@ -129,6 +150,14 @@ drops the exact disposable target without `FORCE`, drops exactly the four
 dependency-free capability roles, recreates the target, and proves pristine.
 The separately committed platform phase then creates the platform artifacts;
 only the subsequent application phase uses the authenticated non-superuser.
+
+ADR 0020 defines two further acceptance-only memberships in the implemented B8
+source: a backup login may select only `research_cockpit_backup`, and a distinct
+restore login may select only `research_cockpit_test_seed`. Each edge must use
+`ADMIN FALSE`, `INHERIT FALSE`, and `SET TRUE`, exist only around its bounded
+phase, and be removed with its login before success-only evidence. The restore
+database is independently provisioned; neither membership authorizes schema,
+ledger, role, extension, database-envelope, or production backup operations.
 
 The b2 boundary leaves that superuser migration bootstrap, test-seed
 impersonation, and backup impersonation unchanged. Only runtime behavior moves
@@ -399,10 +428,14 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     remains independent in a different tenant or resource type. Attempt direct
     tombstone deletion, revival, identity mutation, trigger disabling, and
     `TRUNCATE`; all non-owner paths must fail closed.
-12. Design an authenticatable backup path, then perform a logical backup and
-    isolated restore; compare schema, row counts, hashes, RLS, grants, and
-    ownership within the declared RPO/RTO. The current backup capability is
-    `NOLOGIN` and has no permitted membership edge.
+12. Live-review the implemented B8 contract: authenticate one
+    ephemeral login that may select only the `NOBYPASSRLS` backup capability;
+    dump exactly the 21 policy-visible synthetic application data tables to a
+    custom data-only archive while excluding the migration ledger; independently
+    provision a clean `template0` database in the same cluster; and restore once
+    through a distinct authenticated test-seed login with transactional failure,
+    fingerprint/catalog/authorization, source-isolation, and zero-residue
+    checks. This bounded fixture has no declared or implied production RPO/RTO.
 13. Prove migration ledger locking, checksum mismatch refusal, one-time replay,
     failure rollback, and concurrent deploy behavior.
 14. Run query plans and load tests for fact-as-known and tenant reads, including
@@ -425,5 +458,10 @@ financial-fact projection. B6 executes no migration. External/TLS
 authentication, end-user identity binding, production secret handling, a
 driver or pool, concurrency/cancellation/timeouts, complete dossier projections,
 external/production/incremental migrator and backup credentials, global
-platform/application atomicity, logical restore, disaster recovery,
-secure passfile erasure, and production readiness remain unproven.
+platform/application atomicity, and production readiness remain unproven. B8's
+source and local checks are complete, but its policy-scoped data-only dump and
+same-cluster clean restore remain engine-unproven until reviewed version 8 live
+evidence exists.
+Full-schema/global/cross-cluster/version restore, continuous backup, disaster
+recovery, storage encryption/retention, secure passfile or archive erasure, and
+RPO/RTO remain outside B8.

@@ -28,8 +28,11 @@ complete and reviewed; b3 authenticated authorization matrix run complete and
 reviewed; b4 driverless projection-query and semantic-unit-mapping run complete
 and reviewed; b5 authenticated test-loader run complete and reviewed; b6
 authenticated owner-DDL canary run complete and reviewed; and b7 authenticated
-clean application-migration run complete and reviewed. Authenticated backup and
-restore follow B7; the adapter and pool/concurrency gates remain later work.
+clean application-migration run complete and reviewed. The b8 authenticated
+policy-scoped data-backup and bounded clean-restore design is accepted, its
+source is implemented and locally verified, and its pinned live version 8 run
+and independent artifact review remain pending. The adapter and
+pool/concurrency gates remain later work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -144,6 +147,27 @@ external/production/incremental and global-atomicity nonclaims. See the
 [ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md), and the
 [Cycle 1b-b7 exit matrix](./CYCLE_1BB7_EXIT_MATRIX.md).
 
+**Cycle 1b-b8 status:** design accepted; source implementation and local
+verification complete; a pinned live run and independent version 8 artifact
+review pending. The local source gate passed all 409 tests across the 10
+database test files, database typechecking, the migration and static PostgreSQL
+guardrails, ESLint, Prettier, and the diff check. No local Docker or live
+PostgreSQL result is claimed. B8 is one composite live gate: the implementation
+provisions one ephemeral SCRAM login that may select only the existing
+`research_cockpit_backup` capability to create a custom, RLS-enabled,
+column-insert, data-only archive of the 21 reviewed synthetic application data
+tables. The migration ledger is excluded and established independently. A
+second clean database in the same pinned cluster is created from `template0`,
+receives the reviewed restore platform and exact v2 application migrations,
+then accepts the archive through a different ephemeral SCRAM login that may
+select only `research_cockpit_test_seed`. Transactional failure rollback,
+successful restore, exact table fingerprints, catalog/security equivalence,
+source isolation, and zero residue are mandatory before version 8 live
+evidence. This is not a full-schema/global, cross-cluster/version, production,
+incremental/continuous, encrypted/retained, disaster-recovery, or RPO/RTO
+result. See [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
+and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -179,8 +203,10 @@ external/production/incremental and global-atomicity nonclaims. See the
    timeout, simultaneous backends, and real pooled-connection reuse remain.
 7. **Clean migration/replay/rollback complete:** b1 proves clean bootstrap,
    ledger state, replay refusal, and injected final rollback. A live
-   checksum-drift case, logical dump/restore, and post-restore authorization
-   behavior remain pending.
+   checksum-drift case remains pending. The B8 source/local rows for the
+   narrower policy-scoped data-only dump and independently provisioned
+   same-cluster restore are complete; the live dump, restore, and post-restore
+   authorization rows remain pending.
 
 Exit gate: all live-database authorization and restore tests pass from a clean checkout. This is a harness restore target, not a production RPO/RTO.
 
@@ -198,9 +224,9 @@ authenticated owner-DDL canary and retained
 `authenticated_migrator_sessions`. The reviewed b7 run passed the bounded
 authenticated clean application-migration phase after its separately committed
 platform bootstrap and replaced that limitation with the exact external/
-production/incremental and global-atomicity nonclaims. Authenticated backup and
-restore follow B7, then a
-single-client read-only adapter, and finally the real
+production/incremental and global-atomicity nonclaims. The accepted B8 design
+and locally verified implementation now define the next gate, but no live B8
+claim exists yet. A single-client read-only adapter follows B8, and finally the real
 pool/concurrency/cancellation boundary. The row-normalization contract is
 already frozen; the B4 query and unit contract now provides a reviewed input to
 the later single-client adapter milestone without proving that adapter.
@@ -219,9 +245,11 @@ rejects every pre-existing capability-role membership. B7 addresses that
 limitation through the distinct v2 platform/application plan without changing
 the historical bootstrap; the B6 canary neither executes a migration nor
 weakens the zero-membership bootstrap invariant.
-Only after authenticated backup design should the harness add a bounded
-dump/restore probe. Application-pool cancellation/concurrency belongs with a
-real adapter and pool. Do not treat B4, the clean-only
+The implemented B8 source permits only a bounded, policy-scoped, synthetic
+data-only dump and same-cluster clean-restore result. It must not be
+widened into full-schema/global recovery or a production/DR claim.
+Application-pool cancellation/concurrency belongs with a real adapter and pool.
+Do not treat B4, the clean-only
 impersonated-capability result, or the reviewed b2/b3 container-local
 service-account results, including the separate reviewed B5 test-loader result,
 as permission to wire the database into the app or accept real data.
