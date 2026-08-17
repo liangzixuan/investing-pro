@@ -138,10 +138,12 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     );
     expect(wrongPasswordInvocation.environment).toEqual({
       PGPASSFILE: RUNTIME_AUTH_WRONG_PASSFILE,
-      PGREQUIREAUTH: "",
       PGSSLMODE: "disable",
       PGCONNECT_TIMEOUT: "5",
     });
+    expect(wrongPasswordInvocation.environment).not.toHaveProperty(
+      "PGREQUIREAUTH",
+    );
     expect(wrongPasswordInvocation.command).toEqual(
       expect.arrayContaining([
         "--no-password",
@@ -156,10 +158,12 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(wrongPasswordInvocation.command).toEqual(
       correctPasswordInvocation.command,
     );
+    const { PGREQUIREAUTH: requiredAuthentication, ...correctEnvironment } =
+      correctPasswordInvocation.environment;
+    expect(requiredAuthentication).toBe("scram-sha-256");
     expect(wrongPasswordInvocation.environment).toEqual({
-      ...correctPasswordInvocation.environment,
+      ...correctEnvironment,
       PGPASSFILE: RUNTIME_AUTH_WRONG_PASSFILE,
-      PGREQUIREAUTH: "",
     });
   });
 

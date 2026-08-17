@@ -61,6 +61,13 @@ remote run and retained evidence. See
 [ADR 0014](../../docs/adr/0014-container-local-runtime-authentication.md) and
 the [Cycle 1b-b2 exit matrix](../../docs/CYCLE_1BB2_EXIT_MATRIX.md).
 
+The disposable wrong-password call intentionally omits `PGREQUIREAUTH` rather
+than setting it to an empty value: libpq 17 treats those states differently and
+an empty configured value can reject the SCRAM request before the password is
+submitted. Every valid-password call still requires `scram-sha-256`, and the
+identity probe separately verifies the resulting `system_user` authentication
+method.
+
 Only after every implemented probe succeeds, the acceptance entry point writes
 one fixed-name, exact-schema JSON run record under `RUNNER_TEMP`; the workflow
 uploads exactly that file only on success. Exclusive creation rejects stale

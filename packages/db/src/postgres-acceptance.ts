@@ -345,13 +345,19 @@ export function buildRuntimeAuthPsqlInvocation(
   options: RuntimeAuthPsqlInvocationOptions = {},
 ): RuntimeAuthPsqlInvocation {
   const { requireScram = true, verboseErrors = false } = options;
+  const environment: Record<string, string> = {
+    PGPASSFILE: passfile,
+    PGSSLMODE: "disable",
+    PGCONNECT_TIMEOUT: "5",
+  };
+  if (requireScram) {
+    // libpq treats an empty PGREQUIREAUTH as configured during request
+    // enforcement, so the negative-password probe must omit it entirely.
+    environment.PGREQUIREAUTH = "scram-sha-256";
+  }
+
   return Object.freeze({
-    environment: Object.freeze({
-      PGPASSFILE: passfile,
-      PGREQUIREAUTH: requireScram ? "scram-sha-256" : "",
-      PGSSLMODE: "disable",
-      PGCONNECT_TIMEOUT: "5",
-    }),
+    environment: Object.freeze(environment),
     command: Object.freeze([
       "psql",
       "--no-psqlrc",
