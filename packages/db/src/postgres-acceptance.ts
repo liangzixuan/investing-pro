@@ -523,6 +523,12 @@ export function inspectPostgresAcceptanceHarness(
   );
   requireText(
     artifacts.workflow,
+    "POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256",
+    "acceptance service must initialize loopback host rules with SCRAM",
+    violations,
+  );
+  requireText(
+    artifacts.workflow,
     "pnpm --filter @research-cockpit/db acceptance:postgres:ci",
     "workflow must invoke the reviewed package acceptance command",
     violations,
@@ -2626,7 +2632,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "d26cd3119f275a3339a77f3f243aa1b0bc6bac9797d6baccf5cf3b20bc18f797" ||
+      "f49462e77c9a902954cef053d741d73429e1c3c25519eed69b65a75c1e673239" ||
     value.fixtureSha256 !==
       "69974bf2996cbdd0078d509db933fe89d670005e177b7f57187df54b201b99bf" ||
     typeof value.verifiedOn !== "string" ||

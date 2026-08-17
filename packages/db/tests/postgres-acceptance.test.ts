@@ -372,15 +372,23 @@ describe("PostgreSQL acceptance harness guardrails", () => {
 
   it("requires explicit SCRAM host authentication in the service", async () => {
     const artifacts = await loadArtifacts();
-    const workflow = artifacts.workflow.replace(
-      "POSTGRES_HOST_AUTH_METHOD: scram-sha-256",
-      "POSTGRES_HOST_AUTH_METHOD: trust",
-    );
-    expect(
-      inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
-    ).toContain(
-      "acceptance service must require SCRAM for host authentication",
-    );
+    for (const [source, replacement, expected] of [
+      [
+        "POSTGRES_HOST_AUTH_METHOD: scram-sha-256",
+        "POSTGRES_HOST_AUTH_METHOD: trust",
+        "acceptance service must require SCRAM for host authentication",
+      ],
+      [
+        "POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256",
+        "POSTGRES_INITDB_ARGS: --auth-host=trust",
+        "acceptance service must initialize loopback host rules with SCRAM",
+      ],
+    ] as const) {
+      const workflow = artifacts.workflow.replace(source, replacement);
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain(expected);
+    }
   });
 
   it("requires every workspace input that can alter the live job to trigger it", async () => {

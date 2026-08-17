@@ -35,11 +35,13 @@ listing/share-class/security query required to call it.
 
 The separate Ubuntu workflow pins PostgreSQL 17.11 Bookworm by OCI image-index
 digest, publishes no host port, and runs every client command inside that
-service container. Current migrations must bootstrap as the ephemeral
-container superuser: on PostgreSQL 17, a non-superuser `CREATEROLE` migrator
-would receive automatic membership in newly created roles and immediately
-violate migration `0001`'s zero-membership invariant. Runtime, seed, and backup
-checks use superuser `SET SESSION AUTHORIZATION` to impersonate the declared
+service container. It configures `initdb` host rules and the image's appended
+host rule as SCRAM so the more-specific loopback entries cannot retain
+`initdb`'s insecure installation default. Current migrations must bootstrap as
+the ephemeral container superuser: on PostgreSQL 17, a non-superuser
+`CREATEROLE` migrator would receive automatic membership in newly created roles
+and immediately violate migration `0001`'s zero-membership invariant. Runtime,
+seed, and backup checks use superuser `SET SESSION AUTHORIZATION` to impersonate the declared
 `NOLOGIN` capabilities. This can prove engine grant/RLS semantics, but it is not
 authenticated least-privilege or production identity evidence.
 
