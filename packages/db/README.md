@@ -11,8 +11,9 @@ is bounded engine evidence for its recorded checks. It does not prove backup
 viability, authenticated sessions, pooling, concurrency, real-data behavior, or
 production readiness.
 
-Cycle 1b-b2 is implemented in the acceptance harness; its live run and evidence
-review are still pending. Its scope is one ephemeral runtime service account using
+Cycle 1b-b2 is implemented in the acceptance harness. Its verified live status
+is recorded only in the linked exit matrix and any retained evidence note; the
+source alone makes no live claim. Its scope is one ephemeral runtime service account using
 SCRAM over loopback TCP inside the existing unexposed PostgreSQL container. It
 does not change the running application or establish production authentication.
 
@@ -53,8 +54,8 @@ its `session_user`/`current_user` transition, and run bounded pre-role and
 cross-role denials, missing-context, one alpha-versus-beta isolation read,
 sequential-cleanup, and runtime-write probes. The comprehensive b1 query-shape,
 rights, and prepared-read checks remain impersonated-capability evidence and
-are not promoted by b2. No b2 live claim is valid until a new reviewed remote
-run succeeds. See
+are not promoted by b2. No b2 live claim is valid without a successful reviewed
+remote run and retained evidence. See
 [ADR 0014](../../docs/adr/0014-container-local-runtime-authentication.md) and
 the [Cycle 1b-b2 exit matrix](../../docs/CYCLE_1BB2_EXIT_MATRIX.md).
 
@@ -237,9 +238,9 @@ PostgreSQL service must prove all of the following:
    `pg_auth_members` directions must make bootstrap fail without attempting
    automatic repair or revocation.
 3. Introduce and run as a separately reviewed non-owner runtime login, then
-   prove missing or malformed request context fails closed. This is the
-   b2 scope and remains pending a successful remote run and evidence review.
-   The b1 harness proves only impersonated `NOLOGIN` capability semantics.
+   prove missing or malformed request context fails closed. This is the b2
+   scope; its current evidence status lives in the linked exit matrix. The b1
+   harness proves only impersonated `NOLOGIN` capability semantics.
 4. Prove `set_request_context` is transaction-local across commit, rollback,
    errors, and pooled-connection reuse.
 5. Test cross-tenant `SELECT`, direct-object lookup, and every future write path

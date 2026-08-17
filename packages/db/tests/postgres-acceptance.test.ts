@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertExpectedPsqlFailure,
+  assertRuntimeWrongPasswordRejection,
   buildRuntimeAuthPsqlInvocation,
   checkPostgresAcceptanceHarness,
   collectRuntimeAuthOperationFailures,
@@ -122,10 +123,97 @@ describe("PostgreSQL acceptance harness guardrails", () => {
 
   it("keeps both fixed credential files out of command-line passwords", () => {
     for (const path of [RUNTIME_AUTH_PASSFILE, RUNTIME_AUTH_WRONG_PASSFILE]) {
-      const invocation = buildRuntimeAuthPsqlInvocation(path, true);
+      const invocation = buildRuntimeAuthPsqlInvocation(path, {
+        verboseErrors: true,
+      });
       expect(invocation.environment.PGPASSFILE).toBe(path);
+      expect(invocation.environment.PGREQUIREAUTH).toBe("scram-sha-256");
       expect(invocation.command).toContain("--set=VERBOSITY=verbose");
       expect(invocation.command.join(" ")).not.toMatch(/PGPASSWORD|password=/i);
+    }
+
+    const wrongPasswordInvocation = buildRuntimeAuthPsqlInvocation(
+      RUNTIME_AUTH_WRONG_PASSFILE,
+      { requireScram: false },
+    );
+    expect(wrongPasswordInvocation.environment).toEqual({
+      PGPASSFILE: RUNTIME_AUTH_WRONG_PASSFILE,
+      PGREQUIREAUTH: "",
+      PGSSLMODE: "disable",
+      PGCONNECT_TIMEOUT: "5",
+    });
+    expect(wrongPasswordInvocation.command).toEqual(
+      expect.arrayContaining([
+        "--no-password",
+        "--host=127.0.0.1",
+        "--port=5432",
+        `--username=${RUNTIME_AUTH_LOGIN_ROLE}`,
+      ]),
+    );
+    const correctPasswordInvocation = buildRuntimeAuthPsqlInvocation(
+      RUNTIME_AUTH_PASSFILE,
+    );
+    expect(wrongPasswordInvocation.command).toEqual(
+      correctPasswordInvocation.command,
+    );
+    expect(wrongPasswordInvocation.environment).toEqual({
+      ...correctPasswordInvocation.environment,
+      PGPASSFILE: RUNTIME_AUTH_WRONG_PASSFILE,
+      PGREQUIREAUTH: "",
+    });
+  });
+
+  it("classifies only the exact wrong-password connection failure", () => {
+    expect(() =>
+      assertRuntimeWrongPasswordRejection({
+        exitCode: 2,
+        stdout: "",
+        stderr: `psql: error: connection failed: FATAL:  password authentication failed\n  for user "${RUNTIME_AUTH_LOGIN_ROLE}"\n`,
+      }),
+    ).not.toThrow();
+
+    for (const result of [
+      { exitCode: 0, stdout: "1\n", stderr: "" },
+      {
+        exitCode: 1,
+        stdout: "",
+        stderr: `FATAL: password authentication failed for user "${RUNTIME_AUTH_LOGIN_ROLE}"`,
+      },
+      {
+        exitCode: 3,
+        stdout: "",
+        stderr: `FATAL: password authentication failed for user "${RUNTIME_AUTH_LOGIN_ROLE}"`,
+      },
+      {
+        exitCode: 2,
+        stdout: "unexpected",
+        stderr: `FATAL: password authentication failed for user "${RUNTIME_AUTH_LOGIN_ROLE}"`,
+      },
+      {
+        exitCode: 2,
+        stdout: "",
+        stderr: "connection refused",
+      },
+      {
+        exitCode: 2,
+        stdout: "",
+        stderr: "no pg_hba.conf entry",
+      },
+      {
+        exitCode: 2,
+        stdout: "",
+        stderr:
+          'authentication method requirement "scram-sha-256" failed: server did not complete authentication',
+      },
+      {
+        exitCode: 2,
+        stdout: "",
+        stderr: 'FATAL: password authentication failed for user "another_role"',
+      },
+    ]) {
+      expect(() => assertRuntimeWrongPasswordRejection(result)).toThrow(
+        /wrong-password runtime authentication/i,
+      );
     }
   });
 

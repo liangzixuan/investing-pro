@@ -232,6 +232,11 @@ export interface RuntimeAuthPsqlInvocation {
   command: readonly string[];
 }
 
+export interface RuntimeAuthPsqlInvocationOptions {
+  readonly requireScram?: boolean;
+  readonly verboseErrors?: boolean;
+}
+
 export interface RuntimeAuthBestEffortOperation {
   label: string;
   run: () => Promise<void>;
@@ -337,12 +342,13 @@ $runtime_auth_backend_drain$;
 
 export function buildRuntimeAuthPsqlInvocation(
   passfile: typeof RUNTIME_AUTH_PASSFILE | typeof RUNTIME_AUTH_WRONG_PASSFILE,
-  verboseErrors = false,
+  options: RuntimeAuthPsqlInvocationOptions = {},
 ): RuntimeAuthPsqlInvocation {
+  const { requireScram = true, verboseErrors = false } = options;
   return Object.freeze({
     environment: Object.freeze({
       PGPASSFILE: passfile,
-      PGREQUIREAUTH: "scram-sha-256",
+      PGREQUIREAUTH: requireScram ? "scram-sha-256" : "",
       PGSSLMODE: "disable",
       PGCONNECT_TIMEOUT: "5",
     }),
@@ -361,6 +367,37 @@ export function buildRuntimeAuthPsqlInvocation(
       `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
     ]),
   });
+}
+
+export function assertRuntimeWrongPasswordRejection(
+  result: CommandResult,
+): void {
+  if (result.exitCode === 0) {
+    throw new Error(
+      "Wrong-password runtime authentication unexpectedly succeeded",
+    );
+  }
+  if (result.exitCode !== 2) {
+    throw new Error(
+      "Wrong-password runtime authentication returned an unexpected exit code",
+    );
+  }
+  if (result.stdout.trim() !== "") {
+    throw new Error(
+      "Wrong-password runtime authentication returned unexpected output",
+    );
+  }
+
+  const diagnostic = result.stderr.toLowerCase().replace(/\s+/g, " ");
+  if (
+    !diagnostic.includes(
+      `fatal: password authentication failed for user "${RUNTIME_AUTH_LOGIN_ROLE}"`,
+    )
+  ) {
+    throw new Error(
+      "Wrong-password runtime authentication did not return the expected rejection",
+    );
+  }
 }
 
 export async function collectRuntimeAuthOperationFailures(
@@ -1872,18 +1909,9 @@ async function verifyRuntimeWrongPasswordRejection(
     containerId,
     RUNTIME_AUTH_WRONG_PASSFILE,
     "SELECT 1;",
-    true,
+    { requireScram: false },
   );
-  if (
-    result.exitCode === 0 ||
-    !result.stderr
-      .toLowerCase()
-      .includes(
-        `password authentication failed for user "${RUNTIME_AUTH_LOGIN_ROLE}"`,
-      )
-  ) {
-    throw new Error("Runtime login wrong-password rejection was not observed");
-  }
+  assertRuntimeWrongPasswordRejection(result);
 }
 
 async function verifyRuntimeLoginBeforeSetRole(
@@ -2174,7 +2202,7 @@ async function expectRuntimeAuthenticatedPsqlFailure(
     containerId,
     RUNTIME_AUTH_PASSFILE,
     sql,
-    true,
+    { verboseErrors: true },
   );
   assertExpectedPsqlFailure(result, expectation);
 }
@@ -2183,9 +2211,9 @@ async function runtimeAuthenticatedPsql(
   containerId: string,
   passfile: typeof RUNTIME_AUTH_PASSFILE | typeof RUNTIME_AUTH_WRONG_PASSFILE,
   sql: string,
-  verboseErrors = false,
+  options: RuntimeAuthPsqlInvocationOptions = {},
 ): Promise<CommandResult> {
-  const invocation = buildRuntimeAuthPsqlInvocation(passfile, verboseErrors);
+  const invocation = buildRuntimeAuthPsqlInvocation(passfile, options);
   return runRuntimeAuthCommandWithDrain(
     () =>
       dockerExecWithEnvironment(
