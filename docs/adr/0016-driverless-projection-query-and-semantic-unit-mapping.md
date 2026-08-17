@@ -1,6 +1,6 @@
 # ADR 0016: Driverless projection query and semantic unit mapping
 
-Status: accepted for Cycle 1b-b4 design; source and live evidence pending
+Status: accepted; source implemented and locally verified; live evidence pending
 
 ## Context
 
@@ -11,7 +11,7 @@ synthetic authorization matrix. No slice has yet executed a production-shaped
 projection query or passed its untrusted PostgreSQL output through the
 normalizer.
 
-The acceptance fixture currently stores the ambiguous pair `USD` / `USD` for
+Before B4, the acceptance fixture stored the ambiguous pair `USD` / `USD` for
 its two financial facts, while the core distinguishes `USD_MILLIONS` from
 `USD_PER_SHARE`. Inferring magnitude from currency alone would create a
 material correctness defect. Introducing a driver and pool before the query,
@@ -20,8 +20,8 @@ would combine too many trust boundaries.
 
 ## Decision
 
-Cycle 1b-b4 is the selected next milestone. It adds one source-controlled,
-parameterized, read-only PostgreSQL query and executes it only through the
+Cycle 1b-b4 implements one source-controlled, parameterized, read-only
+PostgreSQL query and executes it only through the
 existing container-local SCRAM runtime acceptance path. The returned rows are
 untrusted input to `normalizePostgresFinancialFactRows`.
 
@@ -59,8 +59,8 @@ The closed storage-unit/currency pairs are:
 
 The query emits stored unit and currency values unchanged. The normalizer owns
 the allowlist and must reject unknown or mismatched pairs. It may not map
-`USD` / `USD` to a core unit. B4 implementation will change only the two
-acceptance-fixture fact unit codes from `USD` to the explicitly intended
+`USD` / `USD` to a core unit. B4 changes only the two acceptance-fixture fact
+unit codes from `USD` to the explicitly intended
 `USD_MILLIONS`, retaining currency `USD`; the other four pairs remain unit-test
 evidence. This fixture correction is not a schema or migration change.
 

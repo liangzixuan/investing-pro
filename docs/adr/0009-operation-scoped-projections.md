@@ -37,11 +37,13 @@ a display query. The browser-local alert remains synthetic demonstration state
 only.
 
 This ADR freezes a core contract, not a production adapter or ingestion
-validator. ADR 0011 now defines the disconnected fail-closed normalizer for the
-narrow dimensionless PostgreSQL financial-fact row subset. The reviewed query,
-identity/unit mapping, driver, and complete dossier sources remain mandatory
-before any database source is composed.
+validator. ADR 0011 defines the disconnected fail-closed normalizer for the
+narrow dimensionless PostgreSQL financial-fact row subset. B4 now implements a
+separate reviewed query and identity/unit mapping with live review pending. A
+driver, pool boundary, and complete dossier sources remain mandatory before any
+database source is composed.
 
-The later Cycle 1b-b1 PostgreSQL run exercised the migration/RLS harness, not
-this projection port. It therefore does not establish adapter integration or
-projection-query correctness.
+The later Cycle 1b-b1 through b3 PostgreSQL runs did not exercise this
+projection port. B4 source now does so through the driverless query, but its
+pinned live execution remains pending and it does not establish adapter
+integration.

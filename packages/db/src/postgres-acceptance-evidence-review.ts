@@ -3,6 +3,7 @@ import { constants as fileConstants } from "node:fs";
 import { lstat, open, realpath, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 
+import { parsePostgresAcceptanceEvidence } from "./postgres-acceptance-evidence";
 import {
   verifyPostgresAcceptanceEvidenceOffline,
   type VerifiedPostgresAcceptanceEvidence,
@@ -16,6 +17,8 @@ const MAX_WORKFLOW_BYTES = 128 * 1_024;
 const MAX_FIXTURE_BYTES = 1 * 1_024 * 1_024;
 const MAX_MANIFEST_BYTES = 64 * 1_024;
 const MAX_ACCEPTANCE_RUNNER_BYTES = 2 * 1_024 * 1_024;
+const MAX_PROJECTION_QUERY_BYTES = 2 * 1_024 * 1_024;
+const MAX_PROJECTION_NORMALIZER_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -26,6 +29,9 @@ const WORKFLOW_PATH = ".github/workflows/postgres-acceptance.yml";
 const FIXTURE_PATH = "packages/db/acceptance/synthetic-fixture.sql";
 const MIGRATION_MANIFEST_PATH = "packages/db/migration-manifest.json";
 const ACCEPTANCE_RUNNER_PATH = "packages/db/src/postgres-acceptance.ts";
+const PROJECTION_QUERY_PATH = "packages/db/src/postgres-projection-query.ts";
+const PROJECTION_NORMALIZER_PATH =
+  "packages/db/src/projection-normalization.ts";
 const MIGRATION_DIRECTORY = "packages/db/migrations";
 
 const REVIEW_INPUT_KEYS = [
@@ -95,6 +101,7 @@ export async function reviewPostgresAcceptanceEvidence(
       readBoundedRegularFile(input.evidencePath),
       canonicalRepositoryPath(input.repositoryPath),
     ]);
+    const evidence = parsePostgresAcceptanceEvidence(decodeUtf8(evidenceBytes));
 
     await requireExactGitTopLevel(repositoryPath);
     await requireCommitObject(repositoryPath, input.expectedCommit);
@@ -144,6 +151,10 @@ export async function reviewPostgresAcceptanceEvidence(
       input.expectedCommit,
       manifestEntries,
     );
+    const v4Sources =
+      evidence.schemaVersion === 4
+        ? await readV4Sources(repositoryPath, input.expectedCommit)
+        : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
       evidenceBytes: Uint8Array.from(evidenceBytes),
@@ -162,11 +173,39 @@ export async function reviewPostgresAcceptanceEvidence(
         migrationManifest: Uint8Array.from(migrationManifest),
         acceptanceRunner: Uint8Array.from(acceptanceRunner),
         migrations,
+        ...v4Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV4Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly projectionQuery: Uint8Array;
+  readonly projectionNormalizer: Uint8Array;
+}> {
+  const [projectionQuery, projectionNormalizer] = await Promise.all([
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PROJECTION_QUERY_PATH,
+      MAX_PROJECTION_QUERY_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PROJECTION_NORMALIZER_PATH,
+      MAX_PROJECTION_NORMALIZER_BYTES,
+    ),
+  ]);
+  return Object.freeze({
+    projectionQuery: Uint8Array.from(projectionQuery),
+    projectionNormalizer: Uint8Array.from(projectionNormalizer),
+  });
 }
 
 function normalizeReviewInput(

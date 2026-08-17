@@ -1,6 +1,7 @@
 # ADR 0011: Fail-closed PostgreSQL projection-row normalization
 
-Status: accepted for Cycle 1b-a2; database query/adapter integration pending
+Status: accepted for Cycle 1b-a2; B4 query source implemented and live pending;
+database adapter integration pending
 
 The operation-scoped core port accepts already typed candidates. A database
 driver, however, returns untrusted runtime values whose timestamp precision,
@@ -28,8 +29,8 @@ agree. The current-operation grant must be explicit and allowed.
 `instrument_id` in this wire shape means the requested listing ID, produced by
 an explicit listing -> share class -> security join. `security_id` remains a
 separate required field and is never substituted for the core instrument ID or
-a ticker. This freezes the identity direction without claiming that a query or
-adapter exists.
+a ticker. This froze the identity direction before B4 implemented the separate
+driverless query; no database adapter exists.
 
 Only values the current core can represent are accepted. Timestamps must be
 losslessly convertible to millisecond UTC, intervals are half-open, source
@@ -40,13 +41,15 @@ values use exact core enums. Currency-bearing units require USD; non-currency
 units require null currency. Dimensions must be exactly `{}`. Quarantined,
 dimensioned, unknown-unit, or semantically ambiguous rows fail closed.
 
-This decision does not add a driver, SQL query, pool, credentials, API route,
-migration, or composition-root wiring. The schema's loose `unit_code` and the
-acceptance fixture's `USD` value do not prove a `USD_MILLIONS` semantic mapping,
-so they are intentionally rejected. General dimensions, complete dossiers,
-history/timeline persistence, evidence-binding queries, and a query/result-size
-limit remain later adapter work.
+This a2 decision did not add a driver, SQL query, pool, credentials, API route,
+migration, or composition-root wiring. B4 later added a separate driverless
+query, corrected only the two acceptance-fixture facts to explicit
+`USD_MILLIONS`, and enforced a 100/101 result bound while preserving rejection
+of ambiguous `USD` / `USD`. General dimensions, complete dossiers,
+history/timeline persistence, a database driver, and composition wiring remain
+later work.
 
-The later Cycle 1b-b1 PostgreSQL run exercised the migration/RLS harness only;
-it did not execute this normalizer or a projection query and does not change
-this decision's proof boundary.
+The later Cycle 1b-b1 through b3 PostgreSQL runs did not execute this normalizer
+or a projection query and do not change this decision's proof boundary. B4 now
+implements a separate query-to-normalizer source path; its pinned live execution
+and reviewed evidence remain pending and will not retroactively widen a2.

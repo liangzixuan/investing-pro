@@ -41,13 +41,12 @@ The package also contains a disconnected, pure normalizer for the exact flat
 financial-fact join rows a future read-only adapter must emit. It accepts only
 the current synthetic, dimensionless core subset; separates listing and
 security identity; normalizes fixed decimal and lossless zoned timestamp text;
-and rejects a whole malformed batch with one value-free error. It performs no
-SQL and cannot accept source completeness or counts. Cycle 1b-b4 is now the
-selected next milestone for the missing driverless
+and rejects a whole malformed batch with one value-free error. It cannot accept
+source completeness or counts. Cycle 1b-b4 source now adds the driverless
 listing/share-class/security query, closed semantic unit mapping, bounded raw
-result, and authenticated `psql`-to-normalizer proof. B4 source and live
-evidence are pending, and it adds no client driver, pool, or application import;
-see
+result, and authenticated `psql`-to-normalizer probe. The pinned live run and
+reviewed version 4 evidence remain pending, and B4 adds no client driver, pool,
+or application import; see
 [ADR 0016](../../docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
 and the [Cycle 1b-b4 exit matrix](../../docs/CYCLE_1BB4_EXIT_MATRIX.md).
 

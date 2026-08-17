@@ -17,6 +17,7 @@ import {
   renderRuntimeAuthCleanupSql,
   renderRuntimeAuthPassfile,
   renderRuntimeAuthProvisioningSql,
+  renderRuntimeAuthenticatedFinancialFactProjectionSql,
   renderRuntimeContextSql,
   RUNTIME_AUTH_CAPABILITY_ROLE,
   RUNTIME_AUTH_FORBIDDEN_SET_ROLES,
@@ -362,6 +363,69 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     }
   });
 
+  it.each([
+    ["display_api", "display", "api"],
+    ["derive_api", "derive", "api"],
+    ["alert_local_alert", "alert", "local_alert"],
+  ] as const)(
+    "renders the authenticated %s projection on one prepared transaction",
+    (operation, purpose, channel) => {
+      const sql = renderRuntimeAuthenticatedFinancialFactProjectionSql(
+        {
+          scope: {
+            instrumentId: "listing-syn1",
+            publicKnownAt: "2025-01-01T00:00:01.000Z",
+            systemRecordedAt: "2025-01-01T00:00:02.000Z",
+          },
+          operation,
+          context: {
+            territory: "demo_only",
+            evaluatedAt: "2026-08-17T12:00:00.000Z",
+          },
+        },
+        "20000000-0000-4000-8000-000000000001",
+        "10000000-0000-4000-8000-000000000001",
+      );
+
+      expect(sql).toMatch(
+        /^BEGIN;\nSET LOCAL ROLE research_cockpit_runtime;\nCALL /,
+      );
+      expect(sql).toContain(`'${purpose}',\n  '${channel}'`);
+      expect(sql).toContain(
+        "'b4-projection-identity|',\n  session_user, '|', current_user, '|', system_user",
+      );
+      expect(sql).toContain(
+        "PREPARE b4_financial_fact_projection (\n  text, timestamptz, timestamptz\n) AS",
+      );
+      expect(sql).toContain("listing.id = $1::text");
+      expect(sql).toContain("fact.known_from <= $2::timestamptz");
+      expect(sql).toContain("fact.system_from <= $3::timestamptz");
+      expect(sql).toContain(
+        "EXECUTE b4_financial_fact_projection(\n  'listing-syn1',\n  '2025-01-01T00:00:01.000Z',\n  '2025-01-01T00:00:02.000Z'\n);",
+      );
+      expect(sql).toMatch(/DEALLOCATE b4_financial_fact_projection;\nCOMMIT;$/);
+      expect(sql).not.toMatch(/SESSION AUTHORIZATION|RESET ROLE/);
+
+      const contextPosition = sql.indexOf(
+        "CALL private_data.set_request_context(",
+      );
+      const identityPosition = sql.indexOf("b4-projection-identity|");
+      const preparePosition = sql.indexOf(
+        "PREPARE b4_financial_fact_projection",
+      );
+      const executePosition = sql.indexOf(
+        "EXECUTE b4_financial_fact_projection",
+      );
+      const deallocatePosition = sql.indexOf(
+        "DEALLOCATE b4_financial_fact_projection",
+      );
+      expect(identityPosition).toBeGreaterThan(contextPosition);
+      expect(preparePosition).toBeGreaterThan(identityPosition);
+      expect(executePosition).toBeGreaterThan(preparePosition);
+      expect(deallocatePosition).toBeGreaterThan(executePosition);
+    },
+  );
+
   it("keeps the authenticated alternating prepared matrix on one locally scoped backend script", () => {
     const authenticated =
       renderAlternatingPreparedStatementSql("authenticated");
@@ -542,10 +606,10 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const artifacts = await loadArtifacts();
     for (const unsafePath of [
       "${{ runner.temp }}/research-cockpit-postgres-acceptance-*.json",
-      "./research-cockpit-postgres-acceptance-v3.json",
+      "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v3.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v4.json",
         unsafePath,
       );
       expect(
@@ -585,7 +649,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v3-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v4-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -651,6 +715,35 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     );
   });
 
+  it("stores both synthetic financial facts in the closed USD-millions pair", async () => {
+    const { fixture } = await loadArtifacts();
+    const factInsertStart = fixture.indexOf(
+      "INSERT INTO shared_data.financial_facts (",
+    );
+    const factInsertEnd = fixture.indexOf(
+      "INSERT INTO shared_data.metric_definitions (",
+      factInsertStart,
+    );
+    expect(factInsertStart).toBeGreaterThan(-1);
+    expect(factInsertEnd).toBeGreaterThan(factInsertStart);
+    const financialFacts = fixture.slice(factInsertStart, factInsertEnd);
+
+    expect(financialFacts.match(/'USD_MILLIONS',\r?\n\s*'USD'/g)).toHaveLength(
+      2,
+    );
+    expect(financialFacts).not.toMatch(/\n\s*'USD',\r?\n\s*'USD',/);
+    for (const factId of ["fact-full-v1", "fact-display-only"]) {
+      const factStart = financialFacts.indexOf(`'${factId}'`);
+      const nextTuple = financialFacts.indexOf("\n  ),", factStart);
+      const factTuple = financialFacts.slice(
+        factStart,
+        nextTuple === -1 ? financialFacts.length : nextTuple,
+      );
+      expect(factStart).toBeGreaterThan(-1);
+      expect(factTuple).toContain("'USD_MILLIONS',\n    'USD'");
+    }
+  });
+
   it("cannot run outside the isolated GitHub Actions boundary", async () => {
     await expect(runPostgresAcceptance({})).rejects.toThrow(
       /restricted to the isolated GitHub Actions job/i,
@@ -685,6 +778,8 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(successMessage).toBeGreaterThan(writeEvidence);
     expect(evidenceHash).toBeGreaterThan(successMessage);
     expect(source).not.toContain("writtenEvidence.path");
+    expect(source).toContain("driverless financial-fact projection");
+    expect(source).toContain("version 4 success-only run record");
   });
 
   it("reuses the exact authorization matrix inside the authenticated cleanup boundary", async () => {
@@ -732,13 +827,58 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const fullMatrix = authenticatedProbe.indexOf(
       "await verifyRuntimeAuthorizationMatrix(",
     );
+    const financialFactProjection = authenticatedProbe.indexOf(
+      "await verifyRuntimeAuthenticatedFinancialFactProjection(containerId);",
+    );
     const cleanupBoundary = authenticatedProbe.indexOf("} finally {");
     expect(boundedWrite).toBeGreaterThan(-1);
     expect(fullMatrix).toBeGreaterThan(boundedWrite);
-    expect(cleanupBoundary).toBeGreaterThan(fullMatrix);
+    expect(financialFactProjection).toBeGreaterThan(fullMatrix);
+    expect(cleanupBoundary).toBeGreaterThan(financialFactProjection);
     expect(authenticatedProbe.slice(fullMatrix, cleanupBoundary)).toContain(
       'runtimeAuthorizationMatrixClient(containerId, "authenticated")',
     );
+
+    const projectionProbe = section(
+      "async function verifyRuntimeAuthenticatedFinancialFactProjection(",
+      "async function verifyRuntimeAuthResidueAbsent(",
+    );
+    expect(projectionProbe).toContain("await runtimeAuthenticatedPsqlScalar(");
+    expect(projectionProbe).not.toContain("await psqlScalar(");
+    expect(projectionProbe).toContain(
+      "renderRuntimeAuthenticatedFinancialFactProjectionSql(",
+    );
+    expect(projectionProbe).toContain(
+      "parsePostgresFinancialFactProjectionRows(",
+    );
+    expect(projectionProbe).toContain(
+      "normalizePostgresFinancialFactProjectionRows(query, rows)",
+    );
+    for (const marker of [
+      'runtimeProjectionQuery("display_api")',
+      'runtimeProjectionQuery("derive_api")',
+      'runtimeProjectionQuery("alert_local_alert")',
+      "POSTGRES_PROJECTION_MISSING_LISTING_ID",
+      "POSTGRES_PROJECTION_PRE_PUBLIC_KNOWN_AT",
+      "PRINCIPAL_INACTIVE",
+      "PRINCIPAL_NO_MEMBERSHIP",
+      "POSTGRES_PROJECTION_IDENTITY_MARKER",
+    ]) {
+      expect(projectionProbe).toContain(marker);
+    }
+
+    const sourceHashCollector = section(
+      "async function collectAcceptanceSourceHashes(",
+      "async function exactFileSha256(",
+    );
+    expect(sourceHashCollector).toContain(
+      "exactFileSha256(projectionQueryPath)",
+    );
+    expect(sourceHashCollector).toContain(
+      "exactFileSha256(projectionNormalizerPath)",
+    );
+    expect(sourceHashCollector).toContain("projectionQuerySha256,");
+    expect(sourceHashCollector).toContain("projectionNormalizerSha256,");
 
     const matrixClient = section(
       "function runtimeAuthorizationMatrixClient(",

@@ -4,6 +4,13 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type {
+  FinancialFact,
+  OperationProjectionQuery,
+  OperationProjectionSourceResult,
+  ProjectionOperation,
+} from "@research-cockpit/research-core";
+
 import {
   CLEAN_BOOTSTRAP_DATABASE_NAME,
   maskSqlQuotedContent,
@@ -17,6 +24,12 @@ import {
   type PostgresAcceptanceSourceHashes,
   type PostgresAcceptanceToolVersions,
 } from "./postgres-acceptance-evidence";
+import {
+  normalizePostgresFinancialFactProjectionRows,
+  parsePostgresFinancialFactProjectionRows,
+  postgresProjectionOperationContext,
+  renderPostgresFinancialFactProjectionQuery,
+} from "./postgres-projection-query";
 
 const acceptanceRunnerPath = fileURLToPath(import.meta.url);
 const packageRoot = join(dirname(acceptanceRunnerPath), "..");
@@ -34,6 +47,16 @@ const syntheticFixturePath = join(
   "acceptance",
   "synthetic-fixture.sql",
 );
+const projectionQueryPath = join(
+  packageRoot,
+  "src",
+  "postgres-projection-query.ts",
+);
+const projectionNormalizerPath = join(
+  packageRoot,
+  "src",
+  "projection-normalization.ts",
+);
 
 const EXPECTED_IMAGE_REFERENCE =
   "docker.io/library/postgres:17.11-bookworm@sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad";
@@ -41,7 +64,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v3-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v4-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
@@ -200,6 +223,30 @@ const PRINCIPAL_INACTIVE = "20000000-0000-4000-8000-000000000003";
 const PRINCIPAL_NO_MEMBERSHIP = "20000000-0000-4000-8000-000000000004";
 const PRINCIPAL_EXPIRED = "20000000-0000-4000-8000-000000000005";
 const PRINCIPAL_FUTURE = "20000000-0000-4000-8000-000000000006";
+const POSTGRES_PROJECTION_LISTING_ID = "listing-syn1";
+const POSTGRES_PROJECTION_MISSING_LISTING_ID = "listing-missing";
+const POSTGRES_PROJECTION_PUBLIC_KNOWN_AT = "2025-01-01T00:00:01.000Z";
+const POSTGRES_PROJECTION_PRE_PUBLIC_KNOWN_AT = "2024-12-31T23:59:59.999Z";
+const POSTGRES_PROJECTION_SYSTEM_RECORDED_AT = "2025-01-01T00:00:02.000Z";
+const POSTGRES_PROJECTION_EVALUATED_AT = "2026-08-17T12:00:00.000Z";
+const POSTGRES_PROJECTION_PREPARED_STATEMENT = "b4_financial_fact_projection";
+const POSTGRES_PROJECTION_IDENTITY_MARKER = `b4-projection-identity|${RUNTIME_AUTH_LOGIN_ROLE}|${RUNTIME_AUTH_CAPABILITY_ROLE}|scram-sha-256:${RUNTIME_AUTH_LOGIN_ROLE}`;
+
+interface RuntimeProjectionExpectedCandidate {
+  readonly rowId: string;
+  readonly conceptKey: string;
+  readonly value: string;
+  readonly evidenceId: string;
+  readonly rightsPolicyId: string;
+}
+
+interface RuntimeProjectionAcceptanceCase {
+  readonly label: string;
+  readonly principalId: string;
+  readonly query: OperationProjectionQuery;
+  readonly expectedCandidates: readonly RuntimeProjectionExpectedCandidate[];
+  readonly expectedPolicyIds: readonly string[];
+}
 
 interface AcceptanceImageConfig {
   schemaVersion: 1;
@@ -700,7 +747,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, and container-local SCRAM runtime acceptance passed; the success-only run record was written.\n",
+      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 4 success-only run record was written.\n",
   );
 }
 
@@ -735,11 +782,15 @@ async function collectAcceptanceSourceHashes(
     fixtureSha256,
     migrationManifestSha256,
     acceptanceRunnerSha256,
+    projectionQuerySha256,
+    projectionNormalizerSha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
     exactFileSha256(migrationManifestPath),
     exactFileSha256(acceptanceRunnerPath),
+    exactFileSha256(projectionQueryPath),
+    exactFileSha256(projectionNormalizerPath),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
@@ -752,6 +803,8 @@ async function collectAcceptanceSourceHashes(
     fixtureSha256,
     migrationManifestSha256,
     acceptanceRunnerSha256,
+    projectionQuerySha256,
+    projectionNormalizerSha256,
   });
 }
 
@@ -1749,6 +1802,7 @@ async function verifyAuthenticatedRuntimeSession(
     await verifyRuntimeAuthorizationMatrix(
       runtimeAuthorizationMatrixClient(containerId, "authenticated"),
     );
+    await verifyRuntimeAuthenticatedFinancialFactProjection(containerId);
   } catch (error) {
     probeFailed = true;
     probeError = error;
@@ -1782,6 +1836,260 @@ async function verifyAuthenticatedRuntimeSession(
   }
   if (probeFailed) throw probeError;
   if (cleanupFailed) throw cleanupError;
+}
+
+async function verifyRuntimeAuthenticatedFinancialFactProjection(
+  containerId: string,
+): Promise<void> {
+  const displayOnly: RuntimeProjectionExpectedCandidate = Object.freeze({
+    rowId: "fact-display-only",
+    conceptKey: "synthetic_display_only",
+    value: "200.00",
+    evidenceId: "evidence-display-only",
+    rightsPolicyId: "synthetic.display-only",
+  });
+  const full: RuntimeProjectionExpectedCandidate = Object.freeze({
+    rowId: "fact-full-v1",
+    conceptKey: "synthetic_full_v1",
+    value: "100.00",
+    evidenceId: "evidence-full-v1",
+    rightsPolicyId: "synthetic.full",
+  });
+  const cases: readonly RuntimeProjectionAcceptanceCase[] = [
+    {
+      label: "display/API",
+      principalId: PRINCIPAL_ALPHA,
+      query: runtimeProjectionQuery("display_api"),
+      expectedCandidates: [displayOnly, full],
+      expectedPolicyIds: ["synthetic.display-only", "synthetic.full"],
+    },
+    {
+      label: "derive/API",
+      principalId: PRINCIPAL_ALPHA,
+      query: runtimeProjectionQuery("derive_api"),
+      expectedCandidates: [full],
+      expectedPolicyIds: ["synthetic.full"],
+    },
+    {
+      label: "alert/local-alert",
+      principalId: PRINCIPAL_ALPHA,
+      query: runtimeProjectionQuery("alert_local_alert"),
+      expectedCandidates: [full],
+      expectedPolicyIds: ["synthetic.full"],
+    },
+    {
+      label: "missing listing",
+      principalId: PRINCIPAL_ALPHA,
+      query: runtimeProjectionQuery(
+        "display_api",
+        POSTGRES_PROJECTION_MISSING_LISTING_ID,
+      ),
+      expectedCandidates: [],
+      expectedPolicyIds: [],
+    },
+    {
+      label: "pre-cutoff",
+      principalId: PRINCIPAL_ALPHA,
+      query: runtimeProjectionQuery(
+        "display_api",
+        POSTGRES_PROJECTION_LISTING_ID,
+        POSTGRES_PROJECTION_PRE_PUBLIC_KNOWN_AT,
+      ),
+      expectedCandidates: [],
+      expectedPolicyIds: [],
+    },
+    {
+      label: "inactive principal",
+      principalId: PRINCIPAL_INACTIVE,
+      query: runtimeProjectionQuery("display_api"),
+      expectedCandidates: [],
+      expectedPolicyIds: [],
+    },
+    {
+      label: "no current membership",
+      principalId: PRINCIPAL_NO_MEMBERSHIP,
+      query: runtimeProjectionQuery("display_api"),
+      expectedCandidates: [],
+      expectedPolicyIds: [],
+    },
+  ];
+
+  for (const acceptanceCase of cases) {
+    const stdout = await runtimeAuthenticatedPsqlScalar(
+      containerId,
+      renderRuntimeAuthenticatedFinancialFactProjectionSql(
+        acceptanceCase.query,
+        acceptanceCase.principalId,
+        ORGANIZATION_ALPHA,
+      ),
+    );
+    const result = normalizeRuntimeAuthenticatedFinancialFactProjectionOutput(
+      acceptanceCase.query,
+      stdout,
+    );
+    assertRuntimeAuthenticatedFinancialFactProjectionResult(
+      acceptanceCase,
+      result,
+    );
+  }
+}
+
+function runtimeProjectionQuery(
+  operation: ProjectionOperation,
+  instrumentId = POSTGRES_PROJECTION_LISTING_ID,
+  publicKnownAt = POSTGRES_PROJECTION_PUBLIC_KNOWN_AT,
+): OperationProjectionQuery {
+  return {
+    scope: {
+      instrumentId,
+      publicKnownAt,
+      systemRecordedAt: POSTGRES_PROJECTION_SYSTEM_RECORDED_AT,
+    },
+    operation,
+    context: {
+      territory: "demo_only",
+      evaluatedAt: POSTGRES_PROJECTION_EVALUATED_AT,
+    },
+  };
+}
+
+export function renderRuntimeAuthenticatedFinancialFactProjectionSql(
+  query: OperationProjectionQuery,
+  principalId: string,
+  organizationId: string,
+): string {
+  const operationContext = postgresProjectionOperationContext(query.operation);
+  const projectionSql = renderPostgresFinancialFactProjectionQuery(
+    query.operation,
+  );
+  const statement = `SELECT pg_catalog.concat(
+  'b4-projection-identity|',
+  session_user, '|', current_user, '|', system_user
+);
+PREPARE ${POSTGRES_PROJECTION_PREPARED_STATEMENT} (
+  text, timestamptz, timestamptz
+) AS
+${projectionSql}
+EXECUTE ${POSTGRES_PROJECTION_PREPARED_STATEMENT}(
+  ${postgresSqlTextLiteral(query.scope.instrumentId)},
+  ${postgresSqlTextLiteral(query.scope.publicKnownAt)},
+  ${postgresSqlTextLiteral(query.scope.systemRecordedAt)}
+);
+DEALLOCATE ${POSTGRES_PROJECTION_PREPARED_STATEMENT};`;
+
+  return renderRuntimeContextSql(
+    "authenticated",
+    principalId,
+    organizationId,
+    operationContext.purpose,
+    operationContext.channel,
+    statement,
+  );
+}
+
+function normalizeRuntimeAuthenticatedFinancialFactProjectionOutput(
+  query: OperationProjectionQuery,
+  stdout: string,
+): OperationProjectionSourceResult<FinancialFact> {
+  const lines = stdout.split(/\r?\n/);
+  const identity = lines.shift();
+  if (identity !== POSTGRES_PROJECTION_IDENTITY_MARKER) {
+    throw new Error(
+      "Authenticated financial-fact projection identity mismatch",
+    );
+  }
+  const rows = parsePostgresFinancialFactProjectionRows(lines.join("\n"));
+  return normalizePostgresFinancialFactProjectionRows(query, rows);
+}
+
+function assertRuntimeAuthenticatedFinancialFactProjectionResult(
+  acceptanceCase: RuntimeProjectionAcceptanceCase,
+  result: OperationProjectionSourceResult<FinancialFact>,
+): void {
+  const query = acceptanceCase.query;
+  assertRuntimeProjectionCondition(
+    result.operation === query.operation &&
+      JSON.stringify(result.scope) === JSON.stringify(query.scope),
+    acceptanceCase.label,
+  );
+  assertRuntimeProjectionCondition(
+    result.completeness.state === "unknown" &&
+      result.completeness.reason === "rls_filtered",
+    acceptanceCase.label,
+  );
+  assertRuntimeProjectionCondition(
+    result.candidates.length === acceptanceCase.expectedCandidates.length &&
+      result.policies.length === acceptanceCase.expectedPolicyIds.length,
+    acceptanceCase.label,
+  );
+
+  for (const [index, expected] of acceptanceCase.expectedCandidates.entries()) {
+    const candidate = result.candidates[index];
+    assertRuntimeProjectionCondition(
+      candidate !== undefined &&
+        candidate.rowId === expected.rowId &&
+        candidate.instrumentId === query.scope.instrumentId &&
+        candidate.rightsPolicyId === expected.rightsPolicyId &&
+        candidate.rightsPolicyVersion === "1.0.0" &&
+        candidate.value.id === expected.rowId &&
+        candidate.value.instrumentId === query.scope.instrumentId &&
+        candidate.value.key === expected.conceptKey &&
+        candidate.value.value === expected.value &&
+        candidate.value.unit === "USD_MILLIONS" &&
+        candidate.value.reportingPeriodEnd === "2024-12-31" &&
+        candidate.value.publicKnownFrom ===
+          POSTGRES_PROJECTION_PUBLIC_KNOWN_AT &&
+        candidate.value.publicKnownTo === null &&
+        candidate.value.systemRecordedFrom ===
+          POSTGRES_PROJECTION_SYSTEM_RECORDED_AT &&
+        candidate.value.systemRecordedTo === null &&
+        candidate.value.sourceAvailableAt === "2025-01-01T00:00:00.000Z" &&
+        candidate.value.evidenceId === expected.evidenceId &&
+        candidate.value.rightsPolicyId === expected.rightsPolicyId &&
+        candidate.value.rightsPolicyVersion === "1.0.0" &&
+        candidate.value.qualityState === "verified_fixture",
+      acceptanceCase.label,
+    );
+  }
+
+  const operationContext = postgresProjectionOperationContext(query.operation);
+  for (const [
+    index,
+    expectedPolicyId,
+  ] of acceptanceCase.expectedPolicyIds.entries()) {
+    const policy = result.policies[index];
+    assertRuntimeProjectionCondition(
+      policy !== undefined &&
+        policy.id === expectedPolicyId &&
+        policy.version === "1.0.0" &&
+        policy.classification === "synthetic" &&
+        policy.territory === "demo_only" &&
+        policy.expiresAt === null &&
+        policy.grants.length === 1 &&
+        policy.grants[0]?.purpose === operationContext.purpose &&
+        policy.grants[0]?.channel === operationContext.channel &&
+        policy.grants[0]?.allowed === true,
+      acceptanceCase.label,
+    );
+  }
+}
+
+function assertRuntimeProjectionCondition(
+  condition: boolean,
+  label: string,
+): asserts condition {
+  if (!condition) {
+    throw new Error(
+      `Authenticated financial-fact projection ${label} mismatch`,
+    );
+  }
+}
+
+function postgresSqlTextLiteral(value: string): string {
+  if (value.includes("\0")) {
+    throw new Error("Authenticated financial-fact projection input is invalid");
+  }
+  return `'${value.replaceAll("'", "''")}'`;
 }
 
 async function verifyRuntimeAuthResidueAbsent(
@@ -2703,9 +3011,9 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "8d5b8a58119692dedb1e6409f56f478d327f79610e1c863131bf7f74d073636c" ||
+      "b9dc3eafcf31d4829ea71422216390a0be050c2d567d6148da9afd31b9e97012" ||
     value.fixtureSha256 !==
-      "69974bf2996cbdd0078d509db933fe89d670005e177b7f57187df54b201b99bf" ||
+      "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(value.verifiedOn) ||
     value.runner.label !== "ubuntu-24.04" ||

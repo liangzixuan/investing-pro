@@ -33,9 +33,9 @@ gates stay mandatory before any database adapter or tenant API is enabled:
   trusted tenant selection;
 - composite-FK and future writer-path attacks beyond b1's read probes;
 - cancellation, timeouts, simultaneous backends, and real pool reuse;
-- a live PostgreSQL implementation of the operation-aware projection contract
-  frozen in Cycle 1b-a; Cycle 1b-b4 is the selected driverless query/unit proof,
-  not an adapter;
+- a live PostgreSQL execution of the operation-aware projection contract frozen
+  in Cycle 1b-a; Cycle 1b-b4 now implements the driverless query/unit source but
+  its pinned live review remains pending, and it is not an adapter;
 - at least 1,000 alternating/concurrent tenant operations;
 - live checksum-drift handling, logical dump/restore, and post-restore
   authorization parity; and

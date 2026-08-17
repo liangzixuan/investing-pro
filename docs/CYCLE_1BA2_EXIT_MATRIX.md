@@ -17,13 +17,12 @@ was added.
 | Current runtime scope | Database and core modules are not imported by the API or web composition roots; the SYN1 fixture path is unchanged                  | Pass   |
 | Dependency surface    | One internal workspace dependency only; no external package or install script was added                                             | Pass   |
 
-## Deliberately pending
+## Later gates
 
-- Cycle 1b-b4, now selected, must add the SQL query that performs the explicit
-  listing -> share class -> security join, enforces a reviewed result-size
-  bound, and emits this exact flat row shape;
-- B4 must also add a reviewed, closed semantic mapping from stored
-  unit/currency pairs to core units;
+- Cycle 1b-b4 source now contains the SQL query that performs the explicit listing
+  -> share class -> security join, enforces a reviewed result-size bound, emits
+  this exact flat row shape, and applies the closed stored-unit/currency mapping;
+  its pinned live execution and version 4 artifact review remain pending;
 - b2/b3 completed a bounded authenticated non-owner runtime service-account
   path; a client driver, application identity/tenant resolution, pool cleanup,
   cancellation, concurrency, and logical restore remain pending;
@@ -36,4 +35,5 @@ PostgreSQL evidence and is not a production adapter.
 The later b1-b3 PostgreSQL acceptance runs passed their recorded migration,
 RLS, service-account, and authorization checks, but they did not execute this
 normalizer, a projection query, or an adapter. The a2 proof boundary remains
-unchanged. B4 will add a separate live query-to-normalizer proof.
+unchanged. B4 now has a separate query-to-normalizer source implementation; its
+live proof remains pending and will not retroactively widen a2.

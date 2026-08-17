@@ -11,6 +11,8 @@ import {
   POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -43,6 +45,8 @@ interface MutableInput {
     fixture: Uint8Array;
     migrationManifest: Uint8Array;
     acceptanceRunner: Uint8Array;
+    projectionQuery?: Uint8Array;
+    projectionNormalizer?: Uint8Array;
     migrations: Array<{ id: string; file: string; bytes: Uint8Array }>;
   };
 }
@@ -73,6 +77,8 @@ function cloneInput(): MutableInput {
       fixture: exactCopy(BASE_INPUT.sources.fixture),
       migrationManifest: exactCopy(BASE_INPUT.sources.migrationManifest),
       acceptanceRunner: exactCopy(BASE_INPUT.sources.acceptanceRunner),
+      projectionQuery: exactCopy(BASE_INPUT.sources.projectionQuery!),
+      projectionNormalizer: exactCopy(BASE_INPUT.sources.projectionNormalizer!),
       migrations: BASE_INPUT.sources.migrations.map((migration) => ({
         id: migration.id,
         file: migration.file,
@@ -115,6 +121,30 @@ function mutateEvidence(
   return replaceEvidenceBytes(input, canonicalJson(value));
 }
 
+function historicalInput(
+  schemaVersion: 1 | 2 | 3,
+  checksPassed:
+    | typeof POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED
+    | typeof POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED
+    | typeof POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
+  notProven:
+    | typeof POSTGRES_ACCEPTANCE_V1_NOT_PROVEN
+    | typeof POSTGRES_ACCEPTANCE_V2_NOT_PROVEN
+    | typeof POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+): MutableInput {
+  const input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = schemaVersion;
+    record.checksPassed = [...checksPassed];
+    record.notProven = [...notProven];
+    const hashes = record.sourceHashes as Record<string, unknown>;
+    delete hashes.projectionQuerySha256;
+    delete hashes.projectionNormalizerSha256;
+  });
+  delete input.sources.projectionQuery;
+  delete input.sources.projectionNormalizer;
+  return input;
+}
+
 function replaceCanonicalSourceJson(
   input: VerifyPostgresAcceptanceEvidenceOfflineInput,
   key: "imageConfig" | "migrationManifest",
@@ -150,6 +180,14 @@ function cloneFrom(
       fixture: exactCopy(input.sources.fixture),
       migrationManifest: exactCopy(input.sources.migrationManifest),
       acceptanceRunner: exactCopy(input.sources.acceptanceRunner),
+      ...(input.sources.projectionQuery === undefined
+        ? {}
+        : { projectionQuery: exactCopy(input.sources.projectionQuery) }),
+      ...(input.sources.projectionNormalizer === undefined
+        ? {}
+        : {
+            projectionNormalizer: exactCopy(input.sources.projectionNormalizer),
+          }),
       migrations: input.sources.migrations.map((migration) => ({
         id: migration.id,
         file: migration.file,
@@ -233,11 +271,11 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("verifies canonical historical v1 evidence with its v1 claims", () => {
-    const input = mutateEvidence(cloneInput(), (record) => {
-      record.schemaVersion = 1;
-      record.checksPassed = [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED];
-      record.notProven = [...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN];
-    });
+    const input = historicalInput(
+      1,
+      POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
+    );
 
     const result = verifyPostgresAcceptanceEvidenceOffline(input);
 
@@ -253,11 +291,11 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("verifies canonical historical v2 evidence with its v2 claims", () => {
-    const input = mutateEvidence(cloneInput(), (record) => {
-      record.schemaVersion = 2;
-      record.checksPassed = [...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED];
-      record.notProven = [...POSTGRES_ACCEPTANCE_V2_NOT_PROVEN];
-    });
+    const input = historicalInput(
+      2,
+      POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
+    );
 
     const result = verifyPostgresAcceptanceEvidenceOffline(input);
 
@@ -275,7 +313,27 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("rejects evidence that mixes v1, v2, and v3 claims", () => {
+  it("verifies canonical historical v3 evidence without v4 source blobs", () => {
+    const input = historicalInput(
+      3,
+      POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+    );
+
+    const result = verifyPostgresAcceptanceEvidenceOffline(input);
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_financial_fact_projection_query",
+    );
+  });
+
+  it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 1;
@@ -291,11 +349,36 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(cloneInput(), (record) => {
         record.checksPassed = [...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED];
       }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 3;
+        record.checksPassed = [...POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED];
+        record.notProven = [...POSTGRES_ACCEPTANCE_V3_NOT_PROVEN];
+      }),
     ]) {
       expectValueFreeFailure(() =>
         verifyPostgresAcceptanceEvidenceOffline(input),
       );
     }
+  });
+
+  it("requires the exact version-specific source bundle", () => {
+    const missingV4 = cloneInput();
+    delete missingV4.sources.projectionQuery;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV4),
+    );
+
+    const extraHistorical = historicalInput(
+      3,
+      POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+    );
+    (
+      extraHistorical.sources as unknown as Record<string, unknown>
+    ).projectionQuery = exactCopy(BASE_INPUT.sources.projectionQuery!);
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraHistorical),
+    );
   });
 
   it("uses defensive byte copies and does not mutate the input", () => {
@@ -529,11 +612,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "fixture",
       "migrationManifest",
       "acceptanceRunner",
+      "projectionQuery",
+      "projectionNormalizer",
     ] as const) {
       const input = cloneInput();
       input.sources = {
         ...input.sources,
-        [key]: changedByte(input.sources[key]),
+        [key]: changedByte(input.sources[key]!),
       };
       expectValueFreeFailure(() =>
         verifyPostgresAcceptanceEvidenceOffline(input),
@@ -762,21 +847,28 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
 });
 
 async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOfflineInput> {
-  const [imageConfig, workflow, fixture, migrationManifest, acceptanceRunner] =
-    await Promise.all([
-      readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
-      readExact(
-        new URL(
-          "../../../.github/workflows/postgres-acceptance.yml",
-          import.meta.url,
-        ),
+  const [
+    imageConfig,
+    workflow,
+    fixture,
+    migrationManifest,
+    acceptanceRunner,
+    projectionQuery,
+    projectionNormalizer,
+  ] = await Promise.all([
+    readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
+    readExact(
+      new URL(
+        "../../../.github/workflows/postgres-acceptance.yml",
+        import.meta.url,
       ),
-      readExact(
-        new URL("../acceptance/synthetic-fixture.sql", import.meta.url),
-      ),
-      readExact(new URL("../migration-manifest.json", import.meta.url)),
-      readExact(new URL("../src/postgres-acceptance.ts", import.meta.url)),
-    ]);
+    ),
+    readExact(new URL("../acceptance/synthetic-fixture.sql", import.meta.url)),
+    readExact(new URL("../migration-manifest.json", import.meta.url)),
+    readExact(new URL("../src/postgres-acceptance.ts", import.meta.url)),
+    readExact(new URL("../src/postgres-projection-query.ts", import.meta.url)),
+    readExact(new URL("../src/projection-normalization.ts", import.meta.url)),
+  ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
     reference: string;
     indexDigest: string;
@@ -833,6 +925,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       fixtureSha256: sha256(fixture),
       migrationManifestSha256: sha256(migrationManifest),
       acceptanceRunnerSha256: sha256(acceptanceRunner),
+      projectionQuerySha256: sha256(projectionQuery),
+      projectionNormalizerSha256: sha256(projectionNormalizer),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -853,6 +947,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       fixture,
       migrationManifest,
       acceptanceRunner,
+      projectionQuery,
+      projectionNormalizer,
       migrations,
     },
   };

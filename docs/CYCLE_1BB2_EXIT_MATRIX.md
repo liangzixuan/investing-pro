@@ -52,6 +52,6 @@ restore viability, deployed persistence, or production readiness.
 
 Cycle 1b-b3 later closed only the historical full-authenticated-matrix deferral
 above for its exact recorded synthetic scope; it does not retroactively widen
-b2. Cycle 1b-b4 is the selected driverless projection-query and semantic-unit
-proof. Cycle 1b-b5 is reserved for authenticated test-loader proof. Neither is
-part of the historical b2 result.
+b2. Cycle 1b-b4 driverless projection-query and semantic-unit source is now
+implemented with live review pending. Cycle 1b-b5 is reserved for authenticated
+test-loader proof. Neither is part of the historical b2 result.

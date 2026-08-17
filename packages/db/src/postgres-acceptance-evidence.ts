@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v3.json";
+  "research-cockpit-postgres-acceptance-v4.json";
 
 export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
@@ -62,12 +62,23 @@ export const POSTGRES_ACCEPTANCE_V3_NOT_PROVEN = Object.freeze([
   "real_or_licensed_market_data",
 ] as const);
 
+export const POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
+  "authenticated_financial_fact_projection_query",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_V4_NOT_PROVEN = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+  "application_driver_pool_or_composition_root",
+  "complete_dossier_history_timeline_or_dimensioned_projection",
+] as const);
+
 /** The exact completed-check list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_CHECKS_PASSED =
-  POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED;
+  POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED;
 
 /** The exact limitation list emitted by the current evidence builder. */
-export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V3_NOT_PROVEN;
+export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V4_NOT_PROVEN;
 
 const BUILD_INPUT_KEYS = [
   "githubEnvironment",
@@ -102,11 +113,16 @@ const EVIDENCE_KEYS = [
 ] as const;
 
 const TOOL_VERSION_KEYS = ["postgres", "psql", "pgDump", "pgRestore"] as const;
-const SOURCE_HASH_KEYS = [
+const HISTORICAL_SOURCE_HASH_KEYS = [
   "workflowSha256",
   "fixtureSha256",
   "migrationManifestSha256",
   "acceptanceRunnerSha256",
+] as const;
+const V4_SOURCE_HASH_KEYS = [
+  ...HISTORICAL_SOURCE_HASH_KEYS,
+  "projectionQuerySha256",
+  "projectionNormalizerSha256",
 ] as const;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -128,11 +144,16 @@ export interface PostgresAcceptanceToolVersions {
   readonly pgRestore: string;
 }
 
-export interface PostgresAcceptanceSourceHashes {
+export interface HistoricalPostgresAcceptanceSourceHashes {
   readonly workflowSha256: string;
   readonly fixtureSha256: string;
   readonly migrationManifestSha256: string;
   readonly acceptanceRunnerSha256: string;
+}
+
+export interface PostgresAcceptanceSourceHashes extends HistoricalPostgresAcceptanceSourceHashes {
+  readonly projectionQuerySha256: string;
+  readonly projectionNormalizerSha256: string;
 }
 
 export interface BuildPostgresAcceptanceEvidenceInput {
@@ -148,7 +169,9 @@ export interface BuildPostgresAcceptanceEvidenceInput {
   readonly completedAt: string;
 }
 
-interface PostgresAcceptanceEvidenceFields {
+interface PostgresAcceptanceEvidenceFields<
+  SourceHashes extends HistoricalPostgresAcceptanceSourceHashes,
+> {
   readonly suite: "research-cockpit-postgresql-acceptance";
   readonly outcome: "passed";
   readonly job: "postgres-acceptance";
@@ -164,32 +187,39 @@ interface PostgresAcceptanceEvidenceFields {
   readonly serverVersionNumber: "170011";
   readonly serverVersion: "17.11";
   readonly toolVersions: PostgresAcceptanceToolVersions;
-  readonly sourceHashes: PostgresAcceptanceSourceHashes;
+  readonly sourceHashes: SourceHashes;
   readonly completedAt: string;
 }
 
-export interface PostgresAcceptanceEvidenceV1 extends PostgresAcceptanceEvidenceFields {
+export interface PostgresAcceptanceEvidenceV1 extends PostgresAcceptanceEvidenceFields<HistoricalPostgresAcceptanceSourceHashes> {
   readonly schemaVersion: 1;
   readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED;
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V1_NOT_PROVEN;
 }
 
-export interface PostgresAcceptanceEvidenceV2 extends PostgresAcceptanceEvidenceFields {
+export interface PostgresAcceptanceEvidenceV2 extends PostgresAcceptanceEvidenceFields<HistoricalPostgresAcceptanceSourceHashes> {
   readonly schemaVersion: 2;
   readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED;
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V2_NOT_PROVEN;
 }
 
-export interface PostgresAcceptanceEvidenceV3 extends PostgresAcceptanceEvidenceFields {
+export interface PostgresAcceptanceEvidenceV3 extends PostgresAcceptanceEvidenceFields<HistoricalPostgresAcceptanceSourceHashes> {
   readonly schemaVersion: 3;
   readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED;
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V3_NOT_PROVEN;
 }
 
+export interface PostgresAcceptanceEvidenceV4 extends PostgresAcceptanceEvidenceFields<PostgresAcceptanceSourceHashes> {
+  readonly schemaVersion: 4;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V4_NOT_PROVEN;
+}
+
 export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV1
   | PostgresAcceptanceEvidenceV2
-  | PostgresAcceptanceEvidenceV3;
+  | PostgresAcceptanceEvidenceV3
+  | PostgresAcceptanceEvidenceV4;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -214,7 +244,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidenceV3 {
+): PostgresAcceptanceEvidenceV4 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -250,11 +280,11 @@ export function buildPostgresAcceptanceEvidence(
       reviewedImageIndexDigest,
     );
     const toolVersions = normalizeToolVersions(input.toolVersions);
-    const sourceHashes = normalizeSourceHashes(input.sourceHashes);
+    const sourceHashes = normalizeV4SourceHashes(input.sourceHashes);
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 3,
+      schemaVersion: 4,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -311,14 +341,14 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidenceV3,
+  value: PostgresAcceptanceEvidenceV4,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
     const normalized = normalizeEvidence(value);
-    if (normalized.schemaVersion !== 3) invalid();
+    if (normalized.schemaVersion !== 4) invalid();
     bytes = Buffer.from(
       serializePostgresAcceptanceEvidence(normalized),
       "utf8",
@@ -364,7 +394,6 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     reviewedImageIndexDigest,
   );
   const toolVersions = normalizeToolVersions(evidence.toolVersions);
-  const sourceHashes = normalizeSourceHashes(evidence.sourceHashes);
   const completedAt = canonicalTimestamp(evidence.completedAt);
 
   const common = {
@@ -383,10 +412,10 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     serverVersionNumber: "170011",
     serverVersion: "17.11",
     toolVersions,
-    sourceHashes,
   } as const;
 
   if (evidence.schemaVersion === 1) {
+    const sourceHashes = normalizeHistoricalSourceHashes(evidence.sourceHashes);
     exactLiteralArray(
       evidence.checksPassed,
       POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
@@ -395,6 +424,7 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     return freezeEvidence({
       schemaVersion: 1,
       ...common,
+      sourceHashes,
       checksPassed: POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
       notProven: POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
       completedAt,
@@ -402,6 +432,7 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
   }
 
   if (evidence.schemaVersion === 2) {
+    const sourceHashes = normalizeHistoricalSourceHashes(evidence.sourceHashes);
     exactLiteralArray(
       evidence.checksPassed,
       POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
@@ -410,6 +441,7 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     return freezeEvidence({
       schemaVersion: 2,
       ...common,
+      sourceHashes,
       checksPassed: POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
       notProven: POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
       completedAt,
@@ -417,6 +449,7 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
   }
 
   if (evidence.schemaVersion === 3) {
+    const sourceHashes = normalizeHistoricalSourceHashes(evidence.sourceHashes);
     exactLiteralArray(
       evidence.checksPassed,
       POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
@@ -425,8 +458,26 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     return freezeEvidence({
       schemaVersion: 3,
       ...common,
+      sourceHashes,
       checksPassed: POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
       notProven: POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
+  if (evidence.schemaVersion === 4) {
+    const sourceHashes = normalizeV4SourceHashes(evidence.sourceHashes);
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V4_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 4,
+      ...common,
+      sourceHashes,
+      checksPassed: POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
       completedAt,
     });
   }
@@ -444,13 +495,29 @@ function normalizeToolVersions(value: unknown): PostgresAcceptanceToolVersions {
   });
 }
 
-function normalizeSourceHashes(value: unknown): PostgresAcceptanceSourceHashes {
-  const hashes = exactPlainDataRecord(value, SOURCE_HASH_KEYS);
+function normalizeHistoricalSourceHashes(
+  value: unknown,
+): HistoricalPostgresAcceptanceSourceHashes {
+  const hashes = exactPlainDataRecord(value, HISTORICAL_SOURCE_HASH_KEYS);
   return Object.freeze({
     workflowSha256: sha256Hex(hashes.workflowSha256),
     fixtureSha256: sha256Hex(hashes.fixtureSha256),
     migrationManifestSha256: sha256Hex(hashes.migrationManifestSha256),
     acceptanceRunnerSha256: sha256Hex(hashes.acceptanceRunnerSha256),
+  });
+}
+
+function normalizeV4SourceHashes(
+  value: unknown,
+): PostgresAcceptanceSourceHashes {
+  const hashes = exactPlainDataRecord(value, V4_SOURCE_HASH_KEYS);
+  return Object.freeze({
+    workflowSha256: sha256Hex(hashes.workflowSha256),
+    fixtureSha256: sha256Hex(hashes.fixtureSha256),
+    migrationManifestSha256: sha256Hex(hashes.migrationManifestSha256),
+    acceptanceRunnerSha256: sha256Hex(hashes.acceptanceRunnerSha256),
+    projectionQuerySha256: sha256Hex(hashes.projectionQuerySha256),
+    projectionNormalizerSha256: sha256Hex(hashes.projectionNormalizerSha256),
   });
 }
 

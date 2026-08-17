@@ -31,13 +31,18 @@ const TRUST_ANCHOR_KEYS = [
   "runId",
   "runAttempt",
 ] as const;
-const SOURCE_KEYS = [
+const HISTORICAL_SOURCE_KEYS = [
   "imageConfig",
   "workflow",
   "fixture",
   "migrationManifest",
   "acceptanceRunner",
   "migrations",
+] as const;
+const V4_SOURCE_KEYS = [
+  ...HISTORICAL_SOURCE_KEYS,
+  "projectionQuery",
+  "projectionNormalizer",
 ] as const;
 const MIGRATION_SOURCE_KEYS = ["id", "file", "bytes"] as const;
 const IMAGE_CONFIG_KEYS = [
@@ -65,6 +70,8 @@ const MAX_WORKFLOW_BYTES = 128 * 1024;
 const MAX_FIXTURE_BYTES = 1024 * 1024;
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const MAX_RUNNER_BYTES = 2 * 1024 * 1024;
+const MAX_PROJECTION_QUERY_BYTES = 2 * 1024 * 1024;
+const MAX_PROJECTION_NORMALIZER_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATION_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATIONS = 100;
 
@@ -102,6 +109,8 @@ export interface PostgresAcceptanceEvidenceSourceBundle {
   readonly migrationManifest: Uint8Array;
   readonly acceptanceRunner: Uint8Array;
   readonly migrations: readonly PostgresAcceptanceMigrationSource[];
+  readonly projectionQuery?: Uint8Array;
+  readonly projectionNormalizer?: Uint8Array;
 }
 
 export interface VerifyPostgresAcceptanceEvidenceOfflineInput {
@@ -133,6 +142,8 @@ interface NormalizedSources {
   readonly migrationManifest: Uint8Array;
   readonly acceptanceRunner: Uint8Array;
   readonly migrations: readonly NormalizedMigrationSource[];
+  readonly projectionQuery?: Uint8Array;
+  readonly projectionNormalizer?: Uint8Array;
 }
 
 interface NormalizedMigrationSource {
@@ -174,8 +185,6 @@ export function verifyPostgresAcceptanceEvidenceOffline(
     const input = exactPlainDataRecord(value, INPUT_KEYS);
     const evidenceBytes = exactBytes(input.evidenceBytes, MAX_EVIDENCE_BYTES);
     const anchors = normalizeTrustAnchors(input.trustAnchors);
-    const sources = normalizeSources(input.sources);
-
     const evidenceSha256 = sha256(evidenceBytes);
     if (evidenceSha256 !== anchors.evidenceSha256) invalid();
 
@@ -196,6 +205,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       invalid();
     }
 
+    const sources = normalizeSources(input.sources, evidence.schemaVersion);
+
     const imageConfig = parseReviewedImageConfig(sources.imageConfig);
     if (
       evidence.reviewedImageReference !== imageConfig.reference ||
@@ -206,6 +217,19 @@ export function verifyPostgresAcceptanceEvidenceOffline(
         String(imageConfig.expectedServerVersionNumber)
     ) {
       invalid();
+    }
+
+    if (evidence.schemaVersion === 4) {
+      if (
+        sources.projectionQuery === undefined ||
+        sources.projectionNormalizer === undefined ||
+        evidence.sourceHashes.projectionQuerySha256 !==
+          sha256(sources.projectionQuery) ||
+        evidence.sourceHashes.projectionNormalizerSha256 !==
+          sha256(sources.projectionNormalizer)
+      ) {
+        invalid();
+      }
     }
 
     const workflowSha256 = sha256(sources.workflow);
@@ -260,8 +284,42 @@ function normalizeTrustAnchors(
   });
 }
 
-function normalizeSources(value: unknown): NormalizedSources {
-  const sources = exactPlainDataRecord(value, SOURCE_KEYS);
+function normalizeSources(
+  value: unknown,
+  schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
+): NormalizedSources {
+  if (schemaVersion === 4) {
+    const sources = exactPlainDataRecord(value, V4_SOURCE_KEYS);
+    return normalizeSourceFields(sources, {
+      projectionQuery: exactBytes(
+        sources.projectionQuery,
+        MAX_PROJECTION_QUERY_BYTES,
+      ),
+      projectionNormalizer: exactBytes(
+        sources.projectionNormalizer,
+        MAX_PROJECTION_NORMALIZER_BYTES,
+      ),
+    });
+  }
+  return normalizeSourceFields(
+    exactPlainDataRecord(value, HISTORICAL_SOURCE_KEYS),
+  );
+}
+
+function normalizeSourceFields(
+  sources: DataRecord & {
+    readonly imageConfig: unknown;
+    readonly workflow: unknown;
+    readonly fixture: unknown;
+    readonly migrationManifest: unknown;
+    readonly acceptanceRunner: unknown;
+    readonly migrations: unknown;
+  },
+  v4Sources: Pick<
+    NormalizedSources,
+    "projectionQuery" | "projectionNormalizer"
+  > = {},
+): NormalizedSources {
   const migrations = exactDataArray(sources.migrations, MAX_MIGRATIONS, false);
   return Object.freeze({
     imageConfig: exactBytes(sources.imageConfig, MAX_IMAGE_CONFIG_BYTES),
@@ -275,6 +333,7 @@ function normalizeSources(value: unknown): NormalizedSources {
     migrations: Object.freeze(
       migrations.map((migration) => normalizeMigrationSource(migration)),
     ),
+    ...v4Sources,
   });
 }
 
