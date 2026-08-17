@@ -73,7 +73,12 @@ interface ReviewFixture {
 afterEach(async () => {
   await Promise.all(
     TEMP_DIRECTORIES.splice(0).map((directory) =>
-      rm(directory, { force: true, recursive: true }),
+      rm(directory, {
+        force: true,
+        recursive: true,
+        maxRetries: 5,
+        retryDelay: 50,
+      }),
     ),
   );
 });

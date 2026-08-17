@@ -1906,7 +1906,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "migrator schema DDL before SET ROLE",
       "CREATE SCHEMA b7_migrator_schema_escape",
       "migrator trusted extension DDL before SET ROLE",
-      "CREATE EXTENSION hstore",
+      "CREATE EXTENSION hstore WITH SCHEMA shared_data",
       "migrator temporary DDL before SET ROLE",
     ]) {
       expect(preRole).toContain(marker);

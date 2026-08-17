@@ -3792,7 +3792,7 @@ async function verifyMigratorLoginBeforeSetRole(
     ],
     [
       "migrator trusted extension DDL before SET ROLE",
-      "CREATE EXTENSION hstore;",
+      "CREATE EXTENSION hstore WITH SCHEMA shared_data;",
       "permission denied to create extension",
     ],
     [
