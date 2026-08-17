@@ -1,8 +1,8 @@
 # Canonical data and tenancy contract
 
-Status: Cycle 1b-a2 design contract, a live-verified bounded Cycle 1b-b2
-runtime-session boundary, and a live-verified bounded Cycle 1b-b3 authenticated
-authorization matrix; synthetic data only.
+Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
+runtime authentication, b3 authorization-matrix, b4 projection-query, and b5
+test-loader boundaries; synthetic data only.
 
 ## Identity
 
@@ -108,9 +108,10 @@ Cycle 1b-b5 source adds one separate acceptance-only fixture-load path. It
 leaves the canonical fixture and migrations unchanged, uses a distinct
 ephemeral SCRAM login with only an exact set-only edge to the existing
 test-seed capability, and removes the login and membership before later catalog
-checks. The source is locally verified, but no pinned live version 5 result has
-been reviewed; see
-[ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md) and the
+checks. That exact path passed in reviewed PostgreSQL run `32012508025` at
+commit `04e5c1b`; the retained version 5 record returned `offline_consistent`.
+See the [B5 evidence note](./POSTGRESQL_TEST_LOADER_EVIDENCE.md),
+[ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md), and the
 [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md). This changes no data,
 tenancy, projection, or application contract.
 
@@ -120,8 +121,9 @@ it does not bind an end user to a principal or organization, and
 `set_request_context` remains a trusted runtime operation rather than an
 identity resolver. External/TLS transport, production secrets, connection-pool
 cleanup, concurrency, authenticated migrator and backup sessions,
-backup/restore, and the future deletion path remain separate gates. The B5
-test-loader session remains live-pending and acceptance-only.
+backup/restore, and the future deletion path remain separate gates. B5 closes
+only one sequential, synthetic, container-local acceptance-only test-loader
+result.
 The successful b3 run closes only the recorded synthetic authenticated
 tenant/rights/prepared-read gap; it does not change any of these remaining
 identity, transport, operational, or deployment gates.

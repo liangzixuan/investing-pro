@@ -1,4 +1,4 @@
-# Sprint 0 through live Cycle 1b-b4 and source Cycle 1b-b5 threat model
+# Sprint 0 through bounded live Cycle 1b-b5 threat model
 
 ## Current trust boundaries
 
@@ -80,10 +80,12 @@ direct-insert body, and runs it through one ephemeral container-local SCRAM
 login with an exact set-only edge to the existing synthetic test-seed
 capability. The source includes wrong-password, pre-role, escalation,
 full-fixture rollback, synthetic-only RLS, mutation/ledger/DDL denial,
-role-reset, and zero-residue probes and is locally verified. No pinned live
-version 5 artifact has been reviewed, so the retained live evidence still ends
-at B4. See [ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md) and
-the [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md).
+role-reset, and zero-residue probes. That exact path passed in reviewed
+PostgreSQL run `32012508025` at commit `04e5c1b`; the retained version 5 record
+returned `offline_consistent`. See the
+[B5 evidence note](./POSTGRESQL_TEST_LOADER_EVIDENCE.md),
+[ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md), and the
+[Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md).
 
 That database login is not a user identity. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
@@ -92,8 +94,8 @@ future verified identity resolver prevents it. B2 therefore does not establish
 end-user binding, production BOLA protection, external/TLS transport, secret
 management, an application pool, or deployed persistence. Its distinct
 migrator, backup, and restore boundaries remain deferred. The B5 test-loader
-source does not establish a live or production test-loader result until its
-pinned version 5 evidence is retained and independently reviewed.
+result establishes only one sequential, synthetic, container-local
+acceptance-only session, not a production loader or identity boundary.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes

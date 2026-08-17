@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B4 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B5 AUTHENTICATED TEST-LOADER SOURCE IMPLEMENTED/LOCALLY VERIFIED AND LIVE EVIDENCE PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B5 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -44,8 +44,10 @@ adds an isolated authenticated loader lifecycle around the fixture's strictly
 validated direct-insert body. One ephemeral acceptance-only SCRAM login may
 assume only `research_cockpit_test_seed` through an exact set-only,
 non-inheriting, non-admin membership, then must be removed with zero residue.
-Source implementation and local verification are complete; no live version 5
-claim exists. See
+That exact path passed in PostgreSQL run `32012508025` at commit `04e5c1b`; the
+downloaded version 5 record returned `offline_consistent` against separately
+supplied anchors. See the
+[B5 evidence note](../../docs/POSTGRESQL_TEST_LOADER_EVIDENCE.md),
 [ADR 0017](../../docs/adr/0017-authenticated-test-loader-fixture-load.md) and
 the [Cycle 1b-b5 exit matrix](../../docs/CYCLE_1BB5_EXIT_MATRIX.md).
 
@@ -82,8 +84,8 @@ historical b1 runtime, seed, and backup checks use superuser
 This can prove engine grant/RLS semantics, but it is not authenticated
 least-privilege or production identity evidence. B5 leaves those historical
 checks and fixture bytes intact while adding a separate post-bootstrap
-authenticated test-loader path; that path has no live claim until version 5
-evidence is retained and reviewed.
+authenticated test-loader path. The reviewed version 5 run passed that exact
+acceptance-only path without widening the historical b1 through b4 results.
 
 The b2 boundary leaves that superuser migration bootstrap, test-seed
 impersonation, and backup impersonation unchanged. Only runtime behavior moves
@@ -360,11 +362,11 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact b1-b4 checks in their retained run records. The
-b2-b4 results cover only one sequential, synthetic, container-local runtime
-service account and one narrow dimensionless financial-fact projection;
-external/TLS authentication, end-user identity binding, production secret
-handling, a driver or pool, concurrency/cancellation/timeouts, complete dossier
-projections, authenticated fixture loading, distinct migrator and backup
-credentials, logical restore, and disaster recovery remain unproven by live
-evidence. B5 source implementation does not change that evidence boundary.
+evidence is limited to the exact b1-b5 checks in their retained run records. The
+b2-b5 results cover only sequential, synthetic, container-local runtime and
+test-loader service accounts plus one narrow dimensionless financial-fact
+projection. External/TLS authentication, end-user identity binding, production
+secret handling, a driver or pool, concurrency/cancellation/timeouts, complete
+dossier projections, distinct migrator and backup credentials, logical
+restore, disaster recovery, secure passfile erasure, and production readiness
+remain unproven.

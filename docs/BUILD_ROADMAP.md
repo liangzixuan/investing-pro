@@ -26,9 +26,8 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
 complete and reviewed; b3 authenticated authorization matrix run complete and
 reviewed; b4 driverless projection-query and semantic-unit-mapping run complete
-and reviewed; b5 authenticated test-loader source implemented and locally
-verified with pinned live version 5 evidence pending. Pool/concurrency and
-restore gates remain later work.
+and reviewed; b5 authenticated test-loader run complete and reviewed.
+Pool/concurrency and restore gates remain later work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -41,8 +40,8 @@ source blobs. See the [evidence note](./POSTGRESQL_ACCEPTANCE_EVIDENCE.md). The
 current role bootstrap still runs as the ephemeral container superuser and does
 not satisfy a distinct migrator or authenticated backup requirement. B5 keeps
 that bootstrap unchanged and adds a separate post-bootstrap authenticated
-test-loader lifecycle; its pinned live evidence is still pending. The bounded
-b2 runtime login is created separately after bootstrap.
+test-loader lifecycle whose bounded live result is now reviewed. The bounded b2
+runtime login is created separately after bootstrap.
 
 **Cycle 1b-b2 status:** the bounded source and live execution were reviewed at
 commit `3479e164`; see the
@@ -95,11 +94,12 @@ loads it in one transaction through a distinct ephemeral SCRAM login with one
 exact set-only edge to `research_cockpit_test_seed`. It requires wrong-password,
 pre-role, cross-role, session-authorization, atomic-rollback, synthetic-policy,
 mutation/ledger/DDL-denial, role-reset, and zero-residue probes. Source
-implementation and local verification are complete; a clean pinned run and
-reviewed version 5 record remain required. The exact new completed-check ID is
+implementation, the clean pinned run, and independent version 5 review are
+complete at commit `04e5c1b`. The exact new completed-check ID is
 `authenticated_test_loader_fixture_load`; the two remaining operational-session
 nonclaims are `authenticated_migrator_sessions` and
 `authenticated_backup_sessions`. See
+[the B5 evidence note](./POSTGRESQL_TEST_LOADER_EVIDENCE.md),
 [ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md) and the
 [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md).
 
@@ -109,7 +109,7 @@ nonclaims are `authenticated_migrator_sessions` and
    bounded b2 target of one authenticated runtime service-account session is
    complete for its reviewed run. At that milestone, distinct migrator,
    test-loader, and backup identities remained separate later gates. B5 now
-   addresses only the test-loader source boundary; its live gate remains open.
+   closes only the bounded authenticated test-loader gate for its reviewed run.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
 4. **Cycle 1b-b4 complete for its recorded scope:** the exact read-only
@@ -146,22 +146,21 @@ container-local SCRAM rows; the historical b1 run did not satisfy them.
 The reviewed b3 run passed its exact authenticated tenant-isolation,
 operation-rights, and one-backend prepared matrix and retained the remaining
 version 3 limitations. The reviewed b4 run passed the exact driverless
-query-to-normalizer path and retained the version 4 limitations. Remaining
-Cycle 1b-b work starts with the pinned authenticated test-loader run and review,
-then the
-platform/migrator split and live migrator proof, authenticated backup and
+query-to-normalizer path and retained the version 4 limitations. The reviewed
+b5 run passed the exact authenticated non-owner fixture-load path and retained
+the version 5 nonclaims. Remaining Cycle 1b-b work starts with the
+platform/migrator split and live migrator proof, then authenticated backup and
 restore, a single-client read-only adapter, and finally the real
 pool/concurrency/cancellation boundary. The row-normalization contract is
 already frozen; the B4 query and unit contract now provides a reviewed input to
 the later single-client adapter milestone without proving that adapter.
 
-The first b1 green-run, bounded b2 runtime-authentication, b3 authenticated
-authorization-matrix, and b4 driverless query/normalizer milestones are
-complete for their recorded scopes. B5 is the active authenticated non-owner
-test-loader successor. Its source implementation is locally verified, but no
-live version 5 claim exists. The next B5 gate is the pinned live run and
-independent evidence review. A later single-client read adapter must remain
-separate from both B4 and the pool/concurrency milestone.
+The b1 green-run, bounded b2 runtime-authentication, b3 authenticated
+authorization-matrix, b4 driverless query/normalizer, and b5 authenticated
+test-loader milestones are complete for their recorded scopes. The next
+operational-identity gate is the separate platform/migrator redesign and live
+migrator proof. A later single-client read adapter must remain separate from B4,
+B5, and the pool/concurrency milestone.
 The distinct migrator is still blocked by the current migration `0001`
 design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
 administrative membership edge on a role it creates, while `0001` rejects every
@@ -171,8 +170,8 @@ Only after authenticated backup design should the harness add a bounded
 dump/restore probe. Application-pool cancellation/concurrency belongs with a
 real adapter and pool. Do not treat B4, the clean-only
 impersonated-capability result, or the reviewed b2/b3 container-local
-service-account results as permission to wire the database into the app or
-accept real data.
+service-account results, including the separate reviewed B5 test-loader result,
+as permission to wire the database into the app or accept real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

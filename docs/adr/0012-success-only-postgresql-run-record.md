@@ -1,7 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; first version 4 live record retained and reviewed; version 5
-source producer implemented with live evidence pending
+Status: accepted; version 5 live record retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -23,12 +22,12 @@ to the schema version. The first retained record is
 container-local SCRAM runtime probe; version 3 adds the authenticated runtime
 authorization matrix; and version 4 adds the authenticated financial-fact
 projection-query check plus the query and normalizer source hashes. Version 4
-is the latest retained and live-reviewed record. The current source producer is
-configured to write `research-cockpit-postgres-acceptance-v5.json`; version 5
-adds only the authenticated test-loader fixture-load check and splits the
-remaining migrator and backup session limitations. No live version 5 record has
-been retained or reviewed yet. The parser retains exact historical v1 through
-v4 support.
+was retained and live-reviewed for its recorded B4 scope. The current source
+producer writes `research-cockpit-postgres-acceptance-v5.json`; version 5 adds
+only the authenticated test-loader fixture-load check and splits the remaining
+migrator and backup session limitations. Version 5 now has a retained,
+live-reviewed record. The parser retains exact historical v1 through v4 support
+and the closed current v5 contract.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -85,6 +84,18 @@ its exact anchors and bounded claim. Version 4 adds exactly
 `authenticated_financial_fact_projection_query` and the two new source hashes,
 retains every version 3 check and limitation, and adds explicit driver/pool and
 complete-projection nonclaims. It remains unsigned run metadata.
+
+The first version 5 record was produced by successful run `32012508025`,
+attempt 1, at commit `04e5c1b` after the authenticated non-owner test-loader
+fixture-load path passed. Its downloaded bytes returned `offline_consistent`;
+the [Cycle 1b-b5 evidence note](../POSTGRESQL_TEST_LOADER_EVIDENCE.md) records
+its exact anchors and bounded claim. Version 5 adds exactly
+`authenticated_test_loader_fixture_load`, retains the version 4 six-source
+shape and checks, and replaces only the combined future-session limitation with
+separate authenticated-migrator and authenticated-backup nonclaims. It remains
+unsigned run metadata and does not prove production/external authentication,
+end-user binding, TLS/secrets, a driver or pool, concurrency, restore, real
+data, or application integration.
 
 ## Primary sources
 

@@ -107,7 +107,7 @@ role/grant change, writer, authenticated test-loader/migrator/backup,
 dump/restore, dimensioned or complete-dossier projection, real data, or
 production claim. Those remain separate milestones. B5 is reserved for
 authenticated test-loader proof; ADR 0017 specifies that separate successor,
-whose source implementation and future evidence do not widen B4.
+whose source implementation and reviewed version 5 evidence do not widen B4.
 
 ## Consequences
 

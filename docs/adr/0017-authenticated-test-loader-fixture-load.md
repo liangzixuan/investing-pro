@@ -1,7 +1,6 @@
 # ADR 0017: Authenticated test-loader fixture load
 
-Status: accepted for Cycle 1b-b5; source implemented and locally verified; live
-version 5 evidence pending
+Status: accepted; source implemented; first live version 5 evidence reviewed
 
 ## Context
 
@@ -97,6 +96,15 @@ match, and the offline review returns `offline_consistent` against independently
 supplied anchors. A documentation-only rerun or a later documentation commit
 cannot expand the tested source commit.
 
+Tested commit
+[`04e5c1b94c6488b72705c0c5d5e176909a33c857`](https://github.com/liangzixuan/investing-pro/commit/04e5c1b94c6488b72705c0c5d5e176909a33c857)
+satisfied that rule in PostgreSQL [run `32012508025`, attempt 1](https://github.com/liangzixuan/investing-pro/actions/runs/32012508025).
+The downloaded version 5 record was retained and returned
+`offline_consistent`; exact anchors, byte hashes, source hashes, completed
+checks, and nonclaims are recorded in the
+[B5 evidence note](../POSTGRESQL_TEST_LOADER_EVIDENCE.md). The later
+documentation commit does not retest or expand the recorded run.
+
 ## Explicit exclusions
 
 B5 does not add or prove a production loader, external database route, TLS,
@@ -113,7 +121,7 @@ workflow topology, or exposed network surface.
 
 ## Consequences
 
-B5 can close only the historical authenticated test-loader nonclaim for one
+B5 closes only the historical authenticated test-loader nonclaim for one
 sequential, synthetic, container-local acceptance run. The distinct migrator
 still requires a separate bootstrap design, and authenticated backup/restore
 remains a later milestone. Historical b1 through b4 evidence retains its exact
@@ -125,3 +133,4 @@ recorded scope and is not retroactively widened by this decision.
 - [ADR 0015: Authenticated runtime authorization matrix](./0015-authenticated-runtime-authorization-matrix.md)
 - [ADR 0016: Driverless projection query and semantic unit mapping](./0016-driverless-projection-query-and-semantic-unit-mapping.md)
 - [Cycle 1b-b5 exit matrix](../CYCLE_1BB5_EXIT_MATRIX.md)
+- [Cycle 1b-b5 evidence note](../POSTGRESQL_TEST_LOADER_EVIDENCE.md)

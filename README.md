@@ -92,15 +92,16 @@ version 4 artifact returned `offline_consistent`; see the
 [ADR 0016](./docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
 and the [Cycle 1b-b4 exit matrix](./docs/CYCLE_1BB4_EXIT_MATRIX.md).
 
-Cycle 1b-b5 has an accepted, isolated authenticated test-loader design. It
-keeps the reviewed fixture and migrations byte-for-byte unchanged, derives only
-the fixture's validated insert body, and gives one ephemeral acceptance-only
-login one exact non-inheriting, non-admin, set-only edge to the existing
-test-seed capability. Source implementation and local verification are
-complete; no pinned live version 5 result exists yet. B5 adds no production or
-external authentication, TLS, managed secret system, driver, pool, concurrent
-loader, migrator, backup/restore, real data, or app integration. See
-[ADR 0017](./docs/adr/0017-authenticated-test-loader-fixture-load.md) and the
+Cycle 1b-b5 is complete for its bounded recorded scope at commit `04e5c1b`.
+The unchanged reviewed fixture was loaded through one ephemeral,
+acceptance-only SCRAM login with one exact non-inheriting, non-admin, set-only
+edge to the existing test-seed capability. The pinned PostgreSQL run and
+version 5 record passed independent review and returned `offline_consistent`.
+B5 adds no production or external authentication, TLS, managed secret system,
+driver, pool, concurrent loader, migrator, backup/restore, real data, or app
+integration. See the
+[B5 evidence note](./docs/POSTGRESQL_TEST_LOADER_EVIDENCE.md),
+[ADR 0017](./docs/adr/0017-authenticated-test-loader-fixture-load.md), and the
 [Cycle 1b-b5 exit matrix](./docs/CYCLE_1BB5_EXIT_MATRIX.md).
 
 ## Requirements
@@ -134,12 +135,12 @@ does not substitute for end-user or production identity, concurrent pool
 behavior, dump/restore, or deployment readiness. B3's broader authenticated
 tenant/rights/prepared-read matrix passed in PostgreSQL run `31991498652` at
 commit `664c0e5b`; its retained version 3 record returned `offline_consistent`.
-This is still one sequential, synthetic, container-local service-account
-result. The offline verifier checks record/source consistency after download
-but cannot authenticate the GitHub run or independently prove PostgreSQL
-execution. B5 source and local tests cannot expand those retained b1-b4 claims;
-the authenticated fixture-load check remains live-pending until a clean pinned
-run produces and independently reviewed version 5 evidence.
+B4's driverless query-to-normalizer path passed in run `32007521395`. B5's
+authenticated fixture-load path passed in run `32012508025` at commit
+`04e5c1b`; its retained version 5 record returned `offline_consistent`. These
+remain sequential, synthetic, container-local acceptance results. The offline
+verifier checks record/source consistency after download but cannot authenticate
+the GitHub run or independently prove PostgreSQL execution.
 
 ## Safety boundary
 
@@ -155,8 +156,8 @@ run produces and independently reviewed version 5 evidence.
 - The reviewed b3 authenticated matrix does not establish a trusted end-user or
   tenant binding, an external/TLS path, production secrets, pool safety,
   concurrent behavior, restore viability, or deployed persistence.
-- The B5 source is limited to one ephemeral acceptance-only synthetic loader;
-  it does not establish production/external authentication, TLS, secret
+- The reviewed B5 run is limited to one ephemeral acceptance-only synthetic
+  loader; it does not establish production/external authentication, TLS, secret
   operations, concurrent loading, an authenticated migrator or backup, restore,
   real-data ingestion, or application integration.
 
@@ -173,4 +174,5 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b4 exit matrix](./docs/CYCLE_1BB4_EXIT_MATRIX.md),
 [Cycle 1b-b4 evidence note](./docs/POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md),
 [Cycle 1b-b5 exit matrix](./docs/CYCLE_1BB5_EXIT_MATRIX.md),
+[Cycle 1b-b5 evidence note](./docs/POSTGRESQL_TEST_LOADER_EVIDENCE.md),
 and [architecture decisions](./docs/adr/).

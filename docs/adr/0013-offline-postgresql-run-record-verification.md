@@ -1,7 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; first retained version 4 artifact reviewed successfully;
-version 5 source verification implemented with live evidence pending
+Status: accepted; retained version 5 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -15,11 +14,11 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v4 support and accepts the source-current v5 schema
-without mixing any version's closed check or limitation lists. No version 5
-artifact has been retained or reviewed yet. Canonical comparison rejects
-byte-order marks, CRLF or alternate whitespace, trailing content, reordered
-members, and duplicate JSON member names.
+historical v1 through v4 support and accepts the current v5 schema without
+mixing any version's closed check or limitation lists. The first version 5
+artifact has now been retained and reviewed. Canonical comparison rejects byte-
+order marks, CRLF or alternate whitespace, trailing content, reordered members,
+and duplicate JSON member names.
 
 Source validation uses only fixed paths read as raw Git blobs from the explicit
 40-character commit. It does not read source from the mutable worktree and does
@@ -77,3 +76,14 @@ complete or dimensioned projections, external/end-user identity, concurrency,
 restore, or real data. `offline_consistent` remains a source/record consistency
 result, not database-execution proof without the separately reviewed run and
 logs.
+
+The version 5 artifact from run `32012508025`, attempt 1, at commit `04e5c1b`
+also returned `offline_consistent`; see the
+[Cycle 1b-b5 evidence note](../POSTGRESQL_TEST_LOADER_EVIDENCE.md). That
+reviewed run adds the exact authenticated non-owner synthetic fixture-load
+path, including its negative, rollback, cleanup, and zero-residue probes. It
+does not prove production/external authentication, end-user binding, TLS or
+secret operations, an authenticated migrator or backup, a driver/pool or
+concurrency, restore, real data, application integration, or production
+readiness. `offline_consistent` remains a source/record consistency result, not
+database-execution proof without the separately reviewed run and logs.
