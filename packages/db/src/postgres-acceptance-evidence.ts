@@ -3,9 +3,9 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v1.json";
+  "research-cockpit-postgres-acceptance-v2.json";
 
-export const POSTGRES_ACCEPTANCE_CHECKS_PASSED = Object.freeze([
+export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
   "atomic_bootstrap_rollback",
   "clean_bootstrap",
@@ -20,9 +20,26 @@ export const POSTGRES_ACCEPTANCE_CHECKS_PASSED = Object.freeze([
   "write_denials",
 ] as const);
 
-export const POSTGRES_ACCEPTANCE_NOT_PROVEN = Object.freeze([
+export const POSTGRES_ACCEPTANCE_V1_NOT_PROVEN = Object.freeze([
   "resolved_platform_image_manifest",
   "authenticated_database_sessions",
+  "production_identity_tls_secrets_or_pooling",
+  "concurrent_sessions_cancellation_or_timeouts",
+  "dump_restore_or_disaster_recovery",
+  "real_or_licensed_market_data",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+  "bounded_container_local_scram_runtime_probe",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_NOT_PROVEN = Object.freeze([
+  "resolved_platform_image_manifest",
+  "external_or_production_authenticated_database_sessions",
+  "authenticated_migrator_test_loader_or_backup_sessions",
+  "full_authenticated_runtime_authorization_matrix",
+  "end_user_identity_or_tenant_binding",
   "production_identity_tls_secrets_or_pooling",
   "concurrent_sessions_cancellation_or_timeouts",
   "dump_restore_or_disaster_recovery",
@@ -108,8 +125,7 @@ export interface BuildPostgresAcceptanceEvidenceInput {
   readonly completedAt: string;
 }
 
-export interface PostgresAcceptanceEvidence {
-  readonly schemaVersion: 1;
+interface PostgresAcceptanceEvidenceFields {
   readonly suite: "research-cockpit-postgresql-acceptance";
   readonly outcome: "passed";
   readonly job: "postgres-acceptance";
@@ -126,10 +142,23 @@ export interface PostgresAcceptanceEvidence {
   readonly serverVersion: "17.11";
   readonly toolVersions: PostgresAcceptanceToolVersions;
   readonly sourceHashes: PostgresAcceptanceSourceHashes;
-  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_CHECKS_PASSED;
-  readonly notProven: typeof POSTGRES_ACCEPTANCE_NOT_PROVEN;
   readonly completedAt: string;
 }
+
+export interface PostgresAcceptanceEvidenceV1 extends PostgresAcceptanceEvidenceFields {
+  readonly schemaVersion: 1;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V1_NOT_PROVEN;
+}
+
+export interface PostgresAcceptanceEvidenceV2 extends PostgresAcceptanceEvidenceFields {
+  readonly schemaVersion: 2;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_NOT_PROVEN;
+}
+
+export type PostgresAcceptanceEvidence =
+  PostgresAcceptanceEvidenceV1 | PostgresAcceptanceEvidenceV2;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -154,7 +183,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidence {
+): PostgresAcceptanceEvidenceV2 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -194,7 +223,7 @@ export function buildPostgresAcceptanceEvidence(
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 1,
+      schemaVersion: 2,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -251,13 +280,18 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidence,
+  value: PostgresAcceptanceEvidenceV2,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
-    bytes = Buffer.from(serializePostgresAcceptanceEvidence(value), "utf8");
+    const normalized = normalizeEvidence(value);
+    if (normalized.schemaVersion !== 2) invalid();
+    bytes = Buffer.from(
+      serializePostgresAcceptanceEvidence(normalized),
+      "utf8",
+    );
     const runnerTemp = runnerTemporaryDirectory(environment);
     path = resolve(runnerTemp, POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME);
   } catch {
@@ -275,7 +309,6 @@ export async function writePostgresAcceptanceEvidence(
 function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
   const evidence = exactPlainDataRecord(value, EVIDENCE_KEYS);
   if (
-    evidence.schemaVersion !== 1 ||
     evidence.suite !== "research-cockpit-postgresql-acceptance" ||
     evidence.outcome !== "passed" ||
     evidence.job !== "postgres-acceptance" ||
@@ -301,12 +334,9 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
   );
   const toolVersions = normalizeToolVersions(evidence.toolVersions);
   const sourceHashes = normalizeSourceHashes(evidence.sourceHashes);
-  exactLiteralArray(evidence.checksPassed, POSTGRES_ACCEPTANCE_CHECKS_PASSED);
-  exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_NOT_PROVEN);
   const completedAt = canonicalTimestamp(evidence.completedAt);
 
-  return freezeEvidence({
-    schemaVersion: 1,
+  const common = {
     suite: "research-cockpit-postgresql-acceptance",
     outcome: "passed",
     job: "postgres-acceptance",
@@ -323,10 +353,36 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     serverVersion: "17.11",
     toolVersions,
     sourceHashes,
-    checksPassed: POSTGRES_ACCEPTANCE_CHECKS_PASSED,
-    notProven: POSTGRES_ACCEPTANCE_NOT_PROVEN,
-    completedAt,
-  });
+  } as const;
+
+  if (evidence.schemaVersion === 1) {
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V1_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 1,
+      ...common,
+      checksPassed: POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
+  if (evidence.schemaVersion === 2) {
+    exactLiteralArray(evidence.checksPassed, POSTGRES_ACCEPTANCE_CHECKS_PASSED);
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 2,
+      ...common,
+      checksPassed: POSTGRES_ACCEPTANCE_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
+  invalid();
 }
 
 function normalizeToolVersions(value: unknown): PostgresAcceptanceToolVersions {
@@ -349,9 +405,9 @@ function normalizeSourceHashes(value: unknown): PostgresAcceptanceSourceHashes {
   });
 }
 
-function freezeEvidence(
-  evidence: PostgresAcceptanceEvidence,
-): PostgresAcceptanceEvidence {
+function freezeEvidence<const Evidence extends PostgresAcceptanceEvidence>(
+  evidence: Evidence,
+): Evidence {
   return Object.freeze(evidence);
 }
 

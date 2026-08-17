@@ -1,0 +1,113 @@
+# ADR 0014: Container-local runtime service-account authentication
+
+Status: accepted for Cycle 1b-b2; source implemented, live execution pending
+
+## Context
+
+Cycle 1b-b1 proved the declared PostgreSQL capability grants, forced row-level
+security, and transaction-local request context against PostgreSQL 17.11. It
+did so by connecting as the ephemeral service-container superuser and using
+`SET SESSION AUTHORIZATION` to impersonate the `NOLOGIN` runtime capability.
+That is valid engine evidence for the recorded b1 checks, but it is not evidence
+that a non-owner database login can authenticate and exercise only that
+capability.
+
+The next increment is intentionally narrower than production authentication.
+It must prove one PostgreSQL runtime service-account boundary without adding an
+application driver, exposing a database port, introducing customer identity,
+or changing the migration, test-loader, or backup trust boundaries.
+
+## Decision
+
+Cycle 1b-b2 extends only the isolated PostgreSQL acceptance harness. After
+the existing clean bootstrap succeeds, the harness administrator will create
+one ephemeral login, `research_cockpit_runtime_login`, with `LOGIN`,
+`NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, `NOINHERIT`, and
+`NOBYPASSRLS`. The login will receive no direct schema, table, column, routine,
+temporary-object, object-creation, grant-option, or administrative privilege.
+
+The existing `research_cockpit_runtime` role remains the `NOLOGIN` capability
+target for grants and RLS policies. The only permitted membership edge for the
+new login is to that capability, with `ADMIN FALSE`, `INHERIT FALSE`, and
+`SET TRUE`. An authenticated session therefore has no application access before
+an explicit `SET ROLE research_cockpit_runtime`, cannot delegate the
+capability, and cannot switch to the owner, test-seed, backup, or any other
+role. The live catalog probe must compare the complete role attributes,
+membership edge, and option bits rather than infer them from successful reads.
+
+The acceptance runner generates a high-entropy, run-local password and does
+not commit it, place it in workflow YAML, print it, interpolate it into a
+command argument, or include it or its verifier in the success record. The
+password-bearing statement is delivered only on the administrator client's
+standard input, inside a transaction that first suppresses statement, error,
+duration, and sampled statement logging. Sensitive-command failures expose no
+server output. The
+runtime client will be the pinned container's own `psql`, invoked inside the
+service container but forced over loopback TCP to the fixed acceptance
+database. The probe must establish SCRAM password authentication, reject a
+wrong password, and record only non-secret facts such as the expected
+`session_user` and `current_user` transition. The workflow continues to publish
+no PostgreSQL host port and constructs no reusable application connection
+string.
+
+The authenticated probe set is deliberately bounded. It must prove the
+connection topology and session identity, denial before `SET ROLE`, denial of
+switches to owner/test-seed/backup, missing-context zero visibility, one exact
+alpha-tenant read in which the alpha row is visible and the foreign beta row is
+not, transaction-local cleanup after commit and after rollback or a handled
+error on one backend, and one runtime write denial. Administrative catalog
+checks may continue to use the ephemeral container administrator, but the
+administrator must not stand in for the runtime session in any b2
+runtime-behavior result. A successful run record may list the new
+authenticated-runtime checks only after all of them complete, and its reviewed
+source hashes must cover the acceptance-runner bytes that implement the
+runtime-authentication boundary.
+
+The comprehensive b1 direct-ID/list/join/count/subquery, operation-rights, and
+alternating prepared-read probes are not rerun through the authenticated login
+in this increment. They remain valid only as impersonated-capability evidence;
+full authenticated coverage of those query shapes and purpose/channel
+combinations remains pending.
+
+## Explicit non-claims
+
+This boundary authenticates one ephemeral database service account within one
+CI container. It does not authenticate an end user or bind `session_user` to a
+principal or organization. `private_data.set_request_context` still accepts
+trusted synthetic identifiers selected by the runtime service, so it is not an
+identity resolver and must not be presented as BOLA protection against a
+compromised runtime service.
+
+The increment also does not prove an external network path, TLS, certificate
+validation, channel binding, production password rotation or secret storage,
+application-driver behavior, pooling, cancellation, concurrency, deployment
+credentials, authenticated test loading, authenticated backup, logical
+dump/restore, disaster recovery, or real-data handling. Those limitations must
+remain explicit in the run record and documentation.
+
+In particular, the distinct-migrator gate remains blocked by the current
+baseline design. Migration `0001` creates the capability roles and rejects
+every pre-existing membership edge. On PostgreSQL 17, a non-superuser with
+`CREATEROLE` receives an administrative membership edge on a role it creates;
+that edge violates `0001` before the same transaction can create and transfer
+the application objects. Solving that requires a separately reviewed split or
+redesign of platform role provisioning and application migrations. B2 must not
+weaken the zero-membership bootstrap guard or describe the existing superuser
+bootstrap as a least-privileged migration.
+
+## Acceptance rule
+
+The source is implemented, but the design remains live-pending until the
+dedicated remote PostgreSQL workflow succeeds from a clean checkout. Static
+checks, unit-test mocks, a source-only implementation, or the historical b1
+artifact cannot mark any b2 live row as passed. The reviewed run and its
+success-only record must be linked before the milestone is described as
+live-verified.
+
+## Primary sources
+
+- [PostgreSQL 17 role membership](https://www.postgresql.org/docs/17/role-membership.html)
+- [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
+- [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
+- [PostgreSQL 17 password authentication](https://www.postgresql.org/docs/17/auth-password.html)
+- [PostgreSQL 17 role attributes](https://www.postgresql.org/docs/17/role-attributes.html)

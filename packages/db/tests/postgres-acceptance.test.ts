@@ -4,10 +4,23 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertExpectedPsqlFailure,
+  buildRuntimeAuthPsqlInvocation,
   checkPostgresAcceptanceHarness,
+  collectRuntimeAuthOperationFailures,
   EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
+  generateRuntimeAuthPassword,
   injectBootstrapFailure,
   inspectPostgresAcceptanceHarness,
+  renderRuntimeAuthBackendDrainSql,
+  renderRuntimeAuthCleanupSql,
+  renderRuntimeAuthPassfile,
+  renderRuntimeAuthProvisioningSql,
+  RUNTIME_AUTH_CAPABILITY_ROLE,
+  RUNTIME_AUTH_FORBIDDEN_SET_ROLES,
+  RUNTIME_AUTH_LOGIN_ROLE,
+  RUNTIME_AUTH_PASSFILE,
+  RUNTIME_AUTH_WRONG_PASSFILE,
+  runRuntimeAuthCommandWithDrain,
   runPostgresAcceptance,
   type AcceptanceArtifacts,
 } from "../src/postgres-acceptance";
@@ -20,6 +33,197 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "research_cockpit_runtime|false|false|false|false|false|false|false",
       "research_cockpit_test_seed|false|false|false|false|false|false|false",
     ]);
+  });
+
+  it("renders the exact ephemeral runtime login and one-way role edge", () => {
+    const password = "A".repeat(43);
+    const sql = renderRuntimeAuthProvisioningSql(password);
+    expect(sql).toContain(`CREATE ROLE ${RUNTIME_AUTH_LOGIN_ROLE}`);
+    for (const attribute of [
+      "LOGIN",
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+      "CONNECTION LIMIT 1",
+    ]) {
+      expect(sql).toContain(attribute);
+    }
+    expect(sql).toContain(
+      `GRANT ${RUNTIME_AUTH_CAPABILITY_ROLE}\n  TO ${RUNTIME_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    const passwordPosition = sql.indexOf(`PASSWORD '${password}'`);
+    expect(passwordPosition).toBeGreaterThan(-1);
+    for (const suppression of [
+      "SET LOCAL log_statement = 'none';",
+      "SET LOCAL log_min_error_statement = 'panic';",
+      "SET LOCAL log_duration = off;",
+      "SET LOCAL log_min_duration_statement = -1;",
+      "SET LOCAL log_min_duration_sample = -1;",
+      "SET LOCAL log_statement_sample_rate = 0;",
+      "SET LOCAL log_transaction_sample_rate = 0;",
+    ]) {
+      expect(sql.indexOf(suppression)).toBeGreaterThan(-1);
+      expect(sql.indexOf(suppression)).toBeLessThan(passwordPosition);
+    }
+    expect(
+      sql.indexOf("SET LOCAL password_encryption = 'scram-sha-256';"),
+    ).toBeGreaterThan(-1);
+    expect(
+      sql.indexOf("SET LOCAL password_encryption = 'scram-sha-256';"),
+    ).toBeLessThan(passwordPosition);
+    expect(sql.match(new RegExp(password, "g"))).toHaveLength(1);
+    expect(renderRuntimeAuthCleanupSql()).toContain(
+      `DROP ROLE IF EXISTS ${RUNTIME_AUTH_LOGIN_ROLE};`,
+    );
+  });
+
+  it("uses random 32-byte base64url credentials without exposing them in process arguments", () => {
+    const passwords = Array.from({ length: 8 }, () =>
+      generateRuntimeAuthPassword(),
+    );
+    expect(new Set(passwords).size).toBe(passwords.length);
+    for (const password of passwords) {
+      expect(password).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    }
+
+    const password = passwords[0];
+    if (!password) throw new Error("Missing generated runtime-auth password");
+    const invocation = buildRuntimeAuthPsqlInvocation(RUNTIME_AUTH_PASSFILE);
+    expect(invocation.environment).toEqual({
+      PGPASSFILE: RUNTIME_AUTH_PASSFILE,
+      PGREQUIREAUTH: "scram-sha-256",
+      PGSSLMODE: "disable",
+      PGCONNECT_TIMEOUT: "5",
+    });
+    expect(invocation.command).toEqual(
+      expect.arrayContaining([
+        "--no-password",
+        "--host=127.0.0.1",
+        "--port=5432",
+        `--username=${RUNTIME_AUTH_LOGIN_ROLE}`,
+      ]),
+    );
+    expect(JSON.stringify(invocation)).not.toContain(password);
+    expect(renderRuntimeAuthPassfile(password)).toBe(
+      `127.0.0.1:5432:research_cockpit_acceptance_test:${RUNTIME_AUTH_LOGIN_ROLE}:${password}\n`,
+    );
+    expect(() =>
+      renderRuntimeAuthProvisioningSql(`invalid-${password}`),
+    ).toThrow(/32-byte base64url/i);
+    for (const suffix of ["\n", "\r", "\r\n"]) {
+      expect(() => renderRuntimeAuthPassfile(`A`.repeat(43) + suffix)).toThrow(
+        /32-byte base64url/i,
+      );
+    }
+  });
+
+  it("keeps both fixed credential files out of command-line passwords", () => {
+    for (const path of [RUNTIME_AUTH_PASSFILE, RUNTIME_AUTH_WRONG_PASSFILE]) {
+      const invocation = buildRuntimeAuthPsqlInvocation(path, true);
+      expect(invocation.environment.PGPASSFILE).toBe(path);
+      expect(invocation.command).toContain("--set=VERBOSITY=verbose");
+      expect(invocation.command.join(" ")).not.toMatch(/PGPASSWORD|password=/i);
+    }
+  });
+
+  it("denies SET ROLE for every ungranted capability and postgres", () => {
+    expect(RUNTIME_AUTH_FORBIDDEN_SET_ROLES).toEqual([
+      "research_cockpit_owner",
+      "research_cockpit_test_seed",
+      "research_cockpit_backup",
+      "postgres",
+    ]);
+  });
+
+  it("attempts every runtime-auth finalization target before returning failures", async () => {
+    const attempted: string[] = [];
+    const firstFailure = new Error("first failure");
+    const thirdFailure = new Error("third failure");
+
+    const failures = await collectRuntimeAuthOperationFailures([
+      {
+        label: "primary passfile",
+        run: () => {
+          attempted.push("primary passfile");
+          return Promise.reject(firstFailure);
+        },
+      },
+      {
+        label: "wrong-password passfile",
+        run: () => {
+          attempted.push("wrong-password passfile");
+          return Promise.resolve();
+        },
+      },
+      {
+        label: "login role",
+        run: () => {
+          attempted.push("login role");
+          return Promise.reject(thirdFailure);
+        },
+      },
+    ]);
+
+    expect(attempted).toEqual([
+      "primary passfile",
+      "wrong-password passfile",
+      "login role",
+    ]);
+    expect(failures).toEqual([
+      { label: "primary passfile", error: firstFailure },
+      { label: "login role", error: thirdFailure },
+    ]);
+  });
+
+  it("uses a bounded administrator-side drain after every runtime-auth command", async () => {
+    const drainSql = renderRuntimeAuthBackendDrainSql();
+    expect(drainSql).toContain("FROM pg_catalog.pg_stat_activity");
+    expect(drainSql).toContain(`usename = '${RUNTIME_AUTH_LOGIN_ROLE}'`);
+    expect(drainSql).toContain("backend_type = 'client backend'");
+    expect(drainSql).toContain("interval '5 seconds'");
+    expect(drainSql).toContain("pg_catalog.pg_sleep(0.05)");
+    expect(drainSql).toContain("USING ERRCODE = '55000'");
+    expect(drainSql).toContain("END;\n$runtime_auth_backend_drain$;");
+    expect(
+      drainSql.indexOf("pg_catalog.pg_stat_clear_snapshot()"),
+    ).toBeGreaterThan(-1);
+    expect(
+      drainSql.indexOf("pg_catalog.pg_stat_clear_snapshot()"),
+    ).toBeLessThan(drainSql.indexOf("EXIT WHEN NOT EXISTS"));
+
+    const successOrder: string[] = [];
+    await expect(
+      runRuntimeAuthCommandWithDrain(
+        () => {
+          successOrder.push("command");
+          return Promise.resolve("result");
+        },
+        () => {
+          successOrder.push("drain");
+          return Promise.resolve();
+        },
+      ),
+    ).resolves.toBe("result");
+    expect(successOrder).toEqual(["command", "drain"]);
+
+    const commandFailure = new Error("command failure");
+    const failureOrder: string[] = [];
+    await expect(
+      runRuntimeAuthCommandWithDrain(
+        () => {
+          failureOrder.push("command");
+          return Promise.reject(commandFailure);
+        },
+        () => {
+          failureOrder.push("drain");
+          return Promise.resolve();
+        },
+      ),
+    ).rejects.toBe(commandFailure);
+    expect(failureOrder).toEqual(["command", "drain"]);
   });
 
   it("accepts the reviewed immutable workflow and synthetic fixture", async () => {
@@ -78,6 +282,19 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     );
   });
 
+  it("requires explicit SCRAM host authentication in the service", async () => {
+    const artifacts = await loadArtifacts();
+    const workflow = artifacts.workflow.replace(
+      "POSTGRES_HOST_AUTH_METHOD: scram-sha-256",
+      "POSTGRES_HOST_AUTH_METHOD: trust",
+    );
+    expect(
+      inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+    ).toContain(
+      "acceptance service must require SCRAM for host authentication",
+    );
+  });
+
   it("requires every workspace input that can alter the live job to trigger it", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replaceAll(
@@ -128,10 +345,10 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const artifacts = await loadArtifacts();
     for (const unsafePath of [
       "${{ runner.temp }}/research-cockpit-postgres-acceptance-*.json",
-      "./research-cockpit-postgres-acceptance-v1.json",
+      "./research-cockpit-postgres-acceptance-v2.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v1.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v2.json",
         unsafePath,
       );
       expect(
@@ -171,7 +388,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v2-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -256,12 +473,16 @@ describe("PostgreSQL acceptance harness guardrails", () => {
 
   it("writes success evidence only after the final implemented probe", () => {
     const source = runPostgresAcceptance.toString();
-    const finalProbe = source.indexOf("await verifyWriteDenials");
+    const impersonatedProbe = source.indexOf("await verifyWriteDenials");
+    const finalProbe = source.indexOf(
+      "await verifyAuthenticatedRuntimeSession",
+    );
     const buildEvidence = source.indexOf("buildPostgresAcceptanceEvidence");
     const writeEvidence = source.indexOf("writePostgresAcceptanceEvidence");
     const evidenceHash = source.indexOf("writtenEvidence.sha256");
     const successMessage = source.indexOf("process.stdout.write");
-    expect(finalProbe).toBeGreaterThan(-1);
+    expect(impersonatedProbe).toBeGreaterThan(-1);
+    expect(finalProbe).toBeGreaterThan(impersonatedProbe);
     expect(buildEvidence).toBeGreaterThan(finalProbe);
     expect(writeEvidence).toBeGreaterThan(buildEvidence);
     expect(successMessage).toBeGreaterThan(writeEvidence);

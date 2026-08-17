@@ -52,6 +52,16 @@ it cannot authenticate GitHub, inspect logs, or independently prove PostgreSQL
 executed. The first retained artifact produced that verdict after the linked run
 and logs were reviewed separately.
 
+Cycle 1b-b2 is the next bounded PostgreSQL contract. Its source is implemented,
+but live execution and evidence review are still pending. It targets one ephemeral runtime service
+account authenticating with SCRAM over loopback TCP inside the isolated service
+container, then explicitly assuming only the existing read-only runtime
+capability. It will not add an application driver or pool, expose a database
+port, authenticate an end user, or prove external TLS, production secrets,
+migrator/test-loader/backup authentication, restore, or deployment readiness.
+The distinct-migrator boundary remains separate because PostgreSQL 17 role
+creation conflicts with migration `0001`'s zero-membership bootstrap invariant.
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -80,7 +90,9 @@ platforms passed for `611c93d`. That reviewed clean-only synthetic run is bounde
 engine evidence; it does not substitute for authenticated sessions, concurrent
 pool behavior, dump/restore, production identity, or deployment readiness. The
 offline verifier checks record/source consistency after download but cannot
-authenticate the run by itself.
+authenticate the run by itself. The b2 runtime-authentication rows remain
+Pending until a new reviewed remote run succeeds; the historical b1 run does
+not satisfy them.
 
 ## Safety boundary
 
@@ -90,11 +102,15 @@ authenticate the run by itself.
 - Browser-local state is for demonstration only and must not contain real holdings or personal information.
 - Production data, identity, billing, persistence, SEC ingestion, external alerts, and AI remain gated work.
 - Synthetic tests and a clean-only acceptance run are not production authentication or deployed-persistence evidence.
+- Container-local database service-account authentication, once proved, will
+  still not establish end-user identity, external/TLS transport, managed
+  secrets, pool safety, or production authorization.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
 [canonical model](./docs/CANONICAL_MODEL.md),
 [Cycle 1b-a exit matrix](./docs/CYCLE_1BA_EXIT_MATRIX.md),
 [Cycle 1b-a2 exit matrix](./docs/CYCLE_1BA2_EXIT_MATRIX.md),
-[Cycle 1b-b1 exit matrix](./docs/CYCLE_1BB1_EXIT_MATRIX.md), and
+[Cycle 1b-b1 exit matrix](./docs/CYCLE_1BB1_EXIT_MATRIX.md),
+[Cycle 1b-b2 exit matrix](./docs/CYCLE_1BB2_EXIT_MATRIX.md), and
 [architecture decisions](./docs/adr/).

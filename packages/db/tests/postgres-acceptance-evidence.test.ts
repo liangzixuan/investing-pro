@@ -11,11 +11,15 @@ import {
   POSTGRES_ACCEPTANCE_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   POSTGRES_ACCEPTANCE_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
   PostgresAcceptanceEvidenceError,
   serializePostgresAcceptanceEvidence,
   writePostgresAcceptanceEvidence,
   type BuildPostgresAcceptanceEvidenceInput,
   type PostgresAcceptanceEvidence,
+  type PostgresAcceptanceEvidenceV1,
+  type PostgresAcceptanceEvidenceV2,
 } from "../src/postgres-acceptance-evidence";
 
 const IMAGE_DIGEST = `sha256:${"a".repeat(64)}`;
@@ -63,7 +67,7 @@ function input(
   };
 }
 
-function evidence(): PostgresAcceptanceEvidence {
+function evidence(): PostgresAcceptanceEvidenceV2 {
   return buildPostgresAcceptanceEvidence(input());
 }
 
@@ -72,6 +76,25 @@ function mutableEvidence(): Record<string, unknown> {
     string,
     unknown
   >;
+}
+
+function mutableV1Evidence(): Record<string, unknown> {
+  return {
+    ...mutableEvidence(),
+    schemaVersion: 1,
+    checksPassed: [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED],
+    notProven: [...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN],
+  };
+}
+
+function v1Evidence(): PostgresAcceptanceEvidenceV1 {
+  const parsed = parsePostgresAcceptanceEvidence(
+    JSON.stringify(mutableV1Evidence()),
+  );
+  if (parsed.schemaVersion !== 1) {
+    throw new Error("expected historical v1 evidence");
+  }
+  return parsed;
 }
 
 function expectValueFreeValidationFailure(run: () => unknown): void {
@@ -107,8 +130,11 @@ afterEach(async () => {
 });
 
 describe("PostgreSQL acceptance success evidence", () => {
-  it("builds the exact success-only v1 schema in its canonical order", () => {
+  it("builds the exact success-only v2 schema in its canonical order", () => {
     const result = evidence();
+    expect(POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME).toBe(
+      "research-cockpit-postgres-acceptance-v2.json",
+    );
     expect(Object.keys(result)).toEqual([
       "schemaVersion",
       "suite",
@@ -132,7 +158,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "completedAt",
     ]);
     expect(result).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -158,6 +184,48 @@ describe("PostgreSQL acceptance success evidence", () => {
     expect(Object.isFrozen(result.sourceHashes)).toBe(true);
     expect(Object.isFrozen(result.checksPassed)).toBe(true);
     expect(Object.isFrozen(result.notProven)).toBe(true);
+  });
+
+  it("preserves exact historical v1 parsing and canonical serialization", () => {
+    const historical = mutableV1Evidence();
+    const canonical = `${JSON.stringify(historical, null, 2)}\n`;
+    const parsed = parsePostgresAcceptanceEvidence(canonical);
+
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.checksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+    ]);
+    expect(parsed.notProven).toEqual([...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN]);
+    expect(serializePostgresAcceptanceEvidence(parsed)).toBe(canonical);
+    expect(Object.isFrozen(parsed)).toBe(true);
+    expect(Object.isFrozen(parsed.checksPassed)).toBe(true);
+    expect(Object.isFrozen(parsed.notProven)).toBe(true);
+  });
+
+  it("rejects cross-version check and limitation combinations", () => {
+    const v2AsV1 = mutableEvidence();
+    v2AsV1.schemaVersion = 1;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v2AsV1)),
+    );
+
+    const v1AsV2 = mutableV1Evidence();
+    v1AsV2.schemaVersion = 2;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v1AsV2)),
+    );
+
+    const mixedV1 = mutableV1Evidence();
+    mixedV1.notProven = [...POSTGRES_ACCEPTANCE_NOT_PROVEN];
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(mixedV1)),
+    );
+
+    const mixedV2 = mutableEvidence();
+    mixedV2.checksPassed = [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED];
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(mixedV2)),
+    );
   });
 
   it("selects only reviewed GitHub metadata and never serializes environment secrets", () => {
@@ -214,7 +282,7 @@ describe("PostgreSQL acceptance success evidence", () => {
   });
 
   it.each([
-    ["schemaVersion", 2],
+    ["schemaVersion", 3],
     ["suite", "different-suite"],
     ["outcome", "failed"],
     ["job", "different-job"],
@@ -488,6 +556,18 @@ describe("PostgreSQL acceptance success evidence", () => {
     if (process.platform !== "win32") {
       expect((await stat(result.path)).mode & 0o777).toBe(0o600);
     }
+  });
+
+  it("never writes a historical v1 record under the v2 filename", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "rc-pg-evidence-"));
+    TEMP_DIRECTORIES.push(directory);
+
+    await expect(
+      writePostgresAcceptanceEvidence(
+        v1Evidence() as unknown as PostgresAcceptanceEvidenceV2,
+        { RUNNER_TEMP: directory },
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceError);
   });
 
   it("fails atomically and preserves a pre-existing evidence file", async () => {

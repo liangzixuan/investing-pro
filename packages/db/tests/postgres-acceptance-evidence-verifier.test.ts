@@ -7,6 +7,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -226,6 +228,42 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     expect(JSON.stringify(result)).not.toMatch(
       /live_verified|database_verified/,
     );
+  });
+
+  it("verifies canonical historical v1 evidence with its v1 claims", () => {
+    const input = mutateEvidence(cloneInput(), (record) => {
+      record.schemaVersion = 1;
+      record.checksPassed = [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED];
+      record.notProven = [...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN];
+    });
+
+    const result = verifyPostgresAcceptanceEvidenceOffline(input);
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "bounded_container_local_scram_runtime_probe",
+    );
+  });
+
+  it("rejects evidence that mixes v1 and v2 claims", () => {
+    for (const input of [
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 1;
+        record.notProven = [...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN];
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.checksPassed = [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED];
+      }),
+    ]) {
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(input),
+      );
+    }
   });
 
   it("uses defensive byte copies and does not mutate the input", () => {

@@ -23,8 +23,9 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 
 ## Cycle 1b — real PostgreSQL proof
 
-Status: first clean-only b1 run complete; authenticated-session,
-pool/concurrency, and restore gates pending.
+Status: first clean-only b1 run complete; bounded b2 runtime-authentication
+source implemented with live execution pending; pool/concurrency and restore
+gates also remain pending.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -37,11 +38,28 @@ source blobs. See the [evidence note](./POSTGRESQL_ACCEPTANCE_EVIDENCE.md). The
 current role bootstrap still runs as the ephemeral container superuser and does
 not satisfy the distinct migrator or authenticated runtime/backup requirements.
 
+**Cycle 1b-b2 target status:** source implemented; live execution and evidence
+review are pending.
+This bounded increment adds one ephemeral PostgreSQL runtime service-account
+login after the existing clean bootstrap. It must authenticate with a run-local
+SCRAM password over loopback TCP inside the unexposed service container, have no
+direct application privilege, explicitly assume only the existing `NOLOGIN`
+runtime capability, and run bounded identity, pre-role/cross-role denial,
+missing-context, one-tenant isolation, sequential-cleanup, and write-denial
+probes. The comprehensive b1 query-shape, rights, and prepared-read suite is not
+rerun through authentication in b2. It does not add a driver or pool and does
+not prove an end-user identity, external TLS, production secrets,
+migrator/test-loader/backup authentication, restore, or deployment readiness.
+See
+[ADR 0014](./adr/0014-container-local-runtime-authentication.md) and the
+[Cycle 1b-b2 exit matrix](./CYCLE_1BB2_EXIT_MATRIX.md).
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
-   declared `NOLOGIN` capabilities were exercised through impersonation. Next,
-   split/redesign role bootstrap so a distinct migrator and authenticated
-   non-owner runtime/test-loader/backup sessions can be proven.
+   declared `NOLOGIN` capabilities were exercised through impersonation. The
+   immediate bounded b2 target is one authenticated runtime service-account
+   session only. Distinct migrator, test-loader, and backup identities remain
+   separate later gates.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
 4. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. Its query must perform the reviewed listing/share-class/security join, supply an explicit semantic unit mapping, and enter core only through the a2 normalizer and operation-scoped port. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
@@ -62,18 +80,25 @@ Exit gate: all live-database authorization and restore tests pass from a clean c
 
 The separate Ubuntu-only acceptance job now exists and its first reviewed run
 passed. Its PostgreSQL server and `psql`/dump/restore clients come from one exact
-major/minor/distro image reference and index digest. Remaining Cycle 1b-b work
-is authenticated role separation, restore, concurrency/cancellation, and the
-real pool boundary. The row-normalization contract is frozen, but a client
-driver remains gated on the reviewed query/unit mapping and those session/pool
-controls.
+major/minor/distro image reference and index digest. The b2 live rows remain
+Pending and the b1 run cannot satisfy them. Remaining Cycle
+1b-b work after b2 is migrator/test-loader/backup authentication, restore,
+concurrency/cancellation, and the real pool boundary. The row-normalization
+contract is frozen, but a client driver remains gated on the reviewed
+query/unit mapping and those session/pool controls.
 
 The first green-run milestone is complete. The immediate next database
-milestone is to design the distinct migrator and authenticated runtime/backup
-session boundary. Only then should the harness add a bounded dump/restore probe;
-application-pool cancellation/concurrency belongs with a real adapter and pool.
-Do not treat the clean-only impersonated-capability result as permission to wire
-the database into the app or accept real data.
+milestone is the bounded b2 container-local SCRAM runtime service-account
+probe. The distinct migrator is still blocked by the current migration `0001`
+design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
+administrative membership edge on a role it creates, while `0001` rejects every
+pre-existing capability-role membership. That bootstrap must be split or
+redesigned in a separate reviewed increment; b2 must not weaken it. Only after
+authenticated backup design should the harness add a bounded dump/restore
+probe. Application-pool cancellation/concurrency belongs with a real adapter
+and pool. Do not treat either the clean-only impersonated-capability result or a
+future container-local service-account result as permission to wire the
+database into the app or accept real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

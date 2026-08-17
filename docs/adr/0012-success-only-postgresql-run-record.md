@@ -16,11 +16,16 @@ and acceptance runner. Its ordered check list is closed over the probes the
 runner actually performs. A separate ordered limitations list records the
 important properties the workflow does not prove.
 
-The runner derives its output path from `RUNNER_TEMP` and always uses the fixed
-filename `research-cockpit-postgres-acceptance-v1.json`. It creates the file
-with exclusive-create semantics and restrictive local permissions, so an old
-or pre-created record cannot be overwritten. The entry point validates that
-the clean checked-out Git commit equals `GITHUB_SHA`, awaits the complete
+The runner derives its output path from `RUNNER_TEMP` and uses a filename tied
+to the schema version. The first retained record is
+`research-cockpit-postgres-acceptance-v1.json`; the current producer writes
+`research-cockpit-postgres-acceptance-v2.json`. Version 2 adds the bounded
+container-local SCRAM runtime probe and explicitly records the authenticated
+authorization and identity boundaries it does not prove. The parser retains
+exact historical v1 support. The writer creates the current file with
+exclusive-create semantics and restrictive local permissions, so an old or
+pre-created record cannot be overwritten. The entry point validates that the
+clean checked-out Git commit equals `GITHUB_SHA`, awaits the complete
 acceptance suite, revalidates that boundary, and only then builds and writes a
 `passed` record. Callers cannot supply an outcome, check list, limitation list,
 or arbitrary output path.

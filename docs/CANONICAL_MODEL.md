@@ -1,6 +1,7 @@
 # Canonical data and tenancy contract
 
-Status: Cycle 1b-a2 design contract; synthetic data only.
+Status: Cycle 1b-a2 design contract plus implemented, live-pending Cycle 1b-b2
+runtime-session boundary; synthetic data only.
 
 ## Identity
 
@@ -75,6 +76,13 @@ tests. The SQL package also has a reviewed clean-only b1 run covering its record
 PostgreSQL catalog, RLS, authorization, and sequential-context probes. Neither
 proves production identity, authenticated sessions, connection-pool context
 clearing, concurrent behavior, backup/restore, or the future deletion path.
+A b2 increment now implements one ephemeral PostgreSQL runtime service-account
+probe using SCRAM over container-local TCP. Its live run and evidence review
+are still pending. Even after it passes, `session_user` will identify only that database
+service account: it will not bind an end user to a principal or organization,
+and `set_request_context` will remain a trusted runtime operation rather than an
+identity resolver. External/TLS transport, production secrets, pooling,
+migrator/test-loader/backup authentication, and restore remain separate gates.
 A database adapter must not infer “no omissions” merely because RLS hid rows;
 it needs an explicit completeness signal and must use `count: null` when an
 exact count cannot be disclosed or established.

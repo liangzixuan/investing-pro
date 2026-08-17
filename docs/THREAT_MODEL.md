@@ -1,4 +1,4 @@
-# Sprint 0 through Cycle 1b-b1 threat model
+# Sprint 0 through live-pending Cycle 1b-b2 threat model
 
 ## Current trust boundaries
 
@@ -37,6 +37,25 @@ retention boundary.
 
 The first retained record, run links, hashes, and explicit limitations are
 listed in the [Cycle 1b-b1 evidence note](./POSTGRESQL_ACCEPTANCE_EVIDENCE.md).
+
+Cycle 1b-b2 implements one narrower boundary that has not yet been run: an
+ephemeral PostgreSQL runtime service account will authenticate with a
+run-local SCRAM password over loopback TCP inside the same isolated service
+container, then explicitly assume only the existing `NOLOGIN` runtime
+capability. The service still publishes no host port. A wrong password, direct
+pre-`SET ROLE` access, cross-capability role changes, unsafe membership options,
+missing-context visibility, one exact alpha-versus-beta tenant read,
+transaction cleanup, and a runtime write attempt must fail closed before b2 can
+pass. The broader b1 query-shape, rights, and prepared-read probes are not
+reclassified as authenticated evidence.
+
+That database login is not a user identity. The runtime service still chooses
+the synthetic principal and organization passed to `set_request_context`, so a
+compromised service account could choose another synthetic context unless a
+future verified identity resolver prevents it. B2 therefore does not establish
+end-user binding, production BOLA protection, external/TLS transport, secret
+management, an application pool, or deployed persistence. Its distinct
+migrator, test-loader, backup, and restore boundaries also remain deferred.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes
@@ -92,9 +111,14 @@ production identity. An emulator is not a substitute for those later gates,
 and `offline_consistent` alone is not engine evidence without the independently
 reviewed GitHub run and logs.
 
+The b2 live rows remain Pending. If b2 later passes, it will
+replace only the `authenticated sessions` limitation for one container-local
+runtime service account. It will not change any of the other limitations in the
+preceding paragraph or retroactively expand the b1 result.
+
 ## Gates before adding new trust boundaries
 
-1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run, prove authenticated non-owner identity/role mapping, BOLA isolation, pooled context cleanup, retention, export/delete, DSAR, backup deletion, and restore; then add verified OIDC/JWT identity. Synthetic context is never accepted as authentication evidence.
+1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-pending b2 runtime service-account contract, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore; then add verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
 2. **Filing ingestion:** run one-shot non-root parser workers with no unnecessary egress, read-only filesystems, CPU/memory/time limits, archive/XML bomb defenses, allowlisted taxonomy/plugins, quarantine, replay, and signed provenance.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.

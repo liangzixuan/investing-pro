@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,7 @@ import {
 import { loadMigrationFiles } from "./check-migrations";
 import {
   buildPostgresAcceptanceEvidence,
+  POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
   type PostgresAcceptanceSourceHashes,
   type PostgresAcceptanceToolVersions,
@@ -40,9 +41,22 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-${{ github.sha }}-${{ github.run_attempt }}";
-const EXPECTED_EVIDENCE_ARTIFACT_PATH =
-  "${{ runner.temp }}/research-cockpit-postgres-acceptance-v1.json";
+  "postgres-acceptance-evidence-v2-${{ github.sha }}-${{ github.run_attempt }}";
+const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
+export const RUNTIME_AUTH_LOGIN_ROLE =
+  "research_cockpit_runtime_login" as const;
+export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
+export const RUNTIME_AUTH_PASSFILE =
+  "/tmp/research-cockpit-runtime-login.pgpass" as const;
+export const RUNTIME_AUTH_WRONG_PASSFILE =
+  "/tmp/research-cockpit-runtime-login-wrong.pgpass" as const;
+export const RUNTIME_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
+  "research_cockpit_owner",
+  "research_cockpit_test_seed",
+  "research_cockpit_backup",
+  "postgres",
+] as const);
+const BASE64URL_RUNTIME_AUTH_PASSWORD = /^[A-Za-z0-9_-]+$/;
 const CAPABILITY_ROLES = [
   "research_cockpit_backup",
   "research_cockpit_owner",
@@ -213,6 +227,21 @@ export interface CommandResult {
   stderr: string;
 }
 
+export interface RuntimeAuthPsqlInvocation {
+  environment: Readonly<Record<string, string>>;
+  command: readonly string[];
+}
+
+export interface RuntimeAuthBestEffortOperation {
+  label: string;
+  run: () => Promise<void>;
+}
+
+export interface RuntimeAuthOperationFailure {
+  label: string;
+  error: unknown;
+}
+
 export interface PsqlFailureExpectation {
   label: string;
   sqlState: string;
@@ -236,6 +265,152 @@ export interface AcceptanceArtifacts {
   config: unknown;
   workflow: string;
   fixture: string;
+}
+
+export function generateRuntimeAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function renderRuntimeAuthProvisioningSql(password: string): string {
+  assertRuntimeAuthPassword(password);
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${RUNTIME_AUTH_LOGIN_ROLE}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT 1
+  PASSWORD '${password}';
+GRANT ${RUNTIME_AUTH_CAPABILITY_ROLE}
+  TO ${RUNTIME_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
+}
+
+export function renderRuntimeAuthPassfile(password: string): string {
+  assertRuntimeAuthPassword(password);
+  return `127.0.0.1:5432:${CLEAN_BOOTSTRAP_DATABASE_NAME}:${RUNTIME_AUTH_LOGIN_ROLE}:${password}\n`;
+}
+
+export function renderRuntimeAuthCleanupSql(): string {
+  return `BEGIN;
+DROP ROLE IF EXISTS ${RUNTIME_AUTH_LOGIN_ROLE};
+COMMIT;
+`;
+}
+
+export function renderRuntimeAuthBackendDrainSql(): string {
+  return `DO $runtime_auth_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE usename = '${RUNTIME_AUTH_LOGIN_ROLE}'
+        AND backend_type = 'client backend'
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'ephemeral runtime login backend did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END;
+$runtime_auth_backend_drain$;
+`;
+}
+
+export function buildRuntimeAuthPsqlInvocation(
+  passfile: typeof RUNTIME_AUTH_PASSFILE | typeof RUNTIME_AUTH_WRONG_PASSFILE,
+  verboseErrors = false,
+): RuntimeAuthPsqlInvocation {
+  return Object.freeze({
+    environment: Object.freeze({
+      PGPASSFILE: passfile,
+      PGREQUIREAUTH: "scram-sha-256",
+      PGSSLMODE: "disable",
+      PGCONNECT_TIMEOUT: "5",
+    }),
+    command: Object.freeze([
+      "psql",
+      "--no-psqlrc",
+      "--no-password",
+      "--quiet",
+      "--tuples-only",
+      "--no-align",
+      "--set=ON_ERROR_STOP=1",
+      ...(verboseErrors ? ["--set=VERBOSITY=verbose"] : []),
+      "--host=127.0.0.1",
+      "--port=5432",
+      `--username=${RUNTIME_AUTH_LOGIN_ROLE}`,
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ]),
+  });
+}
+
+export async function collectRuntimeAuthOperationFailures(
+  operations: readonly RuntimeAuthBestEffortOperation[],
+): Promise<RuntimeAuthOperationFailure[]> {
+  const failures: RuntimeAuthOperationFailure[] = [];
+  for (const operation of operations) {
+    try {
+      await operation.run();
+    } catch (error) {
+      failures.push({ label: operation.label, error });
+    }
+  }
+  return failures;
+}
+
+export async function runRuntimeAuthCommandWithDrain<T>(
+  runCommand: () => Promise<T>,
+  drainBackends: () => Promise<void>,
+): Promise<T> {
+  let result: T;
+  try {
+    result = await runCommand();
+  } catch (commandError) {
+    try {
+      await drainBackends();
+    } catch (drainError) {
+      throw new AggregateError(
+        [commandError, drainError],
+        "Runtime-auth command and backend drain both failed",
+        { cause: drainError },
+      );
+    }
+    throw commandError;
+  }
+
+  await drainBackends();
+  return result;
+}
+
+function throwRuntimeAuthOperationFailures(
+  failures: readonly RuntimeAuthOperationFailure[],
+  message: string,
+): void {
+  if (failures.length === 0) return;
+
+  const errors = failures.map(
+    ({ label, error }) => new Error(`${label} failed`, { cause: error }),
+  );
+  throw new AggregateError(errors, message, { cause: errors[0] });
 }
 
 export async function checkPostgresAcceptanceHarness(
@@ -301,6 +476,12 @@ export function inspectPostgresAcceptanceHarness(
     artifacts.workflow,
     "RESEARCH_COCKPIT_PG_CONTAINER_ID: ${{ job.services.postgres.id }}",
     "workflow must pass only the GitHub service container ID",
+    violations,
+  );
+  requireText(
+    artifacts.workflow,
+    "POSTGRES_HOST_AUTH_METHOD: scram-sha-256",
+    "acceptance service must require SCRAM for host authentication",
     violations,
   );
   requireText(
@@ -441,6 +622,7 @@ export async function runPostgresAcceptance(
   await verifyTenantIsolation(containerId);
   await verifyOperationRights(containerId);
   await verifyWriteDenials(containerId);
+  await verifyAuthenticatedRuntimeSession(containerId);
 
   await verifyCheckedOutCommit(environment);
   const sourceHashes = await collectAcceptanceSourceHashes(config);
@@ -459,7 +641,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 clean-bootstrap and impersonated-capability acceptance passed; the success-only run record was written.\n",
+      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, and container-local SCRAM runtime acceptance passed; the success-only run record was written.\n",
   );
 }
 
@@ -1460,6 +1642,577 @@ WHERE id = '10000000-0000-4000-8000-000000000099';`,
   );
 }
 
+async function verifyAuthenticatedRuntimeSession(
+  containerId: string,
+): Promise<void> {
+  await verifyRuntimeAuthResidueAbsent(containerId);
+
+  const password = generateRuntimeAuthPassword();
+  let wrongPassword = generateRuntimeAuthPassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateRuntimeAuthPassword();
+  }
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    await provisionRuntimeAuthLogin(containerId, password);
+    await verifyRuntimeAuthRoleCatalog(containerId);
+    await writeRuntimeAuthPassfile(
+      containerId,
+      RUNTIME_AUTH_PASSFILE,
+      renderRuntimeAuthPassfile(password),
+    );
+    await writeRuntimeAuthPassfile(
+      containerId,
+      RUNTIME_AUTH_WRONG_PASSFILE,
+      renderRuntimeAuthPassfile(wrongPassword),
+    );
+    await verifyRuntimeWrongPasswordRejection(containerId);
+    await verifyRuntimeLoginBeforeSetRole(containerId);
+    await verifyRuntimeRoleEscalationDenials(containerId);
+    await verifyRuntimeAuthenticatedContext(containerId);
+    await verifyRuntimeAuthenticatedWriteDenial(containerId);
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "runtime-auth cleanup",
+            run: () => cleanupRuntimeAuthProbe(containerId),
+          },
+          {
+            label: "runtime-auth residue verification",
+            run: () => verifyRuntimeAuthResidueAbsent(containerId),
+          },
+        ]),
+        "Authenticated runtime cleanup and residue verification failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated runtime probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+}
+
+async function verifyRuntimeAuthResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "verify ephemeral runtime login is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_roles
+WHERE rolname = '${RUNTIME_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral runtime login residue",
+        );
+      },
+    },
+  ];
+
+  for (const path of [RUNTIME_AUTH_PASSFILE, RUNTIME_AUTH_WRONG_PASSFILE]) {
+    operations.push(
+      {
+        label: `verify runtime-auth passfile is absent: ${path}`,
+        run: async () => {
+          const regularPath = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-e",
+            path,
+          ]);
+          assertSuccess(regularPath, "verify runtime-auth passfile is absent");
+        },
+      },
+      {
+        label: `verify runtime-auth passfile symlink is absent: ${path}`,
+        run: async () => {
+          const symlinkPath = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-L",
+            path,
+          ]);
+          assertSuccess(
+            symlinkPath,
+            "verify runtime-auth passfile symlink is absent",
+          );
+        },
+      },
+    );
+  }
+
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated runtime residue verification failed",
+  );
+}
+
+async function provisionRuntimeAuthLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderRuntimeAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(result, "provision ephemeral runtime login");
+}
+
+async function verifyRuntimeAuthRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${RUNTIME_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${RUNTIME_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|1|true`,
+    "ephemeral runtime login attributes and SCRAM verifier",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role
+  ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role
+  ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${RUNTIME_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${RUNTIME_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${RUNTIME_AUTH_CAPABILITY_ROLE}|${RUNTIME_AUTH_LOGIN_ROLE}|false|false|true`,
+    "ephemeral runtime login membership",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_db_role_setting
+WHERE setrole = (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${RUNTIME_AUTH_LOGIN_ROLE}'
+);`,
+    ),
+    "0",
+    "ephemeral runtime login role settings",
+  );
+}
+
+async function writeRuntimeAuthPassfile(
+  containerId: string,
+  path: typeof RUNTIME_AUTH_PASSFILE | typeof RUNTIME_AUTH_WRONG_PASSFILE,
+  contents: string,
+): Promise<void> {
+  const install = await dockerExec(containerId, [
+    "install",
+    "--mode=0600",
+    "/dev/null",
+    path,
+  ]);
+  assertSensitiveCommandSuccess(install, "create runtime-auth passfile");
+  const write = await dockerExec(
+    containerId,
+    ["dd", `of=${path}`, "status=none"],
+    contents,
+  );
+  assertSensitiveCommandSuccess(write, "write runtime-auth passfile");
+  const regularFile = await dockerExec(containerId, ["test", "-f", path]);
+  assertSuccess(regularFile, "verify runtime-auth passfile type");
+  const symlink = await dockerExec(containerId, ["test", "!", "-L", path]);
+  assertSuccess(symlink, "verify runtime-auth passfile is not a symlink");
+  const mode = await dockerExec(containerId, ["stat", "--format=%a", path]);
+  assertSuccess(mode, "inspect runtime-auth passfile mode");
+  assertEqual(mode.stdout.trim(), "600", "runtime-auth passfile mode");
+}
+
+async function verifyRuntimeWrongPasswordRejection(
+  containerId: string,
+): Promise<void> {
+  const result = await runtimeAuthenticatedPsql(
+    containerId,
+    RUNTIME_AUTH_WRONG_PASSFILE,
+    "SELECT 1;",
+    true,
+  );
+  if (
+    result.exitCode === 0 ||
+    !result.stderr
+      .toLowerCase()
+      .includes(
+        `password authentication failed for user "${RUNTIME_AUTH_LOGIN_ROLE}"`,
+      )
+  ) {
+    throw new Error("Runtime login wrong-password rejection was not observed");
+  }
+}
+
+async function verifyRuntimeLoginBeforeSetRole(
+  containerId: string,
+): Promise<void> {
+  const identity = parseJsonObject(
+    await runtimeAuthenticatedPsqlScalar(
+      containerId,
+      `SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'clientAddress', pg_catalog.inet_client_addr()::text,
+  'serverAddress', pg_catalog.inet_server_addr()::text,
+  'ssl', EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  ),
+  'runtimeMember', pg_catalog.pg_has_role(
+    session_user, '${RUNTIME_AUTH_CAPABILITY_ROLE}', 'MEMBER'
+  ),
+  'runtimeUsage', pg_catalog.pg_has_role(
+    session_user, '${RUNTIME_AUTH_CAPABILITY_ROLE}', 'USAGE'
+  ),
+  'runtimeSet', pg_catalog.pg_has_role(
+    session_user, '${RUNTIME_AUTH_CAPABILITY_ROLE}', 'SET'
+  )
+)::text;`,
+    ),
+  );
+  assertJsonEqual(
+    identity,
+    {
+      sessionUser: RUNTIME_AUTH_LOGIN_ROLE,
+      currentUser: RUNTIME_AUTH_LOGIN_ROLE,
+      systemUser: `scram-sha-256:${RUNTIME_AUTH_LOGIN_ROLE}`,
+      clientAddress: "127.0.0.1",
+      serverAddress: "127.0.0.1",
+      ssl: false,
+      runtimeMember: true,
+      runtimeUsage: false,
+      runtimeSet: true,
+    },
+    "authenticated runtime login identity before SET ROLE",
+  );
+
+  await expectRuntimeAuthenticatedPsqlFailure(
+    containerId,
+    "SELECT count(*) FROM private_data.organizations;",
+    {
+      label: "runtime login data access before SET ROLE",
+      sqlState: "42501",
+      message: "permission denied for schema private_data",
+    },
+  );
+  await expectRuntimeAuthenticatedPsqlFailure(
+    containerId,
+    `CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'display', 'api', 'demo_only', 'synthetic'
+);`,
+    {
+      label: "runtime login context call before SET ROLE",
+      sqlState: "42501",
+      message: "permission denied for schema private_data",
+    },
+  );
+  await expectRuntimeAuthenticatedPsqlFailure(
+    containerId,
+    "CREATE TEMPORARY TABLE runtime_auth_escape (id integer);",
+    {
+      label: "runtime login temporary table before SET ROLE",
+      sqlState: "42501",
+      message: "permission denied to create temporary tables",
+    },
+  );
+}
+
+async function verifyRuntimeRoleEscalationDenials(
+  containerId: string,
+): Promise<void> {
+  for (const role of RUNTIME_AUTH_FORBIDDEN_SET_ROLES) {
+    await expectRuntimeAuthenticatedPsqlFailure(
+      containerId,
+      `SET ROLE ${role};`,
+      {
+        label: `runtime login SET ROLE ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set role",
+      },
+    );
+  }
+  await expectRuntimeAuthenticatedPsqlFailure(
+    containerId,
+    "SET SESSION AUTHORIZATION postgres;",
+    {
+      label: "runtime login SET SESSION AUTHORIZATION postgres",
+      sqlState: "42501",
+      message: "permission denied to set session authorization",
+    },
+  );
+}
+
+async function verifyRuntimeAuthenticatedContext(
+  containerId: string,
+): Promise<void> {
+  const resetState = (label: string) => `SELECT CASE
+  WHEN current_user = session_user
+    AND ${requestContextClearedExpression()}
+  THEN '${label}-cleared'
+  ELSE '${label}-leaked'
+END;`;
+  const result = splitLines(
+    await runtimeAuthenticatedPsqlScalar(
+      containerId,
+      `BEGIN;
+SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};
+SELECT pg_catalog.json_build_object(
+  'organizations', (SELECT count(*) FROM private_data.organizations),
+  'evidence', (SELECT count(*) FROM shared_data.evidence),
+  'theses', (SELECT count(*) FROM private_data.theses)
+)::text;
+ROLLBACK;
+${resetState("missing-context")}
+BEGIN;
+SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};
+CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'display', 'api', 'demo_only', 'synthetic'
+);
+SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'organizations', (
+    SELECT count(*) FROM private_data.organizations
+  ),
+  'foreignOrganizations', (
+    SELECT count(*) FROM private_data.organizations
+    WHERE id = '${ORGANIZATION_BETA}'
+  ),
+  'theses', (SELECT count(*) FROM private_data.theses),
+  'foreignTheses', (
+    SELECT count(*) FROM private_data.theses
+    WHERE organization_id = '${ORGANIZATION_BETA}'
+  )
+)::text;
+COMMIT;
+${resetState("commit")}
+BEGIN;
+SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};
+CALL private_data.set_request_context(
+  '${PRINCIPAL_BETA}', '${ORGANIZATION_BETA}',
+  'derive', 'api', 'demo_only', 'synthetic'
+);
+ROLLBACK;
+${resetState("rollback")}
+BEGIN;
+SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};
+CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'alert', 'local_alert', 'demo_only', 'synthetic'
+);
+DO $handled_runtime_auth_error$
+BEGIN
+  BEGIN
+    PERFORM 1 / 0;
+  EXCEPTION WHEN division_by_zero THEN
+    NULL;
+  END;
+END;
+$handled_runtime_auth_error$;
+COMMIT;
+${resetState("error")}`,
+    ),
+  );
+  if (result.length !== 6 || !result[0] || !result[2]) {
+    throw new Error("Authenticated runtime context probe returned wrong shape");
+  }
+  assertJsonEqual(
+    parseJsonObject(result[0]),
+    { organizations: 0, evidence: 0, theses: 0 },
+    "authenticated runtime missing-context visibility",
+  );
+  assertEqual(
+    result[1] ?? "",
+    "missing-context-cleared",
+    "authenticated runtime missing-context rollback",
+  );
+  assertJsonEqual(
+    parseJsonObject(result[2]),
+    {
+      sessionUser: RUNTIME_AUTH_LOGIN_ROLE,
+      currentUser: RUNTIME_AUTH_CAPABILITY_ROLE,
+      systemUser: `scram-sha-256:${RUNTIME_AUTH_LOGIN_ROLE}`,
+      organizations: 1,
+      foreignOrganizations: 0,
+      theses: 1,
+      foreignTheses: 0,
+    },
+    "authenticated runtime tenant read",
+  );
+  assertJsonEqual(
+    result.slice(3),
+    ["commit-cleared", "rollback-cleared", "error-cleared"],
+    "authenticated runtime role and context cleanup",
+  );
+}
+
+async function verifyRuntimeAuthenticatedWriteDenial(
+  containerId: string,
+): Promise<void> {
+  await expectRuntimeAuthenticatedPsqlFailure(
+    containerId,
+    `BEGIN;
+SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};
+CALL private_data.set_request_context(
+  '${PRINCIPAL_ALPHA}', '${ORGANIZATION_ALPHA}',
+  'display', 'api', 'demo_only', 'synthetic'
+);
+INSERT INTO private_data.organizations (id, slug, name, created_at)
+VALUES (
+  '10000000-0000-4000-8000-000000000097',
+  'authenticated-runtime-write-probe',
+  'Authenticated runtime write probe',
+  transaction_timestamp()
+);`,
+    {
+      label: "authenticated runtime write",
+      sqlState: "42501",
+      message: "permission denied for table organizations",
+    },
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*) FROM private_data.organizations
+WHERE id = '10000000-0000-4000-8000-000000000097';`,
+    ),
+    "0",
+    "failed authenticated runtime write rollback",
+  );
+}
+
+async function cleanupRuntimeAuthProbe(containerId: string): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    ...[RUNTIME_AUTH_PASSFILE, RUNTIME_AUTH_WRONG_PASSFILE].map((path) => ({
+      label: `remove runtime-auth passfile: ${path}`,
+      run: async () => {
+        const remove = await dockerExec(containerId, ["rm", "-f", "--", path]);
+        assertSuccess(remove, "remove runtime-auth passfile");
+      },
+    })),
+    {
+      label: "drop ephemeral runtime login",
+      run: async () => {
+        await psql(containerId, renderRuntimeAuthCleanupSql());
+      },
+    },
+  ];
+
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated runtime cleanup failed",
+  );
+}
+
+async function runtimeAuthenticatedPsqlScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await runtimeAuthenticatedPsql(
+    containerId,
+    RUNTIME_AUTH_PASSFILE,
+    sql,
+  );
+  assertSuccess(result, "execute authenticated runtime SQL");
+  return result.stdout.trim();
+}
+
+async function expectRuntimeAuthenticatedPsqlFailure(
+  containerId: string,
+  sql: string,
+  expectation: PsqlFailureExpectation,
+): Promise<void> {
+  const result = await runtimeAuthenticatedPsql(
+    containerId,
+    RUNTIME_AUTH_PASSFILE,
+    sql,
+    true,
+  );
+  assertExpectedPsqlFailure(result, expectation);
+}
+
+async function runtimeAuthenticatedPsql(
+  containerId: string,
+  passfile: typeof RUNTIME_AUTH_PASSFILE | typeof RUNTIME_AUTH_WRONG_PASSFILE,
+  sql: string,
+  verboseErrors = false,
+): Promise<CommandResult> {
+  const invocation = buildRuntimeAuthPsqlInvocation(passfile, verboseErrors);
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        sql,
+      ),
+    () => waitForRuntimeAuthBackendDrain(containerId),
+  );
+}
+
+async function waitForRuntimeAuthBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderRuntimeAuthBackendDrainSql());
+}
+
+function assertSensitiveCommandSuccess(
+  result: CommandResult,
+  operation: string,
+): void {
+  if (result.exitCode !== 0) {
+    throw new Error(`${operation} failed with exit ${result.exitCode}`);
+  }
+}
+
 async function privateVisibility(
   containerId: string,
   principalId: string,
@@ -1735,6 +2488,27 @@ async function dockerExec(
   );
 }
 
+async function dockerExecWithEnvironment(
+  containerId: string,
+  environment: Readonly<Record<string, string>>,
+  command: readonly string[],
+  input?: string,
+): Promise<CommandResult> {
+  const environmentArguments = Object.entries(environment).flatMap(
+    ([name, value]) => ["--env", `${name}=${value}`],
+  );
+  return executeDocker(
+    [
+      "exec",
+      ...(input === undefined ? [] : ["-i"]),
+      ...environmentArguments,
+      containerId,
+      ...command,
+    ],
+    input,
+  );
+}
+
 async function executeDocker(
   arguments_: readonly string[],
   input?: string,
@@ -1824,7 +2598,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "bfece7be518f8842ec11b8b6070a841883cf1969613ff0cac1e3380e5a07816c" ||
+      "d26cd3119f275a3339a77f3f243aa1b0bc6bac9797d6baccf5cf3b20bc18f797" ||
     value.fixtureSha256 !==
       "69974bf2996cbdd0078d509db933fe89d670005e177b7f57187df54b201b99bf" ||
     typeof value.verifiedOn !== "string" ||
@@ -1846,6 +2620,17 @@ function parseJsonObject(value: string): Record<string, unknown> {
   const parsed = JSON.parse(value) as unknown;
   if (!isRecord(parsed)) throw new Error("Expected a PostgreSQL JSON object");
   return parsed;
+}
+
+function assertRuntimeAuthPassword(password: string): void {
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password)
+  ) {
+    throw new Error(
+      "Runtime-auth password must be a 32-byte base64url value without padding",
+    );
+  }
 }
 
 function assertSuccess(result: CommandResult, operation: string): void {

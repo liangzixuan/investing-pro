@@ -2,9 +2,8 @@ import { createHash } from "node:crypto";
 
 import {
   parsePostgresAcceptanceEvidence,
-  POSTGRES_ACCEPTANCE_CHECKS_PASSED,
-  POSTGRES_ACCEPTANCE_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
+  type PostgresAcceptanceEvidence,
 } from "./postgres-acceptance-evidence";
 
 export const POSTGRES_ACCEPTANCE_OFFLINE_VERIFICATION_CHECKS = Object.freeze([
@@ -122,8 +121,8 @@ export interface VerifiedPostgresAcceptanceEvidence {
   readonly runAttempt: number;
   readonly completedAt: string;
   readonly verificationChecks: typeof POSTGRES_ACCEPTANCE_OFFLINE_VERIFICATION_CHECKS;
-  readonly recordedChecksPassed: typeof POSTGRES_ACCEPTANCE_CHECKS_PASSED;
-  readonly recordedNotProven: typeof POSTGRES_ACCEPTANCE_NOT_PROVEN;
+  readonly recordedChecksPassed: PostgresAcceptanceEvidence["checksPassed"];
+  readonly recordedNotProven: PostgresAcceptanceEvidence["notProven"];
   readonly verifierNotProven: typeof POSTGRES_ACCEPTANCE_OFFLINE_VERIFIER_NOT_PROVEN;
 }
 
@@ -238,8 +237,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       runAttempt: evidence.runAttempt,
       completedAt: evidence.completedAt,
       verificationChecks: POSTGRES_ACCEPTANCE_OFFLINE_VERIFICATION_CHECKS,
-      recordedChecksPassed: POSTGRES_ACCEPTANCE_CHECKS_PASSED,
-      recordedNotProven: POSTGRES_ACCEPTANCE_NOT_PROVEN,
+      recordedChecksPassed: evidence.checksPassed,
+      recordedNotProven: evidence.notProven,
       verifierNotProven: POSTGRES_ACCEPTANCE_OFFLINE_VERIFIER_NOT_PROVEN,
     });
   } catch {

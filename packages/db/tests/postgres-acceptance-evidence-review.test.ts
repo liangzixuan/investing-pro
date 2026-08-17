@@ -17,6 +17,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   buildPostgresAcceptanceEvidence,
+  POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -113,6 +115,37 @@ function evidenceAdapterTests(): void {
       ]),
     ).toBe(statusBefore);
     expect(await readFile(fixture.evidencePath)).toEqual(fixture.evidenceBytes);
+  });
+
+  it("reviews a canonical historical v1 record at its anchored commit", async () => {
+    const fixture = await createFixture();
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 1;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+    const input = {
+      ...fixture.input,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    };
+
+    const result = await reviewPostgresAcceptanceEvidence(input);
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
+    ]);
   });
 
   it("requires every independent trust anchor", async () => {

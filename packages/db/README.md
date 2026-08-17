@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED — NOT DEPLOYED PERSISTENCE**
+> **B1 CLEAN-ONLY LIVE ACCEPTANCE PASSED; B2 RUNTIME AUTH PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -10,6 +10,11 @@ PostgreSQL 17.11 service at commit `611c93d`; see the
 is bounded engine evidence for its recorded checks. It does not prove backup
 viability, authenticated sessions, pooling, concurrency, real-data behavior, or
 production readiness.
+
+Cycle 1b-b2 is implemented in the acceptance harness; its live run and evidence
+review are still pending. Its scope is one ephemeral runtime service account using
+SCRAM over loopback TCP inside the existing unexposed PostgreSQL container. It
+does not change the running application or establish production authentication.
 
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
@@ -36,6 +41,22 @@ violate migration `0001`'s zero-membership invariant. Runtime, seed, and backup
 checks use superuser `SET SESSION AUTHORIZATION` to impersonate the declared
 `NOLOGIN` capabilities. This can prove engine grant/RLS semantics, but it is not
 authenticated least-privilege or production identity evidence.
+
+The b2 boundary leaves that superuser migration bootstrap, test-seed
+impersonation, and backup impersonation unchanged. Only runtime behavior moves
+to a separately authenticated service login, created after `0001` has enforced
+its clean zero-membership precondition. That login must have no direct
+application privileges and one exact `SET`-only, non-inheriting, non-admin
+membership in `research_cockpit_runtime`. It must connect with the pinned
+container's `psql` over container-loopback TCP, reject a wrong password, prove
+its `session_user`/`current_user` transition, and run bounded pre-role and
+cross-role denials, missing-context, one alpha-versus-beta isolation read,
+sequential-cleanup, and runtime-write probes. The comprehensive b1 query-shape,
+rights, and prepared-read checks remain impersonated-capability evidence and
+are not promoted by b2. No b2 live claim is valid until a new reviewed remote
+run succeeds. See
+[ADR 0014](../../docs/adr/0014-container-local-runtime-authentication.md) and
+the [Cycle 1b-b2 exit matrix](../../docs/CYCLE_1BB2_EXIT_MATRIX.md).
 
 Only after every implemented probe succeeds, the acceptance entry point writes
 one fixed-name, exact-schema JSON run record under `RUNNER_TEMP`; the workflow
@@ -113,6 +134,13 @@ transfer object ownership. These migrations do not create a migrator login and
 do not grant any capability role to any other role. Deployment automation must
 not add role chaining without a new reviewed migration and live authorization
 tests.
+
+ADR 0014 defines one acceptance-only exception after the existing bootstrap:
+an ephemeral runtime login may receive one catalog-verified membership in the
+runtime capability with `ADMIN FALSE`, `INHERIT FALSE`, and `SET TRUE`. That
+source is implemented; its live execution remains pending, and the historical
+b1 run retains the zero-edge catalog it recorded. The boundary does not authorize an
+owner, test-seed, or backup membership and does not redesign deployment roles.
 
 ## Static guarantees
 
@@ -209,8 +237,9 @@ PostgreSQL service must prove all of the following:
    `pg_auth_members` directions must make bootstrap fail without attempting
    automatic repair or revocation.
 3. Introduce and run as a separately reviewed non-owner runtime login, then
-   prove missing or malformed request context fails closed. The b1 harness can
-   prove only impersonated `NOLOGIN` capability semantics.
+   prove missing or malformed request context fails closed. This is the
+   b2 scope and remains pending a successful remote run and evidence review.
+   The b1 harness proves only impersonated `NOLOGIN` capability semantics.
 4. Prove `set_request_context` is transaction-local across commit, rollback,
    errors, and pooled-connection reuse.
 5. Test cross-tenant `SELECT`, direct-object lookup, and every future write path
@@ -260,4 +289,8 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact clean-only b1 checks in the retained run record.
+evidence is limited to the exact clean-only b1 checks in the retained run
+record. Container-local runtime service-account authentication remains pending;
+even after it passes, external/TLS authentication, end-user identity binding,
+production secret handling, pooling, distinct migrator/test-loader/backup
+credentials, logical restore, and disaster recovery will remain unproven.

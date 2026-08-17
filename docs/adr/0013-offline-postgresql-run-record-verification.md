@@ -12,9 +12,12 @@ The verifier requires independent trust anchors for the evidence-file SHA-256,
 repository name and numeric ID, commit SHA, run ID, and run attempt. None of
 those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
-original bytes must be valid UTF-8 and exactly equal the canonical v1
-serialization. This rejects byte-order marks, CRLF or alternate whitespace,
-trailing content, reordered members, and duplicate JSON member names.
+original bytes must be valid UTF-8 and exactly equal the canonical
+serialization for their declared supported version. The verifier retains exact
+historical v1 support and accepts the current v2 schema without mixing either
+version's closed check or limitation lists. Canonical comparison rejects
+byte-order marks, CRLF or alternate whitespace, trailing content, reordered
+members, and duplicate JSON member names.
 
 Source validation uses only fixed paths read as raw Git blobs from the explicit
 40-character commit. It does not read source from the mutable worktree and does
