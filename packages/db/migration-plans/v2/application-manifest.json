@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "planVersion": 2,
+  "algorithm": "sha256",
+  "migrations": [
+    {
+      "id": "v2-0001",
+      "file": "0001_request_context_and_ledger.sql",
+      "sha256": "37d69e26b370e6a0c9f191e6f46a8d59579612f67c16f918e2ed78a5eb399e2f"
+    },
+    {
+      "id": "v2-0002",
+      "file": "0002_canonical_entities.sql",
+      "sha256": "272dce4b0d91e96f58442896621b2d570e8e027fbfc843f83de5f36c005154f6"
+    },
+    {
+      "id": "v2-0003",
+      "file": "0003_temporal_constraints_and_indexes.sql",
+      "sha256": "d7a1a3d1991cb0a531a1643111fb8192dfad546efa4aa4913d0d8f8f34fed4d2"
+    },
+    {
+      "id": "v2-0004",
+      "file": "0004_row_security_and_runtime_grants.sql",
+      "sha256": "ecaf289311eea9a58d8c4e4f342e9f7e40f86f0b05fdebc9d50975aa672930eb"
+    },
+    {
+      "id": "v2-0005",
+      "file": "0005_non_reusable_resource_ids.sql",
+      "sha256": "703205835c4689350ec0d49d4377adaa08dc2abdcc63bf669dda8dee7049d61d"
+    },
+    {
+      "id": "v2-0006",
+      "file": "0006_null_safe_request_context.sql",
+      "sha256": "b3da4be6401accbd0140f0fe9a85d04d4093a06448eab129aa1c9c78be363f91"
+    }
+  ]
+}

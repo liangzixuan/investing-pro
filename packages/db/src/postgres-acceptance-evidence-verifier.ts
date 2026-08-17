@@ -44,6 +44,13 @@ const PROJECTION_SOURCE_KEYS = [
   "projectionQuery",
   "projectionNormalizer",
 ] as const;
+const V7_SOURCE_KEYS = [
+  ...PROJECTION_SOURCE_KEYS,
+  "platformBootstrapV2",
+  "applicationMigrationManifestV2",
+  "authenticatedMigrationRendererV2",
+  "applicationMigrationsV2",
+] as const;
 const MIGRATION_SOURCE_KEYS = ["id", "file", "bytes"] as const;
 const IMAGE_CONFIG_KEYS = [
   "schemaVersion",
@@ -63,6 +70,20 @@ const IMAGE_CONFIG_KEYS = [
 const IMAGE_RUNNER_KEYS = ["label", "os", "architecture"] as const;
 const MANIFEST_KEYS = ["schemaVersion", "algorithm", "migrations"] as const;
 const MANIFEST_ENTRY_KEYS = ["id", "file", "sha256"] as const;
+const APPLICATION_MANIFEST_V2_KEYS = [
+  "schemaVersion",
+  "planVersion",
+  "algorithm",
+  "migrations",
+] as const;
+const APPLICATION_MIGRATION_V2_FILES = Object.freeze([
+  "0001_request_context_and_ledger.sql",
+  "0002_canonical_entities.sql",
+  "0003_temporal_constraints_and_indexes.sql",
+  "0004_row_security_and_runtime_grants.sql",
+  "0005_non_reusable_resource_ids.sql",
+  "0006_null_safe_request_context.sql",
+] as const);
 
 const MAX_EVIDENCE_BYTES = 32 * 1024;
 const MAX_IMAGE_CONFIG_BYTES = 32 * 1024;
@@ -72,6 +93,9 @@ const MAX_MANIFEST_BYTES = 64 * 1024;
 const MAX_RUNNER_BYTES = 2 * 1024 * 1024;
 const MAX_PROJECTION_QUERY_BYTES = 2 * 1024 * 1024;
 const MAX_PROJECTION_NORMALIZER_BYTES = 2 * 1024 * 1024;
+const MAX_PLATFORM_BOOTSTRAP_V2_BYTES = 2 * 1024 * 1024;
+const MAX_APPLICATION_MANIFEST_V2_BYTES = 64 * 1024;
+const MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATION_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATIONS = 100;
 
@@ -81,6 +105,7 @@ const POSITIVE_DECIMAL = /^[1-9][0-9]*$/;
 const REPOSITORY =
   /^[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,99})\/[A-Za-z0-9_.-]{1,100}$/;
 const MIGRATION_ID = /^\d{4}$/;
+const APPLICATION_MIGRATION_V2_ID = /^v2-\d{4}$/;
 const MIGRATION_FILE = /^\d{4}_[a-z0-9_]+\.sql$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -111,6 +136,10 @@ export interface PostgresAcceptanceEvidenceSourceBundle {
   readonly migrations: readonly PostgresAcceptanceMigrationSource[];
   readonly projectionQuery?: Uint8Array;
   readonly projectionNormalizer?: Uint8Array;
+  readonly platformBootstrapV2?: Uint8Array;
+  readonly applicationMigrationManifestV2?: Uint8Array;
+  readonly authenticatedMigrationRendererV2?: Uint8Array;
+  readonly applicationMigrationsV2?: readonly PostgresAcceptanceMigrationSource[];
 }
 
 export interface VerifyPostgresAcceptanceEvidenceOfflineInput {
@@ -144,6 +173,10 @@ interface NormalizedSources {
   readonly migrations: readonly NormalizedMigrationSource[];
   readonly projectionQuery?: Uint8Array;
   readonly projectionNormalizer?: Uint8Array;
+  readonly platformBootstrapV2?: Uint8Array;
+  readonly applicationMigrationManifestV2?: Uint8Array;
+  readonly authenticatedMigrationRendererV2?: Uint8Array;
+  readonly applicationMigrationsV2?: readonly NormalizedMigrationSource[];
 }
 
 interface NormalizedMigrationSource {
@@ -222,7 +255,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
     if (
       evidence.schemaVersion === 4 ||
       evidence.schemaVersion === 5 ||
-      evidence.schemaVersion === 6
+      evidence.schemaVersion === 6 ||
+      evidence.schemaVersion === 7
     ) {
       if (
         sources.projectionQuery === undefined ||
@@ -234,6 +268,27 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       ) {
         invalid();
       }
+    }
+
+    if (evidence.schemaVersion === 7) {
+      if (
+        sources.platformBootstrapV2 === undefined ||
+        sources.applicationMigrationManifestV2 === undefined ||
+        sources.authenticatedMigrationRendererV2 === undefined ||
+        sources.applicationMigrationsV2 === undefined ||
+        evidence.sourceHashes.platformBootstrapV2Sha256 !==
+          sha256(sources.platformBootstrapV2) ||
+        evidence.sourceHashes.applicationMigrationManifestV2Sha256 !==
+          sha256(sources.applicationMigrationManifestV2) ||
+        evidence.sourceHashes.authenticatedMigrationRendererV2Sha256 !==
+          sha256(sources.authenticatedMigrationRendererV2)
+      ) {
+        invalid();
+      }
+      verifyApplicationMigrationManifestV2(
+        sources.applicationMigrationManifestV2,
+        sources.applicationMigrationsV2,
+      );
     }
 
     const workflowSha256 = sha256(sources.workflow);
@@ -292,6 +347,43 @@ function normalizeSources(
   value: unknown,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): NormalizedSources {
+  if (schemaVersion === 7) {
+    const sources = exactPlainDataRecord(value, V7_SOURCE_KEYS);
+    return normalizeSourceFields(
+      sources,
+      {
+        projectionQuery: exactBytes(
+          sources.projectionQuery,
+          MAX_PROJECTION_QUERY_BYTES,
+        ),
+        projectionNormalizer: exactBytes(
+          sources.projectionNormalizer,
+          MAX_PROJECTION_NORMALIZER_BYTES,
+        ),
+      },
+      {
+        platformBootstrapV2: exactBytes(
+          sources.platformBootstrapV2,
+          MAX_PLATFORM_BOOTSTRAP_V2_BYTES,
+        ),
+        applicationMigrationManifestV2: exactBytes(
+          sources.applicationMigrationManifestV2,
+          MAX_APPLICATION_MANIFEST_V2_BYTES,
+        ),
+        authenticatedMigrationRendererV2: exactBytes(
+          sources.authenticatedMigrationRendererV2,
+          MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES,
+        ),
+        applicationMigrationsV2: Object.freeze(
+          exactDataArray(
+            sources.applicationMigrationsV2,
+            APPLICATION_MIGRATION_V2_FILES.length,
+            false,
+          ).map((migration) => normalizeApplicationMigrationV2(migration)),
+        ),
+      },
+    );
+  }
   if (usesProjectionSources(schemaVersion)) {
     const sources = exactPlainDataRecord(value, PROJECTION_SOURCE_KEYS);
     return normalizeSourceFields(sources, {
@@ -312,8 +404,13 @@ function normalizeSources(
 
 function usesProjectionSources(
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
-): schemaVersion is 4 | 5 | 6 {
-  return schemaVersion === 4 || schemaVersion === 5 || schemaVersion === 6;
+): schemaVersion is 4 | 5 | 6 | 7 {
+  return (
+    schemaVersion === 4 ||
+    schemaVersion === 5 ||
+    schemaVersion === 6 ||
+    schemaVersion === 7
+  );
 }
 
 function normalizeSourceFields(
@@ -328,6 +425,13 @@ function normalizeSourceFields(
   v4Sources: Pick<
     NormalizedSources,
     "projectionQuery" | "projectionNormalizer"
+  > = {},
+  v7Sources: Pick<
+    NormalizedSources,
+    | "platformBootstrapV2"
+    | "applicationMigrationManifestV2"
+    | "authenticatedMigrationRendererV2"
+    | "applicationMigrationsV2"
   > = {},
 ): NormalizedSources {
   const migrations = exactDataArray(sources.migrations, MAX_MIGRATIONS, false);
@@ -344,6 +448,7 @@ function normalizeSourceFields(
       migrations.map((migration) => normalizeMigrationSource(migration)),
     ),
     ...v4Sources,
+    ...v7Sources,
   });
 }
 
@@ -352,6 +457,21 @@ function normalizeMigrationSource(value: unknown): NormalizedMigrationSource {
   return Object.freeze({
     id: migrationId(migration.id),
     file: migrationFile(migration.file),
+    bytes: exactBytes(migration.bytes, MAX_MIGRATION_BYTES),
+  });
+}
+
+function normalizeApplicationMigrationV2(
+  value: unknown,
+): NormalizedMigrationSource {
+  const migration = exactPlainDataRecord(value, MIGRATION_SOURCE_KEYS);
+  const id = migrationIdV2(migration.id);
+  const file = migrationFile(migration.file);
+  const expectedIndex = Number(id.slice("v2-".length)) - 1;
+  if (APPLICATION_MIGRATION_V2_FILES[expectedIndex] !== file) invalid();
+  return Object.freeze({
+    id,
+    file,
     bytes: exactBytes(migration.bytes, MAX_MIGRATION_BYTES),
   });
 }
@@ -417,6 +537,54 @@ function verifyMigrationManifest(
       source === undefined ||
       id !== expectedId ||
       !file.startsWith(`${id}_`) ||
+      source.id !== id ||
+      source.file !== file ||
+      sha256(source.bytes) !== expectedHash
+    ) {
+      invalid();
+    }
+  });
+}
+
+function verifyApplicationMigrationManifestV2(
+  manifestBytes: Uint8Array,
+  migrationSources: readonly NormalizedMigrationSource[],
+): void {
+  const manifest = exactPlainDataRecord(
+    parseCanonicalJson(manifestBytes),
+    APPLICATION_MANIFEST_V2_KEYS,
+  );
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.planVersion !== 2 ||
+    manifest.algorithm !== "sha256"
+  ) {
+    invalid();
+  }
+  const entries = exactDataArray(
+    manifest.migrations,
+    APPLICATION_MIGRATION_V2_FILES.length,
+    false,
+  );
+  if (
+    entries.length !== APPLICATION_MIGRATION_V2_FILES.length ||
+    entries.length !== migrationSources.length
+  ) {
+    invalid();
+  }
+
+  entries.forEach((entryValue, index) => {
+    const entry = exactPlainDataRecord(entryValue, MANIFEST_ENTRY_KEYS);
+    const id = migrationIdV2(entry.id);
+    const file = migrationFile(entry.file);
+    const expectedId = `v2-${String(index + 1).padStart(4, "0")}`;
+    const expectedFile = APPLICATION_MIGRATION_V2_FILES[index];
+    const expectedHash = sha256Hex(entry.sha256);
+    const source = migrationSources[index];
+    if (
+      source === undefined ||
+      id !== expectedId ||
+      file !== expectedFile ||
       source.id !== id ||
       source.file !== file ||
       sha256(source.bytes) !== expectedHash
@@ -574,6 +742,13 @@ function sha256Digest(value: unknown): string {
 
 function migrationId(value: unknown): string {
   if (typeof value !== "string" || !MIGRATION_ID.test(value)) invalid();
+  return value;
+}
+
+function migrationIdV2(value: unknown): string {
+  if (typeof value !== "string" || !APPLICATION_MIGRATION_V2_ID.test(value)) {
+    invalid();
+  }
   return value;
 }
 

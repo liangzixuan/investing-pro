@@ -43,7 +43,7 @@ jobs:
           POSTGRES_PASSWORD: postgres-acceptance-only
           POSTGRES_USER: postgres
         options: >-
-          --health-cmd "pg_isready --username=postgres --dbname=research_cockpit_acceptance_test"
+          --health-cmd "pg_isready --username=postgres --dbname=postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -75,7 +75,7 @@ jobs:
         if: ${{ success() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v6.json
+          name: postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v7.json
           if-no-files-found: error
           retention-days: 30

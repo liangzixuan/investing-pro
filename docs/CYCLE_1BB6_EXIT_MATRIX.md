@@ -57,3 +57,7 @@ reserved for B7. It also does not permit claims about production or external
 authentication, TLS, managed secrets, a production owner or migrator, backup or
 restore, concurrent clients, a driver or pool, real data, application
 integration, deployed persistence, or production readiness.
+
+Successor note: B7's separately versioned source work is locally verified and
+its version 7 live evidence is pending. It does not alter any historical B6 row or
+make the owner-DDL canary a migration.

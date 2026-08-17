@@ -9,10 +9,12 @@ import {
   assertAuthenticatedTestLoaderFixtureResult,
   assertAuthenticatedTestLoaderFixtureRollbackFailure,
   assertExpectedPsqlFailure,
+  assertMigratorWrongPasswordRejection,
   assertOwnerDdlWrongPasswordRejection,
   assertRuntimeWrongPasswordRejection,
   assertTestLoaderWrongPasswordRejection,
   buildOwnerDdlAuthPsqlInvocation,
+  buildMigratorAuthPsqlInvocation,
   buildRuntimeAuthPsqlInvocation,
   buildTestLoaderAuthPsqlInvocation,
   checkPostgresAcceptanceHarness,
@@ -20,6 +22,7 @@ import {
   EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
   extractReviewedSyntheticFixtureBody,
   generateOwnerDdlAuthPassword,
+  generateMigratorAuthPassword,
   generateRuntimeAuthPassword,
   generateTestLoaderAuthPassword,
   injectBootstrapFailure,
@@ -31,6 +34,13 @@ import {
   OWNER_DDL_AUTH_LOGIN_ROLE,
   OWNER_DDL_AUTH_PASSFILE,
   OWNER_DDL_AUTH_WRONG_PASSFILE,
+  MIGRATOR_AUTH_CAPABILITY_ROLE,
+  MIGRATOR_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES,
+  MIGRATOR_AUTH_FORBIDDEN_SET_ROLES,
+  MIGRATOR_AUTH_LOGIN_ROLE,
+  MIGRATOR_AUTH_PASSFILE,
+  MIGRATOR_AUTH_WRONG_PASSFILE,
+  renderB7AcceptanceTargetResetSql,
   renderAuthenticatedOwnerDdlCanaryCreateSql,
   renderAuthenticatedOwnerDdlCanaryDropSql,
   renderAuthenticatedOwnerDdlCanaryRollbackProbeSql,
@@ -48,6 +58,10 @@ import {
   renderOwnerDdlAuthCleanupSql,
   renderOwnerDdlAuthPassfile,
   renderOwnerDdlAuthProvisioningSql,
+  renderMigratorAuthBackendDrainSql,
+  renderMigratorAuthCleanupSql,
+  renderMigratorAuthPassfile,
+  renderMigratorAuthProvisioningSql,
   renderTestLoaderAuthBackendDrainSql,
   renderTestLoaderAuthCleanupSql,
   renderTestLoaderAuthPassfile,
@@ -835,6 +849,145 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(drainSql).toContain("END;\n$owner_ddl_auth_backend_drain$;");
   });
 
+  it("renders the exact ephemeral migrator login and SET-only owner edge", () => {
+    const password = "A".repeat(43);
+    const sql = renderMigratorAuthProvisioningSql(password);
+    expect(sql).toContain(`CREATE ROLE ${MIGRATOR_AUTH_LOGIN_ROLE}`);
+    for (const attribute of [
+      "LOGIN",
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+      "CONNECTION LIMIT 1",
+    ]) {
+      expect(sql).toContain(attribute);
+    }
+    expect(sql).toContain(
+      `GRANT ${MIGRATOR_AUTH_CAPABILITY_ROLE}\n  TO ${MIGRATOR_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    const passwordPosition = sql.indexOf(`PASSWORD '${password}'`);
+    expect(passwordPosition).toBeGreaterThan(-1);
+    for (const suppression of [
+      "SET LOCAL log_statement = 'none';",
+      "SET LOCAL log_min_error_statement = 'panic';",
+      "SET LOCAL log_duration = off;",
+      "SET LOCAL log_min_duration_statement = -1;",
+      "SET LOCAL log_min_duration_sample = -1;",
+      "SET LOCAL log_statement_sample_rate = 0;",
+      "SET LOCAL log_transaction_sample_rate = 0;",
+      "SET LOCAL password_encryption = 'scram-sha-256';",
+    ]) {
+      expect(sql.indexOf(suppression)).toBeGreaterThan(-1);
+      expect(sql.indexOf(suppression)).toBeLessThan(passwordPosition);
+    }
+    expect(sql.match(new RegExp(password, "g"))).toHaveLength(1);
+    expect(MIGRATOR_AUTH_FORBIDDEN_SET_ROLES).toEqual([
+      "research_cockpit_runtime",
+      "research_cockpit_test_seed",
+      "research_cockpit_backup",
+      "postgres",
+    ]);
+    expect(MIGRATOR_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES).toEqual([
+      "research_cockpit_owner",
+      "research_cockpit_runtime",
+      "research_cockpit_test_seed",
+      "research_cockpit_backup",
+      "postgres",
+    ]);
+    const cleanup = renderMigratorAuthCleanupSql();
+    expect(cleanup).toContain(
+      `DROP ROLE IF EXISTS ${MIGRATOR_AUTH_LOGIN_ROLE};`,
+    );
+    expect(cleanup).not.toMatch(/DROP OWNED|REASSIGN OWNED/i);
+    expect(() => renderMigratorAuthProvisioningSql(`${password}\n`)).toThrow(
+      /32-byte base64url/i,
+    );
+  });
+
+  it("keeps migrator SCRAM credentials fixed-path, random, and out of arguments", () => {
+    const passwords = Array.from({ length: 8 }, () =>
+      generateMigratorAuthPassword(),
+    );
+    expect(new Set(passwords).size).toBe(passwords.length);
+    for (const password of passwords) {
+      expect(password).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    }
+    const password = passwords[0];
+    if (!password) throw new Error("Missing generated migrator password");
+    expect(renderMigratorAuthPassfile(password)).toBe(
+      `127.0.0.1:5432:research_cockpit_acceptance_test:${MIGRATOR_AUTH_LOGIN_ROLE}:${password}\n`,
+    );
+
+    const correct = buildMigratorAuthPsqlInvocation(MIGRATOR_AUTH_PASSFILE);
+    expect(correct.environment).toEqual({
+      PGPASSFILE: MIGRATOR_AUTH_PASSFILE,
+      PGSSLMODE: "disable",
+      PGCONNECT_TIMEOUT: "5",
+      PGREQUIREAUTH: "scram-sha-256",
+    });
+    expect(correct.command).toEqual(
+      expect.arrayContaining([
+        "--no-password",
+        "--host=127.0.0.1",
+        "--port=5432",
+        `--username=${MIGRATOR_AUTH_LOGIN_ROLE}`,
+        "--dbname=research_cockpit_acceptance_test",
+      ]),
+    );
+    expect(JSON.stringify(correct)).not.toContain(password);
+
+    const wrong = buildMigratorAuthPsqlInvocation(
+      MIGRATOR_AUTH_WRONG_PASSFILE,
+      { requireScram: false },
+    );
+    expect(wrong.command).toEqual(correct.command);
+    expect(wrong.environment).not.toHaveProperty("PGREQUIREAUTH");
+    expect(wrong.environment.PGPASSFILE).toBe(MIGRATOR_AUTH_WRONG_PASSFILE);
+    expect(() =>
+      assertMigratorWrongPasswordRejection({
+        exitCode: 2,
+        stdout: "",
+        stderr: `psql: error: FATAL: password authentication failed for user "${MIGRATOR_AUTH_LOGIN_ROLE}"`,
+      }),
+    ).not.toThrow();
+    for (const result of [
+      { exitCode: 0, stdout: "", stderr: "" },
+      {
+        exitCode: 2,
+        stdout: "unexpected",
+        stderr: `FATAL: password authentication failed for user "${MIGRATOR_AUTH_LOGIN_ROLE}"`,
+      },
+      { exitCode: 2, stdout: "", stderr: "connection refused" },
+    ]) {
+      expect(() => assertMigratorWrongPasswordRejection(result)).toThrow(
+        /wrong-password migrator authentication/i,
+      );
+    }
+
+    const drain = renderMigratorAuthBackendDrainSql();
+    expect(drain).toContain(`usename = '${MIGRATOR_AUTH_LOGIN_ROLE}'`);
+    expect(drain).toContain("pg_catalog.pg_stat_clear_snapshot()");
+    expect(drain).toContain("interval '5 seconds'");
+    expect(drain).toContain("USING ERRCODE = '55000'");
+    expect(drain).toContain("END;\n$migrator_auth_backend_drain$;");
+  });
+
+  it("renders one fixed non-forced reset of the disposable B7 target", () => {
+    const sql = renderB7AcceptanceTargetResetSql();
+    expect(sql).toBe(`DROP DATABASE research_cockpit_acceptance_test;
+DROP ROLE research_cockpit_backup;
+DROP ROLE research_cockpit_runtime;
+DROP ROLE research_cockpit_test_seed;
+DROP ROLE research_cockpit_owner;
+CREATE DATABASE research_cockpit_acceptance_test
+  WITH OWNER postgres TEMPLATE template0;
+`);
+    expect(sql).not.toMatch(/\bFORCE\b|DROP OWNED|REASSIGN OWNED/i);
+  });
+
   it("attempts every runtime-auth finalization target before returning failures", async () => {
     const attempted: string[] = [];
     const firstFailure = new Error("first failure");
@@ -1086,15 +1239,21 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "c0e3531a791dfee4472aef818465e8a551d240c1c2a870fe5cd68c224cf5712d",
+        "c39a9e2f24300f05e30f26e41bf72b8bf264513e90a1e1bebdf4efbc4f1b64ec",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v6.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v7.json",
+    );
+    expect(artifacts.workflow).toContain(
+      '--health-cmd "pg_isready --username=postgres --dbname=postgres"',
+    );
+    expect(artifacts.workflow).not.toContain(
+      '--health-cmd "pg_isready --username=postgres --dbname=research_cockpit_acceptance_test"',
     );
   });
 
@@ -1224,7 +1383,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v6.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v7.json",
         unsafePath,
       );
       expect(
@@ -1264,7 +1423,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1379,15 +1538,19 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("writes success evidence only after the final implemented probe", () => {
     const source = runPostgresAcceptance.toString();
     const impersonatedProbe = source.indexOf("await verifyWriteDenials");
-    const finalProbe = source.indexOf(
+    const runtimeProbe = source.indexOf(
       "await verifyAuthenticatedRuntimeSession",
+    );
+    const finalProbe = source.indexOf(
+      "await verifyVersionedAuthenticatedMigrationPlan",
     );
     const buildEvidence = source.indexOf("buildPostgresAcceptanceEvidence");
     const writeEvidence = source.indexOf("writePostgresAcceptanceEvidence");
     const evidenceHash = source.indexOf("writtenEvidence.sha256");
     const successMessage = source.indexOf("process.stdout.write");
     expect(impersonatedProbe).toBeGreaterThan(-1);
-    expect(finalProbe).toBeGreaterThan(impersonatedProbe);
+    expect(runtimeProbe).toBeGreaterThan(impersonatedProbe);
+    expect(finalProbe).toBeGreaterThan(runtimeProbe);
     expect(buildEvidence).toBeGreaterThan(finalProbe);
     expect(writeEvidence).toBeGreaterThan(buildEvidence);
     expect(successMessage).toBeGreaterThan(writeEvidence);
@@ -1395,7 +1558,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(source).not.toContain("writtenEvidence.path");
     expect(source).toContain("authenticated test-loader");
     expect(source).toContain("driverless financial-fact projection");
-    expect(source).toContain("version 6 success-only run record");
+    expect(source).toContain("version 7 success-only run record");
   });
 
   it("loads the reviewed fixture only through the bounded authenticated test-loader boundary", async () => {
@@ -1443,9 +1606,9 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "await verifyTestLoaderLoginBeforeSetRole(containerId);",
       "await verifyTestLoaderRoleEscalationDenials(containerId);",
       "await verifyFixtureTablesEmpty(containerId);",
-      "await verifyAuthenticatedTestLoaderRollback(containerId, fixtureSql);",
+      "await verifyAuthenticatedTestLoaderRollback(",
       "await verifyAuthenticatedTestLoaderFixtureLoad(containerId, fixtureSql);",
-      "await verifyAuthenticatedTestLoaderDenials(containerId);",
+      "await verifyAuthenticatedTestLoaderDenials(",
       "} finally {",
       "run: () => cleanupTestLoaderAuthProbe(containerId)",
       "run: () => verifyTestLoaderAuthResidueAbsent(containerId)",
@@ -1492,7 +1655,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "authenticated test-loader ledger write",
       "authenticated test-loader persistent DDL",
       "authenticated test-loader temporary DDL",
-      "await verifyMigrationLedger(containerId)",
+      "await verifyMigrationLedger(containerId, expectedLedger)",
     ]) {
       expect(denials).toContain(marker);
     }
@@ -1551,7 +1714,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "async function provisionOwnerDdlAuthLogin(",
     );
     const orderedMarkers = [
-      "await verifyOwnerDdlAuthResidueAbsent(containerId);",
+      "await verifyOwnerDdlAuthResidueAbsent(containerId, expectedLedger);",
       "await provisionOwnerDdlAuthLogin(containerId, password);",
       "await verifyOwnerDdlAuthRoleCatalog(containerId);",
       "OWNER_DDL_AUTH_PASSFILE,",
@@ -1559,17 +1722,17 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "await verifyOwnerDdlWrongPasswordRejection(containerId);",
       "await verifyOwnerDdlLoginBeforeSetRole(containerId);",
       "await verifyOwnerDdlRoleEscalationDenials(containerId);",
-      "await verifyMigrationLedger(containerId);",
-      "await verifyAuthenticatedOwnerDdlRollback(containerId);",
+      "await verifyMigrationLedger(containerId, expectedLedger);",
+      "await verifyAuthenticatedOwnerDdlRollback(containerId, expectedLedger);",
       "await verifyAuthenticatedOwnerDdlCreate(containerId);",
       "await verifyOwnerDdlCanaryPresent(containerId);",
-      "await verifyMigrationLedger(containerId);",
+      "await verifyMigrationLedger(containerId, expectedLedger);",
       "await verifyAuthenticatedOwnerDdlDrop(containerId);",
       "await verifyOwnerDdlCanaryAbsent(containerId);",
-      "await verifyMigrationLedger(containerId);",
+      "await verifyMigrationLedger(containerId, expectedLedger);",
       "} finally {",
       "run: () => cleanupOwnerDdlAuthProbe(containerId)",
-      "run: () => verifyOwnerDdlAuthResidueAbsent(containerId)",
+      "verifyOwnerDdlAuthResidueAbsent(containerId, expectedLedger)",
     ];
     let previous = -1;
     for (const marker of orderedMarkers) {
@@ -1651,6 +1814,141 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     ]) {
       expect(residue).toContain(marker);
     }
+  });
+
+  it("runs the versioned platform and authenticated application phases before v7 evidence", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const b7 = section(
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+      "async function verifyAuthenticatedApplicationMigrationSession(",
+    );
+    const b7Order = [
+      "await verifyCatalogContract(containerId);",
+      "await resetAcceptanceTargetForAuthenticatedMigrations(containerId);",
+      'label: "injected B7 platform-bootstrap rollback"',
+      "await verifyB7PristineTarget(containerId);",
+      "renderAuthenticatedPlatformMigration(plan),",
+      "await verifyAuthenticatedMigrationPlatformState(containerId);",
+      'label: "B7 platform-bootstrap replay"',
+      "await verifyAuthenticatedApplicationMigrationSession(",
+      "await verifyMigrationLedger(containerId, expectedLedger);",
+      "await verifyB7PlatformArtifactsAfterApplication(containerId);",
+      "await verifyAuthenticatedTestLoaderSession(",
+      "await verifyAuthenticatedOwnerDdlCanarySession(containerId, expectedLedger);",
+      "await verifyAuthenticatedRuntimeSession(containerId);",
+      "await verifyMigrationLedger(containerId, expectedLedger);",
+      "await verifyB7PlatformArtifactsAfterApplication(containerId);",
+    ];
+    let previous = -1;
+    for (const marker of b7Order) {
+      const position = b7.indexOf(marker, previous + 1);
+      expect(position, marker).toBeGreaterThan(previous);
+      previous = position;
+    }
+
+    const authenticated = section(
+      "async function verifyAuthenticatedApplicationMigrationSession(",
+      "async function verifyAuthenticatedMigrationLedger(",
+    );
+    const authenticatedOrder = [
+      "await verifyMigratorAuthResidueAbsent(containerId);",
+      "await provisionMigratorAuthLogin(containerId, password);",
+      "await verifyMigratorAuthRoleCatalog(containerId);",
+      "MIGRATOR_AUTH_PASSFILE,",
+      "MIGRATOR_AUTH_WRONG_PASSFILE,",
+      "await verifyMigratorWrongPasswordRejection(containerId);",
+      "await verifyMigratorLoginBeforeSetRole(containerId);",
+      "await verifyMigratorRoleEscalationDenials(containerId);",
+      "await verifyAuthenticatedMigrationPlatformState(containerId, 1);",
+      "renderAuthenticatedApplicationMigration(plan, true),",
+      'label: "injected authenticated application-migration rollback"',
+      "await verifyAuthenticatedMigrationPlatformState(containerId, 1);",
+      "renderAuthenticatedApplicationMigration(plan),",
+      "await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);",
+      "await verifyMigratorOwnsNoObjects(containerId);",
+      'label: "authenticated application-migration replay"',
+      "await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);",
+      "await verifyMigratorOwnsNoObjects(containerId);",
+      "run: () => cleanupMigratorAuthProbe(containerId)",
+      "run: () => verifyMigratorAuthResidueAbsent(containerId)",
+    ];
+    previous = -1;
+    for (const marker of authenticatedOrder) {
+      const position = authenticated.indexOf(marker, previous + 1);
+      expect(position, marker).toBeGreaterThan(previous);
+      previous = position;
+    }
+
+    const preRole = section(
+      "async function verifyMigratorLoginBeforeSetRole(",
+      "async function verifyMigratorRoleEscalationDenials(",
+    );
+    for (const marker of [
+      "session_user",
+      "current_user",
+      "system_user",
+      "inet_client_addr",
+      "inet_server_addr",
+      "pg_stat_ssl",
+      "migrator persistent DDL before SET ROLE",
+      "migrator public DDL before SET ROLE",
+      "migrator schema DDL before SET ROLE",
+      "CREATE SCHEMA b7_migrator_schema_escape",
+      "migrator trusted extension DDL before SET ROLE",
+      "CREATE EXTENSION hstore",
+      "migrator temporary DDL before SET ROLE",
+    ]) {
+      expect(preRole).toContain(marker);
+    }
+
+    const reset = section(
+      "async function resetAcceptanceTargetForAuthenticatedMigrations(",
+      "async function verifyB7PristineTarget(",
+    );
+    expect(reset).toContain("FROM pg_catalog.pg_stat_activity");
+    expect(reset).not.toContain("backend_type = 'client backend'");
+
+    const platformState = section(
+      "async function verifyAuthenticatedMigrationPlatformState(",
+      "export function injectBootstrapFailure(",
+    );
+    expect(platformState).toContain(`SELECT count(*)
+FROM pg_catalog.pg_default_acl AS defaults
+JOIN pg_catalog.pg_roles AS role ON role.oid = defaults.defaclrole
+WHERE role.rolname = 'research_cockpit_owner';`);
+
+    const cleanup = section(
+      "async function cleanupMigratorAuthProbe(",
+      "async function verifyMigratorAuthResidueAbsent(",
+    );
+    expect(cleanup.indexOf("drain migrator-auth backends")).toBeLessThan(
+      cleanup.indexOf("remove migrator-auth passfile"),
+    );
+    expect(cleanup.indexOf("remove migrator-auth passfile")).toBeLessThan(
+      cleanup.indexOf("drop ephemeral migrator login"),
+    );
+    expect(cleanup).not.toMatch(/DROP OWNED|REASSIGN OWNED/i);
+
+    const finalPlatform = section(
+      "async function verifyB7PlatformArtifactsAfterApplication(",
+      "async function verifyCheckedOutCommit(",
+    );
+    expect(finalPlatform).toContain("FROM pg_catalog.pg_default_acl");
+    expect(finalPlatform).toContain("defaults.defaclnamespace = 0");
+    expect(finalPlatform).toContain("defaults.defaclobjtype = 'f'");
+    expect(finalPlatform).toContain("privilege.grantee = 0");
+    expect(finalPlatform).toContain('"1|0"');
   });
 
   it("reuses the exact authorization matrix inside the authenticated cleanup boundary", async () => {

@@ -1,6 +1,7 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 6 live record retained and reviewed
+Status: accepted; version 6 live record retained and reviewed; version 7 source
+contract locally verified and live evidence pending
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -25,12 +26,13 @@ projection-query check plus the query and normalizer source hashes. Version 4
 was retained and live-reviewed for its recorded B4 scope. Version 5 adds only
 the authenticated test-loader fixture-load check and splits the remaining
 migrator and backup session limitations; its first record is retained and
-live-reviewed. The current source producer writes
-`research-cockpit-postgres-acceptance-v6.json`; version 6 appends only the
-authenticated owner-DDL canary while retaining the exact version 5 limitations
-and six-source-hash shape. The parser retains exact historical v1 through v5
-support and the closed current v6 contract. The first version 6 record is now
-retained and live-reviewed.
+live-reviewed. Version 6 appends only the authenticated owner-DDL canary while
+retaining the exact version 5 limitations and six-source-hash shape; its first
+record is retained and live-reviewed. The current source producer writes
+`research-cockpit-postgres-acceptance-v7.json`. Version 7 preserves exact v1
+through v6 parsing, appends only the clean authenticated application-migration
+check, and binds three additional v2 plan inputs. Its pinned live run and
+review remain pending; source presence is not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -112,6 +114,17 @@ execute a migration or remove `authenticated_migrator_sessions`. Its distinct
 filename and artifact name prevent reinterpretation of the retained version 5
 record. The later documentation commit does not retest or expand the recorded
 run.
+
+Version 7 is a prospective, distinct record. It replaces only the ordered
+`authenticated_migrator_sessions` limitation with narrower
+external/production/incremental-migration and global platform/application
+atomicity nonclaims, while retaining every other version 6 limitation. Its
+expanded source bundle binds the v2 platform bootstrap, exact application
+manifest, and authenticated migration renderer; the manifest in turn binds
+every exact application body. No version 7 live claim is valid until the pinned
+workflow succeeds and the artifact, logs, hashes, and independent offline
+review are retained under
+[ADR 0019](./0019-versioned-authenticated-migration-phase.md).
 
 ## Primary sources
 

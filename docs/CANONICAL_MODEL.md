@@ -2,7 +2,8 @@
 
 Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
 runtime authentication, b3 authorization-matrix, b4 projection-query, b5
-test-loader, and b6 owner-DDL canary boundaries; synthetic data only.
+test-loader, and b6 owner-DDL canary boundaries, plus the source-stage B7
+versioned migration boundary; synthetic data only. B7 live evidence is pending.
 
 ## Identity
 
@@ -128,6 +129,18 @@ passed in PostgreSQL run `32058853521` at commit `7aac502`; the retained version
 [Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md). B6 changes no canonical
 entity, tenancy, time, numeric, evidence, rights, or projection contract.
 
+Cycle 1b-b7 also changes no canonical entity, tenancy, time, numeric, evidence,
+rights, or projection semantics. It versions how the same clean application
+contract is established: a local container-superuser platform phase creates
+the capability roles, owner-owned schemas, ACL lockdown and hardened
+`btree_gist`; a separate ephemeral non-superuser then authenticates with SCRAM,
+selects only the owner capability, and applies the role-neutral application
+plan with login-attributed ledger rows. The legacy manifest/bodies remain b1
+through b6 regression-only inputs, not an alternate B7 authority. Source work
+is locally verified and the pinned version 7 live run/review remain pending; see
+[ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md) and the
+[Cycle 1b-b7 exit matrix](./CYCLE_1BB7_EXIT_MATRIX.md).
+
 That bounded result does not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -137,8 +150,10 @@ cleanup, concurrency, authenticated migrator and backup sessions,
 backup/restore, and the future deletion path remain separate gates. B5 closes
 only one sequential, synthetic, container-local acceptance-only test-loader
 result. B6 does not execute a migration or close the authenticated-migrator
-gate; the versioned platform/application split and complete migration proof are
-reserved for B7.
+gate. B7 targets only the bounded clean application migration after a separately
+committed local platform bootstrap; its source presence is not live evidence
+and it does not prove production/incremental migration or global cross-phase
+atomicity.
 The successful b3 run closes only the recorded synthetic authenticated
 tenant/rights/prepared-read gap; it does not change any of these remaining
 identity, transport, operational, or deployment gates.

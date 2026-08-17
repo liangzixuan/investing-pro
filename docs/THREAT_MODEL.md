@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b6 threat model
+# Sprint 0 through bounded live Cycle 1b-b6 and source-stage B7 threat model
 
 ## Current trust boundaries
 
@@ -107,6 +107,20 @@ login's otherwise weak attributes. Mandatory cleanup and a fixed canary object
 limit the exercised path, but they do not make the login a least-privileged
 migrator or authorize any production owner membership.
 
+Cycle 1b-b7 introduces a separate v2 plan as the sole current migration
+authority for B7. After inherited b1 through b6 regressions, an exact
+maintenance-database reset removes the disposable target and four
+dependency-free capability roles before proving a pristine namespace. A local
+container-superuser platform transaction then creates the roles, owner-owned
+schemas, database/schema/public ACL lockdown, and hardened `btree_gist`.
+Only the separately committed application phase uses an ephemeral,
+connection-limited, non-superuser SCRAM login with one set-only owner edge.
+Rollback/replay, identity, ledger attribution, object ownership, passfile,
+backend, membership, login, and login-owned-object residue are fail-closed
+gates before V7 evidence. The source stage is locally verified; no live B7
+claim exists until a pinned version 7 record and run are retained and
+independently reviewed.
+
 That database login is not a user identity. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
@@ -117,7 +131,10 @@ migrator, backup, and restore boundaries remain deferred. The B5 test-loader
 result establishes only one sequential, synthetic, container-local
 acceptance-only session, not a production loader or identity boundary. The
 reviewed B6 canary does not execute a migration, redesign role bootstrap, or
-close `authenticated_migrator_sessions`; B7 retains that full boundary.
+close `authenticated_migrator_sessions`. B7 targets only the exact
+container-local clean application migration after a separately committed
+platform phase; external/production/incremental migration and global
+cross-phase atomicity remain explicit nonclaims.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes

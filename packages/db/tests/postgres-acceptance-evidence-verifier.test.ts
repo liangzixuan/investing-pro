@@ -19,6 +19,8 @@ import {
   POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -53,6 +55,14 @@ interface MutableInput {
     acceptanceRunner: Uint8Array;
     projectionQuery?: Uint8Array;
     projectionNormalizer?: Uint8Array;
+    platformBootstrapV2?: Uint8Array;
+    applicationMigrationManifestV2?: Uint8Array;
+    authenticatedMigrationRendererV2?: Uint8Array;
+    applicationMigrationsV2?: Array<{
+      id: string;
+      file: string;
+      bytes: Uint8Array;
+    }>;
     migrations: Array<{ id: string; file: string; bytes: Uint8Array }>;
   };
 }
@@ -85,6 +95,20 @@ function cloneInput(): MutableInput {
       acceptanceRunner: exactCopy(BASE_INPUT.sources.acceptanceRunner),
       projectionQuery: exactCopy(BASE_INPUT.sources.projectionQuery!),
       projectionNormalizer: exactCopy(BASE_INPUT.sources.projectionNormalizer!),
+      platformBootstrapV2: exactCopy(BASE_INPUT.sources.platformBootstrapV2!),
+      applicationMigrationManifestV2: exactCopy(
+        BASE_INPUT.sources.applicationMigrationManifestV2!,
+      ),
+      authenticatedMigrationRendererV2: exactCopy(
+        BASE_INPUT.sources.authenticatedMigrationRendererV2!,
+      ),
+      applicationMigrationsV2: BASE_INPUT.sources.applicationMigrationsV2!.map(
+        (migration) => ({
+          id: migration.id,
+          file: migration.file,
+          bytes: exactCopy(migration.bytes),
+        }),
+      ),
       migrations: BASE_INPUT.sources.migrations.map((migration) => ({
         id: migration.id,
         file: migration.file,
@@ -138,7 +162,7 @@ function historicalInput(
     | typeof POSTGRES_ACCEPTANCE_V2_NOT_PROVEN
     | typeof POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
 ): MutableInput {
-  const input = mutateEvidence(cloneInput(), (record) => {
+  const input = mutateEvidence(v6Input(), (record) => {
     record.schemaVersion = schemaVersion;
     record.checksPassed = [...checksPassed];
     record.notProven = [...notProven];
@@ -151,8 +175,33 @@ function historicalInput(
   return input;
 }
 
+function removeV7SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.platformBootstrapV2Sha256;
+  delete hashes.applicationMigrationManifestV2Sha256;
+  delete hashes.authenticatedMigrationRendererV2Sha256;
+}
+
+function removeV7Sources(input: MutableInput): void {
+  delete input.sources.platformBootstrapV2;
+  delete input.sources.applicationMigrationManifestV2;
+  delete input.sources.authenticatedMigrationRendererV2;
+  delete input.sources.applicationMigrationsV2;
+}
+
+function v6Input(): MutableInput {
+  const input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 6;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN];
+    removeV7SourceHashes(record);
+  });
+  removeV7Sources(input);
+  return input;
+}
+
 function v4Input(): MutableInput {
-  return mutateEvidence(cloneInput(), (record) => {
+  return mutateEvidence(v6Input(), (record) => {
     record.schemaVersion = 4;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN];
@@ -160,7 +209,7 @@ function v4Input(): MutableInput {
 }
 
 function v5Input(): MutableInput {
-  return mutateEvidence(cloneInput(), (record) => {
+  return mutateEvidence(v6Input(), (record) => {
     record.schemaVersion = 5;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V5_NOT_PROVEN];
@@ -169,7 +218,7 @@ function v5Input(): MutableInput {
 
 function replaceCanonicalSourceJson(
   input: VerifyPostgresAcceptanceEvidenceOfflineInput,
-  key: "imageConfig" | "migrationManifest",
+  key: "imageConfig" | "migrationManifest" | "applicationMigrationManifestV2",
   mutate: (value: Record<string, unknown>) => void,
   updateRecordedHash: boolean,
 ): MutableInput {
@@ -181,10 +230,17 @@ function replaceCanonicalSourceJson(
   mutate(value);
   const replacement = canonicalJson(value);
   next.sources = { ...next.sources, [key]: replacement };
-  if (key === "migrationManifest" && updateRecordedHash) {
+  if (
+    (key === "migrationManifest" || key === "applicationMigrationManifestV2") &&
+    updateRecordedHash
+  ) {
     return mutateEvidence(next, (record) => {
       const hashes = record.sourceHashes as Record<string, unknown>;
-      hashes.migrationManifestSha256 = sha256(replacement);
+      hashes[
+        key === "migrationManifest"
+          ? "migrationManifestSha256"
+          : "applicationMigrationManifestV2Sha256"
+      ] = sha256(replacement);
     });
   }
   return next;
@@ -209,6 +265,36 @@ function cloneFrom(
         ? {}
         : {
             projectionNormalizer: exactCopy(input.sources.projectionNormalizer),
+          }),
+      ...(input.sources.platformBootstrapV2 === undefined
+        ? {}
+        : {
+            platformBootstrapV2: exactCopy(input.sources.platformBootstrapV2),
+          }),
+      ...(input.sources.applicationMigrationManifestV2 === undefined
+        ? {}
+        : {
+            applicationMigrationManifestV2: exactCopy(
+              input.sources.applicationMigrationManifestV2,
+            ),
+          }),
+      ...(input.sources.authenticatedMigrationRendererV2 === undefined
+        ? {}
+        : {
+            authenticatedMigrationRendererV2: exactCopy(
+              input.sources.authenticatedMigrationRendererV2,
+            ),
+          }),
+      ...(input.sources.applicationMigrationsV2 === undefined
+        ? {}
+        : {
+            applicationMigrationsV2: input.sources.applicationMigrationsV2.map(
+              (migration) => ({
+                id: migration.id,
+                file: migration.file,
+                bytes: exactCopy(migration.bytes),
+              }),
+            ),
           }),
       migrations: input.sources.migrations.map((migration) => ({
         id: migration.id,
@@ -383,6 +469,23 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v6 evidence with its exact six-source bundle", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v6Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_clean_application_migrations_after_platform_bootstrap",
+    );
+    expect(result.recordedNotProven).toContain(
+      "authenticated_migrator_sessions",
+    );
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -415,6 +518,12 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(v5Input(), (record) => {
         record.schemaVersion = 6;
       }),
+      mutateEvidence(v6Input(), (record) => {
+        record.schemaVersion = 7;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 6;
+      }),
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 5;
       }),
@@ -433,7 +542,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("requires the exact version-specific source bundle", () => {
-    const missingV6 = cloneInput();
+    const missingV7 = cloneInput();
+    delete missingV7.sources.platformBootstrapV2;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV7),
+    );
+
+    const missingV6 = v6Input();
     delete missingV6.sources.projectionQuery;
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(missingV6),
@@ -463,11 +578,19 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       verifyPostgresAcceptanceEvidenceOffline(extraHistorical),
     );
 
+    const extraV6 = v6Input();
+    (
+      extraV6.sources as unknown as Record<string, unknown>
+    ).platformBootstrapV2 = exactCopy(BASE_INPUT.sources.platformBootstrapV2!);
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraV6),
+    );
+
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
     );
   });
 
@@ -704,6 +827,9 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "acceptanceRunner",
       "projectionQuery",
       "projectionNormalizer",
+      "platformBootstrapV2",
+      "applicationMigrationManifestV2",
+      "authenticatedMigrationRendererV2",
     ] as const) {
       const input = cloneInput();
       input.sources = {
@@ -907,6 +1033,136 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("requires the exact v2 application manifest and source inventory", () => {
+    const missing = cloneInput();
+    missing.sources = {
+      ...missing.sources,
+      applicationMigrationsV2:
+        missing.sources.applicationMigrationsV2!.slice(1),
+    };
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missing),
+    );
+
+    const extra = cloneInput();
+    extra.sources = {
+      ...extra.sources,
+      applicationMigrationsV2: [
+        ...extra.sources.applicationMigrationsV2!,
+        {
+          id: "v2-0007",
+          file: "0007_unreviewed.sql",
+          bytes: bytes("SELECT 1;\n"),
+        },
+      ],
+    };
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extra),
+    );
+
+    const reordered = cloneInput();
+    reordered.sources = {
+      ...reordered.sources,
+      applicationMigrationsV2: [
+        ...reordered.sources.applicationMigrationsV2!,
+      ].reverse(),
+    };
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(reordered),
+    );
+  });
+
+  it("rejects v2 application migration ID, filename, and byte mismatches", () => {
+    for (const mutate of [
+      (input: MutableInput) => {
+        const migrations = [...input.sources.applicationMigrationsV2!];
+        migrations[0] = { ...migrations[0]!, id: "v2-0002" };
+        input.sources = {
+          ...input.sources,
+          applicationMigrationsV2: migrations,
+        };
+      },
+      (input: MutableInput) => {
+        const migrations = [...input.sources.applicationMigrationsV2!];
+        migrations[0] = { ...migrations[0]!, file: "0001_wrong.sql" };
+        input.sources = {
+          ...input.sources,
+          applicationMigrationsV2: migrations,
+        };
+      },
+      (input: MutableInput) => {
+        const migrations = [...input.sources.applicationMigrationsV2!];
+        migrations[0] = {
+          ...migrations[0]!,
+          bytes: changedByte(migrations[0]!.bytes),
+        };
+        input.sources = {
+          ...input.sources,
+          applicationMigrationsV2: migrations,
+        };
+      },
+    ]) {
+      const input = cloneInput();
+      mutate(input);
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(input),
+      );
+    }
+  });
+
+  it("rejects malformed, reordered, mis-hashed, and noncanonical v2 application manifests", () => {
+    const changes: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        (value.migrations as unknown[]).reverse();
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.id = "v2-0002";
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.file = "0001_wrong.sql";
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.sha256 = "A".repeat(64);
+      },
+      (value) => {
+        value.planVersion = 3;
+      },
+      (value) => {
+        value.secret = SECRET_CANARY;
+      },
+    ];
+    for (const change of changes) {
+      const input = replaceCanonicalSourceJson(
+        cloneInput(),
+        "applicationMigrationManifestV2",
+        change,
+        true,
+      );
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(input),
+      );
+    }
+
+    const input = cloneInput();
+    const replacement = bytes(
+      ` ${decoder.decode(input.sources.applicationMigrationManifestV2)}`,
+    );
+    input.sources = {
+      ...input.sources,
+      applicationMigrationManifestV2: replacement,
+    };
+    const changed = mutateEvidence(input, (record) => {
+      const hashes = record.sourceHashes as Record<string, unknown>;
+      hashes.applicationMigrationManifestV2Sha256 = sha256(replacement);
+    });
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(changed),
+    );
+  });
+
   it("rejects accessor-backed and symbol-decorated migration arrays", () => {
     const accessor = cloneInput();
     const migrations = [...accessor.sources.migrations];
@@ -945,6 +1201,9 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     acceptanceRunner,
     projectionQuery,
     projectionNormalizer,
+    platformBootstrapV2,
+    applicationMigrationManifestV2,
+    authenticatedMigrationRendererV2,
   ] = await Promise.all([
     readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
     readExact(
@@ -958,6 +1217,18 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     readExact(new URL("../src/postgres-acceptance.ts", import.meta.url)),
     readExact(new URL("../src/postgres-projection-query.ts", import.meta.url)),
     readExact(new URL("../src/projection-normalization.ts", import.meta.url)),
+    readExact(
+      new URL("../migration-plans/v2/platform-bootstrap.sql", import.meta.url),
+    ),
+    readExact(
+      new URL(
+        "../migration-plans/v2/application-manifest.json",
+        import.meta.url,
+      ),
+    ),
+    readExact(
+      new URL("../src/authenticated-migration-plan.ts", import.meta.url),
+    ),
   ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
     reference: string;
@@ -980,6 +1251,33 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       file: migration.file,
       bytes: await readExact(
         new URL(`../migrations/${migration.file}`, import.meta.url),
+      ),
+    })),
+  );
+  const applicationManifestV2 = JSON.parse(
+    decoder.decode(applicationMigrationManifestV2),
+  ) as {
+    migrations: Array<{ id: string; file: string }>;
+  };
+  const applicationMigrationNames = (
+    await readdir(
+      new URL("../migration-plans/v2/application/", import.meta.url),
+    )
+  )
+    .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name))
+    .sort();
+  expect(applicationMigrationNames).toEqual(
+    applicationManifestV2.migrations.map((migration) => migration.file),
+  );
+  const applicationMigrationsV2 = await Promise.all(
+    applicationManifestV2.migrations.map(async (migration) => ({
+      id: migration.id,
+      file: migration.file,
+      bytes: await readExact(
+        new URL(
+          `../migration-plans/v2/application/${migration.file}`,
+          import.meta.url,
+        ),
       ),
     })),
   );
@@ -1017,6 +1315,13 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       acceptanceRunnerSha256: sha256(acceptanceRunner),
       projectionQuerySha256: sha256(projectionQuery),
       projectionNormalizerSha256: sha256(projectionNormalizer),
+      platformBootstrapV2Sha256: sha256(platformBootstrapV2),
+      applicationMigrationManifestV2Sha256: sha256(
+        applicationMigrationManifestV2,
+      ),
+      authenticatedMigrationRendererV2Sha256: sha256(
+        authenticatedMigrationRendererV2,
+      ),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -1039,6 +1344,10 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       acceptanceRunner,
       projectionQuery,
       projectionNormalizer,
+      platformBootstrapV2,
+      applicationMigrationManifestV2,
+      authenticatedMigrationRendererV2,
+      applicationMigrationsV2,
       migrations,
     },
   };

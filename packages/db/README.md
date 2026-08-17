@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B6 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B6 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B7 SOURCE/LOCAL VERIFIED, LIVE EVIDENCE PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -66,6 +66,20 @@ migration and leaves `authenticated_migrator_sessions` unproven. See the
 [ADR 0018](../../docs/adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](../../docs/CYCLE_1BB6_EXIT_MATRIX.md).
 
+Cycle 1b-b7 introduces new versioned migration-plan sources without changing
+the historical manifest or seven historical bodies. Those legacy inputs remain
+b1 through b6 regressions only. After an exact disposable-database/capability-
+role reset, the B7 platform phase runs locally as the container superuser and
+creates the fixed roles, owner-owned schemas, database/schema/public ACL
+lockdown, and hardened `btree_gist` installation. A separate ephemeral,
+non-superuser SCRAM login may then select only `research_cockpit_owner` and
+execute the closed role-neutral application plan. The V7 evidence/reviewer
+contract binds the platform plan, exact application manifest and bodies, and
+authenticated renderer, but source presence is not live evidence. The pinned
+version 7 run and offline review remain pending; see
+[ADR 0019](../../docs/adr/0019-versioned-authenticated-migration-phase.md) and
+the [Cycle 1b-b7 exit matrix](../../docs/CYCLE_1BB7_EXIT_MATRIX.md).
+
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
 acceptance-only renderer validates the immutable manifest and emits all seven
@@ -103,6 +117,15 @@ authenticated test-loader path. The reviewed version 5 run passed that exact
 acceptance-only path without widening the historical b1 through b4 results. B6
 adds only a post-bootstrap, acceptance-only owner-DDL canary; it neither changes
 the bootstrap nor promotes the owner login to a migrator.
+
+B7 does not reinterpret that historical bootstrap. Its v2 plan is the sole B7
+migration authority: after inherited b1 through b6 regressions, the harness
+connects through maintenance database `postgres`, proves zero target
+sessions/backends,
+drops the exact disposable target without `FORCE`, drops exactly the four
+dependency-free capability roles, recreates the target, and proves pristine.
+The separately committed platform phase then creates the platform artifacts;
+only the subsequent application phase uses the authenticated non-superuser.
 
 The b2 boundary leaves that superuser migration bootstrap, test-seed
 impersonation, and backup impersonation unchanged. Only runtime behavior moves
@@ -207,13 +230,15 @@ including `NOREPLICATION`.
 | `research_cockpit_test_seed` | Synthetic fresh-database fixture loading only: `SELECT` and `INSERT`, with synthetic-only RLS checks. It cannot change the migration ledger.                 |
 | `research_cockpit_backup`    | Synthetic logical-backup reads only, through explicit backup RLS policies. It does not bypass RLS.                                                           |
 
-The authenticated bootstrap/migrator account is external to this contract. It
-must have the platform-managed privileges needed to create roles, install
-`btree_gist`, create objects in schemas owned by the owner capability, and
-transfer object ownership. These migrations do not create a migrator login and
-do not grant any capability role to any other role. Deployment automation must
-not add role chaining without a new reviewed migration and live authorization
-tests.
+The authenticated bootstrap/migrator account is external. For the historical
+manifest, that administrator must have the platform-managed privileges needed
+to create roles, install `btree_gist`, create objects in schemas owned by the
+owner capability, and transfer object ownership. Those migrations do not create
+a migrator login and do not grant any capability role to any other role. B7
+instead keeps platform provisioning in its separately committed administrator
+phase and gives the authenticated application migrator only one temporary,
+set-only owner edge. Deployment automation must not add role chaining without a
+new reviewed migration and live authorization tests.
 
 ADR 0014 defines one acceptance-only exception after the existing bootstrap:
 an ephemeral runtime login may receive one catalog-verified membership in the
@@ -234,7 +259,8 @@ capability with `ADMIN FALSE`, `INHERIT FALSE`, and `SET TRUE`. The edge exists
 only around the fixed DDL canary and is removed before the zero-membership
 catalog fingerprint. It authorizes no migration, capability-role provisioning,
 extension installation, production owner login, or deployment role graph. A
-later B7 must version and prove the platform/application migration split.
+separate B7 source plan now versions the platform/application split; its live
+version 7 proof remains pending and does not widen B6.
 
 ## Static guarantees
 
@@ -387,11 +413,14 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact b1-b6 checks in their retained run records. The
+evidence is limited to the exact b1-b6 checks in their retained run records. B7
+source implementation is locally verified but does not widen those records;
+its version 7 live run and review remain pending. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
 authentication, end-user identity binding, production secret handling, a
 driver or pool, concurrency/cancellation/timeouts, complete dossier projections,
-distinct migrator and backup credentials, logical restore, disaster recovery,
+external/production/incremental migrator and backup credentials, global
+platform/application atomicity, logical restore, disaster recovery,
 secure passfile erasure, and production readiness remain unproven.

@@ -23,6 +23,8 @@ import {
   POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
   PostgresAcceptanceEvidenceError,
   serializePostgresAcceptanceEvidence,
   writePostgresAcceptanceEvidence,
@@ -34,6 +36,7 @@ import {
   type PostgresAcceptanceEvidenceV4,
   type PostgresAcceptanceEvidenceV5,
   type PostgresAcceptanceEvidenceV6,
+  type PostgresAcceptanceEvidenceV7,
 } from "../src/postgres-acceptance-evidence";
 
 const IMAGE_DIGEST = `sha256:${"a".repeat(64)}`;
@@ -77,13 +80,16 @@ function input(
       acceptanceRunnerSha256: "4".repeat(64),
       projectionQuerySha256: "5".repeat(64),
       projectionNormalizerSha256: "6".repeat(64),
+      platformBootstrapV2Sha256: "7".repeat(64),
+      applicationMigrationManifestV2Sha256: "8".repeat(64),
+      authenticatedMigrationRendererV2Sha256: "9".repeat(64),
     },
     completedAt: "2026-08-15T23:59:58.123Z",
     ...overrides,
   };
 }
 
-function evidence(): PostgresAcceptanceEvidenceV6 {
+function evidence(): PostgresAcceptanceEvidenceV7 {
   return buildPostgresAcceptanceEvidence(input());
 }
 
@@ -138,6 +144,7 @@ function mutableV4Evidence(): Record<string, unknown> {
   return {
     ...mutableEvidence(),
     schemaVersion: 4,
+    sourceHashes: v4SourceHashes(),
     checksPassed: [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED],
     notProven: [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN],
   };
@@ -147,8 +154,28 @@ function mutableV5Evidence(): Record<string, unknown> {
   return {
     ...mutableEvidence(),
     schemaVersion: 5,
+    sourceHashes: v4SourceHashes(),
     checksPassed: [...POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED],
     notProven: [...POSTGRES_ACCEPTANCE_V5_NOT_PROVEN],
+  };
+}
+
+function v4SourceHashes(): Record<string, unknown> {
+  const hashes = input().sourceHashes;
+  return {
+    ...historicalSourceHashes(),
+    projectionQuerySha256: hashes.projectionQuerySha256,
+    projectionNormalizerSha256: hashes.projectionNormalizerSha256,
+  };
+}
+
+function mutableV6Evidence(): Record<string, unknown> {
+  return {
+    ...mutableEvidence(),
+    schemaVersion: 6,
+    sourceHashes: v4SourceHashes(),
+    checksPassed: [...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED],
+    notProven: [...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN],
   };
 }
 
@@ -202,6 +229,16 @@ function v5Evidence(): PostgresAcceptanceEvidenceV5 {
   return parsed;
 }
 
+function v6Evidence(): PostgresAcceptanceEvidenceV6 {
+  const parsed = parsePostgresAcceptanceEvidence(
+    JSON.stringify(mutableV6Evidence()),
+  );
+  if (parsed.schemaVersion !== 6) {
+    throw new Error("expected historical v6 evidence");
+  }
+  return parsed;
+}
+
 function expectValueFreeValidationFailure(run: () => unknown): void {
   let caught: unknown;
   try {
@@ -235,10 +272,10 @@ afterEach(async () => {
 });
 
 describe("PostgreSQL acceptance success evidence", () => {
-  it("builds the exact success-only v6 schema in its canonical order", () => {
+  it("builds the exact success-only v7 schema in its canonical order", () => {
     const result = evidence();
     expect(POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME).toBe(
-      "research-cockpit-postgres-acceptance-v6.json",
+      "research-cockpit-postgres-acceptance-v7.json",
     );
     expect(Object.keys(result)).toEqual([
       "schemaVersion",
@@ -263,7 +300,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "completedAt",
     ]);
     expect(result).toEqual({
-      schemaVersion: 6,
+      schemaVersion: 7,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -379,6 +416,22 @@ describe("PostgreSQL acceptance success evidence", () => {
     );
   });
 
+  it("preserves exact historical v6 parsing and canonical serialization", () => {
+    const historical = mutableV6Evidence();
+    const canonical = `${JSON.stringify(historical, null, 2)}\n`;
+    const parsed = parsePostgresAcceptanceEvidence(canonical);
+
+    expect(parsed.schemaVersion).toBe(6);
+    expect(parsed.checksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+    ]);
+    expect(parsed.notProven).toEqual([...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN]);
+    expect(serializePostgresAcceptanceEvidence(parsed)).toBe(canonical);
+    expect(Object.keys(parsed.sourceHashes)).toEqual(
+      Object.keys(v5Evidence().sourceHashes),
+    );
+  });
+
   it("adds only the authenticated matrix claim between v2 and v3", () => {
     expect(POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED).toEqual([
       ...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
@@ -449,9 +502,39 @@ describe("PostgreSQL acceptance success evidence", () => {
     expect(POSTGRES_ACCEPTANCE_V6_NOT_PROVEN).toContain(
       "authenticated_migrator_sessions",
     );
-    expect(Object.keys(evidence().sourceHashes)).toEqual(
+    expect(Object.keys(v6Evidence().sourceHashes)).toEqual(
       Object.keys(v5Evidence().sourceHashes),
     );
+  });
+
+  it("adds the exact authenticated migration claim, limitations, and source hashes in v7", () => {
+    expect(POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED).toEqual([
+      ...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+      "authenticated_clean_application_migrations_after_platform_bootstrap",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V7_NOT_PROVEN).toEqual([
+      "resolved_platform_image_manifest",
+      "external_or_production_authenticated_database_sessions",
+      "external_production_or_incremental_authenticated_migrations",
+      "globally_atomic_platform_and_application_bootstrap",
+      "authenticated_backup_sessions",
+      "end_user_identity_or_tenant_binding",
+      "production_identity_tls_secrets_or_pooling",
+      "concurrent_sessions_cancellation_or_timeouts",
+      "dump_restore_or_disaster_recovery",
+      "real_or_licensed_market_data",
+      "application_driver_pool_or_composition_root",
+      "complete_dossier_history_timeline_or_dimensioned_projection",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V7_NOT_PROVEN).not.toContain(
+      "authenticated_migrator_sessions",
+    );
+    expect(Object.keys(evidence().sourceHashes)).toEqual([
+      ...Object.keys(v6Evidence().sourceHashes),
+      "platformBootstrapV2Sha256",
+      "applicationMigrationManifestV2Sha256",
+      "authenticatedMigrationRendererV2Sha256",
+    ]);
   });
 
   it("rejects cross-version check and limitation combinations", () => {
@@ -509,10 +592,22 @@ describe("PostgreSQL acceptance success evidence", () => {
       parsePostgresAcceptanceEvidence(JSON.stringify(v5AsV6)),
     );
 
-    const v6AsV5 = mutableEvidence();
+    const v6AsV5 = mutableV6Evidence();
     v6AsV5.schemaVersion = 5;
     expectValueFreeValidationFailure(() =>
       parsePostgresAcceptanceEvidence(JSON.stringify(v6AsV5)),
+    );
+
+    const v6AsV7 = mutableV6Evidence();
+    v6AsV7.schemaVersion = 7;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v6AsV7)),
+    );
+
+    const v7AsV6 = mutableEvidence();
+    v7AsV6.schemaVersion = 6;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v7AsV6)),
     );
 
     const mixedV1 = mutableV1Evidence();
@@ -534,10 +629,10 @@ describe("PostgreSQL acceptance success evidence", () => {
     );
 
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
     );
   });
 
@@ -595,7 +690,7 @@ describe("PostgreSQL acceptance success evidence", () => {
   });
 
   it.each([
-    ["schemaVersion", 7],
+    ["schemaVersion", 8],
     ["suite", "different-suite"],
     ["outcome", "failed"],
     ["job", "different-job"],
@@ -790,6 +885,9 @@ describe("PostgreSQL acceptance success evidence", () => {
       "acceptanceRunnerSha256",
       "projectionQuerySha256",
       "projectionNormalizerSha256",
+      "platformBootstrapV2Sha256",
+      "applicationMigrationManifestV2Sha256",
+      "authenticatedMigrationRendererV2Sha256",
     ] as const) {
       for (const replacement of [
         "f".repeat(63),
@@ -873,7 +971,7 @@ describe("PostgreSQL acceptance success evidence", () => {
     }
   });
 
-  it("never writes a historical v1, v2, v3, v4, or v5 record under the v6 filename", async () => {
+  it("never writes a historical v1 through v6 record under the v7 filename", async () => {
     const directory = await mkdtemp(join(tmpdir(), "rc-pg-evidence-"));
     TEMP_DIRECTORIES.push(directory);
 
@@ -883,10 +981,11 @@ describe("PostgreSQL acceptance success evidence", () => {
       v3Evidence(),
       v4Evidence(),
       v5Evidence(),
+      v6Evidence(),
     ]) {
       await expect(
         writePostgresAcceptanceEvidence(
-          historical as unknown as PostgresAcceptanceEvidenceV6,
+          historical as unknown as PostgresAcceptanceEvidenceV7,
           { RUNNER_TEMP: directory },
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceError);

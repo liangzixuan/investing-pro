@@ -27,6 +27,8 @@ import {
   POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -48,6 +50,9 @@ const FIXED_SOURCE_PATHS = [
   "packages/db/src/postgres-acceptance.ts",
   "packages/db/src/postgres-projection-query.ts",
   "packages/db/src/projection-normalization.ts",
+  "packages/db/migration-plans/v2/platform-bootstrap.sql",
+  "packages/db/migration-plans/v2/application-manifest.json",
+  "packages/db/src/authenticated-migration-plan.ts",
 ] as const;
 const REPOSITORY = "example/research-cockpit";
 const REPOSITORY_ID = "123456789";
@@ -248,6 +253,7 @@ function evidenceAdapterTests(): void {
       unknown
     >;
     record.schemaVersion = 4;
+    deleteV7SourceHashes(record);
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN];
     const evidenceBytes = Buffer.from(
@@ -281,6 +287,7 @@ function evidenceAdapterTests(): void {
       unknown
     >;
     record.schemaVersion = 5;
+    deleteV7SourceHashes(record);
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V5_NOT_PROVEN];
     const evidenceBytes = Buffer.from(
@@ -307,7 +314,41 @@ function evidenceAdapterTests(): void {
     );
   });
 
-  it("rejects a changed v6 projection source at the anchored commit", async () => {
+  it("reviews a canonical historical v6 record at its anchored commit", async () => {
+    const fixture = await createFixture();
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 6;
+    deleteV7SourceHashes(record);
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+
+    const result = await reviewPostgresAcceptanceEvidence({
+      ...fixture.input,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    });
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_clean_application_migrations_after_platform_bootstrap",
+    );
+  });
+
+  it("rejects a changed v7 projection source at the anchored commit", async () => {
     const fixture = await createFixture();
     await writeFile(
       join(
@@ -339,6 +380,26 @@ function evidenceAdapterTests(): void {
           .digest("hex"),
       }),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
+
+  it("rejects changed v7 platform, renderer, and application-body sources at the anchored commit", async () => {
+    for (const path of [
+      "packages/db/migration-plans/v2/platform-bootstrap.sql",
+      "packages/db/src/authenticated-migration-plan.ts",
+      "packages/db/migration-plans/v2/application/0001_request_context_and_ledger.sql",
+    ]) {
+      const fixture = await createFixture();
+      await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
+      git(fixture.repositoryPath, ["add", "--all"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v7 source"]);
+      const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+
+      await expect(
+        reviewPostgresAcceptanceEvidence(
+          await inputAtCommit(fixture, changedCommit),
+        ),
+      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+    }
   });
 
   it("requires every independent trust anchor", async () => {
@@ -465,10 +526,9 @@ function evidenceAdapterTests(): void {
       "HEAD",
     ]);
     await expect(
-      reviewPostgresAcceptanceEvidence({
-        ...unexpected.input,
-        expectedCommit: unexpectedCommit,
-      }),
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(unexpected, unexpectedCommit),
+      ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
 
     const missing = await createFixture();
@@ -487,10 +547,87 @@ function evidenceAdapterTests(): void {
     git(missing.repositoryPath, ["commit", "-m", "missing migration"]);
     const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
     await expect(
-      reviewPostgresAcceptanceEvidence({
-        ...missing.input,
-        expectedCommit: missingCommit,
-      }),
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(missing, missingCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
+
+  it("rejects unexpected, missing, and non-regular v2 migration-plan blobs", async () => {
+    const unexpected = await createFixture();
+    await writeFile(
+      join(
+        unexpected.repositoryPath,
+        "packages/db/migration-plans/v2/unreviewed.sql",
+      ),
+      "SELECT 1;\n",
+    );
+    git(unexpected.repositoryPath, ["add", "--all"]);
+    git(unexpected.repositoryPath, ["commit", "-m", "unexpected v2 source"]);
+    const unexpectedCommit = git(unexpected.repositoryPath, [
+      "rev-parse",
+      "HEAD",
+    ]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(unexpected, unexpectedCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+
+    const missing = await createFixture();
+    const applicationManifestV2 = JSON.parse(
+      await readFile(
+        join(
+          missing.repositoryPath,
+          "packages/db/migration-plans/v2/application-manifest.json",
+        ),
+        "utf8",
+      ),
+    ) as { migrations: { file: string }[] };
+    const missingFile = applicationManifestV2.migrations[0]?.file;
+    if (missingFile === undefined) {
+      throw new Error("missing v2 fixture migration");
+    }
+    await rm(
+      join(
+        missing.repositoryPath,
+        "packages/db/migration-plans/v2/application",
+        missingFile,
+      ),
+    );
+    git(missing.repositoryPath, ["add", "--all"]);
+    git(missing.repositoryPath, ["commit", "-m", "missing v2 source"]);
+    const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(missing, missingCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+
+    const nonRegular = await createFixture();
+    const platformPath = join(
+      nonRegular.repositoryPath,
+      "packages/db/migration-plans/v2/platform-bootstrap.sql",
+    );
+    const platformBlob = git(nonRegular.repositoryPath, [
+      "hash-object",
+      "-w",
+      platformPath,
+    ]);
+    git(nonRegular.repositoryPath, [
+      "update-index",
+      "--cacheinfo",
+      `120000,${platformBlob},packages/db/migration-plans/v2/platform-bootstrap.sql`,
+    ]);
+    git(nonRegular.repositoryPath, ["commit", "-m", "symlink v2 source"]);
+    const nonRegularCommit = git(nonRegular.repositoryPath, [
+      "rev-parse",
+      "HEAD",
+    ]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(nonRegular, nonRegularCommit),
+      ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
@@ -634,6 +771,29 @@ function evidenceReviewCliTests(): void {
   });
 }
 
+async function inputAtCommit(
+  fixture: ReviewFixture,
+  commit: string,
+): Promise<PostgresAcceptanceEvidenceReviewInput> {
+  const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+    string,
+    unknown
+  >;
+  record.commitSha = commit;
+  const evidenceBytes = Buffer.from(
+    `${JSON.stringify(record, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(fixture.evidencePath, evidenceBytes);
+  return {
+    ...fixture.input,
+    expectedCommit: commit,
+    expectedEvidenceSha256: createHash("sha256")
+      .update(evidenceBytes)
+      .digest("hex"),
+  };
+}
+
 async function createFixture(
   repositoryDirectoryName = "repository",
 ): Promise<ReviewFixture> {
@@ -660,6 +820,21 @@ async function createFixture(
   ) as { migrations: { file: string }[] };
   for (const { file } of manifest.migrations) {
     const path = join("packages/db/migrations", file);
+    const destination = join(repositoryPath, path);
+    await mkdir(dirname(destination), { recursive: true });
+    await copyFile(join(SOURCE_REPOSITORY, path), destination);
+  }
+  const applicationManifestV2 = JSON.parse(
+    await readFile(
+      join(
+        repositoryPath,
+        "packages/db/migration-plans/v2/application-manifest.json",
+      ),
+      "utf8",
+    ),
+  ) as { migrations: { file: string }[] };
+  for (const { file } of applicationManifestV2.migrations) {
+    const path = join("packages/db/migration-plans/v2/application", file);
     const destination = join(repositoryPath, path);
     await mkdir(dirname(destination), { recursive: true });
     await copyFile(join(SOURCE_REPOSITORY, path), destination);
@@ -713,6 +888,21 @@ async function createFixture(
       projectionNormalizerSha256: await fileSha256(
         join(repositoryPath, "packages/db/src/projection-normalization.ts"),
       ),
+      platformBootstrapV2Sha256: await fileSha256(
+        join(
+          repositoryPath,
+          "packages/db/migration-plans/v2/platform-bootstrap.sql",
+        ),
+      ),
+      applicationMigrationManifestV2Sha256: await fileSha256(
+        join(
+          repositoryPath,
+          "packages/db/migration-plans/v2/application-manifest.json",
+        ),
+      ),
+      authenticatedMigrationRendererV2Sha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/authenticated-migration-plan.ts"),
+      ),
     },
     completedAt: "2026-08-16T01:02:03.004Z",
   });
@@ -749,6 +939,16 @@ function deleteV4SourceHashes(record: Record<string, unknown>): void {
   const hashes = record.sourceHashes as Record<string, unknown>;
   delete hashes.projectionQuerySha256;
   delete hashes.projectionNormalizerSha256;
+  delete hashes.platformBootstrapV2Sha256;
+  delete hashes.applicationMigrationManifestV2Sha256;
+  delete hashes.authenticatedMigrationRendererV2Sha256;
+}
+
+function deleteV7SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.platformBootstrapV2Sha256;
+  delete hashes.applicationMigrationManifestV2Sha256;
+  delete hashes.authenticatedMigrationRendererV2Sha256;
 }
 
 function cliArguments(input: PostgresAcceptanceEvidenceReviewInput): string[] {

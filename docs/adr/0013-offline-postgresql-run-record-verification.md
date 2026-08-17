@@ -1,6 +1,7 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 6 artifact reviewed successfully
+Status: accepted; retained version 6 artifact reviewed successfully; version 7
+source support locally verified and live review pending
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,9 +15,10 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v5 support and accepts the current v6 schema without
+historical v1 through v6 support and accepts the current v7 schema without
 mixing any version's closed check, limitation, or source-hash lists. The first
-version 6 artifact is retained and reviewed. Canonical comparison rejects
+version 6 artifact is retained and reviewed; no version 7 artifact has yet been
+claimed. Canonical comparison rejects
 byte-order marks, CRLF or alternate whitespace, trailing content, reordered
 members, and duplicate JSON member names.
 
@@ -30,6 +32,13 @@ acceptance runner, and version-specific projection-query and normalizer hashes
 recorded in the artifact; validates the reviewed PostgreSQL target against the
 commit's image declaration; and checks the exact ordered migration inventory
 and every migration-body hash.
+
+For version 7 only, the reviewer also requires the fixed v2 platform plan,
+application manifest, authenticated renderer, and the exact manifest-listed
+application bodies from the anchored commit. It rejects missing, extra,
+non-regular, or mixed-version v2 tree entries and validates each body against
+the closed manifest. Versions 1 through 6 retain their historical source
+shapes and do not acquire these inputs retroactively.
 
 The CLI performs no fetch, network request, archive extraction, glob expansion,
 source write, or database operation. It emits a fixed-schema
@@ -97,3 +106,10 @@ unchanged. It does not infer that the canary is a migration and cannot remove
 `authenticated_migrator_sessions`. Historical version 5 bytes and semantics
 remain frozen. The later documentation commit does not retest or expand the
 recorded run, and `offline_consistent` retains every verifier limitation above.
+
+Version 7 source support is prospective until a dedicated run exists. Even a
+future `offline_consistent` V7 result will prove only record/source consistency;
+it cannot authenticate GitHub or independently establish that the platform and
+authenticated application phases executed. See
+[ADR 0019](./0019-versioned-authenticated-migration-phase.md) for the bounded
+claim and explicit nonclaims.

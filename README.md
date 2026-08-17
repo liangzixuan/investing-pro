@@ -119,6 +119,22 @@ See the [B6 evidence note](./docs/POSTGRESQL_OWNER_DDL_EVIDENCE.md),
 [ADR 0018](./docs/adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](./docs/CYCLE_1BB6_EXIT_MATRIX.md).
 
+Cycle 1b-b7 is implemented and locally verified in source; live version 7
+evidence is pending. It keeps the historical b1 through b6 plan as
+regression-only input,
+then resets the exact disposable database and four capability roles before a
+new, closed v2 platform/application plan. The container-superuser platform
+phase creates the roles, owner-owned schemas, database/schema/public ACL
+lockdown, and hardened `btree_gist` installation. A distinct ephemeral
+non-superuser then authenticates with SCRAM, selects only the owner capability,
+and applies the complete role-neutral application plan with login-attributed
+ledger rows, rollback/replay checks, and mandatory zero-residue cleanup. This
+does not prove a production or incremental migrator, external/TLS identity,
+managed secrets, cross-phase atomicity, backup/restore, concurrency, a driver
+or pool, real data, or deployment readiness. See
+[ADR 0019](./docs/adr/0019-versioned-authenticated-migration-phase.md) and the
+[Cycle 1b-b7 exit matrix](./docs/CYCLE_1BB7_EXIT_MATRIX.md).
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -157,7 +173,8 @@ bounded owner-DDL canary passed in run `32058853521` at commit `7aac502`; its
 retained version 6 record also returned `offline_consistent`. These remain
 sequential, synthetic, container-local acceptance results. The offline verifier
 checks record/source consistency after download but cannot authenticate the
-GitHub run or independently prove PostgreSQL execution.
+GitHub run or independently prove PostgreSQL execution. B7 source work does
+not add a live result; its distinct version 7 run and review remain pending.
 
 ## Safety boundary
 
@@ -180,6 +197,11 @@ GitHub run or independently prove PostgreSQL execution.
 - The reviewed B6 result is only an authenticated owner-DDL canary. It applies
   no migration, does not redesign role bootstrap, and does not authorize a
   production owner or migrator login.
+- B7 source work separates a local container-superuser platform phase from an
+  acceptance-only authenticated application migration phase. Until its pinned
+  version 7 run is retained and reviewed, it is not live evidence; even then it
+  cannot authorize production/incremental migration or make the two phases
+  globally atomic.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -197,4 +219,5 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b5 evidence note](./docs/POSTGRESQL_TEST_LOADER_EVIDENCE.md),
 [Cycle 1b-b6 exit matrix](./docs/CYCLE_1BB6_EXIT_MATRIX.md),
 [Cycle 1b-b6 evidence note](./docs/POSTGRESQL_OWNER_DDL_EVIDENCE.md),
+[Cycle 1b-b7 exit matrix](./docs/CYCLE_1BB7_EXIT_MATRIX.md),
 and [architecture decisions](./docs/adr/).

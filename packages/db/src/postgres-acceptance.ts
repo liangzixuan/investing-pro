@@ -18,11 +18,22 @@ import {
 } from "./clean-bootstrap";
 import { loadMigrationFiles } from "./check-migrations";
 import {
+  AUTHENTICATED_MIGRATION_IDENTITY_MARKER,
+  AUTHENTICATED_MIGRATION_ROLE_RESET_MARKER,
+  AUTHENTICATED_MIGRATOR_LOGIN_ROLE,
+  expectedAuthenticatedMigrationLedgerRows,
+  loadAuthenticatedMigrationPlan,
+  renderAuthenticatedApplicationMigration,
+  renderAuthenticatedPlatformMigration,
+  type AuthenticatedMigrationLedgerRow,
+  type AuthenticatedMigrationPlan,
+} from "./authenticated-migration-plan";
+import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceSourceHashes,
   type PostgresAcceptanceToolVersions,
+  type PostgresAcceptanceV7SourceHashes,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -57,6 +68,23 @@ const projectionNormalizerPath = join(
   "src",
   "projection-normalization.ts",
 );
+const platformBootstrapV2Path = join(
+  packageRoot,
+  "migration-plans",
+  "v2",
+  "platform-bootstrap.sql",
+);
+const applicationMigrationManifestV2Path = join(
+  packageRoot,
+  "migration-plans",
+  "v2",
+  "application-manifest.json",
+);
+const authenticatedMigrationRendererV2Path = join(
+  packageRoot,
+  "src",
+  "authenticated-migration-plan.ts",
+);
 
 const EXPECTED_IMAGE_REFERENCE =
   "docker.io/library/postgres:17.11-bookworm@sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad";
@@ -64,7 +92,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v7-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
@@ -88,6 +116,12 @@ export const OWNER_DDL_AUTH_PASSFILE =
   "/tmp/research-cockpit-owner-ddl-login.pgpass" as const;
 export const OWNER_DDL_AUTH_WRONG_PASSFILE =
   "/tmp/research-cockpit-owner-ddl-login-wrong.pgpass" as const;
+export const MIGRATOR_AUTH_LOGIN_ROLE = AUTHENTICATED_MIGRATOR_LOGIN_ROLE;
+export const MIGRATOR_AUTH_CAPABILITY_ROLE = "research_cockpit_owner" as const;
+export const MIGRATOR_AUTH_PASSFILE =
+  "/tmp/research-cockpit-migrator-login.pgpass" as const;
+export const MIGRATOR_AUTH_WRONG_PASSFILE =
+  "/tmp/research-cockpit-migrator-login-wrong.pgpass" as const;
 export const OWNER_DDL_AUTH_CANARY_TABLE =
   "private_data.b6_owner_ddl_canary" as const;
 export const OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
@@ -97,6 +131,20 @@ export const OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
   "postgres",
 ] as const);
 export const OWNER_DDL_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES =
+  Object.freeze([
+    "research_cockpit_owner",
+    "research_cockpit_runtime",
+    "research_cockpit_test_seed",
+    "research_cockpit_backup",
+    "postgres",
+  ] as const);
+export const MIGRATOR_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
+  "research_cockpit_runtime",
+  "research_cockpit_test_seed",
+  "research_cockpit_backup",
+  "postgres",
+] as const);
+export const MIGRATOR_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES =
   Object.freeze([
     "research_cockpit_owner",
     "research_cockpit_runtime",
@@ -171,6 +219,15 @@ const APPLICATION_TABLES = [
   "shared_data.share_classes",
   "shared_data.symbol_history",
 ] as const;
+const LEGACY_MIGRATION_LEDGER_ROWS = Object.freeze([
+  "0001|0001_schemas_context_and_ledger.sql|e46088d6915fda15fdbc281c48463b7f9478effc90d8aa26d5fcfe84cf6c4890",
+  "0002|0002_canonical_entities.sql|41e8164fb29c1d823f4bc65b600dbea6ed5e96d0256f77c7604baf8c2ff6c1ef",
+  "0003|0003_temporal_constraints_and_indexes.sql|c3d9dc4c015b3727e98f66e0ab4440a0fcd95821e1863fcf2953f82dc2601dc8",
+  "0004|0004_row_security_and_runtime_grants.sql|179188d037fc671c891f0d2d81f5df4748d839a943a2734a7f176f6759271282",
+  "0005|0005_non_reusable_resource_ids.sql|a537000c692ea246e8bce9dd5aaa73a576127455aa0ba412db5cbfdf3161889a",
+  "0006|0006_null_safe_request_context.sql|1b6ab85eff6dab4a9016278233a333b9d1f819b1d29828c916ad314198146c07",
+  "0007|0007_database_privilege_lockdown.sql|7887f8066cff3b0bf22397a2f5ee19352c1c678a7619b6588a5c95e28430c0e6",
+]);
 const PROTECTED_TABLES = APPLICATION_TABLES.filter(
   (table) => table !== "shared_data.schema_migrations",
 );
@@ -354,6 +411,16 @@ export interface OwnerDdlAuthPsqlInvocation {
 }
 
 export interface OwnerDdlAuthPsqlInvocationOptions {
+  readonly requireScram?: boolean;
+  readonly verboseErrors?: boolean;
+}
+
+export interface MigratorAuthPsqlInvocation {
+  environment: Readonly<Record<string, string>>;
+  command: readonly string[];
+}
+
+export interface MigratorAuthPsqlInvocationOptions {
   readonly requireScram?: boolean;
   readonly verboseErrors?: boolean;
 }
@@ -799,6 +866,136 @@ export function assertOwnerDdlWrongPasswordRejection(
   ) {
     throw new Error(
       "Wrong-password owner-DDL authentication did not return the expected rejection",
+    );
+  }
+}
+
+export function generateMigratorAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function renderMigratorAuthProvisioningSql(password: string): string {
+  assertMigratorAuthPassword(password);
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${MIGRATOR_AUTH_LOGIN_ROLE}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT 1
+  PASSWORD '${password}';
+GRANT ${MIGRATOR_AUTH_CAPABILITY_ROLE}
+  TO ${MIGRATOR_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
+}
+
+export function renderMigratorAuthPassfile(password: string): string {
+  assertMigratorAuthPassword(password);
+  return `127.0.0.1:5432:${CLEAN_BOOTSTRAP_DATABASE_NAME}:${MIGRATOR_AUTH_LOGIN_ROLE}:${password}\n`;
+}
+
+export function renderMigratorAuthCleanupSql(): string {
+  return `BEGIN;
+DROP ROLE IF EXISTS ${MIGRATOR_AUTH_LOGIN_ROLE};
+COMMIT;
+`;
+}
+
+export function renderMigratorAuthBackendDrainSql(): string {
+  return `DO $migrator_auth_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE usename = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+        AND backend_type = 'client backend'
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'ephemeral migrator login backend did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END;
+$migrator_auth_backend_drain$;
+`;
+}
+
+export function buildMigratorAuthPsqlInvocation(
+  passfile: typeof MIGRATOR_AUTH_PASSFILE | typeof MIGRATOR_AUTH_WRONG_PASSFILE,
+  options: MigratorAuthPsqlInvocationOptions = {},
+): MigratorAuthPsqlInvocation {
+  const { requireScram = true, verboseErrors = false } = options;
+  const environment: Record<string, string> = {
+    PGPASSFILE: passfile,
+    PGSSLMODE: "disable",
+    PGCONNECT_TIMEOUT: "5",
+  };
+  if (requireScram) environment.PGREQUIREAUTH = "scram-sha-256";
+
+  return Object.freeze({
+    environment: Object.freeze(environment),
+    command: Object.freeze([
+      "psql",
+      "--no-psqlrc",
+      "--no-password",
+      "--quiet",
+      "--tuples-only",
+      "--no-align",
+      "--set=ON_ERROR_STOP=1",
+      ...(verboseErrors ? ["--set=VERBOSITY=verbose"] : []),
+      "--host=127.0.0.1",
+      "--port=5432",
+      `--username=${MIGRATOR_AUTH_LOGIN_ROLE}`,
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ]),
+  });
+}
+
+export function assertMigratorWrongPasswordRejection(
+  result: CommandResult,
+): void {
+  if (result.exitCode === 0) {
+    throw new Error(
+      "Wrong-password migrator authentication unexpectedly succeeded",
+    );
+  }
+  if (result.exitCode !== 2) {
+    throw new Error(
+      "Wrong-password migrator authentication returned an unexpected exit code",
+    );
+  }
+  if (result.stdout.trim() !== "") {
+    throw new Error(
+      "Wrong-password migrator authentication returned unexpected output",
+    );
+  }
+
+  const diagnostic = result.stderr.toLowerCase().replace(/\s+/g, " ");
+  if (
+    !diagnostic.includes(
+      `fatal: password authentication failed for user "${MIGRATOR_AUTH_LOGIN_ROLE}"`,
+    )
+  ) {
+    throw new Error(
+      "Wrong-password migrator authentication did not return the expected rejection",
     );
   }
 }
@@ -1313,6 +1510,8 @@ export async function runPostgresAcceptance(
     databaseName: config.databaseName,
     containerId,
   });
+  const authenticatedMigrationPlan = await loadAuthenticatedMigrationPlan();
+  const fixtureSql = await readFile(syntheticFixturePath, "utf8");
 
   await verifyContainerIdentity(containerId, config);
   const toolVersions = await verifyToolVersions(
@@ -1337,10 +1536,7 @@ export async function runPostgresAcceptance(
   });
   await verifyMigrationLedger(containerId);
 
-  await verifyAuthenticatedTestLoaderSession(
-    containerId,
-    await readFile(syntheticFixturePath, "utf8"),
-  );
+  await verifyAuthenticatedTestLoaderSession(containerId, fixtureSql);
   await verifyAuthenticatedOwnerDdlCanarySession(containerId);
   await verifyCatalogContract(containerId);
   await verifyBackupCapability(containerId);
@@ -1352,6 +1548,11 @@ export async function runPostgresAcceptance(
   await verifyRuntimeAuthorizationMatrix(impersonatedRuntimeMatrix);
   await verifyWriteDenials(containerId);
   await verifyAuthenticatedRuntimeSession(containerId);
+  await verifyVersionedAuthenticatedMigrationPlan(
+    containerId,
+    authenticatedMigrationPlan,
+    fixtureSql,
+  );
 
   await verifyCheckedOutCommit(environment);
   const sourceHashes = await collectAcceptanceSourceHashes(config);
@@ -1370,7 +1571,285 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 6 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 7 success-only run record was written.\n",
+  );
+}
+
+async function verifyVersionedAuthenticatedMigrationPlan(
+  containerId: string,
+  plan: AuthenticatedMigrationPlan,
+  fixtureSql: string,
+): Promise<void> {
+  // Freeze the inherited result before destructively replacing the disposable
+  // target with the independently reviewed v2 platform/application plan.
+  await verifyCatalogContract(containerId);
+  await resetAcceptanceTargetForAuthenticatedMigrations(containerId);
+
+  await expectPsqlFailure(
+    containerId,
+    renderAuthenticatedPlatformMigration(plan, true),
+    {
+      label: "injected B7 platform-bootstrap rollback",
+      sqlState: "22012",
+      message: "division by zero",
+    },
+  );
+  await verifyB7PristineTarget(containerId);
+
+  const platformResult = await psql(
+    containerId,
+    renderAuthenticatedPlatformMigration(plan),
+  );
+  assertEqual(
+    platformResult.stderr.trim(),
+    "",
+    "B7 platform-bootstrap diagnostics",
+  );
+  await verifyAuthenticatedMigrationPlatformState(containerId);
+  await expectPsqlFailure(
+    containerId,
+    renderAuthenticatedPlatformMigration(plan),
+    {
+      label: "B7 platform-bootstrap replay",
+      sqlState: "P0001",
+      message: "versioned platform bootstrap requires a pristine target",
+    },
+  );
+  await verifyAuthenticatedMigrationPlatformState(containerId);
+
+  const ledgerRows = expectedAuthenticatedMigrationLedgerRows(plan.manifest);
+  const expectedLedger = ledgerRows.map(
+    ({ migrationId, fileName, sha256 }) =>
+      `${migrationId}|${fileName}|${sha256}`,
+  );
+  await verifyAuthenticatedApplicationMigrationSession(
+    containerId,
+    plan,
+    ledgerRows,
+  );
+  await verifyMigrationLedger(containerId, expectedLedger);
+  await verifyCatalogContract(containerId);
+  await verifyB7PlatformArtifactsAfterApplication(containerId);
+
+  // Re-run the stateful inherited boundaries on the v2 result so the split is
+  // proven to produce the same catalog and synthetic authorization behavior.
+  await verifyAuthenticatedTestLoaderSession(
+    containerId,
+    fixtureSql,
+    expectedLedger,
+  );
+  await verifyAuthenticatedOwnerDdlCanarySession(containerId, expectedLedger);
+  await verifyCatalogContract(containerId);
+  await verifyBackupCapability(containerId);
+  await verifyContextCleanup(containerId);
+  const impersonatedRuntimeMatrix = runtimeAuthorizationMatrixClient(
+    containerId,
+    "impersonated",
+  );
+  await verifyRuntimeAuthorizationMatrix(impersonatedRuntimeMatrix);
+  await verifyWriteDenials(containerId);
+  await verifyAuthenticatedRuntimeSession(containerId);
+  await verifyMigrationLedger(containerId, expectedLedger);
+  await verifyB7PlatformArtifactsAfterApplication(containerId);
+}
+
+async function verifyAuthenticatedApplicationMigrationSession(
+  containerId: string,
+  plan: AuthenticatedMigrationPlan,
+  expectedLedgerRows: readonly AuthenticatedMigrationLedgerRow[],
+): Promise<void> {
+  await verifyMigratorAuthResidueAbsent(containerId);
+  const password = generateMigratorAuthPassword();
+  let wrongPassword = generateMigratorAuthPassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateMigratorAuthPassword();
+  }
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    await provisionMigratorAuthLogin(containerId, password);
+    await verifyMigratorAuthRoleCatalog(containerId);
+    await writeMigratorAuthPassfile(
+      containerId,
+      MIGRATOR_AUTH_PASSFILE,
+      renderMigratorAuthPassfile(password),
+    );
+    await writeMigratorAuthPassfile(
+      containerId,
+      MIGRATOR_AUTH_WRONG_PASSFILE,
+      renderMigratorAuthPassfile(wrongPassword),
+    );
+    await verifyMigratorWrongPasswordRejection(containerId);
+    await verifyMigratorLoginBeforeSetRole(containerId);
+    await verifyMigratorRoleEscalationDenials(containerId);
+    await verifyAuthenticatedMigrationPlatformState(containerId, 1);
+
+    const rollbackResult = await migratorAuthenticatedPsql(
+      containerId,
+      MIGRATOR_AUTH_PASSFILE,
+      renderAuthenticatedApplicationMigration(plan, true),
+      { verboseErrors: true },
+    );
+    assertExpectedPsqlFailure(rollbackResult, {
+      label: "injected authenticated application-migration rollback",
+      sqlState: "22012",
+      message: "division by zero",
+    });
+    if (splitLines(rollbackResult.stdout).length !== 0) {
+      throw new Error(
+        "Authenticated application rollback returned unexpected output",
+      );
+    }
+    await verifyAuthenticatedMigrationPlatformState(containerId, 1);
+
+    const successResult = await migratorAuthenticatedPsql(
+      containerId,
+      MIGRATOR_AUTH_PASSFILE,
+      renderAuthenticatedApplicationMigration(plan),
+    );
+    if (successResult.exitCode !== 0 || successResult.stderr.trim() !== "") {
+      throw new Error("Authenticated application migration failed");
+    }
+    assertJsonEqual(
+      splitLines(successResult.stdout),
+      [
+        AUTHENTICATED_MIGRATION_IDENTITY_MARKER,
+        AUTHENTICATED_MIGRATION_ROLE_RESET_MARKER,
+      ],
+      "authenticated application migration markers",
+    );
+    await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);
+    await verifyMigratorOwnsNoObjects(containerId);
+
+    await expectMigratorAuthenticatedPsqlFailure(
+      containerId,
+      renderAuthenticatedApplicationMigration(plan),
+      {
+        label: "authenticated application-migration replay",
+        sqlState: "P0001",
+        message: "versioned application migration requires an empty ledger",
+      },
+    );
+    await verifyAuthenticatedMigrationLedger(containerId, expectedLedgerRows);
+    await verifyMigratorOwnsNoObjects(containerId);
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "migrator-auth cleanup",
+            run: () => cleanupMigratorAuthProbe(containerId),
+          },
+          {
+            label: "migrator-auth residue verification",
+            run: () => verifyMigratorAuthResidueAbsent(containerId),
+          },
+        ]),
+        "Authenticated migrator cleanup and residue verification failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated migration probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+}
+
+async function verifyAuthenticatedMigrationLedger(
+  containerId: string,
+  expectedRows: readonly AuthenticatedMigrationLedgerRow[],
+): Promise<void> {
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT migration_id || '|' || file_name || '|' || sha256 || '|' || applied_by
+FROM shared_data.schema_migrations
+ORDER BY migration_id;`,
+      ),
+    ),
+    expectedRows.map(
+      ({ migrationId, fileName, sha256 }) =>
+        `${migrationId}|${fileName}|${sha256}|${MIGRATOR_AUTH_LOGIN_ROLE}`,
+    ),
+    "authenticated application migration ledger and session identity",
+  );
+}
+
+async function verifyB7PlatformArtifactsAfterApplication(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT extension.extname || '|' || namespace.nspname || '|' ||
+  pg_catalog.pg_get_userbyid(extension.extowner) || '|' ||
+  (extension.extversion = available.default_version)
+FROM pg_catalog.pg_extension AS extension
+JOIN pg_catalog.pg_namespace AS namespace
+  ON namespace.oid = extension.extnamespace
+JOIN pg_catalog.pg_available_extensions AS available
+  ON available.name = extension.extname
+WHERE extension.extname = 'btree_gist';`,
+    ),
+    "btree_gist|shared_data|postgres|true",
+    "B7 final platform extension identity",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_extension AS extension
+JOIN pg_catalog.pg_depend AS dependency
+  ON dependency.refclassid = 'pg_catalog.pg_extension'::regclass
+ AND dependency.refobjid = extension.oid
+ AND dependency.deptype = 'e'
+JOIN pg_catalog.pg_proc AS procedure
+  ON dependency.classid = 'pg_catalog.pg_proc'::regclass
+ AND dependency.objid = procedure.oid
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(procedure.proacl, pg_catalog.acldefault('f', procedure.proowner))
+) AS privilege
+WHERE extension.extname = 'btree_gist'
+  AND privilege.grantee = 0;`,
+    ),
+    "0",
+    "B7 final extension routine PUBLIC privileges",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(DISTINCT defaults.oid) FILTER (
+    WHERE defaults.defaclnamespace = 0
+      AND defaults.defaclobjtype = 'f'
+  ) || '|' || count(*) FILTER (
+    WHERE defaults.defaclnamespace = 0
+      AND defaults.defaclobjtype = 'f'
+      AND privilege.grantee = 0
+  )
+FROM pg_catalog.pg_default_acl AS defaults
+JOIN pg_catalog.pg_roles AS role ON role.oid = defaults.defaclrole
+LEFT JOIN LATERAL pg_catalog.aclexplode(defaults.defaclacl) AS privilege
+  ON true
+WHERE role.rolname = 'research_cockpit_owner';`,
+    ),
+    "1|0",
+    "B7 owner global function defaults and PUBLIC privileges",
   );
 }
 
@@ -1399,7 +1878,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceSourceHashes> {
+): Promise<PostgresAcceptanceV7SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -1407,6 +1886,9 @@ async function collectAcceptanceSourceHashes(
     acceptanceRunnerSha256,
     projectionQuerySha256,
     projectionNormalizerSha256,
+    platformBootstrapV2Sha256,
+    applicationMigrationManifestV2Sha256,
+    authenticatedMigrationRendererV2Sha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -1414,6 +1896,9 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(acceptanceRunnerPath),
     exactFileSha256(projectionQueryPath),
     exactFileSha256(projectionNormalizerPath),
+    exactFileSha256(platformBootstrapV2Path),
+    exactFileSha256(applicationMigrationManifestV2Path),
+    exactFileSha256(authenticatedMigrationRendererV2Path),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
@@ -1428,6 +1913,9 @@ async function collectAcceptanceSourceHashes(
     acceptanceRunnerSha256,
     projectionQuerySha256,
     projectionNormalizerSha256,
+    platformBootstrapV2Sha256,
+    applicationMigrationManifestV2Sha256,
+    authenticatedMigrationRendererV2Sha256,
   });
 }
 
@@ -1505,6 +1993,289 @@ FROM pg_catalog.pg_namespace AS namespace;`,
   );
 }
 
+async function resetAcceptanceTargetForAuthenticatedMigrations(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_stat_activity
+WHERE datname = '${CLEAN_BOOTSTRAP_DATABASE_NAME}'
+;`,
+    ),
+    "0",
+    "legacy acceptance backends before B7 target reset",
+  );
+  await psqlMaintenance(containerId, renderB7AcceptanceTargetResetSql());
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT datname || '|' || pg_catalog.pg_get_userbyid(datdba) || '|' ||
+  datistemplate || '|' || datallowconn || '|' || datconnlimit || '|' ||
+  pg_catalog.pg_encoding_to_char(encoding)
+FROM pg_catalog.pg_database
+WHERE datname = '${CLEAN_BOOTSTRAP_DATABASE_NAME}';`,
+    ),
+    `${CLEAN_BOOTSTRAP_DATABASE_NAME}|postgres|false|true|-1|UTF8`,
+    "recreated B7 acceptance database",
+  );
+  await verifyB7PristineTarget(containerId);
+}
+
+async function verifyB7PristineTarget(containerId: string): Promise<void> {
+  await verifyPristineTarget(containerId);
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      "SELECT count(*) FROM pg_catalog.pg_extension WHERE extname = 'btree_gist';",
+    ),
+    "0",
+    "B7 pristine trusted-extension absence",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT CASE privilege.grantee
+    WHEN 0 THEN 'PUBLIC'
+    ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
+  END || '|' || privilege.privilege_type || '|' || privilege.is_grantable
+FROM pg_catalog.pg_database AS database
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(database.datacl, pg_catalog.acldefault('d', database.datdba))
+) AS privilege
+WHERE database.datname = pg_catalog.current_database()
+  AND privilege.grantee <> database.datdba
+ORDER BY 1;`,
+      ),
+    ),
+    [`PUBLIC|CONNECT|${CATALOG_FALSE}`, `PUBLIC|TEMPORARY|${CATALOG_FALSE}`],
+    "B7 pristine database ACL",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT CASE privilege.grantee
+    WHEN 0 THEN 'PUBLIC'
+    ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
+  END || '|' || privilege.privilege_type || '|' || privilege.is_grantable
+FROM pg_catalog.pg_namespace AS namespace
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(namespace.nspacl, pg_catalog.acldefault('n', namespace.nspowner))
+) AS privilege
+WHERE namespace.nspname = 'public'
+  AND privilege.grantee <> namespace.nspowner
+ORDER BY 1;`,
+      ),
+    ),
+    [`PUBLIC|USAGE|${CATALOG_FALSE}`],
+    "B7 pristine public-schema ACL",
+  );
+}
+
+async function verifyAuthenticatedMigrationPlatformState(
+  containerId: string,
+  expectedMembershipEdges = 0,
+): Promise<void> {
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls
+FROM pg_catalog.pg_roles
+WHERE rolname = ANY (ARRAY[
+  'research_cockpit_backup',
+  'research_cockpit_owner',
+  'research_cockpit_runtime',
+  'research_cockpit_test_seed'
+])
+ORDER BY rolname;`,
+      ),
+    ),
+    EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
+    "B7 platform capability roles",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname LIKE 'research_cockpit_%'
+   OR member_role.rolname LIKE 'research_cockpit_%';`,
+    ),
+    String(expectedMembershipEdges),
+    "B7 platform capability membership edges",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT nspname || '|' || pg_catalog.pg_get_userbyid(nspowner)
+FROM pg_catalog.pg_namespace
+WHERE nspname IN ('private_data', 'shared_data')
+ORDER BY nspname;`,
+      ),
+    ),
+    [
+      "private_data|research_cockpit_owner",
+      "shared_data|research_cockpit_owner",
+    ],
+    "B7 platform schemas",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT namespace.nspname || '|' ||
+  CASE privilege.grantee
+    WHEN 0 THEN 'PUBLIC'
+    ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
+  END || '|' || privilege.privilege_type || '|' || privilege.is_grantable
+FROM pg_catalog.pg_namespace AS namespace
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(namespace.nspacl, pg_catalog.acldefault('n', namespace.nspowner))
+) AS privilege
+WHERE namespace.nspname IN ('private_data', 'public', 'shared_data')
+  AND privilege.grantee <> namespace.nspowner
+ORDER BY 1;`,
+      ),
+    ),
+    [],
+    "B7 platform non-owner schema ACLs",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT extension.extname || '|' || namespace.nspname || '|' ||
+  pg_catalog.pg_get_userbyid(extension.extowner) || '|' ||
+  (extension.extversion = available.default_version)
+FROM pg_catalog.pg_extension AS extension
+JOIN pg_catalog.pg_namespace AS namespace
+  ON namespace.oid = extension.extnamespace
+JOIN pg_catalog.pg_available_extensions AS available
+  ON available.name = extension.extname
+WHERE extension.extname = 'btree_gist';`,
+    ),
+    "btree_gist|shared_data|postgres|true",
+    "B7 platform trusted extension identity",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_extension AS extension
+JOIN pg_catalog.pg_depend AS dependency
+  ON dependency.refclassid = 'pg_catalog.pg_extension'::regclass
+ AND dependency.refobjid = extension.oid
+ AND dependency.deptype = 'e'
+JOIN pg_catalog.pg_proc AS procedure
+  ON dependency.classid = 'pg_catalog.pg_proc'::regclass
+ AND dependency.objid = procedure.oid
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(
+    procedure.proacl,
+    pg_catalog.acldefault('f', procedure.proowner)
+  )
+) AS privilege
+WHERE extension.extname = 'btree_gist'
+  AND privilege.grantee = 0;`,
+    ),
+    "0",
+    "B7 platform extension routine PUBLIC privileges",
+  );
+  const expectedApplicationRelations = APPLICATION_TABLES.map(
+    (table) => `'${table}'`,
+  ).join(",\n  ");
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.unnest(ARRAY[
+  ${expectedApplicationRelations}
+]::text[]) AS expected(relation_name)
+WHERE pg_catalog.to_regclass(expected.relation_name) IS NOT NULL;`,
+    ),
+    "0",
+    "B7 platform application relation absence",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_proc AS procedure
+JOIN pg_catalog.pg_namespace AS namespace
+  ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname IN ('private_data', 'shared_data')
+  AND procedure.proname = ANY (ARRAY[
+    'current_channel',
+    'current_data_classification',
+    'current_organization_id',
+    'current_principal_id',
+    'current_purpose',
+    'current_territory',
+    'guard_live_resource_identity',
+    'guard_resource_id_registry',
+    'has_active_entitlement',
+    'has_active_membership',
+    'rights_allow_current_use',
+    'set_request_context',
+    'tombstone_resource_id_after_delete'
+  ]);`,
+    ),
+    "0",
+    "B7 platform application routine absence",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_policy AS policy
+JOIN pg_catalog.pg_class AS class ON class.oid = policy.polrelid
+JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = class.relnamespace
+WHERE namespace.nspname IN ('private_data', 'shared_data');`,
+    ),
+    "0",
+    "B7 platform application policy absence",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_default_acl AS defaults
+JOIN pg_catalog.pg_roles AS role ON role.oid = defaults.defaclrole
+WHERE role.rolname = 'research_cockpit_owner';`,
+    ),
+    "0",
+    "B7 platform application default-privilege absence",
+  );
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT CASE privilege.grantee
+    WHEN 0 THEN 'PUBLIC'
+    ELSE pg_catalog.pg_get_userbyid(privilege.grantee)
+  END || '|' || privilege.privilege_type || '|' || privilege.is_grantable
+FROM pg_catalog.pg_database AS database
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  coalesce(database.datacl, pg_catalog.acldefault('d', database.datdba))
+) AS privilege
+WHERE database.datname = pg_catalog.current_database()
+  AND privilege.grantee <> database.datdba
+ORDER BY 1;`,
+      ),
+    ),
+    [`PUBLIC|CONNECT|${CATALOG_FALSE}`],
+    "B7 platform database ACL",
+  );
+}
+
 export function injectBootstrapFailure(bootstrap: string): string {
   const finalCommit = /\nCOMMIT;\n?$/;
   if (!finalCommit.test(bootstrap)) {
@@ -1515,6 +2286,17 @@ export function injectBootstrapFailure(bootstrap: string): string {
     throw new Error("Reviewed bootstrap rollback probe was not injected");
   }
   return injected;
+}
+
+export function renderB7AcceptanceTargetResetSql(): string {
+  return `DROP DATABASE ${CLEAN_BOOTSTRAP_DATABASE_NAME};
+DROP ROLE research_cockpit_backup;
+DROP ROLE research_cockpit_runtime;
+DROP ROLE research_cockpit_test_seed;
+DROP ROLE research_cockpit_owner;
+CREATE DATABASE ${CLEAN_BOOTSTRAP_DATABASE_NAME}
+  WITH OWNER postgres TEMPLATE template0;
+`;
 }
 
 async function verifyContainerIdentity(
@@ -1585,7 +2367,10 @@ async function verifyToolVersions(
   });
 }
 
-async function verifyMigrationLedger(containerId: string): Promise<void> {
+async function verifyMigrationLedger(
+  containerId: string,
+  expected: readonly string[] = LEGACY_MIGRATION_LEDGER_ROWS,
+): Promise<void> {
   const actual = splitLines(
     await psqlScalar(
       containerId,
@@ -1594,21 +2379,13 @@ FROM shared_data.schema_migrations
 ORDER BY migration_id;`,
     ),
   );
-  const expected = [
-    "0001|0001_schemas_context_and_ledger.sql|e46088d6915fda15fdbc281c48463b7f9478effc90d8aa26d5fcfe84cf6c4890",
-    "0002|0002_canonical_entities.sql|41e8164fb29c1d823f4bc65b600dbea6ed5e96d0256f77c7604baf8c2ff6c1ef",
-    "0003|0003_temporal_constraints_and_indexes.sql|c3d9dc4c015b3727e98f66e0ab4440a0fcd95821e1863fcf2953f82dc2601dc8",
-    "0004|0004_row_security_and_runtime_grants.sql|179188d037fc671c891f0d2d81f5df4748d839a943a2734a7f176f6759271282",
-    "0005|0005_non_reusable_resource_ids.sql|a537000c692ea246e8bce9dd5aaa73a576127455aa0ba412db5cbfdf3161889a",
-    "0006|0006_null_safe_request_context.sql|1b6ab85eff6dab4a9016278233a333b9d1f819b1d29828c916ad314198146c07",
-    "0007|0007_database_privilege_lockdown.sql|7887f8066cff3b0bf22397a2f5ee19352c1c678a7619b6588a5c95e28430c0e6",
-  ];
   assertJsonEqual(actual, expected, "migration ledger");
 }
 
 async function verifyAuthenticatedTestLoaderSession(
   containerId: string,
   fixtureSql: string,
+  expectedLedger: readonly string[] = LEGACY_MIGRATION_LEDGER_ROWS,
 ): Promise<void> {
   await verifyTestLoaderAuthResidueAbsent(containerId);
 
@@ -1639,9 +2416,13 @@ async function verifyAuthenticatedTestLoaderSession(
     await verifyTestLoaderLoginBeforeSetRole(containerId);
     await verifyTestLoaderRoleEscalationDenials(containerId);
     await verifyFixtureTablesEmpty(containerId);
-    await verifyAuthenticatedTestLoaderRollback(containerId, fixtureSql);
+    await verifyAuthenticatedTestLoaderRollback(
+      containerId,
+      fixtureSql,
+      expectedLedger,
+    );
     await verifyAuthenticatedTestLoaderFixtureLoad(containerId, fixtureSql);
-    await verifyAuthenticatedTestLoaderDenials(containerId);
+    await verifyAuthenticatedTestLoaderDenials(containerId, expectedLedger);
   } catch (error) {
     probeFailed = true;
     probeError = error;
@@ -1907,6 +2688,7 @@ async function verifyTestLoaderRoleEscalationDenials(
 async function verifyAuthenticatedTestLoaderRollback(
   containerId: string,
   fixtureSql: string,
+  expectedLedger: readonly string[],
 ): Promise<void> {
   const result = await testLoaderAuthenticatedPsql(
     containerId,
@@ -1916,7 +2698,7 @@ async function verifyAuthenticatedTestLoaderRollback(
   );
   assertAuthenticatedTestLoaderFixtureRollbackFailure(result);
   await verifyFixtureTablesEmpty(containerId);
-  await verifyMigrationLedger(containerId);
+  await verifyMigrationLedger(containerId, expectedLedger);
 }
 
 async function verifyAuthenticatedTestLoaderFixtureLoad(
@@ -1933,6 +2715,7 @@ async function verifyAuthenticatedTestLoaderFixtureLoad(
 
 async function verifyAuthenticatedTestLoaderDenials(
   containerId: string,
+  expectedLedger: readonly string[],
 ): Promise<void> {
   for (const [label, sql, message] of [
     [
@@ -2008,7 +2791,7 @@ WHERE id IN (
     "0",
     "failed authenticated test-loader inserts",
   );
-  await verifyMigrationLedger(containerId);
+  await verifyMigrationLedger(containerId, expectedLedger);
 }
 
 function renderTestLoaderCapabilitySql(sql: string): string {
@@ -2226,8 +3009,9 @@ async function waitForTestLoaderAuthBackendDrain(
 
 async function verifyAuthenticatedOwnerDdlCanarySession(
   containerId: string,
+  expectedLedger: readonly string[] = LEGACY_MIGRATION_LEDGER_ROWS,
 ): Promise<void> {
-  await verifyOwnerDdlAuthResidueAbsent(containerId);
+  await verifyOwnerDdlAuthResidueAbsent(containerId, expectedLedger);
 
   const password = generateOwnerDdlAuthPassword();
   let wrongPassword = generateOwnerDdlAuthPassword();
@@ -2255,14 +3039,14 @@ async function verifyAuthenticatedOwnerDdlCanarySession(
     await verifyOwnerDdlWrongPasswordRejection(containerId);
     await verifyOwnerDdlLoginBeforeSetRole(containerId);
     await verifyOwnerDdlRoleEscalationDenials(containerId);
-    await verifyMigrationLedger(containerId);
-    await verifyAuthenticatedOwnerDdlRollback(containerId);
+    await verifyMigrationLedger(containerId, expectedLedger);
+    await verifyAuthenticatedOwnerDdlRollback(containerId, expectedLedger);
     await verifyAuthenticatedOwnerDdlCreate(containerId);
     await verifyOwnerDdlCanaryPresent(containerId);
-    await verifyMigrationLedger(containerId);
+    await verifyMigrationLedger(containerId, expectedLedger);
     await verifyAuthenticatedOwnerDdlDrop(containerId);
     await verifyOwnerDdlCanaryAbsent(containerId);
-    await verifyMigrationLedger(containerId);
+    await verifyMigrationLedger(containerId, expectedLedger);
   } catch (error) {
     probeFailed = true;
     probeError = error;
@@ -2276,7 +3060,8 @@ async function verifyAuthenticatedOwnerDdlCanarySession(
           },
           {
             label: "owner-DDL-auth residue verification",
-            run: () => verifyOwnerDdlAuthResidueAbsent(containerId),
+            run: () =>
+              verifyOwnerDdlAuthResidueAbsent(containerId, expectedLedger),
           },
         ]),
         "Authenticated owner-DDL cleanup and residue verification failed",
@@ -2562,6 +3347,7 @@ async function verifyOwnerDdlRoleEscalationDenials(
 
 async function verifyAuthenticatedOwnerDdlRollback(
   containerId: string,
+  expectedLedger: readonly string[],
 ): Promise<void> {
   const result = await ownerDdlAuthenticatedPsql(
     containerId,
@@ -2571,7 +3357,7 @@ async function verifyAuthenticatedOwnerDdlRollback(
   );
   assertAuthenticatedOwnerDdlCanaryRollbackFailure(result);
   await verifyOwnerDdlCanaryAbsent(containerId);
-  await verifyMigrationLedger(containerId);
+  await verifyMigrationLedger(containerId, expectedLedger);
 }
 
 async function verifyAuthenticatedOwnerDdlCreate(
@@ -2702,6 +3488,7 @@ async function cleanupOwnerDdlAuthProbe(containerId: string): Promise<void> {
 
 async function verifyOwnerDdlAuthResidueAbsent(
   containerId: string,
+  expectedLedger: readonly string[] = LEGACY_MIGRATION_LEDGER_ROWS,
 ): Promise<void> {
   const operations: RuntimeAuthBestEffortOperation[] = [
     {
@@ -2797,12 +3584,444 @@ WHERE usename = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
   }
   operations.push({
     label: "verify migration ledger after owner-DDL cleanup",
-    run: () => verifyMigrationLedger(containerId),
+    run: () => verifyMigrationLedger(containerId, expectedLedger),
   });
   throwRuntimeAuthOperationFailures(
     await collectRuntimeAuthOperationFailures(operations),
     "Authenticated owner-DDL residue verification failed",
   );
+}
+
+async function provisionMigratorAuthLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderMigratorAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(result, "provision ephemeral migrator login");
+}
+
+async function verifyMigratorAuthRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${MIGRATOR_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|1|true`,
+    "ephemeral migrator login attributes and SCRAM verifier",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${MIGRATOR_AUTH_CAPABILITY_ROLE}|${MIGRATOR_AUTH_LOGIN_ROLE}|false|false|true`,
+    "ephemeral migrator membership",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_db_role_setting
+WHERE setrole = (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+);`,
+    ),
+    "0",
+    "ephemeral migrator role settings",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_attribute AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.attacl) AS privilege
+)
+SELECT count(*)
+FROM direct_acl
+WHERE grantee = (SELECT oid FROM login);`,
+    ),
+    "0",
+    "ephemeral migrator direct ACLs",
+  );
+}
+
+async function writeMigratorAuthPassfile(
+  containerId: string,
+  path: typeof MIGRATOR_AUTH_PASSFILE | typeof MIGRATOR_AUTH_WRONG_PASSFILE,
+  contents: string,
+): Promise<void> {
+  const install = await dockerExec(containerId, [
+    "install",
+    "--mode=0600",
+    "/dev/null",
+    path,
+  ]);
+  assertSensitiveCommandSuccess(install, "create migrator-auth passfile");
+  const write = await dockerExec(
+    containerId,
+    ["dd", `of=${path}`, "status=none"],
+    contents,
+  );
+  assertSensitiveCommandSuccess(write, "write migrator-auth passfile");
+  const regularFile = await dockerExec(containerId, ["test", "-f", path]);
+  assertSuccess(regularFile, "verify migrator-auth passfile type");
+  const symlink = await dockerExec(containerId, ["test", "!", "-L", path]);
+  assertSuccess(symlink, "verify migrator-auth passfile is not a symlink");
+  const mode = await dockerExec(containerId, ["stat", "--format=%a", path]);
+  assertSuccess(mode, "inspect migrator-auth passfile mode");
+  assertEqual(mode.stdout.trim(), "600", "migrator-auth passfile mode");
+}
+
+async function verifyMigratorWrongPasswordRejection(
+  containerId: string,
+): Promise<void> {
+  const result = await migratorAuthenticatedPsql(
+    containerId,
+    MIGRATOR_AUTH_WRONG_PASSFILE,
+    "SELECT 1;",
+    { requireScram: false },
+  );
+  assertMigratorWrongPasswordRejection(result);
+}
+
+async function verifyMigratorLoginBeforeSetRole(
+  containerId: string,
+): Promise<void> {
+  const identity = parseJsonObject(
+    await migratorAuthenticatedPsqlScalar(
+      containerId,
+      `SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'clientAddress', pg_catalog.host(pg_catalog.inet_client_addr()),
+  'serverAddress', pg_catalog.host(pg_catalog.inet_server_addr()),
+  'ssl', EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  ),
+  'ownerMember', pg_catalog.pg_has_role(
+    session_user, '${MIGRATOR_AUTH_CAPABILITY_ROLE}', 'MEMBER'
+  ),
+  'ownerUsage', pg_catalog.pg_has_role(
+    session_user, '${MIGRATOR_AUTH_CAPABILITY_ROLE}', 'USAGE'
+  ),
+  'ownerSet', pg_catalog.pg_has_role(
+    session_user, '${MIGRATOR_AUTH_CAPABILITY_ROLE}', 'SET'
+  )
+)::text;`,
+    ),
+  );
+  assertJsonEqual(
+    identity,
+    {
+      sessionUser: MIGRATOR_AUTH_LOGIN_ROLE,
+      currentUser: MIGRATOR_AUTH_LOGIN_ROLE,
+      systemUser: `scram-sha-256:${MIGRATOR_AUTH_LOGIN_ROLE}`,
+      clientAddress: "127.0.0.1",
+      serverAddress: "127.0.0.1",
+      ssl: false,
+      ownerMember: true,
+      ownerUsage: false,
+      ownerSet: true,
+    },
+    "authenticated migrator identity before SET ROLE",
+  );
+
+  for (const [label, sql, message] of [
+    [
+      "migrator persistent DDL before SET ROLE",
+      "CREATE TABLE private_data.b7_migrator_pre_role_escape (id integer);",
+      "permission denied for schema private_data",
+    ],
+    [
+      "migrator public DDL before SET ROLE",
+      "CREATE TABLE public.b7_migrator_public_escape (id integer);",
+      "permission denied for schema public",
+    ],
+    [
+      "migrator schema DDL before SET ROLE",
+      "CREATE SCHEMA b7_migrator_schema_escape;",
+      "permission denied for database research_cockpit_acceptance_test",
+    ],
+    [
+      "migrator trusted extension DDL before SET ROLE",
+      "CREATE EXTENSION hstore;",
+      "permission denied to create extension",
+    ],
+    [
+      "migrator temporary DDL before SET ROLE",
+      "CREATE TEMPORARY TABLE b7_migrator_temp_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectMigratorAuthenticatedPsqlFailure(containerId, sql, {
+      label,
+      sqlState: "42501",
+      message,
+    });
+  }
+}
+
+async function verifyMigratorRoleEscalationDenials(
+  containerId: string,
+): Promise<void> {
+  for (const role of MIGRATOR_AUTH_FORBIDDEN_SET_ROLES) {
+    await expectMigratorAuthenticatedPsqlFailure(
+      containerId,
+      `SET ROLE ${role};`,
+      {
+        label: `migrator login SET ROLE ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set role",
+      },
+    );
+  }
+  for (const role of MIGRATOR_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES) {
+    await expectMigratorAuthenticatedPsqlFailure(
+      containerId,
+      `SET SESSION AUTHORIZATION ${role};`,
+      {
+        label: `migrator login SET SESSION AUTHORIZATION ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set session authorization",
+      },
+    );
+  }
+}
+
+async function verifyMigratorOwnsNoObjects(containerId: string): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+), owned AS (
+  SELECT datdba AS owner FROM pg_catalog.pg_database
+  UNION ALL SELECT nspowner FROM pg_catalog.pg_namespace
+  UNION ALL SELECT relowner FROM pg_catalog.pg_class
+  UNION ALL SELECT proowner FROM pg_catalog.pg_proc
+  UNION ALL SELECT typowner FROM pg_catalog.pg_type
+  UNION ALL SELECT extowner FROM pg_catalog.pg_extension
+  UNION ALL SELECT oprowner FROM pg_catalog.pg_operator
+  UNION ALL SELECT conowner FROM pg_catalog.pg_conversion
+  UNION ALL SELECT collowner FROM pg_catalog.pg_collation
+)
+SELECT count(*) FROM owned WHERE owner = (SELECT oid FROM login);`,
+    ),
+    "0",
+    "ephemeral migrator owned objects",
+  );
+}
+
+async function cleanupMigratorAuthProbe(containerId: string): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "drain migrator-auth backends",
+      run: () => waitForMigratorAuthBackendDrain(containerId),
+    },
+    ...[MIGRATOR_AUTH_PASSFILE, MIGRATOR_AUTH_WRONG_PASSFILE].map((path) => ({
+      label: `remove migrator-auth passfile: ${path}`,
+      run: async () => {
+        const remove = await dockerExec(containerId, ["rm", "-f", "--", path]);
+        assertSuccess(remove, "remove migrator-auth passfile");
+      },
+    })),
+    {
+      label: "drop ephemeral migrator login",
+      run: async () => {
+        await psql(containerId, renderMigratorAuthCleanupSql());
+      },
+    },
+  ];
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated migrator cleanup failed",
+  );
+}
+
+async function verifyMigratorAuthResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "verify ephemeral migrator login is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*) FROM pg_catalog.pg_roles
+WHERE rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral migrator login residue",
+        );
+      },
+    },
+    {
+      label: "verify ephemeral migrator membership is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral migrator membership residue",
+        );
+      },
+    },
+    {
+      label: "verify ephemeral migrator backend is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE usename = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral migrator backend residue",
+        );
+      },
+    },
+  ];
+  for (const path of [MIGRATOR_AUTH_PASSFILE, MIGRATOR_AUTH_WRONG_PASSFILE]) {
+    operations.push(
+      {
+        label: `verify migrator-auth passfile is absent: ${path}`,
+        run: async () => {
+          const absent = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-e",
+            path,
+          ]);
+          assertSuccess(absent, "verify migrator-auth passfile is absent");
+        },
+      },
+      {
+        label: `verify migrator-auth symlink is absent: ${path}`,
+        run: async () => {
+          const absent = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-L",
+            path,
+          ]);
+          assertSuccess(absent, "verify migrator-auth symlink is absent");
+        },
+      },
+    );
+  }
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated migrator residue verification failed",
+  );
+}
+
+async function migratorAuthenticatedPsqlScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await migratorAuthenticatedPsql(
+    containerId,
+    MIGRATOR_AUTH_PASSFILE,
+    sql,
+  );
+  assertSuccess(result, "execute authenticated migrator SQL");
+  return result.stdout.trim();
+}
+
+async function expectMigratorAuthenticatedPsqlFailure(
+  containerId: string,
+  sql: string,
+  expectation: PsqlFailureExpectation,
+): Promise<void> {
+  const result = await migratorAuthenticatedPsql(
+    containerId,
+    MIGRATOR_AUTH_PASSFILE,
+    sql,
+    { verboseErrors: true },
+  );
+  assertExpectedPsqlFailure(result, expectation);
+}
+
+async function migratorAuthenticatedPsql(
+  containerId: string,
+  passfile: typeof MIGRATOR_AUTH_PASSFILE | typeof MIGRATOR_AUTH_WRONG_PASSFILE,
+  sql: string,
+  options: MigratorAuthPsqlInvocationOptions = {},
+): Promise<CommandResult> {
+  const invocation = buildMigratorAuthPsqlInvocation(passfile, options);
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        sql,
+      ),
+    () => waitForMigratorAuthBackendDrain(containerId),
+  );
+}
+
+async function waitForMigratorAuthBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderMigratorAuthBackendDrainSql());
 }
 
 async function ownerDdlAuthenticatedPsqlScalar(
@@ -4702,6 +5921,36 @@ async function psqlScalar(containerId: string, sql: string): Promise<string> {
   return result.stdout.trim();
 }
 
+async function psqlMaintenanceScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await psqlMaintenance(containerId, sql);
+  return result.stdout.trim();
+}
+
+async function psqlMaintenance(
+  containerId: string,
+  sql: string,
+): Promise<CommandResult> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--tuples-only",
+      "--no-align",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    sql,
+  );
+  assertSuccess(result, "execute reviewed PostgreSQL maintenance SQL");
+  return result;
+}
+
 async function psql(containerId: string, sql: string): Promise<CommandResult> {
   const result = await dockerExec(
     containerId,
@@ -4886,7 +6135,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "c0e3531a791dfee4472aef818465e8a551d240c1c2a870fe5cd68c224cf5712d" ||
+      "c39a9e2f24300f05e30f26e41bf72b8bf264513e90a1e1bebdf4efbc4f1b64ec" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||
@@ -4939,6 +6188,20 @@ function assertOwnerDdlAuthPassword(password: string): void {
   ) {
     throw new Error(
       "Owner-DDL-auth password must be a 32-byte base64url value without padding",
+    );
+  }
+}
+
+function assertMigratorAuthPassword(password: string): void {
+  const decoded = Buffer.from(password, "base64url");
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password) ||
+    decoded.length !== 32 ||
+    decoded.toString("base64url") !== password
+  ) {
+    throw new Error(
+      "Migrator-auth password must be a 32-byte base64url value without padding",
     );
   }
 }

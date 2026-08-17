@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v6.json";
+  "research-cockpit-postgres-acceptance-v7.json";
 
 export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
@@ -100,12 +100,32 @@ export const POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED = Object.freeze([
 export const POSTGRES_ACCEPTANCE_V6_NOT_PROVEN =
   POSTGRES_ACCEPTANCE_V5_NOT_PROVEN;
 
+export const POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+  "authenticated_clean_application_migrations_after_platform_bootstrap",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_V7_NOT_PROVEN = Object.freeze([
+  "resolved_platform_image_manifest",
+  "external_or_production_authenticated_database_sessions",
+  "external_production_or_incremental_authenticated_migrations",
+  "globally_atomic_platform_and_application_bootstrap",
+  "authenticated_backup_sessions",
+  "end_user_identity_or_tenant_binding",
+  "production_identity_tls_secrets_or_pooling",
+  "concurrent_sessions_cancellation_or_timeouts",
+  "dump_restore_or_disaster_recovery",
+  "real_or_licensed_market_data",
+  "application_driver_pool_or_composition_root",
+  "complete_dossier_history_timeline_or_dimensioned_projection",
+] as const);
+
 /** The exact completed-check list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_CHECKS_PASSED =
-  POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED;
+  POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED;
 
 /** The exact limitation list emitted by the current evidence builder. */
-export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V6_NOT_PROVEN;
+export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V7_NOT_PROVEN;
 
 const BUILD_INPUT_KEYS = [
   "githubEnvironment",
@@ -151,6 +171,12 @@ const V4_SOURCE_HASH_KEYS = [
   "projectionQuerySha256",
   "projectionNormalizerSha256",
 ] as const;
+const V7_SOURCE_HASH_KEYS = [
+  ...V4_SOURCE_HASH_KEYS,
+  "platformBootstrapV2Sha256",
+  "applicationMigrationManifestV2Sha256",
+  "authenticatedMigrationRendererV2Sha256",
+] as const;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const SHA1_HEX = /^[0-9a-f]{40}$/;
@@ -183,6 +209,12 @@ export interface PostgresAcceptanceSourceHashes extends HistoricalPostgresAccept
   readonly projectionNormalizerSha256: string;
 }
 
+export interface PostgresAcceptanceV7SourceHashes extends PostgresAcceptanceSourceHashes {
+  readonly platformBootstrapV2Sha256: string;
+  readonly applicationMigrationManifestV2Sha256: string;
+  readonly authenticatedMigrationRendererV2Sha256: string;
+}
+
 export interface BuildPostgresAcceptanceEvidenceInput {
   /**
    * The complete environment may be supplied, but the builder reads only the
@@ -192,7 +224,7 @@ export interface BuildPostgresAcceptanceEvidenceInput {
   readonly reviewedImageReference: string;
   readonly reviewedImageIndexDigest: string;
   readonly toolVersions: PostgresAcceptanceToolVersions;
-  readonly sourceHashes: PostgresAcceptanceSourceHashes;
+  readonly sourceHashes: PostgresAcceptanceV7SourceHashes;
   readonly completedAt: string;
 }
 
@@ -254,13 +286,20 @@ export interface PostgresAcceptanceEvidenceV6 extends PostgresAcceptanceEvidence
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V6_NOT_PROVEN;
 }
 
+export interface PostgresAcceptanceEvidenceV7 extends PostgresAcceptanceEvidenceFields<PostgresAcceptanceV7SourceHashes> {
+  readonly schemaVersion: 7;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V7_NOT_PROVEN;
+}
+
 export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV1
   | PostgresAcceptanceEvidenceV2
   | PostgresAcceptanceEvidenceV3
   | PostgresAcceptanceEvidenceV4
   | PostgresAcceptanceEvidenceV5
-  | PostgresAcceptanceEvidenceV6;
+  | PostgresAcceptanceEvidenceV6
+  | PostgresAcceptanceEvidenceV7;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -285,7 +324,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidenceV6 {
+): PostgresAcceptanceEvidenceV7 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -321,11 +360,11 @@ export function buildPostgresAcceptanceEvidence(
       reviewedImageIndexDigest,
     );
     const toolVersions = normalizeToolVersions(input.toolVersions);
-    const sourceHashes = normalizeV4SourceHashes(input.sourceHashes);
+    const sourceHashes = normalizeV7SourceHashes(input.sourceHashes);
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 6,
+      schemaVersion: 7,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -382,14 +421,14 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidenceV6,
+  value: PostgresAcceptanceEvidenceV7,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
     const normalized = normalizeEvidence(value);
-    if (normalized.schemaVersion !== 6) invalid();
+    if (normalized.schemaVersion !== 7) invalid();
     bytes = Buffer.from(
       serializePostgresAcceptanceEvidence(normalized),
       "utf8",
@@ -557,6 +596,23 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     });
   }
 
+  if (evidence.schemaVersion === 7) {
+    const sourceHashes = normalizeV7SourceHashes(evidence.sourceHashes);
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V7_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 7,
+      ...common,
+      sourceHashes,
+      checksPassed: POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
   invalid();
 }
 
@@ -593,6 +649,27 @@ function normalizeV4SourceHashes(
     acceptanceRunnerSha256: sha256Hex(hashes.acceptanceRunnerSha256),
     projectionQuerySha256: sha256Hex(hashes.projectionQuerySha256),
     projectionNormalizerSha256: sha256Hex(hashes.projectionNormalizerSha256),
+  });
+}
+
+function normalizeV7SourceHashes(
+  value: unknown,
+): PostgresAcceptanceV7SourceHashes {
+  const hashes = exactPlainDataRecord(value, V7_SOURCE_HASH_KEYS);
+  return Object.freeze({
+    workflowSha256: sha256Hex(hashes.workflowSha256),
+    fixtureSha256: sha256Hex(hashes.fixtureSha256),
+    migrationManifestSha256: sha256Hex(hashes.migrationManifestSha256),
+    acceptanceRunnerSha256: sha256Hex(hashes.acceptanceRunnerSha256),
+    projectionQuerySha256: sha256Hex(hashes.projectionQuerySha256),
+    projectionNormalizerSha256: sha256Hex(hashes.projectionNormalizerSha256),
+    platformBootstrapV2Sha256: sha256Hex(hashes.platformBootstrapV2Sha256),
+    applicationMigrationManifestV2Sha256: sha256Hex(
+      hashes.applicationMigrationManifestV2Sha256,
+    ),
+    authenticatedMigrationRendererV2Sha256: sha256Hex(
+      hashes.authenticatedMigrationRendererV2Sha256,
+    ),
   });
 }
 

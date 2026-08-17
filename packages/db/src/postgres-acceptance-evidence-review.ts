@@ -19,6 +19,9 @@ const MAX_MANIFEST_BYTES = 64 * 1_024;
 const MAX_ACCEPTANCE_RUNNER_BYTES = 2 * 1_024 * 1_024;
 const MAX_PROJECTION_QUERY_BYTES = 2 * 1_024 * 1_024;
 const MAX_PROJECTION_NORMALIZER_BYTES = 2 * 1_024 * 1_024;
+const MAX_PLATFORM_BOOTSTRAP_V2_BYTES = 2 * 1_024 * 1_024;
+const MAX_APPLICATION_MANIFEST_V2_BYTES = 64 * 1_024;
+const MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -33,6 +36,15 @@ const PROJECTION_QUERY_PATH = "packages/db/src/postgres-projection-query.ts";
 const PROJECTION_NORMALIZER_PATH =
   "packages/db/src/projection-normalization.ts";
 const MIGRATION_DIRECTORY = "packages/db/migrations";
+const PLATFORM_BOOTSTRAP_V2_PATH =
+  "packages/db/migration-plans/v2/platform-bootstrap.sql";
+const APPLICATION_MANIFEST_V2_PATH =
+  "packages/db/migration-plans/v2/application-manifest.json";
+const AUTHENTICATED_MIGRATION_RENDERER_V2_PATH =
+  "packages/db/src/authenticated-migration-plan.ts";
+const APPLICATION_MIGRATION_V2_DIRECTORY =
+  "packages/db/migration-plans/v2/application";
+const MIGRATION_PLAN_V2_DIRECTORY = "packages/db/migration-plans/v2";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -45,11 +57,26 @@ const REVIEW_INPUT_KEYS = [
   "expectedRunAttempt",
 ] as const;
 const MANIFEST_KEYS = ["schemaVersion", "algorithm", "migrations"] as const;
+const APPLICATION_MANIFEST_V2_KEYS = [
+  "schemaVersion",
+  "planVersion",
+  "algorithm",
+  "migrations",
+] as const;
 const MIGRATION_KEYS = ["id", "file", "sha256"] as const;
+const APPLICATION_MIGRATION_V2_FILES = Object.freeze([
+  "0001_request_context_and_ledger.sql",
+  "0002_canonical_entities.sql",
+  "0003_temporal_constraints_and_indexes.sql",
+  "0004_row_security_and_runtime_grants.sql",
+  "0005_non_reusable_resource_ids.sql",
+  "0006_null_safe_request_context.sql",
+] as const);
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
 const MIGRATION_ID = /^[0-9]{4}$/;
+const APPLICATION_MIGRATION_V2_ID = /^v2-[0-9]{4}$/;
 const MIGRATION_FILE = /^[0-9]{4}_[a-z0-9_]+\.sql$/;
 
 type DataRecord = Readonly<Record<string, unknown>>;
@@ -66,6 +93,12 @@ export interface PostgresAcceptanceEvidenceReviewInput {
 }
 
 interface MigrationManifestEntry {
+  readonly id: string;
+  readonly file: string;
+  readonly sha256: string;
+}
+
+interface ApplicationMigrationV2ManifestEntry {
   readonly id: string;
   readonly file: string;
   readonly sha256: string;
@@ -154,8 +187,13 @@ export async function reviewPostgresAcceptanceEvidence(
     const projectionSources =
       evidence.schemaVersion === 4 ||
       evidence.schemaVersion === 5 ||
-      evidence.schemaVersion === 6
+      evidence.schemaVersion === 6 ||
+      evidence.schemaVersion === 7
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
+        : {};
+    const migrationPlanV2Sources =
+      evidence.schemaVersion === 7
+        ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -176,10 +214,107 @@ export async function reviewPostgresAcceptanceEvidence(
         acceptanceRunner: Uint8Array.from(acceptanceRunner),
         migrations,
         ...projectionSources,
+        ...migrationPlanV2Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
+  }
+}
+
+async function readMigrationPlanV2Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly platformBootstrapV2: Uint8Array;
+  readonly applicationMigrationManifestV2: Uint8Array;
+  readonly authenticatedMigrationRendererV2: Uint8Array;
+  readonly applicationMigrationsV2: readonly {
+    id: string;
+    file: string;
+    bytes: Uint8Array;
+  }[];
+}> {
+  await requireExactMigrationPlanV2Tree(repositoryPath, commit);
+  const [
+    platformBootstrapV2,
+    applicationMigrationManifestV2,
+    authenticatedMigrationRendererV2,
+  ] = await Promise.all([
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PLATFORM_BOOTSTRAP_V2_PATH,
+      MAX_PLATFORM_BOOTSTRAP_V2_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      APPLICATION_MANIFEST_V2_PATH,
+      MAX_APPLICATION_MANIFEST_V2_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      AUTHENTICATED_MIGRATION_RENDERER_V2_PATH,
+      MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES,
+    ),
+  ]);
+  const manifestEntries = parseApplicationMigrationManifestV2(
+    applicationMigrationManifestV2,
+  );
+  const applicationMigrationsV2 = await readExactApplicationMigrationV2Tree(
+    repositoryPath,
+    commit,
+    manifestEntries,
+  );
+  return Object.freeze({
+    platformBootstrapV2: Uint8Array.from(platformBootstrapV2),
+    applicationMigrationManifestV2: Uint8Array.from(
+      applicationMigrationManifestV2,
+    ),
+    authenticatedMigrationRendererV2: Uint8Array.from(
+      authenticatedMigrationRendererV2,
+    ),
+    applicationMigrationsV2,
+  });
+}
+
+async function requireExactMigrationPlanV2Tree(
+  repositoryPath: string,
+  commit: string,
+): Promise<void> {
+  const treeOutput = await executeGit(
+    repositoryPath,
+    [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      commit,
+      "--",
+      MIGRATION_PLAN_V2_DIRECTORY,
+    ],
+    MAX_GIT_METADATA_BYTES,
+  );
+  const treeEntries = parseGitTree(treeOutput);
+  const expectedPaths = [
+    PLATFORM_BOOTSTRAP_V2_PATH,
+    APPLICATION_MANIFEST_V2_PATH,
+    ...APPLICATION_MIGRATION_V2_FILES.map(
+      (file) => `${APPLICATION_MIGRATION_V2_DIRECTORY}/${file}`,
+    ),
+  ].sort(compareCodeUnits);
+  if (
+    treeEntries.some(
+      ({ mode, type }) => mode !== "100644" || type !== "blob",
+    ) ||
+    !sameStrings(
+      treeEntries.map(({ path }) => path),
+      expectedPaths,
+    )
+  ) {
+    invalid();
   }
 }
 
@@ -347,6 +482,60 @@ async function readExactMigrationTree(
   return Object.freeze(migrations);
 }
 
+async function readExactApplicationMigrationV2Tree(
+  repositoryPath: string,
+  commit: string,
+  manifestEntries: readonly ApplicationMigrationV2ManifestEntry[],
+): Promise<readonly { id: string; file: string; bytes: Uint8Array }[]> {
+  const treeOutput = await executeGit(
+    repositoryPath,
+    [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      commit,
+      "--",
+      APPLICATION_MIGRATION_V2_DIRECTORY,
+    ],
+    MAX_GIT_METADATA_BYTES,
+  );
+  const treeEntries = parseGitTree(treeOutput);
+  const expectedPaths = manifestEntries.map(
+    ({ file }) => `${APPLICATION_MIGRATION_V2_DIRECTORY}/${file}`,
+  );
+  const actualPaths = treeEntries.map(({ path }) => path);
+  if (
+    treeEntries.some(
+      ({ mode, type }) => mode !== "100644" || type !== "blob",
+    ) ||
+    !sameStrings(actualPaths, [...expectedPaths].sort(compareCodeUnits))
+  ) {
+    invalid();
+  }
+
+  const migrations: { id: string; file: string; bytes: Uint8Array }[] = [];
+  let totalBytes = 0;
+  for (const entry of manifestEntries) {
+    const path = `${APPLICATION_MIGRATION_V2_DIRECTORY}/${entry.file}`;
+    const bytes = await executeGit(
+      repositoryPath,
+      ["cat-file", "blob", `${commit}:${path}`],
+      MAX_MIGRATION_BYTES,
+    );
+    totalBytes += bytes.byteLength;
+    if (totalBytes > MAX_TOTAL_MIGRATION_BYTES) invalid();
+    migrations.push(
+      Object.freeze({
+        id: entry.id,
+        file: entry.file,
+        bytes: Uint8Array.from(bytes),
+      }),
+    );
+  }
+  return Object.freeze(migrations);
+}
+
 function parseMigrationManifest(
   bytes: Buffer,
 ): readonly MigrationManifestEntry[] {
@@ -386,6 +575,41 @@ function parseMigrationManifest(
     )
   ) {
     invalid();
+  }
+  return Object.freeze(entries);
+}
+
+function parseApplicationMigrationManifestV2(
+  bytes: Buffer,
+): readonly ApplicationMigrationV2ManifestEntry[] {
+  const manifest = exactPlainDataRecord(
+    parseJsonBytes(bytes, MAX_APPLICATION_MANIFEST_V2_BYTES),
+    APPLICATION_MANIFEST_V2_KEYS,
+  );
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.planVersion !== 2 ||
+    manifest.algorithm !== "sha256" ||
+    !Array.isArray(manifest.migrations) ||
+    Object.getPrototypeOf(manifest.migrations) !== Array.prototype ||
+    manifest.migrations.length !== APPLICATION_MIGRATION_V2_FILES.length
+  ) {
+    invalid();
+  }
+
+  const entries: ApplicationMigrationV2ManifestEntry[] = [];
+  for (const [index, value] of manifest.migrations.entries()) {
+    const entry = exactPlainDataRecord(value, MIGRATION_KEYS);
+    const id = exactPattern(entry.id, APPLICATION_MIGRATION_V2_ID, 8);
+    const file = exactPattern(entry.file, MIGRATION_FILE, 240);
+    const sha256 = exactPattern(entry.sha256, SHA256_HEX, 64);
+    if (
+      id !== `v2-${String(index + 1).padStart(4, "0")}` ||
+      file !== APPLICATION_MIGRATION_V2_FILES[index]
+    ) {
+      invalid();
+    }
+    entries.push(Object.freeze({ id, file, sha256 }));
   }
   return Object.freeze(entries);
 }

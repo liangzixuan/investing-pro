@@ -112,12 +112,19 @@ backup and restore follow that redesign.
 Historical b1 through b5 evidence retains its exact recorded scope and is not
 retroactively widened by this decision.
 
+Successor note: B7 now has a separately versioned platform/application design
+and locally verified source implementation; its version 7 live run remains
+pending.
+That later work is not part of the historical B6 result and cannot turn this
+canary into migration evidence.
+
 ## Related decisions
 
 - [ADR 0014: Container-local runtime authentication](./0014-container-local-runtime-authentication.md)
 - [ADR 0017: Authenticated test-loader fixture load](./0017-authenticated-test-loader-fixture-load.md)
 - [Cycle 1b-b6 exit matrix](../CYCLE_1BB6_EXIT_MATRIX.md)
 - [Cycle 1b-b6 evidence note](../POSTGRESQL_OWNER_DDL_EVIDENCE.md)
+- [ADR 0019: Versioned authenticated migration phase](./0019-versioned-authenticated-migration-phase.md)
 - [PostgreSQL 17 role attributes](https://www.postgresql.org/docs/17/role-attributes.html)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
