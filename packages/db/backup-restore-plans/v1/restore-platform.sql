@@ -110,7 +110,7 @@ BEGIN
     SELECT count(*)
     FROM pg_catalog.pg_namespace AS namespace
     CROSS JOIN LATERAL pg_catalog.aclexplode(
-      pg_catalog.coalesce(
+      coalesce(
         namespace.nspacl,
         pg_catalog.acldefault('n', namespace.nspowner)
       )
@@ -124,7 +124,7 @@ BEGIN
     SELECT count(*)
     FROM pg_catalog.pg_namespace AS namespace
     CROSS JOIN LATERAL pg_catalog.aclexplode(
-      pg_catalog.coalesce(
+      coalesce(
         namespace.nspacl,
         pg_catalog.acldefault('n', namespace.nspowner)
       )
@@ -140,7 +140,7 @@ BEGIN
     SELECT count(*)
     FROM pg_catalog.pg_database AS database
     CROSS JOIN LATERAL pg_catalog.aclexplode(
-      pg_catalog.coalesce(
+      coalesce(
         database.datacl,
         pg_catalog.acldefault('d', database.datdba)
       )
@@ -151,7 +151,7 @@ BEGIN
     SELECT count(*)
     FROM pg_catalog.pg_database AS database
     CROSS JOIN LATERAL pg_catalog.aclexplode(
-      pg_catalog.coalesce(
+      coalesce(
         database.datacl,
         pg_catalog.acldefault('d', database.datdba)
       )

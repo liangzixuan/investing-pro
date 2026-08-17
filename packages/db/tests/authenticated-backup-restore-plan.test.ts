@@ -91,6 +91,7 @@ describe("authenticated backup and bounded restore plan", () => {
       "restore platform bootstrap requires zero capability-role settings",
     );
     expect(success).toContain("FROM pg_catalog.pg_authid");
+    expect(success).not.toContain("pg_catalog.coalesce(");
     for (const roleAttribute of [
       "rolconnlimit = -1",
       "rolpassword IS NULL",
