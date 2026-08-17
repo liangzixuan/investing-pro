@@ -1,6 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; first live record produced and retained
+Status: accepted; first version 3 live record produced, retained, and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -58,6 +58,16 @@ probe passed. Its downloaded bytes also returned `offline_consistent`; the
 exact anchors and narrower authentication claim. Version 2 remains unsigned
 run metadata and explicitly preserves the unproven production, end-user,
 full-authorization, pool, restore, and real-data boundaries.
+
+The first version 3 record was produced by successful run `31991498652`,
+attempt 1, at commit `664c0e5b` after the authenticated runtime authorization
+matrix passed. Its downloaded bytes returned `offline_consistent`; the
+[Cycle 1b-b3 evidence note](../POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md)
+records its exact anchors and bounded claim. Version 3 adds exactly
+`authenticated_runtime_authorization_matrix`, removes only the matching version
+2 limitation, and remains unsigned run metadata. External/production and
+end-user authentication, migrator/test-loader/backup sessions, pool and
+concurrency behavior, restore, and real-data boundaries remain unproven.
 
 ## Primary sources
 

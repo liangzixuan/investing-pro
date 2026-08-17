@@ -1,6 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; first retained artifact reviewed successfully
+Status: accepted; first retained version 3 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -54,7 +54,13 @@ The version 2 artifact from run `31988811000`, attempt 1, at commit `3479e164`
 also returned `offline_consistent`; see the
 [Cycle 1b-b2 evidence note](../POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md). That run
 adds one bounded, container-local authenticated runtime service account only.
-The broader authenticated runtime authorization matrix is implemented in b3
-source but remains live-pending. External/production and end-user
-authentication, migrator/test-loader/backup sessions, restore, pool, and
-adapter work remain separate gated work.
+
+The version 3 artifact from run `31991498652`, attempt 1, at commit `664c0e5b`
+also returned `offline_consistent`; see the
+[Cycle 1b-b3 evidence note](../POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md).
+That reviewed run adds the exact shared synthetic tenant-isolation,
+operation-rights, and one-backend prepared matrix through the service account.
+External/production and end-user authentication,
+migrator/test-loader/backup sessions, restore, pool/concurrency, and adapter
+work remain separate gated work. `offline_consistent` still does not prove the
+database execution without separate review of the run and logs.

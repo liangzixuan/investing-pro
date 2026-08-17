@@ -1,8 +1,8 @@
 # Canonical data and tenancy contract
 
 Status: Cycle 1b-a2 design contract, a live-verified bounded Cycle 1b-b2
-runtime-session boundary, and a source-implemented/live-pending Cycle 1b-b3
-authenticated authorization matrix; synthetic data only.
+runtime-session boundary, and a live-verified bounded Cycle 1b-b3 authenticated
+authorization matrix; synthetic data only.
 
 ## Identity
 
@@ -86,10 +86,12 @@ tenant-visibility, inactive and non-current membership, direct/join/subquery,
 operation-rights, and alternating prepared-read assertions. That path uses the
 b2 SCRAM login and transaction-local runtime role selection, while the b1
 administrator-impersonation path remains as a separate regression check. The
-b3 source has not yet completed its first dedicated remote run, so those
-broader assertions are not authenticated-session engine evidence. Its exit
-rule and exact pending status are in the
-[Cycle 1b-b3 exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md).
+path passed in reviewed PostgreSQL run `31991498652` at commit `664c0e5b`; the
+downloaded version 3 record returned `offline_consistent` against separately
+supplied anchors. Exact scope and limits are in the
+[Cycle 1b-b3 evidence note](./POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md) and
+[exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md). The result does not promote b1's
+additional null/malformed/unsupported-context failures.
 
 That bounded result does not prove production identity or external
 authentication. `session_user` identifies only the database service account;
@@ -98,9 +100,9 @@ it does not bind an end user to a principal or organization, and
 identity resolver. External/TLS transport, production secrets, connection-pool
 cleanup, concurrency, migrator/test-loader/backup authentication,
 backup/restore, and the future deletion path remain separate gates.
-A future successful b3 run would close only the recorded synthetic
-authenticated tenant/rights/prepared-read gap; it would not change any of
-these remaining identity, transport, operational, or deployment gates.
+The successful b3 run closes only the recorded synthetic authenticated
+tenant/rights/prepared-read gap; it does not change any of these remaining
+identity, transport, operational, or deployment gates.
 A database adapter must not infer “no omissions” merely because RLS hid rows;
 it needs an explicit completeness signal and must use `count: null` when an
 exact count cannot be disclosed or established.

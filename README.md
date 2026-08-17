@@ -64,17 +64,18 @@ migrator/test-loader/backup authentication, restore, or deployment readiness.
 The distinct-migrator boundary remains separate because PostgreSQL 17 role
 creation conflicts with migration `0001`'s zero-membership bootstrap invariant.
 
-Cycle 1b-b3 is implemented in source and remains live-pending. While the same
-ephemeral b2 login is active, the acceptance source reruns the reviewed alpha/
-beta tenant-visibility, inactive and non-current membership, direct/join/
+Cycle 1b-b3 now has a reviewed live result at commit `664c0e5b`. While the same
+ephemeral b2 login was active, the acceptance harness reran the reviewed alpha/
+beta tenant visibility, inactive and non-current membership, direct/join/
 subquery isolation, operation-rights, and alternating prepared-read assertions
 through the SCRAM-authenticated session with transaction-local runtime role
-selection. It changes no migration, capability role, application dependency,
-network exposure, driver, pool, or composition root. No b3 engine claim is
-valid until a clean dedicated PostgreSQL run and its new success-only record
-are reviewed; b1 and b2 remain the latest live evidence for their respective
-historical scopes. See the
-[Cycle 1b-b3 exit matrix](./docs/CYCLE_1BB3_EXIT_MATRIX.md) and
+selection. Run `31991498652` produced a version 3 success record that returned
+`offline_consistent` against separately supplied anchors. B3 changes no
+migration, capability role, application dependency, network exposure, driver,
+pool, or composition root, and it does not promote b1's additional
+null/malformed/unsupported-context cases. See the
+[Cycle 1b-b3 evidence note](./docs/POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md),
+[exit matrix](./docs/CYCLE_1BB3_EXIT_MATRIX.md), and
 [ADR 0015](./docs/adr/0015-authenticated-runtime-authorization-matrix.md).
 
 ## Requirements
@@ -106,11 +107,12 @@ platforms passed for the b1 commit `611c93d` and the bounded b2 commit
 additionally proves only one container-local SCRAM runtime service account; it
 does not substitute for end-user or production identity, concurrent pool
 behavior, dump/restore, or deployment readiness. B3's broader authenticated
-tenant/rights/prepared-read matrix is implemented only in source; until its
-first remote run and success record are reviewed, that matrix remains live
-evidence only through b1's administrator impersonation. The offline verifier
-checks record/source consistency after download but cannot authenticate the
-GitHub run or independently prove PostgreSQL execution.
+tenant/rights/prepared-read matrix passed in PostgreSQL run `31991498652` at
+commit `664c0e5b`; its retained version 3 record returned `offline_consistent`.
+This is still one sequential, synthetic, container-local service-account
+result. The offline verifier checks record/source consistency after download
+but cannot authenticate the GitHub run or independently prove PostgreSQL
+execution.
 
 ## Safety boundary
 
@@ -123,8 +125,9 @@ GitHub run or independently prove PostgreSQL execution.
 - The proved container-local database service-account boundary does not
   establish end-user identity, external/TLS transport, managed
   secrets, pool safety, or production authorization.
-- Source-implemented b3 authenticated-matrix checks are not live PostgreSQL
-  evidence until the dedicated workflow and success-only record are reviewed.
+- The reviewed b3 authenticated matrix does not establish a trusted end-user or
+  tenant binding, an external/TLS path, production secrets, pool safety,
+  concurrent behavior, restore viability, or deployed persistence.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -134,5 +137,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b1 exit matrix](./docs/CYCLE_1BB1_EXIT_MATRIX.md),
 [Cycle 1b-b2 exit matrix](./docs/CYCLE_1BB2_EXIT_MATRIX.md),
 [Cycle 1b-b2 evidence note](./docs/POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md),
-[Cycle 1b-b3 exit matrix](./docs/CYCLE_1BB3_EXIT_MATRIX.md), and
-[architecture decisions](./docs/adr/).
+[Cycle 1b-b3 exit matrix](./docs/CYCLE_1BB3_EXIT_MATRIX.md),
+[Cycle 1b-b3 evidence note](./docs/POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md),
+and [architecture decisions](./docs/adr/).

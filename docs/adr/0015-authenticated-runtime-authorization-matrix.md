@@ -1,6 +1,6 @@
 # ADR 0015: Authenticated runtime authorization matrix
 
-Status: accepted for Cycle 1b-b3 source; first remote execution pending
+Status: accepted; first Cycle 1b-b3 live execution reviewed
 
 ## Context
 
@@ -64,19 +64,26 @@ authenticated matrix and the existing cleanup/residue checks succeed.
 
 The success-only run-record contract advances to a new immutable schema version
 for b3. Historical version 1 and version 2 records retain their original
-meanings and remain reviewable. The new record may add an authenticated-runtime
-matrix completed check and remove only the corresponding
+meanings and remain reviewable. Version 3 adds exactly
+`authenticated_runtime_authorization_matrix` and removes only the corresponding
 `full_authenticated_runtime_authorization_matrix` limitation. Every other
-limitation remains explicit.
+version 2 limitation remains explicit.
 
-## Source and live-evidence boundary
+## Acceptance rule and reviewed result
 
-The b3 source is not live evidence by itself. No b3 row may be marked passed,
-and no version 3 record may be cited as engine evidence, until the dedicated
-PostgreSQL workflow succeeds from a clean checkout against the pinned image and
-the success-only artifact and logs are independently reviewed. Until then, b1
-remains the latest live evidence for the comprehensive matrix and b2 remains
-the latest live evidence for authenticated runtime behavior.
+The b3 source is not live evidence by itself. A b3 row may be marked passed
+only after the dedicated PostgreSQL workflow succeeds from a clean checkout
+against the pinned image and the success-only artifact and logs are
+independently reviewed.
+
+That rule was satisfied for commit `664c0e5b0158925918c4ff07c9f7f28fe345327b`,
+PostgreSQL run `31991498652`, attempt 1. The downloaded version 3 record returned
+`offline_consistent` against separately supplied commit, repository, run,
+attempt, and byte-hash anchors. Exact links, hashes, completed checks, and
+limitations are recorded in the
+[Cycle 1b-b3 evidence note](../POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md).
+This result is bounded to the decision above and does not widen any explicit
+non-claim. The later documentation commit is not the tested commit.
 
 The offline record verifier may establish only record/source consistency
 against independently supplied anchors. It cannot authenticate GitHub,
@@ -100,7 +107,7 @@ application composition, and network boundary remain unchanged.
 
 ## Consequences
 
-Once a reviewed b3 run exists, the project may describe the recorded synthetic
+The reviewed b3 run permits the project to describe the recorded synthetic
 matrix as exercised through one authenticated container-local runtime service
 account. That statement still cannot be shortened to “production
 authentication,” “tenant identity is verified,” “the application uses
@@ -119,3 +126,4 @@ login.
 - [ADR 0013: Offline PostgreSQL run-record verification](./0013-offline-postgresql-run-record-verification.md)
 - [ADR 0014: Container-local runtime service-account authentication](./0014-container-local-runtime-authentication.md)
 - [Cycle 1b-b3 exit matrix](../CYCLE_1BB3_EXIT_MATRIX.md)
+- [Cycle 1b-b3 evidence note](../POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md)

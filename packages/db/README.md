@@ -1,11 +1,11 @@
 # PostgreSQL security contract and acceptance harness
 
-> **B1 CLEAN-ONLY LIVE ACCEPTANCE PASSED; B2 BOUNDED RUNTIME-AUTH LIVE ACCEPTANCE PASSED; B3 AUTHENTICATED MATRIX SOURCE IMPLEMENTED, LIVE PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); BOUNDED RUNTIME-AUTH PASSED (B2); AUTHENTICATED-MATRIX PASSED (B3) — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
-The seven migrations and implemented probes passed in the first reviewed run against the pinned
-PostgreSQL 17.11 service at commit `611c93d`; see the
+The seven migrations and b1 probes passed in the first reviewed run against the
+pinned PostgreSQL 17.11 service at commit `611c93d`; see the
 [retained evidence note](../../docs/POSTGRESQL_ACCEPTANCE_EVIDENCE.md). That run
 is bounded engine evidence for its recorded checks. It does not prove backup
 viability, production or end-user authentication, pooling, concurrency,
@@ -19,13 +19,15 @@ does not change the running application or establish production authentication.
 The first reviewed b2 run passed at commit `3479e164`; see the
 [runtime-authentication evidence note](../../docs/POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md).
 
-Cycle 1b-b3 is also implemented in the acceptance source, but has no reviewed
-live result yet. It preserves the b1 impersonated-capability regression path
-and repeats the reviewed alpha/beta tenant visibility, inactive and non-current
+Cycle 1b-b3 preserves the b1 impersonated-capability regression path and
+repeats the reviewed alpha/beta tenant visibility, inactive and non-current
 membership, direct/join/subquery isolation, operation-rights, and alternating
 prepared-read assertions through the b2 SCRAM login with transaction-local
-runtime role selection. A source-only implementation is not engine evidence;
-see [ADR 0015](../../docs/adr/0015-authenticated-runtime-authorization-matrix.md)
+runtime role selection. That exact matrix passed in PostgreSQL run
+`31991498652` at commit `664c0e5b`; the downloaded version 3 success record
+returned `offline_consistent` against separately supplied anchors. See the
+[evidence note](../../docs/POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md),
+[ADR 0015](../../docs/adr/0015-authenticated-runtime-authorization-matrix.md),
 and the [Cycle 1b-b3 exit matrix](../../docs/CYCLE_1BB3_EXIT_MATRIX.md).
 
 There is deliberately no database driver, production or incremental migration
@@ -76,11 +78,12 @@ The b3 source closes that code-path gap without changing the login or role
 graph. It runs the shared tenant-isolation and operation-rights expectations
 through an authenticated client, uses `SET LOCAL ROLE research_cockpit_runtime`
 inside each transaction, and keeps the alternating prepared sequence on one
-authenticated backend. B3 does not rerun the b1 null/malformed-context failure
-set through authentication; b2's bounded missing-context and write-denial
-probes remain separate prerequisites. The first b3 remote execution and its
-new success-only record must be reviewed before any broader authenticated
-matrix claim is made.
+authenticated backend. B3 does not rerun b1's additional null, malformed, or
+unsupported-context failure cases through authentication; b2's bounded
+missing-context and write-denial probes remain separate prerequisites. The
+reviewed b3 run completed that exact matrix through the service account; it
+does not promote the additional b1 context failures or establish a
+pool/concurrency result.
 
 The disposable wrong-password call intentionally omits `PGREQUIREAUTH` rather
 than setting it to an empty value: libpq 17 treats those states differently and
@@ -96,8 +99,8 @@ files. The record allowlists commit/run metadata, reviewed source hashes,
 observed PostgreSQL tool versions, completed check identifiers, and explicit
 limitations. It excludes container IDs, environment dumps, credentials, SQL,
 logs, tenant/row identifiers, and data counts. This is an unsigned run record,
-not a compliance archive or independent proof. The first reviewed record is
-identified in the retained evidence note.
+not a compliance archive or independent proof. Reviewed records are identified
+in the linked retained evidence notes.
 
 After downloading an artifact, review it from a local clone that already
 contains the recorded commit. Every expected anchor is mandatory and must be
@@ -176,8 +179,8 @@ deployment roles.
 
 ADR 0015 reuses exactly that temporary login for the b3 source matrix. It adds
 no membership edge or role attribute and authorizes no second service account.
-The b3 live status is recorded only in its exit matrix and any future retained
-evidence note, never inferred from source presence.
+The first b3 live result is recorded in its retained evidence note and exit
+matrix, never inferred from source presence alone.
 
 ## Static guarantees
 
@@ -277,9 +280,10 @@ PostgreSQL service must prove all of the following:
    reviewed run proves its bounded missing-context, identity, isolation,
    cleanup, and write-denial probes. B3 implements authenticated parity for the
    broader reviewed tenant/membership/query-shape, operation-rights, and
-   alternating prepared-read matrix, but its first remote run is pending. Null
-   and malformed context failures outside the bounded b2 case remain
-   impersonated-capability evidence until separately rerun through the login.
+   alternating prepared-read matrix; its first reviewed remote run passed that
+   exact scope. Null, malformed, and unsupported-context failures outside the
+   bounded b2 case remain impersonated-capability evidence until separately
+   rerun through the login.
 4. Prove `set_request_context` is transaction-local across commit, rollback,
    errors, and pooled-connection reuse.
 5. Test cross-tenant `SELECT`, direct-object lookup, and every future write path
@@ -330,8 +334,8 @@ resource_type, resource_id)` can never back a live row, while the same UUID
 
 Until every gate passes, this package is not deployed persistence. Current live
 evidence is limited to the exact b1 and bounded b2 checks in their retained run
-records. B3's broader authenticated matrix is source-implemented and live
-pending. The b2 result covers only one container-local runtime service account;
+records plus the exact authenticated matrix in the retained b3 record. The
+b2/b3 results cover only one container-local runtime service account;
 external/TLS authentication, end-user identity binding, production secret
 handling, pooling, distinct migrator/test-loader/backup credentials, logical
 restore, and disaster recovery remain unproven.
