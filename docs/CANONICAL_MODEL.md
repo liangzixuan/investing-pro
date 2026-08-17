@@ -2,7 +2,8 @@
 
 Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
 runtime authentication, b3 authorization-matrix, b4 projection-query, and b5
-test-loader boundaries; synthetic data only.
+test-loader boundaries, plus a locally verified B6 owner-DDL canary with live
+evidence pending; synthetic data only.
 
 ## Identity
 
@@ -115,6 +116,17 @@ See the [B5 evidence note](./POSTGRESQL_TEST_LOADER_EVIDENCE.md),
 [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md). This changes no data,
 tenancy, projection, or application contract.
 
+Cycle 1b-b6 source adds a different, preparatory post-bootstrap path. One
+ephemeral authenticated login may select only the existing owner capability for
+one fixed transactional DDL canary. The source proves pre-role and escalation
+denial, rollback, a committed object with exact owner and ACL, authenticated
+removal, ledger immutability, role reset, and zero authentication/object
+residue. Source and local verification are complete, but no live version 6
+result exists. See
+[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md) and the
+[Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md). B6 changes no canonical
+entity, tenancy, time, numeric, evidence, rights, or projection contract.
+
 That bounded result does not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -123,7 +135,9 @@ identity resolver. External/TLS transport, production secrets, connection-pool
 cleanup, concurrency, authenticated migrator and backup sessions,
 backup/restore, and the future deletion path remain separate gates. B5 closes
 only one sequential, synthetic, container-local acceptance-only test-loader
-result.
+result. B6 does not execute a migration or close the authenticated-migrator
+gate; the versioned platform/application split and complete migration proof are
+reserved for B7.
 The successful b3 run closes only the recorded synthetic authenticated
 tenant/rights/prepared-read gap; it does not change any of these remaining
 identity, transport, operational, or deployment gates.

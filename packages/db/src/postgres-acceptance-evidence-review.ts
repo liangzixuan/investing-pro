@@ -152,7 +152,9 @@ export async function reviewPostgresAcceptanceEvidence(
       manifestEntries,
     );
     const projectionSources =
-      evidence.schemaVersion === 4 || evidence.schemaVersion === 5
+      evidence.schemaVersion === 4 ||
+      evidence.schemaVersion === 5 ||
+      evidence.schemaVersion === 6
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
 

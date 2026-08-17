@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B5 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B5 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B6 OWNER-DDL CANARY SOURCE LOCALLY VERIFIED WITH LIVE EVIDENCE PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -51,6 +51,19 @@ supplied anchors. See the
 [ADR 0017](../../docs/adr/0017-authenticated-test-loader-fixture-load.md) and
 the [Cycle 1b-b5 exit matrix](../../docs/CYCLE_1BB5_EXIT_MATRIX.md).
 
+Cycle 1b-b6 adds a separate preparatory owner-DDL canary after the unchanged
+bootstrap and test-loader cleanup. One ephemeral SCRAM login receives only an
+exact set-only, non-inheriting, non-admin edge to `research_cockpit_owner`. It
+proves wrong-password and pre-role denial, forbidden role/session escalation,
+transaction-local owner identity, injected DDL rollback, one committed canary
+with exact owner and ACL, authenticated removal, ledger immutability, role
+reset, and exhaustive authentication/object cleanup before the existing catalog
+and evidence checks. Source and local verification are complete; no live
+version 6 result exists yet. B6 applies no migration and leaves
+`authenticated_migrator_sessions` unproven. See
+[ADR 0018](../../docs/adr/0018-authenticated-owner-ddl-canary.md) and the
+[Cycle 1b-b6 exit matrix](../../docs/CYCLE_1BB6_EXIT_MATRIX.md).
+
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
 acceptance-only renderer validates the immutable manifest and emits all seven
@@ -85,7 +98,9 @@ This can prove engine grant/RLS semantics, but it is not authenticated
 least-privilege or production identity evidence. B5 leaves those historical
 checks and fixture bytes intact while adding a separate post-bootstrap
 authenticated test-loader path. The reviewed version 5 run passed that exact
-acceptance-only path without widening the historical b1 through b4 results.
+acceptance-only path without widening the historical b1 through b4 results. B6
+adds only a post-bootstrap, acceptance-only owner-DDL canary; it neither changes
+the bootstrap nor promotes the owner login to a migrator.
 
 The b2 boundary leaves that superuser migration bootstrap, test-seed
 impersonation, and backup impersonation unchanged. Only runtime behavior moves
@@ -210,6 +225,14 @@ ADR 0015 reuses exactly that temporary login for the b3 source matrix. It adds
 no membership edge or role attribute and authorizes no second service account.
 The first b3 live result is recorded in its retained evidence note and exit
 matrix, never inferred from source presence alone.
+
+ADR 0018 defines a third, separate acceptance-only exception after bootstrap:
+an ephemeral B6 canary login may receive one exact membership in the owner
+capability with `ADMIN FALSE`, `INHERIT FALSE`, and `SET TRUE`. The edge exists
+only around the fixed DDL canary and is removed before the zero-membership
+catalog fingerprint. It authorizes no migration, capability-role provisioning,
+extension installation, production owner login, or deployment role graph. A
+later B7 must version and prove the platform/application migration split.
 
 ## Static guarantees
 
@@ -365,8 +388,9 @@ Until every gate passes, this package is not deployed persistence. Current live
 evidence is limited to the exact b1-b5 checks in their retained run records. The
 b2-b5 results cover only sequential, synthetic, container-local runtime and
 test-loader service accounts plus one narrow dimensionless financial-fact
-projection. External/TLS authentication, end-user identity binding, production
-secret handling, a driver or pool, concurrency/cancellation/timeouts, complete
-dossier projections, distinct migrator and backup credentials, logical
-restore, disaster recovery, secure passfile erasure, and production readiness
-remain unproven.
+projection. B6 source adds only a locally verified owner-DDL canary; its live
+version 6 evidence is pending, and it executes no migration. External/TLS
+authentication, end-user identity binding, production secret handling, a
+driver or pool, concurrency/cancellation/timeouts, complete dossier projections,
+distinct migrator and backup credentials, logical restore, disaster recovery,
+secure passfile erasure, and production readiness remain unproven.

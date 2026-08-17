@@ -1,6 +1,7 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 5 live record retained and reviewed
+Status: accepted; version 5 live record retained and reviewed; version 6 source
+contract implemented with live evidence pending
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -22,12 +23,15 @@ to the schema version. The first retained record is
 container-local SCRAM runtime probe; version 3 adds the authenticated runtime
 authorization matrix; and version 4 adds the authenticated financial-fact
 projection-query check plus the query and normalizer source hashes. Version 4
-was retained and live-reviewed for its recorded B4 scope. The current source
-producer writes `research-cockpit-postgres-acceptance-v5.json`; version 5 adds
-only the authenticated test-loader fixture-load check and splits the remaining
-migrator and backup session limitations. Version 5 now has a retained,
-live-reviewed record. The parser retains exact historical v1 through v4 support
-and the closed current v5 contract.
+was retained and live-reviewed for its recorded B4 scope. Version 5 adds only
+the authenticated test-loader fixture-load check and splits the remaining
+migrator and backup session limitations; its first record is retained and
+live-reviewed. The current source producer writes
+`research-cockpit-postgres-acceptance-v6.json`; version 6 appends only the
+authenticated owner-DDL canary while retaining the exact version 5 limitations
+and six-source-hash shape. The parser retains exact historical v1 through v5
+support and the closed current v6 contract. No live version 6 record has been
+retained or reviewed.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -96,6 +100,15 @@ separate authenticated-migrator and authenticated-backup nonclaims. It remains
 unsigned run metadata and does not prove production/external authentication,
 end-user binding, TLS/secrets, a driver or pool, concurrency, restore, real
 data, or application integration.
+
+Version 6 source appends exactly `authenticated_owner_ddl_canary` and retains
+every version 5 check, limitation, and source-hash key. The canary exercises one
+temporary authenticated owner-role transition and fixed DDL object after the
+unchanged bootstrap; it does not execute a migration or remove
+`authenticated_migrator_sessions`. Its distinct filename and artifact name
+prevent reinterpretation of the retained version 5 record. No version 6 live
+claim is valid until a clean pinned run, retained logs and artifact, and
+independent offline review satisfy ADR 0018 and the Cycle 1b-b6 exit matrix.
 
 ## Primary sources
 

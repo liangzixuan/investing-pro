@@ -96,7 +96,9 @@ that edge violates `0001` before the same transaction can create and transfer
 the application objects. Solving that requires a separately reviewed split or
 redesign of platform role provisioning and application migrations. B2 must not
 weaken the zero-membership bootstrap guard or describe the existing superuser
-bootstrap as a least-privileged migration.
+bootstrap as a least-privileged migration. B6 later adds only a post-bootstrap
+owner-DDL canary and does not close this gate; the full versioned split remains
+reserved for B7.
 
 ## Acceptance rule and reviewed result
 

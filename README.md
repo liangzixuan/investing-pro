@@ -104,6 +104,19 @@ integration. See the
 [ADR 0017](./docs/adr/0017-authenticated-test-loader-fixture-load.md), and the
 [Cycle 1b-b5 exit matrix](./docs/CYCLE_1BB5_EXIT_MATRIX.md).
 
+Cycle 1b-b6 is a preparatory authenticated owner-DDL canary. Source and local
+verification are complete, but no live version 6 result exists yet. One
+ephemeral, acceptance-only SCRAM login receives one exact non-inheriting,
+non-admin, set-only edge to the existing owner capability. The harness proves
+pre-role and cross-role denial, transaction-local owner selection, rollback and
+committed-create behavior for one fixed DDL object, authenticated removal,
+ledger immutability, role reset, and zero residue. B6 does not execute a
+migration or close `authenticated_migrator_sessions`; the versioned
+platform/application migration redesign and complete authenticated migration
+proof are reserved for B7. See
+[ADR 0018](./docs/adr/0018-authenticated-owner-ddl-canary.md) and the
+[Cycle 1b-b6 exit matrix](./docs/CYCLE_1BB6_EXIT_MATRIX.md).
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -140,7 +153,9 @@ authenticated fixture-load path passed in run `32012508025` at commit
 `04e5c1b`; its retained version 5 record returned `offline_consistent`. These
 remain sequential, synthetic, container-local acceptance results. The offline
 verifier checks record/source consistency after download but cannot authenticate
-the GitHub run or independently prove PostgreSQL execution.
+the GitHub run or independently prove PostgreSQL execution. B6 source and local
+tests add no live engine claim; a clean pinned run and reviewed version 6 record
+remain required.
 
 ## Safety boundary
 
@@ -160,6 +175,9 @@ the GitHub run or independently prove PostgreSQL execution.
   loader; it does not establish production/external authentication, TLS, secret
   operations, concurrent loading, an authenticated migrator or backup, restore,
   real-data ingestion, or application integration.
+- The B6 source is only an authenticated owner-DDL canary. It applies no
+  migration, does not redesign role bootstrap, and does not authorize a
+  production owner or migrator login. Its live version 6 evidence is pending.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -175,4 +193,5 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b4 evidence note](./docs/POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md),
 [Cycle 1b-b5 exit matrix](./docs/CYCLE_1BB5_EXIT_MATRIX.md),
 [Cycle 1b-b5 evidence note](./docs/POSTGRESQL_TEST_LOADER_EVIDENCE.md),
+[Cycle 1b-b6 exit matrix](./docs/CYCLE_1BB6_EXIT_MATRIX.md),
 and [architecture decisions](./docs/adr/).

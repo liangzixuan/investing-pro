@@ -64,7 +64,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v5-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
@@ -81,6 +81,29 @@ export const TEST_LOADER_AUTH_PASSFILE =
   "/tmp/research-cockpit-test-loader-login.pgpass" as const;
 export const TEST_LOADER_AUTH_WRONG_PASSFILE =
   "/tmp/research-cockpit-test-loader-login-wrong.pgpass" as const;
+export const OWNER_DDL_AUTH_LOGIN_ROLE =
+  "research_cockpit_owner_ddl_login" as const;
+export const OWNER_DDL_AUTH_CAPABILITY_ROLE = "research_cockpit_owner" as const;
+export const OWNER_DDL_AUTH_PASSFILE =
+  "/tmp/research-cockpit-owner-ddl-login.pgpass" as const;
+export const OWNER_DDL_AUTH_WRONG_PASSFILE =
+  "/tmp/research-cockpit-owner-ddl-login-wrong.pgpass" as const;
+export const OWNER_DDL_AUTH_CANARY_TABLE =
+  "private_data.b6_owner_ddl_canary" as const;
+export const OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
+  "research_cockpit_runtime",
+  "research_cockpit_test_seed",
+  "research_cockpit_backup",
+  "postgres",
+] as const);
+export const OWNER_DDL_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES =
+  Object.freeze([
+    "research_cockpit_owner",
+    "research_cockpit_runtime",
+    "research_cockpit_test_seed",
+    "research_cockpit_backup",
+    "postgres",
+  ] as const);
 export const TEST_LOADER_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
   "research_cockpit_owner",
   "research_cockpit_runtime",
@@ -107,6 +130,10 @@ RESET SESSION AUTHORIZATION;
 `;
 const TEST_LOADER_AUTH_IDENTITY_MARKER = `b5-test-loader-identity|${TEST_LOADER_AUTH_LOGIN_ROLE}|${TEST_LOADER_AUTH_CAPABILITY_ROLE}|scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`;
 const TEST_LOADER_AUTH_RESET_MARKER = `b5-test-loader-reset|${TEST_LOADER_AUTH_LOGIN_ROLE}|${TEST_LOADER_AUTH_LOGIN_ROLE}|scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`;
+const OWNER_DDL_AUTH_IDENTITY_MARKER = `b6-owner-ddl-identity|${OWNER_DDL_AUTH_LOGIN_ROLE}|${OWNER_DDL_AUTH_CAPABILITY_ROLE}|scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}`;
+const OWNER_DDL_AUTH_CATALOG_MARKER = `b6-owner-ddl-catalog|${OWNER_DDL_AUTH_CANARY_TABLE}|${OWNER_DDL_AUTH_CAPABILITY_ROLE}|no-non-owner-acl`;
+const OWNER_DDL_AUTH_RESET_MARKER = `b6-owner-ddl-reset|${OWNER_DDL_AUTH_LOGIN_ROLE}|${OWNER_DDL_AUTH_LOGIN_ROLE}|scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}`;
+const OWNER_DDL_AUTH_DROP_MARKER = `b6-owner-ddl-drop|${OWNER_DDL_AUTH_CANARY_TABLE}|absent`;
 const CAPABILITY_ROLES = [
   "research_cockpit_backup",
   "research_cockpit_owner",
@@ -317,6 +344,16 @@ export interface TestLoaderAuthPsqlInvocation {
 }
 
 export interface TestLoaderAuthPsqlInvocationOptions {
+  readonly requireScram?: boolean;
+  readonly verboseErrors?: boolean;
+}
+
+export interface OwnerDdlAuthPsqlInvocation {
+  environment: Readonly<Record<string, string>>;
+  command: readonly string[];
+}
+
+export interface OwnerDdlAuthPsqlInvocationOptions {
   readonly requireScram?: boolean;
   readonly verboseErrors?: boolean;
 }
@@ -626,6 +663,291 @@ export function assertTestLoaderWrongPasswordRejection(
       "Wrong-password test-loader authentication did not return the expected rejection",
     );
   }
+}
+
+export function generateOwnerDdlAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function renderOwnerDdlAuthProvisioningSql(password: string): string {
+  assertOwnerDdlAuthPassword(password);
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${OWNER_DDL_AUTH_LOGIN_ROLE}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT 1
+  PASSWORD '${password}';
+GRANT ${OWNER_DDL_AUTH_CAPABILITY_ROLE}
+  TO ${OWNER_DDL_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
+}
+
+export function renderOwnerDdlAuthPassfile(password: string): string {
+  assertOwnerDdlAuthPassword(password);
+  return `127.0.0.1:5432:${CLEAN_BOOTSTRAP_DATABASE_NAME}:${OWNER_DDL_AUTH_LOGIN_ROLE}:${password}\n`;
+}
+
+export function renderOwnerDdlAuthCleanupSql(): string {
+  return `BEGIN;
+DROP ROLE IF EXISTS ${OWNER_DDL_AUTH_LOGIN_ROLE};
+COMMIT;
+`;
+}
+
+export function renderOwnerDdlAuthCanaryCleanupSql(): string {
+  return `BEGIN;
+DROP TABLE IF EXISTS ${OWNER_DDL_AUTH_CANARY_TABLE};
+COMMIT;
+`;
+}
+
+export function renderOwnerDdlAuthBackendDrainSql(): string {
+  return `DO $owner_ddl_auth_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE usename = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+        AND backend_type = 'client backend'
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'ephemeral owner-DDL login backend did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END;
+$owner_ddl_auth_backend_drain$;
+`;
+}
+
+export function buildOwnerDdlAuthPsqlInvocation(
+  passfile:
+    typeof OWNER_DDL_AUTH_PASSFILE | typeof OWNER_DDL_AUTH_WRONG_PASSFILE,
+  options: OwnerDdlAuthPsqlInvocationOptions = {},
+): OwnerDdlAuthPsqlInvocation {
+  const { requireScram = true, verboseErrors = false } = options;
+  const environment: Record<string, string> = {
+    PGPASSFILE: passfile,
+    PGSSLMODE: "disable",
+    PGCONNECT_TIMEOUT: "5",
+  };
+  if (requireScram) environment.PGREQUIREAUTH = "scram-sha-256";
+
+  return Object.freeze({
+    environment: Object.freeze(environment),
+    command: Object.freeze([
+      "psql",
+      "--no-psqlrc",
+      "--no-password",
+      "--quiet",
+      "--tuples-only",
+      "--no-align",
+      "--set=ON_ERROR_STOP=1",
+      ...(verboseErrors ? ["--set=VERBOSITY=verbose"] : []),
+      "--host=127.0.0.1",
+      "--port=5432",
+      `--username=${OWNER_DDL_AUTH_LOGIN_ROLE}`,
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ]),
+  });
+}
+
+export function assertOwnerDdlWrongPasswordRejection(
+  result: CommandResult,
+): void {
+  if (result.exitCode === 0) {
+    throw new Error(
+      "Wrong-password owner-DDL authentication unexpectedly succeeded",
+    );
+  }
+  if (result.exitCode !== 2) {
+    throw new Error(
+      "Wrong-password owner-DDL authentication returned an unexpected exit code",
+    );
+  }
+  if (result.stdout.trim() !== "") {
+    throw new Error(
+      "Wrong-password owner-DDL authentication returned unexpected output",
+    );
+  }
+
+  const diagnostic = result.stderr.toLowerCase().replace(/\s+/g, " ");
+  if (
+    !diagnostic.includes(
+      `fatal: password authentication failed for user "${OWNER_DDL_AUTH_LOGIN_ROLE}"`,
+    )
+  ) {
+    throw new Error(
+      "Wrong-password owner-DDL authentication did not return the expected rejection",
+    );
+  }
+}
+
+export function renderAuthenticatedOwnerDdlCanaryCreateSql(): string {
+  return renderAuthenticatedOwnerDdlCanaryCreate(false);
+}
+
+export function renderAuthenticatedOwnerDdlCanaryRollbackProbeSql(): string {
+  return renderAuthenticatedOwnerDdlCanaryCreate(true);
+}
+
+export function renderAuthenticatedOwnerDdlCanaryDropSql(): string {
+  return `BEGIN;
+SET LOCAL ROLE ${OWNER_DDL_AUTH_CAPABILITY_ROLE};
+DROP TABLE ${OWNER_DDL_AUTH_CANARY_TABLE};
+SELECT CASE
+  WHEN session_user = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+    AND current_user = '${OWNER_DDL_AUTH_CAPABILITY_ROLE}'
+    AND system_user = 'scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}'
+    AND pg_catalog.to_regclass('${OWNER_DDL_AUTH_CANARY_TABLE}') IS NULL
+  THEN '${OWNER_DDL_AUTH_DROP_MARKER}'
+  ELSE 'b6-owner-ddl-drop-invalid'
+END;
+COMMIT;
+${renderOwnerDdlResetMarkerSql()}`;
+}
+
+export function assertAuthenticatedOwnerDdlCanaryCreateResult(
+  result: CommandResult,
+): void {
+  if (result.exitCode !== 0 || result.stderr.trim() !== "") {
+    throw new Error("Authenticated owner-DDL canary create failed");
+  }
+  if (
+    !sameStrings(splitLines(result.stdout), [
+      OWNER_DDL_AUTH_IDENTITY_MARKER,
+      OWNER_DDL_AUTH_CATALOG_MARKER,
+      OWNER_DDL_AUTH_RESET_MARKER,
+    ])
+  ) {
+    throw new Error(
+      "Authenticated owner-DDL canary create markers are invalid",
+    );
+  }
+}
+
+export function assertAuthenticatedOwnerDdlCanaryRollbackFailure(
+  result: CommandResult,
+): void {
+  if (
+    result.exitCode !== 3 ||
+    !result.stderr.includes("22012") ||
+    !result.stderr.toLowerCase().includes("division by zero") ||
+    /\b(?:warning|notice):/i.test(result.stderr)
+  ) {
+    throw new Error(
+      "Authenticated owner-DDL canary rollback probe failed for the wrong reason",
+    );
+  }
+  if (
+    !sameStrings(splitLines(result.stdout), [
+      OWNER_DDL_AUTH_IDENTITY_MARKER,
+      OWNER_DDL_AUTH_CATALOG_MARKER,
+    ])
+  ) {
+    throw new Error(
+      "Authenticated owner-DDL canary rollback probe returned invalid markers",
+    );
+  }
+}
+
+export function assertAuthenticatedOwnerDdlCanaryDropResult(
+  result: CommandResult,
+): void {
+  if (result.exitCode !== 0 || result.stderr.trim() !== "") {
+    throw new Error("Authenticated owner-DDL canary drop failed");
+  }
+  if (
+    !sameStrings(splitLines(result.stdout), [
+      OWNER_DDL_AUTH_DROP_MARKER,
+      OWNER_DDL_AUTH_RESET_MARKER,
+    ])
+  ) {
+    throw new Error("Authenticated owner-DDL canary drop markers are invalid");
+  }
+}
+
+function renderAuthenticatedOwnerDdlCanaryCreate(
+  injectFailure: boolean,
+): string {
+  const failure = injectFailure ? "\nSELECT 1 / 0;" : "";
+  return `BEGIN;
+SET LOCAL ROLE ${OWNER_DDL_AUTH_CAPABILITY_ROLE};
+SELECT CASE
+  WHEN session_user = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+    AND current_user = '${OWNER_DDL_AUTH_CAPABILITY_ROLE}'
+    AND system_user = 'scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}'
+  THEN '${OWNER_DDL_AUTH_IDENTITY_MARKER}'
+  ELSE 'b6-owner-ddl-identity-invalid'
+END;
+CREATE TABLE ${OWNER_DDL_AUTH_CANARY_TABLE} (
+  canary_id integer NOT NULL,
+  marker text NOT NULL,
+  CONSTRAINT b6_owner_ddl_canary_pkey PRIMARY KEY (canary_id),
+  CONSTRAINT b6_owner_ddl_canary_marker_check
+    CHECK (marker = 'synthetic-owner-ddl-canary')
+);
+SELECT CASE
+  WHEN (
+    SELECT count(*) = 1
+      AND pg_catalog.bool_and(
+        pg_catalog.pg_get_userbyid(class.relowner) = '${OWNER_DDL_AUTH_CAPABILITY_ROLE}'
+        AND class.relkind = 'r'
+        AND class.relpersistence = 'p'
+      )
+    FROM pg_catalog.pg_class AS class
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = class.relnamespace
+    WHERE namespace.nspname = 'private_data'
+      AND class.relname = 'b6_owner_ddl_canary'
+  )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_class AS class
+      JOIN pg_catalog.pg_namespace AS namespace
+        ON namespace.oid = class.relnamespace
+      CROSS JOIN LATERAL pg_catalog.aclexplode(
+        coalesce(class.relacl, pg_catalog.acldefault('r', class.relowner))
+      ) AS privilege
+      WHERE namespace.nspname = 'private_data'
+        AND class.relname = 'b6_owner_ddl_canary'
+        AND privilege.grantee <> class.relowner
+    )
+  THEN '${OWNER_DDL_AUTH_CATALOG_MARKER}'
+  ELSE 'b6-owner-ddl-catalog-invalid'
+END;${failure}
+COMMIT;
+${renderOwnerDdlResetMarkerSql()}`;
+}
+
+function renderOwnerDdlResetMarkerSql(): string {
+  return `SELECT CASE
+  WHEN session_user = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+    AND current_user = session_user
+    AND system_user = 'scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}'
+  THEN '${OWNER_DDL_AUTH_RESET_MARKER}'
+  ELSE 'b6-owner-ddl-reset-invalid'
+END;`;
 }
 
 export function extractReviewedSyntheticFixtureBody(
@@ -1019,6 +1341,7 @@ export async function runPostgresAcceptance(
     containerId,
     await readFile(syntheticFixturePath, "utf8"),
   );
+  await verifyAuthenticatedOwnerDdlCanarySession(containerId);
   await verifyCatalogContract(containerId);
   await verifyBackupCapability(containerId);
   await verifyContextCleanup(containerId);
@@ -1047,7 +1370,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, authenticated test-loader, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 5 success-only run record was written.\n",
+      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 6 success-only run record was written.\n",
   );
 }
 
@@ -1899,6 +2222,640 @@ async function waitForTestLoaderAuthBackendDrain(
   containerId: string,
 ): Promise<void> {
   await psql(containerId, renderTestLoaderAuthBackendDrainSql());
+}
+
+async function verifyAuthenticatedOwnerDdlCanarySession(
+  containerId: string,
+): Promise<void> {
+  await verifyOwnerDdlAuthResidueAbsent(containerId);
+
+  const password = generateOwnerDdlAuthPassword();
+  let wrongPassword = generateOwnerDdlAuthPassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateOwnerDdlAuthPassword();
+  }
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    await provisionOwnerDdlAuthLogin(containerId, password);
+    await verifyOwnerDdlAuthRoleCatalog(containerId);
+    await writeOwnerDdlAuthPassfile(
+      containerId,
+      OWNER_DDL_AUTH_PASSFILE,
+      renderOwnerDdlAuthPassfile(password),
+    );
+    await writeOwnerDdlAuthPassfile(
+      containerId,
+      OWNER_DDL_AUTH_WRONG_PASSFILE,
+      renderOwnerDdlAuthPassfile(wrongPassword),
+    );
+    await verifyOwnerDdlWrongPasswordRejection(containerId);
+    await verifyOwnerDdlLoginBeforeSetRole(containerId);
+    await verifyOwnerDdlRoleEscalationDenials(containerId);
+    await verifyMigrationLedger(containerId);
+    await verifyAuthenticatedOwnerDdlRollback(containerId);
+    await verifyAuthenticatedOwnerDdlCreate(containerId);
+    await verifyOwnerDdlCanaryPresent(containerId);
+    await verifyMigrationLedger(containerId);
+    await verifyAuthenticatedOwnerDdlDrop(containerId);
+    await verifyOwnerDdlCanaryAbsent(containerId);
+    await verifyMigrationLedger(containerId);
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "owner-DDL-auth cleanup",
+            run: () => cleanupOwnerDdlAuthProbe(containerId),
+          },
+          {
+            label: "owner-DDL-auth residue verification",
+            run: () => verifyOwnerDdlAuthResidueAbsent(containerId),
+          },
+        ]),
+        "Authenticated owner-DDL cleanup and residue verification failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated owner-DDL probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+}
+
+async function provisionOwnerDdlAuthLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderOwnerDdlAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(result, "provision ephemeral owner-DDL login");
+}
+
+async function verifyOwnerDdlAuthRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${OWNER_DDL_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|1|true`,
+    "ephemeral owner-DDL login attributes and SCRAM verifier",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role
+  ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role
+  ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${OWNER_DDL_AUTH_CAPABILITY_ROLE}|${OWNER_DDL_AUTH_LOGIN_ROLE}|false|false|true`,
+    "ephemeral owner-DDL login membership",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_db_role_setting
+WHERE setrole = (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+);`,
+    ),
+    "0",
+    "ephemeral owner-DDL login role settings",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_attribute AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.attacl) AS privilege
+)
+SELECT count(*)
+FROM direct_acl
+WHERE grantee = (SELECT oid FROM login);`,
+    ),
+    "0",
+    "ephemeral owner-DDL login direct ACLs",
+  );
+}
+
+async function writeOwnerDdlAuthPassfile(
+  containerId: string,
+  path: typeof OWNER_DDL_AUTH_PASSFILE | typeof OWNER_DDL_AUTH_WRONG_PASSFILE,
+  contents: string,
+): Promise<void> {
+  const install = await dockerExec(containerId, [
+    "install",
+    "--mode=0600",
+    "/dev/null",
+    path,
+  ]);
+  assertSensitiveCommandSuccess(install, "create owner-DDL-auth passfile");
+  const write = await dockerExec(
+    containerId,
+    ["dd", `of=${path}`, "status=none"],
+    contents,
+  );
+  assertSensitiveCommandSuccess(write, "write owner-DDL-auth passfile");
+  const regularFile = await dockerExec(containerId, ["test", "-f", path]);
+  assertSuccess(regularFile, "verify owner-DDL-auth passfile type");
+  const symlink = await dockerExec(containerId, ["test", "!", "-L", path]);
+  assertSuccess(symlink, "verify owner-DDL-auth passfile is not a symlink");
+  const mode = await dockerExec(containerId, ["stat", "--format=%a", path]);
+  assertSuccess(mode, "inspect owner-DDL-auth passfile mode");
+  assertEqual(mode.stdout.trim(), "600", "owner-DDL-auth passfile mode");
+}
+
+async function verifyOwnerDdlWrongPasswordRejection(
+  containerId: string,
+): Promise<void> {
+  const result = await ownerDdlAuthenticatedPsql(
+    containerId,
+    OWNER_DDL_AUTH_WRONG_PASSFILE,
+    "SELECT 1;",
+    { requireScram: false },
+  );
+  assertOwnerDdlWrongPasswordRejection(result);
+}
+
+async function verifyOwnerDdlLoginBeforeSetRole(
+  containerId: string,
+): Promise<void> {
+  const identity = parseJsonObject(
+    await ownerDdlAuthenticatedPsqlScalar(
+      containerId,
+      `SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'clientAddress', pg_catalog.host(pg_catalog.inet_client_addr()),
+  'serverAddress', pg_catalog.host(pg_catalog.inet_server_addr()),
+  'ssl', EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  ),
+  'ownerMember', pg_catalog.pg_has_role(
+    session_user, '${OWNER_DDL_AUTH_CAPABILITY_ROLE}', 'MEMBER'
+  ),
+  'ownerUsage', pg_catalog.pg_has_role(
+    session_user, '${OWNER_DDL_AUTH_CAPABILITY_ROLE}', 'USAGE'
+  ),
+  'ownerSet', pg_catalog.pg_has_role(
+    session_user, '${OWNER_DDL_AUTH_CAPABILITY_ROLE}', 'SET'
+  )
+)::text;`,
+    ),
+  );
+  assertJsonEqual(
+    identity,
+    {
+      sessionUser: OWNER_DDL_AUTH_LOGIN_ROLE,
+      currentUser: OWNER_DDL_AUTH_LOGIN_ROLE,
+      systemUser: `scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}`,
+      clientAddress: "127.0.0.1",
+      serverAddress: "127.0.0.1",
+      ssl: false,
+      ownerMember: true,
+      ownerUsage: false,
+      ownerSet: true,
+    },
+    "authenticated owner-DDL login identity before SET ROLE",
+  );
+
+  for (const [label, sql, message] of [
+    [
+      "owner-DDL login data access before SET ROLE",
+      "SELECT count(*) FROM private_data.organizations;",
+      "permission denied for schema private_data",
+    ],
+    [
+      "owner-DDL login ledger read before SET ROLE",
+      "SELECT count(*) FROM shared_data.schema_migrations;",
+      "permission denied for schema shared_data",
+    ],
+    [
+      "owner-DDL login context routine before SET ROLE",
+      `CALL private_data.set_request_context(
+  '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'display',
+  'api',
+  'demo_only',
+  'synthetic'
+);`,
+      "permission denied for schema private_data",
+    ],
+    [
+      "owner-DDL login persistent DDL before SET ROLE",
+      "CREATE TABLE private_data.b6_owner_ddl_pre_role_escape (id integer);",
+      "permission denied for schema private_data",
+    ],
+    [
+      "owner-DDL login public DDL before SET ROLE",
+      "CREATE TABLE public.b6_owner_ddl_public_escape (id integer);",
+      "permission denied for schema public",
+    ],
+    [
+      "owner-DDL login temporary DDL before SET ROLE",
+      "CREATE TEMPORARY TABLE b6_owner_ddl_temp_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectOwnerDdlAuthenticatedPsqlFailure(containerId, sql, {
+      label,
+      sqlState: "42501",
+      message,
+    });
+  }
+}
+
+async function verifyOwnerDdlRoleEscalationDenials(
+  containerId: string,
+): Promise<void> {
+  for (const role of OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES) {
+    await expectOwnerDdlAuthenticatedPsqlFailure(
+      containerId,
+      `SET ROLE ${role};`,
+      {
+        label: `owner-DDL login SET ROLE ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set role",
+      },
+    );
+  }
+  for (const role of OWNER_DDL_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES) {
+    await expectOwnerDdlAuthenticatedPsqlFailure(
+      containerId,
+      `SET SESSION AUTHORIZATION ${role};`,
+      {
+        label: `owner-DDL login SET SESSION AUTHORIZATION ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set session authorization",
+      },
+    );
+  }
+}
+
+async function verifyAuthenticatedOwnerDdlRollback(
+  containerId: string,
+): Promise<void> {
+  const result = await ownerDdlAuthenticatedPsql(
+    containerId,
+    OWNER_DDL_AUTH_PASSFILE,
+    renderAuthenticatedOwnerDdlCanaryRollbackProbeSql(),
+    { verboseErrors: true },
+  );
+  assertAuthenticatedOwnerDdlCanaryRollbackFailure(result);
+  await verifyOwnerDdlCanaryAbsent(containerId);
+  await verifyMigrationLedger(containerId);
+}
+
+async function verifyAuthenticatedOwnerDdlCreate(
+  containerId: string,
+): Promise<void> {
+  const result = await ownerDdlAuthenticatedPsql(
+    containerId,
+    OWNER_DDL_AUTH_PASSFILE,
+    renderAuthenticatedOwnerDdlCanaryCreateSql(),
+  );
+  assertAuthenticatedOwnerDdlCanaryCreateResult(result);
+}
+
+async function verifyAuthenticatedOwnerDdlDrop(
+  containerId: string,
+): Promise<void> {
+  const result = await ownerDdlAuthenticatedPsql(
+    containerId,
+    OWNER_DDL_AUTH_PASSFILE,
+    renderAuthenticatedOwnerDdlCanaryDropSql(),
+  );
+  assertAuthenticatedOwnerDdlCanaryDropResult(result);
+}
+
+async function verifyOwnerDdlCanaryPresent(containerId: string): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT pg_catalog.pg_get_userbyid(class.relowner) || '|' ||
+  class.relkind::text || '|' || class.relpersistence::text || '|' ||
+  (
+    SELECT count(*)
+    FROM pg_catalog.aclexplode(
+      coalesce(class.relacl, pg_catalog.acldefault('r', class.relowner))
+    ) AS privilege
+    WHERE privilege.grantee <> class.relowner
+  )
+FROM pg_catalog.pg_class AS class
+JOIN pg_catalog.pg_namespace AS namespace
+  ON namespace.oid = class.relnamespace
+WHERE namespace.nspname = 'private_data'
+  AND class.relname = 'b6_owner_ddl_canary';`,
+    ),
+    `${OWNER_DDL_AUTH_CAPABILITY_ROLE}|r|p|0`,
+    "authenticated owner-DDL canary ownership and ACL",
+  );
+
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT attribute.attname || '|' ||
+  pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) || '|' ||
+  attribute.attnotnull
+FROM pg_catalog.pg_attribute AS attribute
+WHERE attribute.attrelid = '${OWNER_DDL_AUTH_CANARY_TABLE}'::regclass
+  AND attribute.attnum > 0
+  AND NOT attribute.attisdropped
+ORDER BY attribute.attnum;`,
+      ),
+    ),
+    ["canary_id|integer|true", "marker|text|true"],
+    "authenticated owner-DDL canary columns",
+  );
+
+  assertJsonEqual(
+    splitLines(
+      await psqlScalar(
+        containerId,
+        `SELECT constraint_row.conname || '|' || constraint_row.contype::text
+FROM pg_catalog.pg_constraint AS constraint_row
+WHERE constraint_row.conrelid = '${OWNER_DDL_AUTH_CANARY_TABLE}'::regclass
+ORDER BY constraint_row.conname;`,
+      ),
+    ),
+    ["b6_owner_ddl_canary_marker_check|c", "b6_owner_ddl_canary_pkey|p"],
+    "authenticated owner-DDL canary constraints",
+  );
+}
+
+async function verifyOwnerDdlCanaryAbsent(containerId: string): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_class AS class
+JOIN pg_catalog.pg_namespace AS namespace
+  ON namespace.oid = class.relnamespace
+WHERE namespace.nspname = 'private_data'
+  AND class.relname = 'b6_owner_ddl_canary';`,
+    ),
+    "0",
+    "authenticated owner-DDL canary residue",
+  );
+}
+
+async function cleanupOwnerDdlAuthProbe(containerId: string): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "drain owner-DDL-auth backends",
+      run: () => waitForOwnerDdlAuthBackendDrain(containerId),
+    },
+    ...[OWNER_DDL_AUTH_PASSFILE, OWNER_DDL_AUTH_WRONG_PASSFILE].map((path) => ({
+      label: `remove owner-DDL-auth passfile: ${path}`,
+      run: async () => {
+        const remove = await dockerExec(containerId, ["rm", "-f", "--", path]);
+        assertSuccess(remove, "remove owner-DDL-auth passfile");
+      },
+    })),
+    {
+      label: "drop owner-DDL canary residue",
+      run: async () => {
+        await psql(containerId, renderOwnerDdlAuthCanaryCleanupSql());
+      },
+    },
+    {
+      label: "drop ephemeral owner-DDL login",
+      run: async () => {
+        await psql(containerId, renderOwnerDdlAuthCleanupSql());
+      },
+    },
+  ];
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated owner-DDL cleanup failed",
+  );
+}
+
+async function verifyOwnerDdlAuthResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "verify ephemeral owner-DDL login is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_roles
+WHERE rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral owner-DDL login residue",
+        );
+      },
+    },
+    {
+      label: "verify ephemeral owner-DDL membership is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role
+  ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role
+  ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${OWNER_DDL_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral owner-DDL membership residue",
+        );
+      },
+    },
+    {
+      label: "verify ephemeral owner-DDL backend is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_stat_activity
+WHERE usename = '${OWNER_DDL_AUTH_LOGIN_ROLE}'
+  AND backend_type = 'client backend';`,
+          ),
+          "0",
+          "ephemeral owner-DDL backend residue",
+        );
+      },
+    },
+    {
+      label: "verify owner-DDL canary is absent",
+      run: () => verifyOwnerDdlCanaryAbsent(containerId),
+    },
+  ];
+
+  for (const path of [OWNER_DDL_AUTH_PASSFILE, OWNER_DDL_AUTH_WRONG_PASSFILE]) {
+    operations.push(
+      {
+        label: `verify owner-DDL-auth passfile is absent: ${path}`,
+        run: async () => {
+          const regularPath = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-e",
+            path,
+          ]);
+          assertSuccess(
+            regularPath,
+            "verify owner-DDL-auth passfile is absent",
+          );
+        },
+      },
+      {
+        label: `verify owner-DDL-auth passfile symlink is absent: ${path}`,
+        run: async () => {
+          const symlinkPath = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-L",
+            path,
+          ]);
+          assertSuccess(
+            symlinkPath,
+            "verify owner-DDL-auth passfile symlink is absent",
+          );
+        },
+      },
+    );
+  }
+  operations.push({
+    label: "verify migration ledger after owner-DDL cleanup",
+    run: () => verifyMigrationLedger(containerId),
+  });
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated owner-DDL residue verification failed",
+  );
+}
+
+async function ownerDdlAuthenticatedPsqlScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await ownerDdlAuthenticatedPsql(
+    containerId,
+    OWNER_DDL_AUTH_PASSFILE,
+    sql,
+  );
+  assertSuccess(result, "execute authenticated owner-DDL SQL");
+  return result.stdout.trim();
+}
+
+async function expectOwnerDdlAuthenticatedPsqlFailure(
+  containerId: string,
+  sql: string,
+  expectation: PsqlFailureExpectation,
+): Promise<void> {
+  const result = await ownerDdlAuthenticatedPsql(
+    containerId,
+    OWNER_DDL_AUTH_PASSFILE,
+    sql,
+    { verboseErrors: true },
+  );
+  assertExpectedPsqlFailure(result, expectation);
+}
+
+async function ownerDdlAuthenticatedPsql(
+  containerId: string,
+  passfile:
+    typeof OWNER_DDL_AUTH_PASSFILE | typeof OWNER_DDL_AUTH_WRONG_PASSFILE,
+  sql: string,
+  options: OwnerDdlAuthPsqlInvocationOptions = {},
+): Promise<CommandResult> {
+  const invocation = buildOwnerDdlAuthPsqlInvocation(passfile, options);
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        sql,
+      ),
+    () => waitForOwnerDdlAuthBackendDrain(containerId),
+  );
+}
+
+async function waitForOwnerDdlAuthBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderOwnerDdlAuthBackendDrainSql());
 }
 
 async function verifyCatalogContract(containerId: string): Promise<void> {
@@ -3929,7 +4886,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "3e371584789e8408e223da4386caf2dfcaf0edf9974116fd42ea74f907b8901d" ||
+      "c0e3531a791dfee4472aef818465e8a551d240c1c2a870fe5cd68c224cf5712d" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||
@@ -3971,6 +4928,17 @@ function assertTestLoaderAuthPassword(password: string): void {
   ) {
     throw new Error(
       "Test-loader-auth password must be a 32-byte base64url value without padding",
+    );
+  }
+}
+
+function assertOwnerDdlAuthPassword(password: string): void {
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password)
+  ) {
+    throw new Error(
+      "Owner-DDL-auth password must be a 32-byte base64url value without padding",
     );
   }
 }

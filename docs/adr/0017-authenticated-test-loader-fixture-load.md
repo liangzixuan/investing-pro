@@ -124,13 +124,17 @@ workflow topology, or exposed network surface.
 B5 closes only the historical authenticated test-loader nonclaim for one
 sequential, synthetic, container-local acceptance run. The distinct migrator
 still requires a separate bootstrap design, and authenticated backup/restore
-remains a later milestone. Historical b1 through b4 evidence retains its exact
-recorded scope and is not retroactively widened by this decision.
+remains a later milestone. B6 later adds only a preparatory owner-DDL canary;
+it does not execute a migration or close the migrator nonclaim. B7 retains the
+versioned platform/application migration redesign and complete authenticated
+migration proof. Historical b1 through b4 evidence retains its exact recorded
+scope and is not retroactively widened by either successor.
 
 ## Related decisions
 
 - [ADR 0014: Container-local runtime authentication](./0014-container-local-runtime-authentication.md)
 - [ADR 0015: Authenticated runtime authorization matrix](./0015-authenticated-runtime-authorization-matrix.md)
 - [ADR 0016: Driverless projection query and semantic unit mapping](./0016-driverless-projection-query-and-semantic-unit-mapping.md)
+- [ADR 0018: Authenticated owner-DDL canary](./0018-authenticated-owner-ddl-canary.md)
 - [Cycle 1b-b5 exit matrix](../CYCLE_1BB5_EXIT_MATRIX.md)
 - [Cycle 1b-b5 evidence note](../POSTGRESQL_TEST_LOADER_EVIDENCE.md)

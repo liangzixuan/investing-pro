@@ -26,8 +26,10 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
 complete and reviewed; b3 authenticated authorization matrix run complete and
 reviewed; b4 driverless projection-query and semantic-unit-mapping run complete
-and reviewed; b5 authenticated test-loader run complete and reviewed.
-Pool/concurrency and restore gates remain later work.
+and reviewed; b5 authenticated test-loader run complete and reviewed; b6
+authenticated owner-DDL canary source implemented and locally verified with
+live version 6 evidence pending. Pool/concurrency and restore gates remain later
+work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -41,7 +43,9 @@ current role bootstrap still runs as the ephemeral container superuser and does
 not satisfy a distinct migrator or authenticated backup requirement. B5 keeps
 that bootstrap unchanged and adds a separate post-bootstrap authenticated
 test-loader lifecycle whose bounded live result is now reviewed. The bounded b2
-runtime login is created separately after bootstrap.
+runtime login is created separately after bootstrap. B6 also leaves bootstrap
+unchanged and adds only a temporary post-bootstrap owner-DDL canary; it is not a
+migration path.
 
 **Cycle 1b-b2 status:** the bounded source and live execution were reviewed at
 commit `3479e164`; see the
@@ -103,6 +107,21 @@ nonclaims are `authenticated_migrator_sessions` and
 [ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md) and the
 [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md).
 
+**Cycle 1b-b6 status:** the accepted preparatory design creates one ephemeral,
+acceptance-only SCRAM login with one exact set-only edge to the existing owner
+capability. It proves wrong-password and pre-role denial, forbidden
+role/session escalation, transaction-local owner selection, injected DDL
+rollback, a committed canary with exact owner and ACL, authenticated removal,
+ledger immutability, role reset, and zero authentication/object residue before
+catalog checks and evidence. Source implementation and local verification are
+complete. The exact new completed-check ID is
+`authenticated_owner_ddl_canary`; version 6 retains the same six source-hash
+keys and every version 5 nonclaim, including
+`authenticated_migrator_sessions`. The clean pinned
+run and independent version 6 review remain pending. See
+[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md) and the
+[Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md).
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -110,6 +129,8 @@ nonclaims are `authenticated_migrator_sessions` and
    complete for its reviewed run. At that milestone, distinct migrator,
    test-loader, and backup identities remained separate later gates. B5 now
    closes only the bounded authenticated test-loader gate for its reviewed run.
+   B6 adds only a preparatory owner-DDL canary and does not close the migrator
+   gate.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
 4. **Cycle 1b-b4 complete for its recorded scope:** the exact read-only
@@ -148,24 +169,30 @@ operation-rights, and one-backend prepared matrix and retained the remaining
 version 3 limitations. The reviewed b4 run passed the exact driverless
 query-to-normalizer path and retained the version 4 limitations. The reviewed
 b5 run passed the exact authenticated non-owner fixture-load path and retained
-the version 5 nonclaims. Remaining Cycle 1b-b work starts with the
-platform/migrator split and live migrator proof, then authenticated backup and
-restore, a single-client read-only adapter, and finally the real
+the version 5 nonclaims. B6 source now adds a preparatory authenticated
+owner-DDL canary, but its live version 6 gate remains pending and it retains
+`authenticated_migrator_sessions`. After B6 review, Cycle 1b-b7 must introduce
+the versioned platform/application migration split and complete authenticated
+migration proof. Authenticated backup and restore follow B7, then a
+single-client read-only adapter, and finally the real
 pool/concurrency/cancellation boundary. The row-normalization contract is
 already frozen; the B4 query and unit contract now provides a reviewed input to
 the later single-client adapter milestone without proving that adapter.
 
 The b1 green-run, bounded b2 runtime-authentication, b3 authenticated
 authorization-matrix, b4 driverless query/normalizer, and b5 authenticated
-test-loader milestones are complete for their recorded scopes. The next
-operational-identity gate is the separate platform/migrator redesign and live
-migrator proof. A later single-client read adapter must remain separate from B4,
-B5, and the pool/concurrency milestone.
+test-loader milestones are complete for their recorded scopes. B6 is the active
+preparatory owner-DDL canary: its source is locally verified, but no live
+version 6 claim exists. Its next gate is the pinned run and independent evidence
+review. B7, not B6, is the later platform/migrator redesign and full
+authenticated migration proof. A single-client read adapter must remain
+separate from B4 through B7 and the pool/concurrency milestone.
 The distinct migrator is still blocked by the current migration `0001`
 design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
 administrative membership edge on a role it creates, while `0001` rejects every
 pre-existing capability-role membership. That bootstrap must be split or
-redesigned in a separate reviewed increment; the b2 result does not weaken it.
+redesigned in B7; the B6 canary neither executes a migration nor weakens the
+zero-membership bootstrap invariant.
 Only after authenticated backup design should the harness add a bounded
 dump/restore probe. Application-pool cancellation/concurrency belongs with a
 real adapter and pool. Do not treat B4, the clean-only

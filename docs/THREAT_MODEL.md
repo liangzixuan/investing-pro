@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b5 threat model
+# Sprint 0 through bounded live Cycle 1b-b5 and source Cycle 1b-b6 threat model
 
 ## Current trust boundaries
 
@@ -87,6 +87,24 @@ returned `offline_consistent`. See the
 [ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md), and the
 [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md).
 
+Cycle 1b-b6 source adds a separate preparatory owner-DDL canary after the
+unchanged bootstrap and test-loader cleanup. One ephemeral container-local
+SCRAM login has no direct application privilege and may select only the
+existing owner capability through an exact set-only edge. The source covers
+wrong-password, pre-role, cross-role and session-authorization denial;
+transaction-local owner identity; injected DDL rollback; one committed canary
+with exact owner and ACL; authenticated removal; ledger immutability; role
+reset; and zero login, membership, backend, passfile, and object residue before
+catalog checks and evidence. Source and local verification are complete, but no
+live version 6 result exists. See
+[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md) and the
+[Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md).
+
+The temporary owner edge is a high-authority acceptance boundary despite the
+login's otherwise weak attributes. Mandatory cleanup and a fixed canary object
+limit the exercised path, but they do not make the login a least-privileged
+migrator or authorize any production owner membership.
+
 That database login is not a user identity. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
@@ -95,7 +113,9 @@ end-user binding, production BOLA protection, external/TLS transport, secret
 management, an application pool, or deployed persistence. Its distinct
 migrator, backup, and restore boundaries remain deferred. The B5 test-loader
 result establishes only one sequential, synthetic, container-local
-acceptance-only session, not a production loader or identity boundary.
+acceptance-only session, not a production loader or identity boundary. B6
+source does not execute a migration, redesign role bootstrap, or close
+`authenticated_migrator_sessions`; B7 retains that full boundary.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes

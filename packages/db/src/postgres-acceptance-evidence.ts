@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v5.json";
+  "research-cockpit-postgres-acceptance-v6.json";
 
 export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
@@ -92,12 +92,20 @@ export const POSTGRES_ACCEPTANCE_V5_NOT_PROVEN = Object.freeze([
   "complete_dossier_history_timeline_or_dimensioned_projection",
 ] as const);
 
+export const POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
+  "authenticated_owner_ddl_canary",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_V6_NOT_PROVEN =
+  POSTGRES_ACCEPTANCE_V5_NOT_PROVEN;
+
 /** The exact completed-check list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_CHECKS_PASSED =
-  POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED;
+  POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED;
 
 /** The exact limitation list emitted by the current evidence builder. */
-export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V5_NOT_PROVEN;
+export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V6_NOT_PROVEN;
 
 const BUILD_INPUT_KEYS = [
   "githubEnvironment",
@@ -240,12 +248,19 @@ export interface PostgresAcceptanceEvidenceV5 extends PostgresAcceptanceEvidence
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V5_NOT_PROVEN;
 }
 
+export interface PostgresAcceptanceEvidenceV6 extends PostgresAcceptanceEvidenceFields<PostgresAcceptanceSourceHashes> {
+  readonly schemaVersion: 6;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V6_NOT_PROVEN;
+}
+
 export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV1
   | PostgresAcceptanceEvidenceV2
   | PostgresAcceptanceEvidenceV3
   | PostgresAcceptanceEvidenceV4
-  | PostgresAcceptanceEvidenceV5;
+  | PostgresAcceptanceEvidenceV5
+  | PostgresAcceptanceEvidenceV6;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -270,7 +285,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidenceV5 {
+): PostgresAcceptanceEvidenceV6 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -310,7 +325,7 @@ export function buildPostgresAcceptanceEvidence(
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 5,
+      schemaVersion: 6,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -367,14 +382,14 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidenceV5,
+  value: PostgresAcceptanceEvidenceV6,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
     const normalized = normalizeEvidence(value);
-    if (normalized.schemaVersion !== 5) invalid();
+    if (normalized.schemaVersion !== 6) invalid();
     bytes = Buffer.from(
       serializePostgresAcceptanceEvidence(normalized),
       "utf8",
@@ -521,6 +536,23 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
       sourceHashes,
       checksPassed: POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
       notProven: POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
+  if (evidence.schemaVersion === 6) {
+    const sourceHashes = normalizeV4SourceHashes(evidence.sourceHashes);
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V6_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 6,
+      ...common,
+      sourceHashes,
+      checksPassed: POSTGRES_ACCEPTANCE_V6_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
       completedAt,
     });
   }

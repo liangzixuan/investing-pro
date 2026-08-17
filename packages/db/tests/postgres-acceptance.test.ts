@@ -3,21 +3,37 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertAuthenticatedOwnerDdlCanaryCreateResult,
+  assertAuthenticatedOwnerDdlCanaryDropResult,
+  assertAuthenticatedOwnerDdlCanaryRollbackFailure,
   assertAuthenticatedTestLoaderFixtureResult,
   assertAuthenticatedTestLoaderFixtureRollbackFailure,
   assertExpectedPsqlFailure,
+  assertOwnerDdlWrongPasswordRejection,
   assertRuntimeWrongPasswordRejection,
   assertTestLoaderWrongPasswordRejection,
+  buildOwnerDdlAuthPsqlInvocation,
   buildRuntimeAuthPsqlInvocation,
   buildTestLoaderAuthPsqlInvocation,
   checkPostgresAcceptanceHarness,
   collectRuntimeAuthOperationFailures,
   EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
   extractReviewedSyntheticFixtureBody,
+  generateOwnerDdlAuthPassword,
   generateRuntimeAuthPassword,
   generateTestLoaderAuthPassword,
   injectBootstrapFailure,
   inspectPostgresAcceptanceHarness,
+  OWNER_DDL_AUTH_CANARY_TABLE,
+  OWNER_DDL_AUTH_CAPABILITY_ROLE,
+  OWNER_DDL_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES,
+  OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES,
+  OWNER_DDL_AUTH_LOGIN_ROLE,
+  OWNER_DDL_AUTH_PASSFILE,
+  OWNER_DDL_AUTH_WRONG_PASSFILE,
+  renderAuthenticatedOwnerDdlCanaryCreateSql,
+  renderAuthenticatedOwnerDdlCanaryDropSql,
+  renderAuthenticatedOwnerDdlCanaryRollbackProbeSql,
   renderAuthenticatedTestLoaderFixtureRollbackProbeSql,
   renderAuthenticatedTestLoaderFixtureSql,
   renderAlternatingPreparedStatementSql,
@@ -27,6 +43,11 @@ import {
   renderRuntimeAuthProvisioningSql,
   renderRuntimeAuthenticatedFinancialFactProjectionSql,
   renderRuntimeContextSql,
+  renderOwnerDdlAuthBackendDrainSql,
+  renderOwnerDdlAuthCanaryCleanupSql,
+  renderOwnerDdlAuthCleanupSql,
+  renderOwnerDdlAuthPassfile,
+  renderOwnerDdlAuthProvisioningSql,
   renderTestLoaderAuthBackendDrainSql,
   renderTestLoaderAuthCleanupSql,
   renderTestLoaderAuthPassfile,
@@ -520,6 +541,300 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(drainSql).toContain("END;\n$test_loader_auth_backend_drain$;");
   });
 
+  it("renders the exact ephemeral owner-DDL login and SET-only owner edge", () => {
+    const password = "C".repeat(43);
+    const sql = renderOwnerDdlAuthProvisioningSql(password);
+    expect(sql).toContain(`CREATE ROLE ${OWNER_DDL_AUTH_LOGIN_ROLE}`);
+    for (const attribute of [
+      "LOGIN",
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+      "CONNECTION LIMIT 1",
+    ]) {
+      expect(sql).toContain(attribute);
+    }
+    expect(sql).toContain(
+      `GRANT ${OWNER_DDL_AUTH_CAPABILITY_ROLE}\n  TO ${OWNER_DDL_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    const passwordPosition = sql.indexOf(`PASSWORD '${password}'`);
+    expect(passwordPosition).toBeGreaterThan(-1);
+    for (const suppression of [
+      "SET LOCAL log_statement = 'none';",
+      "SET LOCAL log_min_error_statement = 'panic';",
+      "SET LOCAL log_duration = off;",
+      "SET LOCAL log_min_duration_statement = -1;",
+      "SET LOCAL log_min_duration_sample = -1;",
+      "SET LOCAL log_statement_sample_rate = 0;",
+      "SET LOCAL log_transaction_sample_rate = 0;",
+      "SET LOCAL password_encryption = 'scram-sha-256';",
+    ]) {
+      expect(sql.indexOf(suppression)).toBeGreaterThan(-1);
+      expect(sql.indexOf(suppression)).toBeLessThan(passwordPosition);
+    }
+    expect(sql.match(new RegExp(password, "g"))).toHaveLength(1);
+    expect(renderOwnerDdlAuthCleanupSql()).toBe(
+      `BEGIN;\nDROP ROLE IF EXISTS ${OWNER_DDL_AUTH_LOGIN_ROLE};\nCOMMIT;\n`,
+    );
+    expect(renderOwnerDdlAuthCanaryCleanupSql()).toBe(
+      `BEGIN;\nDROP TABLE IF EXISTS ${OWNER_DDL_AUTH_CANARY_TABLE};\nCOMMIT;\n`,
+    );
+    expect(OWNER_DDL_AUTH_FORBIDDEN_SET_ROLES).toEqual([
+      "research_cockpit_runtime",
+      "research_cockpit_test_seed",
+      "research_cockpit_backup",
+      "postgres",
+    ]);
+    expect(OWNER_DDL_AUTH_FORBIDDEN_SESSION_AUTHORIZATION_ROLES).toEqual([
+      "research_cockpit_owner",
+      "research_cockpit_runtime",
+      "research_cockpit_test_seed",
+      "research_cockpit_backup",
+      "postgres",
+    ]);
+  });
+
+  it("keeps owner-DDL SCRAM credentials fixed-path, random, and out of arguments", () => {
+    const passwords = Array.from({ length: 8 }, () =>
+      generateOwnerDdlAuthPassword(),
+    );
+    expect(new Set(passwords).size).toBe(passwords.length);
+    for (const password of passwords) {
+      expect(password).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    }
+
+    const password = passwords[0];
+    if (!password) throw new Error("Missing generated owner-DDL password");
+    expect(renderOwnerDdlAuthPassfile(password)).toBe(
+      `127.0.0.1:5432:research_cockpit_acceptance_test:${OWNER_DDL_AUTH_LOGIN_ROLE}:${password}\n`,
+    );
+    for (const path of [
+      OWNER_DDL_AUTH_PASSFILE,
+      OWNER_DDL_AUTH_WRONG_PASSFILE,
+    ]) {
+      const invocation = buildOwnerDdlAuthPsqlInvocation(path, {
+        verboseErrors: true,
+      });
+      expect(invocation.environment).toEqual({
+        PGPASSFILE: path,
+        PGREQUIREAUTH: "scram-sha-256",
+        PGSSLMODE: "disable",
+        PGCONNECT_TIMEOUT: "5",
+      });
+      expect(invocation.command).toEqual(
+        expect.arrayContaining([
+          "--no-psqlrc",
+          "--no-password",
+          "--set=ON_ERROR_STOP=1",
+          "--set=VERBOSITY=verbose",
+          "--host=127.0.0.1",
+          "--port=5432",
+          `--username=${OWNER_DDL_AUTH_LOGIN_ROLE}`,
+        ]),
+      );
+      expect(JSON.stringify(invocation)).not.toContain(password);
+      expect(invocation.command.join(" ")).not.toMatch(/PGPASSWORD|password=/i);
+    }
+
+    const wrongPasswordInvocation = buildOwnerDdlAuthPsqlInvocation(
+      OWNER_DDL_AUTH_WRONG_PASSFILE,
+      { requireScram: false },
+    );
+    expect(wrongPasswordInvocation.environment).toEqual({
+      PGPASSFILE: OWNER_DDL_AUTH_WRONG_PASSFILE,
+      PGSSLMODE: "disable",
+      PGCONNECT_TIMEOUT: "5",
+    });
+    expect(() =>
+      renderOwnerDdlAuthProvisioningSql(`invalid-${password}`),
+    ).toThrow(/32-byte base64url/i);
+    for (const suffix of ["\n", "\r", "\r\n"]) {
+      expect(() => renderOwnerDdlAuthPassfile("C".repeat(43) + suffix)).toThrow(
+        /32-byte base64url/i,
+      );
+    }
+  });
+
+  it("classifies only the exact owner-DDL wrong-password rejection", () => {
+    expect(() =>
+      assertOwnerDdlWrongPasswordRejection({
+        exitCode: 2,
+        stdout: "",
+        stderr: `psql: error: connection failed: FATAL: password authentication failed\n for user "${OWNER_DDL_AUTH_LOGIN_ROLE}"\n`,
+      }),
+    ).not.toThrow();
+
+    for (const result of [
+      { exitCode: 0, stdout: "1\n", stderr: "" },
+      {
+        exitCode: 1,
+        stdout: "",
+        stderr: `FATAL: password authentication failed for user "${OWNER_DDL_AUTH_LOGIN_ROLE}"`,
+      },
+      {
+        exitCode: 2,
+        stdout: "unexpected",
+        stderr: `FATAL: password authentication failed for user "${OWNER_DDL_AUTH_LOGIN_ROLE}"`,
+      },
+      { exitCode: 2, stdout: "", stderr: "connection refused" },
+      {
+        exitCode: 2,
+        stdout: "",
+        stderr: 'FATAL: password authentication failed for user "another_role"',
+      },
+    ]) {
+      expect(() => assertOwnerDdlWrongPasswordRejection(result)).toThrow(
+        /wrong-password owner-DDL authentication/i,
+      );
+    }
+  });
+
+  it("renders one fixed authenticated owner-DDL create, rollback, and drop lifecycle", () => {
+    const create = renderAuthenticatedOwnerDdlCanaryCreateSql();
+    const rollback = renderAuthenticatedOwnerDdlCanaryRollbackProbeSql();
+    const drop = renderAuthenticatedOwnerDdlCanaryDropSql();
+
+    expect(create).toMatch(/^BEGIN;\nSET LOCAL ROLE research_cockpit_owner;/);
+    expect(create.match(/SET LOCAL ROLE/g)).toHaveLength(1);
+    expect(
+      create.match(/CREATE TABLE private_data\.b6_owner_ddl_canary/g),
+    ).toHaveLength(1);
+    expect(create).toContain("b6_owner_ddl_canary_pkey PRIMARY KEY");
+    expect(create).toContain("b6_owner_ddl_canary_marker_check");
+    expect(create).toContain("privilege.grantee <> class.relowner");
+    expect(create).toContain("pg_get_userbyid(class.relowner)");
+    expect(create).not.toContain("SELECT 1 / 0;");
+    expect(create).not.toMatch(
+      /schema_migrations|acceptance\/synthetic-fixture/,
+    );
+
+    expect(rollback.match(/SELECT 1 \/ 0;/g)).toHaveLength(1);
+    expect(rollback.replace("\nSELECT 1 / 0;", "")).toBe(create);
+    expect(rollback.indexOf("SELECT 1 / 0;")).toBeGreaterThan(
+      rollback.indexOf("b6-owner-ddl-catalog-invalid"),
+    );
+    expect(rollback.indexOf("SELECT 1 / 0;")).toBeLessThan(
+      rollback.indexOf("COMMIT;"),
+    );
+
+    expect(drop).toMatch(/^BEGIN;\nSET LOCAL ROLE research_cockpit_owner;/);
+    expect(drop).toContain(`DROP TABLE ${OWNER_DDL_AUTH_CANARY_TABLE};`);
+    expect(drop).toContain(
+      `pg_catalog.to_regclass('${OWNER_DDL_AUTH_CANARY_TABLE}') IS NULL`,
+    );
+    expect(drop.indexOf("COMMIT;")).toBeLessThan(
+      drop.indexOf("b6-owner-ddl-reset"),
+    );
+  });
+
+  it("accepts only exact owner-DDL create, rollback, and drop markers", () => {
+    const identity = `b6-owner-ddl-identity|${OWNER_DDL_AUTH_LOGIN_ROLE}|${OWNER_DDL_AUTH_CAPABILITY_ROLE}|scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}`;
+    const catalog = `b6-owner-ddl-catalog|${OWNER_DDL_AUTH_CANARY_TABLE}|${OWNER_DDL_AUTH_CAPABILITY_ROLE}|no-non-owner-acl`;
+    const reset = `b6-owner-ddl-reset|${OWNER_DDL_AUTH_LOGIN_ROLE}|${OWNER_DDL_AUTH_LOGIN_ROLE}|scram-sha-256:${OWNER_DDL_AUTH_LOGIN_ROLE}`;
+    const drop = `b6-owner-ddl-drop|${OWNER_DDL_AUTH_CANARY_TABLE}|absent`;
+
+    expect(() =>
+      assertAuthenticatedOwnerDdlCanaryCreateResult({
+        exitCode: 0,
+        stdout: `${identity}\n${catalog}\n${reset}\n`,
+        stderr: "",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertAuthenticatedOwnerDdlCanaryRollbackFailure({
+        exitCode: 3,
+        stdout: `${identity}\n${catalog}\n`,
+        stderr: "ERROR:  22012: division by zero",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertAuthenticatedOwnerDdlCanaryDropResult({
+        exitCode: 0,
+        stdout: `${drop}\n${reset}\n`,
+        stderr: "",
+      }),
+    ).not.toThrow();
+
+    for (const result of [
+      {
+        exitCode: 1,
+        stdout: `${identity}\n${catalog}\n${reset}\n`,
+        stderr: "",
+      },
+      { exitCode: 0, stdout: `${identity}\n${catalog}\n`, stderr: "" },
+      {
+        exitCode: 0,
+        stdout: `${identity}\n${catalog}\n${reset}\nextra\n`,
+        stderr: "",
+      },
+      {
+        exitCode: 0,
+        stdout: `${identity}\n${catalog}\n${reset}\n`,
+        stderr: "NOTICE: unexpected",
+      },
+    ]) {
+      expect(() =>
+        assertAuthenticatedOwnerDdlCanaryCreateResult(result),
+      ).toThrow(/owner-DDL canary create/i);
+    }
+
+    for (const result of [
+      {
+        exitCode: 1,
+        stdout: `${identity}\n${catalog}\n`,
+        stderr: "ERROR:  22012: division by zero",
+      },
+      {
+        exitCode: 3,
+        stdout: `${identity}\n${catalog}\n`,
+        stderr: "ERROR:  42501: permission denied",
+      },
+      {
+        exitCode: 3,
+        stdout: `${identity}\n${catalog}\n${reset}\n`,
+        stderr: "ERROR:  22012: division by zero",
+      },
+      {
+        exitCode: 3,
+        stdout: `${identity}\n${catalog}\n`,
+        stderr: "WARNING: unexpected\nERROR:  22012: division by zero",
+      },
+    ]) {
+      expect(() =>
+        assertAuthenticatedOwnerDdlCanaryRollbackFailure(result),
+      ).toThrow(/rollback probe/i);
+    }
+
+    for (const result of [
+      { exitCode: 1, stdout: `${drop}\n${reset}\n`, stderr: "" },
+      { exitCode: 0, stdout: `${drop}\n`, stderr: "" },
+      { exitCode: 0, stdout: `${drop}\n${reset}\nextra\n`, stderr: "" },
+      {
+        exitCode: 0,
+        stdout: `${drop}\n${reset}\n`,
+        stderr: "NOTICE: unexpected",
+      },
+    ]) {
+      expect(() => assertAuthenticatedOwnerDdlCanaryDropResult(result)).toThrow(
+        /owner-DDL canary drop/i,
+      );
+    }
+  });
+
+  it("uses a bounded administrator-side drain for owner-DDL backends", () => {
+    const drainSql = renderOwnerDdlAuthBackendDrainSql();
+    expect(drainSql).toContain("FROM pg_catalog.pg_stat_activity");
+    expect(drainSql).toContain(`usename = '${OWNER_DDL_AUTH_LOGIN_ROLE}'`);
+    expect(drainSql).toContain("backend_type = 'client backend'");
+    expect(drainSql).toContain("interval '5 seconds'");
+    expect(drainSql).toContain("pg_catalog.pg_sleep(0.05)");
+    expect(drainSql).toContain("USING ERRCODE = '55000'");
+    expect(drainSql).toContain("END;\n$owner_ddl_auth_backend_drain$;");
+  });
+
   it("attempts every runtime-auth finalization target before returning failures", async () => {
     const attempted: string[] = [];
     const firstFailure = new Error("first failure");
@@ -771,15 +1086,15 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "3e371584789e8408e223da4386caf2dfcaf0edf9974116fd42ea74f907b8901d",
+        "c0e3531a791dfee4472aef818465e8a551d240c1c2a870fe5cd68c224cf5712d",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v5-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v5.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v6.json",
     );
   });
 
@@ -909,7 +1224,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v5.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v6.json",
         unsafePath,
       );
       expect(
@@ -949,7 +1264,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v5-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v6-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1080,7 +1395,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(source).not.toContain("writtenEvidence.path");
     expect(source).toContain("authenticated test-loader");
     expect(source).toContain("driverless financial-fact projection");
-    expect(source).toContain("version 5 success-only run record");
+    expect(source).toContain("version 6 success-only run record");
   });
 
   it("loads the reviewed fixture only through the bounded authenticated test-loader boundary", async () => {
@@ -1200,6 +1515,142 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(authenticatedPsql).toContain("dockerExecWithEnvironment(");
     expect(authenticatedPsql).toContain("runRuntimeAuthCommandWithDrain(");
     expect(authenticatedPsql).not.toContain("await psqlScalar(");
+  });
+
+  it("runs the authenticated owner-DDL canary through one bounded cleanup boundary", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex).toBeGreaterThan(-1);
+      expect(endIndex).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const orchestrator = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyCheckedOutCommit(",
+    );
+    const loader = orchestrator.indexOf(
+      "await verifyAuthenticatedTestLoaderSession(",
+    );
+    const ownerDdl = orchestrator.indexOf(
+      "await verifyAuthenticatedOwnerDdlCanarySession(containerId);",
+    );
+    const catalog = orchestrator.indexOf("await verifyCatalogContract");
+    const evidence = orchestrator.indexOf("buildPostgresAcceptanceEvidence");
+    expect(ownerDdl).toBeGreaterThan(loader);
+    expect(catalog).toBeGreaterThan(ownerDdl);
+    expect(evidence).toBeGreaterThan(catalog);
+
+    const probe = section(
+      "async function verifyAuthenticatedOwnerDdlCanarySession(",
+      "async function provisionOwnerDdlAuthLogin(",
+    );
+    const orderedMarkers = [
+      "await verifyOwnerDdlAuthResidueAbsent(containerId);",
+      "await provisionOwnerDdlAuthLogin(containerId, password);",
+      "await verifyOwnerDdlAuthRoleCatalog(containerId);",
+      "OWNER_DDL_AUTH_PASSFILE,",
+      "OWNER_DDL_AUTH_WRONG_PASSFILE,",
+      "await verifyOwnerDdlWrongPasswordRejection(containerId);",
+      "await verifyOwnerDdlLoginBeforeSetRole(containerId);",
+      "await verifyOwnerDdlRoleEscalationDenials(containerId);",
+      "await verifyMigrationLedger(containerId);",
+      "await verifyAuthenticatedOwnerDdlRollback(containerId);",
+      "await verifyAuthenticatedOwnerDdlCreate(containerId);",
+      "await verifyOwnerDdlCanaryPresent(containerId);",
+      "await verifyMigrationLedger(containerId);",
+      "await verifyAuthenticatedOwnerDdlDrop(containerId);",
+      "await verifyOwnerDdlCanaryAbsent(containerId);",
+      "await verifyMigrationLedger(containerId);",
+      "} finally {",
+      "run: () => cleanupOwnerDdlAuthProbe(containerId)",
+      "run: () => verifyOwnerDdlAuthResidueAbsent(containerId)",
+    ];
+    let previous = -1;
+    for (const marker of orderedMarkers) {
+      const position = probe.indexOf(marker, previous + 1);
+      expect(position, marker).toBeGreaterThan(previous);
+      previous = position;
+    }
+
+    const preRole = section(
+      "async function verifyOwnerDdlLoginBeforeSetRole(",
+      "async function verifyOwnerDdlRoleEscalationDenials(",
+    );
+    for (const marker of [
+      "session_user",
+      "current_user",
+      "system_user",
+      "inet_client_addr",
+      "inet_server_addr",
+      "pg_stat_ssl",
+      "'MEMBER'",
+      "'USAGE'",
+      "'SET'",
+      "owner-DDL login data access before SET ROLE",
+      "owner-DDL login ledger read before SET ROLE",
+      "owner-DDL login context routine before SET ROLE",
+      "CALL private_data.set_request_context(",
+      "owner-DDL login persistent DDL before SET ROLE",
+      "owner-DDL login public DDL before SET ROLE",
+      "owner-DDL login temporary DDL before SET ROLE",
+      'sqlState: "42501"',
+    ]) {
+      expect(preRole).toContain(marker);
+    }
+
+    for (const [start, end] of [
+      [
+        "async function verifyAuthenticatedOwnerDdlRollback(",
+        "async function verifyAuthenticatedOwnerDdlCreate(",
+      ],
+      [
+        "async function verifyAuthenticatedOwnerDdlCreate(",
+        "async function verifyAuthenticatedOwnerDdlDrop(",
+      ],
+      [
+        "async function verifyAuthenticatedOwnerDdlDrop(",
+        "async function verifyOwnerDdlCanaryPresent(",
+      ],
+    ] as const) {
+      const authenticatedOperation = section(start, end);
+      expect(authenticatedOperation).toContain("ownerDdlAuthenticatedPsql(");
+      expect(authenticatedOperation).not.toContain("await psql(");
+      expect(authenticatedOperation).not.toContain("await psqlScalar(");
+    }
+
+    const cleanup = section(
+      "async function cleanupOwnerDdlAuthProbe(",
+      "async function verifyOwnerDdlAuthResidueAbsent(",
+    );
+    const drain = cleanup.indexOf("drain owner-DDL-auth backends");
+    const passfiles = cleanup.indexOf("remove owner-DDL-auth passfile");
+    const canary = cleanup.indexOf("drop owner-DDL canary residue");
+    const login = cleanup.indexOf("drop ephemeral owner-DDL login");
+    expect(passfiles).toBeGreaterThan(drain);
+    expect(canary).toBeGreaterThan(passfiles);
+    expect(login).toBeGreaterThan(canary);
+
+    const residue = section(
+      "async function verifyOwnerDdlAuthResidueAbsent(",
+      "async function ownerDdlAuthenticatedPsqlScalar(",
+    );
+    for (const marker of [
+      "ephemeral owner-DDL login residue",
+      "ephemeral owner-DDL membership residue",
+      "ephemeral owner-DDL backend residue",
+      "verify owner-DDL canary is absent",
+      "verify owner-DDL-auth passfile is absent",
+      "verify owner-DDL-auth passfile symlink is absent",
+      "verify migration ledger after owner-DDL cleanup",
+    ]) {
+      expect(residue).toContain(marker);
+    }
   });
 
   it("reuses the exact authorization matrix inside the authenticated cleanup boundary", async () => {

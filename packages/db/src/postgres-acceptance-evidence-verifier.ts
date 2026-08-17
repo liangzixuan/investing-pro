@@ -219,7 +219,11 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       invalid();
     }
 
-    if (evidence.schemaVersion === 4 || evidence.schemaVersion === 5) {
+    if (
+      evidence.schemaVersion === 4 ||
+      evidence.schemaVersion === 5 ||
+      evidence.schemaVersion === 6
+    ) {
       if (
         sources.projectionQuery === undefined ||
         sources.projectionNormalizer === undefined ||
@@ -308,8 +312,8 @@ function normalizeSources(
 
 function usesProjectionSources(
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
-): schemaVersion is 4 | 5 {
-  return schemaVersion === 4 || schemaVersion === 5;
+): schemaVersion is 4 | 5 | 6 {
+  return schemaVersion === 4 || schemaVersion === 5 || schemaVersion === 6;
 }
 
 function normalizeSourceFields(
