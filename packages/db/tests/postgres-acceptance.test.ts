@@ -657,6 +657,18 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       /\b(?:class\.relkind|constraint_row\.contype|trigger\.tgenabled)\s*\|\|/,
     );
   });
+
+  it("normalizes loopback inet values without CIDR suffixes", async () => {
+    const runner = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    expect(runner).toContain("pg_catalog.host(pg_catalog.inet_client_addr())");
+    expect(runner).toContain("pg_catalog.host(pg_catalog.inet_server_addr())");
+    expect(runner).not.toMatch(
+      /(?:pg_catalog\.)?inet_(?:client|server)_addr\s*\(\s*\)\s*::\s*text/i,
+    );
+  });
 });
 
 async function loadArtifacts(): Promise<AcceptanceArtifacts> {

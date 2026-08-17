@@ -1936,8 +1936,8 @@ async function verifyRuntimeLoginBeforeSetRole(
   'sessionUser', session_user,
   'currentUser', current_user,
   'systemUser', system_user,
-  'clientAddress', pg_catalog.inet_client_addr()::text,
-  'serverAddress', pg_catalog.inet_server_addr()::text,
+  'clientAddress', pg_catalog.host(pg_catalog.inet_client_addr()),
+  'serverAddress', pg_catalog.host(pg_catalog.inet_server_addr()),
   'ssl', EXISTS (
     SELECT 1
     FROM pg_catalog.pg_stat_ssl
