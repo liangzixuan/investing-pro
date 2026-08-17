@@ -23,6 +23,8 @@ import {
   POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -237,7 +239,40 @@ function evidenceAdapterTests(): void {
     ]);
   });
 
-  it("rejects a changed v4 projection source at the anchored commit", async () => {
+  it("reviews a canonical historical v4 record at its anchored commit", async () => {
+    const fixture = await createFixture();
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 4;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+
+    const result = await reviewPostgresAcceptanceEvidence({
+      ...fixture.input,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    });
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_test_loader_fixture_load",
+    );
+  });
+
+  it("rejects a changed v5 projection source at the anchored commit", async () => {
     const fixture = await createFixture();
     await writeFile(
       join(

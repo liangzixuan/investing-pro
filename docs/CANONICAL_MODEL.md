@@ -104,13 +104,24 @@ returned `offline_consistent`; see the
 pool, composition root, complete/dimensioned projection, writer, or real-data
 proof.
 
+Cycle 1b-b5 source adds one separate acceptance-only fixture-load path. It
+leaves the canonical fixture and migrations unchanged, uses a distinct
+ephemeral SCRAM login with only an exact set-only edge to the existing
+test-seed capability, and removes the login and membership before later catalog
+checks. The source is locally verified, but no pinned live version 5 result has
+been reviewed; see
+[ADR 0017](./adr/0017-authenticated-test-loader-fixture-load.md) and the
+[Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md). This changes no data,
+tenancy, projection, or application contract.
+
 That bounded result does not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
 `set_request_context` remains a trusted runtime operation rather than an
 identity resolver. External/TLS transport, production secrets, connection-pool
-cleanup, concurrency, migrator/test-loader/backup authentication,
-backup/restore, and the future deletion path remain separate gates.
+cleanup, concurrency, authenticated migrator and backup sessions,
+backup/restore, and the future deletion path remain separate gates. The B5
+test-loader session remains live-pending and acceptance-only.
 The successful b3 run closes only the recorded synthetic authenticated
 tenant/rights/prepared-read gap; it does not change any of these remaining
 identity, transport, operational, or deployment gates.

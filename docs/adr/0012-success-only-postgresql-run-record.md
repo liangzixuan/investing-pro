@@ -1,6 +1,7 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; first version 4 live record produced, retained, and reviewed
+Status: accepted; first version 4 live record retained and reviewed; version 5
+source producer implemented with live evidence pending
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -20,11 +21,15 @@ The runner derives its output path from `RUNNER_TEMP` and uses a filename tied
 to the schema version. The first retained record is
 `research-cockpit-postgres-acceptance-v1.json`; version 2 adds the bounded
 container-local SCRAM runtime probe; version 3 adds the authenticated runtime
-authorization matrix; and the current producer writes
-`research-cockpit-postgres-acceptance-v4.json`. Version 4 adds the authenticated
-financial-fact projection-query check plus the query and normalizer source
-hashes while retaining the remaining identity, production, pool, restore, and
-data limitations. The parser retains exact historical v1 through v3 support.
+authorization matrix; and version 4 adds the authenticated financial-fact
+projection-query check plus the query and normalizer source hashes. Version 4
+is the latest retained and live-reviewed record. The current source producer is
+configured to write `research-cockpit-postgres-acceptance-v5.json`; version 5
+adds only the authenticated test-loader fixture-load check and splits the
+remaining migrator and backup session limitations. No live version 5 record has
+been retained or reviewed yet. The parser retains exact historical v1 through
+v4 support.
+
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
 pre-created record cannot be overwritten. The entry point validates that the

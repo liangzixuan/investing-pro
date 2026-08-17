@@ -106,7 +106,8 @@ or web import, composition-root change, identity resolver, migration,
 role/grant change, writer, authenticated test-loader/migrator/backup,
 dump/restore, dimensioned or complete-dossier projection, real data, or
 production claim. Those remain separate milestones. B5 is reserved for
-authenticated test-loader proof.
+authenticated test-loader proof; ADR 0017 specifies that separate successor,
+whose source implementation and future evidence do not widen B4.
 
 ## Consequences
 
@@ -123,3 +124,4 @@ creation still requires its own client lifecycle and pool/cancellation proof.
 - [ADR 0014: Container-local runtime authentication](./0014-container-local-runtime-authentication.md)
 - [ADR 0015: Authenticated runtime authorization matrix](./0015-authenticated-runtime-authorization-matrix.md)
 - [Cycle 1b-b4 exit matrix](../CYCLE_1BB4_EXIT_MATRIX.md)
+- [ADR 0017: Authenticated test-loader fixture load](./0017-authenticated-test-loader-fixture-load.md)

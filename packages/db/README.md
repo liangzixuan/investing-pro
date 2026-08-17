@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); BOUNDED RUNTIME-AUTH PASSED (B2); AUTHENTICATED MATRIX PASSED (B3); DRIVERLESS PROJECTION QUERY PASSED (B4) — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B4 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B5 AUTHENTICATED TEST-LOADER SOURCE IMPLEMENTED/LOCALLY VERIFIED AND LIVE EVIDENCE PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -39,6 +39,16 @@ returned `offline_consistent` against separately supplied anchors. See the
 [ADR 0016](../../docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md),
 and the [Cycle 1b-b4 exit matrix](../../docs/CYCLE_1BB4_EXIT_MATRIX.md).
 
+Cycle 1b-b5 preserves the historical fixture and migrations byte-for-byte and
+adds an isolated authenticated loader lifecycle around the fixture's strictly
+validated direct-insert body. One ephemeral acceptance-only SCRAM login may
+assume only `research_cockpit_test_seed` through an exact set-only,
+non-inheriting, non-admin membership, then must be removed with zero residue.
+Source implementation and local verification are complete; no live version 5
+claim exists. See
+[ADR 0017](../../docs/adr/0017-authenticated-test-loader-fixture-load.md) and
+the [Cycle 1b-b5 exit matrix](../../docs/CYCLE_1BB5_EXIT_MATRIX.md).
+
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
 acceptance-only renderer validates the immutable manifest and emits all seven
@@ -66,10 +76,14 @@ host rule as SCRAM so the more-specific loopback entries cannot retain
 `initdb`'s insecure installation default. Current migrations must bootstrap as
 the ephemeral container superuser: on PostgreSQL 17, a non-superuser
 `CREATEROLE` migrator would receive automatic membership in newly created roles
-and immediately violate migration `0001`'s zero-membership invariant. Runtime,
-seed, and backup checks use superuser `SET SESSION AUTHORIZATION` to impersonate the declared
-`NOLOGIN` capabilities. This can prove engine grant/RLS semantics, but it is not
-authenticated least-privilege or production identity evidence.
+and immediately violate migration `0001`'s zero-membership invariant. The
+historical b1 runtime, seed, and backup checks use superuser
+`SET SESSION AUTHORIZATION` to impersonate the declared `NOLOGIN` capabilities.
+This can prove engine grant/RLS semantics, but it is not authenticated
+least-privilege or production identity evidence. B5 leaves those historical
+checks and fixture bytes intact while adding a separate post-bootstrap
+authenticated test-loader path; that path has no live claim until version 5
+evidence is retained and reviewed.
 
 The b2 boundary leaves that superuser migration bootstrap, test-seed
 impersonation, and backup impersonation unchanged. Only runtime behavior moves
@@ -351,5 +365,6 @@ b2-b4 results cover only one sequential, synthetic, container-local runtime
 service account and one narrow dimensionless financial-fact projection;
 external/TLS authentication, end-user identity binding, production secret
 handling, a driver or pool, concurrency/cancellation/timeouts, complete dossier
-projections, distinct migrator/test-loader/backup credentials, logical restore,
-and disaster recovery remain unproven.
+projections, authenticated fixture loading, distinct migrator and backup
+credentials, logical restore, and disaster recovery remain unproven by live
+evidence. B5 source implementation does not change that evidence boundary.

@@ -92,6 +92,17 @@ version 4 artifact returned `offline_consistent`; see the
 [ADR 0016](./docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
 and the [Cycle 1b-b4 exit matrix](./docs/CYCLE_1BB4_EXIT_MATRIX.md).
 
+Cycle 1b-b5 has an accepted, isolated authenticated test-loader design. It
+keeps the reviewed fixture and migrations byte-for-byte unchanged, derives only
+the fixture's validated insert body, and gives one ephemeral acceptance-only
+login one exact non-inheriting, non-admin, set-only edge to the existing
+test-seed capability. Source implementation and local verification are
+complete; no pinned live version 5 result exists yet. B5 adds no production or
+external authentication, TLS, managed secret system, driver, pool, concurrent
+loader, migrator, backup/restore, real data, or app integration. See
+[ADR 0017](./docs/adr/0017-authenticated-test-loader-fixture-load.md) and the
+[Cycle 1b-b5 exit matrix](./docs/CYCLE_1BB5_EXIT_MATRIX.md).
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -126,7 +137,9 @@ commit `664c0e5b`; its retained version 3 record returned `offline_consistent`.
 This is still one sequential, synthetic, container-local service-account
 result. The offline verifier checks record/source consistency after download
 but cannot authenticate the GitHub run or independently prove PostgreSQL
-execution.
+execution. B5 source and local tests cannot expand those retained b1-b4 claims;
+the authenticated fixture-load check remains live-pending until a clean pinned
+run produces and independently reviewed version 5 evidence.
 
 ## Safety boundary
 
@@ -142,6 +155,10 @@ execution.
 - The reviewed b3 authenticated matrix does not establish a trusted end-user or
   tenant binding, an external/TLS path, production secrets, pool safety,
   concurrent behavior, restore viability, or deployed persistence.
+- The B5 source is limited to one ephemeral acceptance-only synthetic loader;
+  it does not establish production/external authentication, TLS, secret
+  operations, concurrent loading, an authenticated migrator or backup, restore,
+  real-data ingestion, or application integration.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -155,4 +172,5 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b3 evidence note](./docs/POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md),
 [Cycle 1b-b4 exit matrix](./docs/CYCLE_1BB4_EXIT_MATRIX.md),
 [Cycle 1b-b4 evidence note](./docs/POSTGRESQL_PROJECTION_QUERY_EVIDENCE.md),
+[Cycle 1b-b5 exit matrix](./docs/CYCLE_1BB5_EXIT_MATRIX.md),
 and [architecture decisions](./docs/adr/).

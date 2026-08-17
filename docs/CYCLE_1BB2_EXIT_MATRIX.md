@@ -54,4 +54,6 @@ Cycle 1b-b3 later closed only the historical full-authenticated-matrix deferral
 above for its exact recorded synthetic scope; it does not retroactively widen
 b2. Cycle 1b-b4 later passed its separate driverless projection-query and
 semantic-unit scope. Cycle 1b-b5 is reserved for authenticated test-loader
-proof. Neither later result is part of the historical b2 result.
+proof; its implemented, locally verified source does not change b2, and its
+live version 5 evidence remains pending. Neither later result is part of the
+historical b2 result.

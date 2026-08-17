@@ -19,6 +19,8 @@ import {
   POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
   PostgresAcceptanceEvidenceError,
   serializePostgresAcceptanceEvidence,
   writePostgresAcceptanceEvidence,
@@ -28,6 +30,7 @@ import {
   type PostgresAcceptanceEvidenceV2,
   type PostgresAcceptanceEvidenceV3,
   type PostgresAcceptanceEvidenceV4,
+  type PostgresAcceptanceEvidenceV5,
 } from "../src/postgres-acceptance-evidence";
 
 const IMAGE_DIGEST = `sha256:${"a".repeat(64)}`;
@@ -77,7 +80,7 @@ function input(
   };
 }
 
-function evidence(): PostgresAcceptanceEvidenceV4 {
+function evidence(): PostgresAcceptanceEvidenceV5 {
   return buildPostgresAcceptanceEvidence(input());
 }
 
@@ -128,6 +131,15 @@ function mutableV3Evidence(): Record<string, unknown> {
   };
 }
 
+function mutableV4Evidence(): Record<string, unknown> {
+  return {
+    ...mutableEvidence(),
+    schemaVersion: 4,
+    checksPassed: [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED],
+    notProven: [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN],
+  };
+}
+
 function v1Evidence(): PostgresAcceptanceEvidenceV1 {
   const parsed = parsePostgresAcceptanceEvidence(
     JSON.stringify(mutableV1Evidence()),
@@ -154,6 +166,16 @@ function v3Evidence(): PostgresAcceptanceEvidenceV3 {
   );
   if (parsed.schemaVersion !== 3) {
     throw new Error("expected historical v3 evidence");
+  }
+  return parsed;
+}
+
+function v4Evidence(): PostgresAcceptanceEvidenceV4 {
+  const parsed = parsePostgresAcceptanceEvidence(
+    JSON.stringify(mutableV4Evidence()),
+  );
+  if (parsed.schemaVersion !== 4) {
+    throw new Error("expected historical v4 evidence");
   }
   return parsed;
 }
@@ -191,10 +213,10 @@ afterEach(async () => {
 });
 
 describe("PostgreSQL acceptance success evidence", () => {
-  it("builds the exact success-only v4 schema in its canonical order", () => {
+  it("builds the exact success-only v5 schema in its canonical order", () => {
     const result = evidence();
     expect(POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME).toBe(
-      "research-cockpit-postgres-acceptance-v4.json",
+      "research-cockpit-postgres-acceptance-v5.json",
     );
     expect(Object.keys(result)).toEqual([
       "schemaVersion",
@@ -219,7 +241,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "completedAt",
     ]);
     expect(result).toEqual({
-      schemaVersion: 4,
+      schemaVersion: 5,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -298,6 +320,27 @@ describe("PostgreSQL acceptance success evidence", () => {
     ]);
   });
 
+  it("preserves exact historical v4 parsing and canonical serialization", () => {
+    const historical = mutableV4Evidence();
+    const canonical = `${JSON.stringify(historical, null, 2)}\n`;
+    const parsed = parsePostgresAcceptanceEvidence(canonical);
+
+    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.checksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+    ]);
+    expect(parsed.notProven).toEqual([...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN]);
+    expect(serializePostgresAcceptanceEvidence(parsed)).toBe(canonical);
+    expect(Object.keys(parsed.sourceHashes)).toEqual([
+      "workflowSha256",
+      "fixtureSha256",
+      "migrationManifestSha256",
+      "acceptanceRunnerSha256",
+      "projectionQuerySha256",
+      "projectionNormalizerSha256",
+    ]);
+  });
+
   it("adds only the authenticated matrix claim between v2 and v3", () => {
     expect(POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED).toEqual([
       ...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
@@ -321,7 +364,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "application_driver_pool_or_composition_root",
       "complete_dossier_history_timeline_or_dimensioned_projection",
     ]);
-    expect(Object.keys(evidence().sourceHashes)).toEqual([
+    expect(Object.keys(v4Evidence().sourceHashes)).toEqual([
       "workflowSha256",
       "fixtureSha256",
       "migrationManifestSha256",
@@ -329,6 +372,32 @@ describe("PostgreSQL acceptance success evidence", () => {
       "projectionQuerySha256",
       "projectionNormalizerSha256",
     ]);
+  });
+
+  it("adds only the authenticated test-loader claim and exact split limitations in v5", () => {
+    expect(POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED).toEqual([
+      ...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+      "authenticated_test_loader_fixture_load",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V5_NOT_PROVEN).toEqual([
+      "resolved_platform_image_manifest",
+      "external_or_production_authenticated_database_sessions",
+      "authenticated_migrator_sessions",
+      "authenticated_backup_sessions",
+      "end_user_identity_or_tenant_binding",
+      "production_identity_tls_secrets_or_pooling",
+      "concurrent_sessions_cancellation_or_timeouts",
+      "dump_restore_or_disaster_recovery",
+      "real_or_licensed_market_data",
+      "application_driver_pool_or_composition_root",
+      "complete_dossier_history_timeline_or_dimensioned_projection",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V5_NOT_PROVEN).not.toContain(
+      "authenticated_migrator_test_loader_or_backup_sessions",
+    );
+    expect(Object.keys(evidence().sourceHashes)).toEqual(
+      Object.keys(v4Evidence().sourceHashes),
+    );
   });
 
   it("rejects cross-version check and limitation combinations", () => {
@@ -356,10 +425,28 @@ describe("PostgreSQL acceptance success evidence", () => {
       parsePostgresAcceptanceEvidence(JSON.stringify(v3AsV4)),
     );
 
-    const v4AsV3 = mutableEvidence();
+    const v4AsV3 = mutableV4Evidence();
     v4AsV3.schemaVersion = 3;
     expectValueFreeValidationFailure(() =>
       parsePostgresAcceptanceEvidence(JSON.stringify(v4AsV3)),
+    );
+
+    const v4AsV5 = mutableV4Evidence();
+    v4AsV5.schemaVersion = 5;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v4AsV5)),
+    );
+
+    const v5AsV4 = mutableEvidence();
+    v5AsV4.schemaVersion = 4;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v5AsV4)),
+    );
+
+    const mixedV5 = mutableEvidence();
+    mixedV5.notProven = [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN];
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(mixedV5)),
     );
 
     const mixedV1 = mutableV1Evidence();
@@ -381,10 +468,10 @@ describe("PostgreSQL acceptance success evidence", () => {
     );
 
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
     );
   });
 
@@ -442,7 +529,7 @@ describe("PostgreSQL acceptance success evidence", () => {
   });
 
   it.each([
-    ["schemaVersion", 5],
+    ["schemaVersion", 6],
     ["suite", "different-suite"],
     ["outcome", "failed"],
     ["job", "different-job"],
@@ -720,14 +807,19 @@ describe("PostgreSQL acceptance success evidence", () => {
     }
   });
 
-  it("never writes a historical v1, v2, or v3 record under the v4 filename", async () => {
+  it("never writes a historical v1, v2, v3, or v4 record under the v5 filename", async () => {
     const directory = await mkdtemp(join(tmpdir(), "rc-pg-evidence-"));
     TEMP_DIRECTORIES.push(directory);
 
-    for (const historical of [v1Evidence(), v2Evidence(), v3Evidence()]) {
+    for (const historical of [
+      v1Evidence(),
+      v2Evidence(),
+      v3Evidence(),
+      v4Evidence(),
+    ]) {
       await expect(
         writePostgresAcceptanceEvidence(
-          historical as unknown as PostgresAcceptanceEvidenceV4,
+          historical as unknown as PostgresAcceptanceEvidenceV5,
           { RUNNER_TEMP: directory },
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceError);

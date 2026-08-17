@@ -151,9 +151,9 @@ export async function reviewPostgresAcceptanceEvidence(
       input.expectedCommit,
       manifestEntries,
     );
-    const v4Sources =
-      evidence.schemaVersion === 4
-        ? await readV4Sources(repositoryPath, input.expectedCommit)
+    const projectionSources =
+      evidence.schemaVersion === 4 || evidence.schemaVersion === 5
+        ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -173,7 +173,7 @@ export async function reviewPostgresAcceptanceEvidence(
         migrationManifest: Uint8Array.from(migrationManifest),
         acceptanceRunner: Uint8Array.from(acceptanceRunner),
         migrations,
-        ...v4Sources,
+        ...projectionSources,
       },
     });
   } catch {
@@ -181,7 +181,7 @@ export async function reviewPostgresAcceptanceEvidence(
   }
 }
 
-async function readV4Sources(
+async function readProjectionSources(
   repositoryPath: string,
   commit: string,
 ): Promise<{

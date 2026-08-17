@@ -1,6 +1,7 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; first retained version 4 artifact reviewed successfully
+Status: accepted; first retained version 4 artifact reviewed successfully;
+version 5 source verification implemented with live evidence pending
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,8 +15,9 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v3 support and accepts the current v4 schema without mixing
-any version's closed check or limitation lists. Canonical comparison rejects
+historical v1 through v4 support and accepts the source-current v5 schema
+without mixing any version's closed check or limitation lists. No version 5
+artifact has been retained or reviewed yet. Canonical comparison rejects
 byte-order marks, CRLF or alternate whitespace, trailing content, reordered
 members, and duplicate JSON member names.
 

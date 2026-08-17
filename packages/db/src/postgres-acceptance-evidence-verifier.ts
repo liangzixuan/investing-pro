@@ -39,7 +39,7 @@ const HISTORICAL_SOURCE_KEYS = [
   "acceptanceRunner",
   "migrations",
 ] as const;
-const V4_SOURCE_KEYS = [
+const PROJECTION_SOURCE_KEYS = [
   ...HISTORICAL_SOURCE_KEYS,
   "projectionQuery",
   "projectionNormalizer",
@@ -219,7 +219,7 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       invalid();
     }
 
-    if (evidence.schemaVersion === 4) {
+    if (evidence.schemaVersion === 4 || evidence.schemaVersion === 5) {
       if (
         sources.projectionQuery === undefined ||
         sources.projectionNormalizer === undefined ||
@@ -288,8 +288,8 @@ function normalizeSources(
   value: unknown,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): NormalizedSources {
-  if (schemaVersion === 4) {
-    const sources = exactPlainDataRecord(value, V4_SOURCE_KEYS);
+  if (usesProjectionSources(schemaVersion)) {
+    const sources = exactPlainDataRecord(value, PROJECTION_SOURCE_KEYS);
     return normalizeSourceFields(sources, {
       projectionQuery: exactBytes(
         sources.projectionQuery,
@@ -304,6 +304,12 @@ function normalizeSources(
   return normalizeSourceFields(
     exactPlainDataRecord(value, HISTORICAL_SOURCE_KEYS),
   );
+}
+
+function usesProjectionSources(
+  schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
+): schemaVersion is 4 | 5 {
+  return schemaVersion === 4 || schemaVersion === 5;
 }
 
 function normalizeSourceFields(

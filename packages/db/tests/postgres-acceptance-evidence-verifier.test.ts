@@ -13,6 +13,10 @@ import {
   POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V3_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -143,6 +147,14 @@ function historicalInput(
   delete input.sources.projectionQuery;
   delete input.sources.projectionNormalizer;
   return input;
+}
+
+function v4Input(): MutableInput {
+  return mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 4;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN];
+  });
 }
 
 function replaceCanonicalSourceJson(
@@ -333,6 +345,20 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v4 evidence with its exact six-source bundle", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v4Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_test_loader_fixture_load",
+    );
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -354,6 +380,21 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
         record.checksPassed = [...POSTGRES_ACCEPTANCE_V3_CHECKS_PASSED];
         record.notProven = [...POSTGRES_ACCEPTANCE_V3_NOT_PROVEN];
       }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 4;
+        record.checksPassed = [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED];
+        record.notProven = [...POSTGRES_ACCEPTANCE_V5_NOT_PROVEN];
+      }),
+      mutateEvidence(v4Input(), (record) => {
+        record.schemaVersion = 5;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 4;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.checksPassed = [...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED];
+        record.notProven = [...POSTGRES_ACCEPTANCE_V4_NOT_PROVEN];
+      }),
     ]) {
       expectValueFreeFailure(() =>
         verifyPostgresAcceptanceEvidenceOffline(input),
@@ -362,8 +403,14 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("requires the exact version-specific source bundle", () => {
-    const missingV4 = cloneInput();
-    delete missingV4.sources.projectionQuery;
+    const missingV5 = cloneInput();
+    delete missingV5.sources.projectionQuery;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV5),
+    );
+
+    const missingV4 = v4Input();
+    delete missingV4.sources.projectionNormalizer;
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(missingV4),
     );
@@ -378,6 +425,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     ).projectionQuery = exactCopy(BASE_INPUT.sources.projectionQuery!);
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(extraHistorical),
+    );
+
+    expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
+      POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
+    );
+    expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
+      POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
     );
   });
 

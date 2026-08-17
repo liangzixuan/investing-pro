@@ -64,7 +64,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v4-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v5-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
@@ -73,6 +73,20 @@ export const RUNTIME_AUTH_PASSFILE =
   "/tmp/research-cockpit-runtime-login.pgpass" as const;
 export const RUNTIME_AUTH_WRONG_PASSFILE =
   "/tmp/research-cockpit-runtime-login-wrong.pgpass" as const;
+export const TEST_LOADER_AUTH_LOGIN_ROLE =
+  "research_cockpit_test_loader_login" as const;
+export const TEST_LOADER_AUTH_CAPABILITY_ROLE =
+  "research_cockpit_test_seed" as const;
+export const TEST_LOADER_AUTH_PASSFILE =
+  "/tmp/research-cockpit-test-loader-login.pgpass" as const;
+export const TEST_LOADER_AUTH_WRONG_PASSFILE =
+  "/tmp/research-cockpit-test-loader-login-wrong.pgpass" as const;
+export const TEST_LOADER_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
+  "research_cockpit_owner",
+  "research_cockpit_runtime",
+  "research_cockpit_backup",
+  "postgres",
+] as const);
 export const RUNTIME_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
   "research_cockpit_owner",
   "research_cockpit_test_seed",
@@ -80,6 +94,19 @@ export const RUNTIME_AUTH_FORBIDDEN_SET_ROLES = Object.freeze([
   "postgres",
 ] as const);
 const BASE64URL_RUNTIME_AUTH_PASSWORD = /^[A-Za-z0-9_-]+$/;
+const REVIEWED_FIXTURE_PREFIX = `SET SESSION AUTHORIZATION ${TEST_LOADER_AUTH_CAPABILITY_ROLE};
+
+BEGIN;
+
+`;
+const REVIEWED_FIXTURE_SUFFIX = `
+
+COMMIT;
+
+RESET SESSION AUTHORIZATION;
+`;
+const TEST_LOADER_AUTH_IDENTITY_MARKER = `b5-test-loader-identity|${TEST_LOADER_AUTH_LOGIN_ROLE}|${TEST_LOADER_AUTH_CAPABILITY_ROLE}|scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`;
+const TEST_LOADER_AUTH_RESET_MARKER = `b5-test-loader-reset|${TEST_LOADER_AUTH_LOGIN_ROLE}|${TEST_LOADER_AUTH_LOGIN_ROLE}|scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`;
 const CAPABILITY_ROLES = [
   "research_cockpit_backup",
   "research_cockpit_owner",
@@ -284,6 +311,16 @@ export interface RuntimeAuthPsqlInvocationOptions {
   readonly verboseErrors?: boolean;
 }
 
+export interface TestLoaderAuthPsqlInvocation {
+  environment: Readonly<Record<string, string>>;
+  command: readonly string[];
+}
+
+export interface TestLoaderAuthPsqlInvocationOptions {
+  readonly requireScram?: boolean;
+  readonly verboseErrors?: boolean;
+}
+
 export interface RuntimeAuthBestEffortOperation {
   label: string;
   run: () => Promise<void>;
@@ -458,6 +495,266 @@ export function assertRuntimeWrongPasswordRejection(
       "Wrong-password runtime authentication did not return the expected rejection",
     );
   }
+}
+
+export function generateTestLoaderAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function renderTestLoaderAuthProvisioningSql(password: string): string {
+  assertTestLoaderAuthPassword(password);
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${TEST_LOADER_AUTH_LOGIN_ROLE}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT 1
+  PASSWORD '${password}';
+GRANT ${TEST_LOADER_AUTH_CAPABILITY_ROLE}
+  TO ${TEST_LOADER_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
+}
+
+export function renderTestLoaderAuthPassfile(password: string): string {
+  assertTestLoaderAuthPassword(password);
+  return `127.0.0.1:5432:${CLEAN_BOOTSTRAP_DATABASE_NAME}:${TEST_LOADER_AUTH_LOGIN_ROLE}:${password}\n`;
+}
+
+export function renderTestLoaderAuthCleanupSql(): string {
+  return `BEGIN;
+DROP ROLE IF EXISTS ${TEST_LOADER_AUTH_LOGIN_ROLE};
+COMMIT;
+`;
+}
+
+export function renderTestLoaderAuthBackendDrainSql(): string {
+  return `DO $test_loader_auth_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE usename = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+        AND backend_type = 'client backend'
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'ephemeral test-loader login backend did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END;
+$test_loader_auth_backend_drain$;
+`;
+}
+
+export function buildTestLoaderAuthPsqlInvocation(
+  passfile:
+    typeof TEST_LOADER_AUTH_PASSFILE | typeof TEST_LOADER_AUTH_WRONG_PASSFILE,
+  options: TestLoaderAuthPsqlInvocationOptions = {},
+): TestLoaderAuthPsqlInvocation {
+  const { requireScram = true, verboseErrors = false } = options;
+  const environment: Record<string, string> = {
+    PGPASSFILE: passfile,
+    PGSSLMODE: "disable",
+    PGCONNECT_TIMEOUT: "5",
+  };
+  if (requireScram) environment.PGREQUIREAUTH = "scram-sha-256";
+
+  return Object.freeze({
+    environment: Object.freeze(environment),
+    command: Object.freeze([
+      "psql",
+      "--no-psqlrc",
+      "--no-password",
+      "--quiet",
+      "--tuples-only",
+      "--no-align",
+      "--set=ON_ERROR_STOP=1",
+      ...(verboseErrors ? ["--set=VERBOSITY=verbose"] : []),
+      "--host=127.0.0.1",
+      "--port=5432",
+      `--username=${TEST_LOADER_AUTH_LOGIN_ROLE}`,
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ]),
+  });
+}
+
+export function assertTestLoaderWrongPasswordRejection(
+  result: CommandResult,
+): void {
+  if (result.exitCode === 0) {
+    throw new Error(
+      "Wrong-password test-loader authentication unexpectedly succeeded",
+    );
+  }
+  if (result.exitCode !== 2) {
+    throw new Error(
+      "Wrong-password test-loader authentication returned an unexpected exit code",
+    );
+  }
+  if (result.stdout.trim() !== "") {
+    throw new Error(
+      "Wrong-password test-loader authentication returned unexpected output",
+    );
+  }
+
+  const diagnostic = result.stderr.toLowerCase().replace(/\s+/g, " ");
+  if (
+    !diagnostic.includes(
+      `fatal: password authentication failed for user "${TEST_LOADER_AUTH_LOGIN_ROLE}"`,
+    )
+  ) {
+    throw new Error(
+      "Wrong-password test-loader authentication did not return the expected rejection",
+    );
+  }
+}
+
+export function extractReviewedSyntheticFixtureBody(
+  fixtureSql: string,
+): string {
+  const normalized = fixtureSql.replaceAll("\r\n", "\n");
+  if (normalized.includes("\r")) invalidSyntheticFixtureEnvelope();
+  if (
+    !normalized.startsWith(REVIEWED_FIXTURE_PREFIX) ||
+    !normalized.endsWith(REVIEWED_FIXTURE_SUFFIX)
+  ) {
+    invalidSyntheticFixtureEnvelope();
+  }
+  if (inspectInsertOnlyFixture(normalized).length > 0) {
+    invalidSyntheticFixtureEnvelope();
+  }
+
+  const body = normalized.slice(
+    REVIEWED_FIXTURE_PREFIX.length,
+    normalized.length - REVIEWED_FIXTURE_SUFFIX.length,
+  );
+  const visible = maskSqlQuotedContent(body);
+  if (
+    body.length === 0 ||
+    visible.includes("\\") ||
+    /\b(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|SET|RESET|COPY|SELECT|WITH|UPDATE|DELETE|TRUNCATE|CREATE|ALTER|DROP|GRANT|REVOKE|CALL|DO|RETURNING)\b/i.test(
+      visible,
+    ) ||
+    /\bON\s+CONFLICT\b/i.test(visible)
+  ) {
+    invalidSyntheticFixtureEnvelope();
+  }
+  for (const statement of visible
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)) {
+    if (
+      !/^INSERT\s+INTO\s+[a-z_]+\.[a-z_]+\s*\([\s\S]+\)\s*VALUES\b/i.test(
+        statement,
+      )
+    ) {
+      invalidSyntheticFixtureEnvelope();
+    }
+  }
+  return body;
+}
+
+export function renderAuthenticatedTestLoaderFixtureSql(
+  fixtureSql: string,
+): string {
+  return renderAuthenticatedTestLoaderFixture(
+    extractReviewedSyntheticFixtureBody(fixtureSql),
+    false,
+  );
+}
+
+export function renderAuthenticatedTestLoaderFixtureRollbackProbeSql(
+  fixtureSql: string,
+): string {
+  return renderAuthenticatedTestLoaderFixture(
+    extractReviewedSyntheticFixtureBody(fixtureSql),
+    true,
+  );
+}
+
+export function assertAuthenticatedTestLoaderFixtureResult(
+  result: CommandResult,
+): void {
+  if (result.exitCode !== 0 || result.stderr.trim() !== "") {
+    throw new Error("Authenticated test-loader fixture execution failed");
+  }
+  if (
+    !sameStrings(splitLines(result.stdout), [
+      TEST_LOADER_AUTH_IDENTITY_MARKER,
+      TEST_LOADER_AUTH_RESET_MARKER,
+    ])
+  ) {
+    throw new Error("Authenticated test-loader fixture markers are invalid");
+  }
+}
+
+export function assertAuthenticatedTestLoaderFixtureRollbackFailure(
+  result: CommandResult,
+): void {
+  if (
+    result.exitCode !== 3 ||
+    !result.stderr.includes("22012") ||
+    !result.stderr.toLowerCase().includes("division by zero")
+  ) {
+    throw new Error(
+      "Authenticated test-loader rollback probe failed for the wrong reason",
+    );
+  }
+  if (
+    !sameStrings(splitLines(result.stdout), [TEST_LOADER_AUTH_IDENTITY_MARKER])
+  ) {
+    throw new Error(
+      "Authenticated test-loader rollback probe returned invalid markers",
+    );
+  }
+}
+
+function renderAuthenticatedTestLoaderFixture(
+  body: string,
+  injectFailure: boolean,
+): string {
+  const failure = injectFailure ? "\nSELECT 1 / 0;" : "";
+  return `BEGIN;
+SET LOCAL ROLE ${TEST_LOADER_AUTH_CAPABILITY_ROLE};
+SELECT CASE
+  WHEN session_user = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+    AND current_user = '${TEST_LOADER_AUTH_CAPABILITY_ROLE}'
+    AND system_user = 'scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}'
+  THEN '${TEST_LOADER_AUTH_IDENTITY_MARKER}'
+  ELSE 'b5-test-loader-identity-invalid'
+END;
+${body}${failure}
+COMMIT;
+SELECT CASE
+  WHEN session_user = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+    AND current_user = session_user
+    AND system_user = 'scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}'
+  THEN '${TEST_LOADER_AUTH_RESET_MARKER}'
+  ELSE 'b5-test-loader-reset-invalid'
+END;`;
+}
+
+function invalidSyntheticFixtureEnvelope(): never {
+  throw new Error("Reviewed synthetic fixture envelope is invalid");
 }
 
 export async function collectRuntimeAuthOperationFailures(
@@ -718,7 +1015,10 @@ export async function runPostgresAcceptance(
   });
   await verifyMigrationLedger(containerId);
 
-  await psql(containerId, await readFile(syntheticFixturePath, "utf8"));
+  await verifyAuthenticatedTestLoaderSession(
+    containerId,
+    await readFile(syntheticFixturePath, "utf8"),
+  );
   await verifyCatalogContract(containerId);
   await verifyBackupCapability(containerId);
   await verifyContextCleanup(containerId);
@@ -747,7 +1047,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 4 success-only run record was written.\n",
+      "PostgreSQL 17.11 clean-bootstrap, impersonated-capability, authenticated test-loader, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 5 success-only run record was written.\n",
   );
 }
 
@@ -981,6 +1281,624 @@ ORDER BY migration_id;`,
     "0007|0007_database_privilege_lockdown.sql|7887f8066cff3b0bf22397a2f5ee19352c1c678a7619b6588a5c95e28430c0e6",
   ];
   assertJsonEqual(actual, expected, "migration ledger");
+}
+
+async function verifyAuthenticatedTestLoaderSession(
+  containerId: string,
+  fixtureSql: string,
+): Promise<void> {
+  await verifyTestLoaderAuthResidueAbsent(containerId);
+
+  const password = generateTestLoaderAuthPassword();
+  let wrongPassword = generateTestLoaderAuthPassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateTestLoaderAuthPassword();
+  }
+
+  let probeFailed = false;
+  let probeError: unknown;
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    await provisionTestLoaderAuthLogin(containerId, password);
+    await verifyTestLoaderAuthRoleCatalog(containerId);
+    await writeTestLoaderAuthPassfile(
+      containerId,
+      TEST_LOADER_AUTH_PASSFILE,
+      renderTestLoaderAuthPassfile(password),
+    );
+    await writeTestLoaderAuthPassfile(
+      containerId,
+      TEST_LOADER_AUTH_WRONG_PASSFILE,
+      renderTestLoaderAuthPassfile(wrongPassword),
+    );
+    await verifyTestLoaderWrongPasswordRejection(containerId);
+    await verifyTestLoaderLoginBeforeSetRole(containerId);
+    await verifyTestLoaderRoleEscalationDenials(containerId);
+    await verifyFixtureTablesEmpty(containerId);
+    await verifyAuthenticatedTestLoaderRollback(containerId, fixtureSql);
+    await verifyAuthenticatedTestLoaderFixtureLoad(containerId, fixtureSql);
+    await verifyAuthenticatedTestLoaderDenials(containerId);
+  } catch (error) {
+    probeFailed = true;
+    probeError = error;
+  } finally {
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures([
+          {
+            label: "test-loader-auth cleanup",
+            run: () => cleanupTestLoaderAuthProbe(containerId),
+          },
+          {
+            label: "test-loader-auth residue verification",
+            run: () => verifyTestLoaderAuthResidueAbsent(containerId),
+          },
+        ]),
+        "Authenticated test-loader cleanup and residue verification failed",
+      );
+    } catch (error) {
+      cleanupFailed = true;
+      cleanupError = error;
+    }
+  }
+
+  if (probeFailed && cleanupFailed) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "Authenticated test-loader probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeFailed) throw probeError;
+  if (cleanupFailed) throw cleanupError;
+}
+
+async function provisionTestLoaderAuthLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderTestLoaderAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral test-loader login",
+  );
+}
+
+async function verifyTestLoaderAuthRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${TEST_LOADER_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|1|true`,
+    "ephemeral test-loader login attributes and SCRAM verifier",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role
+  ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role
+  ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${TEST_LOADER_AUTH_CAPABILITY_ROLE}|${TEST_LOADER_AUTH_LOGIN_ROLE}|false|false|true`,
+    "ephemeral test-loader login membership",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_db_role_setting
+WHERE setrole = (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+);`,
+    ),
+    "0",
+    "ephemeral test-loader login role settings",
+  );
+}
+
+async function writeTestLoaderAuthPassfile(
+  containerId: string,
+  path:
+    typeof TEST_LOADER_AUTH_PASSFILE | typeof TEST_LOADER_AUTH_WRONG_PASSFILE,
+  contents: string,
+): Promise<void> {
+  const install = await dockerExec(containerId, [
+    "install",
+    "--mode=0600",
+    "/dev/null",
+    path,
+  ]);
+  assertSensitiveCommandSuccess(install, "create test-loader-auth passfile");
+  const write = await dockerExec(
+    containerId,
+    ["dd", `of=${path}`, "status=none"],
+    contents,
+  );
+  assertSensitiveCommandSuccess(write, "write test-loader-auth passfile");
+  const regularFile = await dockerExec(containerId, ["test", "-f", path]);
+  assertSuccess(regularFile, "verify test-loader-auth passfile type");
+  const symlink = await dockerExec(containerId, ["test", "!", "-L", path]);
+  assertSuccess(symlink, "verify test-loader-auth passfile is not a symlink");
+  const mode = await dockerExec(containerId, ["stat", "--format=%a", path]);
+  assertSuccess(mode, "inspect test-loader-auth passfile mode");
+  assertEqual(mode.stdout.trim(), "600", "test-loader-auth passfile mode");
+}
+
+async function verifyTestLoaderWrongPasswordRejection(
+  containerId: string,
+): Promise<void> {
+  const result = await testLoaderAuthenticatedPsql(
+    containerId,
+    TEST_LOADER_AUTH_WRONG_PASSFILE,
+    "SELECT 1;",
+    { requireScram: false },
+  );
+  assertTestLoaderWrongPasswordRejection(result);
+}
+
+async function verifyTestLoaderLoginBeforeSetRole(
+  containerId: string,
+): Promise<void> {
+  const identity = parseJsonObject(
+    await testLoaderAuthenticatedPsqlScalar(
+      containerId,
+      `SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'clientAddress', pg_catalog.host(pg_catalog.inet_client_addr()),
+  'serverAddress', pg_catalog.host(pg_catalog.inet_server_addr()),
+  'ssl', EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  ),
+  'testSeedMember', pg_catalog.pg_has_role(
+    session_user, '${TEST_LOADER_AUTH_CAPABILITY_ROLE}', 'MEMBER'
+  ),
+  'testSeedUsage', pg_catalog.pg_has_role(
+    session_user, '${TEST_LOADER_AUTH_CAPABILITY_ROLE}', 'USAGE'
+  ),
+  'testSeedSet', pg_catalog.pg_has_role(
+    session_user, '${TEST_LOADER_AUTH_CAPABILITY_ROLE}', 'SET'
+  )
+)::text;`,
+    ),
+  );
+  assertJsonEqual(
+    identity,
+    {
+      sessionUser: TEST_LOADER_AUTH_LOGIN_ROLE,
+      currentUser: TEST_LOADER_AUTH_LOGIN_ROLE,
+      systemUser: `scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`,
+      clientAddress: "127.0.0.1",
+      serverAddress: "127.0.0.1",
+      ssl: false,
+      testSeedMember: true,
+      testSeedUsage: false,
+      testSeedSet: true,
+    },
+    "authenticated test-loader login identity before SET ROLE",
+  );
+
+  for (const [label, sql, message] of [
+    [
+      "test-loader login data access before SET ROLE",
+      "SELECT count(*) FROM private_data.organizations;",
+      "permission denied for schema private_data",
+    ],
+    [
+      "test-loader login insert before SET ROLE",
+      `INSERT INTO private_data.organizations (id, slug, name, created_at)
+VALUES (
+  '10000000-0000-4000-8000-000000000096',
+  'test-loader-pre-role',
+  'Test loader pre-role probe',
+  transaction_timestamp()
+);`,
+      "permission denied for schema private_data",
+    ],
+    [
+      "test-loader login context routine before SET ROLE",
+      `CALL private_data.set_request_context(
+  '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'display',
+  'api',
+  'demo_only',
+  'synthetic'
+);`,
+      "permission denied for schema private_data",
+    ],
+    [
+      "test-loader login temporary table before SET ROLE",
+      "CREATE TEMPORARY TABLE test_loader_pre_role_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectTestLoaderAuthenticatedPsqlFailure(containerId, sql, {
+      label,
+      sqlState: "42501",
+      message,
+    });
+  }
+}
+
+async function verifyTestLoaderRoleEscalationDenials(
+  containerId: string,
+): Promise<void> {
+  for (const role of TEST_LOADER_AUTH_FORBIDDEN_SET_ROLES) {
+    await expectTestLoaderAuthenticatedPsqlFailure(
+      containerId,
+      `SET ROLE ${role};`,
+      {
+        label: `test-loader login SET ROLE ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set role",
+      },
+    );
+  }
+  for (const role of [TEST_LOADER_AUTH_CAPABILITY_ROLE, "postgres"] as const) {
+    await expectTestLoaderAuthenticatedPsqlFailure(
+      containerId,
+      `SET SESSION AUTHORIZATION ${role};`,
+      {
+        label: `test-loader login SET SESSION AUTHORIZATION ${role}`,
+        sqlState: "42501",
+        message: "permission denied to set session authorization",
+      },
+    );
+  }
+}
+
+async function verifyAuthenticatedTestLoaderRollback(
+  containerId: string,
+  fixtureSql: string,
+): Promise<void> {
+  const result = await testLoaderAuthenticatedPsql(
+    containerId,
+    TEST_LOADER_AUTH_PASSFILE,
+    renderAuthenticatedTestLoaderFixtureRollbackProbeSql(fixtureSql),
+    { verboseErrors: true },
+  );
+  assertAuthenticatedTestLoaderFixtureRollbackFailure(result);
+  await verifyFixtureTablesEmpty(containerId);
+  await verifyMigrationLedger(containerId);
+}
+
+async function verifyAuthenticatedTestLoaderFixtureLoad(
+  containerId: string,
+  fixtureSql: string,
+): Promise<void> {
+  const result = await testLoaderAuthenticatedPsql(
+    containerId,
+    TEST_LOADER_AUTH_PASSFILE,
+    renderAuthenticatedTestLoaderFixtureSql(fixtureSql),
+  );
+  assertAuthenticatedTestLoaderFixtureResult(result);
+}
+
+async function verifyAuthenticatedTestLoaderDenials(
+  containerId: string,
+): Promise<void> {
+  for (const [label, sql, message] of [
+    [
+      "test-loader non-synthetic insert",
+      `INSERT INTO private_data.organizations (
+  id, slug, name, data_classification, created_at
+)
+VALUES (
+  '10000000-0000-4000-8000-000000000095',
+  'test-loader-non-synthetic',
+  'Test loader non-synthetic probe',
+  'production',
+  transaction_timestamp()
+);`,
+      "new row violates row-level security policy",
+    ],
+    [
+      "authenticated test-loader update",
+      `UPDATE private_data.organizations
+SET name = 'Mutation probe'
+WHERE id = '${ORGANIZATION_ALPHA}';`,
+      "permission denied for table organizations",
+    ],
+    [
+      "authenticated test-loader delete",
+      `DELETE FROM private_data.idempotency_records
+WHERE organization_id = '${ORGANIZATION_ALPHA}';`,
+      "permission denied for table idempotency_records",
+    ],
+    [
+      "authenticated test-loader truncate",
+      "TRUNCATE TABLE private_data.audit_events;",
+      "permission denied for table audit_events",
+    ],
+    [
+      "authenticated test-loader ledger read",
+      "SELECT count(*) FROM shared_data.schema_migrations;",
+      "permission denied for table schema_migrations",
+    ],
+    [
+      "authenticated test-loader ledger write",
+      `INSERT INTO shared_data.schema_migrations (migration_id, file_name, sha256)
+VALUES ('9999', 'test-loader-probe.sql', '${"0".repeat(64)}');`,
+      "permission denied for table schema_migrations",
+    ],
+    [
+      "authenticated test-loader persistent DDL",
+      "CREATE TABLE public.test_loader_persistent_escape (id integer);",
+      "permission denied for schema public",
+    ],
+    [
+      "authenticated test-loader temporary DDL",
+      "CREATE TEMPORARY TABLE test_loader_temporary_escape (id integer);",
+      "permission denied to create temporary tables",
+    ],
+  ] as const) {
+    await expectTestLoaderAuthenticatedPsqlFailure(
+      containerId,
+      renderTestLoaderCapabilitySql(sql),
+      { label, sqlState: "42501", message },
+    );
+  }
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*) FROM private_data.organizations
+WHERE id IN (
+  '10000000-0000-4000-8000-000000000095',
+  '10000000-0000-4000-8000-000000000096'
+);`,
+    ),
+    "0",
+    "failed authenticated test-loader inserts",
+  );
+  await verifyMigrationLedger(containerId);
+}
+
+function renderTestLoaderCapabilitySql(sql: string): string {
+  return `BEGIN;
+SET LOCAL ROLE ${TEST_LOADER_AUTH_CAPABILITY_ROLE};
+${sql}
+ROLLBACK;`;
+}
+
+async function verifyFixtureTablesEmpty(containerId: string): Promise<void> {
+  const fixtureTables = APPLICATION_TABLES.filter(
+    (table) => table !== "shared_data.schema_migrations",
+  );
+  const countSql = fixtureTables
+    .map((table) => `SELECT count(*)::bigint AS row_count FROM ${table}`)
+    .join("\nUNION ALL\n");
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT coalesce(sum(row_count), 0)::text
+FROM (
+${countSql}
+) AS fixture_rows;`,
+    ),
+    "0",
+    "fixture tables before authenticated commit",
+  );
+}
+
+async function cleanupTestLoaderAuthProbe(containerId: string): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "drain test-loader-auth backends",
+      run: () => waitForTestLoaderAuthBackendDrain(containerId),
+    },
+    ...[TEST_LOADER_AUTH_PASSFILE, TEST_LOADER_AUTH_WRONG_PASSFILE].map(
+      (path) => ({
+        label: `remove test-loader-auth passfile: ${path}`,
+        run: async () => {
+          const remove = await dockerExec(containerId, [
+            "rm",
+            "-f",
+            "--",
+            path,
+          ]);
+          assertSuccess(remove, "remove test-loader-auth passfile");
+        },
+      }),
+    ),
+    {
+      label: "drop ephemeral test-loader login",
+      run: async () => {
+        await psql(containerId, renderTestLoaderAuthCleanupSql());
+      },
+    },
+  ];
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated test-loader cleanup failed",
+  );
+}
+
+async function verifyTestLoaderAuthResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  const operations: RuntimeAuthBestEffortOperation[] = [
+    {
+      label: "verify ephemeral test-loader login is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_roles
+WHERE rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral test-loader login residue",
+        );
+      },
+    },
+    {
+      label: "verify ephemeral test-loader membership is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role
+  ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role
+  ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}';`,
+          ),
+          "0",
+          "ephemeral test-loader membership residue",
+        );
+      },
+    },
+    {
+      label: "verify ephemeral test-loader backend is absent",
+      run: async () => {
+        assertEqual(
+          await psqlScalar(
+            containerId,
+            `SELECT count(*)
+FROM pg_catalog.pg_stat_activity
+WHERE usename = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+  AND backend_type = 'client backend';`,
+          ),
+          "0",
+          "ephemeral test-loader backend residue",
+        );
+      },
+    },
+  ];
+
+  for (const path of [
+    TEST_LOADER_AUTH_PASSFILE,
+    TEST_LOADER_AUTH_WRONG_PASSFILE,
+  ]) {
+    operations.push(
+      {
+        label: `verify test-loader-auth passfile is absent: ${path}`,
+        run: async () => {
+          const regularPath = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-e",
+            path,
+          ]);
+          assertSuccess(
+            regularPath,
+            "verify test-loader-auth passfile is absent",
+          );
+        },
+      },
+      {
+        label: `verify test-loader-auth passfile symlink is absent: ${path}`,
+        run: async () => {
+          const symlinkPath = await dockerExec(containerId, [
+            "test",
+            "!",
+            "-L",
+            path,
+          ]);
+          assertSuccess(
+            symlinkPath,
+            "verify test-loader-auth passfile symlink is absent",
+          );
+        },
+      },
+    );
+  }
+  throwRuntimeAuthOperationFailures(
+    await collectRuntimeAuthOperationFailures(operations),
+    "Authenticated test-loader residue verification failed",
+  );
+}
+
+async function testLoaderAuthenticatedPsqlScalar(
+  containerId: string,
+  sql: string,
+): Promise<string> {
+  const result = await testLoaderAuthenticatedPsql(
+    containerId,
+    TEST_LOADER_AUTH_PASSFILE,
+    sql,
+  );
+  assertSuccess(result, "execute authenticated test-loader SQL");
+  return result.stdout.trim();
+}
+
+async function expectTestLoaderAuthenticatedPsqlFailure(
+  containerId: string,
+  sql: string,
+  expectation: PsqlFailureExpectation,
+): Promise<void> {
+  const result = await testLoaderAuthenticatedPsql(
+    containerId,
+    TEST_LOADER_AUTH_PASSFILE,
+    sql,
+    { verboseErrors: true },
+  );
+  assertExpectedPsqlFailure(result, expectation);
+}
+
+async function testLoaderAuthenticatedPsql(
+  containerId: string,
+  passfile:
+    typeof TEST_LOADER_AUTH_PASSFILE | typeof TEST_LOADER_AUTH_WRONG_PASSFILE,
+  sql: string,
+  options: TestLoaderAuthPsqlInvocationOptions = {},
+): Promise<CommandResult> {
+  const invocation = buildTestLoaderAuthPsqlInvocation(passfile, options);
+  return runRuntimeAuthCommandWithDrain(
+    () =>
+      dockerExecWithEnvironment(
+        containerId,
+        invocation.environment,
+        invocation.command,
+        sql,
+      ),
+    () => waitForTestLoaderAuthBackendDrain(containerId),
+  );
+}
+
+async function waitForTestLoaderAuthBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderTestLoaderAuthBackendDrainSql());
 }
 
 async function verifyCatalogContract(containerId: string): Promise<void> {
@@ -3011,7 +3929,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "b9dc3eafcf31d4829ea71422216390a0be050c2d567d6148da9afd31b9e97012" ||
+      "3e371584789e8408e223da4386caf2dfcaf0edf9974116fd42ea74f907b8901d" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||
@@ -3042,6 +3960,17 @@ function assertRuntimeAuthPassword(password: string): void {
   ) {
     throw new Error(
       "Runtime-auth password must be a 32-byte base64url value without padding",
+    );
+  }
+}
+
+function assertTestLoaderAuthPassword(password: string): void {
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password)
+  ) {
+    throw new Error(
+      "Test-loader-auth password must be a 32-byte base64url value without padding",
     );
   }
 }

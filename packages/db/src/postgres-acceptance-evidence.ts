@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v4.json";
+  "research-cockpit-postgres-acceptance-v5.json";
 
 export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
@@ -73,12 +73,31 @@ export const POSTGRES_ACCEPTANCE_V4_NOT_PROVEN = Object.freeze([
   "complete_dossier_history_timeline_or_dimensioned_projection",
 ] as const);
 
+export const POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
+  "authenticated_test_loader_fixture_load",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_V5_NOT_PROVEN = Object.freeze([
+  "resolved_platform_image_manifest",
+  "external_or_production_authenticated_database_sessions",
+  "authenticated_migrator_sessions",
+  "authenticated_backup_sessions",
+  "end_user_identity_or_tenant_binding",
+  "production_identity_tls_secrets_or_pooling",
+  "concurrent_sessions_cancellation_or_timeouts",
+  "dump_restore_or_disaster_recovery",
+  "real_or_licensed_market_data",
+  "application_driver_pool_or_composition_root",
+  "complete_dossier_history_timeline_or_dimensioned_projection",
+] as const);
+
 /** The exact completed-check list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_CHECKS_PASSED =
-  POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED;
+  POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED;
 
 /** The exact limitation list emitted by the current evidence builder. */
-export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V4_NOT_PROVEN;
+export const POSTGRES_ACCEPTANCE_NOT_PROVEN = POSTGRES_ACCEPTANCE_V5_NOT_PROVEN;
 
 const BUILD_INPUT_KEYS = [
   "githubEnvironment",
@@ -215,11 +234,18 @@ export interface PostgresAcceptanceEvidenceV4 extends PostgresAcceptanceEvidence
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V4_NOT_PROVEN;
 }
 
+export interface PostgresAcceptanceEvidenceV5 extends PostgresAcceptanceEvidenceFields<PostgresAcceptanceSourceHashes> {
+  readonly schemaVersion: 5;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V5_NOT_PROVEN;
+}
+
 export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV1
   | PostgresAcceptanceEvidenceV2
   | PostgresAcceptanceEvidenceV3
-  | PostgresAcceptanceEvidenceV4;
+  | PostgresAcceptanceEvidenceV4
+  | PostgresAcceptanceEvidenceV5;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -244,7 +270,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidenceV4 {
+): PostgresAcceptanceEvidenceV5 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -284,7 +310,7 @@ export function buildPostgresAcceptanceEvidence(
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 4,
+      schemaVersion: 5,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -341,14 +367,14 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidenceV4,
+  value: PostgresAcceptanceEvidenceV5,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
     const normalized = normalizeEvidence(value);
-    if (normalized.schemaVersion !== 4) invalid();
+    if (normalized.schemaVersion !== 5) invalid();
     bytes = Buffer.from(
       serializePostgresAcceptanceEvidence(normalized),
       "utf8",
@@ -478,6 +504,23 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
       sourceHashes,
       checksPassed: POSTGRES_ACCEPTANCE_V4_CHECKS_PASSED,
       notProven: POSTGRES_ACCEPTANCE_V4_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
+  if (evidence.schemaVersion === 5) {
+    const sourceHashes = normalizeV4SourceHashes(evidence.sourceHashes);
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V5_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 5,
+      ...common,
+      sourceHashes,
+      checksPassed: POSTGRES_ACCEPTANCE_V5_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V5_NOT_PROVEN,
       completedAt,
     });
   }

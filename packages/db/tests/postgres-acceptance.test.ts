@@ -3,15 +3,23 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertAuthenticatedTestLoaderFixtureResult,
+  assertAuthenticatedTestLoaderFixtureRollbackFailure,
   assertExpectedPsqlFailure,
   assertRuntimeWrongPasswordRejection,
+  assertTestLoaderWrongPasswordRejection,
   buildRuntimeAuthPsqlInvocation,
+  buildTestLoaderAuthPsqlInvocation,
   checkPostgresAcceptanceHarness,
   collectRuntimeAuthOperationFailures,
   EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
+  extractReviewedSyntheticFixtureBody,
   generateRuntimeAuthPassword,
+  generateTestLoaderAuthPassword,
   injectBootstrapFailure,
   inspectPostgresAcceptanceHarness,
+  renderAuthenticatedTestLoaderFixtureRollbackProbeSql,
+  renderAuthenticatedTestLoaderFixtureSql,
   renderAlternatingPreparedStatementSql,
   renderRuntimeAuthBackendDrainSql,
   renderRuntimeAuthCleanupSql,
@@ -19,6 +27,10 @@ import {
   renderRuntimeAuthProvisioningSql,
   renderRuntimeAuthenticatedFinancialFactProjectionSql,
   renderRuntimeContextSql,
+  renderTestLoaderAuthBackendDrainSql,
+  renderTestLoaderAuthCleanupSql,
+  renderTestLoaderAuthPassfile,
+  renderTestLoaderAuthProvisioningSql,
   RUNTIME_AUTH_CAPABILITY_ROLE,
   RUNTIME_AUTH_FORBIDDEN_SET_ROLES,
   RUNTIME_AUTH_LOGIN_ROLE,
@@ -26,6 +38,11 @@ import {
   RUNTIME_AUTH_WRONG_PASSFILE,
   runRuntimeAuthCommandWithDrain,
   runPostgresAcceptance,
+  TEST_LOADER_AUTH_CAPABILITY_ROLE,
+  TEST_LOADER_AUTH_FORBIDDEN_SET_ROLES,
+  TEST_LOADER_AUTH_LOGIN_ROLE,
+  TEST_LOADER_AUTH_PASSFILE,
+  TEST_LOADER_AUTH_WRONG_PASSFILE,
   type AcceptanceArtifacts,
 } from "../src/postgres-acceptance";
 
@@ -231,6 +248,276 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "research_cockpit_backup",
       "postgres",
     ]);
+  });
+
+  it("renders the exact ephemeral test-loader login and SET-only role edge", () => {
+    const password = "B".repeat(43);
+    const sql = renderTestLoaderAuthProvisioningSql(password);
+    expect(sql).toContain(`CREATE ROLE ${TEST_LOADER_AUTH_LOGIN_ROLE}`);
+    for (const attribute of [
+      "LOGIN",
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+      "CONNECTION LIMIT 1",
+    ]) {
+      expect(sql).toContain(attribute);
+    }
+    expect(sql).toContain(
+      `GRANT ${TEST_LOADER_AUTH_CAPABILITY_ROLE}\n  TO ${TEST_LOADER_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    const passwordPosition = sql.indexOf(`PASSWORD '${password}'`);
+    expect(passwordPosition).toBeGreaterThan(-1);
+    for (const suppression of [
+      "SET LOCAL log_statement = 'none';",
+      "SET LOCAL log_min_error_statement = 'panic';",
+      "SET LOCAL log_duration = off;",
+      "SET LOCAL log_min_duration_statement = -1;",
+      "SET LOCAL log_min_duration_sample = -1;",
+      "SET LOCAL log_statement_sample_rate = 0;",
+      "SET LOCAL log_transaction_sample_rate = 0;",
+      "SET LOCAL password_encryption = 'scram-sha-256';",
+    ]) {
+      expect(sql.indexOf(suppression)).toBeGreaterThan(-1);
+      expect(sql.indexOf(suppression)).toBeLessThan(passwordPosition);
+    }
+    expect(sql.match(new RegExp(password, "g"))).toHaveLength(1);
+    expect(renderTestLoaderAuthCleanupSql()).toBe(
+      `BEGIN;\nDROP ROLE IF EXISTS ${TEST_LOADER_AUTH_LOGIN_ROLE};\nCOMMIT;\n`,
+    );
+    expect(TEST_LOADER_AUTH_FORBIDDEN_SET_ROLES).toEqual([
+      "research_cockpit_owner",
+      "research_cockpit_runtime",
+      "research_cockpit_backup",
+      "postgres",
+    ]);
+  });
+
+  it("keeps test-loader SCRAM credentials fixed-path, random, and out of arguments", () => {
+    const passwords = Array.from({ length: 8 }, () =>
+      generateTestLoaderAuthPassword(),
+    );
+    expect(new Set(passwords).size).toBe(passwords.length);
+    for (const password of passwords) {
+      expect(password).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    }
+
+    const password = passwords[0];
+    if (!password) throw new Error("Missing generated test-loader password");
+    expect(renderTestLoaderAuthPassfile(password)).toBe(
+      `127.0.0.1:5432:research_cockpit_acceptance_test:${TEST_LOADER_AUTH_LOGIN_ROLE}:${password}\n`,
+    );
+    for (const path of [
+      TEST_LOADER_AUTH_PASSFILE,
+      TEST_LOADER_AUTH_WRONG_PASSFILE,
+    ]) {
+      const invocation = buildTestLoaderAuthPsqlInvocation(path, {
+        verboseErrors: true,
+      });
+      expect(invocation.environment).toEqual({
+        PGPASSFILE: path,
+        PGREQUIREAUTH: "scram-sha-256",
+        PGSSLMODE: "disable",
+        PGCONNECT_TIMEOUT: "5",
+      });
+      expect(invocation.command).toEqual(
+        expect.arrayContaining([
+          "--no-psqlrc",
+          "--no-password",
+          "--set=ON_ERROR_STOP=1",
+          "--set=VERBOSITY=verbose",
+          "--host=127.0.0.1",
+          "--port=5432",
+          `--username=${TEST_LOADER_AUTH_LOGIN_ROLE}`,
+        ]),
+      );
+      expect(JSON.stringify(invocation)).not.toContain(password);
+      expect(invocation.command.join(" ")).not.toMatch(/PGPASSWORD|password=/i);
+    }
+
+    const wrongPasswordInvocation = buildTestLoaderAuthPsqlInvocation(
+      TEST_LOADER_AUTH_WRONG_PASSFILE,
+      { requireScram: false },
+    );
+    expect(wrongPasswordInvocation.environment).toEqual({
+      PGPASSFILE: TEST_LOADER_AUTH_WRONG_PASSFILE,
+      PGSSLMODE: "disable",
+      PGCONNECT_TIMEOUT: "5",
+    });
+    expect(() =>
+      renderTestLoaderAuthProvisioningSql(`invalid-${password}`),
+    ).toThrow(/32-byte base64url/i);
+    for (const suffix of ["\n", "\r", "\r\n"]) {
+      expect(() =>
+        renderTestLoaderAuthPassfile("B".repeat(43) + suffix),
+      ).toThrow(/32-byte base64url/i);
+    }
+  });
+
+  it("classifies only the exact test-loader wrong-password rejection", () => {
+    expect(() =>
+      assertTestLoaderWrongPasswordRejection({
+        exitCode: 2,
+        stdout: "",
+        stderr: `psql: error: connection failed: FATAL: password authentication failed\n for user "${TEST_LOADER_AUTH_LOGIN_ROLE}"\n`,
+      }),
+    ).not.toThrow();
+
+    for (const result of [
+      { exitCode: 0, stdout: "1\n", stderr: "" },
+      {
+        exitCode: 1,
+        stdout: "",
+        stderr: `FATAL: password authentication failed for user "${TEST_LOADER_AUTH_LOGIN_ROLE}"`,
+      },
+      {
+        exitCode: 2,
+        stdout: "unexpected",
+        stderr: `FATAL: password authentication failed for user "${TEST_LOADER_AUTH_LOGIN_ROLE}"`,
+      },
+      { exitCode: 2, stdout: "", stderr: "connection refused" },
+      {
+        exitCode: 2,
+        stdout: "",
+        stderr: 'FATAL: password authentication failed for user "another_role"',
+      },
+    ]) {
+      expect(() => assertTestLoaderWrongPasswordRejection(result)).toThrow(
+        /wrong-password test-loader authentication/i,
+      );
+    }
+  });
+
+  it("extracts only the reviewed insert body and renders one authenticated transaction", async () => {
+    const { fixture } = await loadArtifacts();
+    const normalized = fixture.replaceAll("\r\n", "\n");
+    const prefix = `SET SESSION AUTHORIZATION ${TEST_LOADER_AUTH_CAPABILITY_ROLE};\n\nBEGIN;\n\n`;
+    const suffix = `\n\nCOMMIT;\n\nRESET SESSION AUTHORIZATION;\n`;
+    const expectedBody = normalized.slice(
+      prefix.length,
+      normalized.length - suffix.length,
+    );
+    const body = extractReviewedSyntheticFixtureBody(fixture);
+    expect(body).toBe(expectedBody);
+    expect(body).not.toMatch(/SESSION AUTHORIZATION|\bBEGIN\b|\bCOMMIT\b/);
+
+    const rendered = renderAuthenticatedTestLoaderFixtureSql(fixture);
+    expect(rendered).toMatch(
+      /^BEGIN;\nSET LOCAL ROLE research_cockpit_test_seed;/,
+    );
+    expect(rendered).not.toMatch(/SESSION AUTHORIZATION|RESET ROLE/);
+    expect(rendered.match(/SET LOCAL ROLE/g)).toHaveLength(1);
+    expect(
+      rendered.match(/INSERT INTO private_data\.organizations/g),
+    ).toHaveLength(1);
+    expect(rendered.indexOf(body)).toBeGreaterThan(-1);
+    expect(rendered.indexOf("COMMIT;\nSELECT CASE")).toBeGreaterThan(
+      rendered.indexOf(body),
+    );
+    expect(rendered).not.toContain("SELECT 1 / 0;");
+
+    const rollback =
+      renderAuthenticatedTestLoaderFixtureRollbackProbeSql(fixture);
+    expect(rollback.match(/SELECT 1 \/ 0;/g)).toHaveLength(1);
+    expect(rollback).toContain(`${body}\nSELECT 1 / 0;\nCOMMIT;`);
+  });
+
+  it("rejects adversarial fixture envelopes before authenticated rendering", async () => {
+    const { fixture } = await loadArtifacts();
+    const mutations = [
+      fixture.replace(
+        `SET SESSION AUTHORIZATION ${TEST_LOADER_AUTH_CAPABILITY_ROLE};`,
+        `SET ROLE ${TEST_LOADER_AUTH_CAPABILITY_ROLE};`,
+      ),
+      fixture.replace("BEGIN;", "BEGIN;\nSELECT 1;"),
+      fixture.replace(
+        ";\n\nINSERT INTO private_data.principals",
+        " RETURNING id;\n\nINSERT INTO private_data.principals",
+      ),
+      fixture.replace(
+        ";\n\nINSERT INTO private_data.principals",
+        " ON CONFLICT DO NOTHING;\n\nINSERT INTO private_data.principals",
+      ),
+      fixture.replace("\n\nCOMMIT;", "\n\\gexec\n\nCOMMIT;"),
+      fixture.replaceAll("\r\n", "\n").replace("BEGIN;\n", "BEGIN;\r"),
+    ];
+    for (const mutation of mutations) {
+      expect(() => extractReviewedSyntheticFixtureBody(mutation)).toThrow(
+        /fixture envelope is invalid/i,
+      );
+      expect(() => renderAuthenticatedTestLoaderFixtureSql(mutation)).toThrow(
+        /fixture envelope is invalid/i,
+      );
+    }
+  });
+
+  it("accepts only exact authenticated fixture and rollback markers", () => {
+    const identity = `b5-test-loader-identity|${TEST_LOADER_AUTH_LOGIN_ROLE}|${TEST_LOADER_AUTH_CAPABILITY_ROLE}|scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`;
+    const reset = `b5-test-loader-reset|${TEST_LOADER_AUTH_LOGIN_ROLE}|${TEST_LOADER_AUTH_LOGIN_ROLE}|scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}`;
+    expect(() =>
+      assertAuthenticatedTestLoaderFixtureResult({
+        exitCode: 0,
+        stdout: `${identity}\n${reset}\n`,
+        stderr: "",
+      }),
+    ).not.toThrow();
+    for (const result of [
+      { exitCode: 1, stdout: `${identity}\n${reset}\n`, stderr: "" },
+      { exitCode: 0, stdout: `${identity}\n`, stderr: "" },
+      { exitCode: 0, stdout: `${identity}\n${reset}\nextra\n`, stderr: "" },
+      {
+        exitCode: 0,
+        stdout: `${identity}\n${reset}\n`,
+        stderr: "NOTICE: unexpected",
+      },
+    ]) {
+      expect(() => assertAuthenticatedTestLoaderFixtureResult(result)).toThrow(
+        /authenticated test-loader fixture/i,
+      );
+    }
+
+    expect(() =>
+      assertAuthenticatedTestLoaderFixtureRollbackFailure({
+        exitCode: 3,
+        stdout: `${identity}\n`,
+        stderr: "ERROR:  22012: division by zero",
+      }),
+    ).not.toThrow();
+    for (const result of [
+      {
+        exitCode: 1,
+        stdout: `${identity}\n`,
+        stderr: "ERROR:  22012: division by zero",
+      },
+      {
+        exitCode: 3,
+        stdout: `${identity}\n`,
+        stderr: "ERROR:  42501: permission denied",
+      },
+      {
+        exitCode: 3,
+        stdout: `${identity}\n${reset}\n`,
+        stderr: "ERROR:  22012: division by zero",
+      },
+    ]) {
+      expect(() =>
+        assertAuthenticatedTestLoaderFixtureRollbackFailure(result),
+      ).toThrow(/rollback probe/i);
+    }
+  });
+
+  it("uses a bounded administrator-side drain for test-loader backends", () => {
+    const drainSql = renderTestLoaderAuthBackendDrainSql();
+    expect(drainSql).toContain("FROM pg_catalog.pg_stat_activity");
+    expect(drainSql).toContain(`usename = '${TEST_LOADER_AUTH_LOGIN_ROLE}'`);
+    expect(drainSql).toContain("backend_type = 'client backend'");
+    expect(drainSql).toContain("interval '5 seconds'");
+    expect(drainSql).toContain("pg_catalog.pg_sleep(0.05)");
+    expect(drainSql).toContain("USING ERRCODE = '55000'");
+    expect(drainSql).toContain("END;\n$test_loader_auth_backend_drain$;");
   });
 
   it("attempts every runtime-auth finalization target before returning failures", async () => {
@@ -481,6 +768,19 @@ describe("PostgreSQL acceptance harness guardrails", () => {
 
   it("accepts the reviewed immutable workflow and synthetic fixture", async () => {
     await expect(checkPostgresAcceptanceHarness()).resolves.toEqual([]);
+    const artifacts = await loadArtifacts();
+    expect(artifacts.config).toMatchObject({
+      workflowSha256:
+        "3e371584789e8408e223da4386caf2dfcaf0edf9974116fd42ea74f907b8901d",
+      fixtureSha256:
+        "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
+    });
+    expect(artifacts.workflow).toContain(
+      "name: postgres-acceptance-evidence-v5-${{ github.sha }}-${{ github.run_attempt }}",
+    );
+    expect(artifacts.workflow).toContain(
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v5.json",
+    );
   });
 
   it("rejects image drift and mutable service tags", async () => {
@@ -609,7 +909,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v4.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v5.json",
         unsafePath,
       );
       expect(
@@ -649,7 +949,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v4-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v5-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -778,8 +1078,128 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(successMessage).toBeGreaterThan(writeEvidence);
     expect(evidenceHash).toBeGreaterThan(successMessage);
     expect(source).not.toContain("writtenEvidence.path");
+    expect(source).toContain("authenticated test-loader");
     expect(source).toContain("driverless financial-fact projection");
-    expect(source).toContain("version 4 success-only run record");
+    expect(source).toContain("version 5 success-only run record");
+  });
+
+  it("loads the reviewed fixture only through the bounded authenticated test-loader boundary", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex).toBeGreaterThan(-1);
+      expect(endIndex).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const orchestrator = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyCheckedOutCommit(",
+    );
+    const loader = orchestrator.indexOf(
+      "await verifyAuthenticatedTestLoaderSession(",
+    );
+    expect(loader).toBeGreaterThan(
+      orchestrator.lastIndexOf("await verifyMigrationLedger", loader),
+    );
+    expect(orchestrator.indexOf("await verifyCatalogContract")).toBeGreaterThan(
+      loader,
+    );
+    expect(
+      orchestrator.indexOf("await verifyAuthenticatedRuntimeSession"),
+    ).toBeGreaterThan(loader);
+    expect(orchestrator).not.toMatch(
+      /await psql\([^;]+readFile\(syntheticFixturePath/,
+    );
+
+    const loaderProbe = section(
+      "async function verifyAuthenticatedTestLoaderSession(",
+      "async function provisionTestLoaderAuthLogin(",
+    );
+    const orderedCalls = [
+      "await verifyTestLoaderAuthResidueAbsent(containerId);",
+      "await provisionTestLoaderAuthLogin(containerId, password);",
+      "await verifyTestLoaderAuthRoleCatalog(containerId);",
+      "await verifyTestLoaderWrongPasswordRejection(containerId);",
+      "await verifyTestLoaderLoginBeforeSetRole(containerId);",
+      "await verifyTestLoaderRoleEscalationDenials(containerId);",
+      "await verifyFixtureTablesEmpty(containerId);",
+      "await verifyAuthenticatedTestLoaderRollback(containerId, fixtureSql);",
+      "await verifyAuthenticatedTestLoaderFixtureLoad(containerId, fixtureSql);",
+      "await verifyAuthenticatedTestLoaderDenials(containerId);",
+      "} finally {",
+      "run: () => cleanupTestLoaderAuthProbe(containerId)",
+      "run: () => verifyTestLoaderAuthResidueAbsent(containerId)",
+    ];
+    let previous = -1;
+    for (const call of orderedCalls) {
+      const position = loaderProbe.indexOf(call);
+      expect(position, call).toBeGreaterThan(previous);
+      previous = position;
+    }
+
+    const preRole = section(
+      "async function verifyTestLoaderLoginBeforeSetRole(",
+      "async function verifyTestLoaderRoleEscalationDenials(",
+    );
+    for (const marker of [
+      "session_user",
+      "current_user",
+      "system_user",
+      "inet_client_addr",
+      "inet_server_addr",
+      "pg_stat_ssl",
+      "'MEMBER'",
+      "'USAGE'",
+      "'SET'",
+      "test-loader login data access before SET ROLE",
+      "test-loader login insert before SET ROLE",
+      "test-loader login context routine before SET ROLE",
+      "test-loader login temporary table before SET ROLE",
+    ]) {
+      expect(preRole).toContain(marker);
+    }
+
+    const denials = section(
+      "async function verifyAuthenticatedTestLoaderDenials(",
+      "function renderTestLoaderCapabilitySql(",
+    );
+    for (const marker of [
+      "test-loader non-synthetic insert",
+      "authenticated test-loader update",
+      "authenticated test-loader delete",
+      "authenticated test-loader truncate",
+      "authenticated test-loader ledger read",
+      "authenticated test-loader ledger write",
+      "authenticated test-loader persistent DDL",
+      "authenticated test-loader temporary DDL",
+      "await verifyMigrationLedger(containerId)",
+    ]) {
+      expect(denials).toContain(marker);
+    }
+
+    const cleanup = section(
+      "async function cleanupTestLoaderAuthProbe(",
+      "async function verifyTestLoaderAuthResidueAbsent(",
+    );
+    expect(cleanup.indexOf("drain test-loader-auth backends")).toBeLessThan(
+      cleanup.indexOf("remove test-loader-auth passfile"),
+    );
+    expect(cleanup.indexOf("remove test-loader-auth passfile")).toBeLessThan(
+      cleanup.indexOf("drop ephemeral test-loader login"),
+    );
+
+    const authenticatedPsql = section(
+      "async function testLoaderAuthenticatedPsql(",
+      "async function waitForTestLoaderAuthBackendDrain(",
+    );
+    expect(authenticatedPsql).toContain("dockerExecWithEnvironment(");
+    expect(authenticatedPsql).toContain("runRuntimeAuthCommandWithDrain(");
+    expect(authenticatedPsql).not.toContain("await psqlScalar(");
   });
 
   it("reuses the exact authorization matrix inside the authenticated cleanup boundary", async () => {
