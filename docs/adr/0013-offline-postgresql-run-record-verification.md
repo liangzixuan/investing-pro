@@ -1,7 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 6 artifact reviewed successfully; version 7
-source support locally verified and live review pending
+Status: accepted; retained version 7 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -16,11 +15,10 @@ evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
 historical v1 through v6 support and accepts the current v7 schema without
-mixing any version's closed check, limitation, or source-hash lists. The first
-version 6 artifact is retained and reviewed; no version 7 artifact has yet been
-claimed. Canonical comparison rejects
-byte-order marks, CRLF or alternate whitespace, trailing content, reordered
-members, and duplicate JSON member names.
+mixing any version's closed check, limitation, or source-hash lists. Retained
+version 6 and version 7 artifacts have been reviewed. Canonical comparison
+rejects byte-order marks, CRLF or alternate whitespace, trailing content,
+reordered members, and duplicate JSON member names.
 
 Source validation uses only fixed paths read as raw Git blobs from the explicit
 40-character commit. It does not read source from the mutable worktree and does
@@ -107,9 +105,19 @@ unchanged. It does not infer that the canary is a migration and cannot remove
 remain frozen. The later documentation commit does not retest or expand the
 recorded run, and `offline_consistent` retains every verifier limitation above.
 
-Version 7 source support is prospective until a dedicated run exists. Even a
-future `offline_consistent` V7 result will prove only record/source consistency;
-it cannot authenticate GitHub or independently establish that the platform and
+The version 7 artifact from run `32068159652`, attempt 1, at commit `41d13dd`
+returned `offline_consistent`; see the
+[Cycle 1b-b7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md).
+The reviewer accepted the exact nine-source bundle, including the V2 platform
+bootstrap, application manifest and bodies, and authenticated renderer. It
+required the exact appended
+`authenticated_clean_application_migrations_after_platform_bootstrap` check and
+the ordered V7 limitation replacement while preserving every other version 6
+limitation. Historical v1 through v6 bytes and meanings remain frozen. The
+later documentation commit does not retest or expand the recorded run.
+
+That `offline_consistent` result proves only record/source consistency; it
+cannot authenticate GitHub or independently establish that the platform and
 authenticated application phases executed. See
 [ADR 0019](./0019-versioned-authenticated-migration-phase.md) for the bounded
 claim and explicit nonclaims.

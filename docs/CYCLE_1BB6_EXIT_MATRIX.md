@@ -58,6 +58,6 @@ authentication, TLS, managed secrets, a production owner or migrator, backup or
 restore, concurrent clients, a driver or pool, real data, application
 integration, deployed persistence, or production readiness.
 
-Successor note: B7's separately versioned source work is locally verified and
-its version 7 live evidence is pending. It does not alter any historical B6 row or
-make the owner-DDL canary a migration.
+Successor note: B7's separately versioned, bounded application-migration result
+is live-reviewed in its own version 7 record. It does not alter any historical
+B6 row or make the owner-DDL canary a migration.

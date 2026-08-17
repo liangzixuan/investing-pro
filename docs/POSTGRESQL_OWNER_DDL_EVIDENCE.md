@@ -135,6 +135,7 @@ authenticated non-superuser, install an extension, transfer existing object
 ownership, or authorize a production owner or migrator login. It also does not
 prove external network exposure, secret rotation, secure media erasure of
 temporary passfiles, application/API integration, deployed persistence,
-production privacy controls, or production readiness. B7 retains the full
-versioned platform/application migration redesign and authenticated-migrator
-proof.
+production privacy controls, or production readiness. The later
+[B7 evidence](./POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md) separately
+records a bounded versioned platform/application migration result; it does not
+widen this version 6 canary.

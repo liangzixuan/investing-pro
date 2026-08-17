@@ -61,8 +61,9 @@ version 2 record are linked in the
 not add an application driver or pool, expose a database port, authenticate an
 end user, or prove external TLS, production secrets,
 migrator/test-loader/backup authentication, restore, or deployment readiness.
-The distinct-migrator boundary remains separate because PostgreSQL 17 role
-creation conflicts with migration `0001`'s zero-membership bootstrap invariant.
+At B2 the distinct-migrator boundary remained separate because PostgreSQL 17
+role creation conflicts with migration `0001`'s zero-membership bootstrap
+invariant; B7 addresses only the bounded redesign recorded below.
 
 Cycle 1b-b3 now has a reviewed live result at commit `664c0e5b`. While the same
 ephemeral b2 login was active, the acceptance harness reran the reviewed alpha/
@@ -113,26 +114,28 @@ selection, rollback and committed-create behavior for one fixed DDL object,
 authenticated removal, ledger immutability, role reset, and zero residue.
 PostgreSQL run `32058853521` produced a retained version 6 record that returned
 `offline_consistent`. B6 did not execute a migration or close
-`authenticated_migrator_sessions`; the versioned platform/application migration
-redesign and complete authenticated migration proof remain reserved for B7.
+`authenticated_migrator_sessions`; that versioned platform/application gap was
+reserved for B7 and is closed only for the bounded result below.
 See the [B6 evidence note](./docs/POSTGRESQL_OWNER_DDL_EVIDENCE.md),
 [ADR 0018](./docs/adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](./docs/CYCLE_1BB6_EXIT_MATRIX.md).
 
-Cycle 1b-b7 is implemented and locally verified in source; live version 7
-evidence is pending. It keeps the historical b1 through b6 plan as
-regression-only input,
-then resets the exact disposable database and four capability roles before a
-new, closed v2 platform/application plan. The container-superuser platform
-phase creates the roles, owner-owned schemas, database/schema/public ACL
-lockdown, and hardened `btree_gist` installation. A distinct ephemeral
-non-superuser then authenticates with SCRAM, selects only the owner capability,
-and applies the complete role-neutral application plan with login-attributed
-ledger rows, rollback/replay checks, and mandatory zero-residue cleanup. This
-does not prove a production or incremental migrator, external/TLS identity,
-managed secrets, cross-phase atomicity, backup/restore, concurrency, a driver
-or pool, real data, or deployment readiness. See
-[ADR 0019](./docs/adr/0019-versioned-authenticated-migration-phase.md) and the
+Cycle 1b-b7 is complete for its bounded recorded scope at commit `41d13dd`.
+PostgreSQL run `32068159652` produced a retained version 7 record that returned
+`offline_consistent` against separately supplied anchors. The reviewed path
+keeps the historical b1 through b6 plan as regression-only input, then resets
+the exact disposable database and four capability roles before a new, closed
+v2 platform/application plan. The container-superuser platform phase creates
+the roles, owner-owned schemas, database/schema/public ACL lockdown, and
+hardened `btree_gist` installation. A distinct ephemeral non-superuser then
+authenticates with SCRAM, selects only the owner capability, and applies the
+complete role-neutral application plan with login-attributed ledger rows,
+rollback/replay checks, and mandatory zero-residue cleanup. This does not prove
+a production or incremental migrator, external/TLS identity, managed secrets,
+cross-phase atomicity, backup/restore, concurrency, a driver or pool, real data,
+or deployment readiness. See the
+[B7 evidence note](./docs/POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md),
+[ADR 0019](./docs/adr/0019-versioned-authenticated-migration-phase.md), and the
 [Cycle 1b-b7 exit matrix](./docs/CYCLE_1BB7_EXIT_MATRIX.md).
 
 ## Requirements
@@ -170,11 +173,13 @@ B4's driverless query-to-normalizer path passed in run `32007521395`. B5's
 authenticated fixture-load path passed in run `32012508025` at commit
 `04e5c1b`; its retained version 5 record returned `offline_consistent`. B6's
 bounded owner-DDL canary passed in run `32058853521` at commit `7aac502`; its
-retained version 6 record also returned `offline_consistent`. These remain
-sequential, synthetic, container-local acceptance results. The offline verifier
-checks record/source consistency after download but cannot authenticate the
-GitHub run or independently prove PostgreSQL execution. B7 source work does
-not add a live result; its distinct version 7 run and review remain pending.
+retained version 6 record also returned `offline_consistent`. B7's bounded
+authenticated application-migration path passed in run `32068159652` at
+commit `41d13dd`; its retained version 7 record returned
+`offline_consistent`. These remain sequential, synthetic, container-local
+acceptance results. The offline verifier checks record/source consistency
+after download but cannot authenticate the GitHub run or independently prove
+PostgreSQL execution.
 
 ## Safety boundary
 
@@ -197,11 +202,10 @@ not add a live result; its distinct version 7 run and review remain pending.
 - The reviewed B6 result is only an authenticated owner-DDL canary. It applies
   no migration, does not redesign role bootstrap, and does not authorize a
   production owner or migrator login.
-- B7 source work separates a local container-superuser platform phase from an
-  acceptance-only authenticated application migration phase. Until its pinned
-  version 7 run is retained and reviewed, it is not live evidence; even then it
-  cannot authorize production/incremental migration or make the two phases
-  globally atomic.
+- The reviewed B7 result separates a local container-superuser platform phase
+  from an acceptance-only authenticated application migration phase. It cannot
+  authorize production/incremental migration or make the two phases globally
+  atomic.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -220,4 +224,5 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b6 exit matrix](./docs/CYCLE_1BB6_EXIT_MATRIX.md),
 [Cycle 1b-b6 evidence note](./docs/POSTGRESQL_OWNER_DDL_EVIDENCE.md),
 [Cycle 1b-b7 exit matrix](./docs/CYCLE_1BB7_EXIT_MATRIX.md),
+[Cycle 1b-b7 evidence note](./docs/POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md),
 and [architecture decisions](./docs/adr/).

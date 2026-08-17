@@ -113,10 +113,10 @@ Historical b1 through b5 evidence retains its exact recorded scope and is not
 retroactively widened by this decision.
 
 Successor note: B7 now has a separately versioned platform/application design
-and locally verified source implementation; its version 7 live run remains
-pending.
-That later work is not part of the historical B6 result and cannot turn this
-canary into migration evidence.
+and a bounded live-reviewed version 7 result; see the
+[B7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md). That
+later work is not part of the historical B6 result and cannot turn this canary
+into migration evidence.
 
 ## Related decisions
 

@@ -26,11 +26,10 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
 complete and reviewed; b3 authenticated authorization matrix run complete and
 reviewed; b4 driverless projection-query and semantic-unit-mapping run complete
-and reviewed; b5 authenticated test-loader run complete and reviewed; and b6
-authenticated owner-DDL canary run complete and reviewed. B7's versioned
-platform/application split is implemented and locally verified; its live
-version 7 run and review are pending. Pool/concurrency and restore gates remain
-later work.
+and reviewed; b5 authenticated test-loader run complete and reviewed; b6
+authenticated owner-DDL canary run complete and reviewed; and b7 authenticated
+clean application-migration run complete and reviewed. Authenticated backup and
+restore follow B7; the adapter and pool/concurrency gates remain later work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -124,22 +123,25 @@ same six source-hash keys and every version 5 nonclaim, including
 [ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md).
 
-**Cycle 1b-b7 status:** design is accepted and source implementation is locally
-verified; no live B7 claim exists yet. The v2 plan is the sole B7 migration
-authority, while the historical manifest/bodies remain inherited b1 through b6
-regressions only. After those regressions the harness must close ephemeral
-sessions, connect only to maintenance database `postgres`, prove zero target
-sessions/backends, drop the exact disposable target without `FORCE`, drop exactly the
-four dependency-free capability roles, recreate the target, and prove
-pristine. A container-superuser platform transaction creates the fixed roles,
-owner-owned schemas, public/database ACL lockdown and hardened `btree_gist`;
-then one ephemeral non-superuser SCRAM login selects only the owner capability
-to apply the complete role-neutral application plan. V7 appends only
+**Cycle 1b-b7 status:** source implementation, the clean pinned run, and
+independent version 7 review are complete at commit `41d13dd`. PostgreSQL run
+`32068159652` produced an offline-consistent retained record. The v2 plan is the
+sole B7 migration authority, while the historical manifest/bodies remain
+inherited b1 through b6 regressions only. After those regressions the harness
+closed ephemeral sessions, connected only to maintenance database `postgres`,
+proved zero target sessions/backends, dropped the exact disposable target
+without `FORCE`, dropped the four dependency-free capability roles, recreated
+the target, and proved pristine. A container-superuser platform transaction
+created the fixed roles, owner-owned schemas, public/database ACL lockdown and
+hardened `btree_gist`; then one ephemeral non-superuser SCRAM login selected
+only the owner capability to apply the complete role-neutral application plan.
+V7 appends only
 `authenticated_clean_application_migrations_after_platform_bootstrap`, binds
 the platform plan, application manifest and authenticated renderer through new
 source hashes, and replaces only `authenticated_migrator_sessions` with the
-external/production/incremental and global-atomicity nonclaims. See
-[ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md) and the
+external/production/incremental and global-atomicity nonclaims. See the
+[B7 evidence note](./POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md),
+[ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md), and the
 [Cycle 1b-b7 exit matrix](./CYCLE_1BB7_EXIT_MATRIX.md).
 
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
@@ -150,8 +152,8 @@ external/production/incremental and global-atomicity nonclaims. See
    test-loader, and backup identities remained separate later gates. B5 now
    closes only the bounded authenticated test-loader gate for its reviewed run.
    B6 adds only a preparatory owner-DDL canary and does not close the migrator
-   gate. B7 source work targets that exact clean application-migration boundary,
-   but it remains live-pending and does not prove production or incremental
+   gate. The reviewed B7 result closes only the bounded container-local clean
+   application-migration boundary and does not prove production or incremental
    migration.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
@@ -193,9 +195,11 @@ query-to-normalizer path and retained the version 4 limitations. The reviewed
 b5 run passed the exact authenticated non-owner fixture-load path and retained
 the version 5 nonclaims. The reviewed b6 run passed the preparatory
 authenticated owner-DDL canary and retained
-`authenticated_migrator_sessions`. Cycle 1b-b7 now implements the versioned
-platform/application migration split in source; its live proof is still
-pending. Authenticated backup and restore follow B7, then a
+`authenticated_migrator_sessions`. The reviewed b7 run passed the bounded
+authenticated clean application-migration phase after its separately committed
+platform bootstrap and replaced that limitation with the exact external/
+production/incremental and global-atomicity nonclaims. Authenticated backup and
+restore follow B7, then a
 single-client read-only adapter, and finally the real
 pool/concurrency/cancellation boundary. The row-normalization contract is
 already frozen; the B4 query and unit contract now provides a reviewed input to
@@ -203,10 +207,10 @@ the later single-client adapter milestone without proving that adapter.
 
 The b1 green-run, bounded b2 runtime-authentication, b3 authenticated
 authorization-matrix, b4 driverless query/normalizer, b5 authenticated
-test-loader, and b6 owner-DDL canary milestones are complete for their recorded
-scopes. B7, not B6, is the current platform/migrator redesign and full
-authenticated migration source milestone; its live result remains pending. A
-single-client read adapter must remain
+test-loader, b6 owner-DDL canary, and b7 authenticated application-migration
+milestones are complete for their recorded scopes. B7, not B6, contains the
+reviewed platform/migrator redesign and bounded authenticated migration result.
+A single-client read adapter must remain
 separate from B4 through B7 and the pool/concurrency milestone.
 The historical manifest remains unsuitable for a distinct migrator: on
 PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an administrative

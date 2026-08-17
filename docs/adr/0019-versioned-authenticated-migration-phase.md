@@ -1,7 +1,6 @@
 # ADR 0019: Versioned authenticated migration phase
 
-Status: accepted for Cycle 1b-b7; source implemented and locally verified; live
-version 7 evidence pending
+Status: accepted for Cycle 1b-b7; bounded live version 7 evidence reviewed
 
 ## Context
 
@@ -101,6 +100,14 @@ the pinned PostgreSQL 17 image, its exact artifact and logs are retained,
 repository and artifact hashes match, and independent offline review returns
 `offline_consistent`.
 
+That rule was satisfied for tested commit
+[`41d13dde55148c05342d782c76fc80e9b76f4e95`](https://github.com/liangzixuan/investing-pro/commit/41d13dde55148c05342d782c76fc80e9b76f4e95)
+by successful PostgreSQL [run `32068159652`, attempt 1](https://github.com/liangzixuan/investing-pro/actions/runs/32068159652).
+The downloaded version 7 record returned `offline_consistent`; its exact
+anchors, reviewed scope, and nonclaims are recorded in the
+[B7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md). The
+later documentation commit does not retest or expand that recorded run.
+
 ## Explicit exclusions
 
 B7 proves only the authenticated application migration phase after a separately
@@ -136,6 +143,7 @@ widen any of them.
 - [ADR 0013: Offline PostgreSQL run-record verification](./0013-offline-postgresql-run-record-verification.md)
 - [ADR 0018: Authenticated owner-DDL canary](./0018-authenticated-owner-ddl-canary.md)
 - [Cycle 1b-b7 exit matrix](../CYCLE_1BB7_EXIT_MATRIX.md)
+- [Cycle 1b-b7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
 - [PostgreSQL 17 extension packaging](https://www.postgresql.org/docs/17/extend-extensions.html)

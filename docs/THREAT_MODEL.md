@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b6 and source-stage B7 threat model
+# Sprint 0 through bounded live Cycle 1b-b7 threat model
 
 ## Current trust boundaries
 
@@ -117,17 +117,21 @@ Only the separately committed application phase uses an ephemeral,
 connection-limited, non-superuser SCRAM login with one set-only owner edge.
 Rollback/replay, identity, ledger attribution, object ownership, passfile,
 backend, membership, login, and login-owned-object residue are fail-closed
-gates before V7 evidence. The source stage is locally verified; no live B7
-claim exists until a pinned version 7 record and run are retained and
-independently reviewed.
+gates before V7 evidence. That bounded path passed in PostgreSQL run
+`32068159652` at commit `41d13dd`; the retained version 7 record returned
+`offline_consistent`. See the
+[B7 evidence note](./POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md),
+[ADR 0019](./adr/0019-versioned-authenticated-migration-phase.md), and the
+[Cycle 1b-b7 exit matrix](./CYCLE_1BB7_EXIT_MATRIX.md).
 
 That database login is not a user identity. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
 future verified identity resolver prevents it. B2 therefore does not establish
 end-user binding, production BOLA protection, external/TLS transport, secret
-management, an application pool, or deployed persistence. Its distinct
-migrator, backup, and restore boundaries remain deferred. The B5 test-loader
+management, an application pool, or deployed persistence. External,
+production, or incremental migrator operation plus backup and restore remain
+deferred. The B5 test-loader
 result establishes only one sequential, synthetic, container-local
 acceptance-only session, not a production loader or identity boundary. The
 reviewed B6 canary does not execute a migration, redesign role bootstrap, or

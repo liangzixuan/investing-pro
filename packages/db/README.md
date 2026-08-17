@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B6 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B7 SOURCE/LOCAL VERIFIED, LIVE EVIDENCE PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B7 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -68,24 +68,27 @@ migration and leaves `authenticated_migrator_sessions` unproven. See the
 
 Cycle 1b-b7 introduces new versioned migration-plan sources without changing
 the historical manifest or seven historical bodies. Those legacy inputs remain
-b1 through b6 regressions only. After an exact disposable-database/capability-
-role reset, the B7 platform phase runs locally as the container superuser and
+b1 through b6 regressions only. After an exact reset of the disposable database
+and capability roles, the B7 platform phase runs locally as the container superuser and
 creates the fixed roles, owner-owned schemas, database/schema/public ACL
 lockdown, and hardened `btree_gist` installation. A separate ephemeral,
 non-superuser SCRAM login may then select only `research_cockpit_owner` and
-execute the closed role-neutral application plan. The V7 evidence/reviewer
-contract binds the platform plan, exact application manifest and bodies, and
-authenticated renderer, but source presence is not live evidence. The pinned
-version 7 run and offline review remain pending; see
-[ADR 0019](../../docs/adr/0019-versioned-authenticated-migration-phase.md) and
+execute the closed role-neutral application plan. That path passed in
+PostgreSQL run `32068159652` at commit `41d13dd`; the downloaded version 7
+record returned `offline_consistent` against separately supplied anchors. The
+reviewed record binds the platform plan, exact application manifest and bodies,
+and authenticated renderer. See the
+[B7 evidence note](../../docs/POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md),
+[ADR 0019](../../docs/adr/0019-versioned-authenticated-migration-phase.md), and
 the [Cycle 1b-b7 exit matrix](../../docs/CYCLE_1BB7_EXIT_MATRIX.md).
 
 There is deliberately no database driver, production or incremental migration
-runner, live credential, or application adapter in this package. The
-acceptance-only renderer validates the immutable manifest and emits all seven
-migration bodies plus their ledger entries inside one locked transaction for a
-fresh, fixed-name CI database. The insert-only fixture is deterministic and
-synthetic.
+runner, live credential, or application adapter in this package. The historical
+clean-bootstrap renderer validates its immutable manifest and emits all seven
+historical bodies. The authenticated V2 application renderer separately
+validates its closed manifest and emits all six role-neutral bodies plus their
+ledger entries inside one locked transaction for a fresh, fixed-name CI
+database. The insert-only fixture is deterministic and synthetic.
 
 The package also contains a disconnected, pure normalizer for the exact flat
 financial-fact join rows a future read-only adapter must emit. It accepts only
@@ -259,8 +262,8 @@ capability with `ADMIN FALSE`, `INHERIT FALSE`, and `SET TRUE`. The edge exists
 only around the fixed DDL canary and is removed before the zero-membership
 catalog fingerprint. It authorizes no migration, capability-role provisioning,
 extension installation, production owner login, or deployment role graph. A
-separate B7 source plan now versions the platform/application split; its live
-version 7 proof remains pending and does not widen B6.
+separate B7 plan now versions the platform/application split, and its bounded
+version 7 live result is reviewed. That later result does not widen B6.
 
 ## Static guarantees
 
@@ -412,10 +415,10 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     and cutover under concurrent-write controls before adding the live-state
     foreign keys; this static `0005` migration assumes empty live tables.
 
-Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact b1-b6 checks in their retained run records. B7
-source implementation is locally verified but does not widen those records;
-its version 7 live run and review remain pending. The
+Until every gate passes, this package is not deployed persistence. Historical
+live evidence remains limited to the exact b1-b6 checks in their retained run
+records. B7 passed for its separately recorded version 7 scope at commit
+`41d13dd` without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
