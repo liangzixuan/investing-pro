@@ -41,7 +41,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v2-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v3-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
@@ -264,6 +264,13 @@ interface PrivateVisibility {
   idempotencyIds: string;
   registryIds: string;
   evidenceIds: string;
+}
+
+export type RuntimeAuthorizationMatrixMode = "impersonated" | "authenticated";
+
+interface RuntimeAuthorizationMatrixClient {
+  readonly mode: RuntimeAuthorizationMatrixMode;
+  readonly scalar: (sql: string) => Promise<string>;
 }
 
 export interface AcceptanceArtifacts {
@@ -668,8 +675,11 @@ export async function runPostgresAcceptance(
   await verifyCatalogContract(containerId);
   await verifyBackupCapability(containerId);
   await verifyContextCleanup(containerId);
-  await verifyTenantIsolation(containerId);
-  await verifyOperationRights(containerId);
+  const impersonatedRuntimeMatrix = runtimeAuthorizationMatrixClient(
+    containerId,
+    "impersonated",
+  );
+  await verifyRuntimeAuthorizationMatrix(impersonatedRuntimeMatrix);
   await verifyWriteDenials(containerId);
   await verifyAuthenticatedRuntimeSession(containerId);
 
@@ -1432,9 +1442,18 @@ RESET SESSION AUTHORIZATION;`,
   );
 }
 
-async function verifyTenantIsolation(containerId: string): Promise<void> {
+async function verifyRuntimeAuthorizationMatrix(
+  client: RuntimeAuthorizationMatrixClient,
+): Promise<void> {
+  await verifyTenantIsolation(client);
+  await verifyOperationRights(client);
+}
+
+async function verifyTenantIsolation(
+  client: RuntimeAuthorizationMatrixClient,
+): Promise<void> {
   const alpha = await privateVisibility(
-    containerId,
+    client,
     PRINCIPAL_ALPHA,
     ORGANIZATION_ALPHA,
   );
@@ -1455,7 +1474,7 @@ async function verifyTenantIsolation(containerId: string): Promise<void> {
     "alpha tenant visibility",
   );
   const beta = await privateVisibility(
-    containerId,
+    client,
     PRINCIPAL_BETA,
     ORGANIZATION_BETA,
   );
@@ -1477,9 +1496,9 @@ async function verifyTenantIsolation(containerId: string): Promise<void> {
   );
 
   const directIsolation = parseJsonObject(
-    await psqlScalar(
-      containerId,
-      runtimeContextSql(
+    await client.scalar(
+      renderRuntimeContextSql(
+        client.mode,
         PRINCIPAL_ALPHA,
         ORGANIZATION_ALPHA,
         "display",
@@ -1531,7 +1550,7 @@ async function verifyTenantIsolation(containerId: string): Promise<void> {
     ["future membership", PRINCIPAL_FUTURE, 1],
   ] as const) {
     const visibility = await privateVisibility(
-      containerId,
+      client,
       principal,
       ORGANIZATION_ALPHA,
     );
@@ -1554,7 +1573,7 @@ async function verifyTenantIsolation(containerId: string): Promise<void> {
   }
 
   const alternating = splitLines(
-    await psqlScalar(containerId, alternatingPreparedStatementSql()),
+    await client.scalar(renderAlternatingPreparedStatementSql(client.mode)),
   ).map((line) => parseJsonObject(line));
   assertJsonEqual(
     alternating,
@@ -1568,7 +1587,9 @@ async function verifyTenantIsolation(containerId: string): Promise<void> {
   );
 }
 
-async function verifyOperationRights(containerId: string): Promise<void> {
+async function verifyOperationRights(
+  client: RuntimeAuthorizationMatrixClient,
+): Promise<void> {
   for (const expectation of [
     {
       purpose: "display",
@@ -1591,9 +1612,9 @@ async function verifyOperationRights(containerId: string): Promise<void> {
     },
   ] as const) {
     const actual = parseJsonObject(
-      await psqlScalar(
-        containerId,
-        runtimeContextSql(
+      await client.scalar(
+        renderRuntimeContextSql(
+          client.mode,
           PRINCIPAL_ALPHA,
           ORGANIZATION_ALPHA,
           expectation.purpose,
@@ -1625,7 +1646,8 @@ async function verifyOperationRights(containerId: string): Promise<void> {
 async function verifyWriteDenials(containerId: string): Promise<void> {
   await expectPsqlFailure(
     containerId,
-    runtimeContextSql(
+    renderRuntimeContextSql(
+      "impersonated",
       PRINCIPAL_ALPHA,
       ORGANIZATION_ALPHA,
       "display",
@@ -1724,6 +1746,9 @@ async function verifyAuthenticatedRuntimeSession(
     await verifyRuntimeRoleEscalationDenials(containerId);
     await verifyRuntimeAuthenticatedContext(containerId);
     await verifyRuntimeAuthenticatedWriteDenial(containerId);
+    await verifyRuntimeAuthorizationMatrix(
+      runtimeAuthorizationMatrixClient(containerId, "authenticated"),
+    );
   } catch (error) {
     probeFailed = true;
     probeError = error;
@@ -2253,15 +2278,28 @@ function assertSensitiveCommandSuccess(
   }
 }
 
-async function privateVisibility(
+function runtimeAuthorizationMatrixClient(
   containerId: string,
+  mode: RuntimeAuthorizationMatrixMode,
+): RuntimeAuthorizationMatrixClient {
+  return Object.freeze({
+    mode,
+    scalar: (sql: string) =>
+      mode === "authenticated"
+        ? runtimeAuthenticatedPsqlScalar(containerId, sql)
+        : psqlScalar(containerId, sql),
+  });
+}
+
+async function privateVisibility(
+  client: RuntimeAuthorizationMatrixClient,
   principalId: string,
   organizationId: string,
 ): Promise<PrivateVisibility> {
   return parseJsonObject(
-    await psqlScalar(
-      containerId,
-      runtimeContextSql(
+    await client.scalar(
+      renderRuntimeContextSql(
+        client.mode,
         principalId,
         organizationId,
         "display",
@@ -2310,16 +2348,20 @@ async function privateVisibility(
   ) as unknown as PrivateVisibility;
 }
 
-function runtimeContextSql(
+export function renderRuntimeContextSql(
+  mode: RuntimeAuthorizationMatrixMode,
   principalId: string,
   organizationId: string,
   purpose: "display" | "derive" | "alert",
   channel: "api" | "local_alert",
   statement: string,
 ): string {
-  return `SET SESSION AUTHORIZATION research_cockpit_runtime;
-BEGIN;
-CALL private_data.set_request_context(
+  const localRole =
+    mode === "authenticated"
+      ? `SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};\n`
+      : "";
+  const transaction = `BEGIN;
+${localRole}CALL private_data.set_request_context(
   '${principalId}',
   '${organizationId}',
   '${purpose}',
@@ -2328,7 +2370,11 @@ CALL private_data.set_request_context(
   'synthetic'
 );
 ${statement}
-COMMIT;
+COMMIT;`;
+  return mode === "authenticated"
+    ? transaction
+    : `SET SESSION AUTHORIZATION ${RUNTIME_AUTH_CAPABILITY_ROLE};
+${transaction}
 RESET SESSION AUTHORIZATION;`;
 }
 
@@ -2427,25 +2473,44 @@ function requestContextClearedExpression(): string {
   return cleared;
 }
 
-function alternatingPreparedStatementSql(): string {
+export function renderAlternatingPreparedStatementSql(
+  mode: RuntimeAuthorizationMatrixMode,
+): string {
+  const localRole =
+    mode === "authenticated"
+      ? `SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE};\n`
+      : "";
+  const prepare = `PREPARE tenant_visibility AS
+SELECT pg_catalog.json_build_object(
+  'organization', (SELECT id FROM private_data.organizations),
+  'theses', (SELECT count(*) FROM private_data.theses)
+)::text;`;
   const executeFor = (principal: string, organization: string) => `BEGIN;
-CALL private_data.set_request_context(
+${localRole}CALL private_data.set_request_context(
   '${principal}', '${organization}',
   'display', 'api', 'demo_only', 'synthetic'
 );
 EXECUTE tenant_visibility;
 COMMIT;`;
-  return `SET SESSION AUTHORIZATION research_cockpit_runtime;
-PREPARE tenant_visibility AS
-SELECT pg_catalog.json_build_object(
-  'organization', (SELECT id FROM private_data.organizations),
-  'theses', (SELECT count(*) FROM private_data.theses)
-)::text;
-${executeFor(PRINCIPAL_ALPHA, ORGANIZATION_ALPHA)}
-${executeFor(PRINCIPAL_BETA, ORGANIZATION_BETA)}
-${executeFor(PRINCIPAL_ALPHA, ORGANIZATION_ALPHA)}
-${executeFor(PRINCIPAL_BETA, ORGANIZATION_BETA)}
-DEALLOCATE tenant_visibility;
+  const executions = [
+    executeFor(PRINCIPAL_ALPHA, ORGANIZATION_ALPHA),
+    executeFor(PRINCIPAL_BETA, ORGANIZATION_BETA),
+    executeFor(PRINCIPAL_ALPHA, ORGANIZATION_ALPHA),
+    executeFor(PRINCIPAL_BETA, ORGANIZATION_BETA),
+  ].join("\n");
+  const matrix = `${executions}
+DEALLOCATE tenant_visibility;`;
+  // PREPARE is session-scoped, so authenticated preparation and all four
+  // executions intentionally remain in this one client/backend script.
+  return mode === "authenticated"
+    ? `BEGIN;
+${localRole.trimEnd()}
+${prepare}
+COMMIT;
+${matrix}`
+    : `SET SESSION AUTHORIZATION ${RUNTIME_AUTH_CAPABILITY_ROLE};
+${prepare}
+${matrix}
 RESET SESSION AUTHORIZATION;`;
 }
 
@@ -2638,7 +2703,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "f49462e77c9a902954cef053d741d73429e1c3c25519eed69b65a75c1e673239" ||
+      "8d5b8a58119692dedb1e6409f56f478d327f79610e1c863131bf7f74d073636c" ||
     value.fixtureSha256 !==
       "69974bf2996cbdd0078d509db933fe89d670005e177b7f57187df54b201b99bf" ||
     typeof value.verifiedOn !== "string" ||

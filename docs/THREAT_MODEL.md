@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b2 threat model
+# Sprint 0 through source-stage Cycle 1b-b3 threat model
 
 ## Current trust boundaries
 
@@ -51,6 +51,17 @@ and limitations are in the
 b1 query-shape, rights, and prepared-read probes are not reclassified as
 authenticated-session evidence.
 
+Cycle 1b-b3 is implemented in source to close that precise evidence gap. While
+the b2 ephemeral login and passfile are active, the acceptance source repeats
+the reviewed alpha/beta visibility, inactive and non-current membership,
+direct/join/subquery isolation, operation-rights, and alternating prepared-read
+assertions through transaction-local selection of the runtime capability. The
+b1 administrator-impersonation path remains intact. The first b3 remote run and
+success-only record have not yet been reviewed, so this source does not change
+the historical live-evidence boundary. See the
+[Cycle 1b-b3 exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md) and
+[ADR 0015](./adr/0015-authenticated-runtime-authorization-matrix.md).
+
 That database login is not a user identity. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
@@ -98,6 +109,11 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   fixed decimals, intervals, cutoffs, units, and exact policy/grant echoes, and
   rejects an entire malformed batch with a value-free error. It cannot accept
   completeness or count input.
+- The b3 acceptance source preserves the bounded b2 authentication controls and
+  reuses the reviewed b1 tenant/rights assertions through the authenticated
+  runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
+  prepared-read isolation, and mandatory login/passfile/backend cleanup. These
+  controls remain source-only until a reviewed b3 workflow run exists.
 - Exact dependency pins, a lockfile, a single allowed install script, an allowlisted production-license gate, dependency review, and two-OS CI reduce supply-chain drift.
 - The evidence dialog traps/restores focus; chart values have a semantic table; reduced-motion and high-contrast preferences are respected.
 
@@ -109,16 +125,18 @@ The reviewed clean-only b1 run proves PostgreSQL syntax and only the exact
 catalog, RLS, authorization, transaction-context, and failure probes listed in
 its run record. It did not prove authenticated sessions. The reviewed b2 run
 adds only one container-local SCRAM runtime service account and its explicitly
-bounded probes. Neither result proves an authenticated end user, external or
-production authentication, connection pooling, concurrent backends,
-cancellation, dump/restore, disaster recovery, or production identity. An
-emulator is not a substitute for those later gates, and `offline_consistent`
-alone is not engine evidence without separate review of the GitHub run and
-logs. B2 does not retroactively expand the historical b1 result.
+bounded probes. B3's broader authenticated tenant/rights/prepared-read matrix
+is implemented in source but has no reviewed live result. None of these states
+proves an authenticated end user, external or production authentication,
+connection pooling, concurrent backends, cancellation, dump/restore, disaster
+recovery, or production identity. An emulator is not a substitute for those
+later gates, and `offline_consistent` alone is not engine evidence without
+separate review of the GitHub run and logs. B2 does not retroactively expand
+the historical b1 result, and b3 source does not retroactively expand b2.
 
 ## Gates before adding new trust boundaries
 
-1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and b2's live-verified, container-local runtime service-account boundary, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore; then add verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
+1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run, b2's live-verified container-local service-account boundary, and b3's still-live-pending authenticated-matrix source, first review the b3 remote result; then prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
 2. **Filing ingestion:** run one-shot non-root parser workers with no unnecessary egress, read-only filesystems, CPU/memory/time limits, archive/XML bomb defenses, allowlisted taxonomy/plugins, quarantine, replay, and signed provenance.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.

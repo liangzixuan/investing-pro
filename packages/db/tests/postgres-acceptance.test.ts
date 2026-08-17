@@ -12,10 +12,12 @@ import {
   generateRuntimeAuthPassword,
   injectBootstrapFailure,
   inspectPostgresAcceptanceHarness,
+  renderAlternatingPreparedStatementSql,
   renderRuntimeAuthBackendDrainSql,
   renderRuntimeAuthCleanupSql,
   renderRuntimeAuthPassfile,
   renderRuntimeAuthProvisioningSql,
+  renderRuntimeContextSql,
   RUNTIME_AUTH_CAPABILITY_ROLE,
   RUNTIME_AUTH_FORBIDDEN_SET_ROLES,
   RUNTIME_AUTH_LOGIN_ROLE,
@@ -318,6 +320,101 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(failureOrder).toEqual(["command", "drain"]);
   });
 
+  it("renders one shared context query behind explicit impersonated and authenticated role boundaries", () => {
+    const statement = "SELECT count(*) FROM private_data.organizations;";
+    const arguments_ = [
+      "20000000-0000-4000-8000-000000000001",
+      "10000000-0000-4000-8000-000000000001",
+      "display",
+      "api",
+      statement,
+    ] as const;
+    const impersonated = renderRuntimeContextSql("impersonated", ...arguments_);
+    const authenticated = renderRuntimeContextSql(
+      "authenticated",
+      ...arguments_,
+    );
+
+    expect(impersonated).toMatch(
+      /^SET SESSION AUTHORIZATION research_cockpit_runtime;\nBEGIN;\nCALL /,
+    );
+    expect(impersonated).toMatch(/\nCOMMIT;\nRESET SESSION AUTHORIZATION;$/);
+    expect(impersonated).not.toContain("SET LOCAL ROLE");
+
+    expect(authenticated).toMatch(
+      /^BEGIN;\nSET LOCAL ROLE research_cockpit_runtime;\nCALL /,
+    );
+    expect(authenticated).toMatch(/\nCOMMIT;$/);
+    expect(authenticated).not.toMatch(/SESSION AUTHORIZATION|RESET ROLE/);
+
+    for (const sharedSql of [
+      "CALL private_data.set_request_context(",
+      `'${arguments_[0]}'`,
+      `'${arguments_[1]}'`,
+      "'display'",
+      "'api'",
+      "'demo_only'",
+      "'synthetic'",
+      statement,
+    ]) {
+      expect(impersonated).toContain(sharedSql);
+      expect(authenticated).toContain(sharedSql);
+    }
+  });
+
+  it("keeps the authenticated alternating prepared matrix on one locally scoped backend script", () => {
+    const authenticated =
+      renderAlternatingPreparedStatementSql("authenticated");
+    const impersonated = renderAlternatingPreparedStatementSql("impersonated");
+    const count = (source: string, pattern: RegExp) =>
+      source.match(pattern)?.length ?? 0;
+
+    expect(count(authenticated, /PREPARE tenant_visibility AS/g)).toBe(1);
+    expect(count(authenticated, /EXECUTE tenant_visibility;/g)).toBe(4);
+    expect(count(authenticated, /DEALLOCATE tenant_visibility;/g)).toBe(1);
+    expect(
+      count(authenticated, /SET LOCAL ROLE research_cockpit_runtime;/g),
+    ).toBe(5);
+    expect(count(authenticated, /^BEGIN;$/gm)).toBe(5);
+    expect(count(authenticated, /^COMMIT;$/gm)).toBe(5);
+    expect(authenticated).not.toMatch(/SESSION AUTHORIZATION|RESET ROLE/);
+    expect(authenticated.indexOf("SET LOCAL ROLE")).toBeLessThan(
+      authenticated.indexOf("PREPARE tenant_visibility AS"),
+    );
+
+    const contexts = [
+      ...authenticated.matchAll(
+        /CALL private_data\.set_request_context\(\n {2}'([^']+)', '([^']+)'/g,
+      ),
+    ].map((match) => [match[1], match[2]]);
+    expect(contexts).toEqual([
+      [
+        "20000000-0000-4000-8000-000000000001",
+        "10000000-0000-4000-8000-000000000001",
+      ],
+      [
+        "20000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002",
+      ],
+      [
+        "20000000-0000-4000-8000-000000000001",
+        "10000000-0000-4000-8000-000000000001",
+      ],
+      [
+        "20000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002",
+      ],
+    ]);
+
+    expect(count(impersonated, /PREPARE tenant_visibility AS/g)).toBe(1);
+    expect(count(impersonated, /EXECUTE tenant_visibility;/g)).toBe(4);
+    expect(impersonated).toMatch(
+      /^SET SESSION AUTHORIZATION research_cockpit_runtime;/,
+    );
+    expect(impersonated).toMatch(/RESET SESSION AUTHORIZATION;$/);
+    expect(impersonated).not.toContain("SET LOCAL ROLE");
+  });
+
   it("accepts the reviewed immutable workflow and synthetic fixture", async () => {
     await expect(checkPostgresAcceptanceHarness()).resolves.toEqual([]);
   });
@@ -445,10 +542,10 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     const artifacts = await loadArtifacts();
     for (const unsafePath of [
       "${{ runner.temp }}/research-cockpit-postgres-acceptance-*.json",
-      "./research-cockpit-postgres-acceptance-v2.json",
+      "./research-cockpit-postgres-acceptance-v3.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v2.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v3.json",
         unsafePath,
       );
       expect(
@@ -488,7 +585,7 @@ describe("PostgreSQL acceptance harness guardrails", () => {
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v2-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v3-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -588,6 +685,96 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(successMessage).toBeGreaterThan(writeEvidence);
     expect(evidenceHash).toBeGreaterThan(successMessage);
     expect(source).not.toContain("writtenEvidence.path");
+  });
+
+  it("reuses the exact authorization matrix inside the authenticated cleanup boundary", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex).toBeGreaterThan(-1);
+      expect(endIndex).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const orchestrator = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyCheckedOutCommit(",
+    );
+    expect(orchestrator).toContain(
+      'runtimeAuthorizationMatrixClient(\n    containerId,\n    "impersonated",\n  )',
+    );
+    expect(orchestrator).toContain(
+      "await verifyRuntimeAuthorizationMatrix(impersonatedRuntimeMatrix);",
+    );
+
+    const sharedMatrix = section(
+      "async function verifyRuntimeAuthorizationMatrix(",
+      "async function verifyTenantIsolation(",
+    );
+    expect(sharedMatrix.match(/verifyTenantIsolation\(client\)/g)).toHaveLength(
+      1,
+    );
+    expect(sharedMatrix.match(/verifyOperationRights\(client\)/g)).toHaveLength(
+      1,
+    );
+
+    const authenticatedProbe = section(
+      "async function verifyAuthenticatedRuntimeSession(",
+      "async function verifyRuntimeAuthResidueAbsent(",
+    );
+    const boundedWrite = authenticatedProbe.indexOf(
+      "await verifyRuntimeAuthenticatedWriteDenial(containerId);",
+    );
+    const fullMatrix = authenticatedProbe.indexOf(
+      "await verifyRuntimeAuthorizationMatrix(",
+    );
+    const cleanupBoundary = authenticatedProbe.indexOf("} finally {");
+    expect(boundedWrite).toBeGreaterThan(-1);
+    expect(fullMatrix).toBeGreaterThan(boundedWrite);
+    expect(cleanupBoundary).toBeGreaterThan(fullMatrix);
+    expect(authenticatedProbe.slice(fullMatrix, cleanupBoundary)).toContain(
+      'runtimeAuthorizationMatrixClient(containerId, "authenticated")',
+    );
+
+    const matrixClient = section(
+      "function runtimeAuthorizationMatrixClient(",
+      "async function privateVisibility(",
+    );
+    expect(matrixClient).toContain(
+      'mode === "authenticated"\n        ? runtimeAuthenticatedPsqlScalar(containerId, sql)\n        : psqlScalar(containerId, sql)',
+    );
+
+    const tenantMatrix = section(
+      "async function verifyTenantIsolation(",
+      "async function verifyOperationRights(",
+    );
+    expect(tenantMatrix).toContain(
+      "await client.scalar(renderAlternatingPreparedStatementSql(client.mode))",
+    );
+    expect(tenantMatrix.match(/privateVisibility\(/g)).toHaveLength(3);
+    expect(tenantMatrix).toMatch(
+      /foreignThesisJoin[\s\S]*JOIN private_data\.organizations/,
+    );
+    expect(tenantMatrix).toMatch(/foreignExists[\s\S]*EXISTS \(/);
+    expect(tenantMatrix).toContain("foreignScalar");
+    expect(tenantMatrix).toContain("sameThesisIdVisible");
+
+    const rightsMatrix = section(
+      "async function verifyOperationRights(",
+      "async function verifyWriteDenials(",
+    );
+    for (const combination of [
+      ['purpose: "display"', 'channel: "api"'],
+      ['purpose: "derive"', 'channel: "api"'],
+      ['purpose: "alert"', 'channel: "local_alert"'],
+    ]) {
+      expect(rightsMatrix).toContain(combination[0]);
+      expect(rightsMatrix).toContain(combination[1]);
+    }
   });
 
   it("injects a deterministic error immediately before final commit", () => {

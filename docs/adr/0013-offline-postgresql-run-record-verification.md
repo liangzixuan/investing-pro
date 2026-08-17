@@ -14,8 +14,8 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 support and accepts the current v2 schema without mixing either
-version's closed check or limitation lists. Canonical comparison rejects
+historical v1 and v2 support and accepts the current v3 schema without mixing
+any version's closed check or limitation lists. Canonical comparison rejects
 byte-order marks, CRLF or alternate whitespace, trailing content, reordered
 members, and duplicate JSON member names.
 
@@ -54,6 +54,7 @@ The version 2 artifact from run `31988811000`, attempt 1, at commit `3479e164`
 also returned `offline_consistent`; see the
 [Cycle 1b-b2 evidence note](../POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md). That run
 adds one bounded, container-local authenticated runtime service account only.
-External/production and end-user authentication, the full authenticated
-authorization matrix, migrator/test-loader/backup sessions, restore, pool, and
+The broader authenticated runtime authorization matrix is implemented in b3
+source but remains live-pending. External/production and end-user
+authentication, migrator/test-loader/backup sessions, restore, pool, and
 adapter work remain separate gated work.

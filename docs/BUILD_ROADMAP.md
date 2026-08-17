@@ -24,7 +24,9 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 ## Cycle 1b — real PostgreSQL proof
 
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
-complete and reviewed; pool/concurrency and restore gates remain pending.
+complete and reviewed; b3 authenticated authorization matrix implemented in
+source with its first remote run pending; pool/concurrency and restore gates
+remain pending.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -56,6 +58,20 @@ See
 [ADR 0014](./adr/0014-container-local-runtime-authentication.md) and the
 [Cycle 1b-b2 exit matrix](./CYCLE_1BB2_EXIT_MATRIX.md).
 
+**Cycle 1b-b3 status:** source implementation complete; first dedicated remote
+execution and reviewed success-only record pending. The source preserves b1's
+impersonated-capability checks and, while the b2 ephemeral login is active,
+repeats the reviewed alpha/beta tenant visibility, inactive and non-current
+membership, direct/join/subquery isolation, operation-rights, and alternating
+prepared-read assertions through the SCRAM-authenticated login with
+transaction-local `SET LOCAL ROLE`. It changes no migration, capability role,
+fixture, application dependency, exposed port, driver, pool, or composition
+root. Until the dedicated PostgreSQL workflow passes and its new record and
+logs are reviewed, those broader checks remain live evidence only through b1's
+administrator impersonation. See
+[ADR 0015](./adr/0015-authenticated-runtime-authorization-matrix.md) and the
+[Cycle 1b-b3 exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md).
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -67,9 +83,12 @@ See
 4. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. Its query must perform the reviewed listing/share-class/security join, supply an explicit semantic unit mapping, and enter core only through the a2 normalizer and operation-scoped port. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
 5. **Bounded isolation probes complete:** b1 covers direct-ID/list/join/count/
    subquery access, missing/malformed context, deactivation fixtures, and
-   alternating prepared reads. At least 1,000 concurrent reads remain pending.
-   If a writer capability is added, also test viewer writes, composite-FK
-   attacks, idempotency races, and rollback before enabling it elsewhere.
+   alternating prepared reads through capability impersonation. B3 implements
+   authenticated parity in source for the reviewed tenant, membership,
+   query-shape, operation-rights, and alternating prepared-read cases; its live
+   result remains pending. At least 1,000 concurrent reads remain pending. If a
+   writer capability is added, also test viewer writes, composite-FK attacks,
+   idempotency races, and rollback before enabling it elsewhere.
 6. **Sequential cleanup complete:** b1 proves transaction-local context clears
    after commit, rollback, and a handled error on one backend. Cancellation,
    timeout, simultaneous backends, and real pooled-connection reuse remain.
@@ -84,15 +103,22 @@ The separate Ubuntu-only acceptance job now exists. Its PostgreSQL server and
 `psql`/dump/restore clients come from one exact major/minor/distro image
 reference and index digest. The reviewed b2 run passed its bounded
 container-local SCRAM rows; the historical b1 run did not satisfy them.
-Remaining Cycle 1b-b work is migrator/test-loader/backup authentication,
-restore, concurrency/cancellation, and the real pool boundary. The row-normalization
+The b3 authenticated matrix is source-complete but does not become live engine
+evidence until its first clean remote run and success artifact are reviewed.
+Remaining Cycle 1b-b work after that evidence gate is
+migrator/test-loader/backup authentication, restore,
+concurrency/cancellation, and the real pool boundary. The row-normalization
 contract is frozen, but a client driver remains gated on the reviewed
 query/unit mapping and those session/pool controls.
 
 The first b1 green-run milestone and bounded b2 runtime-authentication milestone
-are complete. The next database milestone must remain smaller than a full
-adapter rollout: redesign the distinct migrator/test-loader/backup boundaries
-or add a separately reviewed pool/query slice without conflating those proofs.
+are complete. The immediate b3 gate is a clean remote execution, retained
+success-only record, and independent review of the source-implemented
+authenticated matrix. Source implementation alone must not be treated as a
+completed live milestone. Only after that gate should the next database
+milestone remain smaller than a full adapter rollout: redesign one distinct
+migrator/test-loader/backup boundary or add a separately reviewed query slice
+without conflating it with pool/concurrency proof.
 The distinct migrator is still blocked by the current migration `0001`
 design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
 administrative membership edge on a role it creates, while `0001` rejects every
@@ -101,8 +127,8 @@ redesigned in a separate reviewed increment; the b2 result does not weaken it. O
 authenticated backup design should the harness add a bounded dump/restore
 probe. Application-pool cancellation/concurrency belongs with a real adapter
 and pool. Do not treat either the clean-only impersonated-capability result or
-the reviewed b2 container-local service-account result as permission to wire the
-database into the app or accept real data.
+the reviewed b2 container-local service-account result—or the live-pending b3
+source—as permission to wire the database into the app or accept real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

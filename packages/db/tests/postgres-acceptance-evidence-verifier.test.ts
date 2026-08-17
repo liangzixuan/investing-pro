@@ -9,6 +9,8 @@ import {
   POSTGRES_ACCEPTANCE_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V1_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -250,7 +252,30 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("rejects evidence that mixes v1 and v2 claims", () => {
+  it("verifies canonical historical v2 evidence with its v2 claims", () => {
+    const input = mutateEvidence(cloneInput(), (record) => {
+      record.schemaVersion = 2;
+      record.checksPassed = [...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED];
+      record.notProven = [...POSTGRES_ACCEPTANCE_V2_NOT_PROVEN];
+    });
+
+    const result = verifyPostgresAcceptanceEvidenceOffline(input);
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V2_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_runtime_authorization_matrix",
+    );
+    expect(result.recordedNotProven).toContain(
+      "full_authenticated_runtime_authorization_matrix",
+    );
+  });
+
+  it("rejects evidence that mixes v1, v2, and v3 claims", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 1;
@@ -258,6 +283,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       }),
       mutateEvidence(cloneInput(), (record) => {
         record.checksPassed = [...POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED];
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 2;
+        record.notProven = [...POSTGRES_ACCEPTANCE_V2_NOT_PROVEN];
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.checksPassed = [...POSTGRES_ACCEPTANCE_V2_CHECKS_PASSED];
       }),
     ]) {
       expectValueFreeFailure(() =>

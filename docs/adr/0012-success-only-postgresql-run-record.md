@@ -18,11 +18,12 @@ important properties the workflow does not prove.
 
 The runner derives its output path from `RUNNER_TEMP` and uses a filename tied
 to the schema version. The first retained record is
-`research-cockpit-postgres-acceptance-v1.json`; the current producer writes
-`research-cockpit-postgres-acceptance-v2.json`. Version 2 adds the bounded
-container-local SCRAM runtime probe and explicitly records the authenticated
-authorization and identity boundaries it does not prove. The parser retains
-exact historical v1 support. The writer creates the current file with
+`research-cockpit-postgres-acceptance-v1.json`; version 2 adds the bounded
+container-local SCRAM runtime probe, and the current producer writes
+`research-cockpit-postgres-acceptance-v3.json`. Version 3 adds the authenticated
+runtime authorization matrix while retaining the remaining identity,
+production, pool, restore, and data limitations. The parser retains exact
+historical v1 and v2 support. The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
 pre-created record cannot be overwritten. The entry point validates that the
 clean checked-out Git commit equals `GITHUB_SHA`, awaits the complete
