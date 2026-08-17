@@ -23,9 +23,8 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 
 ## Cycle 1b — real PostgreSQL proof
 
-Status: first clean-only b1 run complete; bounded b2 runtime-authentication
-source implemented with live execution pending; pool/concurrency and restore
-gates also remain pending.
+Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
+complete and reviewed; pool/concurrency and restore gates remain pending.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -36,15 +35,18 @@ versions, and explicit limitations. The first clean-only workflow passed at
 independently supplied run/repository/hash anchors and the exact committed
 source blobs. See the [evidence note](./POSTGRESQL_ACCEPTANCE_EVIDENCE.md). The
 current role bootstrap still runs as the ephemeral container superuser and does
-not satisfy the distinct migrator or authenticated runtime/backup requirements.
+not satisfy the distinct migrator or authenticated test-loader/backup
+requirements; the bounded b2 runtime login is created separately after
+bootstrap.
 
-**Cycle 1b-b2 target status:** source implemented; live execution and evidence
-review are pending.
-This bounded increment adds one ephemeral PostgreSQL runtime service-account
-login after the existing clean bootstrap. It must authenticate with a run-local
-SCRAM password over loopback TCP inside the unexposed service container, have no
-direct application privilege, explicitly assume only the existing `NOLOGIN`
-runtime capability, and run bounded identity, pre-role/cross-role denial,
+**Cycle 1b-b2 status:** the bounded source and live execution were reviewed at
+commit `3479e164`; see the
+[Cycle 1b-b2 evidence note](./POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md).
+This increment adds one ephemeral PostgreSQL runtime service-account login
+after the existing clean bootstrap. It authenticates with a run-local
+SCRAM password over loopback TCP inside the unexposed service container, has no
+direct application privilege, explicitly assumes only the existing `NOLOGIN`
+runtime capability, and runs bounded identity, pre-role/cross-role denial,
 missing-context, one-tenant isolation, sequential-cleanup, and write-denial
 probes. The comprehensive b1 query-shape, rights, and prepared-read suite is not
 rerun through authentication in b2. It does not add a driver or pool and does
@@ -57,9 +59,9 @@ See
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
-   immediate bounded b2 target is one authenticated runtime service-account
-   session only. Distinct migrator, test-loader, and backup identities remain
-   separate later gates.
+   bounded b2 target of one authenticated runtime service-account session is
+   complete for its reviewed run. Distinct migrator, test-loader, and backup
+   identities remain separate later gates.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
 4. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. Its query must perform the reviewed listing/share-class/security join, supply an explicit semantic unit mapping, and enter core only through the a2 normalizer and operation-scoped port. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
@@ -78,26 +80,28 @@ See
 
 Exit gate: all live-database authorization and restore tests pass from a clean checkout. This is a harness restore target, not a production RPO/RTO.
 
-The separate Ubuntu-only acceptance job now exists and its first reviewed run
-passed. Its PostgreSQL server and `psql`/dump/restore clients come from one exact
-major/minor/distro image reference and index digest. The b2 live rows remain
-Pending and the b1 run cannot satisfy them. Remaining Cycle
-1b-b work after b2 is migrator/test-loader/backup authentication, restore,
-concurrency/cancellation, and the real pool boundary. The row-normalization
+The separate Ubuntu-only acceptance job now exists. Its PostgreSQL server and
+`psql`/dump/restore clients come from one exact major/minor/distro image
+reference and index digest. The reviewed b2 run passed its bounded
+container-local SCRAM rows; the historical b1 run did not satisfy them.
+Remaining Cycle 1b-b work is migrator/test-loader/backup authentication,
+restore, concurrency/cancellation, and the real pool boundary. The row-normalization
 contract is frozen, but a client driver remains gated on the reviewed
 query/unit mapping and those session/pool controls.
 
-The first green-run milestone is complete. The immediate next database
-milestone is the bounded b2 container-local SCRAM runtime service-account
-probe. The distinct migrator is still blocked by the current migration `0001`
+The first b1 green-run milestone and bounded b2 runtime-authentication milestone
+are complete. The next database milestone must remain smaller than a full
+adapter rollout: redesign the distinct migrator/test-loader/backup boundaries
+or add a separately reviewed pool/query slice without conflating those proofs.
+The distinct migrator is still blocked by the current migration `0001`
 design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
 administrative membership edge on a role it creates, while `0001` rejects every
 pre-existing capability-role membership. That bootstrap must be split or
-redesigned in a separate reviewed increment; b2 must not weaken it. Only after
+redesigned in a separate reviewed increment; the b2 result does not weaken it. Only after
 authenticated backup design should the harness add a bounded dump/restore
 probe. Application-pool cancellation/concurrency belongs with a real adapter
-and pool. Do not treat either the clean-only impersonated-capability result or a
-future container-local service-account result as permission to wire the
+and pool. Do not treat either the clean-only impersonated-capability result or
+the reviewed b2 container-local service-account result as permission to wire the
 database into the app or accept real data.
 
 ## Cycle 1c — demo identity and API contract proof

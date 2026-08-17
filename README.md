@@ -52,12 +52,14 @@ it cannot authenticate GitHub, inspect logs, or independently prove PostgreSQL
 executed. The first retained artifact produced that verdict after the linked run
 and logs were reviewed separately.
 
-Cycle 1b-b2 is the next bounded PostgreSQL contract. Its source is implemented,
-but live execution and evidence review are still pending. It targets one ephemeral runtime service
-account authenticating with SCRAM over loopback TCP inside the isolated service
-container, then explicitly assuming only the existing read-only runtime
-capability. It will not add an application driver or pool, expose a database
-port, authenticate an end user, or prove external TLS, production secrets,
+Cycle 1b-b2 proves one additional, bounded PostgreSQL contract. At commit
+`3479e164`, an ephemeral runtime service account authenticated with SCRAM over
+loopback TCP inside the isolated service container, then explicitly assumed
+only the existing read-only runtime capability. The reviewed run and retained
+version 2 record are linked in the
+[Cycle 1b-b2 evidence note](./docs/POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md). This did
+not add an application driver or pool, expose a database port, authenticate an
+end user, or prove external TLS, production secrets,
 migrator/test-loader/backup authentication, restore, or deployment readiness.
 The distinct-migrator boundary remains separate because PostgreSQL 17 role
 creation conflicts with migration `0001`'s zero-membership bootstrap invariant.
@@ -86,13 +88,14 @@ The release gate checks formatting, lint, clean-room/database boundaries,
 fixture and migration hashes, the acceptance-harness declaration, production
 licenses, strict types, tests, and both production builds. CI runs the same gate
 on Windows and Linux. The digest-pinned Ubuntu PostgreSQL workflow and both CI
-platforms passed for `611c93d`. That reviewed clean-only synthetic run is bounded
-engine evidence; it does not substitute for authenticated sessions, concurrent
-pool behavior, dump/restore, production identity, or deployment readiness. The
-offline verifier checks record/source consistency after download but cannot
-authenticate the run by itself. The b2 runtime-authentication rows remain
-Pending until a new reviewed remote run succeeds; the historical b1 run does
-not satisfy them.
+platforms passed for the b1 commit `611c93d` and the bounded b2 commit
+`3479e164`. B1 remains clean-only impersonated-capability evidence. B2
+additionally proves only one container-local SCRAM runtime service account; it
+does not substitute for end-user or production identity, a full authenticated
+authorization matrix, concurrent pool behavior, dump/restore, or deployment
+readiness. The offline verifier checks record/source consistency after download
+but cannot authenticate the GitHub run or independently prove PostgreSQL
+execution.
 
 ## Safety boundary
 
@@ -102,8 +105,8 @@ not satisfy them.
 - Browser-local state is for demonstration only and must not contain real holdings or personal information.
 - Production data, identity, billing, persistence, SEC ingestion, external alerts, and AI remain gated work.
 - Synthetic tests and a clean-only acceptance run are not production authentication or deployed-persistence evidence.
-- Container-local database service-account authentication, once proved, will
-  still not establish end-user identity, external/TLS transport, managed
+- The proved container-local database service-account boundary does not
+  establish end-user identity, external/TLS transport, managed
   secrets, pool safety, or production authorization.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
@@ -112,5 +115,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-a exit matrix](./docs/CYCLE_1BA_EXIT_MATRIX.md),
 [Cycle 1b-a2 exit matrix](./docs/CYCLE_1BA2_EXIT_MATRIX.md),
 [Cycle 1b-b1 exit matrix](./docs/CYCLE_1BB1_EXIT_MATRIX.md),
-[Cycle 1b-b2 exit matrix](./docs/CYCLE_1BB2_EXIT_MATRIX.md), and
+[Cycle 1b-b2 exit matrix](./docs/CYCLE_1BB2_EXIT_MATRIX.md),
+[Cycle 1b-b2 evidence note](./docs/POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md), and
 [architecture decisions](./docs/adr/).

@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **B1 CLEAN-ONLY LIVE ACCEPTANCE PASSED; B2 RUNTIME AUTH PENDING — NOT DEPLOYED PERSISTENCE**
+> **B1 CLEAN-ONLY LIVE ACCEPTANCE PASSED; B2 BOUNDED RUNTIME-AUTH LIVE ACCEPTANCE PASSED — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -8,14 +8,16 @@ The seven migrations and implemented probes passed in the first reviewed run aga
 PostgreSQL 17.11 service at commit `611c93d`; see the
 [retained evidence note](../../docs/POSTGRESQL_ACCEPTANCE_EVIDENCE.md). That run
 is bounded engine evidence for its recorded checks. It does not prove backup
-viability, authenticated sessions, pooling, concurrency, real-data behavior, or
-production readiness.
+viability, production or end-user authentication, pooling, concurrency,
+real-data behavior, or production readiness.
 
 Cycle 1b-b2 is implemented in the acceptance harness. Its verified live status
 is recorded only in the linked exit matrix and any retained evidence note; the
 source alone makes no live claim. Its scope is one ephemeral runtime service account using
 SCRAM over loopback TCP inside the existing unexposed PostgreSQL container. It
 does not change the running application or establish production authentication.
+The first reviewed b2 run passed at commit `3479e164`; see the
+[runtime-authentication evidence note](../../docs/POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md).
 
 There is deliberately no database driver, production or incremental migration
 runner, live credential, or application adapter in this package. The
@@ -148,9 +150,10 @@ tests.
 ADR 0014 defines one acceptance-only exception after the existing bootstrap:
 an ephemeral runtime login may receive one catalog-verified membership in the
 runtime capability with `ADMIN FALSE`, `INHERIT FALSE`, and `SET TRUE`. That
-source is implemented; its live execution remains pending, and the historical
-b1 run retains the zero-edge catalog it recorded. The boundary does not authorize an
-owner, test-seed, or backup membership and does not redesign deployment roles.
+source and its bounded live probes passed in reviewed run `31988811000`; the
+historical b1 run retains the zero-edge catalog it recorded. The boundary does
+not authorize an owner, test-seed, or backup membership and does not redesign
+deployment roles.
 
 ## Static guarantees
 
@@ -299,8 +302,8 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact clean-only b1 checks in the retained run
-record. Container-local runtime service-account authentication remains pending;
-even after it passes, external/TLS authentication, end-user identity binding,
-production secret handling, pooling, distinct migrator/test-loader/backup
-credentials, logical restore, and disaster recovery will remain unproven.
+evidence is limited to the exact b1 and bounded b2 checks in their retained run
+records. The b2 result covers only one container-local runtime service account;
+external/TLS authentication, end-user identity binding, production secret
+handling, pooling, distinct migrator/test-loader/backup credentials, logical
+restore, and disaster recovery remain unproven.

@@ -50,6 +50,14 @@ returned `offline_consistent`; exact links and hashes are in the
 [evidence note](../POSTGRESQL_ACCEPTANCE_EVIDENCE.md). This remains unsigned
 run metadata and does not promote any limitation recorded in the artifact.
 
+The first version 2 record was produced by successful run `31988811000`,
+attempt 1, at commit `3479e164` after the bounded container-local SCRAM runtime
+probe passed. Its downloaded bytes also returned `offline_consistent`; the
+[Cycle 1b-b2 evidence note](../POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md) records its
+exact anchors and narrower authentication claim. Version 2 remains unsigned
+run metadata and explicitly preserves the unproven production, end-user,
+full-authorization, pool, restore, and real-data boundaries.
+
 ## Primary sources
 
 - [GitHub artifact upload action](https://github.com/actions/upload-artifact)

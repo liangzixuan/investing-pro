@@ -1,6 +1,6 @@
 # ADR 0014: Container-local runtime service-account authentication
 
-Status: accepted for Cycle 1b-b2; source implemented, live execution pending
+Status: accepted; first Cycle 1b-b2 live execution reviewed
 
 ## Context
 
@@ -98,14 +98,19 @@ redesign of platform role provisioning and application migrations. B2 must not
 weaken the zero-membership bootstrap guard or describe the existing superuser
 bootstrap as a least-privileged migration.
 
-## Acceptance rule
+## Acceptance rule and reviewed result
 
-The source is implemented, but the design remains live-pending until the
-dedicated remote PostgreSQL workflow succeeds from a clean checkout. Static
-checks, unit-test mocks, a source-only implementation, or the historical b1
-artifact cannot mark any b2 live row as passed. The reviewed run and its
-success-only record must be linked before the milestone is described as
-live-verified.
+A run may satisfy this decision only when the dedicated remote PostgreSQL
+workflow succeeds from a clean checkout and its success-only record is linked
+and reviewed. Static checks, unit-test mocks, a source-only implementation, or
+the historical b1 artifact cannot mark a b2 live row as passed.
+
+That rule was satisfied for commit `3479e164`, PostgreSQL run `31988811000`,
+attempt 1. The downloaded version 2 record returned `offline_consistent`
+against separately supplied commit, repository, run, and byte-hash anchors.
+Exact links, hashes, completed checks, and limitations are recorded in the
+[Cycle 1b-b2 evidence note](../POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md). This result
+is bounded to the decision above and does not widen any explicit non-claim.
 
 ## Primary sources
 

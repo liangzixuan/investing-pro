@@ -1,6 +1,6 @@
 # Canonical data and tenancy contract
 
-Status: Cycle 1b-a2 design contract plus implemented, live-pending Cycle 1b-b2
+Status: Cycle 1b-a2 design contract plus a live-verified, bounded Cycle 1b-b2
 runtime-session boundary; synthetic data only.
 
 ## Identity
@@ -71,18 +71,22 @@ counting bypass may reveal rows hidden by policy.
 
 ## Proof boundary
 
-The in-memory adapter proves use-case and repository behavior under deterministic
-tests. The SQL package also has a reviewed clean-only b1 run covering its recorded
-PostgreSQL catalog, RLS, authorization, and sequential-context probes. Neither
-proves production identity, authenticated sessions, connection-pool context
-clearing, concurrent behavior, backup/restore, or the future deletion path.
-A b2 increment now implements one ephemeral PostgreSQL runtime service-account
-probe using SCRAM over container-local TCP. Its live run and evidence review
-are still pending. Even after it passes, `session_user` will identify only that database
-service account: it will not bind an end user to a principal or organization,
-and `set_request_context` will remain a trusted runtime operation rather than an
-identity resolver. External/TLS transport, production secrets, pooling,
-migrator/test-loader/backup authentication, and restore remain separate gates.
+The in-memory adapter proves use-case and repository behavior under
+deterministic tests. The SQL package has a reviewed clean-only b1 run covering
+its recorded PostgreSQL catalog, RLS, authorization, and sequential-context
+probes. B1 does not prove an authenticated database session. A reviewed b2 run
+now proves one ephemeral PostgreSQL runtime service account using SCRAM over
+container-local TCP and explicitly selecting the existing read-only capability.
+Its exact anchors and limits are in the
+[Cycle 1b-b2 evidence note](./POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md).
+
+That bounded result does not prove production identity or external
+authentication. `session_user` identifies only the database service account;
+it does not bind an end user to a principal or organization, and
+`set_request_context` remains a trusted runtime operation rather than an
+identity resolver. External/TLS transport, production secrets, connection-pool
+cleanup, concurrency, migrator/test-loader/backup authentication,
+backup/restore, and the future deletion path remain separate gates.
 A database adapter must not infer “no omissions” merely because RLS hid rows;
 it needs an explicit completeness signal and must use `count: null` when an
 exact count cannot be disclosed or established.

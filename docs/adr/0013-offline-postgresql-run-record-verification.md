@@ -48,5 +48,12 @@ The retained artifact from run `31961988213`, attempt 1, at commit `611c93d`
 returned `offline_consistent` against independently supplied metadata and the
 producer-log byte hash. The [evidence note](../POSTGRESQL_ACCEPTANCE_EVIDENCE.md)
 records the exact anchors and limitations. This completes the first remote-run
-consistency milestone; migrator, authenticated-session, restore, pool, and
+consistency milestone.
+
+The version 2 artifact from run `31988811000`, attempt 1, at commit `3479e164`
+also returned `offline_consistent`; see the
+[Cycle 1b-b2 evidence note](../POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md). That run
+adds one bounded, container-local authenticated runtime service account only.
+External/production and end-user authentication, the full authenticated
+authorization matrix, migrator/test-loader/backup sessions, restore, pool, and
 adapter work remain separate gated work.
