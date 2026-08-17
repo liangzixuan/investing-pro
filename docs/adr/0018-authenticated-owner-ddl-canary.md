@@ -1,7 +1,6 @@
 # ADR 0018: Authenticated owner-DDL canary
 
-Status: accepted for Cycle 1b-b6; source implemented and locally verified; live
-version 6 evidence pending
+Status: accepted; source implemented; first live version 6 evidence reviewed
 
 ## Context
 
@@ -74,8 +73,16 @@ claim requires a new immutable version 6 success record that:
 A B6 live row may become `Pass` only after the dedicated workflow succeeds from
 a clean checkout against the pinned PostgreSQL 17 image, the version 6 artifact
 and logs are retained, repository and artifact hashes match, and independent
-offline review returns `offline_consistent`. No live version 6 result or
-evidence note exists at source stage.
+offline review returns `offline_consistent`.
+
+Tested commit
+[`7aac5027011dd4f650658e268425ba6eb4a7993f`](https://github.com/liangzixuan/investing-pro/commit/7aac5027011dd4f650658e268425ba6eb4a7993f)
+satisfied that rule in PostgreSQL [run `32058853521`, attempt 1](https://github.com/liangzixuan/investing-pro/actions/runs/32058853521).
+The downloaded version 6 record was retained and returned
+`offline_consistent`; exact anchors, byte hashes, source hashes, completed
+checks, and nonclaims are recorded in the
+[B6 evidence note](../POSTGRESQL_OWNER_DDL_EVIDENCE.md). The later
+documentation commit does not retest or expand the recorded run.
 
 ## Explicit exclusions
 
@@ -110,6 +117,7 @@ retroactively widened by this decision.
 - [ADR 0014: Container-local runtime authentication](./0014-container-local-runtime-authentication.md)
 - [ADR 0017: Authenticated test-loader fixture load](./0017-authenticated-test-loader-fixture-load.md)
 - [Cycle 1b-b6 exit matrix](../CYCLE_1BB6_EXIT_MATRIX.md)
+- [Cycle 1b-b6 evidence note](../POSTGRESQL_OWNER_DDL_EVIDENCE.md)
 - [PostgreSQL 17 role attributes](https://www.postgresql.org/docs/17/role-attributes.html)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)

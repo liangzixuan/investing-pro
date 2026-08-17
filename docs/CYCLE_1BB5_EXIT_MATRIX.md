@@ -57,7 +57,7 @@ authentication, TLS, managed secrets, a production loader, concurrent clients,
 an authenticated migrator or backup account, restore viability, real data,
 application integration, deployed persistence, or production readiness.
 
-Cycle 1b-b6 later adds only a preparatory authenticated owner-DDL canary. Its
-source does not execute a migration, close `authenticated_migrator_sessions`,
-or change this historical B5 result. The full versioned platform/application
-migration redesign remains reserved for B7.
+Cycle 1b-b6 later added only a preparatory authenticated owner-DDL canary. Its
+reviewed canary did not execute a migration, close
+`authenticated_migrator_sessions`, or change this historical B5 result. The
+full versioned platform/application migration redesign remains reserved for B7.

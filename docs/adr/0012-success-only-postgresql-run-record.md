@@ -1,7 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 5 live record retained and reviewed; version 6 source
-contract implemented with live evidence pending
+Status: accepted; version 6 live record retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -30,8 +29,8 @@ live-reviewed. The current source producer writes
 `research-cockpit-postgres-acceptance-v6.json`; version 6 appends only the
 authenticated owner-DDL canary while retaining the exact version 5 limitations
 and six-source-hash shape. The parser retains exact historical v1 through v5
-support and the closed current v6 contract. No live version 6 record has been
-retained or reviewed.
+support and the closed current v6 contract. The first version 6 record is now
+retained and live-reviewed.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -101,14 +100,18 @@ unsigned run metadata and does not prove production/external authentication,
 end-user binding, TLS/secrets, a driver or pool, concurrency, restore, real
 data, or application integration.
 
-Version 6 source appends exactly `authenticated_owner_ddl_canary` and retains
-every version 5 check, limitation, and source-hash key. The canary exercises one
-temporary authenticated owner-role transition and fixed DDL object after the
-unchanged bootstrap; it does not execute a migration or remove
-`authenticated_migrator_sessions`. Its distinct filename and artifact name
-prevent reinterpretation of the retained version 5 record. No version 6 live
-claim is valid until a clean pinned run, retained logs and artifact, and
-independent offline review satisfy ADR 0018 and the Cycle 1b-b6 exit matrix.
+The first version 6 record was produced by successful run `32058853521`,
+attempt 1, at commit `7aac502` after the authenticated owner-DDL canary passed.
+Its downloaded bytes returned `offline_consistent`; the
+[Cycle 1b-b6 evidence note](../POSTGRESQL_OWNER_DDL_EVIDENCE.md) records its
+exact anchors and bounded claim. Version 6 appends exactly
+`authenticated_owner_ddl_canary` and retains every version 5 check, limitation,
+and source-hash key. The canary exercises one temporary authenticated owner-role
+transition and fixed DDL object after the unchanged bootstrap; it does not
+execute a migration or remove `authenticated_migrator_sessions`. Its distinct
+filename and artifact name prevent reinterpretation of the retained version 5
+record. The later documentation commit does not retest or expand the recorded
+run.
 
 ## Primary sources
 

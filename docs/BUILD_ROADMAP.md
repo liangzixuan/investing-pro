@@ -26,10 +26,9 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
 complete and reviewed; b3 authenticated authorization matrix run complete and
 reviewed; b4 driverless projection-query and semantic-unit-mapping run complete
-and reviewed; b5 authenticated test-loader run complete and reviewed; b6
-authenticated owner-DDL canary source implemented and locally verified with
-live version 6 evidence pending. Pool/concurrency and restore gates remain later
-work.
+and reviewed; b5 authenticated test-loader run complete and reviewed; and b6
+authenticated owner-DDL canary run complete and reviewed. Pool/concurrency and
+restore gates remain later work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -113,13 +112,14 @@ capability. It proves wrong-password and pre-role denial, forbidden
 role/session escalation, transaction-local owner selection, injected DDL
 rollback, a committed canary with exact owner and ACL, authenticated removal,
 ledger immutability, role reset, and zero authentication/object residue before
-catalog checks and evidence. Source implementation and local verification are
-complete. The exact new completed-check ID is
-`authenticated_owner_ddl_canary`; version 6 retains the same six source-hash
-keys and every version 5 nonclaim, including
-`authenticated_migrator_sessions`. The clean pinned
-run and independent version 6 review remain pending. See
-[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md) and the
+catalog checks and evidence. Source implementation, the clean pinned run, and
+independent version 6 review are complete at commit `7aac502`. PostgreSQL run
+`32058853521` produced an offline-consistent retained record. The exact new
+completed-check ID is `authenticated_owner_ddl_canary`; version 6 retains the
+same six source-hash keys and every version 5 nonclaim, including
+`authenticated_migrator_sessions`. See the
+[B6 evidence note](./POSTGRESQL_OWNER_DDL_EVIDENCE.md),
+[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md).
 
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
@@ -169,10 +169,10 @@ operation-rights, and one-backend prepared matrix and retained the remaining
 version 3 limitations. The reviewed b4 run passed the exact driverless
 query-to-normalizer path and retained the version 4 limitations. The reviewed
 b5 run passed the exact authenticated non-owner fixture-load path and retained
-the version 5 nonclaims. B6 source now adds a preparatory authenticated
-owner-DDL canary, but its live version 6 gate remains pending and it retains
-`authenticated_migrator_sessions`. After B6 review, Cycle 1b-b7 must introduce
-the versioned platform/application migration split and complete authenticated
+the version 5 nonclaims. The reviewed b6 run passed the preparatory
+authenticated owner-DDL canary and retained
+`authenticated_migrator_sessions`. Cycle 1b-b7 must next introduce the
+versioned platform/application migration split and complete authenticated
 migration proof. Authenticated backup and restore follow B7, then a
 single-client read-only adapter, and finally the real
 pool/concurrency/cancellation boundary. The row-normalization contract is
@@ -180,11 +180,9 @@ already frozen; the B4 query and unit contract now provides a reviewed input to
 the later single-client adapter milestone without proving that adapter.
 
 The b1 green-run, bounded b2 runtime-authentication, b3 authenticated
-authorization-matrix, b4 driverless query/normalizer, and b5 authenticated
-test-loader milestones are complete for their recorded scopes. B6 is the active
-preparatory owner-DDL canary: its source is locally verified, but no live
-version 6 claim exists. Its next gate is the pinned run and independent evidence
-review. B7, not B6, is the later platform/migrator redesign and full
+authorization-matrix, b4 driverless query/normalizer, b5 authenticated
+test-loader, and b6 owner-DDL canary milestones are complete for their recorded
+scopes. B7, not B6, is the next platform/migrator redesign and full
 authenticated migration proof. A single-client read adapter must remain
 separate from B4 through B7 and the pool/concurrency milestone.
 The distinct migrator is still blocked by the current migration `0001`

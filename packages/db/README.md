@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B5 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B6 OWNER-DDL CANARY SOURCE LOCALLY VERIFIED WITH LIVE EVIDENCE PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B6 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -58,10 +58,12 @@ proves wrong-password and pre-role denial, forbidden role/session escalation,
 transaction-local owner identity, injected DDL rollback, one committed canary
 with exact owner and ACL, authenticated removal, ledger immutability, role
 reset, and exhaustive authentication/object cleanup before the existing catalog
-and evidence checks. Source and local verification are complete; no live
-version 6 result exists yet. B6 applies no migration and leaves
-`authenticated_migrator_sessions` unproven. See
-[ADR 0018](../../docs/adr/0018-authenticated-owner-ddl-canary.md) and the
+and evidence checks. That exact path passed in PostgreSQL run `32058853521` at
+commit `7aac502`; the downloaded version 6 record returned
+`offline_consistent` against separately supplied anchors. B6 applies no
+migration and leaves `authenticated_migrator_sessions` unproven. See the
+[B6 evidence note](../../docs/POSTGRESQL_OWNER_DDL_EVIDENCE.md),
+[ADR 0018](../../docs/adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](../../docs/CYCLE_1BB6_EXIT_MATRIX.md).
 
 There is deliberately no database driver, production or incremental migration
@@ -385,11 +387,10 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Current live
-evidence is limited to the exact b1-b5 checks in their retained run records. The
-b2-b5 results cover only sequential, synthetic, container-local runtime and
-test-loader service accounts plus one narrow dimensionless financial-fact
-projection. B6 source adds only a locally verified owner-DDL canary; its live
-version 6 evidence is pending, and it executes no migration. External/TLS
+evidence is limited to the exact b1-b6 checks in their retained run records. The
+b2-b6 results cover only sequential, synthetic, container-local runtime,
+test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
+financial-fact projection. B6 executes no migration. External/TLS
 authentication, end-user identity binding, production secret handling, a
 driver or pool, concurrency/cancellation/timeouts, complete dossier projections,
 distinct migrator and backup credentials, logical restore, disaster recovery,

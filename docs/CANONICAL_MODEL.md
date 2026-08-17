@@ -1,9 +1,8 @@
 # Canonical data and tenancy contract
 
 Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
-runtime authentication, b3 authorization-matrix, b4 projection-query, and b5
-test-loader boundaries, plus a locally verified B6 owner-DDL canary with live
-evidence pending; synthetic data only.
+runtime authentication, b3 authorization-matrix, b4 projection-query, b5
+test-loader, and b6 owner-DDL canary boundaries; synthetic data only.
 
 ## Identity
 
@@ -116,14 +115,16 @@ See the [B5 evidence note](./POSTGRESQL_TEST_LOADER_EVIDENCE.md),
 [Cycle 1b-b5 exit matrix](./CYCLE_1BB5_EXIT_MATRIX.md). This changes no data,
 tenancy, projection, or application contract.
 
-Cycle 1b-b6 source adds a different, preparatory post-bootstrap path. One
+Cycle 1b-b6 adds a different, preparatory post-bootstrap path. One
 ephemeral authenticated login may select only the existing owner capability for
-one fixed transactional DDL canary. The source proves pre-role and escalation
-denial, rollback, a committed object with exact owner and ACL, authenticated
-removal, ledger immutability, role reset, and zero authentication/object
-residue. Source and local verification are complete, but no live version 6
-result exists. See
-[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md) and the
+one fixed transactional DDL canary. The reviewed run proved pre-role denial,
+rejection of the reviewed forbidden role/session transitions, rollback, a
+committed object with exact owner and ACL, authenticated removal, ledger
+immutability, role reset, and zero authentication/object residue. That path
+passed in PostgreSQL run `32058853521` at commit `7aac502`; the retained version
+6 record returned `offline_consistent`. See the
+[B6 evidence note](./POSTGRESQL_OWNER_DDL_EVIDENCE.md),
+[ADR 0018](./adr/0018-authenticated-owner-ddl-canary.md), and the
 [Cycle 1b-b6 exit matrix](./CYCLE_1BB6_EXIT_MATRIX.md). B6 changes no canonical
 entity, tenancy, time, numeric, evidence, rights, or projection contract.
 

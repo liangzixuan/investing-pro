@@ -1,7 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 5 artifact reviewed successfully; version 6
-source verification implemented with live evidence pending
+Status: accepted; retained version 6 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -17,10 +16,9 @@ original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
 historical v1 through v5 support and accepts the current v6 schema without
 mixing any version's closed check, limitation, or source-hash lists. The first
-version 5 artifact is retained and reviewed; no version 6 artifact has been
-retained or reviewed. Canonical comparison rejects byte-order marks, CRLF or
-alternate whitespace, trailing content, reordered members, and duplicate JSON
-member names.
+version 6 artifact is retained and reviewed. Canonical comparison rejects
+byte-order marks, CRLF or alternate whitespace, trailing content, reordered
+members, and duplicate JSON member names.
 
 Source validation uses only fixed paths read as raw Git blobs from the explicit
 40-character commit. It does not read source from the mutable worktree and does
@@ -90,10 +88,12 @@ concurrency, restore, real data, application integration, or production
 readiness. `offline_consistent` remains a source/record consistency result, not
 database-execution proof without the separately reviewed run and logs.
 
-The source-current version 6 verifier accepts the same six-source bundle as
-versions 4 and 5 and requires the exact appended
-`authenticated_owner_ddl_canary` check with every version 5 limitation
+The version 6 artifact from run `32058853521`, attempt 1, at commit `7aac502`
+also returned `offline_consistent`; see the
+[Cycle 1b-b6 evidence note](../POSTGRESQL_OWNER_DDL_EVIDENCE.md). The verifier
+accepted the same six-source bundle as versions 4 and 5 and required the exact
+appended `authenticated_owner_ddl_canary` check with every version 5 limitation
 unchanged. It does not infer that the canary is a migration and cannot remove
 `authenticated_migrator_sessions`. Historical version 5 bytes and semantics
-remain frozen. A version 6 live result and any evidence note remain pending the
-separate clean workflow and independent review required by ADR 0018.
+remain frozen. The later documentation commit does not retest or expand the
+recorded run, and `offline_consistent` retains every verifier limitation above.

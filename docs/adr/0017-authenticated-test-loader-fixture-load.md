@@ -124,8 +124,8 @@ workflow topology, or exposed network surface.
 B5 closes only the historical authenticated test-loader nonclaim for one
 sequential, synthetic, container-local acceptance run. The distinct migrator
 still requires a separate bootstrap design, and authenticated backup/restore
-remains a later milestone. B6 later adds only a preparatory owner-DDL canary;
-it does not execute a migration or close the migrator nonclaim. B7 retains the
+remains a later milestone. B6 later added only a preparatory owner-DDL canary;
+it did not execute a migration or close the migrator nonclaim. B7 retains the
 versioned platform/application migration redesign and complete authenticated
 migration proof. Historical b1 through b4 evidence retains its exact recorded
 scope and is not retroactively widened by either successor.
