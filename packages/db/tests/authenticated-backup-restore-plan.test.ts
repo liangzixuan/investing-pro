@@ -489,6 +489,8 @@ describe("authenticated backup and bounded restore plan", () => {
       expect(query.sql).toContain(
         "ORDER BY pg_catalog.to_jsonb(source_row)::text",
       );
+      expect(query.sql).toContain("'rows', coalesce(");
+      expect(query.sql).not.toContain("pg_catalog.coalesce(");
       expect(query.sql).not.toContain("shared_data.schema_migrations");
     }
 

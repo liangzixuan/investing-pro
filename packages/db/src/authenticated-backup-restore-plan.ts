@@ -603,7 +603,7 @@ SET LOCAL ROLE ${AUTHENTICATED_BACKUP_CAPABILITY_ROLE};
 SET LOCAL TIME ZONE 'UTC';
 SELECT pg_catalog.jsonb_build_object(
   'table', '${table}',
-  'rows', pg_catalog.coalesce(
+  'rows', coalesce(
     pg_catalog.jsonb_agg(
       pg_catalog.to_jsonb(source_row)
       ORDER BY pg_catalog.to_jsonb(source_row)::text
