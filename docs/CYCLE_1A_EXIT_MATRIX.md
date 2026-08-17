@@ -22,16 +22,20 @@ final verification run.
 
 The later Cycle 1b-b1 run supplied bounded clean-migration syntax, catalog and
 impersonated `FORCE RLS` evidence, selected cross-tenant/context probes, replay
-refusal, and injected rollback against pinned PostgreSQL 17.11. It did not
-exercise a database adapter, authenticated sessions, or an application/future
-authorized writer path. These remaining gates stay mandatory before any
-database adapter or tenant API is enabled:
+refusal, and injected rollback against pinned PostgreSQL 17.11. Later b2/b3
+runs added one bounded container-local authenticated runtime service account
+and the reviewed synthetic authorization matrix. They did not exercise a
+database adapter, application identity resolver, trusted tenant-selection
+boundary, or an application/future authorized writer path. These remaining
+gates stay mandatory before any database adapter or tenant API is enabled:
 
-- authenticated non-owner identity/role mapping and session behavior;
+- application-integrated end-user/principal/organization resolution and
+  trusted tenant selection;
 - composite-FK and future writer-path attacks beyond b1's read probes;
 - cancellation, timeouts, simultaneous backends, and real pool reuse;
 - a live PostgreSQL implementation of the operation-aware projection contract
-  frozen in Cycle 1b-a;
+  frozen in Cycle 1b-a; Cycle 1b-b4 is the selected driverless query/unit proof,
+  not an adapter;
 - at least 1,000 alternating/concurrent tenant operations;
 - live checksum-drift handling, logical dump/restore, and post-restore
   authorization parity; and

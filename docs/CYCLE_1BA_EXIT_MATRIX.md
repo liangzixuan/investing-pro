@@ -19,9 +19,10 @@ path, identity provider, or real data was added.
 
 ## Deliberately pending
 
-- adapter-level pool reuse, cancellation, concurrency, and restore evidence;
-- the read-only query/driver that invokes the Cycle 1b-a2 fail-closed row
-  normalizer and supplies reviewed identity/unit mappings;
+- the selected Cycle 1b-b4 driverless read-only query and semantic unit mapping
+  that invoke the Cycle 1b-a2 fail-closed row normalizer;
+- a later client driver, adapter-level pool reuse, cancellation, concurrency,
+  and restore evidence;
 - a core composition policy for combining multiple operation views in one
   request without mixing scopes or snapshots;
 - production alert execution through the alert-specific view;
@@ -29,7 +30,8 @@ path, identity provider, or real data was added.
   notifications.
 
 The later Cycle 1b-b1 Ubuntu run supplied bounded live migration, role, RLS, and
-sequential-context evidence. It did not execute this projection port or a
-database adapter and did not prove a real pool, cancellation, concurrency, or
-restore. SQLite, PGlite, mocks, and static SQL checks remain unacceptable
-substitutes for those later gates.
+sequential-context evidence; b2/b3 added bounded authenticated service-account
+and authorization-matrix evidence. None executed this projection port, the B4
+query/unit slice, or a database adapter, and none proved a real pool,
+cancellation, concurrency, or restore. SQLite, PGlite, mocks, and static SQL
+checks remain unacceptable substitutes for those later gates.

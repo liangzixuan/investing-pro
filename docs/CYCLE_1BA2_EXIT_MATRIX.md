@@ -19,18 +19,21 @@ was added.
 
 ## Deliberately pending
 
-- the SQL query that performs the explicit listing -> share class -> security
-  join, enforces a reviewed result-size bound, and emits this exact flat row
-  shape;
-- a reviewed semantic mapping from stored unit/currency values to core units;
-- an authenticated non-owner session, client driver, pool cleanup,
-  cancellation, concurrency, and logical restore proof;
+- Cycle 1b-b4, now selected, must add the SQL query that performs the explicit
+  listing -> share class -> security join, enforces a reviewed result-size
+  bound, and emits this exact flat row shape;
+- B4 must also add a reviewed, closed semantic mapping from stored
+  unit/currency pairs to core units;
+- b2/b3 completed a bounded authenticated non-owner runtime service-account
+  path; a client driver, application identity/tenant resolution, pool cleanup,
+  cancellation, concurrency, and logical restore remain pending;
 - dimensioned facts, complete dossier/history/timeline/evidence projections,
   production identity, vendor data, API writes, and notifications.
 
 Passing this matrix proves only a pure parser contract. It is not live
 PostgreSQL evidence and is not a production adapter.
 
-The later Cycle 1b-b1 PostgreSQL acceptance run passed its migration/RLS
-harness, but it did not execute this normalizer, a projection query, or an
-adapter. The a2 proof boundary therefore remains unchanged.
+The later b1-b3 PostgreSQL acceptance runs passed their recorded migration,
+RLS, service-account, and authorization checks, but they did not execute this
+normalizer, a projection query, or an adapter. The a2 proof boundary remains
+unchanged. B4 will add a separate live query-to-normalizer proof.

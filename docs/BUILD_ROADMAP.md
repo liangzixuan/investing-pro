@@ -25,7 +25,9 @@ The existing GET-only API and browser-local demo remain unchanged. This slice is
 
 Status: first clean-only b1 run complete; bounded b2 runtime-authentication run
 complete and reviewed; b3 authenticated authorization matrix run complete and
-reviewed; pool/concurrency and restore gates remain pending.
+reviewed. Cycle 1b-b4 is selected as the next milestone: a driverless
+projection-query and semantic-unit-mapping proof. Its source and live evidence
+are pending; pool/concurrency and restore gates remain later work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -72,6 +74,18 @@ null/malformed/unsupported-context cases. See the
 [ADR 0015](./adr/0015-authenticated-runtime-authorization-matrix.md), and the
 [Cycle 1b-b3 exit matrix](./CYCLE_1BB3_EXIT_MATRIX.md).
 
+**Cycle 1b-b4 selected scope:** add one source-controlled, parameterized,
+read-only query for the exact listing -> share class -> security -> financial
+fact -> rights policy/current-operation grant path. Freeze a closed semantic
+mapping from stored unit/currency pairs to the narrow core units,
+emit exactly the Cycle 1b-a2 wire shape with a reviewed result bound, and feed
+the rows through the existing fail-closed normalizer. Exercise this slice only
+through the existing container-local authenticated `psql` acceptance path. B4
+adds no database driver, pool, application import or composition, migration,
+writer capability, API route, or real data. See
+[ADR 0016](./adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
+and the [Cycle 1b-b4 exit matrix](./CYCLE_1BB4_EXIT_MATRIX.md).
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -80,7 +94,12 @@ null/malformed/unsupported-context cases. See the
    identities remain separate later gates.
 2. **Cycle 1b-a complete:** the database-to-core contract is operation-scoped, validates returned scope/cutoffs, resolves exact policy versions in core, exposes no denied IDs/count attestation, and forces incomplete/unknown RLS views to `hasOmissions: true`, `count: null`. History, timeline, and instrument/evidence bindings are snapshot-owned, with adversarial SYN2 isolation coverage. See the Cycle 1b-a exit matrix and ADR 0009.
 3. **Cycle 1b-a2 complete:** a pure database-package normalizer rejects malformed or partial synthetic financial-fact join batches before core. It freezes listing/security identity direction, lossless timestamp/fixed-decimal handling, exact operation grants, unknown RLS completeness, and the currently representable dimensionless unit subset. It contains no query, driver, pool, or app wiring; see ADR 0011 and the Cycle 1b-a2 exit matrix.
-4. Add a read-only PostgreSQL adapter first and keep it out of the default demo composition root. Its query must perform the reviewed listing/share-class/security join, supply an explicit semantic unit mapping, and enter core only through the a2 normalizer and operation-scoped port. The current runtime capability remains read-only. Before implementing any mutation method, add a separate, narrowly scoped `NOLOGIN` writer capability and write policies in a reviewed migration; never widen the runtime role in place.
+4. **Cycle 1b-b4 selected; implementation pending:** prove the exact read-only
+   projection query and closed semantic unit mapping through authenticated
+   `psql`, then pass the bounded result through the a2 normalizer. This is a
+   query contract and live acceptance slice, not an adapter. A driver, pool,
+   application import, composition-root switch, mutation, and real data are
+   prohibited in B4.
 5. **Bounded isolation probes complete:** b1 covers direct-ID/list/join/count/
    subquery access, missing/malformed context, deactivation fixtures, and
    alternating prepared reads through capability impersonation. B3 implements
@@ -107,27 +126,31 @@ reference and index digest. The reviewed b2 run passed its bounded
 container-local SCRAM rows; the historical b1 run did not satisfy them.
 The reviewed b3 run passed its exact authenticated tenant-isolation,
 operation-rights, and one-backend prepared matrix and retained the remaining
-version 3 limitations. Remaining Cycle 1b-b work is
-migrator/test-loader/backup authentication, restore,
-concurrency/cancellation, and the real pool boundary. The row-normalization
-contract is frozen, but a client driver remains gated on the reviewed
-query/unit mapping and those session/pool controls.
+version 3 limitations. The selected B4 query/unit slice is next. Remaining
+Cycle 1b-b work after B4 is authenticated test-loader proof, the
+platform/migrator split and live migrator proof, authenticated backup and
+restore, a single-client read-only adapter, and finally the real
+pool/concurrency/cancellation boundary. The row-normalization contract is
+already frozen; a client driver remains prohibited until the B4 query and unit
+contract passes.
 
 The first b1 green-run, bounded b2 runtime-authentication, and b3 authenticated
 authorization-matrix milestones are complete for their recorded scopes. The
-next database milestone must remain smaller than a full adapter rollout:
-redesign one distinct migrator/test-loader/backup boundary or add a separately
-reviewed query slice without conflating it with pool/concurrency proof.
+second, product-learning option is now selected: B4 is the separately reviewed
+driverless projection-query and semantic-unit-mapping slice. B5 is reserved for
+authenticated non-owner test-loader proof. A later single-client read adapter
+must remain separate from both B4 and the pool/concurrency milestone.
 The distinct migrator is still blocked by the current migration `0001`
 design: on PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an
 administrative membership edge on a role it creates, while `0001` rejects every
 pre-existing capability-role membership. That bootstrap must be split or
-redesigned in a separate reviewed increment; the b2 result does not weaken it. Only after
-authenticated backup design should the harness add a bounded dump/restore
-probe. Application-pool cancellation/concurrency belongs with a real adapter
-and pool. Do not treat either the clean-only impersonated-capability result or
-the reviewed b2/b3 container-local service-account results as permission to wire
-the database into the app or accept real data.
+redesigned in a separate reviewed increment; the b2 result does not weaken it.
+Only after authenticated backup design should the harness add a bounded
+dump/restore probe. Application-pool cancellation/concurrency belongs with a
+real adapter and pool. Do not treat B4, the clean-only
+impersonated-capability result, or the reviewed b2/b3 container-local
+service-account results as permission to wire the database into the app or
+accept real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

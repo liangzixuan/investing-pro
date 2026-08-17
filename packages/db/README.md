@@ -42,9 +42,14 @@ financial-fact join rows a future read-only adapter must emit. It accepts only
 the current synthetic, dimensionless core subset; separates listing and
 security identity; normalizes fixed decimal and lossless zoned timestamp text;
 and rejects a whole malformed batch with one value-free error. It performs no
-SQL and cannot accept source completeness or counts. The current schema and
-acceptance fixture do not yet establish the semantic unit mapping or reviewed
-listing/share-class/security query required to call it.
+SQL and cannot accept source completeness or counts. Cycle 1b-b4 is now the
+selected next milestone for the missing driverless
+listing/share-class/security query, closed semantic unit mapping, bounded raw
+result, and authenticated `psql`-to-normalizer proof. B4 source and live
+evidence are pending, and it adds no client driver, pool, or application import;
+see
+[ADR 0016](../../docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
+and the [Cycle 1b-b4 exit matrix](../../docs/CYCLE_1BB4_EXIT_MATRIX.md).
 
 The separate Ubuntu workflow pins PostgreSQL 17.11 Bookworm by OCI image-index
 digest, publishes no host port, and runs every client command inside that

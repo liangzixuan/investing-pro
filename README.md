@@ -78,6 +78,18 @@ null/malformed/unsupported-context cases. See the
 [exit matrix](./docs/CYCLE_1BB3_EXIT_MATRIX.md), and
 [ADR 0015](./docs/adr/0015-authenticated-runtime-authorization-matrix.md).
 
+Cycle 1b-b4 is the selected next milestone. It will prove one parameterized,
+operation-specific listing-to-financial-fact PostgreSQL query, a closed semantic
+unit mapping, a 100-row fail-closed result bound, and integration with the
+existing row normalizer through the authenticated container-local `psql` path.
+It is deliberately driverless: no pool, API/web import, app composition, write
+path, migration, or real data is included. It also adds no external
+runtime/development dependency, database-driver dependency, package-manifest
+dependency change, or lockfile change. Source and live evidence are pending;
+see
+[ADR 0016](./docs/adr/0016-driverless-projection-query-and-semantic-unit-mapping.md)
+and the [Cycle 1b-b4 exit matrix](./docs/CYCLE_1BB4_EXIT_MATRIX.md).
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -139,4 +151,5 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b2 evidence note](./docs/POSTGRESQL_RUNTIME_AUTH_EVIDENCE.md),
 [Cycle 1b-b3 exit matrix](./docs/CYCLE_1BB3_EXIT_MATRIX.md),
 [Cycle 1b-b3 evidence note](./docs/POSTGRESQL_AUTHORIZATION_MATRIX_EVIDENCE.md),
+[Cycle 1b-b4 exit matrix](./docs/CYCLE_1BB4_EXIT_MATRIX.md),
 and [architecture decisions](./docs/adr/).
