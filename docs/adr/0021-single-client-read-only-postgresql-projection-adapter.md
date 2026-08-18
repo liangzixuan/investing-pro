@@ -28,7 +28,7 @@ URL, username, password, environment, client factory, pool, logger, or
 lifecycle callback. The caller owns connection and disconnection but must not
 issue direct queries or retain a transaction during the adapter lease. B9 pins
 the exact runtime dependency
-`pg@8.23.0` and development types `@types/pg@8.23.1`; neither the API nor web
+`pg@8.23.0` and development types `@types/pg@8.20.0`; neither the API nor web
 application imports the database package.
 
 A synchronous constructor-injected provider supplies one trusted synthetic
