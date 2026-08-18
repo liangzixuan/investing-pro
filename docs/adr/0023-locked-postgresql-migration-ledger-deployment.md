@@ -128,11 +128,11 @@ execution, log review, retained artifact hashes, and independent
 `offline_consistent` review remain pending.
 
 The frozen source-stage SHA-256 anchors are
-`937d26b4ea7f7119a5d1e4201ffa408b4e364f0da950904ae9286cdec5834700` for the
+`50e5829deaa5465935c2fc4669f9bd27622f6e8f59048ace6e028de4a0613374` for the
 migration deployer,
 `195510475d2eb6dcfe9dca4f781f335c00a1b4e40de672ef07091a17c717eb7e` for the
 authenticated migration-plan source,
-`c300ad77df44c4ac2631013c1e8da0cc4685a8ebe7c42f2cfc795c88ddcf81cd` for the
+`62736f5a71e070a6893cf75fb72dc2079f905e90600d71de65b71cba7fe38c74` for the
 acceptance runner, and
 `73bc100eb27a1e7884d05f6feb642bc00c224d56e7b480899ba901cd9934f24a` for the
 workflow; the image config pins that workflow hash. These local anchors are not

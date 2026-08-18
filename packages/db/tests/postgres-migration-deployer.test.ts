@@ -196,6 +196,10 @@ describe("PostgresMigrationDeployer", () => {
     expect(source).toContain(
       "CHECK (((sha256)::text ~ ''^[0-9a-f]{64}$''::text))",
     );
+    expect(source.match(/AND constraint_row\.connoinherit/g)).toHaveLength(2);
+    expect(source.match(/AND NOT constraint_row\.connoinherit/g)).toHaveLength(
+      1,
+    );
   });
 
   it("rolls back a generic body failure and remains reusable only after clean rollback", async () => {

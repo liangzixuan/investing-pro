@@ -206,18 +206,21 @@ const LEDGER_SHAPE_SQL = `SELECT pg_catalog.json_build_object(
             constraint_row.contype = 'p'
             AND constraint_row.conkey = ARRAY[1]::smallint[]
             AND constraint_row.conindid <> 0
+            AND constraint_row.connoinherit
             AND pg_catalog.pg_get_constraintdef(constraint_row.oid, false)
               = 'PRIMARY KEY (migration_id)'
           WHEN 'schema_migrations_file_name_key' THEN
             constraint_row.contype = 'u'
             AND constraint_row.conkey = ARRAY[2]::smallint[]
             AND constraint_row.conindid <> 0
+            AND constraint_row.connoinherit
             AND pg_catalog.pg_get_constraintdef(constraint_row.oid, false)
               = 'UNIQUE (file_name)'
           WHEN 'schema_migrations_sha256_check' THEN
             constraint_row.contype = 'c'
             AND constraint_row.conkey = ARRAY[3]::smallint[]
             AND constraint_row.conindid = 0
+            AND NOT constraint_row.connoinherit
             AND pg_catalog.pg_get_constraintdef(constraint_row.oid, false)
               IN (
                 'CHECK ((sha256 ~ ''^[0-9a-f]{64}$''::text))',
@@ -228,7 +231,6 @@ const LEDGER_SHAPE_SQL = `SELECT pg_catalog.json_build_object(
         AND NOT constraint_row.condeferrable
         AND NOT constraint_row.condeferred
         AND constraint_row.convalidated
-        AND NOT constraint_row.connoinherit
         AND constraint_row.conparentid = 0
       )
     FROM pg_catalog.pg_constraint AS constraint_row
