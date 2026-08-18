@@ -2573,7 +2573,7 @@ async function releasePostgresProjectionPoolTableLock(
         containerId,
         `SELECT pg_catalog.pg_cancel_backend(${blockerPid});`,
       ),
-      "true",
+      "t",
       "B10 projection table-lock release",
     );
     canceled = true;
@@ -2700,7 +2700,7 @@ async function terminatePostgresProjectionPoolBackend(
     containerId,
     `SELECT pg_catalog.pg_terminate_backend(${backendPid});`,
   );
-  if (terminated !== "true" && terminated !== "false") {
+  if (terminated !== "t" && terminated !== "f") {
     throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
   }
   await waitForPostgresProjectionPoolBackendPidDrain(containerId, backendPid);

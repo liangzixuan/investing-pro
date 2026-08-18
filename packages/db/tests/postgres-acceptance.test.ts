@@ -2956,6 +2956,12 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     ]) {
       expect(tableLockLifecycle).toContain(marker);
     }
+    expect(tableLockLifecycle).toMatch(
+      /pg_cancel_backend\(\$\{blockerPid\}\);`,\s*\),\s*"t",\s*"B10 projection table-lock release"/,
+    );
+    expect(tableLockLifecycle).toContain(
+      'terminated !== "t" && terminated !== "f"',
+    );
 
     const versions = section(
       "async function verifyToolVersions(",
