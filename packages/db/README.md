@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B9 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B10 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -116,9 +116,9 @@ configuration or lifecycle and is not imported by an app. See the
 [ADR 0021](../../docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](../../docs/CYCLE_1BB9_EXIT_MATRIX.md).
 
-Cycle 1b-b10 has an accepted, locally verified implementation of
-`PooledPostgresFinancialFactProjectionSource`. The source owns one explicitly
-transferred, real `pg.Pool` fixed at maximum two clients, with finite checkout
+Cycle 1b-b10 is complete for its bounded recorded scope. Its accepted source,
+`PooledPostgresFinancialFactProjectionSource`, owns one explicitly transferred,
+real `pg.Pool` fixed at maximum two clients, with finite checkout
 and positive server statement timeouts and no client `query_timeout`. It
 snapshots the complete query and trusted synthetic actor before checkout,
 establishes a clean session, reimplements the exact B9 read-only
@@ -132,15 +132,16 @@ work, waits for registered loads, and ends the owned pool exactly once. Source
 and local verification are complete: all 12 database test files and 485 tests,
 database typechecking, migration and PostgreSQL static guardrails, focused
 ESLint/Prettier, and the diff check pass; independent integrated review reports
-GO with no P0/P1 finding. The pinned V10 workflow, retained evidence, log review,
-and independent artifact review are explicitly pending. See
-[ADR 0022](../../docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md)
+GO with no P0/P1 finding. PostgreSQL run `32161137775` passed at commit
+`2dcb259`; the retained version 10 record returned `offline_consistent`. See the
+[B10 evidence note](../../docs/POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md),
+[ADR 0022](../../docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md),
 and the [Cycle 1b-b10 exit matrix](../../docs/CYCLE_1BB10_EXIT_MATRIX.md).
 
 Ownership transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
 the pool while the source owns it. Only read-only counters may be checked after
-`source.close()` completes. The future live reset probe therefore uses an
+`source.close()` completes. The reviewed live reset probe therefore uses an
 out-of-band administrative connection to observe
 only same-PID idle state, canonical application name, session user, and absence
 of advisory locks, then proves the next actor-isolated source load plus timeout
@@ -261,7 +262,7 @@ PATH-resolved Git executable; do not point the command at untrusted Git
 metadata:
 
 ```powershell
-pnpm --filter @research-cockpit/db review:postgres-evidence -- `
+pnpm --filter @research-cockpit/db review:postgres-evidence `
   --evidence <absolute-artifact-path> `
   --repo <absolute-git-root> `
   --expected-evidence-sha256 <sha256-from-reviewed-run-log> `
@@ -493,11 +494,11 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     operation and tenant alternation, injected rollback, value-free error
     handling, post-transaction cleanup, client closure, backend drain, and
     independently reviewed version 9 evidence. This does not include a pool.
-14. Complete the accepted B10 proof for one real, bounded two-client pool:
+14. Retain the reviewed B10 proof for one real, bounded two-client pool:
     clean checkout/reuse, simultaneous tenant-isolated backends, bounded queue,
     settlement-before-discard active cancellation, server-timeout recovery,
     failed-transaction discard, idempotent close, zero pooled-backend residue,
-    and independently reviewed V10 evidence.
+    and independently reviewed version 10 evidence.
 15. Complete the B11 migration-ledger locking, checksum-drift, and
     concurrent-deployment gate: checksum-mismatch refusal against live drift,
     one-time replay, injected-failure rollback, and concurrent deploy behavior.
@@ -513,15 +514,16 @@ resource_type, resource_id)` can never back a live row, while the same UUID
 
 Until every gate passes, this package is not deployed persistence. Historical
 b1-b6 live evidence remains limited to the exact checks in their retained run
-records. B7 through B9 passed for their separately recorded version 7 through
-version 9 scopes at commits `41d13dd`, `49d3a96`, and `8e470e9` without
-widening those records. The
+records. B7 through B10 passed for their separately recorded version 7 through
+version 10 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, and `2dcb259`
+without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
-authentication, end-user identity binding, production secret handling, a pool,
-concurrency/cancellation/timeouts, complete dossier projections, external/
-production/incremental migrator and backup credentials, global
+authentication, end-user identity binding, production secret handling,
+load-ready pool tuning/failover, prompt queued or graceful cancellation,
+complete dossier projections, external/production/incremental migrator and
+backup credentials, global
 platform/application atomicity, and production readiness remain unproven. B8
 proves only its reviewed policy-scoped data-only dump and same-cluster clean
 restore in the disposable acceptance environment.
@@ -529,8 +531,10 @@ Full-schema/global/cross-cluster/version restore, continuous backup, disaster
 recovery, storage encryption/retention, secure passfile or archive erasure, and
 RPO/RTO remain outside B8. The reviewed B9 result proves only one sequential
 synthetic client; it does not establish a pool or application composition. The
-locally verified B10 source does not establish a live pool result until the pinned V10
-workflow and independent review complete, and it does not include production
-pool sizing, load capacity, graceful cancel requests, prompt queued abort,
-retry/failover, or application composition. B11 remains the separate
-migration-ledger locking, checksum-drift, and concurrent-deployment gate.
+reviewed B10 result establishes only one runner-local, two-client synthetic pool
+with bounded acquisition, settlement-before-discard active abort,
+server-timeout recovery, destructive failure discard, idempotent close, and
+zero observed residue. It does not include production pool sizing, load
+capacity, graceful cancel requests, prompt queued abort, retry/failover, or
+application composition. B11 is the next migration-ledger locking,
+checksum-drift, and concurrent-deployment gate.

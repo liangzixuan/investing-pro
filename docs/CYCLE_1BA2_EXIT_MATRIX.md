@@ -26,9 +26,10 @@ was added.
   separate recorded scope;
 - b2/b3 completed a bounded authenticated non-owner runtime service-account
   path; B8 later proved only one bounded policy-scoped same-cluster restore and
-  B9 later proved only one live-reviewed single-client adapter; application
-  identity/tenant resolution, app composition, pool cleanup, cancellation,
-  concurrency, and broad restore remain pending;
+  B9 later proved only one live-reviewed single-client adapter; B10 later proved
+  only one bounded two-client pool lifecycle. Application identity/tenant
+  resolution, app composition, production/load-ready pool tuning, graceful or
+  prompt queued cancellation, load capacity, and broad restore remain pending;
 - dimensioned facts, complete dossier/history/timeline/evidence projections,
   production identity, vendor data, API writes, and notifications.
 
@@ -40,6 +41,7 @@ RLS, service-account, and authorization checks, but they did not execute this
 normalizer, a projection query, or an adapter. The a2 proof boundary remains
 unchanged. B4 later passed a separate live query-to-normalizer proof, B8 later
 passed one bounded policy-scoped same-cluster restore, and B9 later passed one
-single-client adapter proof. None retroactively widens a2 or proves application
-composition, pooling, concurrency/cancellation, broad restore, or production
-readiness.
+single-client adapter proof. B10 later passed one bounded two-client pool proof.
+None retroactively widens a2 or proves application composition,
+production/load-ready pooling, graceful or prompt queued cancellation, load
+capacity, broad restore, or production readiness.

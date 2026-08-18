@@ -23,10 +23,11 @@ path, identity provider, or real data was added.
   are now complete for their separate recorded scope; they do not compose this
   port into the application;
 - B8 later proved only one bounded policy-scoped same-cluster restore, and B9
-  later proved only one live-reviewed single-client adapter; neither result
-  widens this historical matrix or composes the port into the application;
-- application composition, adapter-level pool reuse, cancellation, concurrency,
-  and broad restore evidence;
+  later proved only one live-reviewed single-client adapter; B10 later proved
+  only one bounded two-client pool lifecycle. None widens this historical matrix
+  or composes the port into the application;
+- application composition, production/load-ready pool tuning, graceful or
+  prompt queued cancellation, load capacity, and broad restore evidence;
 - a core composition policy for combining multiple operation views in one
   request without mixing scopes or snapshots;
 - production alert execution through the alert-specific view;
@@ -38,8 +39,9 @@ sequential-context evidence; b2/b3 added bounded authenticated service-account
 and authorization-matrix evidence. None executed this projection port. B4 later
 executed the separate driverless query-to-normalizer path, B8 separately proved
 one bounded policy-scoped same-cluster restore, and B9 separately proved one
-live-reviewed single-client adapter. None of those later results widens this
-historical port result or proves application composition, a real pool,
-cancellation, concurrency, broad restore, or production readiness. SQLite,
-PGlite, mocks, and static SQL checks remain unacceptable substitutes for those
-later gates.
+live-reviewed single-client adapter. B10 separately proved one bounded
+two-client pool lifecycle. None of those later results widens this historical
+port result or proves application composition, production/load-ready pooling,
+graceful or prompt queued cancellation, load capacity, broad restore, or
+production readiness. SQLite, PGlite, mocks, and static SQL checks remain
+unacceptable substitutes for those later gates.

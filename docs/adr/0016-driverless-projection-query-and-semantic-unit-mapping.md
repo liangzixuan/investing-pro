@@ -130,5 +130,7 @@ gates.
 
 Cycle 1b-b9 is the separate adapter successor anticipated here. Its
 pinned live version 9 result passed in run `32083732063`. It reuses B4 without
-changing B4's historical driverless claim and leaves pool, application
-composition, and production boundaries unproven.
+changing B4's historical driverless claim. B10 later reuses the same query in a
+separate bounded two-client pool source and passes its reviewed V10 scope. B10
+also does not widen B4; application composition and production boundaries
+remain unproven.

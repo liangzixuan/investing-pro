@@ -214,9 +214,12 @@ pool ends, its backends drain, the ephemeral login and memberships are removed,
 and every inherited cleanup gate passes. The V10 source/local contract passes
 all 12 database test files and 485 tests, database typechecking, migration and
 PostgreSQL static guardrails, focused ESLint/Prettier, and the diff check. The
-pinned V10 run, retained artifact and log markers, and independent
-`offline_consistent` review remain pending. No version 10 live claim exists, and
-this successor does not alter any version 1 through version 9 record. See
+version 10 record from successful run `32161137775`, attempt 1, at commit
+`2dcb259` was retained after the bounded pool path and mandatory cleanup passed.
+Its downloaded bytes returned `offline_consistent`; the
+[B10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md) records
+the exact anchors and bounded claim. This successor does not alter any version 1
+through version 9 record. See
 [ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
 [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md).
 

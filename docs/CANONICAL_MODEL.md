@@ -2,9 +2,9 @@
 
 Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
 runtime authentication, b3 authorization-matrix, b4 projection-query, b5
-test-loader, b6 owner-DDL canary, b7 authenticated application-migration, and
-b8 policy-scoped backup/restore, and b9 single-client projection-adapter
-boundaries; synthetic data only.
+test-loader, b6 owner-DDL canary, b7 authenticated application-migration, b8
+policy-scoped backup/restore, b9 single-client projection-adapter, and b10
+bounded projection-pool boundaries; synthetic data only.
 
 ## Identity
 
@@ -173,7 +173,7 @@ retained version 9 record returned `offline_consistent`. See the
 [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
-The locally verified Cycle 1b-b10 source also changes no canonical entity, tenancy,
+The reviewed Cycle 1b-b10 result also changes no canonical entity, tenancy,
 time, numeric, evidence, rights, deletion, or projection semantics.
 `PooledPostgresFinancialFactProjectionSource` owns a transferred, bounded
 two-client `pg.Pool`, snapshots the same complete query and trusted synthetic
@@ -186,16 +186,20 @@ destroys the checkout; a server timeout, failed transaction, or ambiguous
 cleanup also prevents reuse. This is a locally verified source implementation,
 not a new identity or canonical-data capability. The 12-file, 485-test database
 suite, database typecheck, migration and PostgreSQL static guardrails, focused
-lint/format, and diff checks pass. All live V10 evidence remains pending. See
-[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+lint/format, and diff checks pass. The bounded live path passed in PostgreSQL
+run `32161137775` at commit `2dcb259`; its retained version 10 record returned
+`offline_consistent`. See the
+[B10 evidence note](./POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md),
+[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md), and the
 [Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
 `set_request_context` remains a trusted runtime operation rather than an
-identity resolver. External/TLS transport, production secrets, connection-pool
-cleanup, concurrency, external/production/incremental migrator and
+identity resolver. External/TLS transport, production secrets, load-ready pool
+tuning/failover, prompt queued or graceful cancellation, load capacity,
+external/production/incremental migrator and
 external/production/incremental/continuous authenticated backup, full-schema/
 global/cross-cluster/version restore, disaster recovery, storage encryption or
 retention, RPO/RTO, and the future deletion path remain separate engine gates.
@@ -203,11 +207,11 @@ B8 closes only the exact synthetic, data-only, same-cluster acceptance result.
 The reviewed B9 result remains one sequential, exclusively leased synthetic
 service client, not an end-user identity, application composition, or pool
 result. B10 separately defines a bounded two-client pool/concurrency/
-cancellation boundary, but that boundary has no live claim until the pinned V10
-run and independent artifact review complete. Production pool tuning, load
-capacity, retry/failover, graceful cancellation, prompt queued abort, and
-application composition remain outside B10. B11 is the separate
-migration-ledger locking, checksum-drift, and concurrent-deployment gate.
+cancellation boundary whose pinned V10 run and independent artifact review are
+complete. Production pool tuning, load capacity, retry/failover, graceful
+cancellation, prompt queued abort, and application composition remain outside
+B10. B11 is the next migration-ledger locking, checksum-drift, and
+concurrent-deployment gate.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
 authenticated-migrator gate. The reviewed B7 result proves only the bounded

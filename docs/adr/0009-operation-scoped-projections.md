@@ -1,6 +1,7 @@
 # ADR 0009: Instrument-bound, operation-scoped projections
 
-Status: accepted for Cycle 1b-a; separate B9 adapter result live-reviewed
+Status: accepted for Cycle 1b-a; separate B9 adapter and B10 pool results
+live-reviewed
 
 The source-controlled demo snapshot is complete by construction, but an RLS
 query cannot prove that the rows it can see are the complete candidate set.
@@ -55,3 +56,10 @@ widen this contract or the B4 result, and it still adds no app composition or
 pool. See
 [ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
 the [B9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).
+
+Cycle 1b-b10 later implements the same port through a separate owning, bounded
+two-client pool source. Its reviewed V10 result proves only the recorded
+runner-local lifecycle/concurrency/cancellation/timeout scope and does not widen
+this contract, B4, or B9 or compose the source into the application. See
+[ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+[B10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md).

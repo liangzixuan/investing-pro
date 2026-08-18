@@ -134,7 +134,9 @@ The later reviewed B8 result separately covers one bounded authenticated
 policy-scoped data dump and clean same-cluster restore; it does not widen B7.
 Cycle 1b-b9 later adds a separate live-reviewed single-client application
 adapter; it does not widen B7. The B10 pool/concurrency/cancellation boundary
-remains a later milestone.
+later passed its separate bounded live review; it also does not widen B7. B11
+migration-ledger locking, checksum-drift refusal, and concurrent deployment is
+the next database gate.
 
 Historical b1 through b6 records retain their exact source shapes, completed
 checks, limitations, and interpretation. This decision does not retroactively
@@ -149,6 +151,7 @@ widen any of them.
 - [Cycle 1b-b7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md)
 - [Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
 - [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
+- [ADR 0022: Bounded PostgreSQL projection-pool lifecycle](./0022-bounded-postgresql-projection-pool-lifecycle.md)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
 - [PostgreSQL 17 extension packaging](https://www.postgresql.org/docs/17/extend-extensions.html)

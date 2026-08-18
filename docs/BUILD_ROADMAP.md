@@ -17,7 +17,7 @@ Status: implemented and locally verified, still synthetic only.
 1. A context-bound research-state port and atomic in-memory adapter cover membership roles, tenant scoping, optimistic versions, 24-hour idempotency, payload hard delete with same-type non-reusable IDs, export, and payload-free audit metadata.
 2. Adversarial tests cover identical cross-tenant IDs, forged tenant context, viewer denial, stale and concurrent writers, replay conflicts, rollback, and payload leakage.
 3. Ordered raw PostgreSQL migrations and an immutable checksum manifest define synthetic-only shared/private schemas, exact rights versions, fixed-point values, half-open public-known/system time, transaction-local context, and forced RLS.
-4. Static clean-room and SQL checks cover migrations and future container/config surfaces. This Cycle 1a slice added no database adapter, identity provider, API write route, or UI persistence; the separate B9 adapter source does not retroactively widen it.
+4. Static clean-room and SQL checks cover migrations and future container/config surfaces. This Cycle 1a slice added no database adapter, identity provider, API write route, or UI persistence; the separate B9 adapter and B10 pool sources do not retroactively widen it.
 
 The existing GET-only API and browser-local demo remain unchanged. This slice is not production persistence or authentication.
 
@@ -33,10 +33,10 @@ policy-scoped data-backup and bounded clean-restore run and independent version
 8 artifact review are also complete. The b9 single-client read-only adapter,
 pinned live version 9 execution, and independent artifact review are complete
 for their bounded scope. The b10 bounded pool lifecycle design and source are
-implemented and locally verified; the pinned V10 execution and independent
-artifact review are explicitly pending. B11 migration-ledger locking,
-checksum-drift, and
-concurrent-deployment is the next database gate after B10.
+implemented, locally verified, and live-reviewed; the pinned V10 execution and
+independent artifact review are complete for their bounded scope. B11
+migration-ledger locking, checksum-drift, and concurrent deployment is the next
+database gate.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -191,7 +191,7 @@ formatting, and the diff check also passed for the source commit. See the
 [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
-**Cycle 1b-b10 source implemented and locally verified; live evidence pending:**
+**Cycle 1b-b10 complete and reviewed for its bounded recorded scope:**
 `PooledPostgresFinancialFactProjectionSource` owns one explicitly transferred
 real `pg.Pool` bounded to two clients; the caller may not checkout, query,
 release, inspect, or otherwise use a client or pool during source ownership.
@@ -201,25 +201,27 @@ checkout, establishes a clean session,
 reimplements the exact B9 read-only role/context/B4-query transaction, and
 recycles the checkout only after unambiguous postflight cleanup. Finite pool
 acquisition and positive PostgreSQL statement timeouts are required; client
-`query_timeout` is forbidden. Active abort marks cancellation, waits for the
+`query_timeout` must be disabled (absent, `0`, or `false`). Active abort marks
+cancellation, waits for the
 in-flight PostgreSQL operation to settle under the fixed server timeout, and
 then destroys the checkout; timeout, failed transaction, and cleanup ambiguity
 also prevent reuse. A queued abort remains bounded by acquisition and destroys
 any late checkout rather than claiming prompt queue cancellation. `close()`
 waits for registered loads and ends the owned pool exactly once. The pinned V10
-run, success-only artifact, reviewed log
-markers, and independent `offline_consistent` result remain required before a
-live claim. B10 does not add graceful CancelRequest, reusable canceled-backend,
-production pool tuning, load/capacity, retry/failover, application composition,
-end-user identity, external TLS, managed secrets, or production-readiness
-claims. See [ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md)
-and the [Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
+run passed at commit `2dcb259`, its success-only artifact and log markers were
+reviewed, and the downloaded record returned `offline_consistent`. B10 does not
+add graceful CancelRequest, reusable canceled-backend, production pool tuning,
+load/capacity, retry/failover, application composition, end-user identity,
+external TLS, managed secrets, or production-readiness claims. See the
+[B10 evidence note](./POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md),
+[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md), and the
+[Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
 
 The settled local gate passes all 12 database test files and 485 tests, database
 typechecking, migration and PostgreSQL static guardrails, focused
 ESLint/Prettier, and the diff check. Independent integrated review reports GO
-with no P0/P1 finding. These results do not replace the pending pinned live V10
-workflow or artifact review.
+with no P0/P1 finding. Those local results were prerequisites for, not
+substitutes for, the separately reviewed live V10 workflow and artifact.
 
 Live reset evidence is deliberately narrower than the fixed source sequence. An
 out-of-band administrator may observe only same-PID idle/application/user/
@@ -272,10 +274,11 @@ platform/application atomicity.
    capability is added, also test viewer writes, composite-FK attacks,
    idempotency races, and rollback before enabling it elsewhere.
 6. **Sequential cleanup complete:** b1 proves transaction-local context clears
-   after commit, rollback, and a handled error on one backend. B10's locally
-   verified source addresses bounded cancellation, server timeout, two
-   simultaneous backends, and real pooled-connection reuse, but its live V10
-   proof remains pending.
+   after commit, rollback, and a handled error on one backend. The reviewed B10
+   result separately proves bounded acquisition, settlement-before-discard
+   active abort, server-timeout recovery, two simultaneous tenant-isolated
+   backends, real pooled-connection reuse, idempotent close, and zero observed
+   residue for one runner-local pool.
 7. **Clean migration/replay/rollback complete:** b1 proves clean bootstrap,
    ledger state, replay refusal, and injected final rollback. B9 separately
    proves reset, rollback, and reuse on one real client. A live
@@ -303,9 +306,8 @@ platform bootstrap and replaced that limitation with the exact external/
 production/incremental and global-atomicity nonclaims. The reviewed B8 result
 covers its bounded version 8 scope. The reviewed B9 run passed the separate real
 single-client read-only adapter boundary. B10's bounded pool lifecycle source is
-implemented and locally verified, while its live V10 review remains pending.
-B11 migration-ledger locking/checksum-drift/concurrent-deployment is next after
-B10.
+implemented and locally verified, and its bounded live V10 result is reviewed.
+B11 migration-ledger locking/checksum-drift/concurrent deployment is next.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -328,8 +330,8 @@ weakens the zero-membership bootstrap invariant.
 The reviewed B8 result permits only a bounded, policy-scoped, synthetic
 data-only dump and same-cluster clean-restore claim. It must not be widened into
 full-schema/global recovery or a production/DR claim.
-Application-pool cancellation/concurrency remains the separate B10 live gate.
-Do not treat its locally verified source, B4, B9, the clean-only
+The separate B10 live gate now proves only its bounded runner-local
+pool/cancellation/concurrency scope. Do not treat B10, B4, B9, the clean-only
 impersonated-capability result, or the reviewed b2/b3 container-local
 service-account results, including the separate reviewed B5 test-loader result,
 as permission to wire the database into the app or accept real data.

@@ -60,3 +60,10 @@ passed in run `32083732063`. B9 does not retroactively widen a2, and general
 dimensions, complete dossiers, app composition, and pooling remain outside this
 ADR. See
 [ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md).
+
+Cycle 1b-b10 later reuses this same normalizer inside a separate owning,
+two-client pool source. Its reviewed V10 result proves only the bounded
+runner-local pool scope and does not widen a2 or add general dimensions,
+complete dossiers, or application composition. See
+[ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+[B10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md).

@@ -1,7 +1,6 @@
 # ADR 0022: Bounded PostgreSQL projection-pool lifecycle
 
-Status: accepted and source/local verified for Cycle 1b-b10; live evidence
-pending
+Status: accepted and live-reviewed for the bounded Cycle 1b-b10 scope
 
 ## Context
 
@@ -130,11 +129,12 @@ ESLint/Prettier, and the diff check. Independent integrated review reports GO
 with no P0/P1 finding. The settled pool source SHA-256 is
 `257e2ab0a0a245c6385f8eddf6d44973dbddbb9cd6fc6a4b089cb0867aefa5e8`; the
 acceptance runner SHA-256 is
-`7ce12575973ed540fefa5254dc8ff3554374a71c1939c9cf3ca793f2df1e609e`.
-These source/local results are not live evidence. This decision can become
-live-reviewed only after the pinned workflow succeeds, mandatory cleanup
-finishes, the success-only V10 artifact and log markers are retained, and the
-independent commit-bound reviewer returns `offline_consistent`.
+`1f04e46a73deb32c1bfc74df1c91ae8d33fc9046c794c852fae82e0325d6ac5b`.
+These source/local results alone are not live evidence. The separate pinned
+workflow passed in run `32161137775` at commit `2dcb259` after mandatory
+cleanup; the success-only V10 artifact and log markers were retained, and the
+independent commit-bound reviewer returned `offline_consistent`. See the
+[B10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md).
 
 ## Explicit exclusions
 
@@ -147,7 +147,7 @@ writes, complete dossiers, real data, deployment, or production readiness.
 
 ## Consequences
 
-B10 may close only the bounded two-client lifecycle, simultaneous synthetic
+B10 closes only the bounded two-client lifecycle, simultaneous synthetic
 isolation, settlement-before-discard cancellation, server-timeout recovery, and zero-residue
 pool gate. The next database milestone is Cycle 1b-b11: migration-ledger
 locking, checksum-mismatch refusal against live drift, one-time replay,
@@ -160,6 +160,7 @@ atomicity are not inferred from B10 or B11.
 - [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
 - [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md)
 - [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md)
+- [Cycle 1b-b10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md)
 - [node-postgres pools](https://node-postgres.com/features/pooling)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [PostgreSQL 17 client connection defaults](https://www.postgresql.org/docs/17/runtime-config-client.html)

@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b9 threat model
+# Sprint 0 through bounded live Cycle 1b-b10 threat model
 
 ## Current trust boundaries
 
@@ -159,8 +159,8 @@ The bounded live path then passed in PostgreSQL run `32083732063` at commit
 [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
-Cycle 1b-b10 has a locally verified bounded-pool source, still disconnected from the
-running application. `PooledPostgresFinancialFactProjectionSource` owns one
+Cycle 1b-b10 has a live-reviewed bounded-pool result, still disconnected from
+the running application. `PooledPostgresFinancialFactProjectionSource` owns one
 explicitly transferred real `pg.Pool` limited to two clients; the caller may not
 call `connect()`, query or release a client, call `end()`, or otherwise inspect
 or use the pool during source ownership. Only read-only counters may be checked
@@ -177,12 +177,14 @@ it remains bounded by acquisition and destroys any late checkout. Source and
 local verification pass all 12 database test files and 485 tests, database
 typechecking, migration and PostgreSQL static guardrails, focused
 ESLint/Prettier, and the diff check; independent integrated review reports GO
-with no P0/P1 finding. Live V10 execution and artifact review remain explicitly
-pending. See
-[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+with no P0/P1 finding. The bounded path passed in PostgreSQL run `32161137775`
+at commit `2dcb259`; its retained version 10 record returned
+`offline_consistent`. See the
+[B10 evidence note](./POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md),
+[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md), and the
 [Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
 
-The future live reset probe stays outside that ownership boundary. A separate
+The reviewed live reset probe stays outside that ownership boundary. A separate
 administrative connection may observe only same-PID idle state, canonical
 application name, session user, and advisory-lock absence, then the source must
 perform a subsequent actor-isolated load and the timeout/application-name
@@ -214,10 +216,11 @@ verify who supplied the synthetic actor and does not establish pool
 reset, simultaneous backends, cancellation, timeout, TLS, secret-management, or
 application-composition behavior.
 
-The locally verified B10 source narrows only the proposed bounded lifecycle mechanism.
-Until reviewed live V10 evidence exists, pool reset, simultaneous-backend
-isolation, settlement-before-discard cancellation, timeout recovery, and zero
-residue remain unproven engine behavior. B10 never claims graceful PostgreSQL CancelRequest,
+The reviewed B10 result narrows only the bounded lifecycle mechanism. It proves
+clean checkout/reuse, two simultaneous tenant-isolated backends, bounded
+acquisition, settlement-before-discard active abort, server-timeout recovery,
+destructive failure discard, idempotent close, and zero observed residue for
+one runner-local pool. B10 never claims graceful PostgreSQL CancelRequest,
 prompt queued abort, reuse of a canceled backend, production tuning, load
 capacity, retries, failover, identity resolution, or application composition.
 
@@ -307,9 +310,10 @@ ephemeral PostgreSQL service and passed the exact SCRAM/backend/read-only/
 context/rollback/cleanup probes recorded for version 9. The trusted actor can
 still be chosen by a compromised service, and the random loopback mapping is
 only an acceptance-runner path, not production network security. Pool reset,
-simultaneous backends, cancellation, and timeout handling remain the separate
-B10 live gate despite its locally verified source. B11 separately gates
-migration-ledger locking, checksum-drift refusal, and concurrent deployment.
+simultaneous backends, cancellation settlement, and timeout handling later
+passed only the separate bounded B10 live gate; that result does not widen B9.
+B11 is the next migration-ledger locking, checksum-drift-refusal, and
+concurrent-deployment gate.
 
 ## Gates before adding new trust boundaries
 

@@ -65,5 +65,7 @@ pooling, concurrent sessions/cancellation/timeouts, dump/restore or disaster
 recovery, or real/licensed market data. The offline verifier also cannot prove
 GitHub run/artifact authenticity, inspect workflow execution, validate commit
 signatures or branch reachability, or establish the provenance of the supplied
-trust anchors. Those properties remain unproven; authenticated sessions, pool
-behavior, restore, and real-data behavior remain later release gates.
+trust anchors. Those properties remain unproven by this version 1 record. Later
+bounded B2 authenticated-session, B8 same-cluster restore, and B10 pool results
+do not alter this historical record or prove their external/production forms;
+real-data behavior remains a later release gate.

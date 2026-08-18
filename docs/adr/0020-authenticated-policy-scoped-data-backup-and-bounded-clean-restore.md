@@ -181,9 +181,9 @@ contract and live evidence.
 The implementation keeps authentication of the reader, independent
 provisioning of the restore target, and authorization of the data loader visible
 as separate boundaries. The reviewed version 8 result closes only the exact
-bounded composite acceptance gate after all three were exercised together. A
+bounded composite acceptance gate after all three were exercised together. The
 later B9 single-client read-only adapter and B10 pool/concurrency/cancellation
-boundary remain separate milestones.
+boundary passed their separate live reviews; neither widens B8.
 
 ## Related decisions and primary sources
 
@@ -194,11 +194,13 @@ boundary remain separate milestones.
 - [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md)
 - [Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
 - [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
+- [ADR 0022: Bounded PostgreSQL projection-pool lifecycle](./0022-bounded-postgresql-projection-pool-lifecycle.md)
 - [PostgreSQL 17 `pg_dump`](https://www.postgresql.org/docs/17/app-pgdump.html)
 - [PostgreSQL 17 `pg_restore`](https://www.postgresql.org/docs/17/app-pgrestore.html)
 - [PostgreSQL 17 SQL-dump backup and restore](https://www.postgresql.org/docs/17/backup-dump.html)
 - [PostgreSQL 17 `CREATE DATABASE`](https://www.postgresql.org/docs/17/sql-createdatabase.html)
 
-B9 later implements and live-reviews the separate single-client adapter while
-retaining B8 as a historical data-only backup/restore result. Neither milestone
-proves a pool or application composition.
+B9 later implements and live-reviews the separate single-client adapter, and
+B10 later live-reviews a bounded two-client pool, while retaining B8 as a
+historical data-only backup/restore result. Neither successor proves application
+composition or widens B8.
