@@ -189,5 +189,6 @@ not alter this version 9 record.
 ADR 0022 and the
 [B10 evidence note](./POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md) now record
 the implemented B10 source and reviewed V10 result. That successor does not
-change the exact version 9 `notProven` list or any B9 claim. B11
-migration-ledger locking, checksum-drift, and concurrent deployment is next.
+change the exact version 9 `notProven` list or any B9 claim. B11 later passed
+its separate bounded live locked-ledger and two-deployer result; it also does
+not widen B9. Query-plan and load testing is the next existing database gate.

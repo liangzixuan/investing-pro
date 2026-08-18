@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B10 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B11 SOURCE/LOCAL PASSED, LIVE V11 PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B11 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -146,10 +146,12 @@ transaction, the reviewed advisory lock, transaction-local owner role, and a
 graph, platform state, ledger shape, and a non-empty exact manifest prefix
 before applying only pending reviewed bodies and matching ledger rows. Drift is
 value-free, injected pre-commit failure rolls back, a current ledger is a
-no-op, and ambiguous cleanup poisons the instance. Source and the V11 evidence
-contract are implemented, and integrated local verification passes. Pinned
-PostgreSQL V11, retained logs/artifact, and independent review remain pending. See
-[ADR 0023](../../docs/adr/0023-locked-postgresql-migration-ledger-deployment.md)
+no-op, and ambiguous cleanup poisons the instance. Source, integrated local
+verification, and the bounded live V11 gate pass. PostgreSQL run `32183709701`
+passed at commit `5df9d07`; the retained record returned
+`offline_consistent`. See the
+[B11 evidence note](../../docs/POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md),
+[ADR 0023](../../docs/adr/0023-locked-postgresql-migration-ledger-deployment.md),
 and the [Cycle 1b-b11 exit matrix](../../docs/CYCLE_1BB11_EXIT_MATRIX.md).
 
 Ownership transfer is exclusive: after construction the caller may not call
@@ -515,11 +517,11 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     settlement-before-discard active cancellation, server-timeout recovery,
     failed-transaction discard, idempotent close, zero pooled-backend residue,
     and independently reviewed version 10 evidence.
-15. Complete the remaining B11 live gate: checksum-mismatch refusal against
-    live drift, exact one-time
-    suffix replay, injected-failure rollback, two-deployer serialization,
-    mandatory cleanup, retained V11 evidence, and independent review.
-16. Run query plans and load tests for fact-as-known and tenant reads, including
+15. **Cycle 1b-b11 complete for its bounded scope:** checksum-mismatch refusal
+    against live drift, exact one-time suffix replay, injected-failure rollback,
+    two-deployer serialization, mandatory cleanup, retained V11 evidence, and
+    independent review passed.
+16. **Next:** run query plans and load tests for fact-as-known and tenant reads, including
     RLS overhead and index use.
 17. Approve the production privacy and retention model for permanent resource
     identifiers, including DSAR/erasure, tenant offboarding, backup expiry, and
@@ -531,9 +533,9 @@ resource_type, resource_id)` can never back a live row, while the same UUID
 
 Until every gate passes, this package is not deployed persistence. Historical
 b1-b6 live evidence remains limited to the exact checks in their retained run
-records. B7 through B10 passed for their separately recorded version 7 through
-version 10 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, and `2dcb259`
-without widening those records. The
+records. B7 through B11 passed for their separately recorded version 7 through
+version 11 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`, and
+`5df9d07` without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
@@ -553,9 +555,9 @@ with bounded acquisition, settlement-before-discard active abort,
 server-timeout recovery, destructive failure discard, idempotent close, and
 zero observed residue. It does not include production pool sizing, load
 capacity, graceful cancel requests, prompt queued abort, retry/failover, or
-application composition. B11 source and integrated local verification are
-complete, but its live V11 gate remains pending. Its exact-v2 proof does not
-establish external/production credentials, arbitrary or multi-release
-upgrades, application compatibility under concurrent writes, crash recovery,
-cancellation, distributed coordination, global atomicity, or production
-readiness.
+application composition. B11's reviewed live V11 result proves only its exact
+closed-v2, two-deployer boundary. It does not establish external/production
+credentials, arbitrary or multi-release upgrades, application compatibility
+under concurrent writes, crash recovery, cancellation, distributed
+coordination, global atomicity, or production readiness. Query-plan and load
+testing is the next existing database roadmap gate.

@@ -202,13 +202,13 @@ tenant resolution, application/API composition, external/TLS transport,
 managed secrets, complete or dimensioned projections, real data, deployment,
 or production readiness.
 
-Cycle 1b-b11 now has an implemented source contract for migration-ledger
-locking, checksum-mismatch refusal against live drift, exact one-time suffix
-replay, injected-failure rollback, and concurrent deployment. Its integrated
-local verification is complete; live V11 review remains pending. Neither B10
-nor B11 proves external
+Cycle 1b-b11 later passed its separate bounded live V11 gate for locked-ledger
+validation, exact live checksum-drift refusal, one-time suffix replay, injected
+rollback, and two-deployer serialization. Neither B10 nor B11 proves external
 or production incremental migrator credentials, arbitrary or multi-release
 upgrades, production migration orchestration/recovery/cancellation/failover,
 or global platform/application atomicity. See
 [ADR 0023](./adr/0023-locked-postgresql-migration-ledger-deployment.md) and the
-[Cycle 1b-b11 exit matrix](./CYCLE_1BB11_EXIT_MATRIX.md).
+[Cycle 1b-b11 exit matrix](./CYCLE_1BB11_EXIT_MATRIX.md); the
+[B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md) records
+the successor's independent anchors without changing this V10 record.

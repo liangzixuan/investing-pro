@@ -35,8 +35,10 @@ pinned live version 9 execution, and independent artifact review are complete
 for their bounded scope. The b10 bounded pool lifecycle design and source are
 implemented, locally verified, and live-reviewed; the pinned V10 execution and
 independent artifact review are complete for their bounded scope. The B11
-locked migration-ledger deployer, V11 evidence contract, and integrated local
-verification are complete; the live V11 execution/artifact review remains pending.
+locked migration-ledger deployer, V11 evidence contract, integrated local
+verification, pinned live execution, and independent artifact review are also
+complete for their bounded scope. Query-plan and load testing is the next
+existing database gate.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -235,7 +237,7 @@ configuration fixes `max: 2`, an out-of-band administrator observes two blocked
 backend PIDs, and a third source load returns the stable acquisition-timeout
 failure.
 
-**Cycle 1b-b11 source and integrated local gates complete; live gate pending:**
+**Cycle 1b-b11 complete for its bounded scope:**
 `PostgresMigrationDeployer` takes a validated immutable snapshot of the exact
 closed v2 plan before I/O. Over one exclusively leased authenticated client it
 resets transaction/role state, opens one finite-timeout read-write transaction,
@@ -246,25 +248,27 @@ bodies and ledger rows. Stable drift refusal covers checksum, filename,
 ID/order, ledger-object/shape, interior gaps, and extra rows; an exact missing
 tail is the pending suffix. Injected pre-commit failure must
 restore the original prefix; a complete ledger returns `current`; ambiguous
-cleanup poisons the deployer. The bounded live plan reconstructs only the exact
-`v2-0005` prefix and overlaps two loopback clients so one applies `v2-0006`
-while the other observes current state. See
-[ADR 0023](./adr/0023-locked-postgresql-migration-ledger-deployment.md) and the
+cleanup poisons the deployer. The bounded live run reconstructed only the exact
+`v2-0005` prefix and overlapped two loopback clients so one applied `v2-0006`
+while the other observed current state. PostgreSQL run `32183709701` passed at
+commit `5df9d07`; its retained V11 record returned `offline_consistent`. See the
+[B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md),
+[ADR 0023](./adr/0023-locked-postgresql-migration-ledger-deployment.md), and the
 [Cycle 1b-b11 exit matrix](./CYCLE_1BB11_EXIT_MATRIX.md).
 
 V11 preserves V1-V10, adds the exact deployer source hash, and narrows only the
-fixed migration nonclaim split. The pinned workflow run, retained V11 artifact,
-log review, and independent `offline_consistent` result remain pending. B11
-does not prove external/production credentials, arbitrary or multi-release
-upgrades, crash recovery, cancellation, distributed orchestration, global
-platform/application atomicity, or production readiness.
+fixed migration nonclaim split. B11 does not prove external/production
+credentials, arbitrary or multi-release upgrades, crash recovery,
+cancellation, distributed orchestration, global platform/application
+atomicity, or production readiness.
 
 Local verification passed 13 database test files with 515 tests, every other
 workspace test project, root and database typechecks, migration and PostgreSQL
 static guardrails, lint, formatting, production builds, and diff checks. Docker
-was unavailable locally, so those results make no live-engine claim. The local
+was unavailable locally, so those results made no live-engine claim. The local
 license inventory alone could not enumerate a pre-existing pnpm-store entry for
-`@fastify/cors@11.3.0`; the clean CI install and release gate remain required.
+`@fastify/cors@11.3.0`; the later clean cross-platform CI install and release
+gate passed at the tested commit.
 
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
@@ -306,8 +310,9 @@ license inventory alone could not enumerate a pre-existing pnpm-store entry for
    residue for one runner-local pool.
 7. **Clean migration/replay/rollback complete:** b1 proves clean bootstrap,
    ledger state, replay refusal, and injected final rollback. B9 separately
-   proves reset, rollback, and reuse on one real client. A live
-   checksum-drift case remains pending. The reviewed B8 run also proves the
+   proves reset, rollback, and reuse on one real client. The reviewed B11 run
+   separately proves refusal of one exact live ledger checksum drift. The
+   reviewed B8 run also proves the
    narrower policy-scoped data-only dump, independently provisioned same-cluster
    restore, post-restore authorization checks, and mandatory cleanup for its
    exact synthetic scope.
@@ -332,8 +337,8 @@ production/incremental and global-atomicity nonclaims. The reviewed B8 result
 covers its bounded version 8 scope. The reviewed B9 run passed the separate real
 single-client read-only adapter boundary. B10's bounded pool lifecycle source is
 implemented and locally verified, and its bounded live V10 result is reviewed.
-The B11 locked deployer, V11 contract, and integrated local verification are
-complete; live review remains pending.
+The B11 locked deployer and bounded live V11 result are reviewed. Query-plan
+and load testing for fact-as-known and tenant reads is the next database gate.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -361,9 +366,8 @@ pool/cancellation/concurrency scope. Do not treat B10, B4, B9, the clean-only
 impersonated-capability result, or the reviewed b2/b3 container-local
 service-account results, including the separate reviewed B5 test-loader result,
 as permission to wire the database into the app or accept real data.
-The B11 source similarly remains disconnected and limited to the exact v2
-suffix. Until V11 passes, it is not live evidence; after V11 it still will not
-be a general or production migration system.
+The reviewed B11 result similarly remains disconnected and limited to the exact
+v2 suffix. It is not a general or production migration system.
 
 ## Cycle 1c — demo identity and API contract proof
 

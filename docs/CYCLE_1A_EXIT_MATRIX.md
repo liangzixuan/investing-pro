@@ -42,9 +42,10 @@ is enabled:
   bounded two-client pool result, but none is an application composition-root
   proof;
 - at least 1,000 alternating/concurrent tenant operations;
-- live checksum-drift handling and broad restore evidence; B8 separately proved
-  only one bounded policy-scoped same-cluster restore with post-restore
-  authorization checks; and
+- broad live checksum-drift handling and broad restore evidence; B11 separately
+  proved only one exact bounded live ledger-checksum drift refusal, and B8
+  separately proved only one bounded policy-scoped same-cluster restore with
+  post-restore authorization checks; and
 - production identity verification, retention jobs, DSAR, and backup deletion.
 
 The `OmissionSummaryDto` gained `hasOmissions` and a nullable count while the API

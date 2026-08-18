@@ -197,22 +197,25 @@ record returned `offline_consistent`. See the
 [ADR 0022](./docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md), and
 the [Cycle 1b-b10 exit matrix](./docs/CYCLE_1BB10_EXIT_MATRIX.md).
 
-Cycle 1b-b11 source and integrated local verification are complete; live V11
-execution and review remain pending. `PostgresMigrationDeployer` snapshots the exact closed v2 plan
+Cycle 1b-b11 source, integrated local verification, and bounded live V11 review
+are complete. `PostgresMigrationDeployer` snapshots the exact closed v2 plan
 before I/O and runs one pending suffix through an exclusively leased,
 authenticated client. One read-write transaction applies finite statement and
 lock timeouts, the reviewed advisory lock, transaction-local owner selection,
 an exact ledger-table lock, identity/ledger-shape checks, exact ordered-prefix
 validation, pending reviewed bodies, and matching ledger rows. Checksum, file,
 order, shape, or extra-row drift fails through a stable value-free boundary.
-Injected failure must roll the pending body and ledger row back; a current
-ledger is a no-op; ambiguous cleanup poisons the deployer. The planned live
-gate reconstructs only the exact `v2-0005` prefix and uses two loopback clients
-to prove one applies `v2-0006` while the other observes current state. See
-[ADR 0023](./docs/adr/0023-locked-postgresql-migration-ledger-deployment.md)
-and the [Cycle 1b-b11 exit matrix](./docs/CYCLE_1BB11_EXIT_MATRIX.md). The V11
-workflow execution, retained artifact, log review, and independent
-`offline_consistent` result are not yet complete.
+Injected failure rolls the pending body and ledger row back; a current ledger
+is a no-op; ambiguous cleanup poisons the deployer. The reviewed live gate
+reconstructed only the exact `v2-0005` prefix and used two loopback clients to
+prove one applied `v2-0006` while the other observed current state. PostgreSQL
+run `32183709701` passed at commit `5df9d07`; its retained version 11 record
+returned `offline_consistent`. See the
+[B11 evidence note](./docs/POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md),
+[ADR 0023](./docs/adr/0023-locked-postgresql-migration-ledger-deployment.md),
+and the [Cycle 1b-b11 exit matrix](./docs/CYCLE_1BB11_EXIT_MATRIX.md). The next
+existing database gate is query-plan and load testing for fact-as-known and
+tenant reads.
 
 Pool transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
@@ -267,6 +270,8 @@ record returned `offline_consistent`. B9's single-client adapter passed in run
 `32083732063` at commit `8e470e9`; its retained version 9 record also returned
 `offline_consistent`. B10's bounded two-client pool lifecycle passed in run
 `32161137775` at commit `2dcb259`; its retained version 10 record returned
+`offline_consistent`. B11's locked migration-ledger deployment passed in run
+`32183709701` at commit `5df9d07`; its retained version 11 record returned
 `offline_consistent`. These remain bounded, synthetic acceptance results. The
 offline verifier checks record/source consistency after download but cannot
 authenticate the GitHub run or independently prove PostgreSQL execution.
@@ -312,14 +317,11 @@ authenticate the GitHub run or independently prove PostgreSQL execution.
   graceful PostgreSQL cancellation, prompt cancellation while queued, reuse of
   a canceled backend, production pool tuning, load capacity, retry/failover,
   identity, application composition, or production readiness.
-- B11 currently has an accepted design, implemented source, and passing local
-  verification. It is
-  limited to one exact v2 suffix through a container-local authenticated
-  deployer and does not prove external/production migrator credentials,
+- B11 passed only one exact v2 suffix through two container-local authenticated
+  deployers. It does not prove external/production migrator credentials,
   arbitrary or multi-release upgrades, application compatibility under live
   writes, crash recovery, cancellation, distributed coordination, global
-  platform/application atomicity, or production readiness. Live V11 evidence
-  remains pending.
+  platform/application atomicity, or production readiness.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -349,5 +351,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b10 evidence note](./docs/POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md),
 [ADR 0022](./docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md),
 [Cycle 1b-b11 exit matrix](./docs/CYCLE_1BB11_EXIT_MATRIX.md),
+[Cycle 1b-b11 evidence note](./docs/POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md),
 [ADR 0023](./docs/adr/0023-locked-postgresql-migration-ledger-deployment.md),
 and [architecture decisions](./docs/adr/).

@@ -135,8 +135,9 @@ policy-scoped data dump and clean same-cluster restore; it does not widen B7.
 Cycle 1b-b9 later adds a separate live-reviewed single-client application
 adapter; it does not widen B7. The B10 pool/concurrency/cancellation boundary
 later passed its separate bounded live review; it also does not widen B7. B11
-migration-ledger locking, checksum-drift refusal, and concurrent deployment is
-the next database gate.
+later passed its separate bounded live locked-ledger, exact drift-refusal, and
+two-deployer result; it likewise does not widen B7. Query-plan and load testing
+is the next existing database gate.
 
 Historical b1 through b6 records retain their exact source shapes, completed
 checks, limitations, and interpretation. This decision does not retroactively

@@ -1,7 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; versions 1 through 10 retained and reviewed; version 11 source
-contract accepted with live record pending
+Status: accepted; versions 1 through 11 retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -40,9 +39,9 @@ sources, and records the exact node-postgres version. Version 10 preserves
 exact v1 through v9 parsing, appends only the bounded pool lifecycle check,
 binds the pool source, and records the exact pg-pool version. Their pinned live
 runs and independent reviews are retained below. The current source producer
-writes `research-cockpit-postgres-acceptance-v11.json`; its source contract is
-described below, but no live V11 record is yet retained. Source presence alone
-is not evidence.
+writes `research-cockpit-postgres-acceptance-v11.json`; its pinned live record
+and independent review are retained below. Source presence alone is not
+evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -251,8 +250,12 @@ The success path ends with the exact terminal fragment
 exclusive-create and success-only. Focused parser, writer, verifier, and
 reviewer compatibility coverage passes 158 tests, including review of a
 historical V10 commit that does not contain the new deployer blob. Integrated
-local gates pass. A pinned V11 execution, retained record/log hashes, and
-independent `offline_consistent` review remain pending. See
+local gates pass. The version 11 record from successful run `32183709701`,
+attempt 1, at commit `5df9d07` was retained after the complete B11 path and
+mandatory cleanup passed. Its downloaded bytes returned `offline_consistent`;
+the [B11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md)
+records the exact anchors and bounded claim. This successor does not alter any
+version 1 through version 10 record. See
 [ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
 [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
 

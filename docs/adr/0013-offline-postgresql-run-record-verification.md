@@ -1,7 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained versions through 10 reviewed successfully; version
-11 source contract accepted with artifact review pending
+Status: accepted; retained versions through 11 reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -17,8 +16,8 @@ original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
 historical v1 through v10 support and accepts the current v11 schema without
 mixing any version's closed check, limitation, source-hash, or tool-version
-lists. The retained artifacts described below through version 10 have been
-reviewed; no version 11 artifact is yet retained.
+lists. The retained artifacts described below through version 11 have been
+reviewed.
 Canonical comparison rejects byte-order marks, CRLF or alternate whitespace,
 trailing content, reordered members, and duplicate JSON member names.
 
@@ -217,11 +216,14 @@ limitations, tools, source keys, and source blobs fail closed. A V10 record and
 commit remain reviewable without the deployer path or hash.
 
 Focused V1 through V11 parser, verifier, and reviewer compatibility coverage
-passes 158 tests. No V11 artifact or `offline_consistent` result is yet
-retained. Source compatibility does not prove the deployer executed, locked the
+passes 158 tests. The retained V11 record from run `32183709701`, attempt 1, at
+commit `5df9d07` returned `offline_consistent` against independently supplied
+anchors. That verdict proves only agreement among the retained record, anchors,
+and fixed commit blobs. It cannot by itself prove that the deployer locked the
 live ledger, refused live drift, rolled a suffix back, applied it once,
-serialized two clients, or cleaned up. Those claims remain pending on the
-pinned workflow, exact logs, retained artifact, and independently supplied
-anchors. See
+serialized two clients, or cleaned up; those claims also depend on the reviewed
+workflow and exact logs. The
+[B11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md) records
+the exact artifact, evidence, source, and offline-output digests. See
 [ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
 [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).

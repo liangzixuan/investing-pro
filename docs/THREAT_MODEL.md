@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b10 and Cycle 1b-b11 source/local threat model
+# Sprint 0 through bounded live Cycle 1b-b11 threat model
 
 ## Current trust boundaries
 
@@ -206,16 +206,17 @@ injected failure must roll back body and ledger effects together, and any
 ambiguous rollback, commit, or role-reset state poisons the deployer. The
 acceptance-only `v2-0005` reconstruction is a bounded disposable-target setup,
 not a downgrade or production recovery interface. Integrated local verification
-is complete; live V11 execution, cleanup, artifact, and independent review remain
-pending.
+and the bounded live V11 execution, cleanup, artifact, and independent review
+are complete. PostgreSQL run `32183709701` passed at commit `5df9d07`; its
+retained record returned `offline_consistent`.
 
 These database logins and injected actors are not user identities. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
 future verified identity resolver prevents it. B2 therefore does not establish
 end-user binding, production BOLA protection, external/TLS transport, secret
-management, an application pool, or deployed persistence. B11 source narrows
-only one exact container-local v2 suffix; external or production incremental
+management, an application pool, or deployed persistence. B11 narrows only one
+exact container-local v2 suffix; external or production incremental
 migrator credentials, arbitrary-manifest or multi-release upgrades, production
 orchestration/recovery/cancellation/failover, and global platform/application
 atomicity remain deferred. External/production/incremental/continuous backup
@@ -241,8 +242,8 @@ one runner-local pool. B10 never claims graceful PostgreSQL CancelRequest,
 prompt queued abort, reuse of a canceled backend, production tuning, load
 capacity, retries, failover, identity resolution, or application composition.
 
-The B11 source does not yet establish a live database result. Even after its
-bounded V11 run, it will not establish external or production credentials,
+The B11 live result remains limited to its bounded exact-v2 proof. It does not
+establish external or production credentials,
 arbitrary manifests, general incremental or multi-release migration, online
 application/schema compatibility, concurrent application writes, crash
 recovery, cancellation, retry/failover, distributed coordination, or global
@@ -342,10 +343,10 @@ still be chosen by a compromised service, and the random loopback mapping is
 only an acceptance-runner path, not production network security. Pool reset,
 simultaneous backends, cancellation settlement, and timeout handling later
 passed only the separate bounded B10 live gate; that result does not widen B9.
-B11 source and integrated local verification now cover the exact locked-ledger,
-checksum-drift-refusal, once-only suffix, rollback, and two-deployer boundary.
-Live V11 review remains pending, and the boundary is not a general or production
-migration system.
+B11's reviewed V11 result covers the exact locked-ledger,
+checksum-drift-refusal, once-only suffix, rollback, cleanup, and two-deployer
+boundary. It is not a general or production migration system. See the
+[B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md).
 
 ## Gates before adding new trust boundaries
 

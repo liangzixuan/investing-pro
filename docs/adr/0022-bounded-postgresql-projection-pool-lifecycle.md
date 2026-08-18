@@ -149,10 +149,9 @@ writes, complete dossiers, real data, deployment, or production readiness.
 
 B10 closes only the bounded two-client lifecycle, simultaneous synthetic
 isolation, settlement-before-discard cancellation, server-timeout recovery, and
-zero-residue pool gate. Cycle 1b-b11 now has an implemented source contract for
-locked-ledger validation, live-drift refusal, exact once-only suffix replay,
-injected rollback, and two-deployer serialization; its integrated local
-verification is complete, while its live V11 gate remains pending. External or
+zero-residue pool gate. Cycle 1b-b11 later passed its separate bounded live V11
+gate for locked-ledger validation, exact live-drift refusal, once-only suffix
+replay, injected rollback, and two-deployer serialization. External or
 production incremental migrator
 credentials, arbitrary or multi-release upgrades, production migration
 orchestration/recovery/cancellation/failover, and global platform/application
@@ -168,6 +167,7 @@ atomicity are not inferred from B10 or B11. See
 - [Cycle 1b-b10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md)
 - [ADR 0023: Locked PostgreSQL migration-ledger deployment](./0023-locked-postgresql-migration-ledger-deployment.md)
 - [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md)
+- [Cycle 1b-b11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md)
 - [node-postgres pools](https://node-postgres.com/features/pooling)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [PostgreSQL 17 client connection defaults](https://www.postgresql.org/docs/17/runtime-config-client.html)

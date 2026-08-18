@@ -134,9 +134,11 @@ B9 establishes the first real database-driver implementation of the frozen
 operation-scoped read port while keeping identity, connection ownership, and
 application composition outside the adapter. The separate bounded Cycle 1b-b10
 pool/concurrency/cancellation source and live V10 result are reviewed under ADR
-0022; that successor does not widen B9. B11 migration-ledger locking,
-checksum-drift, and concurrent deployment is next. Application composition,
-production identity, external TLS, and managed secrets remain later work.
+0022; that successor does not widen B9. B11 later passed its separate bounded
+live locked-ledger and two-deployer result; it also does not widen B9.
+Query-plan and load testing is the next existing database gate. Application
+composition, production identity, external TLS, and managed secrets remain
+later work.
 
 ## Related decisions and primary sources
 

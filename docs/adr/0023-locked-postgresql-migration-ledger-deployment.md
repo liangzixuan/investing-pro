@@ -1,7 +1,6 @@
 # ADR 0023: Locked PostgreSQL migration-ledger deployment
 
-Status: accepted for Cycle 1b-b11 source and integrated local verification;
-live V11 review pending
+Status: accepted; bounded live V11 record retained and reviewed
 
 ## Context
 
@@ -85,9 +84,10 @@ connection limit of two. On the disposable v2 database it must prove:
   no passfile or on-disk password artifact is created, while secure erasure of
   the in-memory JavaScript password string is not claimed.
 
-Those live rows remain pending until the pinned workflow succeeds and its logs
-and artifact are reviewed. Source and focused tests are not live PostgreSQL
-evidence.
+Those rows passed in PostgreSQL run `32183709701` at commit `5df9d07`. Source
+and focused tests alone are not live PostgreSQL evidence; the bounded claim
+also depends on the reviewed workflow, logs, retained artifact, and independent
+offline result.
 
 ## Evidence contract
 
@@ -123,11 +123,10 @@ root and database typechecks, migration and PostgreSQL static guardrails,
 lint, formatting, production builds, and diff checks. Docker was unavailable
 locally, so no live-engine result is inferred. The local license inventory
 could not enumerate a pre-existing pnpm-store entry for
-`@fastify/cors@11.3.0`; the clean CI install remains authoritative. Pinned live
-execution, log review, retained artifact hashes, and independent
-`offline_consistent` review remain pending.
+`@fastify/cors@11.3.0`; the later clean cross-platform CI install passed at the
+tested commit.
 
-The frozen source-stage SHA-256 anchors are
+The retained V11 record binds
 `50e5829deaa5465935c2fc4669f9bd27622f6e8f59048ace6e028de4a0613374` for the
 migration deployer,
 `195510475d2eb6dcfe9dca4f781f335c00a1b4e40de672ef07091a17c717eb7e` for the
@@ -135,9 +134,11 @@ authenticated migration-plan source,
 `62736f5a71e070a6893cf75fb72dc2079f905e90600d71de65b71cba7fe38c74` for the
 acceptance runner, and
 `73bc100eb27a1e7884d05f6feb642bc00c224d56e7b480899ba901cd9934f24a` for the
-workflow; the image config pins that workflow hash. These local anchors are not
-a retained V11 record or live-execution result, and final artifact review must
-still bind the exact committed bytes independently.
+workflow; the image config pins that workflow hash. The downloaded evidence
+bytes returned `offline_consistent` against the independently supplied commit,
+run, attempt, repository, and byte-hash anchors. See the
+[B11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md) for all
+seventeen source hashes, log markers, and artifact anchors.
 
 ## Explicit exclusions
 
@@ -156,9 +157,10 @@ production deployment topology.
 ## Consequences
 
 B11 creates a fail-closed boundary for one exact reviewed v2 suffix and a
-bounded two-deployer serialization proof. It does not widen the clean-only B7
-claim or any B1 through B10 record. No B12 label is assigned by this decision;
-the remaining roadmap gates retain their existing order.
+bounded two-deployer serialization proof. Its reviewed V11 result does not
+widen the clean-only B7 claim or any B1 through B10 record. No B12 label is
+assigned by this decision; query-plan and load testing for fact-as-known and
+tenant reads remains the next existing database roadmap gate.
 
 ## Related decisions
 
@@ -166,3 +168,4 @@ the remaining roadmap gates retain their existing order.
 - [ADR 0022: Bounded PostgreSQL projection-pool lifecycle](./0022-bounded-postgresql-projection-pool-lifecycle.md)
 - [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md)
 - [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md)
+- [Cycle 1b-b11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md)
