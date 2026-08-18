@@ -28,6 +28,7 @@ const MAX_POSTGRES_PROJECTION_ADAPTER_BYTES = 2 * 1_024 * 1_024;
 const MAX_OPERATION_PROJECTION_CONTRACT_BYTES = 2 * 1_024 * 1_024;
 const MAX_DATABASE_PACKAGE_MANIFEST_BYTES = 64 * 1_024;
 const MAX_PNPM_LOCKFILE_BYTES = 512 * 1_024;
+const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -62,6 +63,8 @@ const OPERATION_PROJECTION_CONTRACT_PATH =
   "modules/research-core/src/projection-contract.ts";
 const DATABASE_PACKAGE_MANIFEST_PATH = "packages/db/package.json";
 const PNPM_LOCKFILE_PATH = "pnpm-lock.yaml";
+const POSTGRES_PROJECTION_POOL_PATH =
+  "packages/db/src/postgres-projection-pool.ts";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -207,25 +210,33 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 6 ||
       evidence.schemaVersion === 7 ||
       evidence.schemaVersion === 8 ||
-      evidence.schemaVersion === 9
+      evidence.schemaVersion === 9 ||
+      evidence.schemaVersion === 10
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
       evidence.schemaVersion === 7 ||
       evidence.schemaVersion === 8 ||
-      evidence.schemaVersion === 9
+      evidence.schemaVersion === 9 ||
+      evidence.schemaVersion === 10
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
     const backupRestorePlanV1Sources =
-      evidence.schemaVersion === 8 || evidence.schemaVersion === 9
+      evidence.schemaVersion === 8 ||
+      evidence.schemaVersion === 9 ||
+      evidence.schemaVersion === 10
         ? await readBackupRestorePlanV1Sources(
             repositoryPath,
             input.expectedCommit,
           )
         : {};
     const v9Sources =
-      evidence.schemaVersion === 9
+      evidence.schemaVersion === 9 || evidence.schemaVersion === 10
         ? await readV9Sources(repositoryPath, input.expectedCommit)
+        : {};
+    const v10Sources =
+      evidence.schemaVersion === 10
+        ? await readV10Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -249,11 +260,29 @@ export async function reviewPostgresAcceptanceEvidence(
         ...migrationPlanV2Sources,
         ...backupRestorePlanV1Sources,
         ...v9Sources,
+        ...v10Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV10Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly postgresProjectionPool: Uint8Array;
+}> {
+  const postgresProjectionPool = await readFixedGitBlob(
+    repositoryPath,
+    commit,
+    POSTGRES_PROJECTION_POOL_PATH,
+    MAX_POSTGRES_PROJECTION_POOL_BYTES,
+  );
+  return Object.freeze({
+    postgresProjectionPool: Uint8Array.from(postgresProjectionPool),
+  });
 }
 
 async function readV9Sources(

@@ -173,3 +173,27 @@ authorization results, rollback/reuse behavior, or cleanup without separate
 review of the pinned run and logs. See
 [ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
 the [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).
+
+The accepted Cycle 1b-b10 evidence design adds one explicit V10 verifier and
+reviewer branch while preserving the exact V1 through V9 branches. V10 requires
+the appended
+`authenticated_bounded_pool_lifecycle_concurrency_cancellation_and_timeout_recovery`
+check, the exact transformed pool/load/cancellation/application limitations,
+exact `nodePostgresPool: "3.14.0"`, and exact
+`postgresProjectionPoolSha256` bytes read from
+`packages/db/src/postgres-projection-pool.ts` at the independently anchored
+commit. Missing, extra, reordered, historical-version, or mixed-version checks,
+limitations, tool fields, source keys, and source blobs fail closed.
+
+The V10 parser, verifier, reviewer, and complete database suite pass locally as
+part of 12 database test files and 485 tests; database typechecking, migration
+and PostgreSQL static guardrails, focused ESLint/Prettier, and the diff check
+also pass. No retained V10 artifact has been reviewed. Even a future
+`offline_consistent` verdict will
+prove only agreement among the retained record, independently supplied anchors,
+and fixed commit blobs. It cannot by itself prove real pool checkout/reset,
+simultaneous tenant isolation, cancellation settlement, server-timeout
+recovery, failed-backend destruction, close/drain, or zero residue without
+separate review of the pinned workflow and exact logs. See
+[ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+[Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md).

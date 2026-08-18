@@ -25,6 +25,8 @@ import {
   POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -68,6 +70,7 @@ interface MutableInput {
     operationProjectionContract?: Uint8Array;
     databasePackageManifest?: Uint8Array;
     pnpmLockfile?: Uint8Array;
+    postgresProjectionPool?: Uint8Array;
     applicationMigrationsV2?: Array<{
       id: string;
       file: string;
@@ -126,6 +129,9 @@ function cloneInput(): MutableInput {
         BASE_INPUT.sources.databasePackageManifest!,
       ),
       pnpmLockfile: exactCopy(BASE_INPUT.sources.pnpmLockfile!),
+      postgresProjectionPool: exactCopy(
+        BASE_INPUT.sources.postgresProjectionPool!,
+      ),
       applicationMigrationsV2: BASE_INPUT.sources.applicationMigrationsV2!.map(
         (migration) => ({
           id: migration.id,
@@ -221,6 +227,12 @@ function removeV9SourceHashes(record: Record<string, unknown>): void {
   delete (record.toolVersions as Record<string, unknown>).nodePostgres;
 }
 
+function removeV10SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.postgresProjectionPoolSha256;
+  delete (record.toolVersions as Record<string, unknown>).nodePostgresPool;
+}
+
 function removeV7Sources(input: MutableInput): void {
   delete input.sources.platformBootstrapV2;
   delete input.sources.applicationMigrationManifestV2;
@@ -240,8 +252,23 @@ function removeV9Sources(input: MutableInput): void {
   delete input.sources.pnpmLockfile;
 }
 
-function v8Input(): MutableInput {
+function removeV10Sources(input: MutableInput): void {
+  delete input.sources.postgresProjectionPool;
+}
+
+function v9Input(): MutableInput {
   const input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 9;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V9_NOT_PROVEN];
+    removeV10SourceHashes(record);
+  });
+  removeV10Sources(input);
+  return input;
+}
+
+function v8Input(): MutableInput {
+  const input = mutateEvidence(v9Input(), (record) => {
     record.schemaVersion = 8;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V8_NOT_PROVEN];
@@ -394,6 +421,13 @@ function cloneFrom(
       ...(input.sources.pnpmLockfile === undefined
         ? {}
         : { pnpmLockfile: exactCopy(input.sources.pnpmLockfile) }),
+      ...(input.sources.postgresProjectionPool === undefined
+        ? {}
+        : {
+            postgresProjectionPool: exactCopy(
+              input.sources.postgresProjectionPool,
+            ),
+          }),
       ...(input.sources.applicationMigrationsV2 === undefined
         ? {}
         : {
@@ -627,6 +661,23 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v9 evidence without the v10 pool source or tool", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v9Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_bounded_pool_lifecycle_concurrency_cancellation_and_timeout_recovery",
+    );
+    expect(result.recordedNotProven).toContain(
+      "application_pool_or_composition_root",
+    );
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -668,6 +719,12 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(v8Input(), (record) => {
         record.schemaVersion = 9;
       }),
+      mutateEvidence(v9Input(), (record) => {
+        record.schemaVersion = 10;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 9;
+      }),
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 8;
       }),
@@ -692,7 +749,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("requires the exact version-specific source bundle", () => {
-    const missingV9 = cloneInput();
+    const missingV10 = cloneInput();
+    delete missingV10.sources.postgresProjectionPool;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV10),
+    );
+
+    const missingV9 = v9Input();
     delete missingV9.sources.postgresProjectionAdapter;
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(missingV9),
@@ -765,11 +828,21 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       verifyPostgresAcceptanceEvidenceOffline(extraV8),
     );
 
+    const extraV9 = v9Input();
+    (
+      extraV9.sources as unknown as Record<string, unknown>
+    ).postgresProjectionPool = exactCopy(
+      BASE_INPUT.sources.postgresProjectionPool!,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraV9),
+    );
+
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
     );
   });
 
@@ -1015,6 +1088,7 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "operationProjectionContract",
       "databasePackageManifest",
       "pnpmLockfile",
+      "postgresProjectionPool",
     ] as const) {
       const input = cloneInput();
       input.sources = {
@@ -1395,6 +1469,7 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     operationProjectionContract,
     databasePackageManifest,
     pnpmLockfile,
+    postgresProjectionPool,
   ] = await Promise.all([
     readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
     readExact(
@@ -1440,6 +1515,7 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     ),
     readExact(new URL("../package.json", import.meta.url)),
     readExact(new URL("../../../pnpm-lock.yaml", import.meta.url)),
+    readExact(new URL("../src/postgres-projection-pool.ts", import.meta.url)),
   ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
     reference: string;
@@ -1519,6 +1595,7 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       pgDump: "pg_dump (PostgreSQL) 17.11 (Debian 17.11-1.pgdg13+1)",
       pgRestore: "pg_restore (PostgreSQL) 17.11 (Debian 17.11-1.pgdg13+1)",
       nodePostgres: "8.23.0",
+      nodePostgresPool: "3.14.0",
     },
     sourceHashes: {
       workflowSha256: sha256(workflow),
@@ -1542,6 +1619,7 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       operationProjectionContractSha256: sha256(operationProjectionContract),
       databasePackageManifestSha256: sha256(databasePackageManifest),
       pnpmLockfileSha256: sha256(pnpmLockfile),
+      postgresProjectionPoolSha256: sha256(postgresProjectionPool),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -1573,6 +1651,7 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       operationProjectionContract,
       databasePackageManifest,
       pnpmLockfile,
+      postgresProjectionPool,
       applicationMigrationsV2,
       migrations,
     },

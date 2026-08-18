@@ -173,6 +173,23 @@ retained version 9 record returned `offline_consistent`. See the
 [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
+The locally verified Cycle 1b-b10 source also changes no canonical entity, tenancy,
+time, numeric, evidence, rights, deletion, or projection semantics.
+`PooledPostgresFinancialFactProjectionSource` owns a transferred, bounded
+two-client `pg.Pool`, snapshots the same complete query and trusted synthetic
+actor before checkout, and reimplements the exact B9 transaction and B4
+normalization boundary independently on each client. Pool acquisition and
+PostgreSQL statement execution are finitely bounded; only a fully reset,
+successful checkout may be reused. An active abort marks cancellation, waits
+for the in-flight operation to settle under the fixed server timeout, and then
+destroys the checkout; a server timeout, failed transaction, or ambiguous
+cleanup also prevents reuse. This is a locally verified source implementation,
+not a new identity or canonical-data capability. The 12-file, 485-test database
+suite, database typecheck, migration and PostgreSQL static guardrails, focused
+lint/format, and diff checks pass. All live V10 evidence remains pending. See
+[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+[Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -185,8 +202,12 @@ retention, RPO/RTO, and the future deletion path remain separate engine gates.
 B8 closes only the exact synthetic, data-only, same-cluster acceptance result.
 The reviewed B9 result remains one sequential, exclusively leased synthetic
 service client, not an end-user identity, application composition, or pool
-result. B10 must separately prove the bounded pool/concurrency/cancellation
-boundary.
+result. B10 separately defines a bounded two-client pool/concurrency/
+cancellation boundary, but that boundary has no live claim until the pinned V10
+run and independent artifact review complete. Production pool tuning, load
+capacity, retry/failover, graceful cancellation, prompt queued abort, and
+application composition remain outside B10. B11 is the separate
+migration-ledger locking, checksum-drift, and concurrent-deployment gate.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
 authenticated-migrator gate. The reviewed B7 result proves only the bounded

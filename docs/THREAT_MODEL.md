@@ -159,6 +159,40 @@ The bounded live path then passed in PostgreSQL run `32083732063` at commit
 [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
+Cycle 1b-b10 has a locally verified bounded-pool source, still disconnected from the
+running application. `PooledPostgresFinancialFactProjectionSource` owns one
+explicitly transferred real `pg.Pool` limited to two clients; the caller may not
+call `connect()`, query or release a client, call `end()`, or otherwise inspect
+or use the pool during source ownership. Only read-only counters may be checked
+after `source.close()` completes. It snapshots the complete query and trusted
+synthetic actor before checkout, cleans each session,
+reimplements the exact B9 read-only role/context/B4-query transaction, and
+recycles only an unambiguously successful checkout after postflight reset.
+Finite pool acquisition and PostgreSQL `statement_timeout` bound waiting;
+adapter failure, timeout, failed transaction, or cleanup ambiguity destroys the
+checkout. An active abort marks cancellation, waits for the in-flight
+PostgreSQL operation to settle under the fixed server timeout, and only then
+destroys the checkout. A queued abort cannot promptly cancel `pg-pool.connect()`;
+it remains bounded by acquisition and destroys any late checkout. Source and
+local verification pass all 12 database test files and 485 tests, database
+typechecking, migration and PostgreSQL static guardrails, focused
+ESLint/Prettier, and the diff check; independent integrated review reports GO
+with no P0/P1 finding. Live V10 execution and artifact review remain explicitly
+pending. See
+[ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+[Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
+
+The future live reset probe stays outside that ownership boundary. A separate
+administrative connection may observe only same-PID idle state, canonical
+application name, session user, and advisory-lock absence, then the source must
+perform a subsequent actor-isolated load and the timeout/application-name
+probes. Custom-GUC and prepared-statement cleanup are source/unit/static
+`DISCARD ALL` evidence, not direct live pool inspection.
+
+The queue probe also avoids inspecting the owned pool: fixed `max: 2`, two
+admin-observed blocked PIDs, and a stable timeout from the third source load are
+the complete live acquisition-bound evidence.
+
 These database logins and injected actors are not user identities. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
@@ -179,6 +213,13 @@ The reviewed B9 adapter narrows only the prior “no driver” gap; it does not
 verify who supplied the synthetic actor and does not establish pool
 reset, simultaneous backends, cancellation, timeout, TLS, secret-management, or
 application-composition behavior.
+
+The locally verified B10 source narrows only the proposed bounded lifecycle mechanism.
+Until reviewed live V10 evidence exists, pool reset, simultaneous-backend
+isolation, settlement-before-discard cancellation, timeout recovery, and zero
+residue remain unproven engine behavior. B10 never claims graceful PostgreSQL CancelRequest,
+prompt queued abort, reuse of a canceled backend, production tuning, load
+capacity, retries, failover, identity resolution, or application composition.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes
@@ -267,7 +308,8 @@ context/rollback/cleanup probes recorded for version 9. The trusted actor can
 still be chosen by a compromised service, and the random loopback mapping is
 only an acceptance-runner path, not production network security. Pool reset,
 simultaneous backends, cancellation, and timeout handling remain the separate
-B10 gate.
+B10 live gate despite its locally verified source. B11 separately gates
+migration-ledger locking, checksum-drift refusal, and concurrent deployment.
 
 ## Gates before adding new trust boundaries
 

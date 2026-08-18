@@ -116,9 +116,43 @@ configuration or lifecycle and is not imported by an app. See the
 [ADR 0021](../../docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](../../docs/CYCLE_1BB9_EXIT_MATRIX.md).
 
+Cycle 1b-b10 has an accepted, locally verified implementation of
+`PooledPostgresFinancialFactProjectionSource`. The source owns one explicitly
+transferred, real `pg.Pool` fixed at maximum two clients, with finite checkout
+and positive server statement timeouts and no client `query_timeout`. It
+snapshots the complete query and trusted synthetic actor before checkout,
+establishes a clean session, reimplements the exact B9 read-only
+role/context/B4-query transaction, and recycles only an unambiguously successful
+checkout after postflight reset. Adapter failure, timeout, failed transaction,
+or cleanup ambiguity destroys the checkout. An active abort marks cancellation,
+waits for the in-flight PostgreSQL operation to settle under the fixed server
+statement timeout, and then destroys rather than recycles the checkout.
+`close()` rejects new
+work, waits for registered loads, and ends the owned pool exactly once. Source
+and local verification are complete: all 12 database test files and 485 tests,
+database typechecking, migration and PostgreSQL static guardrails, focused
+ESLint/Prettier, and the diff check pass; independent integrated review reports
+GO with no P0/P1 finding. The pinned V10 workflow, retained evidence, log review,
+and independent artifact review are explicitly pending. See
+[ADR 0022](../../docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md)
+and the [Cycle 1b-b10 exit matrix](../../docs/CYCLE_1BB10_EXIT_MATRIX.md).
+
+Ownership transfer is exclusive: after construction the caller may not call
+`connect()`, query or release a client, call `end()`, or otherwise inspect or use
+the pool while the source owns it. Only read-only counters may be checked after
+`source.close()` completes. The future live reset probe therefore uses an
+out-of-band administrative connection to observe
+only same-PID idle state, canonical application name, session user, and absence
+of advisory locks, then proves the next actor-isolated source load plus timeout
+and application-name behavior. Custom-GUC and prepared-statement cleanup remain
+source/unit/static evidence for the fixed `DISCARD ALL` sequence, not a direct
+live inspection claim.
+
 There is deliberately no production or incremental migration runner, retained
-credential, connection pool, or application-composed database client in this
-package. The historical clean-bootstrap renderer validates its immutable
+credential, externally configured or production-ready pool, or
+application-composed database client in this package. B10's transferred
+two-client pool remains a synthetic acceptance boundary. The historical
+clean-bootstrap renderer validates its immutable
 manifest and emits all seven historical bodies. The authenticated V2
 application renderer separately validates its closed manifest and emits all six
 role-neutral bodies plus their ledger entries inside one locked transaction for
@@ -459,11 +493,14 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     operation and tenant alternation, injected rollback, value-free error
     handling, post-transaction cleanup, client closure, backend drain, and
     independently reviewed version 9 evidence. This does not include a pool.
-14. Prove the separate B10 bounded pool lifecycle, simultaneous tenant-isolated
-    backends, checkout/reset discipline, cancellation, timeout handling,
-    failed-transaction discard, and zero pooled-backend residue.
-15. Prove migration ledger locking, checksum mismatch refusal, one-time replay,
-    failure rollback, and concurrent deploy behavior.
+14. Complete the accepted B10 proof for one real, bounded two-client pool:
+    clean checkout/reuse, simultaneous tenant-isolated backends, bounded queue,
+    settlement-before-discard active cancellation, server-timeout recovery,
+    failed-transaction discard, idempotent close, zero pooled-backend residue,
+    and independently reviewed V10 evidence.
+15. Complete the B11 migration-ledger locking, checksum-drift, and
+    concurrent-deployment gate: checksum-mismatch refusal against live drift,
+    one-time replay, injected-failure rollback, and concurrent deploy behavior.
 16. Run query plans and load tests for fact-as-known and tenant reads, including
     RLS overhead and index use.
 17. Approve the production privacy and retention model for permanent resource
@@ -491,4 +528,9 @@ restore in the disposable acceptance environment.
 Full-schema/global/cross-cluster/version restore, continuous backup, disaster
 recovery, storage encryption/retention, secure passfile or archive erasure, and
 RPO/RTO remain outside B8. The reviewed B9 result proves only one sequential
-synthetic client; it does not establish a pool or application composition.
+synthetic client; it does not establish a pool or application composition. The
+locally verified B10 source does not establish a live pool result until the pinned V10
+workflow and independent review complete, and it does not include production
+pool sizing, load capacity, graceful cancel requests, prompt queued abort,
+retry/failover, or application composition. B11 remains the separate
+migration-ledger locking, checksum-drift, and concurrent-deployment gate.

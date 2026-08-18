@@ -177,6 +177,36 @@ claim. See the
 [ADR 0021](./docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./docs/CYCLE_1BB9_EXIT_MATRIX.md).
 
+Cycle 1b-b10 has an accepted, locally verified source implementation of
+`PooledPostgresFinancialFactProjectionSource`. It owns one explicitly
+transferred, real `pg.Pool` bounded to two clients and reimplements the exact B9
+read-only role/context/B4-query transaction for each checkout. The design
+snapshots the query and trusted synthetic actor before checkout, bounds pool
+acquisition and PostgreSQL `statement_timeout`, and recycles a client only after
+successful preflight, transaction, and postflight cleanup. Active abort marks
+cancellation, waits for the in-flight operation to settle under the fixed
+server timeout, then destroys the checkout; ambiguous or timed-out checkouts are
+also never reused. The source closes the owned pool idempotently after registered
+work settles. Source and local verification are complete: all 12 database test
+files and 485 tests, database typechecking, migration and PostgreSQL static
+guardrails, focused ESLint/Prettier, and the diff check pass; independent
+integrated review reports GO with no P0/P1 finding. The pinned live V10 run,
+retained artifact, log review, and independent `offline_consistent` review are
+explicitly pending. See
+[ADR 0022](./docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md) and
+the [Cycle 1b-b10 exit matrix](./docs/CYCLE_1BB10_EXIT_MATRIX.md). The next
+database milestone after B10 is the B11 migration-ledger locking,
+checksum-drift, and concurrent-deployment gate.
+
+Pool transfer is exclusive: after construction the caller may not call
+`connect()`, query or release a client, call `end()`, or otherwise inspect or use
+the pool while the source owns it. Only read-only counters may be inspected
+after `source.close()` completes. The future live reset proof therefore uses
+only an out-of-band administrative observer for same-PID idle/application/user/
+advisory-lock state, followed by a source-owned actor-isolated load and the
+timeout/application-name probes. Custom-GUC and prepared-statement cleanup are
+source, unit, and static `DISCARD ALL` evidence, not direct live inspection.
+
 ## Requirements
 
 - Node.js 24.19.x
@@ -217,10 +247,12 @@ authenticated application-migration path passed in run `32068159652` at
 commit `41d13dd`; its retained version 7 record returned
 `offline_consistent`. B8's bounded authenticated policy-scoped dump and clean
 restore passed in run `32076642878` at commit `49d3a96`; its retained version 8
-record returned `offline_consistent`. These remain sequential, synthetic,
-container-local acceptance results. The offline verifier checks record/source consistency
-after download but cannot authenticate the GitHub run or independently prove
-PostgreSQL execution.
+record returned `offline_consistent`. B9's single-client adapter passed in run
+`32083732063` at commit `8e470e9`; its retained version 9 record also returned
+`offline_consistent`. These remain bounded, synthetic acceptance results. B10
+has no live V10 result yet. The offline verifier checks record/source
+consistency after download but cannot authenticate the GitHub run or
+independently prove PostgreSQL execution.
 
 ## Safety boundary
 
@@ -256,6 +288,13 @@ PostgreSQL execution.
   contract. It does not establish end-user identity, pool safety,
   application composition, external/TLS transport, managed secrets,
   concurrency, cancellation, timeouts, or production readiness.
+- The locally verified B10 source is limited to a runner-local, two-client pool with
+  settlement-before-discard active-abort and server-timeout recovery. It does
+  not prove
+  graceful PostgreSQL cancellation, prompt cancellation while queued, reuse of
+  a canceled backend, production pool tuning, load capacity, retry/failover,
+  identity, application composition, or production readiness. No live B10 claim
+  exists until reviewed V10 evidence does.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -281,4 +320,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b9 exit matrix](./docs/CYCLE_1BB9_EXIT_MATRIX.md),
 [Cycle 1b-b9 evidence note](./docs/POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md),
 [ADR 0021](./docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
+[Cycle 1b-b10 exit matrix](./docs/CYCLE_1BB10_EXIT_MATRIX.md),
+[ADR 0022](./docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md),
 and [architecture decisions](./docs/adr/).

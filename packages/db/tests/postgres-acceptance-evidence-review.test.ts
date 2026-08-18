@@ -33,6 +33,8 @@ import {
   POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -63,6 +65,7 @@ const FIXED_SOURCE_PATHS = [
   "modules/research-core/src/projection-contract.ts",
   "packages/db/package.json",
   "pnpm-lock.yaml",
+  "packages/db/src/postgres-projection-pool.ts",
 ] as const;
 const REPOSITORY = "example/research-cockpit";
 const REPOSITORY_ID = "123456789";
@@ -471,7 +474,52 @@ function evidenceAdapterTests(): void {
     );
   });
 
-  it("rejects a changed v9 projection source at the anchored commit", async () => {
+  it("reviews historical v9 at a commit without the v10 pool source blob", async () => {
+    const fixture = await createFixture();
+    await rm(
+      join(
+        fixture.repositoryPath,
+        "packages/db/src/postgres-projection-pool.ts",
+      ),
+    );
+    git(fixture.repositoryPath, ["add", "--all"]);
+    git(fixture.repositoryPath, ["commit", "-m", "historical v9 sources"]);
+    const historicalCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 9;
+    record.commitSha = historicalCommit;
+    deleteV10SourceHashes(record);
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V9_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+
+    const result = await reviewPostgresAcceptanceEvidence({
+      ...fixture.input,
+      expectedCommit: historicalCommit,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    });
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_bounded_pool_lifecycle_concurrency_cancellation_and_timeout_recovery",
+    );
+  });
+
+  it("rejects a changed v10 projection source at the anchored commit", async () => {
     const fixture = await createFixture();
     await writeFile(
       join(
@@ -505,7 +553,7 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("rejects changed v9 platform, renderer, and application-body sources at the anchored commit", async () => {
+  it("rejects changed v10 platform, renderer, and application-body sources at the anchored commit", async () => {
     for (const path of [
       "packages/db/migration-plans/v2/platform-bootstrap.sql",
       "packages/db/src/authenticated-migration-plan.ts",
@@ -514,7 +562,7 @@ function evidenceAdapterTests(): void {
       const fixture = await createFixture();
       await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
       git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v9 source"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
       const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
 
       await expect(
@@ -525,7 +573,7 @@ function evidenceAdapterTests(): void {
     }
   });
 
-  it("rejects changed v9 backup/restore plan sources at the anchored commit", async () => {
+  it("rejects changed v10 backup/restore plan sources at the anchored commit", async () => {
     for (const path of [
       "packages/db/backup-restore-plans/v1/restore-platform.sql",
       "packages/db/src/authenticated-backup-restore-plan.ts",
@@ -533,7 +581,7 @@ function evidenceAdapterTests(): void {
       const fixture = await createFixture();
       await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
       git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v9 source"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
       const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
 
       await expect(
@@ -544,7 +592,7 @@ function evidenceAdapterTests(): void {
     }
   });
 
-  it("rejects changed v9 adapter, contract, package, and lockfile sources at the anchored commit", async () => {
+  it("rejects changed v10 adapter, contract, package, and lockfile sources at the anchored commit", async () => {
     for (const path of [
       "packages/db/src/postgres-projection-adapter.ts",
       "modules/research-core/src/projection-contract.ts",
@@ -554,10 +602,10 @@ function evidenceAdapterTests(): void {
       const fixture = await createFixture();
       await writeFile(
         join(fixture.repositoryPath, path),
-        "changed v9 source\n",
+        "changed v10 source\n",
       );
       git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v9 source"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
       const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
 
       await expect(
@@ -566,6 +614,41 @@ function evidenceAdapterTests(): void {
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
     }
+  });
+
+  it("rejects a changed or missing v10 pool source at the anchored commit", async () => {
+    const changed = await createFixture();
+    await writeFile(
+      join(
+        changed.repositoryPath,
+        "packages/db/src/postgres-projection-pool.ts",
+      ),
+      "changed v10 pool source\n",
+    );
+    git(changed.repositoryPath, ["add", "--all"]);
+    git(changed.repositoryPath, ["commit", "-m", "changed v10 pool source"]);
+    const changedCommit = git(changed.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(changed, changedCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+
+    const missing = await createFixture();
+    await rm(
+      join(
+        missing.repositoryPath,
+        "packages/db/src/postgres-projection-pool.ts",
+      ),
+    );
+    git(missing.repositoryPath, ["add", "--all"]);
+    git(missing.repositoryPath, ["commit", "-m", "missing v10 pool source"]);
+    const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(missing, missingCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
   it("requires every independent trust anchor", async () => {
@@ -1164,6 +1247,7 @@ async function createFixture(
       pgDump: "pg_dump (PostgreSQL) 17.11 (Debian test)",
       pgRestore: "pg_restore (PostgreSQL) 17.11 (Debian test)",
       nodePostgres: "8.23.0",
+      nodePostgresPool: "3.14.0",
     },
     sourceHashes: {
       workflowSha256: await fileSha256(
@@ -1226,6 +1310,9 @@ async function createFixture(
       pnpmLockfileSha256: await fileSha256(
         join(repositoryPath, "pnpm-lock.yaml"),
       ),
+      postgresProjectionPoolSha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/postgres-projection-pool.ts"),
+      ),
     },
     completedAt: "2026-08-16T01:02:03.004Z",
   });
@@ -1287,6 +1374,13 @@ function deleteV9SourceHashes(record: Record<string, unknown>): void {
   delete hashes.databasePackageManifestSha256;
   delete hashes.pnpmLockfileSha256;
   delete (record.toolVersions as Record<string, unknown>).nodePostgres;
+  deleteV10SourceHashes(record);
+}
+
+function deleteV10SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.postgresProjectionPoolSha256;
+  delete (record.toolVersions as Record<string, unknown>).nodePostgresPool;
 }
 
 function cliArguments(input: PostgresAcceptanceEvidenceReviewInput): string[] {

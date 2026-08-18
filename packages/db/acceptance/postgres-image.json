@@ -8,7 +8,7 @@
   "expectedServerVersion": "17.11",
   "expectedServerVersionNumber": 170011,
   "databaseName": "research_cockpit_acceptance_test",
-  "workflowSha256": "349c5e2beef444698068969bc264004240824b4bbb1e641e3e60e30165d380d7",
+  "workflowSha256": "7d993fea4c18469ebc07e900c798e06af881f7c1e01f621b3145d9c1fd13af0b",
   "fixtureSha256": "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
   "verifiedOn": "2026-08-15",
   "runner": {

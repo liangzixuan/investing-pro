@@ -184,3 +184,9 @@ reconnection, failover, load capacity, application/API composition, production
 identity, TLS, managed secrets, write persistence, complete or dimensioned
 projections, real or licensed data, deployment, or production readiness. The
 separate bounded pool/concurrency/cancellation proof is Cycle 1b-b10.
+
+ADR 0022 now records the implemented, locally verified B10 source, but no pinned
+V10 execution, retained V10 artifact, reviewed log set, or independent V10
+verdict exists yet. That successor does not change the exact version 9
+`notProven` list or any B9 claim. B11 migration-ledger locking, checksum-drift,
+and concurrent-deployment follows B10.

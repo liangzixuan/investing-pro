@@ -192,6 +192,34 @@ version 1 through version 8 record. See
 [ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
 the [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).
 
+Cycle 1b-b10 has a separate accepted version 10 contract. V10 appends only
+`authenticated_bounded_pool_lifecycle_concurrency_cancellation_and_timeout_recovery`,
+adds exact `postgresProjectionPoolSha256` bytes for
+`packages/db/src/postgres-projection-pool.ts`, and extends only the V10
+tool-version shape with `nodePostgresPool: "3.14.0"`. It transforms only the
+completed pool gaps: `production_identity_tls_secrets_or_pooling` becomes
+`production_identity_tls_secrets_or_load_ready_pooling`,
+`concurrent_sessions_cancellation_or_timeouts` becomes
+`production_load_capacity_pool_tuning_or_failover`, the explicit
+`prompt_queued_abort_graceful_cancel_request_or_reusable_canceled_backend`
+nonclaim is inserted, and `application_pool_or_composition_root` becomes
+`application_composition_root`. Every other V9 check, limitation, source key,
+tool field, and historical meaning remains fixed.
+
+The V10 record name is
+`research-cockpit-postgres-acceptance-v10.json`; its artifact name is
+`postgres-acceptance-evidence-v10-${sha}-${attempt}`. The writer remains
+success-only and may run only after the real bounded pool suite settles, the
+pool ends, its backends drain, the ephemeral login and memberships are removed,
+and every inherited cleanup gate passes. The V10 source/local contract passes
+all 12 database test files and 485 tests, database typechecking, migration and
+PostgreSQL static guardrails, focused ESLint/Prettier, and the diff check. The
+pinned V10 run, retained artifact and log markers, and independent
+`offline_consistent` review remain pending. No version 10 live claim exists, and
+this successor does not alter any version 1 through version 9 record. See
+[ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
+[Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md).
+
 ## Primary sources
 
 - [GitHub artifact upload action](https://github.com/actions/upload-artifact)

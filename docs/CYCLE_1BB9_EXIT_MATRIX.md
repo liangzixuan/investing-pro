@@ -50,3 +50,9 @@ loopback mapping into an application port, fail-fast overlap rejection into
 concurrency support, or the transitive `pg-pool` package into an application
 pool. The bounded pool/concurrency/cancellation proof is the next milestone,
 Cycle 1b-b10.
+
+ADR 0022 now records that successor's real, bounded two-client pool source. Its
+source/local gates pass, while pinned V10 execution, retained artifact, log
+review, and independent review remain pending; none of that successor work
+changes this matrix or widens the reviewed B9 claim. B11 migration-ledger
+locking, checksum-drift, and concurrent-deployment follows B10.

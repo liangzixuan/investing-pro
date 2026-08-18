@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Client } from "pg";
+import { Client, Pool, type PoolClient } from "pg";
 
 import type {
   FinancialFact,
@@ -81,8 +81,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceV9SourceHashes,
-  type PostgresAcceptanceV9ToolVersions,
+  type PostgresAcceptanceV10SourceHashes,
+  type PostgresAcceptanceV10ToolVersions,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -95,12 +95,23 @@ import {
   PostgresProjectionAdapterError,
   type PostgresProjectionActorContext,
 } from "./postgres-projection-adapter";
+import {
+  PooledPostgresFinancialFactProjectionSource,
+  PostgresProjectionPoolError,
+} from "./postgres-projection-pool";
 
 const acceptanceRunnerPath = fileURLToPath(import.meta.url);
 const packageRoot = join(dirname(acceptanceRunnerPath), "..");
 const repositoryRoot = join(packageRoot, "..", "..");
 const nodePostgresPackagePath = createRequire(import.meta.url).resolve(
   "pg/package.json",
+);
+const nodePostgresPoolEntryPath = createRequire(
+  nodePostgresPackagePath,
+).resolve("pg-pool");
+const nodePostgresPoolPackagePath = join(
+  dirname(nodePostgresPoolEntryPath),
+  "package.json",
 );
 const imageConfigPath = join(packageRoot, "acceptance", "postgres-image.json");
 const migrationManifestPath = join(packageRoot, "migration-manifest.json");
@@ -158,6 +169,11 @@ const postgresProjectionAdapterPath = join(
   "src",
   "postgres-projection-adapter.ts",
 );
+const postgresProjectionPoolAdapterPath = join(
+  packageRoot,
+  "src",
+  "postgres-projection-pool.ts",
+);
 const operationProjectionContractPath = join(
   repositoryRoot,
   "modules",
@@ -174,11 +190,23 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 const EXPECTED_NODE_POSTGRES_VERSION = "8.23.0" as const;
+const EXPECTED_NODE_POSTGRES_POOL_VERSION = "3.14.0" as const;
 const POSTGRES_PROJECTION_ADAPTER_APPLICATION_NAME =
   "research-cockpit-b9-acceptance" as const;
+const POSTGRES_PROJECTION_POOL_APPLICATION_NAME =
+  "research-cockpit-b10-pool" as const;
+const POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME =
+  "research-cockpit-b10-lock-blocker" as const;
+const POSTGRES_PROJECTION_POOL_MAX = 2 as const;
+const POSTGRES_PROJECTION_POOL_CONNECTION_TIMEOUT_MILLISECONDS = 500;
+const POSTGRES_PROJECTION_POOL_STATEMENT_TIMEOUT_MILLISECONDS = 3_000;
+const POSTGRES_PROJECTION_POOL_BLOCKED_BACKEND_DEADLINE_MILLISECONDS =
+  POSTGRES_PROJECTION_POOL_STATEMENT_TIMEOUT_MILLISECONDS -
+  POSTGRES_PROJECTION_POOL_CONNECTION_TIMEOUT_MILLISECONDS -
+  1_000;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
 export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
@@ -596,6 +624,22 @@ export function generateRuntimeAuthPassword(): string {
 }
 
 export function renderRuntimeAuthProvisioningSql(password: string): string {
+  return renderRuntimeAuthProvisioningSqlWithConnectionLimit(password, 1);
+}
+
+export function renderPostgresProjectionPoolProvisioningSql(
+  password: string,
+): string {
+  return renderRuntimeAuthProvisioningSqlWithConnectionLimit(
+    password,
+    POSTGRES_PROJECTION_POOL_MAX,
+  );
+}
+
+function renderRuntimeAuthProvisioningSqlWithConnectionLimit(
+  password: string,
+  connectionLimit: 1 | typeof POSTGRES_PROJECTION_POOL_MAX,
+): string {
   assertRuntimeAuthPassword(password);
   return `BEGIN;
 SET LOCAL log_statement = 'none';
@@ -614,7 +658,7 @@ CREATE ROLE ${RUNTIME_AUTH_LOGIN_ROLE}
   NOREPLICATION
   NOINHERIT
   NOBYPASSRLS
-  CONNECTION LIMIT 1
+  CONNECTION LIMIT ${connectionLimit}
   PASSWORD '${password}';
 GRANT ${RUNTIME_AUTH_CAPABILITY_ROLE}
   TO ${RUNTIME_AUTH_LOGIN_ROLE}
@@ -1722,6 +1766,7 @@ export async function runPostgresAcceptance(
     fixtureSql,
     adapterEndpoint,
   );
+  await verifyAuthenticatedPostgresProjectionPool(containerId, adapterEndpoint);
   await verifyAuthenticatedBackupAndBoundedRestore(
     containerId,
     authenticatedMigrationPlan,
@@ -1745,7 +1790,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, and single-client read-only financial-fact projection adapter acceptance passed; the version 9 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 10 success-only run record was written.\n",
   );
 }
 
@@ -1826,6 +1871,1010 @@ async function verifyVersionedAuthenticatedMigrationPlan(
   await verifyAuthenticatedRuntimeSession(containerId, adapterEndpoint);
   await verifyMigrationLedger(containerId, expectedLedger);
   await verifyB7PlatformArtifactsAfterApplication(containerId);
+}
+
+async function verifyAuthenticatedPostgresProjectionPool(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+): Promise<void> {
+  await verifyRuntimeAuthResidueAbsent(containerId);
+
+  const password = generateRuntimeAuthPassword();
+  let wrongPassword = generateRuntimeAuthPassword();
+  while (wrongPassword === password) {
+    wrongPassword = generateRuntimeAuthPassword();
+  }
+  let pool: Pool | null = null;
+  let source: PooledPostgresFinancialFactProjectionSource | null = null;
+  let actor: PostgresProjectionActorContext = Object.freeze({
+    principalId: PRINCIPAL_ALPHA,
+    organizationId: ORGANIZATION_ALPHA,
+  });
+  let probeError: unknown;
+  const cleanupErrors: unknown[] = [];
+
+  try {
+    await provisionPostgresProjectionPoolLogin(containerId, password);
+    await verifyPostgresProjectionPoolRoleCatalog(containerId);
+    await verifyPostgresProjectionPoolWrongPasswordRejection(
+      containerId,
+      endpoint,
+      wrongPassword,
+    );
+    pool = createPostgresProjectionPool(endpoint, password);
+
+    const dirtyBackendPid =
+      await verifyPostgresProjectionPoolCapacityAndDirtyLease(pool);
+    source = new PooledPostgresFinancialFactProjectionSource(pool, {
+      current: () => actor,
+    });
+
+    const displayCase = runtimeProjectionAcceptanceCases()[0];
+    if (displayCase === undefined)
+      throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+    const resetResult = await source.load(displayCase.query);
+    assertPostgresProjectionPoolResult(
+      { ...displayCase, label: "B10 dirty-checkout reset" },
+      resetResult,
+    );
+    await verifyPostgresProjectionPoolDiscardedSessionState(
+      containerId,
+      dirtyBackendPid,
+    );
+
+    actor = Object.freeze({
+      principalId: PRINCIPAL_BETA,
+      organizationId: ORGANIZATION_BETA,
+    });
+    const betaReuse = await source.load(displayCase.query);
+    assertPostgresProjectionPoolResult(
+      {
+        ...displayCase,
+        label: "B10 beta sequential pooled reuse",
+        principalId: PRINCIPAL_BETA,
+        organizationId: ORGANIZATION_BETA,
+      },
+      betaReuse,
+    );
+
+    actor = Object.freeze({
+      principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
+    });
+    await verifyPostgresProjectionPoolConcurrentTenantIsolation(
+      containerId,
+      source,
+      displayCase,
+      () => {
+        actor = Object.freeze({
+          principalId: PRINCIPAL_BETA,
+          organizationId: ORGANIZATION_BETA,
+        });
+      },
+    );
+
+    actor = Object.freeze({
+      principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
+    });
+    const abortDiscardedPid = await verifyPostgresProjectionPoolActiveAbort(
+      containerId,
+      source,
+      displayCase,
+    );
+    const timeoutDiscardedPid =
+      await verifyPostgresProjectionPoolStatementTimeout(
+        containerId,
+        source,
+        displayCase,
+      );
+
+    const replacementResult = await source.load(displayCase.query);
+    assertPostgresProjectionPoolResult(
+      { ...displayCase, label: "B10 post-discard replacement" },
+      replacementResult,
+    );
+    await assertPostgresProjectionPoolReplacementBackend(containerId, [
+      abortDiscardedPid,
+      timeoutDiscardedPid,
+    ]);
+  } catch (error) {
+    probeError = error;
+  } finally {
+    if (source !== null) {
+      const sourceToClose = source;
+      let closePromise: Promise<void> | null = null;
+      try {
+        closePromise = sourceToClose.close();
+        const secondClose = sourceToClose.close();
+        if (closePromise !== secondClose) {
+          cleanupErrors.push(
+            new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE"),
+          );
+        }
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+      if (closePromise !== null) {
+        try {
+          await closePromise;
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+      }
+      try {
+        await capturePostgresProjectionPoolError(
+          () => sourceToClose.load(runtimeProjectionQuery("display_api")),
+          "POSTGRES_PROJECTION_POOL_FAILURE",
+        );
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+      if (
+        pool === null ||
+        pool.totalCount !== 0 ||
+        pool.idleCount !== 0 ||
+        pool.waitingCount !== 0
+      ) {
+        cleanupErrors.push(
+          new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE"),
+        );
+      }
+    } else if (pool !== null) {
+      try {
+        await pool.end();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+
+    for (const cleanup of [
+      () => waitForRuntimeAuthBackendDrain(containerId),
+      () => assertPostgresProjectionPoolBackendResidueAbsent(containerId),
+      () => cleanupRuntimeAuthProbe(containerId),
+      () => verifyRuntimeAuthResidueAbsent(containerId),
+    ]) {
+      try {
+        await cleanup();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+  }
+
+  if (probeError !== undefined && cleanupErrors.length > 0) {
+    throw new AggregateError(
+      [probeError, ...cleanupErrors],
+      "Authenticated PostgreSQL pool probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeError !== undefined) {
+    throw postgresProjectionPoolHarnessError(probeError);
+  }
+  if (cleanupErrors.length === 1) {
+    throw postgresProjectionPoolHarnessError(cleanupErrors[0]);
+  }
+  if (cleanupErrors.length > 1) {
+    throw new AggregateError(
+      cleanupErrors,
+      "Authenticated PostgreSQL pool mandatory cleanup failed",
+      { cause: cleanupErrors[0] },
+    );
+  }
+}
+
+async function provisionPostgresProjectionPoolLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderPostgresProjectionPoolProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral PostgreSQL projection-pool login",
+  );
+}
+
+async function verifyPostgresProjectionPoolRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${RUNTIME_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${RUNTIME_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|${POSTGRES_PROJECTION_POOL_MAX}|true`,
+    "ephemeral PostgreSQL projection-pool login attributes",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role
+  ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role
+  ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${RUNTIME_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${RUNTIME_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${RUNTIME_AUTH_CAPABILITY_ROLE}|${RUNTIME_AUTH_LOGIN_ROLE}|false|false|true`,
+    "ephemeral PostgreSQL projection-pool membership",
+  );
+}
+
+function createPostgresProjectionPool(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Pool {
+  return new Pool({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: CLEAN_BOOTSTRAP_DATABASE_NAME,
+    user: RUNTIME_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: POSTGRES_PROJECTION_POOL_APPLICATION_NAME,
+    max: POSTGRES_PROJECTION_POOL_MAX,
+    connectionTimeoutMillis:
+      POSTGRES_PROJECTION_POOL_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: POSTGRES_PROJECTION_POOL_STATEMENT_TIMEOUT_MILLISECONDS,
+    idleTimeoutMillis: 10_000,
+  });
+}
+
+async function verifyPostgresProjectionPoolWrongPasswordRejection(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  wrongPassword: string,
+): Promise<void> {
+  const pool = createPostgresProjectionPool(endpoint, wrongPassword);
+  const source = new PooledPostgresFinancialFactProjectionSource(pool, {
+    current: () =>
+      Object.freeze({
+        principalId: PRINCIPAL_ALPHA,
+        organizationId: ORGANIZATION_ALPHA,
+      }),
+  });
+  let failed = false;
+  try {
+    await capturePostgresProjectionPoolError(
+      () => source.load(runtimeProjectionQuery("display_api")),
+      "POSTGRES_PROJECTION_POOL_FAILURE",
+    );
+  } finally {
+    try {
+      await source.close();
+    } catch {
+      failed = true;
+    }
+    try {
+      await waitForRuntimeAuthBackendDrain(containerId);
+    } catch {
+      failed = true;
+    }
+  }
+  if (
+    failed ||
+    pool.totalCount !== 0 ||
+    pool.idleCount !== 0 ||
+    pool.waitingCount !== 0
+  ) {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+}
+
+async function verifyPostgresProjectionPoolCapacityAndDirtyLease(
+  pool: Pool,
+): Promise<number> {
+  let first: PoolClient | null = null;
+  let second: PoolClient | null = null;
+  let firstReleased = false;
+  let secondReleased = false;
+  try {
+    first = await pool.connect();
+    second = await pool.connect();
+    const firstPid = await queryPostgresProjectionPoolBackendPid(first);
+    const secondPid = await queryPostgresProjectionPoolBackendPid(second);
+    if (
+      firstPid === secondPid ||
+      pool.totalCount !== 2 ||
+      pool.idleCount !== 0
+    ) {
+      throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+    }
+
+    if (pool.waitingCount !== 0 || pool.totalCount !== 2) {
+      throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+    }
+
+    first.release();
+    firstReleased = true;
+    await second.query(
+      "SELECT pg_catalog.set_config('app.b10_session_canary', 'must-discard', false)",
+    );
+    await second.query("PREPARE b10_discard_canary AS SELECT 1");
+    await second.query("SELECT pg_catalog.pg_advisory_lock(10210)");
+    await second.query("BEGIN READ WRITE");
+    await second.query(`SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE}`);
+    await second.query({
+      text: `CALL private_data.set_request_context(
+  $1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::text
+)`,
+      values: [
+        PRINCIPAL_BETA,
+        ORGANIZATION_BETA,
+        "display",
+        "api",
+        "demo_only",
+        "synthetic",
+      ],
+    });
+    second.release();
+    secondReleased = true;
+    return secondPid;
+  } finally {
+    if (first !== null && !firstReleased) first.release(true);
+    if (second !== null && !secondReleased) second.release(true);
+  }
+}
+
+async function verifyPostgresProjectionPoolDiscardedSessionState(
+  containerId: string,
+  expectedBackendPid: number,
+): Promise<void> {
+  const stateText = await psqlScalar(
+    containerId,
+    `SELECT pg_catalog.json_build_object(
+  'backendPid', activity.pid,
+  'userName', activity.usename,
+  'applicationName', activity.application_name,
+  'state', activity.state,
+  'transactionIdle', activity.xact_start IS NULL
+    AND activity.backend_xid IS NULL,
+  'advisoryLockCount', (
+    SELECT count(*) FROM pg_catalog.pg_locks AS held_lock
+    WHERE held_lock.pid = activity.pid
+      AND held_lock.locktype = 'advisory'
+  ),
+  'ssl', coalesce(ssl.ssl, false)
+)::text
+FROM pg_catalog.pg_stat_activity AS activity
+LEFT JOIN pg_catalog.pg_stat_ssl AS ssl ON ssl.pid = activity.pid
+WHERE activity.pid = ${expectedBackendPid}
+  AND activity.backend_type = 'client backend';`,
+  );
+  if (stateText === "") {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+  assertJsonEqual(
+    JSON.parse(stateText) as unknown,
+    {
+      backendPid: expectedBackendPid,
+      userName: RUNTIME_AUTH_LOGIN_ROLE,
+      applicationName: POSTGRES_PROJECTION_POOL_APPLICATION_NAME,
+      state: "idle",
+      transactionIdle: true,
+      advisoryLockCount: 0,
+      ssl: false,
+    },
+    "B10 pooled DISCARD ALL admin-visible backend reset",
+  );
+}
+
+async function queryPostgresProjectionPoolBackendPid(
+  client: PoolClient,
+): Promise<number> {
+  const result = await client.query<{ backend_pid: number }>(
+    "SELECT pg_catalog.pg_backend_pid() AS backend_pid",
+  );
+  const backendPid = result.rows[0]?.backend_pid;
+  if (
+    result.command !== "SELECT" ||
+    result.rowCount !== 1 ||
+    !Number.isSafeInteger(backendPid) ||
+    (backendPid as number) <= 0
+  ) {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+  return backendPid as number;
+}
+
+async function verifyPostgresProjectionPoolConcurrentTenantIsolation(
+  containerId: string,
+  source: PooledPostgresFinancialFactProjectionSource,
+  displayCase: RuntimeProjectionAcceptanceCase,
+  selectBetaActor: () => void,
+): Promise<void> {
+  await withPostgresProjectionPoolTableLock(
+    containerId,
+    async (releaseLock) => {
+      const initialBlockedBackendDeadline =
+        Date.now() +
+        POSTGRES_PROJECTION_POOL_BLOCKED_BACKEND_DEADLINE_MILLISECONDS;
+      const alphaLoad = source.load(displayCase.query);
+      selectBetaActor();
+      const betaLoad = source.load(displayCase.query);
+      const loads = [alphaLoad, betaLoad] as const;
+      let thirdLoad: Promise<unknown> | null = null;
+      try {
+        const blockedPids = await waitForPostgresProjectionPoolBlockedBackends(
+          containerId,
+          2,
+          initialBlockedBackendDeadline,
+        );
+        if (new Set(blockedPids).size !== 2) {
+          throw new PostgresProjectionPoolError(
+            "POSTGRES_PROJECTION_POOL_FAILURE",
+          );
+        }
+        const queuedLoad = source.load(displayCase.query);
+        thirdLoad = queuedLoad;
+        await capturePostgresProjectionPoolError(
+          () => queuedLoad,
+          "POSTGRES_PROJECTION_POOL_TIMEOUT",
+        );
+        const stillBlockedPids =
+          await waitForPostgresProjectionPoolBlockedBackends(
+            containerId,
+            2,
+            initialBlockedBackendDeadline +
+              POSTGRES_PROJECTION_POOL_CONNECTION_TIMEOUT_MILLISECONDS +
+              250,
+          );
+        assertJsonEqual(
+          stillBlockedPids,
+          blockedPids,
+          "B10 acquisition timeout preserved both leased backends",
+        );
+        await releaseLock();
+        const [alphaResult, betaResult] = await Promise.all(loads);
+        assertPostgresProjectionPoolResult(
+          { ...displayCase, label: "B10 simultaneous alpha backend" },
+          alphaResult,
+        );
+        assertPostgresProjectionPoolResult(
+          {
+            ...displayCase,
+            label: "B10 simultaneous beta backend",
+            principalId: PRINCIPAL_BETA,
+            organizationId: ORGANIZATION_BETA,
+          },
+          betaResult,
+        );
+      } finally {
+        await releaseLock();
+        if (thirdLoad !== null) await Promise.allSettled([thirdLoad]);
+        await Promise.allSettled(loads);
+      }
+    },
+  );
+}
+
+async function verifyPostgresProjectionPoolActiveAbort(
+  containerId: string,
+  source: PooledPostgresFinancialFactProjectionSource,
+  displayCase: RuntimeProjectionAcceptanceCase,
+): Promise<number> {
+  return withPostgresProjectionPoolTableLock(containerId, async () => {
+    const controller = new AbortController();
+    const secretCanary = "b10-active-abort-secret-canary";
+    const loading = source.load(displayCase.query, {
+      signal: controller.signal,
+    });
+    const [blockedPid] = await waitForPostgresProjectionPoolBlockedBackends(
+      containerId,
+      1,
+    );
+    if (blockedPid === undefined) {
+      throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+    }
+    controller.abort(new Error(secretCanary));
+    const error = await capturePostgresProjectionPoolError(
+      () => loading,
+      "POSTGRES_PROJECTION_POOL_ABORTED",
+    );
+    if (String(error).includes(secretCanary)) {
+      throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+    }
+    await assertPostgresProjectionPoolBackendQuerySettled(
+      containerId,
+      blockedPid,
+    );
+    await waitForPostgresProjectionPoolBackendPidDrain(containerId, blockedPid);
+    return blockedPid;
+  });
+}
+
+async function verifyPostgresProjectionPoolStatementTimeout(
+  containerId: string,
+  source: PooledPostgresFinancialFactProjectionSource,
+  displayCase: RuntimeProjectionAcceptanceCase,
+): Promise<number> {
+  return withPostgresProjectionPoolTableLock(containerId, async () => {
+    const loading = source.load(displayCase.query);
+    const [blockedPid] = await waitForPostgresProjectionPoolBlockedBackends(
+      containerId,
+      1,
+    );
+    if (blockedPid === undefined) {
+      throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+    }
+    await capturePostgresProjectionPoolError(
+      () => loading,
+      "POSTGRES_PROJECTION_POOL_TIMEOUT",
+    );
+    await waitForPostgresProjectionPoolBackendPidDrain(containerId, blockedPid);
+    return blockedPid;
+  });
+}
+
+async function capturePostgresProjectionPoolError(
+  run: () => Promise<unknown>,
+  expectedCode:
+    | "POSTGRES_PROJECTION_POOL_FAILURE"
+    | "POSTGRES_PROJECTION_POOL_ABORTED"
+    | "POSTGRES_PROJECTION_POOL_TIMEOUT",
+): Promise<PostgresProjectionPoolError> {
+  let error: unknown;
+  try {
+    await run();
+  } catch (caught) {
+    error = caught;
+  }
+  if (
+    !(error instanceof PostgresProjectionPoolError) ||
+    error.code !== expectedCode ||
+    error.message !== "PostgreSQL projection pool failed." ||
+    Object.hasOwn(error, "cause")
+  ) {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+  return error;
+}
+
+function postgresProjectionPoolHarnessError(error: unknown): Error {
+  return error instanceof Error
+    ? error
+    : new Error("B10 PostgreSQL projection-pool harness failed", {
+        cause: error,
+      });
+}
+
+function assertPostgresProjectionPoolResult(
+  acceptanceCase: RuntimeProjectionAcceptanceCase,
+  result: OperationProjectionSourceResult<FinancialFact> | null,
+): void {
+  if (result === null) {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+  assertRuntimeAuthenticatedFinancialFactProjectionResult(
+    acceptanceCase,
+    result,
+  );
+}
+
+async function withPostgresProjectionPoolTableLock<T>(
+  containerId: string,
+  run: (releaseLock: () => Promise<void>) => Promise<T>,
+): Promise<T> {
+  const blockerState = { settled: false };
+  const blockerOutcome: Promise<{
+    result: CommandResult | null;
+    error: unknown;
+  }> = startPostgresProjectionPoolTableLock(containerId).then(
+    (result) => {
+      blockerState.settled = true;
+      return { result, error: undefined };
+    },
+    (error: unknown) => {
+      blockerState.settled = true;
+      return { result: null, error };
+    },
+  );
+  let blockerPid: number | null = null;
+  let releasePromise: Promise<void> | null = null;
+  let operationCompleted = false;
+  let operationResult: T | undefined;
+  let operationError: unknown;
+  let cleanupError: unknown;
+
+  try {
+    const acquiredBlockerPid =
+      await waitForPostgresProjectionPoolTableLock(containerId);
+    blockerPid = acquiredBlockerPid;
+    const releaseLock = () => {
+      releasePromise ??= releasePostgresProjectionPoolTableLock(
+        containerId,
+        acquiredBlockerPid,
+        blockerOutcome,
+      );
+      return releasePromise;
+    };
+    operationResult = await run(releaseLock);
+    operationCompleted = true;
+  } catch (error) {
+    operationError = error;
+  }
+
+  try {
+    if (blockerPid === null) {
+      await terminatePostgresProjectionPoolTableLockByApplication(
+        containerId,
+        blockerState,
+        blockerOutcome,
+      );
+    } else {
+      releasePromise ??= releasePostgresProjectionPoolTableLock(
+        containerId,
+        blockerPid,
+        blockerOutcome,
+      );
+      await releasePromise;
+    }
+  } catch (error) {
+    cleanupError = error;
+  }
+
+  if (
+    operationError !== undefined &&
+    cleanupError !== undefined &&
+    operationError !== cleanupError
+  ) {
+    throw new AggregateError(
+      [operationError, cleanupError],
+      "B10 projection table-lock probe and mandatory cleanup both failed",
+      { cause: operationError },
+    );
+  }
+  if (operationError !== undefined) {
+    throw postgresProjectionPoolHarnessError(operationError);
+  }
+  if (cleanupError !== undefined) {
+    throw postgresProjectionPoolHarnessError(cleanupError);
+  }
+  if (!operationCompleted) {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+  return operationResult as T;
+}
+
+async function releasePostgresProjectionPoolTableLock(
+  containerId: string,
+  blockerPid: number,
+  blockerOutcome: Promise<{
+    result: CommandResult | null;
+    error: unknown;
+  }>,
+): Promise<void> {
+  const errors: unknown[] = [];
+  let canceled = false;
+  try {
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        `SELECT pg_catalog.pg_cancel_backend(${blockerPid});`,
+      ),
+      "true",
+      "B10 projection table-lock release",
+    );
+    canceled = true;
+  } catch (error) {
+    errors.push(error);
+  }
+  if (!canceled) {
+    try {
+      await terminatePostgresProjectionPoolBackend(containerId, blockerPid);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+
+  const outcome = await blockerOutcome;
+  if (outcome.error !== undefined) {
+    errors.push(outcome.error);
+  } else if (
+    canceled &&
+    (outcome.result === null ||
+      outcome.result.exitCode === 0 ||
+      !outcome.result.stderr.includes("57014") ||
+      !outcome.result.stderr.includes(
+        "canceling statement due to user request",
+      ))
+  ) {
+    errors.push(
+      new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE"),
+    );
+  }
+  try {
+    await waitForPostgresProjectionPoolBackendPidDrain(containerId, blockerPid);
+  } catch (error) {
+    errors.push(error);
+  }
+
+  if (errors.length === 1) {
+    throw postgresProjectionPoolHarnessError(errors[0]);
+  }
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      "B10 projection table-lock release failed",
+      {
+        cause: errors[0],
+      },
+    );
+  }
+}
+
+async function terminatePostgresProjectionPoolTableLockByApplication(
+  containerId: string,
+  blockerState: { settled: boolean },
+  blockerOutcome: Promise<{
+    result: CommandResult | null;
+    error: unknown;
+  }>,
+): Promise<void> {
+  const errors: unknown[] = [];
+  const deadline = Date.now() + 5_000;
+  while (!blockerState.settled && Date.now() < deadline) {
+    try {
+      const value = await psqlScalar(
+        containerId,
+        `SELECT coalesce(pg_catalog.string_agg(pid::text, ',' ORDER BY pid), '')
+FROM pg_catalog.pg_stat_activity
+WHERE application_name = '${POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME}'
+  AND usename = 'postgres'
+  AND backend_type = 'client backend';`,
+      );
+      const blockerPids = value === "" ? [] : value.split(",").map(Number);
+      if (blockerPids.some((pid) => !Number.isSafeInteger(pid) || pid <= 0)) {
+        throw new PostgresProjectionPoolError(
+          "POSTGRES_PROJECTION_POOL_FAILURE",
+        );
+      }
+      if (blockerPids.length > 0) {
+        for (const pid of blockerPids) {
+          await terminatePostgresProjectionPoolBackend(containerId, pid);
+        }
+        break;
+      }
+    } catch (error) {
+      errors.push(error);
+      break;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+
+  const outcome = await blockerOutcome;
+  if (outcome.error !== undefined) errors.push(outcome.error);
+  try {
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE application_name = '${POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME}'
+  AND backend_type = 'client backend';`,
+      ),
+      "0",
+      "B10 projection table-lock emergency cleanup",
+    );
+  } catch (error) {
+    errors.push(error);
+  }
+
+  if (errors.length === 1) {
+    throw postgresProjectionPoolHarnessError(errors[0]);
+  }
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      "B10 projection table-lock emergency cleanup failed",
+      { cause: errors[0] },
+    );
+  }
+}
+
+async function terminatePostgresProjectionPoolBackend(
+  containerId: string,
+  backendPid: number,
+): Promise<void> {
+  const terminated = await psqlScalar(
+    containerId,
+    `SELECT pg_catalog.pg_terminate_backend(${backendPid});`,
+  );
+  if (terminated !== "true" && terminated !== "false") {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+  await waitForPostgresProjectionPoolBackendPidDrain(containerId, backendPid);
+}
+
+function startPostgresProjectionPoolTableLock(
+  containerId: string,
+): Promise<CommandResult> {
+  return dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--tuples-only",
+      "--no-align",
+      "--set=ON_ERROR_STOP=1",
+      "--set=VERBOSITY=verbose",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    `SELECT pg_catalog.set_config(
+  'application_name',
+  '${POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME}',
+  false
+);
+BEGIN;
+LOCK TABLE shared_data.financial_facts IN ACCESS EXCLUSIVE MODE;
+SELECT pg_catalog.pg_sleep(30);
+ROLLBACK;
+`,
+  );
+}
+
+async function waitForPostgresProjectionPoolTableLock(
+  containerId: string,
+): Promise<number> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const value = await psqlScalar(
+      containerId,
+      `SELECT coalesce(pg_catalog.max(activity.pid)::text, '')
+FROM pg_catalog.pg_stat_activity AS activity
+JOIN pg_catalog.pg_locks AS lock ON lock.pid = activity.pid
+JOIN pg_catalog.pg_class AS relation ON relation.oid = lock.relation
+JOIN pg_catalog.pg_namespace AS namespace
+  ON namespace.oid = relation.relnamespace
+WHERE activity.application_name = '${POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME}'
+  AND activity.usename = 'postgres'
+  AND activity.state = 'active'
+  AND lock.mode = 'AccessExclusiveLock'
+  AND lock.granted
+  AND namespace.nspname = 'shared_data'
+  AND relation.relname = 'financial_facts';`,
+    );
+    if (/^[1-9][0-9]*$/.test(value)) return Number(value);
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+}
+
+async function waitForPostgresProjectionPoolBlockedBackends(
+  containerId: string,
+  expectedCount: 1 | 2,
+  deadline = Date.now() +
+    POSTGRES_PROJECTION_POOL_BLOCKED_BACKEND_DEADLINE_MILLISECONDS,
+): Promise<number[]> {
+  while (Date.now() < deadline) {
+    const value = await psqlScalar(
+      containerId,
+      `SELECT coalesce(pg_catalog.string_agg(
+  pid::text, ',' ORDER BY pid
+), '')
+FROM pg_catalog.pg_stat_activity
+WHERE application_name = '${POSTGRES_PROJECTION_POOL_APPLICATION_NAME}'
+  AND usename = '${RUNTIME_AUTH_LOGIN_ROLE}'
+  AND state = 'active'
+  AND wait_event_type = 'Lock'
+  AND query LIKE 'WITH bounded_projection AS%';`,
+    );
+    const pids = value === "" ? [] : value.split(",").map(Number);
+    if (
+      Date.now() < deadline &&
+      pids.length === expectedCount &&
+      pids.every((pid) => Number.isSafeInteger(pid) && pid > 0)
+    ) {
+      return pids;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+}
+
+async function assertPostgresProjectionPoolBackendQuerySettled(
+  containerId: string,
+  backendPid: number,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE pid = ${backendPid}
+  AND state = 'active'
+  AND wait_event_type = 'Lock'
+  AND query LIKE 'WITH bounded_projection AS%';`,
+    ),
+    "0",
+    "B10 PostgreSQL projection-pool backend query settled before source return",
+  );
+}
+
+async function waitForPostgresProjectionPoolBackendPidDrain(
+  containerId: string,
+  backendPid: number,
+): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if (
+      (await psqlScalar(
+        containerId,
+        `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE pid = ${backendPid}
+  AND backend_type = 'client backend';`,
+      )) === "0"
+    ) {
+      return;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+}
+
+async function assertPostgresProjectionPoolReplacementBackend(
+  containerId: string,
+  discardedBackendPids: readonly number[],
+): Promise<void> {
+  const value = await psqlScalar(
+    containerId,
+    `SELECT coalesce(pg_catalog.string_agg(
+  pid::text, ',' ORDER BY pid
+), '')
+FROM pg_catalog.pg_stat_activity
+WHERE application_name = '${POSTGRES_PROJECTION_POOL_APPLICATION_NAME}'
+  AND usename = '${RUNTIME_AUTH_LOGIN_ROLE}'
+  AND state = 'idle'
+  AND backend_type = 'client backend';`,
+  );
+  const backendPids = value === "" ? [] : value.split(",").map(Number);
+  if (
+    backendPids.length < 1 ||
+    backendPids.length > POSTGRES_PROJECTION_POOL_MAX ||
+    backendPids.some((pid) => discardedBackendPids.includes(pid)) ||
+    backendPids.some((pid) => !Number.isSafeInteger(pid) || pid <= 0)
+  ) {
+    throw new PostgresProjectionPoolError("POSTGRES_PROJECTION_POOL_FAILURE");
+  }
+}
+
+async function assertPostgresProjectionPoolBackendResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE application_name IN (
+  '${POSTGRES_PROJECTION_POOL_APPLICATION_NAME}',
+  '${POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME}'
+)
+  AND backend_type = 'client backend';`,
+    ),
+    "0",
+    "B10 PostgreSQL projection-pool backend residue",
+  );
 }
 
 async function verifyAuthenticatedBackupAndBoundedRestore(
@@ -3824,7 +4873,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV9SourceHashes> {
+): Promise<PostgresAcceptanceV10SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -3841,6 +4890,7 @@ async function collectAcceptanceSourceHashes(
     operationProjectionContractSha256,
     databasePackageManifestSha256,
     pnpmLockfileSha256,
+    postgresProjectionPoolSha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -3857,6 +4907,7 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(operationProjectionContractPath),
     exactFileSha256(databasePackageManifestPath),
     exactFileSha256(pnpmLockfilePath),
+    exactFileSha256(postgresProjectionPoolAdapterPath),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
@@ -3880,6 +4931,7 @@ async function collectAcceptanceSourceHashes(
     operationProjectionContractSha256,
     databasePackageManifestSha256,
     pnpmLockfileSha256,
+    postgresProjectionPoolSha256,
   });
 }
 
@@ -4281,7 +5333,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<PostgresAcceptanceV9ToolVersions> {
+): Promise<PostgresAcceptanceV10ToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -4328,12 +5380,23 @@ async function verifyToolVersions(
   ) {
     throw new Error("The installed node-postgres version is not reviewed");
   }
+  const nodePostgresPoolPackage = JSON.parse(
+    await readFile(nodePostgresPoolPackagePath, "utf8"),
+  ) as unknown;
+  if (
+    !isRecord(nodePostgresPoolPackage) ||
+    nodePostgresPoolPackage.name !== "pg-pool" ||
+    nodePostgresPoolPackage.version !== EXPECTED_NODE_POSTGRES_POOL_VERSION
+  ) {
+    throw new Error("The installed node-postgres pool version is not reviewed");
+  }
   return Object.freeze({
     postgres: versions.postgres,
     psql: versions.psql,
     pgDump: versions.pgDump,
     pgRestore: versions.pgRestore,
     nodePostgres: nodePostgresPackage.version,
+    nodePostgresPool: nodePostgresPoolPackage.version,
   });
 }
 
@@ -8601,7 +9664,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "349c5e2beef444698068969bc264004240824b4bbb1e641e3e60e30165d380d7" ||
+      "7d993fea4c18469ebc07e900c798e06af881f7c1e01f621b3145d9c1fd13af0b" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||

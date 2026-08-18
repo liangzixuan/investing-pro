@@ -60,6 +60,7 @@ import {
   renderOwnerDdlAuthCleanupSql,
   renderOwnerDdlAuthPassfile,
   renderOwnerDdlAuthProvisioningSql,
+  renderPostgresProjectionPoolProvisioningSql,
   renderMigratorAuthBackendDrainSql,
   renderMigratorAuthCleanupSql,
   renderMigratorAuthPassfile,
@@ -136,6 +137,21 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(renderRuntimeAuthCleanupSql()).toContain(
       `DROP ROLE IF EXISTS ${RUNTIME_AUTH_LOGIN_ROLE};`,
     );
+  });
+
+  it("raises only the bounded B10 runtime-login connection limit", () => {
+    const password = "P".repeat(43);
+    const poolSql = renderPostgresProjectionPoolProvisioningSql(password);
+    const singleClientSql = renderRuntimeAuthProvisioningSql(password);
+
+    expect(poolSql).toContain("CONNECTION LIMIT 2");
+    expect(poolSql).not.toContain("CONNECTION LIMIT 1");
+    expect(singleClientSql).toContain("CONNECTION LIMIT 1");
+    expect(singleClientSql).not.toContain("CONNECTION LIMIT 2");
+    expect(poolSql).toContain(
+      `GRANT ${RUNTIME_AUTH_CAPABILITY_ROLE}\n  TO ${RUNTIME_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    expect(poolSql.match(new RegExp(password, "g"))).toHaveLength(1);
   });
 
   it("uses random 32-byte base64url credentials without exposing them in process arguments", () => {
@@ -1304,15 +1320,15 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "349c5e2beef444698068969bc264004240824b4bbb1e641e3e60e30165d380d7",
+        "7d993fea4c18469ebc07e900c798e06af881f7c1e01f621b3145d9c1fd13af0b",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v9.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v10.json",
     );
     expect(artifacts.workflow).toContain('          - "127.0.0.1::5432"');
     expect(artifacts.workflow).toContain("      - modules/research-core/**");
@@ -1506,7 +1522,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v9.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v10.json",
         unsafePath,
       );
       expect(
@@ -1546,7 +1562,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1666,8 +1682,14 @@ CREATE DATABASE research_cockpit_acceptance_test
     const runtimeProbe = source.indexOf(
       "await verifyAuthenticatedRuntimeSession",
     );
-    const finalProbe = source.indexOf(
+    const b7Probe = source.indexOf(
       "await verifyVersionedAuthenticatedMigrationPlan",
+    );
+    const poolProbe = source.indexOf(
+      "await verifyAuthenticatedPostgresProjectionPool",
+    );
+    const finalProbe = source.indexOf(
+      "await verifyAuthenticatedBackupAndBoundedRestore",
     );
     const buildEvidence = source.indexOf("buildPostgresAcceptanceEvidence");
     const writeEvidence = source.indexOf("writePostgresAcceptanceEvidence");
@@ -1675,7 +1697,9 @@ CREATE DATABASE research_cockpit_acceptance_test
     const successMessage = source.indexOf("process.stdout.write");
     expect(impersonatedProbe).toBeGreaterThan(-1);
     expect(runtimeProbe).toBeGreaterThan(impersonatedProbe);
-    expect(finalProbe).toBeGreaterThan(runtimeProbe);
+    expect(b7Probe).toBeGreaterThan(runtimeProbe);
+    expect(poolProbe).toBeGreaterThan(b7Probe);
+    expect(finalProbe).toBeGreaterThan(poolProbe);
     expect(buildEvidence).toBeGreaterThan(finalProbe);
     expect(writeEvidence).toBeGreaterThan(buildEvidence);
     expect(successMessage).toBeGreaterThan(writeEvidence);
@@ -1686,10 +1710,13 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).toContain(
       "single-client read-only financial-fact projection adapter",
     );
-    expect(source).toContain("version 9 success-only run record");
+    expect(source).toContain(
+      "bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery",
+    );
+    expect(source).toContain("version 10 success-only run record");
   });
 
-  it("finishes mandatory B8 cleanup and hashes its exact sources before v9 evidence", async () => {
+  it("finishes mandatory B8 cleanup and hashes its exact sources before v10 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2228,7 +2255,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(finalPlatform).toContain('"1|0"');
   });
 
-  it("runs the authenticated backup and bounded restore before v9 evidence", async () => {
+  it("runs the authenticated backup and bounded restore before v10 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2255,12 +2282,13 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expectOrdered(entrypoint, [
       "await verifyVersionedAuthenticatedMigrationPlan(",
+      "await verifyAuthenticatedPostgresProjectionPool(",
       "await verifyAuthenticatedBackupAndBoundedRestore(",
       "await verifyCheckedOutCommit(environment);",
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 9 success-only run record was written",
+      "the version 10 success-only run record was written",
     ]);
 
     const orchestrator = section(
@@ -2508,6 +2536,10 @@ WHERE role.rolname = 'research_cockpit_owner';`);
         "postgresProjectionAdapterSha256,",
       ],
       [
+        "exactFileSha256(postgresProjectionPoolAdapterPath)",
+        "postgresProjectionPoolSha256,",
+      ],
+      [
         "exactFileSha256(operationProjectionContractPath)",
         "operationProjectionContractSha256,",
       ],
@@ -2700,6 +2732,255 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "nodePostgresPackage.version !== EXPECTED_NODE_POSTGRES_VERSION",
     );
     expect(versions).toContain("nodePostgres: nodePostgresPackage.version");
+  });
+
+  it("runs B10 once through a bounded two-backend pool and destroys interrupted leases", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const entrypoint = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    const b7 = entrypoint.indexOf(
+      "await verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    const b10 = entrypoint.indexOf(
+      "await verifyAuthenticatedPostgresProjectionPool(",
+    );
+    const b8 = entrypoint.indexOf(
+      "await verifyAuthenticatedBackupAndBoundedRestore(",
+    );
+    expect(b10).toBeGreaterThan(b7);
+    expect(b8).toBeGreaterThan(b10);
+    expect(
+      entrypoint.match(/await verifyAuthenticatedPostgresProjectionPool\(/g),
+    ).toHaveLength(1);
+
+    const lifecycle = section(
+      "async function verifyAuthenticatedPostgresProjectionPool(",
+      "async function provisionPostgresProjectionPoolLogin(",
+    );
+    for (const marker of [
+      "await verifyRuntimeAuthResidueAbsent(containerId);",
+      "await verifyPostgresProjectionPoolWrongPasswordRejection(",
+      "await verifyPostgresProjectionPoolCapacityAndDirtyLease(",
+      "new PooledPostgresFinancialFactProjectionSource(pool,",
+      'label: "B10 dirty-checkout reset"',
+      "await verifyPostgresProjectionPoolDiscardedSessionState(",
+      'label: "B10 beta sequential pooled reuse"',
+      "await verifyPostgresProjectionPoolConcurrentTenantIsolation(",
+      "const abortDiscardedPid = await verifyPostgresProjectionPoolActiveAbort(",
+      "await verifyPostgresProjectionPoolStatementTimeout(",
+      'label: "B10 post-discard replacement"',
+      "abortDiscardedPid,",
+      "timeoutDiscardedPid,",
+      "sourceToClose.close()",
+      "pool.totalCount !== 0",
+      "pool.idleCount !== 0",
+      "pool.waitingCount !== 0",
+      "() => waitForRuntimeAuthBackendDrain(containerId)",
+      "() => assertPostgresProjectionPoolBackendResidueAbsent(containerId)",
+      "() => cleanupRuntimeAuthProbe(containerId)",
+      "() => verifyRuntimeAuthResidueAbsent(containerId)",
+      "const cleanupErrors: unknown[] = [];",
+      "for (const cleanup of [",
+    ]) {
+      expect(lifecycle).toContain(marker);
+    }
+
+    const poolConfig = section(
+      "function createPostgresProjectionPool(",
+      "async function verifyPostgresProjectionPoolWrongPasswordRejection(",
+    );
+    for (const marker of [
+      "new Pool({",
+      "host: endpoint.host",
+      "port: endpoint.port",
+      "database: CLEAN_BOOTSTRAP_DATABASE_NAME",
+      "user: RUNTIME_AUTH_LOGIN_ROLE",
+      "password,",
+      "ssl: false",
+      "application_name: POSTGRES_PROJECTION_POOL_APPLICATION_NAME",
+      "max: POSTGRES_PROJECTION_POOL_MAX",
+      "connectionTimeoutMillis:",
+      "statement_timeout:",
+    ]) {
+      expect(poolConfig).toContain(marker);
+    }
+    expect(poolConfig).not.toMatch(
+      /process\.env|DATABASE_URL|connectionString|query_timeout/,
+    );
+
+    const wrongPassword = section(
+      "async function verifyPostgresProjectionPoolWrongPasswordRejection(",
+      "async function verifyPostgresProjectionPoolCapacityAndDirtyLease(",
+    );
+    expect(wrongPassword).toContain(
+      "new PooledPostgresFinancialFactProjectionSource(pool,",
+    );
+    expect(wrongPassword).toContain('"POSTGRES_PROJECTION_POOL_FAILURE"');
+    expect(wrongPassword).toContain("await source.close();");
+    expect(wrongPassword).toContain("await waitForRuntimeAuthBackendDrain(");
+
+    const capacity = section(
+      "async function verifyPostgresProjectionPoolCapacityAndDirtyLease(",
+      "async function verifyPostgresProjectionPoolDiscardedSessionState(",
+    );
+    for (const marker of [
+      "first = await pool.connect();",
+      "second = await pool.connect();",
+      "app.b10_session_canary",
+      "PREPARE b10_discard_canary AS SELECT 1",
+      "pg_advisory_lock(10210)",
+      'await second.query("BEGIN READ WRITE")',
+      "CALL private_data.set_request_context(",
+    ]) {
+      expect(capacity).toContain(marker);
+    }
+
+    const discard = section(
+      "async function verifyPostgresProjectionPoolDiscardedSessionState(",
+      "async function queryPostgresProjectionPoolBackendPid(",
+    );
+    for (const marker of [
+      "pg_catalog.pg_stat_activity",
+      "pg_catalog.pg_stat_ssl",
+      "userName",
+      "applicationName",
+      "transactionIdle",
+      "advisoryLockCount",
+      "ssl",
+      "backendPid: expectedBackendPid",
+      "userName: RUNTIME_AUTH_LOGIN_ROLE",
+      'state: "idle"',
+      "transactionIdle: true",
+      "advisoryLockCount: 0",
+      "ssl: false",
+    ]) {
+      expect(discard).toContain(marker);
+    }
+    expect(discard).not.toMatch(/pool\.connect|client\.release/);
+
+    const concurrent = section(
+      "async function verifyPostgresProjectionPoolConcurrentTenantIsolation(",
+      "async function verifyPostgresProjectionPoolActiveAbort(",
+    );
+    expect(concurrent).toContain("const alphaLoad = source.load(");
+    expect(concurrent).toContain("const betaLoad = source.load(");
+    expect(concurrent).toContain("initialBlockedBackendDeadline");
+    expect(
+      concurrent.match(/waitForPostgresProjectionPoolBlockedBackends\(/g),
+    ).toHaveLength(2);
+    expect(concurrent).toContain("new Set(blockedPids).size !== 2");
+    expect(concurrent).toContain(
+      "const queuedLoad = source.load(displayCase.query)",
+    );
+    expect(concurrent).toContain('"POSTGRES_PROJECTION_POOL_TIMEOUT"');
+    expect(concurrent).toContain("const stillBlockedPids =");
+    expect(concurrent).toContain(
+      '"B10 acquisition timeout preserved both leased backends"',
+    );
+    expect(concurrent).not.toMatch(/pool\.(?:total|idle|waiting)Count/);
+    expect(concurrent).toContain("await Promise.all(loads)");
+
+    const activeAbort = section(
+      "async function verifyPostgresProjectionPoolActiveAbort(",
+      "async function verifyPostgresProjectionPoolStatementTimeout(",
+    );
+    for (const marker of [
+      "new AbortController()",
+      "signal: controller.signal",
+      "controller.abort(new Error(secretCanary))",
+      '"POSTGRES_PROJECTION_POOL_ABORTED"',
+      "assertPostgresProjectionPoolBackendQuerySettled(",
+      "waitForPostgresProjectionPoolBackendPidDrain(",
+      "return blockedPid",
+    ]) {
+      expect(activeAbort).toContain(marker);
+    }
+
+    const timeout = section(
+      "async function verifyPostgresProjectionPoolStatementTimeout(",
+      "async function capturePostgresProjectionPoolError(",
+    );
+    expect(timeout).toContain('"POSTGRES_PROJECTION_POOL_TIMEOUT"');
+    expect(timeout).toContain(
+      "await waitForPostgresProjectionPoolBackendPidDrain(",
+    );
+
+    const blockedBackendWait = section(
+      "async function waitForPostgresProjectionPoolBlockedBackends(",
+      "async function assertPostgresProjectionPoolBackendQuerySettled(",
+    );
+    expect(blockedBackendWait).toContain(
+      "POSTGRES_PROJECTION_POOL_BLOCKED_BACKEND_DEADLINE_MILLISECONDS",
+    );
+    expect(source).toContain(
+      "POSTGRES_PROJECTION_POOL_STATEMENT_TIMEOUT_MILLISECONDS -\n  POSTGRES_PROJECTION_POOL_CONNECTION_TIMEOUT_MILLISECONDS -\n  1_000",
+    );
+
+    const tableLock = section(
+      "function startPostgresProjectionPoolTableLock(",
+      "async function waitForPostgresProjectionPoolTableLock(",
+    );
+    expect(tableLock).toContain(
+      "LOCK TABLE shared_data.financial_facts IN ACCESS EXCLUSIVE MODE;",
+    );
+    expect(tableLock).toContain("SELECT pg_catalog.pg_sleep(30);");
+    expect(tableLock).toContain(
+      "POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME",
+    );
+
+    const tableLockLifecycle = section(
+      "async function withPostgresProjectionPoolTableLock<T>(",
+      "function startPostgresProjectionPoolTableLock(",
+    );
+    for (const marker of [
+      "const blockerOutcome:",
+      "blockerPid === null",
+      "releasePostgresProjectionPoolTableLock(",
+      "terminatePostgresProjectionPoolTableLockByApplication(",
+      "pg_cancel_backend",
+      "pg_terminate_backend",
+      "POSTGRES_PROJECTION_POOL_BLOCKER_APPLICATION_NAME",
+    ]) {
+      expect(tableLockLifecycle).toContain(marker);
+    }
+
+    const versions = section(
+      "async function verifyToolVersions(",
+      "async function verifyMigrationLedger(",
+    );
+    expect(versions).toContain("await readFile(nodePostgresPoolPackagePath");
+    expect(versions).toContain('nodePostgresPoolPackage.name !== "pg-pool"');
+    expect(versions).toContain(
+      "nodePostgresPoolPackage.version !== EXPECTED_NODE_POSTGRES_POOL_VERSION",
+    );
+    expect(versions).toContain(
+      "nodePostgresPool: nodePostgresPoolPackage.version",
+    );
+
+    const sourceHashes = section(
+      "async function collectAcceptanceSourceHashes(",
+      "async function exactFileSha256(",
+    );
+    expect(sourceHashes).toContain(
+      "exactFileSha256(postgresProjectionPoolAdapterPath)",
+    );
+    expect(sourceHashes).toContain("postgresProjectionPoolSha256,");
+    expect(source).toContain(
+      "the version 10 success-only run record was written",
+    );
   });
 
   it("injects a deterministic error immediately before final commit", () => {

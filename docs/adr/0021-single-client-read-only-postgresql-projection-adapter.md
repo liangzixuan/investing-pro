@@ -132,10 +132,12 @@ port and is not retained after the job. The transitive presence of
 
 B9 establishes the first real database-driver implementation of the frozen
 operation-scoped read port while keeping identity, connection ownership, and
-application composition outside the adapter. The next database milestone is a
-separate bounded Cycle 1b-b10 pool/concurrency/cancellation gate. Application
-composition, production identity, external TLS, and managed secrets remain
-later work.
+application composition outside the adapter. The separate bounded Cycle 1b-b10
+pool/concurrency/cancellation source is now implemented and locally verified
+under ADR 0022, but its live V10 review remains pending; that successor does not
+widen B9. B11 migration-ledger locking, checksum-drift, and
+concurrent-deployment is next after B10. Application composition, production
+identity, external TLS, and managed secrets remain later work.
 
 ## Related decisions and primary sources
 
@@ -145,6 +147,8 @@ later work.
 - [ADR 0020: Authenticated policy-scoped data backup and bounded clean restore](./0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 - [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md)
 - [Cycle 1b-b9 evidence note](../POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md)
+- [ADR 0022: Bounded PostgreSQL projection-pool lifecycle](./0022-bounded-postgresql-projection-pool-lifecycle.md)
+- [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md)
 - [node-postgres queries](https://node-postgres.com/features/queries)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [GitHub Actions PostgreSQL service containers](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers)
