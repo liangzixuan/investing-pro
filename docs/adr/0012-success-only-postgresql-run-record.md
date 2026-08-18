@@ -1,7 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 9 source/local contract complete and live pending;
-version 8 live record retained and reviewed
+Status: accepted; version 9 live record retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -38,8 +37,8 @@ below. The current source producer writes
 `research-cockpit-postgres-acceptance-v9.json`. Version 9 preserves exact v1
 through v8 parsing, appends only the single-client read-only projection-adapter
 check, binds four additional B9 sources, and records the exact node-postgres
-version. Its pinned live run and review remain pending; source presence alone is
-not evidence.
+version. Its pinned live run and independent review are retained below; source
+presence alone is not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -182,10 +181,14 @@ source key, and historical meaning remains fixed. The current filename is
 
 The V9 writer remains success-only and runs after the real client is closed,
 its backend is drained, the runtime login is removed, and all earlier B1 through
-B8 cleanup checks pass. Source and local verification passed 450 database
-tests plus typechecking and the static quality gates. The pinned live run,
-retained artifact, reviewed log markers, and independent offline review remain
-pending. See
+B8 cleanup checks pass. Source and local verification passed 450 database tests
+plus typechecking and the static quality gates. The version 9 record from
+successful run `32083732063`, attempt 1, at commit `8e470e9` was retained after
+the complete B9 path and mandatory cleanup passed. Its downloaded bytes returned
+`offline_consistent`; the
+[B9 evidence note](../POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md)
+records the exact anchors and bounded claim. That result does not alter any
+version 1 through version 8 record. See
 [ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
 the [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).
 

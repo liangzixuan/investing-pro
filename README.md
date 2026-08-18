@@ -25,8 +25,9 @@ and no database or identity provider is connected.
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
-counts. B9 now has a separate source implementation, but the running app remains
-disconnected and continues to use only the closed SYN1 fixture.
+counts. B9 now has a separately live-reviewed database-package implementation,
+but the running app remains disconnected and continues to use only the closed
+SYN1 fixture.
 
 Cycle 1b-a2 adds a pure, fail-closed normalizer for the narrow synthetic,
 dimensionless financial-fact row shape the later B9 adapter now supplies to the
@@ -158,19 +159,22 @@ disaster recovery, or RPO/RTO. See the
 [ADR 0020](./docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and the [Cycle 1b-b8 exit matrix](./docs/CYCLE_1BB8_EXIT_MATRIX.md).
 
-Cycle 1b-b9 is source-implemented and locally verified; its pinned live version
-9 execution and artifact review remain pending. It adds one non-owning,
+Cycle 1b-b9 is complete for its bounded recorded scope at commit `8e470e9`. It
+adds one non-owning,
 exclusively leased single-client, read-only `pg` implementation of
 `OperationScopedProjectionSource<FinancialFact>`. A trusted synthetic actor is
 injected outside the query; every load first resets transaction state, then
 uses transaction-local runtime role and request context; and the adapter reuses
-the reviewed B4 query and fail-closed normalizer. The live harness is designed
-to use one real SCRAM-authenticated client through a random loopback-only
-workflow mapping, prove a pre-existing read-write transaction is rolled back
-rather than committed, then close and drain the client before evidence. B9 adds
-no pool, app/API import, identity resolver, production
+the reviewed B4 query and fail-closed normalizer. PostgreSQL run `32083732063`
+used one real SCRAM-authenticated client through a random loopback-only workflow
+mapping, proved a pre-existing read-write transaction was rolled back rather
+than committed, then closed and drained the client before writing version 9
+evidence. The retained record returned `offline_consistent` against separately
+supplied anchors. B9 adds no pool, app/API import, identity resolver, production
 secret handling, external/TLS path, concurrency, cancellation, or timeout
-claim. See [ADR 0021](./docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+claim. See the
+[B9 evidence note](./docs/POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md),
+[ADR 0021](./docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./docs/CYCLE_1BB9_EXIT_MATRIX.md).
 
 ## Requirements
@@ -247,11 +251,9 @@ PostgreSQL execution.
   restored inside the same ephemeral cluster. It is not a full backup,
   production schedule, encrypted/retained archive, disaster-recovery plan, or
   RPO/RTO result.
-- B9 source and local tests establish only a sequential, non-owning read adapter
+- The reviewed B9 result establishes only a sequential, non-owning read adapter
   over one exclusively leased client and its fail-closed transaction-reset
-  contract. Until the pinned version 9 run and
-  independent artifact review pass, they are not live driver evidence. Even a
-  later green B9 result will not establish end-user identity, pool safety,
+  contract. It does not establish end-user identity, pool safety,
   application composition, external/TLS transport, managed secrets,
   concurrency, cancellation, timeouts, or production readiness.
 
@@ -277,5 +279,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b8 evidence note](./docs/POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md),
 [ADR 0020](./docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 [Cycle 1b-b9 exit matrix](./docs/CYCLE_1BB9_EXIT_MATRIX.md),
+[Cycle 1b-b9 evidence note](./docs/POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md),
 [ADR 0021](./docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and [architecture decisions](./docs/adr/).

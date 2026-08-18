@@ -25,8 +25,10 @@ was added.
   its pinned live execution and version 4 artifact review later passed for a
   separate recorded scope;
 - b2/b3 completed a bounded authenticated non-owner runtime service-account
-  path; a client driver, application identity/tenant resolution, pool cleanup,
-  cancellation, concurrency, and logical restore remain pending;
+  path; B8 later proved only one bounded policy-scoped same-cluster restore and
+  B9 later proved only one live-reviewed single-client adapter; application
+  identity/tenant resolution, app composition, pool cleanup, cancellation,
+  concurrency, and broad restore remain pending;
 - dimensioned facts, complete dossier/history/timeline/evidence projections,
   production identity, vendor data, API writes, and notifications.
 
@@ -36,5 +38,8 @@ PostgreSQL evidence and is not a production adapter.
 The later b1-b3 PostgreSQL acceptance runs passed their recorded migration,
 RLS, service-account, and authorization checks, but they did not execute this
 normalizer, a projection query, or an adapter. The a2 proof boundary remains
-unchanged. B4 later passed a separate live query-to-normalizer proof; it does
-not retroactively widen a2 or prove an adapter.
+unchanged. B4 later passed a separate live query-to-normalizer proof, B8 later
+passed one bounded policy-scoped same-cluster restore, and B9 later passed one
+single-client adapter proof. None retroactively widens a2 or proves application
+composition, pooling, concurrency/cancellation, broad restore, or production
+readiness.

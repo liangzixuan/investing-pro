@@ -132,9 +132,9 @@ the exact container-local migration phase recorded by a reviewed version 7
 run. External or production migrator operation remains a distinct nonclaim.
 The later reviewed B8 result separately covers one bounded authenticated
 policy-scoped data dump and clean same-cluster restore; it does not widen B7.
-Cycle 1b-b9 later adds a separate source-implemented single-client application
-adapter whose live gate remains pending; it does not widen B7. The
-pool/concurrency boundary remains a later milestone.
+Cycle 1b-b9 later adds a separate live-reviewed single-client application
+adapter; it does not widen B7. The B10 pool/concurrency/cancellation boundary
+remains a later milestone.
 
 Historical b1 through b6 records retain their exact source shapes, completed
 checks, limitations, and interpretation. This decision does not retroactively

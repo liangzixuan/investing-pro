@@ -30,10 +30,9 @@ and reviewed; b5 authenticated test-loader run complete and reviewed; b6
 authenticated owner-DDL canary run complete and reviewed; and b7 authenticated
 clean application-migration run complete and reviewed. The b8 authenticated
 policy-scoped data-backup and bounded clean-restore run and independent version
-8 artifact review are also complete. The b9 single-client read-only adapter is
-source-implemented and locally verified; its pinned live version 9 execution
-and artifact review remain pending. The pool/concurrency gate remains later
-work.
+8 artifact review are also complete. The b9 single-client read-only adapter,
+pinned live version 9 execution, and independent artifact review are complete
+for their bounded scope. The b10 pool/concurrency/cancellation gate is next.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -168,7 +167,7 @@ encrypted/retained, disaster-recovery, or RPO/RTO result. See the
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
-**Cycle 1b-b9 source/local complete; live pending:** one non-owning,
+**Cycle 1b-b9 complete for its bounded recorded scope:** one non-owning,
 exclusively leased single-client, read-only `pg` adapter now implements
 `OperationScopedProjectionSource<FinancialFact>` with a trusted
 constructor-injected synthetic actor, the reviewed B4 query, and the existing
@@ -176,15 +175,19 @@ all-or-nothing normalizer. Each load snapshots inputs before its first await,
 resets transaction state, uses a transaction-local runtime role/context,
 normalizes before commit, rolls back on failure, poisons after unsafe reset or
 rollback failure, and rejects overlap before SQL.
-The dedicated workflow has an exact random loopback-only port mapping so one
-real SCRAM-authenticated Node client can exercise this path. All 450 database
+The dedicated workflow uses an exact random loopback-only port mapping.
+PostgreSQL run `32083732063` at commit `8e470e9` exercised one real
+SCRAM-authenticated Node client, passed every inherited B1 through B8
+regression and the B9 transaction, isolation, failure, and cleanup probes, then
+wrote the version 9 success record. The retained record returned
+`offline_consistent` against separately supplied anchors. All 450 database
 tests, typechecking, static PostgreSQL and migration checks, focused lint/
-formatting, and the diff check pass locally; no local live PostgreSQL claim
-follows. The pinned version 9 run and independent artifact review remain the
-exit gate. See [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+formatting, and the diff check also passed for the source commit. See the
+[B9 evidence note](./POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md),
+[ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
-**Cycle 1b-b10 after B9:** design and prove a bounded real pool lifecycle with
+**Cycle 1b-b10 next:** design and prove a bounded real pool lifecycle with
 checked-out-client context reset, simultaneous tenant-isolated backends,
 cancellation, timeout, failed-transaction discard, and zero pooled-backend
 residue. B10 must not silently add application composition, end-user identity,
@@ -217,14 +220,16 @@ external TLS, managed secrets, or production load/readiness claims.
    query-shape, operation-rights, and alternating prepared-read cases; the
    reviewed b3 run passed that exact matrix through the service account. The b1
    null/malformed/unsupported-context failures remain impersonated-capability
-   evidence. At least 1,000 concurrent reads remain pending. If a writer
+   evidence. The reviewed B9 result adds one real sequential client, not
+   concurrent reads. At least 1,000 concurrent reads remain pending. If a writer
    capability is added, also test viewer writes, composite-FK attacks,
    idempotency races, and rollback before enabling it elsewhere.
 6. **Sequential cleanup complete:** b1 proves transaction-local context clears
    after commit, rollback, and a handled error on one backend. Cancellation,
    timeout, simultaneous backends, and real pooled-connection reuse remain.
 7. **Clean migration/replay/rollback complete:** b1 proves clean bootstrap,
-   ledger state, replay refusal, and injected final rollback. A live
+   ledger state, replay refusal, and injected final rollback. B9 separately
+   proves reset, rollback, and reuse on one real client. A live
    checksum-drift case remains pending. The reviewed B8 run also proves the
    narrower policy-scoped data-only dump, independently provisioned same-cluster
    restore, post-restore authorization checks, and mandatory cleanup for its
@@ -246,10 +251,10 @@ authenticated owner-DDL canary and retained
 `authenticated_migrator_sessions`. The reviewed b7 run passed the bounded
 authenticated clean application-migration phase after its separately committed
 platform bootstrap and replaced that limitation with the exact external/
-production/incremental and global-atomicity nonclaims. The accepted B8 design
-now has a reviewed live version 8 result for its bounded scope. The B9
-single-client read-only adapter is source/local complete but remains live
-pending, followed by the separate real pool/concurrency/cancellation boundary.
+production/incremental and global-atomicity nonclaims. The reviewed B8 result
+covers its bounded version 8 scope. The reviewed B9 run passed the separate real
+single-client read-only adapter boundary. B10, the real pool/concurrency/
+cancellation boundary, is next.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -259,9 +264,9 @@ test-loader, b6 owner-DDL canary, and b7 authenticated application-migration
 milestones are complete for their recorded scopes. B8's authenticated
 policy-scoped data-only dump and bounded clean restore are likewise complete
 only for the exact version 8 scope. B7, not B6, contains the reviewed
-platform/migrator redesign and bounded authenticated migration result. The B9
-single-client read adapter remains a separate source/live proof from B4 through
-B8 and from the pool/concurrency milestone.
+platform/migrator redesign and bounded authenticated migration result. The
+reviewed B9 single-client read adapter remains a separate proof from B4
+through B8 and from the B10 pool/concurrency milestone.
 The historical manifest remains unsuitable for a distinct migrator: on
 PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an administrative
 membership edge on a role it creates, while historical migration `0001`
@@ -272,8 +277,8 @@ weakens the zero-membership bootstrap invariant.
 The reviewed B8 result permits only a bounded, policy-scoped, synthetic
 data-only dump and same-cluster clean-restore claim. It must not be widened into
 full-schema/global recovery or a production/DR claim.
-Application-pool cancellation/concurrency belongs with a real adapter and pool.
-Do not treat B4, the clean-only
+Application-pool cancellation/concurrency remains the separate B10 gate. Do not
+treat B4, B9, the clean-only
 impersonated-capability result, or the reviewed b2/b3 container-local
 service-account results, including the separate reviewed B5 test-loader result,
 as permission to wire the database into the app or accept real data.

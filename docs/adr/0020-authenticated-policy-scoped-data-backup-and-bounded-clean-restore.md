@@ -182,7 +182,7 @@ The implementation keeps authentication of the reader, independent
 provisioning of the restore target, and authorization of the data loader visible
 as separate boundaries. The reviewed version 8 result closes only the exact
 bounded composite acceptance gate after all three were exercised together. A
-single-client read-only adapter and the later pool/concurrency/cancellation
+later B9 single-client read-only adapter and B10 pool/concurrency/cancellation
 boundary remain separate milestones.
 
 ## Related decisions and primary sources
@@ -199,7 +199,6 @@ boundary remain separate milestones.
 - [PostgreSQL 17 SQL-dump backup and restore](https://www.postgresql.org/docs/17/backup-dump.html)
 - [PostgreSQL 17 `CREATE DATABASE`](https://www.postgresql.org/docs/17/sql-createdatabase.html)
 
-B9 later implements the separate single-client adapter source while retaining
-B8 as a historical data-only backup/restore result. Its live version 9 evidence
-remains pending, and neither milestone proves a pool or application
-composition.
+B9 later implements and live-reviews the separate single-client adapter while
+retaining B8 as a historical data-only backup/restore result. Neither milestone
+proves a pool or application composition.

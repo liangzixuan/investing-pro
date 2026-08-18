@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B8 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B9 SOURCE/LOCAL COMPLETE AND LIVE PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B9 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -101,15 +101,19 @@ encrypted/retained, disaster-recovery, or RPO/RTO backup. See the
 [ADR 0020](../../docs/adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and the [Cycle 1b-b8 exit matrix](../../docs/CYCLE_1BB8_EXIT_MATRIX.md).
 
-Cycle 1b-b9 is source-implemented and locally verified; its pinned live version
-9 run and artifact review remain pending. The package now contains one
+Cycle 1b-b9 is complete for its bounded recorded scope. PostgreSQL run
+`32083732063` at commit `8e470e9` exercised one real `pg@8.23.0` client and its
+retained version 9 record returned `offline_consistent` against separately
+supplied anchors. The package contains one
 non-owning, exclusively leased single-client, read-only `pg` implementation of
 the frozen core projection port. It snapshots a trusted synthetic actor outside
 the operation query, resets transaction state before each read-only
 role/context transaction, bridges the exact one-text-column driver result into
 the reviewed B4 normalizer, rolls back on failure, poisons after unsafe reset or
 rollback failure, and rejects overlap before SQL. It does not own connection
-configuration or lifecycle and is not imported by an app. See [ADR 0021](../../docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+configuration or lifecycle and is not imported by an app. See the
+[B9 evidence note](../../docs/POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md),
+[ADR 0021](../../docs/adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](../../docs/CYCLE_1BB9_EXIT_MATRIX.md).
 
 There is deliberately no production or incremental migration runner, retained
@@ -448,39 +452,43 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     through a distinct authenticated test-seed login with transactional failure,
     fingerprint/catalog/authorization, source-isolation, and zero-residue
     checks. This bounded fixture has no declared or implied production RPO/RTO.
-13. Complete the B9 live gate through one exclusively leased real `pg` client:
+13. Retain the reviewed B9 live contract through one exclusively leased real
+    `pg` client:
     wrong-password rejection, stable backend identity, rollback of a deliberately
     pre-existing read-write canary, exact read-only role/context transactions,
     operation and tenant alternation, injected rollback, value-free error
     handling, post-transaction cleanup, client closure, backend drain, and
     independently reviewed version 9 evidence. This does not include a pool.
-14. Prove migration ledger locking, checksum mismatch refusal, one-time replay,
+14. Prove the separate B10 bounded pool lifecycle, simultaneous tenant-isolated
+    backends, checkout/reset discipline, cancellation, timeout handling,
+    failed-transaction discard, and zero pooled-backend residue.
+15. Prove migration ledger locking, checksum mismatch refusal, one-time replay,
     failure rollback, and concurrent deploy behavior.
-15. Run query plans and load tests for fact-as-known and tenant reads, including
+16. Run query plans and load tests for fact-as-known and tenant reads, including
     RLS overhead and index use.
-16. Approve the production privacy and retention model for permanent resource
+17. Approve the production privacy and retention model for permanent resource
     identifiers, including DSAR/erasure, tenant offboarding, backup expiry, and
     any required pseudonymization or keyed-token replacement. Do not admit real
     tenant identifiers until that decision is documented and tested.
-17. If upgrading a populated database, validate an audited registry backfill
+18. If upgrading a populated database, validate an audited registry backfill
     and cutover under concurrent-write controls before adding the live-state
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Historical
-live evidence remains limited to the exact b1-b6 checks in their retained run
-records. B7 and B8 passed for their separately recorded version 7 and version 8
-scopes at commits `41d13dd` and `49d3a96` without widening those records. The
+b1-b6 live evidence remains limited to the exact checks in their retained run
+records. B7 through B9 passed for their separately recorded version 7 through
+version 9 scopes at commits `41d13dd`, `49d3a96`, and `8e470e9` without
+widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
-authentication, end-user identity binding, production secret handling, a
-live-reviewed B9 driver result or pool, concurrency/cancellation/timeouts,
-complete dossier projections,
-external/production/incremental migrator and backup credentials, global
+authentication, end-user identity binding, production secret handling, a pool,
+concurrency/cancellation/timeouts, complete dossier projections, external/
+production/incremental migrator and backup credentials, global
 platform/application atomicity, and production readiness remain unproven. B8
 proves only its reviewed policy-scoped data-only dump and same-cluster clean
 restore in the disposable acceptance environment.
 Full-schema/global/cross-cluster/version restore, continuous backup, disaster
 recovery, storage encryption/retention, secure passfile or archive erasure, and
-RPO/RTO remain outside B8. B9 source/local completion does not make its pending
-live row pass and does not establish a pool or application composition.
+RPO/RTO remain outside B8. The reviewed B9 result proves only one sequential
+synthetic client; it does not establish a pool or application composition.

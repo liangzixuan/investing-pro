@@ -26,19 +26,23 @@ refusal, and injected rollback against pinned PostgreSQL 17.11. Later b2/b3
 runs added one bounded container-local authenticated runtime service account
 and the reviewed synthetic authorization matrix. They did not exercise a
 database adapter, application identity resolver, trusted tenant-selection
-boundary, or an application/future authorized writer path. These remaining
-gates stay mandatory before any database adapter or tenant API is enabled:
+boundary, or an application/future authorized writer path. Later B8 and B9
+results do not widen this historical Cycle 1a result. These remaining gates
+stay mandatory before any application-composed database adapter or tenant API
+is enabled:
 
 - application-integrated end-user/principal/organization resolution and
   trusted tenant selection;
 - composite-FK and future writer-path attacks beyond b1's read probes;
 - cancellation, timeouts, simultaneous backends, and real pool reuse;
-- a live PostgreSQL execution of the operation-aware projection contract frozen
-  in Cycle 1b-a; Cycle 1b-b4 now supplies a reviewed driverless query/unit
-  execution, but it is not an adapter or composition-root proof;
+- application-composed execution of the operation-aware projection contract;
+  Cycle 1b-b4 later supplied a reviewed driverless query/unit execution and B9
+  separately supplied one reviewed single-client adapter, but neither is an
+  application composition-root proof;
 - at least 1,000 alternating/concurrent tenant operations;
-- live checksum-drift handling, logical dump/restore, and post-restore
-  authorization parity; and
+- live checksum-drift handling and broad restore evidence; B8 separately proved
+  only one bounded policy-scoped same-cluster restore with post-restore
+  authorization checks; and
 - production identity verification, retention jobs, DSAR, and backup deletion.
 
 The `OmissionSummaryDto` gained `hasOmissions` and a nullable count while the API

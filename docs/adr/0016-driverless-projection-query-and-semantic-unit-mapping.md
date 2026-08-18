@@ -129,6 +129,6 @@ gates.
 - [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
 
 Cycle 1b-b9 is the separate adapter successor anticipated here. Its
-source/local gates pass and its pinned live version 9 result remains pending.
-It reuses B4 without changing B4's historical driverless claim and leaves pool,
-application composition, and production boundaries unproven.
+pinned live version 9 result passed in run `32083732063`. It reuses B4 without
+changing B4's historical driverless claim and leaves pool, application
+composition, and production boundaries unproven.

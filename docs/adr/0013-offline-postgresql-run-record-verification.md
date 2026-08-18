@@ -1,7 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; current version 9 verifier implemented and live artifact
-pending; retained version 8 artifact reviewed successfully
+Status: accepted; retained version 9 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -17,9 +16,9 @@ original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
 historical v1 through v8 support and accepts the current v9 schema without
 mixing any version's closed check, limitation, source-hash, or tool-version
-lists. Retained version 6, version 7, and version 8 artifacts have been reviewed. Canonical
-comparison rejects byte-order marks, CRLF or alternate whitespace, trailing
-content, reordered members, and duplicate JSON member names.
+lists. Retained version 6 through version 9 artifacts have been reviewed.
+Canonical comparison rejects byte-order marks, CRLF or alternate whitespace,
+trailing content, reordered members, and duplicate JSON member names.
 
 Source validation uses only fixed paths read as raw Git blobs from the explicit
 40-character commit. It does not read source from the mutable worktree and does
@@ -161,8 +160,16 @@ exact V1 through V8 branches. It requires the appended
 check, the single narrower application-pool/composition nonclaim, the four new
 source hashes, and exact `nodePostgres: "8.23.0"`. Missing, extra, reordered,
 historical-version, or mixed-version fields and source blobs fail closed. The
-parser, verifier, reviewer, and complete database suite pass locally, but no V9
-artifact has yet been accepted: the pinned real-driver run, reviewed logs,
-retained bytes, and independent `offline_consistent` result remain pending. See
+parser, verifier, reviewer, and complete database suite pass locally.
+
+A retained version 9 record from run `32083732063`, attempt 1, at commit
+`8e470e9` returned `offline_consistent` against the independently supplied
+anchors. The
+[B9 evidence note](../POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md)
+records the exact artifact, evidence, source, and offline-output digests. That
+verdict proves only that the retained record, supplied anchors, and fixed source
+blobs agree. It cannot prove the SCRAM login, real-client transaction flow,
+authorization results, rollback/reuse behavior, or cleanup without separate
+review of the pinned run and logs. See
 [ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
 the [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).

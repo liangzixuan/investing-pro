@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b8 and source/local Cycle 1b-b9 threat model
+# Sprint 0 through bounded live Cycle 1b-b9 threat model
 
 ## Current trust boundaries
 
@@ -144,18 +144,19 @@ retained version 8 record returned `offline_consistent`. See the
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
-Cycle 1b-b9 adds one real-driver source boundary without connecting it to the
+Cycle 1b-b9 adds one real-driver boundary without connecting it to the
 running application. A non-owning adapter receives one exclusively leased,
 already-connected client and a separately injected trusted synthetic actor. It
 snapshots actor and query data before I/O, resets transaction state, executes
 one read-only transaction with transaction-local runtime role/context, feeds
 only the reviewed B4 result shape to the fail-closed normalizer, rolls back
 failures, poisons after unsafe reset or rollback failure, and rejects overlap
-before SQL. The workflow exposes one random port
-bound only to runner loopback for the planned real-client probe. All 450 database
-tests and local source gates pass, but the pinned live version 9 run and
-independent artifact review remain pending. See
-[ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+before SQL. The workflow exposes one random port bound only to runner loopback
+for the real-client probe. All 450 database tests and local source gates passed.
+The bounded live path then passed in PostgreSQL run `32083732063` at commit
+`8e470e9`; its retained version 9 record returned `offline_consistent`. See the
+[B9 evidence note](./POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md),
+[ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md),
 and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
 
 These database logins and injected actors are not user identities. The runtime service still chooses
@@ -174,8 +175,8 @@ close `authenticated_migrator_sessions`. B7 targets only the exact
 container-local clean application migration after a separately committed
 platform phase; external/production/incremental migration and global
 cross-phase atomicity remain explicit nonclaims.
-The B9 adapter narrows only the prior “no driver” gap after its live gate passes;
-it does not verify who supplied the synthetic actor and does not establish pool
+The reviewed B9 adapter narrows only the prior “no driver” gap; it does not
+verify who supplied the synthetic actor and does not establish pool
 reset, simultaneous backends, cancellation, timeout, TLS, secret-management, or
 application-composition behavior.
 
@@ -260,12 +261,13 @@ archive handling, external/production/incremental/continuous backup, storage
 encryption or retention, backup deletion, disaster recovery, and RPO/RTO remain
 release blockers outside B8.
 
-B9 source and local tests do not by themselves prove that the real Node driver
-reached PostgreSQL. That claim requires the pending clean workflow, exact
-SCRAM/backend/read-only/context/rollback/cleanup probes, retained version 9
-record, and independent artifact review. Even after that gate, the trusted actor
-can be chosen by a compromised service and the random loopback mapping is only
-an acceptance-runner path, not production network security.
+The reviewed B9 run proves only that one real Node driver client reached the
+ephemeral PostgreSQL service and passed the exact SCRAM/backend/read-only/
+context/rollback/cleanup probes recorded for version 9. The trusted actor can
+still be chosen by a compromised service, and the random loopback mapping is
+only an acceptance-runner path, not production network security. Pool reset,
+simultaneous backends, cancellation, and timeout handling remain the separate
+B10 gate.
 
 ## Gates before adding new trust boundaries
 

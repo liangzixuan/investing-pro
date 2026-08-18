@@ -1,7 +1,6 @@
 # ADR 0021: Single-client read-only PostgreSQL projection adapter
 
-Status: accepted for Cycle 1b-b9; source implemented and locally verified;
-pinned live version 9 evidence pending
+Status: accepted and live-reviewed for the bounded Cycle 1b-b9 scope
 
 ## Context
 
@@ -109,10 +108,12 @@ historical tool-version shapes remain unchanged. The current record is
 `research-cockpit-postgres-acceptance-v9.json`; the workflow artifact is
 `postgres-acceptance-evidence-v9-${sha}-${attempt}`.
 
-Source and local tests are not live evidence. The live matrix stays pending
-until a clean pinned workflow succeeds, its log markers and commit-bound
-artifact are reviewed, the source hashes match immutable Git blobs, mandatory
-cleanup has completed, and the downloaded record returns `offline_consistent`.
+Source and local tests alone are not live evidence. The required clean pinned
+workflow passed in PostgreSQL run `32083732063` at commit `8e470e9`. Its
+commit-bound artifact, exact log markers, and immutable source hashes were
+reviewed after mandatory cleanup, and the downloaded version 9 record returned
+`offline_consistent`. See the
+[B9 evidence note](../POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md).
 
 ## Explicit exclusions
 
@@ -132,8 +133,9 @@ port and is not retained after the job. The transitive presence of
 B9 establishes the first real database-driver implementation of the frozen
 operation-scoped read port while keeping identity, connection ownership, and
 application composition outside the adapter. The next database milestone is a
-separate bounded pool/concurrency/cancellation gate. Application composition,
-production identity, external TLS, and managed secrets remain later work.
+separate bounded Cycle 1b-b10 pool/concurrency/cancellation gate. Application
+composition, production identity, external TLS, and managed secrets remain
+later work.
 
 ## Related decisions and primary sources
 
@@ -142,6 +144,7 @@ production identity, external TLS, and managed secrets remain later work.
 - [ADR 0016: Driverless projection query and semantic unit mapping](./0016-driverless-projection-query-and-semantic-unit-mapping.md)
 - [ADR 0020: Authenticated policy-scoped data backup and bounded clean restore](./0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 - [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md)
+- [Cycle 1b-b9 evidence note](../POSTGRESQL_SINGLE_CLIENT_PROJECTION_ADAPTER_EVIDENCE.md)
 - [node-postgres queries](https://node-postgres.com/features/queries)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [GitHub Actions PostgreSQL service containers](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers)
