@@ -2491,7 +2491,7 @@ async function collectMigrationDeployerTargetState(
   ),
   'procedure', (
     SELECT pg_catalog.json_build_object(
-      'oid', procedure.oid,
+      'oid', procedure.oid::bigint,
       'owner', pg_catalog.pg_get_userbyid(procedure.proowner),
       'source', procedure.prosrc,
       'accessControlFingerprint', (

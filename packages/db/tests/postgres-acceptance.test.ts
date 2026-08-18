@@ -2460,6 +2460,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "function assertMigrationDeployerTargetPrefix(",
     );
     for (const marker of [
+      "'oid', procedure.oid::bigint,",
       "pg_catalog.aclexplode(",
       "count(*) FILTER (WHERE privilege.grantee = 0)",
       "count(*) FILTER (WHERE privilege.grantee = procedure.proowner)",
