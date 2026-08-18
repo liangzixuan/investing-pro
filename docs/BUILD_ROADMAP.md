@@ -17,7 +17,7 @@ Status: implemented and locally verified, still synthetic only.
 1. A context-bound research-state port and atomic in-memory adapter cover membership roles, tenant scoping, optimistic versions, 24-hour idempotency, payload hard delete with same-type non-reusable IDs, export, and payload-free audit metadata.
 2. Adversarial tests cover identical cross-tenant IDs, forged tenant context, viewer denial, stale and concurrent writers, replay conflicts, rollback, and payload leakage.
 3. Ordered raw PostgreSQL migrations and an immutable checksum manifest define synthetic-only shared/private schemas, exact rights versions, fixed-point values, half-open public-known/system time, transaction-local context, and forced RLS.
-4. Static clean-room and SQL checks cover migrations and future container/config surfaces. No database adapter, identity provider, API write route, or UI persistence was added.
+4. Static clean-room and SQL checks cover migrations and future container/config surfaces. This Cycle 1a slice added no database adapter, identity provider, API write route, or UI persistence; the separate B9 adapter source does not retroactively widen it.
 
 The existing GET-only API and browser-local demo remain unchanged. This slice is not production persistence or authentication.
 
@@ -31,7 +31,9 @@ authenticated owner-DDL canary run complete and reviewed; and b7 authenticated
 clean application-migration run complete and reviewed. The b8 authenticated
 policy-scoped data-backup and bounded clean-restore run and independent version
 8 artifact review are also complete. The b9 single-client read-only adapter is
-next; the pool/concurrency gate remains later work.
+source-implemented and locally verified; its pinned live version 9 execution
+and artifact review remain pending. The pool/concurrency gate remains later
+work.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -166,12 +168,27 @@ encrypted/retained, disaster-recovery, or RPO/RTO result. See the
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md),
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
-**Cycle 1b-b9 next:** implement one single-client, read-only PostgreSQL adapter
-for `OperationScopedProjectionSource<FinancialFact>` using the reviewed B4
-query and existing all-or-nothing normalizer. Keep the milestone sequential and
-synthetic. It must not add or imply an application pool, API/app composition,
-production identity, external TLS, managed secrets, concurrent sessions,
-cancellation, or timeout behavior. Those remain separate later gates.
+**Cycle 1b-b9 source/local complete; live pending:** one non-owning,
+exclusively leased single-client, read-only `pg` adapter now implements
+`OperationScopedProjectionSource<FinancialFact>` with a trusted
+constructor-injected synthetic actor, the reviewed B4 query, and the existing
+all-or-nothing normalizer. Each load snapshots inputs before its first await,
+resets transaction state, uses a transaction-local runtime role/context,
+normalizes before commit, rolls back on failure, poisons after unsafe reset or
+rollback failure, and rejects overlap before SQL.
+The dedicated workflow has an exact random loopback-only port mapping so one
+real SCRAM-authenticated Node client can exercise this path. All 450 database
+tests, typechecking, static PostgreSQL and migration checks, focused lint/
+formatting, and the diff check pass locally; no local live PostgreSQL claim
+follows. The pinned version 9 run and independent artifact review remain the
+exit gate. See [ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
+
+**Cycle 1b-b10 after B9:** design and prove a bounded real pool lifecycle with
+checked-out-client context reset, simultaneous tenant-isolated backends,
+cancellation, timeout, failed-transaction discard, and zero pooled-backend
+residue. B10 must not silently add application composition, end-user identity,
+external TLS, managed secrets, or production load/readiness claims.
 
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
@@ -231,10 +248,10 @@ authenticated clean application-migration phase after its separately committed
 platform bootstrap and replaced that limitation with the exact external/
 production/incremental and global-atomicity nonclaims. The accepted B8 design
 now has a reviewed live version 8 result for its bounded scope. The B9
-single-client read-only adapter is next, followed by the real
-pool/concurrency/cancellation boundary. The row-normalization contract is
-already frozen; the B4 query and unit contract provides a reviewed input to B9
-without proving that adapter.
+single-client read-only adapter is source/local complete but remains live
+pending, followed by the separate real pool/concurrency/cancellation boundary.
+The row-normalization contract is already frozen; the B4 query and unit contract
+provides a reviewed input to B9 without retroactively proving that adapter.
 
 The b1 green-run, bounded b2 runtime-authentication, b3 authenticated
 authorization-matrix, b4 driverless query/normalizer, b5 authenticated
@@ -243,8 +260,8 @@ milestones are complete for their recorded scopes. B8's authenticated
 policy-scoped data-only dump and bounded clean restore are likewise complete
 only for the exact version 8 scope. B7, not B6, contains the reviewed
 platform/migrator redesign and bounded authenticated migration result. The B9
-single-client read adapter must remain separate from B4 through B8 and from the
-pool/concurrency milestone.
+single-client read adapter remains a separate source/live proof from B4 through
+B8 and from the pool/concurrency milestone.
 The historical manifest remains unsuitable for a distinct migrator: on
 PostgreSQL 17 a non-superuser `CREATEROLE` migrator receives an administrative
 membership edge on a role it creates, while historical migration `0001`

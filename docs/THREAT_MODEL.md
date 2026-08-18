@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b8 threat model
+# Sprint 0 through bounded live Cycle 1b-b8 and source/local Cycle 1b-b9 threat model
 
 ## Current trust boundaries
 
@@ -144,7 +144,21 @@ retained version 8 record returned `offline_consistent`. See the
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
-That database login is not a user identity. The runtime service still chooses
+Cycle 1b-b9 adds one real-driver source boundary without connecting it to the
+running application. A non-owning adapter receives one exclusively leased,
+already-connected client and a separately injected trusted synthetic actor. It
+snapshots actor and query data before I/O, resets transaction state, executes
+one read-only transaction with transaction-local runtime role/context, feeds
+only the reviewed B4 result shape to the fail-closed normalizer, rolls back
+failures, poisons after unsafe reset or rollback failure, and rejects overlap
+before SQL. The workflow exposes one random port
+bound only to runner loopback for the planned real-client probe. All 450 database
+tests and local source gates pass, but the pinned live version 9 run and
+independent artifact review remain pending. See
+[ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
+
+These database logins and injected actors are not user identities. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
 future verified identity resolver prevents it. B2 therefore does not establish
@@ -160,6 +174,10 @@ close `authenticated_migrator_sessions`. B7 targets only the exact
 container-local clean application migration after a separately committed
 platform phase; external/production/incremental migration and global
 cross-phase atomicity remain explicit nonclaims.
+The B9 adapter narrows only the prior “no driver” gap after its live gate passes;
+it does not verify who supplied the synthetic actor and does not establish pool
+reset, simultaneous backends, cancellation, timeout, TLS, secret-management, or
+application-composition behavior.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes
@@ -200,6 +218,12 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   fixed decimals, intervals, cutoffs, units, and exact policy/grant echoes, and
   rejects an entire malformed batch with a value-free error. It cannot accept
   completeness or count input.
+- The B9 adapter source accepts no host, port, URL, password, environment,
+  client factory, pool, logger, retry, timeout, cancellation, or arbitrary SQL
+  seam. It requires one exclusively leased client, captures a trusted actor
+  provider once, snapshots every call before awaiting, resets transaction state,
+  uses one unnamed parameterized B4 query inside one read-only transaction,
+  normalizes before commit, and emits one stable value-free error.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -235,6 +259,13 @@ cross-cluster/version restore, untrusted
 archive handling, external/production/incremental/continuous backup, storage
 encryption or retention, backup deletion, disaster recovery, and RPO/RTO remain
 release blockers outside B8.
+
+B9 source and local tests do not by themselves prove that the real Node driver
+reached PostgreSQL. That claim requires the pending clean workflow, exact
+SCRAM/backend/read-only/context/rollback/cleanup probes, retained version 9
+record, and independent artifact review. Even after that gate, the trusted actor
+can be chosen by a compromised service and the random loopback mapping is only
+an acceptance-runner path, not production network security.
 
 ## Gates before adding new trust boundaries
 

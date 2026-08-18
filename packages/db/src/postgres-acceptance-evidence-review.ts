@@ -24,6 +24,10 @@ const MAX_APPLICATION_MANIFEST_V2_BYTES = 64 * 1_024;
 const MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES = 2 * 1_024 * 1_024;
 const MAX_RESTORE_PLATFORM_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_POSTGRES_PROJECTION_ADAPTER_BYTES = 2 * 1_024 * 1_024;
+const MAX_OPERATION_PROJECTION_CONTRACT_BYTES = 2 * 1_024 * 1_024;
+const MAX_DATABASE_PACKAGE_MANIFEST_BYTES = 64 * 1_024;
+const MAX_PNPM_LOCKFILE_BYTES = 512 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -52,6 +56,12 @@ const RESTORE_PLATFORM_V1_PATH =
   "packages/db/backup-restore-plans/v1/restore-platform.sql";
 const AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_PATH =
   "packages/db/src/authenticated-backup-restore-plan.ts";
+const POSTGRES_PROJECTION_ADAPTER_PATH =
+  "packages/db/src/postgres-projection-adapter.ts";
+const OPERATION_PROJECTION_CONTRACT_PATH =
+  "modules/research-core/src/projection-contract.ts";
+const DATABASE_PACKAGE_MANIFEST_PATH = "packages/db/package.json";
+const PNPM_LOCKFILE_PATH = "pnpm-lock.yaml";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -196,19 +206,26 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 5 ||
       evidence.schemaVersion === 6 ||
       evidence.schemaVersion === 7 ||
-      evidence.schemaVersion === 8
+      evidence.schemaVersion === 8 ||
+      evidence.schemaVersion === 9
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
-      evidence.schemaVersion === 7 || evidence.schemaVersion === 8
+      evidence.schemaVersion === 7 ||
+      evidence.schemaVersion === 8 ||
+      evidence.schemaVersion === 9
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
     const backupRestorePlanV1Sources =
-      evidence.schemaVersion === 8
+      evidence.schemaVersion === 8 || evidence.schemaVersion === 9
         ? await readBackupRestorePlanV1Sources(
             repositoryPath,
             input.expectedCommit,
           )
+        : {};
+    const v9Sources =
+      evidence.schemaVersion === 9
+        ? await readV9Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -231,11 +248,60 @@ export async function reviewPostgresAcceptanceEvidence(
         ...projectionSources,
         ...migrationPlanV2Sources,
         ...backupRestorePlanV1Sources,
+        ...v9Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV9Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly postgresProjectionAdapter: Uint8Array;
+  readonly operationProjectionContract: Uint8Array;
+  readonly databasePackageManifest: Uint8Array;
+  readonly pnpmLockfile: Uint8Array;
+}> {
+  const [
+    postgresProjectionAdapter,
+    operationProjectionContract,
+    databasePackageManifest,
+    pnpmLockfile,
+  ] = await Promise.all([
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      POSTGRES_PROJECTION_ADAPTER_PATH,
+      MAX_POSTGRES_PROJECTION_ADAPTER_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      OPERATION_PROJECTION_CONTRACT_PATH,
+      MAX_OPERATION_PROJECTION_CONTRACT_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      DATABASE_PACKAGE_MANIFEST_PATH,
+      MAX_DATABASE_PACKAGE_MANIFEST_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PNPM_LOCKFILE_PATH,
+      MAX_PNPM_LOCKFILE_BYTES,
+    ),
+  ]);
+  return Object.freeze({
+    postgresProjectionAdapter: Uint8Array.from(postgresProjectionAdapter),
+    operationProjectionContract: Uint8Array.from(operationProjectionContract),
+    databasePackageManifest: Uint8Array.from(databasePackageManifest),
+    pnpmLockfile: Uint8Array.from(pnpmLockfile),
+  });
 }
 
 async function readBackupRestorePlanV1Sources(

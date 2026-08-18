@@ -11,6 +11,7 @@ import {
   assertExpectedPsqlFailure,
   assertMigratorWrongPasswordRejection,
   assertOwnerDdlWrongPasswordRejection,
+  assertPostgresProjectionAdapterWrongPasswordRejection,
   assertRuntimeWrongPasswordRejection,
   assertTestLoaderWrongPasswordRejection,
   buildOwnerDdlAuthPsqlInvocation,
@@ -40,6 +41,7 @@ import {
   MIGRATOR_AUTH_LOGIN_ROLE,
   MIGRATOR_AUTH_PASSFILE,
   MIGRATOR_AUTH_WRONG_PASSFILE,
+  parsePostgresProjectionAdapterEndpoint,
   renderB7AcceptanceTargetResetSql,
   renderAuthenticatedOwnerDdlCanaryCreateSql,
   renderAuthenticatedOwnerDdlCanaryDropSql,
@@ -273,6 +275,69 @@ describe("PostgreSQL acceptance harness guardrails", () => {
       expect(() => assertRuntimeWrongPasswordRejection(result)).toThrow(
         /wrong-password runtime authentication/i,
       );
+    }
+  });
+
+  it("accepts only the exact value-free node-postgres wrong-password code", () => {
+    expect(() =>
+      assertPostgresProjectionAdapterWrongPasswordRejection({
+        code: "28P01",
+        message: "driver details remain internal",
+      }),
+    ).not.toThrow();
+
+    const secret = "b9-wrong-password-secret-canary";
+    for (const error of [
+      new Error(secret),
+      { code: "08001", message: secret },
+      { code: "28P01 ", message: secret },
+      Object.defineProperty({}, "code", {
+        get: () => {
+          throw new Error(secret);
+        },
+      }),
+    ]) {
+      let thrown: unknown;
+      try {
+        assertPostgresProjectionAdapterWrongPasswordRejection(error);
+      } catch (caught) {
+        thrown = caught;
+      }
+      expect(thrown).toMatchObject({
+        name: "PostgresProjectionAdapterError",
+        code: "POSTGRES_PROJECTION_ADAPTER_FAILURE",
+        message: "PostgreSQL projection adapter failed.",
+      });
+      expect(String(thrown)).not.toContain(secret);
+      expect(thrown).not.toHaveProperty("cause");
+    }
+  });
+
+  it("requires the exact loopback host and one canonical dynamic adapter port", () => {
+    expect(
+      parsePostgresProjectionAdapterEndpoint({
+        RESEARCH_COCKPIT_PG_ADAPTER_HOST: "127.0.0.1",
+        RESEARCH_COCKPIT_PG_ADAPTER_PORT: "49152",
+      }),
+    ).toEqual({ host: "127.0.0.1", port: 49152 });
+
+    for (const [host, port] of [
+      [undefined, "49152"],
+      ["localhost", "49152"],
+      ["0.0.0.0", "49152"],
+      ["127.0.0.1", undefined],
+      ["127.0.0.1", ""],
+      ["127.0.0.1", "05432"],
+      ["127.0.0.1", "5432x"],
+      ["127.0.0.1", "0"],
+      ["127.0.0.1", "65536"],
+    ] as const) {
+      expect(() =>
+        parsePostgresProjectionAdapterEndpoint({
+          RESEARCH_COCKPIT_PG_ADAPTER_HOST: host,
+          RESEARCH_COCKPIT_PG_ADAPTER_PORT: port,
+        }),
+      ).toThrow(/B9 PostgreSQL adapter/i);
     }
   });
 
@@ -1239,15 +1304,23 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "63db230689987f7a927b56e2b2768206a45def3ed0c66e6c61e96279d22adff0",
+        "349c5e2beef444698068969bc264004240824b4bbb1e641e3e60e30165d380d7",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v8.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v9.json",
+    );
+    expect(artifacts.workflow).toContain('          - "127.0.0.1::5432"');
+    expect(artifacts.workflow).toContain("      - modules/research-core/**");
+    expect(artifacts.workflow).toContain(
+      "RESEARCH_COCKPIT_PG_ADAPTER_HOST: 127.0.0.1",
+    );
+    expect(artifacts.workflow).toContain(
+      "RESEARCH_COCKPIT_PG_ADAPTER_PORT: ${{ job.services.postgres.ports[5432] }}",
     );
     expect(artifacts.workflow).toContain(
       '--health-cmd "pg_isready --username=postgres --dbname=postgres"',
@@ -1287,13 +1360,20 @@ CREATE DATABASE research_cockpit_acceptance_test
     );
   });
 
-  it("rejects ports, URLs, host addressing, and forged container plumbing", async () => {
+  it("rejects widened port, URL, host, and container plumbing", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow
-      .replace("    steps:", "    ports:\n      - 5432:5432\n    steps:")
+      .replace(
+        '          - "127.0.0.1::5432"',
+        '          - "127.0.0.1::5432"\n          - "5433:5432"',
+      )
+      .replace(
+        "RESEARCH_COCKPIT_PG_ADAPTER_HOST: 127.0.0.1",
+        "RESEARCH_COCKPIT_PG_ADAPTER_HOST: localhost\n          DATABASE_URL: postgres://localhost/demo",
+      )
       .replace(
         "RESEARCH_COCKPIT_PG_CONTAINER_ID: ${{ job.services.postgres.id }}",
-        "RESEARCH_COCKPIT_PG_CONTAINER_ID: forged\n          DATABASE_URL: postgres://localhost/demo",
+        "RESEARCH_COCKPIT_PG_CONTAINER_ID: forged",
       );
     const violations = inspectPostgresAcceptanceHarness({
       ...artifacts,
@@ -1301,12 +1381,50 @@ CREATE DATABASE research_cockpit_acceptance_test
     });
     expect(violations).toEqual(
       expect.arrayContaining([
-        "workflow must not publish a database port",
+        "PostgreSQL service must publish only one random loopback mapping for target 5432",
         "workflow must not construct a database URL",
-        "workflow must not address PostgreSQL through the host",
-        "workflow must pass only the GitHub service container ID",
+        "workflow must use only exact IPv4 loopback",
+        "workflow must pass the GitHub service container ID",
+        "acceptance step must receive the exact service container ID",
+        "acceptance step must receive only the exact loopback adapter host",
       ]),
     );
+  });
+
+  it("rejects alternate adapter host and port plumbing anywhere in the workflow", async () => {
+    const artifacts = await loadArtifacts();
+    for (const [source, replacement, expected] of [
+      [
+        '          - "127.0.0.1::5432"',
+        '          - "127.0.0.1::5432"\n        expose:\n          - 5432',
+        "PostgreSQL service must not declare an alternate expose block",
+      ],
+      [
+        '          - "127.0.0.1::5432"',
+        '          - "127.0.0.1::5432"\n        ports:\n          - "127.0.0.1::5433"',
+        "PostgreSQL service must declare exactly one B9 adapter port block",
+      ],
+      [
+        "          POSTGRES_USER: postgres",
+        "          POSTGRES_USER: postgres\n          ALTERNATE_DB_HOST: database.example.invalid",
+        "workflow must not declare an alternate host, port, or URL environment variable",
+      ],
+      [
+        "          --health-retries 10",
+        "          --health-retries 10\n          --publish 15432:5432",
+        "workflow must not declare alternate Docker host or port plumbing",
+      ],
+      [
+        "RESEARCH_COCKPIT_PG_ADAPTER_HOST: 127.0.0.1",
+        "RESEARCH_COCKPIT_PG_ADAPTER_HOST: 192.0.2.1",
+        "workflow must contain only the two reviewed IPv4 loopback host literals",
+      ],
+    ] as const) {
+      const workflow = artifacts.workflow.replace(source, replacement);
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain(expected);
+    }
   });
 
   it("requires explicit SCRAM host authentication in the service", async () => {
@@ -1332,13 +1450,18 @@ CREATE DATABASE research_cockpit_acceptance_test
 
   it("requires every workspace input that can alter the live job to trigger it", async () => {
     const artifacts = await loadArtifacts();
-    const workflow = artifacts.workflow.replaceAll(
-      "      - tsconfig.base.json\n",
-      "",
-    );
-    expect(
-      inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
-    ).toContain("workflow must rerun when tsconfig.base.json changes");
+    for (const triggerPath of [
+      "modules/research-core/**",
+      "tsconfig.base.json",
+    ]) {
+      const workflow = artifacts.workflow.replaceAll(
+        `      - ${triggerPath}\n`,
+        "",
+      );
+      expect(
+        inspectPostgresAcceptanceHarness({ ...artifacts, workflow }),
+      ).toContain(`workflow must rerun when ${triggerPath} changes`);
+    }
   });
 
   it("requires the immutable upload-artifact action pin", async () => {
@@ -1383,7 +1506,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v8.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v9.json",
         unsafePath,
       );
       expect(
@@ -1423,7 +1546,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1530,6 +1653,8 @@ CREATE DATABASE research_cockpit_acceptance_test
         CI: "true",
         GITHUB_ACTIONS: "true",
         RESEARCH_COCKPIT_PG_CONTAINER_ID: "a".repeat(12),
+        RESEARCH_COCKPIT_PG_ADAPTER_HOST: "127.0.0.1",
+        RESEARCH_COCKPIT_PG_ADAPTER_PORT: "49152",
         GITHUB_SHA: "not-a-canonical-commit",
       }),
     ).rejects.toThrow(/canonical GitHub checkout commit is required/i);
@@ -1558,10 +1683,13 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).not.toContain("writtenEvidence.path");
     expect(source).toContain("authenticated test-loader");
     expect(source).toContain("driverless financial-fact projection");
-    expect(source).toContain("version 8 success-only run record");
+    expect(source).toContain(
+      "single-client read-only financial-fact projection adapter",
+    );
+    expect(source).toContain("version 9 success-only run record");
   });
 
-  it("finishes mandatory B8 cleanup and hashes its exact sources before v8 evidence", async () => {
+  it("finishes mandatory B8 cleanup and hashes its exact sources before v9 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -1995,7 +2123,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "await verifyB7PlatformArtifactsAfterApplication(containerId);",
       "await verifyAuthenticatedTestLoaderSession(",
       "await verifyAuthenticatedOwnerDdlCanarySession(containerId, expectedLedger);",
-      "await verifyAuthenticatedRuntimeSession(containerId);",
+      "await verifyAuthenticatedRuntimeSession(containerId, adapterEndpoint);",
       "await verifyMigrationLedger(containerId, expectedLedger);",
       "await verifyB7PlatformArtifactsAfterApplication(containerId);",
     ];
@@ -2100,7 +2228,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(finalPlatform).toContain('"1|0"');
   });
 
-  it("runs the authenticated backup and bounded restore before v8 evidence", async () => {
+  it("runs the authenticated backup and bounded restore before v9 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2132,7 +2260,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 8 success-only run record was written",
+      "the version 9 success-only run record was written",
     ]);
 
     const orchestrator = section(
@@ -2317,11 +2445,19 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     const financialFactProjection = authenticatedProbe.indexOf(
       "await verifyRuntimeAuthenticatedFinancialFactProjection(containerId);",
     );
+    const adapterWrongPassword = authenticatedProbe.indexOf(
+      "await verifyPostgresProjectionAdapterWrongPasswordRejection(",
+    );
+    const adapterProjection = authenticatedProbe.indexOf(
+      "await verifyPostgresProjectionAdapter(",
+    );
     const cleanupBoundary = authenticatedProbe.indexOf("} finally {");
     expect(boundedWrite).toBeGreaterThan(-1);
     expect(fullMatrix).toBeGreaterThan(boundedWrite);
     expect(financialFactProjection).toBeGreaterThan(fullMatrix);
-    expect(cleanupBoundary).toBeGreaterThan(financialFactProjection);
+    expect(adapterWrongPassword).toBeGreaterThan(financialFactProjection);
+    expect(adapterProjection).toBeGreaterThan(adapterWrongPassword);
+    expect(cleanupBoundary).toBeGreaterThan(adapterProjection);
     expect(authenticatedProbe.slice(fullMatrix, cleanupBoundary)).toContain(
       'runtimeAuthorizationMatrixClient(containerId, "authenticated")',
     );
@@ -2366,6 +2502,24 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expect(sourceHashCollector).toContain("projectionQuerySha256,");
     expect(sourceHashCollector).toContain("projectionNormalizerSha256,");
+    for (const [pathMarker, hashMarker] of [
+      [
+        "exactFileSha256(postgresProjectionAdapterPath)",
+        "postgresProjectionAdapterSha256,",
+      ],
+      [
+        "exactFileSha256(operationProjectionContractPath)",
+        "operationProjectionContractSha256,",
+      ],
+      [
+        "exactFileSha256(databasePackageManifestPath)",
+        "databasePackageManifestSha256,",
+      ],
+      ["exactFileSha256(pnpmLockfilePath)", "pnpmLockfileSha256,"],
+    ] as const) {
+      expect(sourceHashCollector).toContain(pathMarker);
+      expect(sourceHashCollector).toContain(hashMarker);
+    }
 
     const matrixClient = section(
       "function runtimeAuthorizationMatrixClient(",
@@ -2402,6 +2556,150 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       expect(rightsMatrix).toContain(combination[0]);
       expect(rightsMatrix).toContain(combination[1]);
     }
+  });
+
+  it("runs the real single-client B9 adapter through the bounded runtime lifecycle", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+
+    const entrypoint = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    expect(
+      entrypoint.indexOf("parsePostgresProjectionAdapterEndpoint("),
+    ).toBeLessThan(
+      entrypoint.indexOf("await verifyCheckedOutCommit(environment)"),
+    );
+    expect(entrypoint).toContain(
+      "await verifyAuthenticatedRuntimeSession(containerId, adapterEndpoint);",
+    );
+    expect(entrypoint).toContain("fixtureSql,\n    adapterEndpoint,\n  );");
+
+    const runtime = section(
+      "async function verifyAuthenticatedRuntimeSession(",
+      "async function verifyRuntimeAuthenticatedFinancialFactProjection(",
+    );
+    const b4 = runtime.indexOf(
+      "await verifyRuntimeAuthenticatedFinancialFactProjection(containerId);",
+    );
+    const wrongPassword = runtime.indexOf(
+      "await verifyPostgresProjectionAdapterWrongPasswordRejection(",
+    );
+    const adapter = runtime.indexOf("await verifyPostgresProjectionAdapter(");
+    const cleanup = runtime.indexOf("} finally {");
+    expect(b4).toBeGreaterThan(-1);
+    expect(wrongPassword).toBeGreaterThan(b4);
+    expect(adapter).toBeGreaterThan(wrongPassword);
+    expect(cleanup).toBeGreaterThan(adapter);
+
+    const adapterProbe = section(
+      "async function verifyPostgresProjectionAdapter(",
+      "function createPostgresProjectionAdapterClient(",
+    );
+    for (const marker of [
+      "await client.connect();",
+      "new PostgresFinancialFactProjectionSource(",
+      "runtimeProjectionAcceptanceCases()",
+      "await verifyPostgresProjectionAdapterOuterTransactionReset(",
+      'label: "B9 alpha sequential read"',
+      'label: "B9 beta sequential read"',
+      'label: "B9 alpha sequential reuse"',
+      'label: "B9 cross-tenant actor mismatch"',
+      "await assertPostgresProjectionAdapterClientIdle(client, backendPid);",
+      "await verifyPostgresProjectionAdapterInjectedRollback(",
+      "await client.end();",
+      "await waitForRuntimeAuthBackendDrain(containerId);",
+    ]) {
+      expect(adapterProbe).toContain(marker);
+    }
+    expect(adapterProbe.indexOf("await client.end();")).toBeLessThan(
+      adapterProbe.indexOf("await waitForRuntimeAuthBackendDrain(containerId)"),
+    );
+    expect(
+      adapterProbe.indexOf(
+        "await verifyPostgresProjectionAdapterOuterTransactionReset(",
+      ),
+    ).toBeLessThan(adapterProbe.indexOf("const sequentialCases:"));
+
+    const clientConfig = section(
+      "function createPostgresProjectionAdapterClient(",
+      "async function assertPostgresProjectionAdapterClientIdle(",
+    );
+    for (const marker of [
+      "host: endpoint.host",
+      "port: endpoint.port",
+      "database: CLEAN_BOOTSTRAP_DATABASE_NAME",
+      "user: RUNTIME_AUTH_LOGIN_ROLE",
+      "password,",
+      "ssl: false",
+      "application_name: POSTGRES_PROJECTION_ADAPTER_APPLICATION_NAME",
+    ]) {
+      expect(clientConfig).toContain(marker);
+    }
+    expect(clientConfig).not.toMatch(
+      /process\.env|DATABASE_URL|connectionString|new Pool|\.connect\(|\.end\(/,
+    );
+
+    const outerTransactionReset = section(
+      "async function verifyPostgresProjectionAdapterOuterTransactionReset(",
+      "async function verifyPostgresProjectionAdapterReadOnlyBoundary(",
+    );
+    for (const marker of [
+      'await client.query("BEGIN READ WRITE")',
+      "outer-must-rollback",
+      "WITH bounded_projection AS",
+      "transaction_read_only') = 'on'",
+      "adapterTransactionObserved = true",
+      "= 'baseline'",
+      'await client.query("RESET app.b9_outer_transaction_canary")',
+    ]) {
+      expect(outerTransactionReset).toContain(marker);
+    }
+
+    const readOnly = section(
+      "async function verifyPostgresProjectionAdapterReadOnlyBoundary(",
+      "async function verifyPostgresProjectionAdapterInjectedRollback(",
+    );
+    expect(readOnly).toContain('await client.query("BEGIN READ ONLY")');
+    expect(readOnly).toContain(
+      "SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE}",
+    );
+    expect(readOnly).toContain("CALL private_data.set_request_context(");
+    expect(readOnly).toContain("transaction_read_only') = 'on'");
+    expect(readOnly).toContain('postgresErrorCode(error) === "25006"');
+    expect(readOnly).toContain('await client.query("ROLLBACK")');
+
+    const injected = section(
+      "async function verifyPostgresProjectionAdapterInjectedRollback(",
+      "function postgresErrorCode(",
+    );
+    expect(injected).toContain("WITH bounded_projection AS");
+    expect(injected).toContain("b9-injected-driver-secret-canary");
+    expect(injected).toContain(
+      "failure instanceof PostgresProjectionAdapterError",
+    );
+    expect(injected).toContain('Object.hasOwn(failure, "cause")');
+    expect(injected.match(/await source\.load\(/g)).toHaveLength(2);
+
+    const versions = section(
+      "async function verifyToolVersions(",
+      "async function verifyMigrationLedger(",
+    );
+    expect(versions).toContain("await readFile(nodePostgresPackagePath");
+    expect(versions).toContain(
+      "nodePostgresPackage.version !== EXPECTED_NODE_POSTGRES_VERSION",
+    );
+    expect(versions).toContain("nodePostgres: nodePostgresPackage.version");
   });
 
   it("injects a deterministic error immediately before final commit", () => {

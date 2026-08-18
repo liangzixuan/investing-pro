@@ -132,8 +132,9 @@ the exact container-local migration phase recorded by a reviewed version 7
 run. External or production migrator operation remains a distinct nonclaim.
 The later reviewed B8 result separately covers one bounded authenticated
 policy-scoped data dump and clean same-cluster restore; it does not widen B7.
-A single-client application adapter and the pool/concurrency boundary remain
-later milestones.
+Cycle 1b-b9 later adds a separate source-implemented single-client application
+adapter whose live gate remains pending; it does not widen B7. The
+pool/concurrency boundary remains a later milestone.
 
 Historical b1 through b6 records retain their exact source shapes, completed
 checks, limitations, and interpretation. This decision does not retroactively
@@ -147,6 +148,7 @@ widen any of them.
 - [Cycle 1b-b7 exit matrix](../CYCLE_1BB7_EXIT_MATRIX.md)
 - [Cycle 1b-b7 evidence note](../POSTGRESQL_AUTHENTICATED_MIGRATION_EVIDENCE.md)
 - [Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
+- [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
 - [PostgreSQL 17 extension packaging](https://www.postgresql.org/docs/17/extend-extensions.html)

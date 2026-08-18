@@ -158,7 +158,20 @@ at commit `49d3a96`; the retained version 8 record returned
 [ADR 0020](./adr/0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](./CYCLE_1BB8_EXIT_MATRIX.md).
 
-That bounded result does not prove production identity or external
+Cycle 1b-b9 changes no canonical entity, tenancy, time, numeric, evidence,
+rights, deletion, or projection semantics. Its source implements the frozen
+operation-scoped port through one non-owning, exclusively leased single-client,
+read-only `pg` adapter. Principal and organization come from a separately
+injected trusted synthetic actor; they are not request fields. The adapter
+snapshots the query and actor before I/O, resets transaction state, selects the
+runtime capability and six-field context inside one read-only transaction,
+executes the reviewed B4 query, and normalizes before commit. Source and local
+verification are complete, but the pinned live
+version 9 run and artifact review remain pending. See
+[ADR 0021](./adr/0021-single-client-read-only-postgresql-projection-adapter.md)
+and the [Cycle 1b-b9 exit matrix](./CYCLE_1BB9_EXIT_MATRIX.md).
+
+These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
 `set_request_context` remains a trusted runtime operation rather than an
@@ -168,6 +181,10 @@ external/production/incremental/continuous authenticated backup, full-schema/
 global/cross-cluster/version restore, disaster recovery, storage encryption or
 retention, RPO/RTO, and the future deletion path remain separate engine gates.
 B8 closes only the exact synthetic, data-only, same-cluster acceptance result.
+B9 source/local completion does not make its real-driver live row pass; even a
+later green B9 result will remain one sequential, exclusively leased synthetic
+service client, not an end-user identity, application composition, or pool
+result.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
 authenticated-migrator gate. The reviewed B7 result proves only the bounded
@@ -183,8 +200,9 @@ exact count cannot be disclosed or established.
 
 ## Projection boundary
 
-The complete source-controlled snapshot port and a future RLS database port are
-different capabilities. An RLS read is operation-scoped to one exact
+The complete source-controlled snapshot port and the B9 RLS database adapter are
+different capabilities. The database adapter source is implemented and locally
+verified but remains live pending. An RLS read is operation-scoped to one exact
 purpose/channel tuple and must return its instrument ID, public-knowledge
 cutoff, system-recorded cutoff, and operation for core-side equality checks.
 Candidate rows carry an instrument ID and frozen rights-policy ID/version; core
@@ -192,7 +210,10 @@ resolves the matching policy and does not trust a policy object attached by an
 adapter. Display/API, derive/API, and alert/local-alert decisions are separate.
 Authorization territory and evaluation time come from a trusted context
 provider; a historical projection request supplies neither and therefore cannot
-backdate policy expiry.
+backdate policy expiry. B9's actor provider separately supplies principal and
+organization. PostgreSQL membership and policy RLS use transaction time;
+`evaluatedAt` remains a core rights clock and is not a database-authorization
+override.
 
 RLS projection completeness is only `known_incomplete` or `unknown`; neither
 state may contain an expected or missing row count, and both serialize an
@@ -209,5 +230,5 @@ operation-specific grant. It validates lossless zoned timestamps, interval and
 causal order, fixed decimals, canonical text/enums, identity echoes, and cutoff
 membership before producing core candidates. The listing ID is the core
 instrument ID; a fact's security ID or ticker may not be substituted. General
-dimensioned unit mapping, a real database driver and application composition,
-and complete dossier projection remain adapter-enablement blockers.
+dimensioned unit mapping, application composition, and complete dossier
+projection remain product/composition blockers.

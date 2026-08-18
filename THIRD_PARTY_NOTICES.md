@@ -11,6 +11,7 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 | @fastify/cors     |  11.3.0 | MIT        | Local web/API boundary             |
 | @fastify/helmet   |  13.1.0 | MIT        | HTTP security headers              |
 | decimal.js        |  10.6.0 | MIT        | Deterministic decimal calculations |
+| node-postgres     |  8.23.0 | MIT        | Single-client PostgreSQL reads     |
 
 Transitive content notice: `caniuse-lite` 1.0.30001809 is licensed under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and is used by the

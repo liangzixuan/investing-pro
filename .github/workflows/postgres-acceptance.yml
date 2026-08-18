@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/postgres-acceptance.yml
+      - modules/research-core/**
       - package.json
       - packages/db/**
       - pnpm-lock.yaml
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/postgres-acceptance.yml
+      - modules/research-core/**
       - package.json
       - packages/db/**
       - pnpm-lock.yaml
@@ -47,6 +49,8 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+        ports:
+          - "127.0.0.1::5432"
 
     steps:
       - name: Check out source
@@ -68,6 +72,8 @@ jobs:
       - name: Run PostgreSQL acceptance
         env:
           CI: "true"
+          RESEARCH_COCKPIT_PG_ADAPTER_HOST: 127.0.0.1
+          RESEARCH_COCKPIT_PG_ADAPTER_PORT: ${{ job.services.postgres.ports[5432] }}
           RESEARCH_COCKPIT_PG_CONTAINER_ID: ${{ job.services.postgres.id }}
         run: pnpm --filter @research-cockpit/db acceptance:postgres:ci
 
@@ -75,7 +81,7 @@ jobs:
         if: ${{ success() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v8.json
+          name: postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v9.json
           if-no-files-found: error
           retention-days: 30

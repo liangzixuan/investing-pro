@@ -1,6 +1,6 @@
 # ADR 0009: Instrument-bound, operation-scoped projections
 
-Status: accepted for Cycle 1b-a; database adapter/query integration pending
+Status: accepted for Cycle 1b-a; B9 adapter source implemented and live pending
 
 The source-controlled demo snapshot is complete by construction, but an RLS
 query cannot prove that the rows it can see are the complete candidate set.
@@ -47,3 +47,11 @@ The later Cycle 1b-b1 through b3 PostgreSQL runs did not exercise this
 projection port. B4 later exercised the separate driverless
 query-to-normalizer path, but it did not establish application adapter
 integration.
+
+Cycle 1b-b9 later adds a separate source implementation of this exact port over
+one non-owning, single-client, read-only PostgreSQL adapter. Its source/local
+gates pass, while pinned live version 9 evidence remains pending. That successor
+does not retroactively widen this contract or the B4 result, and it still adds
+no app composition or pool. See
+[ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
+the [B9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).

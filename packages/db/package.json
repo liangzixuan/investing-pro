@@ -12,6 +12,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@research-cockpit/research-core": "workspace:*"
+    "@research-cockpit/research-core": "workspace:*",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }

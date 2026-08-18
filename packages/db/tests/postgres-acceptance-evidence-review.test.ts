@@ -31,6 +31,8 @@ import {
   POSTGRES_ACCEPTANCE_V6_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V7_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V7_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -57,6 +59,10 @@ const FIXED_SOURCE_PATHS = [
   "packages/db/src/authenticated-migration-plan.ts",
   "packages/db/backup-restore-plans/v1/restore-platform.sql",
   "packages/db/src/authenticated-backup-restore-plan.ts",
+  "packages/db/src/postgres-projection-adapter.ts",
+  "modules/research-core/src/projection-contract.ts",
+  "packages/db/package.json",
+  "pnpm-lock.yaml",
 ] as const;
 const REPOSITORY = "example/research-cockpit";
 const REPOSITORY_ID = "123456789";
@@ -410,7 +416,62 @@ function evidenceAdapterTests(): void {
     );
   });
 
-  it("rejects a changed v8 projection source at the anchored commit", async () => {
+  it("reviews historical v8 at a commit without any v9 source blob", async () => {
+    const fixture = await createFixture();
+    await Promise.all([
+      rm(
+        join(
+          fixture.repositoryPath,
+          "packages/db/src/postgres-projection-adapter.ts",
+        ),
+      ),
+      rm(
+        join(
+          fixture.repositoryPath,
+          "modules/research-core/src/projection-contract.ts",
+        ),
+      ),
+      rm(join(fixture.repositoryPath, "packages/db/package.json")),
+      rm(join(fixture.repositoryPath, "pnpm-lock.yaml")),
+    ]);
+    git(fixture.repositoryPath, ["add", "--all"]);
+    git(fixture.repositoryPath, ["commit", "-m", "historical v8 sources"]);
+    const historicalCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 8;
+    record.commitSha = historicalCommit;
+    deleteV9SourceHashes(record);
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V8_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+
+    const result = await reviewPostgresAcceptanceEvidence({
+      ...fixture.input,
+      expectedCommit: historicalCommit,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    });
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V8_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_single_client_read_only_financial_fact_projection_adapter",
+    );
+  });
+
+  it("rejects a changed v9 projection source at the anchored commit", async () => {
     const fixture = await createFixture();
     await writeFile(
       join(
@@ -444,7 +505,7 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("rejects changed v8 platform, renderer, and application-body sources at the anchored commit", async () => {
+  it("rejects changed v9 platform, renderer, and application-body sources at the anchored commit", async () => {
     for (const path of [
       "packages/db/migration-plans/v2/platform-bootstrap.sql",
       "packages/db/src/authenticated-migration-plan.ts",
@@ -453,7 +514,7 @@ function evidenceAdapterTests(): void {
       const fixture = await createFixture();
       await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
       git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v8 source"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v9 source"]);
       const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
 
       await expect(
@@ -464,7 +525,7 @@ function evidenceAdapterTests(): void {
     }
   });
 
-  it("rejects changed v8 backup/restore plan sources at the anchored commit", async () => {
+  it("rejects changed v9 backup/restore plan sources at the anchored commit", async () => {
     for (const path of [
       "packages/db/backup-restore-plans/v1/restore-platform.sql",
       "packages/db/src/authenticated-backup-restore-plan.ts",
@@ -472,7 +533,31 @@ function evidenceAdapterTests(): void {
       const fixture = await createFixture();
       await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
       git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v8 source"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v9 source"]);
+      const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+
+      await expect(
+        reviewPostgresAcceptanceEvidence(
+          await inputAtCommit(fixture, changedCommit),
+        ),
+      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+    }
+  });
+
+  it("rejects changed v9 adapter, contract, package, and lockfile sources at the anchored commit", async () => {
+    for (const path of [
+      "packages/db/src/postgres-projection-adapter.ts",
+      "modules/research-core/src/projection-contract.ts",
+      "packages/db/package.json",
+      "pnpm-lock.yaml",
+    ]) {
+      const fixture = await createFixture();
+      await writeFile(
+        join(fixture.repositoryPath, path),
+        "changed v9 source\n",
+      );
+      git(fixture.repositoryPath, ["add", "--all"]);
+      git(fixture.repositoryPath, ["commit", "-m", "changed v9 source"]);
       const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
 
       await expect(
@@ -1078,6 +1163,7 @@ async function createFixture(
       psql: "psql (PostgreSQL) 17.11 (Debian test)",
       pgDump: "pg_dump (PostgreSQL) 17.11 (Debian test)",
       pgRestore: "pg_restore (PostgreSQL) 17.11 (Debian test)",
+      nodePostgres: "8.23.0",
     },
     sourceHashes: {
       workflowSha256: await fileSha256(
@@ -1125,6 +1211,21 @@ async function createFixture(
           "packages/db/src/authenticated-backup-restore-plan.ts",
         ),
       ),
+      postgresProjectionAdapterSha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/postgres-projection-adapter.ts"),
+      ),
+      operationProjectionContractSha256: await fileSha256(
+        join(
+          repositoryPath,
+          "modules/research-core/src/projection-contract.ts",
+        ),
+      ),
+      databasePackageManifestSha256: await fileSha256(
+        join(repositoryPath, "packages/db/package.json"),
+      ),
+      pnpmLockfileSha256: await fileSha256(
+        join(repositoryPath, "pnpm-lock.yaml"),
+      ),
     },
     completedAt: "2026-08-16T01:02:03.004Z",
   });
@@ -1161,11 +1262,7 @@ function deleteV4SourceHashes(record: Record<string, unknown>): void {
   const hashes = record.sourceHashes as Record<string, unknown>;
   delete hashes.projectionQuerySha256;
   delete hashes.projectionNormalizerSha256;
-  delete hashes.platformBootstrapV2Sha256;
-  delete hashes.applicationMigrationManifestV2Sha256;
-  delete hashes.authenticatedMigrationRendererV2Sha256;
-  delete hashes.restorePlatformV1Sha256;
-  delete hashes.authenticatedBackupRestorePlanV1Sha256;
+  deleteV7SourceHashes(record);
 }
 
 function deleteV7SourceHashes(record: Record<string, unknown>): void {
@@ -1173,14 +1270,23 @@ function deleteV7SourceHashes(record: Record<string, unknown>): void {
   delete hashes.platformBootstrapV2Sha256;
   delete hashes.applicationMigrationManifestV2Sha256;
   delete hashes.authenticatedMigrationRendererV2Sha256;
-  delete hashes.restorePlatformV1Sha256;
-  delete hashes.authenticatedBackupRestorePlanV1Sha256;
+  deleteV8SourceHashes(record);
 }
 
 function deleteV8SourceHashes(record: Record<string, unknown>): void {
   const hashes = record.sourceHashes as Record<string, unknown>;
   delete hashes.restorePlatformV1Sha256;
   delete hashes.authenticatedBackupRestorePlanV1Sha256;
+  deleteV9SourceHashes(record);
+}
+
+function deleteV9SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.postgresProjectionAdapterSha256;
+  delete hashes.operationProjectionContractSha256;
+  delete hashes.databasePackageManifestSha256;
+  delete hashes.pnpmLockfileSha256;
+  delete (record.toolVersions as Record<string, unknown>).nodePostgres;
 }
 
 function cliArguments(input: PostgresAcceptanceEvidenceReviewInput): string[] {

@@ -1,6 +1,7 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 8 live record retained and reviewed
+Status: accepted; version 9 source/local contract complete and live pending;
+version 8 live record retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -30,11 +31,15 @@ retaining the exact version 5 limitations and six-source-hash shape; its first
 record is retained and live-reviewed. Version 7 preserves exact v1 through v6
 parsing, appends only the clean authenticated application-migration check, and
 binds three additional v2 plan inputs. Its pinned live run and review are
-retained below. The current source producer writes
-`research-cockpit-postgres-acceptance-v8.json`. Version 8 preserves exact v1
-through v7 parsing, appends only the policy-scoped data dump and bounded clean
-restore check, and binds the two additional B8 plan inputs. Its pinned live run
-and review are also retained below; source presence alone is not evidence.
+retained below. Version 8 preserves exact v1 through v7 parsing, appends only
+the policy-scoped data dump and bounded clean restore check, and binds the two
+additional B8 plan inputs. Its pinned live run and review are also retained
+below. The current source producer writes
+`research-cockpit-postgres-acceptance-v9.json`. Version 9 preserves exact v1
+through v8 parsing, appends only the single-client read-only projection-adapter
+check, binds four additional B9 sources, and records the exact node-postgres
+version. Its pinned live run and review remain pending; source presence alone is
+not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -152,10 +157,10 @@ Its downloaded bytes returned `offline_consistent`; the
 records the exact anchors and bounded claim. That later result does not alter
 the source shape or interpretation of any version 1 through version 7 record.
 
-The configured version 8 record name is
-`research-cockpit-postgres-acceptance-v8.json`, and its artifact name is bound
+The historical version 8 record name is
+`research-cockpit-postgres-acceptance-v8.json`, and its artifact name was bound
 to the exact commit and attempt as
-`postgres-acceptance-evidence-v8-${sha}-${attempt}`. It may be written only
+`postgres-acceptance-evidence-v8-${sha}-${attempt}`. It could be written only
 after the authenticated RLS-scoped data-only dump, independently provisioned
 same-cluster restore, transactional failure and successful restore, 21-table
 fingerprints, source isolation, and complete cleanup all pass. The archive
@@ -163,6 +168,26 @@ itself is temporary application data and is not uploaded with the evidence
 record. See
 [ADR 0020](./0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md).
+
+Cycle 1b-b9 has a separate version 9 source/evidence contract. V9 appends only
+`authenticated_single_client_read_only_financial_fact_projection_adapter`,
+adds exact hashes for the adapter, core operation-projection contract, database
+package manifest, and workspace lockfile, and extends only the V9 tool-version
+shape with `nodePostgres: "8.23.0"`. It replaces only
+`application_driver_pool_or_composition_root` with
+`application_pool_or_composition_root`; every other V8 check, limitation,
+source key, and historical meaning remains fixed. The current filename is
+`research-cockpit-postgres-acceptance-v9.json`, and the artifact is
+`postgres-acceptance-evidence-v9-${sha}-${attempt}`.
+
+The V9 writer remains success-only and runs after the real client is closed,
+its backend is drained, the runtime login is removed, and all earlier B1 through
+B8 cleanup checks pass. Source and local verification passed 450 database
+tests plus typechecking and the static quality gates. The pinned live run,
+retained artifact, reviewed log markers, and independent offline review remain
+pending. See
+[ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
+the [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).
 
 ## Primary sources
 

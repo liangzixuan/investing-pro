@@ -91,6 +91,12 @@ interface NormalizedRow {
   conceptKey: string;
 }
 
+interface NormalizedQuerySnapshot {
+  query: OperationProjectionQuery;
+  publicKnownAt: NormalizedTimestamp;
+  systemRecordedAt: NormalizedTimestamp;
+}
+
 /**
  * A deliberately value-free boundary error. Callers may log the code, but must
  * not replace it with the rejected row or a database-driver error message.
@@ -123,26 +129,30 @@ export function normalizePostgresFinancialFactRows(
   }
 }
 
+/**
+ * Takes the same mutation-hostile, exact query snapshot used by row
+ * normalization. Database adapters must call this before their first await so
+ * later caller mutation cannot change request-context or SQL parameter values.
+ */
+export function normalizePostgresFinancialFactProjectionQuery(
+  query: unknown,
+): OperationProjectionQuery {
+  try {
+    return normalizeQuerySnapshot(query).query;
+  } catch {
+    throw new PostgresProjectionNormalizationError();
+  }
+}
+
 function normalizeRows(
   queryValue: unknown,
   rowsValue: unknown,
 ): OperationProjectionSourceResult<FinancialFact> {
-  const query = exactDataRecord(queryValue, QUERY_KEYS);
-  const scope = exactDataRecord(query.scope, SCOPE_KEYS);
-  const context = exactDataRecord(query.context, CONTEXT_KEYS);
-  const operation = projectionOperation(query.operation);
-  const instrumentId = canonicalText(scope.instrumentId, MAX_IDENTIFIER_LENGTH);
-  const publicKnownAt = queryTimestamp(scope.publicKnownAt);
-  const systemRecordedAt = queryTimestamp(scope.systemRecordedAt);
-  const territory = canonicalText(context.territory, 80);
-  const evaluatedAt = queryTimestamp(context.evaluatedAt);
-
-  if (
-    publicKnownAt.epochMilliseconds > evaluatedAt.epochMilliseconds ||
-    systemRecordedAt.epochMilliseconds > evaluatedAt.epochMilliseconds
-  ) {
-    invalid();
-  }
+  const { query, publicKnownAt, systemRecordedAt } =
+    normalizeQuerySnapshot(queryValue);
+  const { operation, scope, context } = query;
+  const { instrumentId } = scope;
+  const { territory } = context;
 
   const rows = exactArray(rowsValue);
   const candidates: NormalizedRow["candidate"][] = [];
@@ -200,15 +210,47 @@ function normalizeRows(
     );
 
   return {
-    scope: {
-      instrumentId,
-      publicKnownAt: originalTimestamp(scope.publicKnownAt),
-      systemRecordedAt: originalTimestamp(scope.systemRecordedAt),
-    },
+    scope: { ...scope },
     operation,
     candidates,
     policies,
     completeness: { state: "unknown", reason: "rls_filtered" },
+  };
+}
+
+function normalizeQuerySnapshot(queryValue: unknown): NormalizedQuerySnapshot {
+  const query = exactDataRecord(queryValue, QUERY_KEYS);
+  const scope = exactDataRecord(query.scope, SCOPE_KEYS);
+  const context = exactDataRecord(query.context, CONTEXT_KEYS);
+  const operation = projectionOperation(query.operation);
+  const instrumentId = canonicalText(scope.instrumentId, MAX_IDENTIFIER_LENGTH);
+  const publicKnownAt = queryTimestamp(scope.publicKnownAt);
+  const systemRecordedAt = queryTimestamp(scope.systemRecordedAt);
+  const territory = canonicalText(context.territory, 80);
+  const evaluatedAt = queryTimestamp(context.evaluatedAt);
+
+  if (
+    publicKnownAt.epochMilliseconds > evaluatedAt.epochMilliseconds ||
+    systemRecordedAt.epochMilliseconds > evaluatedAt.epochMilliseconds
+  ) {
+    invalid();
+  }
+
+  return {
+    query: {
+      scope: {
+        instrumentId,
+        publicKnownAt: originalTimestamp(scope.publicKnownAt),
+        systemRecordedAt: originalTimestamp(scope.systemRecordedAt),
+      },
+      operation,
+      context: {
+        territory,
+        evaluatedAt: originalTimestamp(context.evaluatedAt),
+      },
+    },
+    publicKnownAt,
+    systemRecordedAt,
   };
 }
 

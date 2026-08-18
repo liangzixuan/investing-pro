@@ -113,9 +113,10 @@ whose source implementation and reviewed version 5 evidence do not widen B4.
 
 This ordering produces product-relevant evidence about the actual financial
 fact read path before committing to a driver or pool. It also leaves the
-current demo and all historical b1-b3 evidence unchanged. A later read-only
-adapter can reuse only a query and unit contract that has passed B4; adapter
-creation still requires its own client lifecycle and pool/cancellation proof.
+current demo and all historical b1-b3 evidence unchanged. At B4, a later
+read-only adapter could reuse only a query and unit contract that had passed
+B4; adapter/client-lifecycle and pool/cancellation remained separate proof
+gates.
 
 ## Related decisions
 
@@ -125,3 +126,9 @@ creation still requires its own client lifecycle and pool/cancellation proof.
 - [ADR 0015: Authenticated runtime authorization matrix](./0015-authenticated-runtime-authorization-matrix.md)
 - [Cycle 1b-b4 exit matrix](../CYCLE_1BB4_EXIT_MATRIX.md)
 - [ADR 0017: Authenticated test-loader fixture load](./0017-authenticated-test-loader-fixture-load.md)
+- [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
+
+Cycle 1b-b9 is the separate adapter successor anticipated here. Its
+source/local gates pass and its pinned live version 9 result remains pending.
+It reuses B4 without changing B4's historical driverless claim and leaves pool,
+application composition, and production boundaries unproven.

@@ -1,6 +1,7 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 8 artifact reviewed successfully
+Status: accepted; current version 9 verifier implemented and live artifact
+pending; retained version 8 artifact reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,9 +15,9 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v7 support and accepts the current v8 schema without
-mixing any version's closed check, limitation, or source-hash lists. Retained
-version 6, version 7, and version 8 artifacts have been reviewed. Canonical
+historical v1 through v8 support and accepts the current v9 schema without
+mixing any version's closed check, limitation, source-hash, or tool-version
+lists. Retained version 6, version 7, and version 8 artifacts have been reviewed. Canonical
 comparison rejects byte-order marks, CRLF or alternate whitespace, trailing
 content, reordered members, and duplicate JSON member names.
 
@@ -31,10 +32,13 @@ recorded in the artifact; validates the reviewed PostgreSQL target against the
 commit's image declaration; and checks the exact ordered migration inventory
 and every migration-body hash.
 
-For versions 7 and 8, the reviewer also requires the fixed v2 platform plan,
+For versions 7 through 9, the reviewer also requires the fixed v2 platform plan,
 application manifest, authenticated renderer, and the exact manifest-listed
-application bodies from the anchored commit. Version 8 additionally requires
-the fixed restore-platform asset and authenticated backup/restore renderer. It
+application bodies from the anchored commit. Versions 8 and 9 additionally
+require the fixed restore-platform asset and authenticated backup/restore
+renderer. Version 9 alone also requires the adapter, core operation-projection
+contract, database package manifest, and lockfile, and checks the exact
+node-postgres tool version. It
 rejects missing, extra, non-regular, or mixed-version tree entries and validates
 each body against the closed manifest. Versions 1 through 6 retain their
 historical source shapes and do not acquire these inputs retroactively.
@@ -150,3 +154,15 @@ data archive is not an evidence artifact and is not examined by the offline
 verifier. See
 [ADR 0020](./0020-authenticated-policy-scoped-data-backup-and-bounded-clean-restore.md)
 and the [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md).
+
+The Cycle 1b-b9 source adds one explicit V9 verifier branch while preserving the
+exact V1 through V8 branches. It requires the appended
+`authenticated_single_client_read_only_financial_fact_projection_adapter`
+check, the single narrower application-pool/composition nonclaim, the four new
+source hashes, and exact `nodePostgres: "8.23.0"`. Missing, extra, reordered,
+historical-version, or mixed-version fields and source blobs fail closed. The
+parser, verifier, reviewer, and complete database suite pass locally, but no V9
+artifact has yet been accepted: the pinned real-driver run, reviewed logs,
+retained bytes, and independent `offline_consistent` result remain pending. See
+[ADR 0021](./0021-single-client-read-only-postgresql-projection-adapter.md) and
+the [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md).

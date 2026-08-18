@@ -193,7 +193,13 @@ boundary remain separate milestones.
 - [ADR 0019: Versioned authenticated migration phase](./0019-versioned-authenticated-migration-phase.md)
 - [Cycle 1b-b8 exit matrix](../CYCLE_1BB8_EXIT_MATRIX.md)
 - [Cycle 1b-b8 evidence note](../POSTGRESQL_AUTHENTICATED_BACKUP_RESTORE_EVIDENCE.md)
+- [ADR 0021: Single-client read-only PostgreSQL projection adapter](./0021-single-client-read-only-postgresql-projection-adapter.md)
 - [PostgreSQL 17 `pg_dump`](https://www.postgresql.org/docs/17/app-pgdump.html)
 - [PostgreSQL 17 `pg_restore`](https://www.postgresql.org/docs/17/app-pgrestore.html)
 - [PostgreSQL 17 SQL-dump backup and restore](https://www.postgresql.org/docs/17/backup-dump.html)
 - [PostgreSQL 17 `CREATE DATABASE`](https://www.postgresql.org/docs/17/sql-createdatabase.html)
+
+B9 later implements the separate single-client adapter source while retaining
+B8 as a historical data-only backup/restore result. Its live version 9 evidence
+remains pending, and neither milestone proves a pool or application
+composition.

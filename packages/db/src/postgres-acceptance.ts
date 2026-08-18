@@ -1,8 +1,11 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { Client } from "pg";
 
 import type {
   FinancialFact,
@@ -78,8 +81,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceToolVersions,
-  type PostgresAcceptanceV8SourceHashes,
+  type PostgresAcceptanceV9SourceHashes,
+  type PostgresAcceptanceV9ToolVersions,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -87,10 +90,18 @@ import {
   postgresProjectionOperationContext,
   renderPostgresFinancialFactProjectionQuery,
 } from "./postgres-projection-query";
+import {
+  PostgresFinancialFactProjectionSource,
+  PostgresProjectionAdapterError,
+  type PostgresProjectionActorContext,
+} from "./postgres-projection-adapter";
 
 const acceptanceRunnerPath = fileURLToPath(import.meta.url);
 const packageRoot = join(dirname(acceptanceRunnerPath), "..");
 const repositoryRoot = join(packageRoot, "..", "..");
+const nodePostgresPackagePath = createRequire(import.meta.url).resolve(
+  "pg/package.json",
+);
 const imageConfigPath = join(packageRoot, "acceptance", "postgres-image.json");
 const migrationManifestPath = join(packageRoot, "migration-manifest.json");
 const workflowPath = join(
@@ -142,6 +153,20 @@ const authenticatedBackupRestorePlanV1Path = join(
   "src",
   "authenticated-backup-restore-plan.ts",
 );
+const postgresProjectionAdapterPath = join(
+  packageRoot,
+  "src",
+  "postgres-projection-adapter.ts",
+);
+const operationProjectionContractPath = join(
+  repositoryRoot,
+  "modules",
+  "research-core",
+  "src",
+  "projection-contract.ts",
+);
+const databasePackageManifestPath = join(packageRoot, "package.json");
+const pnpmLockfilePath = join(repositoryRoot, "pnpm-lock.yaml");
 
 const EXPECTED_IMAGE_REFERENCE =
   "docker.io/library/postgres:17.11-bookworm@sha256:84560e3b9c6874893fc4e2854f5dc3e7c1a37bc9d1dfd7a8c641310ae22ba5ad";
@@ -149,8 +174,11 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v8-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v9-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
+const EXPECTED_NODE_POSTGRES_VERSION = "8.23.0" as const;
+const POSTGRES_PROJECTION_ADAPTER_APPLICATION_NAME =
+  "research-cockpit-b9-acceptance" as const;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
 export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
@@ -437,6 +465,7 @@ interface RuntimeProjectionExpectedCandidate {
 interface RuntimeProjectionAcceptanceCase {
   readonly label: string;
   readonly principalId: string;
+  readonly organizationId: string;
   readonly query: OperationProjectionQuery;
   readonly expectedCandidates: readonly RuntimeProjectionExpectedCandidate[];
   readonly expectedPolicyIds: readonly string[];
@@ -472,6 +501,11 @@ export interface CommandResult {
   exitCode: number;
   stdout: string;
   stderr: string;
+}
+
+export interface PostgresProjectionAdapterEndpoint {
+  readonly host: "127.0.0.1";
+  readonly port: number;
 }
 
 export interface RuntimeAuthPsqlInvocation {
@@ -1485,7 +1519,19 @@ export function inspectPostgresAcceptanceHarness(
   requireText(
     artifacts.workflow,
     "RESEARCH_COCKPIT_PG_CONTAINER_ID: ${{ job.services.postgres.id }}",
-    "workflow must pass only the GitHub service container ID",
+    "workflow must pass the GitHub service container ID",
+    violations,
+  );
+  requireText(
+    artifacts.workflow,
+    "RESEARCH_COCKPIT_PG_ADAPTER_HOST: 127.0.0.1",
+    "workflow must pass the exact loopback B9 adapter host",
+    violations,
+  );
+  requireText(
+    artifacts.workflow,
+    "RESEARCH_COCKPIT_PG_ADAPTER_PORT: ${{ job.services.postgres.ports[5432] }}",
+    "workflow must pass the dynamically mapped B9 adapter port",
     violations,
   );
   requireText(
@@ -1507,7 +1553,9 @@ export function inspectPostgresAcceptanceHarness(
     violations,
   );
   violations.push(...inspectEvidenceUploadStep(artifacts.workflow));
+  violations.push(...inspectProjectionAdapterWorkflow(artifacts.workflow));
   for (const triggerPath of [
+    "modules/research-core/**",
     "package.json",
     "packages/db/**",
     "pnpm-lock.yaml",
@@ -1522,12 +1570,8 @@ export function inspectPostgresAcceptanceHarness(
     );
   }
   for (const [pattern, message] of [
-    [/^\s*ports\s*:/im, "workflow must not publish a database port"],
     [/DATABASE_URL/i, "workflow must not construct a database URL"],
-    [
-      /localhost|127\.0\.0\.1/i,
-      "workflow must not address PostgreSQL through the host",
-    ],
+    [/localhost|0\.0\.0\.0/i, "workflow must use only exact IPv4 loopback"],
     [
       /postgres:(?:latest|17)(?:\s|$)/i,
       "workflow must not use a mutable PostgreSQL tag",
@@ -1580,6 +1624,30 @@ export function inspectPostgresAcceptanceHarness(
   return violations;
 }
 
+export function parsePostgresProjectionAdapterEndpoint(
+  environment: Readonly<Record<string, string | undefined>>,
+): PostgresProjectionAdapterEndpoint {
+  if (environment.RESEARCH_COCKPIT_PG_ADAPTER_HOST !== "127.0.0.1") {
+    throw new Error(
+      "The B9 PostgreSQL adapter host must be the exact loopback address",
+    );
+  }
+  const portText = environment.RESEARCH_COCKPIT_PG_ADAPTER_PORT;
+  if (
+    portText === undefined ||
+    !/^[1-9][0-9]{0,4}$/.test(portText) ||
+    Number(portText) > 65_535
+  ) {
+    throw new Error(
+      "The B9 PostgreSQL adapter port must be one canonical mapped port",
+    );
+  }
+  return Object.freeze({
+    host: "127.0.0.1",
+    port: Number(portText),
+  });
+}
+
 export async function runPostgresAcceptance(
   environment: NodeJS.ProcessEnv = process.env,
 ): Promise<void> {
@@ -1592,6 +1660,7 @@ export async function runPostgresAcceptance(
   if (!containerId) {
     throw new Error("GitHub service container ID is required");
   }
+  const adapterEndpoint = parsePostgresProjectionAdapterEndpoint(environment);
   await verifyCheckedOutCommit(environment);
 
   const violations = await checkPostgresAcceptanceHarness();
@@ -1646,11 +1715,12 @@ export async function runPostgresAcceptance(
   );
   await verifyRuntimeAuthorizationMatrix(impersonatedRuntimeMatrix);
   await verifyWriteDenials(containerId);
-  await verifyAuthenticatedRuntimeSession(containerId);
+  await verifyAuthenticatedRuntimeSession(containerId, adapterEndpoint);
   await verifyVersionedAuthenticatedMigrationPlan(
     containerId,
     authenticatedMigrationPlan,
     fixtureSql,
+    adapterEndpoint,
   );
   await verifyAuthenticatedBackupAndBoundedRestore(
     containerId,
@@ -1675,7 +1745,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, and driverless financial-fact projection acceptance passed; the version 8 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, and single-client read-only financial-fact projection adapter acceptance passed; the version 9 success-only run record was written.\n",
   );
 }
 
@@ -1683,6 +1753,7 @@ async function verifyVersionedAuthenticatedMigrationPlan(
   containerId: string,
   plan: AuthenticatedMigrationPlan,
   fixtureSql: string,
+  adapterEndpoint: PostgresProjectionAdapterEndpoint,
 ): Promise<void> {
   // Freeze the inherited result before destructively replacing the disposable
   // target with the independently reviewed v2 platform/application plan.
@@ -1752,7 +1823,7 @@ async function verifyVersionedAuthenticatedMigrationPlan(
   );
   await verifyRuntimeAuthorizationMatrix(impersonatedRuntimeMatrix);
   await verifyWriteDenials(containerId);
-  await verifyAuthenticatedRuntimeSession(containerId);
+  await verifyAuthenticatedRuntimeSession(containerId, adapterEndpoint);
   await verifyMigrationLedger(containerId, expectedLedger);
   await verifyB7PlatformArtifactsAfterApplication(containerId);
 }
@@ -3753,7 +3824,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV8SourceHashes> {
+): Promise<PostgresAcceptanceV9SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -3766,6 +3837,10 @@ async function collectAcceptanceSourceHashes(
     authenticatedMigrationRendererV2Sha256,
     restorePlatformV1Sha256,
     authenticatedBackupRestorePlanV1Sha256,
+    postgresProjectionAdapterSha256,
+    operationProjectionContractSha256,
+    databasePackageManifestSha256,
+    pnpmLockfileSha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -3778,6 +3853,10 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(authenticatedMigrationRendererV2Path),
     exactFileSha256(restorePlatformV1Path),
     exactFileSha256(authenticatedBackupRestorePlanV1Path),
+    exactFileSha256(postgresProjectionAdapterPath),
+    exactFileSha256(operationProjectionContractPath),
+    exactFileSha256(databasePackageManifestPath),
+    exactFileSha256(pnpmLockfilePath),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
@@ -3797,6 +3876,10 @@ async function collectAcceptanceSourceHashes(
     authenticatedMigrationRendererV2Sha256,
     restorePlatformV1Sha256,
     authenticatedBackupRestorePlanV1Sha256,
+    postgresProjectionAdapterSha256,
+    operationProjectionContractSha256,
+    databasePackageManifestSha256,
+    pnpmLockfileSha256,
   });
 }
 
@@ -4198,7 +4281,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<PostgresAcceptanceToolVersions> {
+): Promise<PostgresAcceptanceV9ToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -4236,11 +4319,21 @@ async function verifyToolVersions(
   ) {
     throw new Error("PostgreSQL tool-version collection was incomplete");
   }
+  const nodePostgresPackage = JSON.parse(
+    await readFile(nodePostgresPackagePath, "utf8"),
+  ) as unknown;
+  if (
+    !isRecord(nodePostgresPackage) ||
+    nodePostgresPackage.version !== EXPECTED_NODE_POSTGRES_VERSION
+  ) {
+    throw new Error("The installed node-postgres version is not reviewed");
+  }
   return Object.freeze({
     postgres: versions.postgres,
     psql: versions.psql,
     pgDump: versions.pgDump,
     pgRestore: versions.pgRestore,
+    nodePostgres: nodePostgresPackage.version,
   });
 }
 
@@ -6749,6 +6842,7 @@ WHERE id = '10000000-0000-4000-8000-000000000099';`,
 
 async function verifyAuthenticatedRuntimeSession(
   containerId: string,
+  adapterEndpoint: PostgresProjectionAdapterEndpoint,
 ): Promise<void> {
   await verifyRuntimeAuthResidueAbsent(containerId);
 
@@ -6784,6 +6878,16 @@ async function verifyAuthenticatedRuntimeSession(
       runtimeAuthorizationMatrixClient(containerId, "authenticated"),
     );
     await verifyRuntimeAuthenticatedFinancialFactProjection(containerId);
+    await verifyPostgresProjectionAdapterWrongPasswordRejection(
+      containerId,
+      adapterEndpoint,
+      wrongPassword,
+    );
+    await verifyPostgresProjectionAdapter(
+      containerId,
+      adapterEndpoint,
+      password,
+    );
   } catch (error) {
     probeFailed = true;
     probeError = error;
@@ -6822,6 +6926,27 @@ async function verifyAuthenticatedRuntimeSession(
 async function verifyRuntimeAuthenticatedFinancialFactProjection(
   containerId: string,
 ): Promise<void> {
+  for (const acceptanceCase of runtimeProjectionAcceptanceCases()) {
+    const stdout = await runtimeAuthenticatedPsqlScalar(
+      containerId,
+      renderRuntimeAuthenticatedFinancialFactProjectionSql(
+        acceptanceCase.query,
+        acceptanceCase.principalId,
+        acceptanceCase.organizationId,
+      ),
+    );
+    const result = normalizeRuntimeAuthenticatedFinancialFactProjectionOutput(
+      acceptanceCase.query,
+      stdout,
+    );
+    assertRuntimeAuthenticatedFinancialFactProjectionResult(
+      acceptanceCase,
+      result,
+    );
+  }
+}
+
+function runtimeProjectionAcceptanceCases(): readonly RuntimeProjectionAcceptanceCase[] {
   const displayOnly: RuntimeProjectionExpectedCandidate = Object.freeze({
     rowId: "fact-display-only",
     conceptKey: "synthetic_display_only",
@@ -6836,10 +6961,11 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     evidenceId: "evidence-full-v1",
     rightsPolicyId: "synthetic.full",
   });
-  const cases: readonly RuntimeProjectionAcceptanceCase[] = [
+  return Object.freeze([
     {
       label: "display/API",
       principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery("display_api"),
       expectedCandidates: [displayOnly, full],
       expectedPolicyIds: ["synthetic.display-only", "synthetic.full"],
@@ -6847,6 +6973,7 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     {
       label: "derive/API",
       principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery("derive_api"),
       expectedCandidates: [full],
       expectedPolicyIds: ["synthetic.full"],
@@ -6854,6 +6981,7 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     {
       label: "alert/local-alert",
       principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery("alert_local_alert"),
       expectedCandidates: [full],
       expectedPolicyIds: ["synthetic.full"],
@@ -6861,6 +6989,7 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     {
       label: "missing listing",
       principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery(
         "display_api",
         POSTGRES_PROJECTION_MISSING_LISTING_ID,
@@ -6871,6 +7000,7 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     {
       label: "pre-cutoff",
       principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery(
         "display_api",
         POSTGRES_PROJECTION_LISTING_ID,
@@ -6882,6 +7012,7 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     {
       label: "inactive principal",
       principalId: PRINCIPAL_INACTIVE,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery("display_api"),
       expectedCandidates: [],
       expectedPolicyIds: [],
@@ -6889,29 +7020,459 @@ async function verifyRuntimeAuthenticatedFinancialFactProjection(
     {
       label: "no current membership",
       principalId: PRINCIPAL_NO_MEMBERSHIP,
+      organizationId: ORGANIZATION_ALPHA,
       query: runtimeProjectionQuery("display_api"),
       expectedCandidates: [],
       expectedPolicyIds: [],
     },
-  ];
+  ]);
+}
 
-  for (const acceptanceCase of cases) {
-    const stdout = await runtimeAuthenticatedPsqlScalar(
-      containerId,
-      renderRuntimeAuthenticatedFinancialFactProjectionSql(
-        acceptanceCase.query,
-        acceptanceCase.principalId,
-        ORGANIZATION_ALPHA,
-      ),
+export function assertPostgresProjectionAdapterWrongPasswordRejection(
+  error: unknown,
+): void {
+  try {
+    if (isRecord(error) && error.code === "28P01") return;
+  } catch {
+    // The public failure below deliberately excludes the rejected driver value.
+  }
+  throw new PostgresProjectionAdapterError();
+}
+
+async function verifyPostgresProjectionAdapterWrongPasswordRejection(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  wrongPassword: string,
+): Promise<void> {
+  const client = createPostgresProjectionAdapterClient(endpoint, wrongPassword);
+  let rejected = false;
+  let failed = false;
+  const ignoreIdleError = () => undefined;
+  client.on("error", ignoreIdleError);
+  try {
+    await client.connect();
+  } catch (error) {
+    try {
+      assertPostgresProjectionAdapterWrongPasswordRejection(error);
+      rejected = true;
+    } catch {
+      failed = true;
+    }
+  } finally {
+    try {
+      await client.end();
+    } catch {
+      failed = true;
+    }
+    client.removeListener("error", ignoreIdleError);
+    try {
+      await waitForRuntimeAuthBackendDrain(containerId);
+    } catch {
+      failed = true;
+    }
+  }
+  if (!rejected || failed) throw new PostgresProjectionAdapterError();
+}
+
+async function verifyPostgresProjectionAdapter(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Promise<void> {
+  const client = createPostgresProjectionAdapterClient(endpoint, password);
+  let idleClientFailed = false;
+  let probeFailed = false;
+  let cleanupFailed = false;
+  const recordIdleError = () => {
+    idleClientFailed = true;
+  };
+  client.on("error", recordIdleError);
+  try {
+    await client.connect();
+    const backendPid = await assertPostgresProjectionAdapterClientIdle(client);
+    await verifyPostgresProjectionAdapterReadOnlyBoundary(client, backendPid);
+
+    let actor: PostgresProjectionActorContext = Object.freeze({
+      principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
+    });
+    const actorProvider = Object.freeze({ current: () => actor });
+    const source = new PostgresFinancialFactProjectionSource(
+      client,
+      actorProvider,
     );
-    const result = normalizeRuntimeAuthenticatedFinancialFactProjectionOutput(
-      acceptanceCase.query,
-      stdout,
+    const baselineCases = runtimeProjectionAcceptanceCases();
+    const displayCase = baselineCases[0];
+    if (displayCase === undefined) throw new PostgresProjectionAdapterError();
+    await verifyPostgresProjectionAdapterOuterTransactionReset(
+      client,
+      actorProvider,
+      displayCase,
+      backendPid,
     );
+    const sequentialCases: readonly RuntimeProjectionAcceptanceCase[] = [
+      ...baselineCases,
+      {
+        ...displayCase,
+        label: "B9 alpha sequential read",
+      },
+      {
+        ...displayCase,
+        label: "B9 beta sequential read",
+        principalId: PRINCIPAL_BETA,
+        organizationId: ORGANIZATION_BETA,
+      },
+      {
+        ...displayCase,
+        label: "B9 alpha sequential reuse",
+      },
+      {
+        ...displayCase,
+        label: "B9 cross-tenant actor mismatch",
+        principalId: PRINCIPAL_ALPHA,
+        organizationId: ORGANIZATION_BETA,
+        expectedCandidates: [],
+        expectedPolicyIds: [],
+      },
+    ];
+    for (const acceptanceCase of sequentialCases) {
+      actor = Object.freeze({
+        principalId: acceptanceCase.principalId,
+        organizationId: acceptanceCase.organizationId,
+      });
+      const result = await source.load(acceptanceCase.query);
+      if (result === null) throw new PostgresProjectionAdapterError();
+      assertRuntimeAuthenticatedFinancialFactProjectionResult(
+        acceptanceCase,
+        result,
+      );
+      await assertPostgresProjectionAdapterClientIdle(client, backendPid);
+    }
+
+    actor = Object.freeze({
+      principalId: PRINCIPAL_ALPHA,
+      organizationId: ORGANIZATION_ALPHA,
+    });
+    await verifyPostgresProjectionAdapterInjectedRollback(
+      client,
+      actorProvider,
+      displayCase,
+      backendPid,
+    );
+    if (idleClientFailed) throw new PostgresProjectionAdapterError();
+  } catch {
+    probeFailed = true;
+  } finally {
+    client.removeListener("error", recordIdleError);
+    try {
+      await client.end();
+    } catch {
+      cleanupFailed = true;
+    }
+    try {
+      await waitForRuntimeAuthBackendDrain(containerId);
+    } catch {
+      cleanupFailed = true;
+    }
+  }
+  if (probeFailed || cleanupFailed || idleClientFailed) {
+    throw new PostgresProjectionAdapterError();
+  }
+}
+
+function createPostgresProjectionAdapterClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Client {
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: CLEAN_BOOTSTRAP_DATABASE_NAME,
+    user: RUNTIME_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: POSTGRES_PROJECTION_ADAPTER_APPLICATION_NAME,
+  });
+}
+
+async function assertPostgresProjectionAdapterClientIdle(
+  client: Client,
+  expectedBackendPid?: number,
+): Promise<number> {
+  const result = await client.query<{ state: string }>(`SELECT
+  pg_catalog.json_build_object(
+    'backendPid', pg_catalog.pg_backend_pid(),
+    'sessionUser', session_user,
+    'currentUser', current_user,
+    'systemUser', system_user,
+    'transactionReadOnly', pg_catalog.current_setting('transaction_read_only'),
+    'applicationName', pg_catalog.current_setting('application_name'),
+    'contextCleared', (
+      coalesce(pg_catalog.current_setting('app.principal_id', true), '') = ''
+      AND coalesce(pg_catalog.current_setting('app.organization_id', true), '') = ''
+      AND coalesce(pg_catalog.current_setting('app.purpose', true), '') = ''
+      AND coalesce(pg_catalog.current_setting('app.channel', true), '') = ''
+      AND coalesce(pg_catalog.current_setting('app.territory', true), '') = ''
+      AND coalesce(
+        pg_catalog.current_setting('app.data_classification', true), ''
+      ) = ''
+    ),
+    'ssl', EXISTS (
+      SELECT 1 FROM pg_catalog.pg_stat_ssl
+      WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+    )
+  )::text AS state;`);
+  const stateText = result.rows[0]?.state;
+  if (result.command !== "SELECT" || result.rowCount !== 1 || !stateText) {
+    throw new PostgresProjectionAdapterError();
+  }
+  const state = JSON.parse(stateText) as unknown;
+  if (
+    !isRecord(state) ||
+    !Number.isSafeInteger(state.backendPid) ||
+    (state.backendPid as number) <= 0 ||
+    (expectedBackendPid !== undefined &&
+      state.backendPid !== expectedBackendPid) ||
+    state.sessionUser !== RUNTIME_AUTH_LOGIN_ROLE ||
+    state.currentUser !== RUNTIME_AUTH_LOGIN_ROLE ||
+    state.systemUser !== `scram-sha-256:${RUNTIME_AUTH_LOGIN_ROLE}` ||
+    state.transactionReadOnly !== "off" ||
+    state.applicationName !== POSTGRES_PROJECTION_ADAPTER_APPLICATION_NAME ||
+    state.contextCleared !== true ||
+    state.ssl !== false
+  ) {
+    throw new PostgresProjectionAdapterError();
+  }
+  return state.backendPid as number;
+}
+
+async function verifyPostgresProjectionAdapterOuterTransactionReset(
+  client: Client,
+  actorProvider: { current(): PostgresProjectionActorContext },
+  acceptanceCase: RuntimeProjectionAcceptanceCase,
+  backendPid: number,
+): Promise<void> {
+  let probeFailed = false;
+  let cleanupFailed = false;
+  let adapterTransactionObserved = false;
+  const forwardQuery = client.query.bind(client) as (
+    input: unknown,
+  ) => Promise<unknown>;
+  const probeClient = Object.freeze({
+    query: (async (input: unknown) => {
+      if (
+        isRecord(input) &&
+        typeof input.text === "string" &&
+        input.text.startsWith("WITH bounded_projection AS")
+      ) {
+        const state = await client.query<{ valid: boolean }>({
+          text: `SELECT (
+  pg_catalog.pg_backend_pid() = $1::integer
+  AND session_user = $2::name
+  AND current_user = $3::name
+  AND pg_catalog.current_setting('transaction_read_only') = 'on'
+  AND pg_catalog.current_setting(
+    'app.b9_outer_transaction_canary', true
+  ) = 'baseline'
+) AS valid;`,
+          values: [
+            backendPid,
+            RUNTIME_AUTH_LOGIN_ROLE,
+            RUNTIME_AUTH_CAPABILITY_ROLE,
+          ],
+        });
+        if (state.rowCount !== 1 || state.rows[0]?.valid !== true) {
+          throw new PostgresProjectionAdapterError();
+        }
+        adapterTransactionObserved = true;
+      }
+      return forwardQuery(input);
+    }) as unknown as Client["query"],
+  });
+  const source = new PostgresFinancialFactProjectionSource(
+    probeClient,
+    actorProvider,
+  );
+  try {
+    await client.query(`SELECT pg_catalog.set_config(
+  'app.b9_outer_transaction_canary',
+  'baseline',
+  false
+);`);
+    await client.query("BEGIN READ WRITE");
+    await client.query(`SELECT pg_catalog.set_config(
+  'app.b9_outer_transaction_canary',
+  'outer-must-rollback',
+  false
+);`);
+    const result = await source.load(acceptanceCase.query);
+    if (result === null) throw new PostgresProjectionAdapterError();
     assertRuntimeAuthenticatedFinancialFactProjectionResult(
       acceptanceCase,
       result,
     );
+    const state = await client.query<{ valid: boolean }>({
+      text: `SELECT (
+  pg_catalog.pg_backend_pid() = $1::integer
+  AND pg_catalog.current_setting('transaction_read_only') = 'off'
+  AND pg_catalog.current_setting(
+    'app.b9_outer_transaction_canary', true
+  ) = 'baseline'
+) AS valid;`,
+      values: [backendPid],
+    });
+    if (
+      !adapterTransactionObserved ||
+      state.rowCount !== 1 ||
+      state.rows[0]?.valid !== true
+    ) {
+      throw new PostgresProjectionAdapterError();
+    }
+  } catch {
+    probeFailed = true;
+  } finally {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      cleanupFailed = true;
+    }
+    try {
+      await client.query("RESET app.b9_outer_transaction_canary");
+    } catch {
+      cleanupFailed = true;
+    }
+  }
+  if (probeFailed || cleanupFailed) throw new PostgresProjectionAdapterError();
+  await assertPostgresProjectionAdapterClientIdle(client, backendPid);
+}
+
+async function verifyPostgresProjectionAdapterReadOnlyBoundary(
+  client: Client,
+  backendPid: number,
+): Promise<void> {
+  let mutationDenied = false;
+  await client.query("BEGIN READ ONLY");
+  try {
+    await client.query(`SET LOCAL ROLE ${RUNTIME_AUTH_CAPABILITY_ROLE}`);
+    await client.query({
+      text: `CALL private_data.set_request_context(
+  $1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::text
+)`,
+      values: [
+        PRINCIPAL_ALPHA,
+        ORGANIZATION_ALPHA,
+        "display",
+        "api",
+        "demo_only",
+        "synthetic",
+      ],
+    });
+    const state = await client.query<{ valid: boolean }>({
+      text: `SELECT (
+  pg_catalog.pg_backend_pid() = $1::integer
+  AND session_user = $2::name
+  AND current_user = $3::name
+  AND system_user = $4::text
+  AND pg_catalog.current_setting('transaction_read_only') = 'on'
+  AND private_data.current_principal_id() = $5::uuid
+  AND private_data.current_organization_id() = $6::uuid
+  AND private_data.current_purpose() = 'display'
+  AND private_data.current_channel() = 'api'
+  AND private_data.current_territory() = 'demo_only'
+  AND private_data.current_data_classification() = 'synthetic'
+) AS valid;`,
+      values: [
+        backendPid,
+        RUNTIME_AUTH_LOGIN_ROLE,
+        RUNTIME_AUTH_CAPABILITY_ROLE,
+        `scram-sha-256:${RUNTIME_AUTH_LOGIN_ROLE}`,
+        PRINCIPAL_ALPHA,
+        ORGANIZATION_ALPHA,
+      ],
+    });
+    if (state.rowCount !== 1 || state.rows[0]?.valid !== true) {
+      throw new PostgresProjectionAdapterError();
+    }
+    try {
+      await client.query(`INSERT INTO private_data.organizations (
+  id, slug, name, created_at
+) VALUES (
+  '10000000-0000-4000-8000-000000000096',
+  'b9-read-only-probe',
+  'B9 read-only probe',
+  transaction_timestamp()
+);`);
+    } catch (error) {
+      mutationDenied = postgresErrorCode(error) === "25006";
+    }
+  } finally {
+    await client.query("ROLLBACK");
+  }
+  if (!mutationDenied) throw new PostgresProjectionAdapterError();
+  await assertPostgresProjectionAdapterClientIdle(client, backendPid);
+}
+
+async function verifyPostgresProjectionAdapterInjectedRollback(
+  client: Client,
+  actorProvider: { current(): PostgresProjectionActorContext },
+  acceptanceCase: RuntimeProjectionAcceptanceCase,
+  backendPid: number,
+): Promise<void> {
+  const secretCanary = "b9-injected-driver-secret-canary";
+  const forwardQuery = client.query.bind(client) as (
+    input: unknown,
+  ) => Promise<unknown>;
+  let injectFailure = true;
+  const injectedClient = Object.freeze({
+    query: (async (input: unknown) => {
+      if (
+        injectFailure &&
+        isRecord(input) &&
+        typeof input.text === "string" &&
+        input.text.startsWith("WITH bounded_projection AS")
+      ) {
+        injectFailure = false;
+        throw new Error(secretCanary);
+      }
+      return forwardQuery(input);
+    }) as unknown as Client["query"],
+  });
+  const source = new PostgresFinancialFactProjectionSource(
+    injectedClient,
+    actorProvider,
+  );
+  let failure: unknown;
+  try {
+    await source.load(acceptanceCase.query);
+  } catch (error) {
+    failure = error;
+  }
+  if (
+    !(failure instanceof PostgresProjectionAdapterError) ||
+    failure.code !== "POSTGRES_PROJECTION_ADAPTER_FAILURE" ||
+    String(failure).includes(secretCanary) ||
+    Object.hasOwn(failure, "cause") ||
+    injectFailure
+  ) {
+    throw new PostgresProjectionAdapterError();
+  }
+  await assertPostgresProjectionAdapterClientIdle(client, backendPid);
+  const result = await source.load(acceptanceCase.query);
+  if (result === null) throw new PostgresProjectionAdapterError();
+  assertRuntimeAuthenticatedFinancialFactProjectionResult(
+    acceptanceCase,
+    result,
+  );
+  await assertPostgresProjectionAdapterClientIdle(client, backendPid);
+}
+
+function postgresErrorCode(error: unknown): string | null {
+  try {
+    return isRecord(error) && typeof error.code === "string"
+      ? error.code
+      : null;
+  } catch {
+    return null;
   }
 }
 
@@ -8040,7 +8601,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "63db230689987f7a927b56e2b2768206a45def3ed0c66e6c61e96279d22adff0" ||
+      "349c5e2beef444698068969bc264004240824b4bbb1e641e3e60e30165d380d7" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||
@@ -8146,6 +8707,121 @@ function requireText(
   violations: string[],
 ): void {
   if (!value.includes(marker)) violations.push(message);
+}
+
+function inspectProjectionAdapterWorkflow(workflow: string): string[] {
+  const violations: string[] = [];
+  const lines = workflow.replaceAll("\r\n", "\n").split("\n");
+  const portsIndexes = lines
+    .map((line, index) => (/^\s*ports:\s*$/.test(line) ? index : -1))
+    .filter((index) => index >= 0);
+  if (portsIndexes.length !== 1) {
+    violations.push(
+      "PostgreSQL service must declare exactly one B9 adapter port block",
+    );
+  } else {
+    const portsIndex = portsIndexes[0];
+    if (portsIndex === undefined) {
+      violations.push("PostgreSQL service port block is unavailable");
+    } else {
+      const mappings: string[] = [];
+      for (let index = portsIndex + 1; index < lines.length; index += 1) {
+        const line = lines[index] ?? "";
+        if (/^ {8}\S/.test(line)) break;
+        if (/^ {10}- /.test(line)) mappings.push(line);
+      }
+      if (
+        mappings.length !== 1 ||
+        mappings[0] !== '          - "127.0.0.1::5432"'
+      ) {
+        violations.push(
+          "PostgreSQL service must publish only one random loopback mapping for target 5432",
+        );
+      }
+    }
+  }
+
+  const ipv4Literals = [
+    ...workflow.matchAll(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g),
+  ].map((match) => match[0]);
+  if (
+    ipv4Literals.length !== 2 ||
+    ipv4Literals.some((literal) => literal !== "127.0.0.1")
+  ) {
+    violations.push(
+      "workflow must contain only the two reviewed IPv4 loopback host literals",
+    );
+  }
+
+  for (const [pattern, message] of [
+    [
+      /^\s*expose\s*:/im,
+      "PostgreSQL service must not declare an alternate expose block",
+    ],
+    [
+      /^\s*(?:host|hostname|network|network_mode|extra_hosts)\s*:/im,
+      "workflow must not declare alternate host or network plumbing",
+    ],
+    [
+      /(?:^|\s)--(?:add-host|network|publish|publish-all)(?:[=\s]|$)/im,
+      "workflow must not declare alternate Docker host or port plumbing",
+    ],
+    [
+      /^\s+(?!(?:RESEARCH_COCKPIT_PG_ADAPTER_HOST|RESEARCH_COCKPIT_PG_ADAPTER_PORT)\s*:)[A-Z][A-Z0-9_]*(?:_HOST|_HOSTNAME|_PORT|_URL)\s*:/m,
+      "workflow must not declare an alternate host, port, or URL environment variable",
+    ],
+    [
+      /\b(?:PGHOST|PGPORT)\s*:/i,
+      "workflow must not declare PostgreSQL implicit host environment variables",
+    ],
+    [
+      /(?:postgres|postgresql):\/\//i,
+      "workflow must not declare a PostgreSQL connection URL",
+    ],
+    [
+      /(?:host\.docker\.internal|\[?::1\]?)/i,
+      "workflow must not use an alternate loopback host spelling",
+    ],
+  ] as const) {
+    if (pattern.test(workflow)) violations.push(message);
+  }
+
+  const acceptanceSteps = workflowStepBlocks(workflow).filter((step) =>
+    step.includes("      - name: Run PostgreSQL acceptance"),
+  );
+  if (acceptanceSteps.length !== 1) {
+    violations.push(
+      "workflow must define exactly one acceptance execution step",
+    );
+    return violations;
+  }
+  const acceptanceStep = acceptanceSteps[0] ?? "";
+  for (const [line, message] of [
+    [
+      "          RESEARCH_COCKPIT_PG_CONTAINER_ID: ${{ job.services.postgres.id }}",
+      "acceptance step must receive the exact service container ID",
+    ],
+    [
+      "          RESEARCH_COCKPIT_PG_ADAPTER_HOST: 127.0.0.1",
+      "acceptance step must receive only the exact loopback adapter host",
+    ],
+    [
+      "          RESEARCH_COCKPIT_PG_ADAPTER_PORT: ${{ job.services.postgres.ports[5432] }}",
+      "acceptance step must receive only the dynamic target-5432 adapter port",
+    ],
+  ] as const) {
+    if (!acceptanceStep.split("\n").includes(line)) violations.push(message);
+  }
+  for (const key of [
+    "RESEARCH_COCKPIT_PG_CONTAINER_ID",
+    "RESEARCH_COCKPIT_PG_ADAPTER_HOST",
+    "RESEARCH_COCKPIT_PG_ADAPTER_PORT",
+  ] as const) {
+    if ([...workflow.matchAll(new RegExp(`${key}:`, "g"))].length !== 1) {
+      violations.push(`workflow must declare ${key} exactly once`);
+    }
+  }
+  return violations;
 }
 
 function inspectEvidenceUploadStep(workflow: string): string[] {
