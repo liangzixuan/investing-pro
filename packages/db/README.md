@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B10 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B10 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B11 SOURCE/LOCAL PASSED, LIVE V11 PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -138,6 +138,20 @@ GO with no P0/P1 finding. PostgreSQL run `32161137775` passed at commit
 [ADR 0022](../../docs/adr/0022-bounded-postgresql-projection-pool-lifecycle.md),
 and the [Cycle 1b-b10 exit matrix](../../docs/CYCLE_1BB10_EXIT_MATRIX.md).
 
+Cycle 1b-b11 adds `PostgresMigrationDeployer` as a non-owning sequential
+boundary over one exclusively leased authenticated client. It snapshots the
+closed v2 plan synchronously, then uses one finite-timeout read-write
+transaction, the reviewed advisory lock, transaction-local owner role, and a
+`SHARE ROW EXCLUSIVE` ledger lock. It validates exact service identity, role
+graph, platform state, ledger shape, and a non-empty exact manifest prefix
+before applying only pending reviewed bodies and matching ledger rows. Drift is
+value-free, injected pre-commit failure rolls back, a current ledger is a
+no-op, and ambiguous cleanup poisons the instance. Source and the V11 evidence
+contract are implemented, and integrated local verification passes. Pinned
+PostgreSQL V11, retained logs/artifact, and independent review remain pending. See
+[ADR 0023](../../docs/adr/0023-locked-postgresql-migration-ledger-deployment.md)
+and the [Cycle 1b-b11 exit matrix](../../docs/CYCLE_1BB11_EXIT_MATRIX.md).
+
 Ownership transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
 the pool while the source owns it. Only read-only counters may be checked after
@@ -149,10 +163,12 @@ and application-name behavior. Custom-GUC and prepared-statement cleanup remain
 source/unit/static evidence for the fixed `DISCARD ALL` sequence, not a direct
 live inspection claim.
 
-There is deliberately no production or incremental migration runner, retained
-credential, externally configured or production-ready pool, or
-application-composed database client in this package. B10's transferred
-two-client pool remains a synthetic acceptance boundary. The historical
+There is deliberately no production or general multi-release migration
+runner, retained credential, externally configured or production-ready pool,
+or application-composed database client in this package. B11 adds only one
+exact closed-v2 suffix deployer and an acceptance-only prefix reconstruction;
+B10's transferred two-client pool remains a separate synthetic acceptance
+boundary. The historical
 clean-bootstrap renderer validates its immutable
 manifest and emits all seven historical bodies. The authenticated V2
 application renderer separately validates its closed manifest and emits all six
@@ -499,9 +515,10 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     settlement-before-discard active cancellation, server-timeout recovery,
     failed-transaction discard, idempotent close, zero pooled-backend residue,
     and independently reviewed version 10 evidence.
-15. Complete the B11 migration-ledger locking, checksum-drift, and
-    concurrent-deployment gate: checksum-mismatch refusal against live drift,
-    one-time replay, injected-failure rollback, and concurrent deploy behavior.
+15. Complete the remaining B11 live gate: checksum-mismatch refusal against
+    live drift, exact one-time
+    suffix replay, injected-failure rollback, two-deployer serialization,
+    mandatory cleanup, retained V11 evidence, and independent review.
 16. Run query plans and load tests for fact-as-known and tenant reads, including
     RLS overhead and index use.
 17. Approve the production privacy and retention model for permanent resource
@@ -536,5 +553,9 @@ with bounded acquisition, settlement-before-discard active abort,
 server-timeout recovery, destructive failure discard, idempotent close, and
 zero observed residue. It does not include production pool sizing, load
 capacity, graceful cancel requests, prompt queued abort, retry/failover, or
-application composition. B11 is the next migration-ledger locking,
-checksum-drift, and concurrent-deployment gate.
+application composition. B11 source and integrated local verification are
+complete, but its live V11 gate remains pending. Its exact-v2 proof does not
+establish external/production credentials, arbitrary or multi-release
+upgrades, application compatibility under concurrent writes, crash recovery,
+cancellation, distributed coordination, global atomicity, or production
+readiness.

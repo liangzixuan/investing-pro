@@ -29,6 +29,7 @@ const MAX_OPERATION_PROJECTION_CONTRACT_BYTES = 2 * 1_024 * 1_024;
 const MAX_DATABASE_PACKAGE_MANIFEST_BYTES = 64 * 1_024;
 const MAX_PNPM_LOCKFILE_BYTES = 512 * 1_024;
 const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1_024 * 1_024;
+const MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -65,6 +66,8 @@ const DATABASE_PACKAGE_MANIFEST_PATH = "packages/db/package.json";
 const PNPM_LOCKFILE_PATH = "pnpm-lock.yaml";
 const POSTGRES_PROJECTION_POOL_PATH =
   "packages/db/src/postgres-projection-pool.ts";
+const POSTGRES_MIGRATION_DEPLOYER_PATH =
+  "packages/db/src/postgres-migration-deployer.ts";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -211,32 +214,41 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 7 ||
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
       evidence.schemaVersion === 7 ||
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
     const backupRestorePlanV1Sources =
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
         ? await readBackupRestorePlanV1Sources(
             repositoryPath,
             input.expectedCommit,
           )
         : {};
     const v9Sources =
-      evidence.schemaVersion === 9 || evidence.schemaVersion === 10
+      evidence.schemaVersion === 9 ||
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
         ? await readV9Sources(repositoryPath, input.expectedCommit)
         : {};
     const v10Sources =
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 || evidence.schemaVersion === 11
         ? await readV10Sources(repositoryPath, input.expectedCommit)
+        : {};
+    const v11Sources =
+      evidence.schemaVersion === 11
+        ? await readV11Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -261,11 +273,29 @@ export async function reviewPostgresAcceptanceEvidence(
         ...backupRestorePlanV1Sources,
         ...v9Sources,
         ...v10Sources,
+        ...v11Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV11Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly postgresMigrationDeployer: Uint8Array;
+}> {
+  const postgresMigrationDeployer = await readFixedGitBlob(
+    repositoryPath,
+    commit,
+    POSTGRES_MIGRATION_DEPLOYER_PATH,
+    MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES,
+  );
+  return Object.freeze({
+    postgresMigrationDeployer: Uint8Array.from(postgresMigrationDeployer),
+  });
 }
 
 async function readV10Sources(

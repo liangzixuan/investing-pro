@@ -64,6 +64,10 @@ const V9_SOURCE_KEYS = [
   "pnpmLockfile",
 ] as const;
 const V10_SOURCE_KEYS = [...V9_SOURCE_KEYS, "postgresProjectionPool"] as const;
+const V11_SOURCE_KEYS = [
+  ...V10_SOURCE_KEYS,
+  "postgresMigrationDeployer",
+] as const;
 const MIGRATION_SOURCE_KEYS = ["id", "file", "bytes"] as const;
 const IMAGE_CONFIG_KEYS = [
   "schemaVersion",
@@ -116,6 +120,7 @@ const MAX_OPERATION_PROJECTION_CONTRACT_BYTES = 2 * 1024 * 1024;
 const MAX_DATABASE_PACKAGE_MANIFEST_BYTES = 64 * 1024;
 const MAX_PNPM_LOCKFILE_BYTES = 512 * 1024;
 const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1024 * 1024;
+const MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATION_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATIONS = 100;
 
@@ -167,6 +172,7 @@ export interface PostgresAcceptanceEvidenceSourceBundle {
   readonly databasePackageManifest?: Uint8Array;
   readonly pnpmLockfile?: Uint8Array;
   readonly postgresProjectionPool?: Uint8Array;
+  readonly postgresMigrationDeployer?: Uint8Array;
 }
 
 export interface VerifyPostgresAcceptanceEvidenceOfflineInput {
@@ -211,6 +217,7 @@ interface NormalizedSources {
   readonly databasePackageManifest?: Uint8Array;
   readonly pnpmLockfile?: Uint8Array;
   readonly postgresProjectionPool?: Uint8Array;
+  readonly postgresMigrationDeployer?: Uint8Array;
 }
 
 interface NormalizedMigrationSource {
@@ -293,7 +300,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 7 ||
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
     ) {
       if (
         sources.projectionQuery === undefined ||
@@ -311,7 +319,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 7 ||
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
     ) {
       if (
         sources.platformBootstrapV2 === undefined ||
@@ -336,7 +345,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
     if (
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
-      evidence.schemaVersion === 10
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
     ) {
       if (
         sources.restorePlatformV1 === undefined ||
@@ -350,7 +360,11 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 9 || evidence.schemaVersion === 10) {
+    if (
+      evidence.schemaVersion === 9 ||
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11
+    ) {
       if (
         sources.postgresProjectionAdapter === undefined ||
         sources.operationProjectionContract === undefined ||
@@ -369,11 +383,21 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 10) {
+    if (evidence.schemaVersion === 10 || evidence.schemaVersion === 11) {
       if (
         sources.postgresProjectionPool === undefined ||
         evidence.sourceHashes.postgresProjectionPoolSha256 !==
           sha256(sources.postgresProjectionPool)
+      ) {
+        invalid();
+      }
+    }
+
+    if (evidence.schemaVersion === 11) {
+      if (
+        sources.postgresMigrationDeployer === undefined ||
+        evidence.sourceHashes.postgresMigrationDeployerSha256 !==
+          sha256(sources.postgresMigrationDeployer)
       ) {
         invalid();
       }
@@ -435,6 +459,78 @@ function normalizeSources(
   value: unknown,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): NormalizedSources {
+  if (schemaVersion === 11) {
+    const sources = exactPlainDataRecord(value, V11_SOURCE_KEYS);
+    return normalizeSourceFields(
+      sources,
+      {
+        projectionQuery: exactBytes(
+          sources.projectionQuery,
+          MAX_PROJECTION_QUERY_BYTES,
+        ),
+        projectionNormalizer: exactBytes(
+          sources.projectionNormalizer,
+          MAX_PROJECTION_NORMALIZER_BYTES,
+        ),
+      },
+      {
+        platformBootstrapV2: exactBytes(
+          sources.platformBootstrapV2,
+          MAX_PLATFORM_BOOTSTRAP_V2_BYTES,
+        ),
+        applicationMigrationManifestV2: exactBytes(
+          sources.applicationMigrationManifestV2,
+          MAX_APPLICATION_MANIFEST_V2_BYTES,
+        ),
+        authenticatedMigrationRendererV2: exactBytes(
+          sources.authenticatedMigrationRendererV2,
+          MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES,
+        ),
+        applicationMigrationsV2: Object.freeze(
+          exactDataArray(
+            sources.applicationMigrationsV2,
+            APPLICATION_MIGRATION_V2_FILES.length,
+            false,
+          ).map((migration) => normalizeApplicationMigrationV2(migration)),
+        ),
+        restorePlatformV1: exactBytes(
+          sources.restorePlatformV1,
+          MAX_RESTORE_PLATFORM_V1_BYTES,
+        ),
+        authenticatedBackupRestorePlanV1: exactBytes(
+          sources.authenticatedBackupRestorePlanV1,
+          MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES,
+        ),
+      },
+      {
+        postgresProjectionAdapter: exactBytes(
+          sources.postgresProjectionAdapter,
+          MAX_POSTGRES_PROJECTION_ADAPTER_BYTES,
+        ),
+        operationProjectionContract: exactBytes(
+          sources.operationProjectionContract,
+          MAX_OPERATION_PROJECTION_CONTRACT_BYTES,
+        ),
+        databasePackageManifest: exactBytes(
+          sources.databasePackageManifest,
+          MAX_DATABASE_PACKAGE_MANIFEST_BYTES,
+        ),
+        pnpmLockfile: exactBytes(sources.pnpmLockfile, MAX_PNPM_LOCKFILE_BYTES),
+      },
+      {
+        postgresProjectionPool: exactBytes(
+          sources.postgresProjectionPool,
+          MAX_POSTGRES_PROJECTION_POOL_BYTES,
+        ),
+      },
+      {
+        postgresMigrationDeployer: exactBytes(
+          sources.postgresMigrationDeployer,
+          MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES,
+        ),
+      },
+    );
+  }
   if (schemaVersion === 10) {
     const sources = exactPlainDataRecord(value, V10_SOURCE_KEYS);
     return normalizeSourceFields(
@@ -663,7 +759,7 @@ function normalizeSources(
 
 function usesProjectionSources(
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
-): schemaVersion is 4 | 5 | 6 | 7 | 8 | 9 | 10 {
+): schemaVersion is 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 {
   return (
     schemaVersion === 4 ||
     schemaVersion === 5 ||
@@ -671,7 +767,8 @@ function usesProjectionSources(
     schemaVersion === 7 ||
     schemaVersion === 8 ||
     schemaVersion === 9 ||
-    schemaVersion === 10
+    schemaVersion === 10 ||
+    schemaVersion === 11
   );
 }
 
@@ -705,6 +802,7 @@ function normalizeSourceFields(
     | "pnpmLockfile"
   > = {},
   v10Sources: Pick<NormalizedSources, "postgresProjectionPool"> = {},
+  v11Sources: Pick<NormalizedSources, "postgresMigrationDeployer"> = {},
 ): NormalizedSources {
   const migrations = exactDataArray(sources.migrations, MAX_MIGRATIONS, false);
   return Object.freeze({
@@ -723,6 +821,7 @@ function normalizeSourceFields(
     ...v7Sources,
     ...v9Sources,
     ...v10Sources,
+    ...v11Sources,
   });
 }
 

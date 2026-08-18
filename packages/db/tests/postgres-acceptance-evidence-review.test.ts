@@ -35,6 +35,8 @@ import {
   POSTGRES_ACCEPTANCE_V8_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V9_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -66,6 +68,7 @@ const FIXED_SOURCE_PATHS = [
   "packages/db/package.json",
   "pnpm-lock.yaml",
   "packages/db/src/postgres-projection-pool.ts",
+  "packages/db/src/postgres-migration-deployer.ts",
 ] as const;
 const REPOSITORY = "example/research-cockpit";
 const REPOSITORY_ID = "123456789";
@@ -519,6 +522,51 @@ function evidenceAdapterTests(): void {
     );
   });
 
+  it("reviews historical v10 at a commit without the v11 deployer source blob", async () => {
+    const fixture = await createFixture();
+    await rm(
+      join(
+        fixture.repositoryPath,
+        "packages/db/src/postgres-migration-deployer.ts",
+      ),
+    );
+    git(fixture.repositoryPath, ["add", "--all"]);
+    git(fixture.repositoryPath, ["commit", "-m", "historical v10 sources"]);
+    const historicalCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 10;
+    record.commitSha = historicalCommit;
+    deleteV11SourceHashes(record);
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V10_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+
+    const result = await reviewPostgresAcceptanceEvidence({
+      ...fixture.input,
+      expectedCommit: historicalCommit,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    });
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_locked_migration_ledger_checksum_drift_refusal_one_time_replay_rollback_and_concurrent_deployment",
+    );
+  });
+
   it("rejects a changed v10 projection source at the anchored commit", async () => {
     const fixture = await createFixture();
     await writeFile(
@@ -643,6 +691,49 @@ function evidenceAdapterTests(): void {
     );
     git(missing.repositoryPath, ["add", "--all"]);
     git(missing.repositoryPath, ["commit", "-m", "missing v10 pool source"]);
+    const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(missing, missingCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
+
+  it("rejects a changed or missing v11 migration deployer at the anchored commit", async () => {
+    const changed = await createFixture();
+    await writeFile(
+      join(
+        changed.repositoryPath,
+        "packages/db/src/postgres-migration-deployer.ts",
+      ),
+      "changed v11 migration deployer\n",
+    );
+    git(changed.repositoryPath, ["add", "--all"]);
+    git(changed.repositoryPath, [
+      "commit",
+      "-m",
+      "changed v11 migration deployer",
+    ]);
+    const changedCommit = git(changed.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(changed, changedCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+
+    const missing = await createFixture();
+    await rm(
+      join(
+        missing.repositoryPath,
+        "packages/db/src/postgres-migration-deployer.ts",
+      ),
+    );
+    git(missing.repositoryPath, ["add", "--all"]);
+    git(missing.repositoryPath, [
+      "commit",
+      "-m",
+      "missing v11 migration deployer",
+    ]);
     const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
     await expect(
       reviewPostgresAcceptanceEvidence(
@@ -1313,6 +1404,9 @@ async function createFixture(
       postgresProjectionPoolSha256: await fileSha256(
         join(repositoryPath, "packages/db/src/postgres-projection-pool.ts"),
       ),
+      postgresMigrationDeployerSha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/postgres-migration-deployer.ts"),
+      ),
     },
     completedAt: "2026-08-16T01:02:03.004Z",
   });
@@ -1381,6 +1475,12 @@ function deleteV10SourceHashes(record: Record<string, unknown>): void {
   const hashes = record.sourceHashes as Record<string, unknown>;
   delete hashes.postgresProjectionPoolSha256;
   delete (record.toolVersions as Record<string, unknown>).nodePostgresPool;
+  deleteV11SourceHashes(record);
+}
+
+function deleteV11SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.postgresMigrationDeployerSha256;
 }
 
 function cliArguments(input: PostgresAcceptanceEvidenceReviewInput): string[] {

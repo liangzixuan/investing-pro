@@ -21,6 +21,7 @@ import {
   parseAuthenticatedMigrationManifest,
   renderAuthenticatedApplicationMigration,
   renderAuthenticatedPlatformMigration,
+  snapshotAuthenticatedMigrationPlan,
   type AuthenticatedMigrationPlan,
 } from "../src/authenticated-migration-plan";
 
@@ -248,6 +249,15 @@ describe("authenticated application renderer", () => {
     expect(() => renderAuthenticatedApplicationMigration(drifted)).toThrow(
       /checksum differs/i,
     );
+
+    const selfConsistentDrift = mutablePlan(plan);
+    selfConsistentDrift.applicationFiles[0]!.sql += "\nSELECT 1;\n";
+    selfConsistentDrift.manifest.migrations[0]!.sha256 = sha256(
+      selfConsistentDrift.applicationFiles[0]!.sql,
+    );
+    expect(() =>
+      snapshotAuthenticatedMigrationPlan(selfConsistentDrift),
+    ).toThrow(/checksum differs from the reviewed v2 source/i);
 
     const crossed = mutablePlan(plan);
     crossed.applicationFiles[0]!.sql += "\nCREATE SCHEMA escaped;\n";

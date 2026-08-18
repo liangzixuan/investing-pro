@@ -81,7 +81,7 @@ jobs:
         if: ${{ success() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v10.json
+          name: postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v11.json
           if-no-files-found: error
           retention-days: 30

@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b10 threat model
+# Sprint 0 through bounded live Cycle 1b-b10 and Cycle 1b-b11 source/local threat model
 
 ## Current trust boundaries
 
@@ -195,14 +195,31 @@ The queue probe also avoids inspecting the owned pool: fixed `max: 2`, two
 admin-observed blocked PIDs, and a stable timeout from the third source load are
 the complete live acquisition-bound evidence.
 
+Cycle 1b-b11 source adds a separate high-authority migration boundary without
+connecting it to either running application. One non-owning deployer snapshots
+the closed v2 plan, accepts only an exclusively leased authenticated client,
+and selects the reviewed owner capability only inside a finite-timeout
+read-write transaction. The shared advisory lock precedes the exact ledger
+table lock; ledger shape and an exact non-empty manifest prefix are validated
+before pending reviewed bodies and matching rows may run. Drift is value-free,
+injected failure must roll back body and ledger effects together, and any
+ambiguous rollback, commit, or role-reset state poisons the deployer. The
+acceptance-only `v2-0005` reconstruction is a bounded disposable-target setup,
+not a downgrade or production recovery interface. Integrated local verification
+is complete; live V11 execution, cleanup, artifact, and independent review remain
+pending.
+
 These database logins and injected actors are not user identities. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
 future verified identity resolver prevents it. B2 therefore does not establish
 end-user binding, production BOLA protection, external/TLS transport, secret
-management, an application pool, or deployed persistence. External,
-production, or incremental migrator operation plus external/production/
-incremental/continuous backup and full-scope restore remain deferred. The
+management, an application pool, or deployed persistence. B11 source narrows
+only one exact container-local v2 suffix; external or production incremental
+migrator credentials, arbitrary-manifest or multi-release upgrades, production
+orchestration/recovery/cancellation/failover, and global platform/application
+atomicity remain deferred. External/production/incremental/continuous backup
+and full-scope restore also remain deferred. The
 reviewed B8 result is strictly narrower than that broad production gate. The B5
 test-loader result establishes only one sequential, synthetic, container-local
 acceptance-only session, not a production loader or identity boundary. The
@@ -223,6 +240,13 @@ destructive failure discard, idempotent close, and zero observed residue for
 one runner-local pool. B10 never claims graceful PostgreSQL CancelRequest,
 prompt queued abort, reuse of a canceled backend, production tuning, load
 capacity, retries, failover, identity resolution, or application composition.
+
+The B11 source does not yet establish a live database result. Even after its
+bounded V11 run, it will not establish external or production credentials,
+arbitrary manifests, general incremental or multi-release migration, online
+application/schema compatibility, concurrent application writes, crash
+recovery, cancellation, retry/failover, distributed coordination, or global
+platform/application atomicity.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes
@@ -269,6 +293,12 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   provider once, snapshots every call before awaiting, resets transaction state,
   uses one unnamed parameterized B4 query inside one read-only transaction,
   normalizes before commit, and emits one stable value-free error.
+- The B11 deployer accepts no connection configuration, credential, pool,
+  client factory, arbitrary manifest, logger, retry, cancellation, or shutdown
+  seam. It snapshots the exact reviewed plan before I/O, uses fixed local
+  timeouts and lock ordering, validates the ledger object and exact manifest
+  prefix, applies a pending suffix and its ledger rows atomically, fails drift
+  through one stable value-free error, and poisons ambiguous client state.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -312,8 +342,10 @@ still be chosen by a compromised service, and the random loopback mapping is
 only an acceptance-runner path, not production network security. Pool reset,
 simultaneous backends, cancellation settlement, and timeout handling later
 passed only the separate bounded B10 live gate; that result does not widen B9.
-B11 is the next migration-ledger locking, checksum-drift-refusal, and
-concurrent-deployment gate.
+B11 source and integrated local verification now cover the exact locked-ledger,
+checksum-drift-refusal, once-only suffix, rollback, and two-deployer boundary.
+Live V11 review remains pending, and the boundary is not a general or production
+migration system.
 
 ## Gates before adding new trust boundaries
 

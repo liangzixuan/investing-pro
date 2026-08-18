@@ -22,6 +22,7 @@ import {
   collectRuntimeAuthOperationFailures,
   EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
   extractReviewedSyntheticFixtureBody,
+  generateMigrationDeployerAuthPassword,
   generateOwnerDdlAuthPassword,
   generateMigratorAuthPassword,
   generateRuntimeAuthPassword,
@@ -41,6 +42,8 @@ import {
   MIGRATOR_AUTH_LOGIN_ROLE,
   MIGRATOR_AUTH_PASSFILE,
   MIGRATOR_AUTH_WRONG_PASSFILE,
+  MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE,
+  MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE,
   parsePostgresProjectionAdapterEndpoint,
   renderB7AcceptanceTargetResetSql,
   renderAuthenticatedOwnerDdlCanaryCreateSql,
@@ -65,6 +68,9 @@ import {
   renderMigratorAuthCleanupSql,
   renderMigratorAuthPassfile,
   renderMigratorAuthProvisioningSql,
+  renderMigrationDeployerAuthBackendDrainSql,
+  renderMigrationDeployerAuthCleanupSql,
+  renderMigrationDeployerAuthProvisioningSql,
   renderTestLoaderAuthBackendDrainSql,
   renderTestLoaderAuthCleanupSql,
   renderTestLoaderAuthPassfile,
@@ -1056,6 +1062,85 @@ describe("PostgreSQL acceptance harness guardrails", () => {
     expect(drain).toContain("END;\n$migrator_auth_backend_drain$;");
   });
 
+  it("renders the distinct two-client B11 deployer login and bounded cleanup", () => {
+    const password = "A".repeat(43);
+    const sql = renderMigrationDeployerAuthProvisioningSql(password);
+    expect(MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE).toBe(
+      "research_cockpit_migration_deployer_login",
+    );
+    expect(MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE).not.toBe(
+      MIGRATOR_AUTH_LOGIN_ROLE,
+    );
+    expect(MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE).toBe(
+      MIGRATOR_AUTH_CAPABILITY_ROLE,
+    );
+    expect(sql).toContain(`CREATE ROLE ${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}`);
+    for (const attribute of [
+      "LOGIN",
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+      "CONNECTION LIMIT 2",
+    ]) {
+      expect(sql).toContain(attribute);
+    }
+    expect(sql).not.toContain(`ALTER ROLE ${MIGRATOR_AUTH_LOGIN_ROLE}`);
+    expect(sql).toContain(
+      `GRANT ${MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE}\n  TO ${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    expect(sql.match(/\bGRANT\b/g)).toHaveLength(1);
+    const passwordPosition = sql.indexOf(`PASSWORD '${password}'`);
+    expect(passwordPosition).toBeGreaterThan(-1);
+    for (const suppression of [
+      "SET LOCAL log_statement = 'none';",
+      "SET LOCAL log_min_error_statement = 'panic';",
+      "SET LOCAL log_duration = off;",
+      "SET LOCAL log_min_duration_statement = -1;",
+      "SET LOCAL log_min_duration_sample = -1;",
+      "SET LOCAL log_statement_sample_rate = 0;",
+      "SET LOCAL log_transaction_sample_rate = 0;",
+      "SET LOCAL password_encryption = 'scram-sha-256';",
+    ]) {
+      expect(sql.indexOf(suppression)).toBeGreaterThan(-1);
+      expect(sql.indexOf(suppression)).toBeLessThan(passwordPosition);
+    }
+    expect(sql.match(new RegExp(password, "g"))).toHaveLength(1);
+    expect(renderMigrationDeployerAuthCleanupSql()).toBe(
+      `BEGIN;\nDROP ROLE IF EXISTS ${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE};\nCOMMIT;\n`,
+    );
+    expect(renderMigrationDeployerAuthCleanupSql()).not.toMatch(
+      /DROP OWNED|REASSIGN OWNED/i,
+    );
+    expect(() =>
+      renderMigrationDeployerAuthProvisioningSql(`${password}\n`),
+    ).toThrow(/32-byte base64url/i);
+    expect(() =>
+      renderMigrationDeployerAuthProvisioningSql(`${"A".repeat(42)}B`),
+    ).toThrow(/32-byte base64url/i);
+
+    const passwords = Array.from({ length: 8 }, () =>
+      generateMigrationDeployerAuthPassword(),
+    );
+    expect(new Set(passwords).size).toBe(passwords.length);
+    for (const generated of passwords) {
+      expect(generated).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    }
+
+    const drainSql = renderMigrationDeployerAuthBackendDrainSql();
+    expect(drainSql).toContain("FROM pg_catalog.pg_stat_activity");
+    expect(drainSql).toContain(
+      `usename = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'`,
+    );
+    expect(drainSql).toContain("backend_type = 'client backend'");
+    expect(drainSql).toContain("interval '5 seconds'");
+    expect(drainSql).toContain("pg_catalog.pg_stat_clear_snapshot()");
+    expect(drainSql).toContain("pg_catalog.pg_sleep(0.05)");
+    expect(drainSql).toContain("USING ERRCODE = '55000'");
+  });
+
   it("renders one fixed non-forced reset of the disposable B7 target", () => {
     const sql = renderB7AcceptanceTargetResetSql();
     expect(sql).toBe(`DROP DATABASE research_cockpit_acceptance_test;
@@ -1320,15 +1405,15 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "7d993fea4c18469ebc07e900c798e06af881f7c1e01f621b3145d9c1fd13af0b",
+        "73bc100eb27a1e7884d05f6feb642bc00c224d56e7b480899ba901cd9934f24a",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v10.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v11.json",
     );
     expect(artifacts.workflow).toContain('          - "127.0.0.1::5432"');
     expect(artifacts.workflow).toContain("      - modules/research-core/**");
@@ -1522,7 +1607,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v10.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v11.json",
         unsafePath,
       );
       expect(
@@ -1562,7 +1647,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1685,6 +1770,9 @@ CREATE DATABASE research_cockpit_acceptance_test
     const b7Probe = source.indexOf(
       "await verifyVersionedAuthenticatedMigrationPlan",
     );
+    const b11Probe = source.indexOf(
+      "await verifyAuthenticatedPostgresMigrationDeployment",
+    );
     const poolProbe = source.indexOf(
       "await verifyAuthenticatedPostgresProjectionPool",
     );
@@ -1698,7 +1786,8 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(impersonatedProbe).toBeGreaterThan(-1);
     expect(runtimeProbe).toBeGreaterThan(impersonatedProbe);
     expect(b7Probe).toBeGreaterThan(runtimeProbe);
-    expect(poolProbe).toBeGreaterThan(b7Probe);
+    expect(b11Probe).toBeGreaterThan(b7Probe);
+    expect(poolProbe).toBeGreaterThan(b11Probe);
     expect(finalProbe).toBeGreaterThan(poolProbe);
     expect(buildEvidence).toBeGreaterThan(finalProbe);
     expect(writeEvidence).toBeGreaterThan(buildEvidence);
@@ -1713,10 +1802,10 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).toContain(
       "bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery",
     );
-    expect(source).toContain("version 10 success-only run record");
+    expect(source).toContain("version 11 success-only run record");
   });
 
-  it("finishes mandatory B8 cleanup and hashes its exact sources before v10 evidence", async () => {
+  it("finishes mandatory B8 cleanup and hashes its exact sources before v11 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2255,7 +2344,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(finalPlatform).toContain('"1|0"');
   });
 
-  it("runs the authenticated backup and bounded restore before v10 evidence", async () => {
+  it("runs B11 rollback, replay, checksum-drift refusal, and concurrent deployment with mandatory cleanup", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2282,13 +2371,280 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expectOrdered(entrypoint, [
       "await verifyVersionedAuthenticatedMigrationPlan(",
+      "await verifyAuthenticatedPostgresMigrationDeployment(",
       "await verifyAuthenticatedPostgresProjectionPool(",
       "await verifyAuthenticatedBackupAndBoundedRestore(",
       "await verifyCheckedOutCommit(environment);",
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 10 success-only run record was written",
+      "the version 11 success-only run record was written",
+    ]);
+    expect(
+      entrypoint.match(
+        /await verifyAuthenticatedPostgresMigrationDeployment\(/g,
+      ),
+    ).toHaveLength(1);
+
+    const orchestrator = section(
+      "async function verifyAuthenticatedPostgresMigrationDeployment(",
+      "async function provisionMigrationDeployerAuthLogin(",
+    );
+    expectOrdered(orchestrator, [
+      "await verifyMigrationDeployerAuthResidueAbsent(containerId);",
+      "await provisionMigrationDeployerAuthLogin(containerId, password);",
+      "await verifyMigrationDeployerAuthRoleCatalog(containerId);",
+      "clientA = registerClient(",
+      "await clientA.connect();",
+      "renderAuthenticatedMigrationV2PrefixFiveReconstruction(plan),",
+      "deployerA.deploy({ injectFailure: true })",
+      '"POSTGRES_MIGRATION_DEPLOYMENT_FAILURE"',
+      '"B11 injected deployment rollback target fingerprint"',
+      'assertMigrationDeploymentResult(await deployerA.deploy(), "applied");',
+      "const replayResult = await deployerA.deploy();",
+      'assertMigrationDeploymentResult(replayResult, "current");',
+      "await verifyMigrationDeployerLiveChecksumDrift(",
+      "clientB = registerClient(",
+      "await clientB.connect();",
+      "await verifyMigrationDeployerConnectionLimit(endpoint, password);",
+      "renderAuthenticatedMigrationV2PrefixFiveReconstruction(plan),",
+      "barrierClient = registerClient(",
+      "await beginMigrationDeployerLedgerBarrier(barrierClient);",
+      "const deploymentA = deployerA.deploy();",
+      "await waitForMigrationDeployerBlockingChain(barrierClient, {",
+      "const deploymentB = deployerB.deploy();",
+      "await waitForMigrationDeployerBlockingChain(barrierClient, {",
+      "await releaseMigrationDeployerLedgerBarrier(barrierClient);",
+      "const concurrentResults =",
+      "await settleMigrationDeployments(pendingDeployments);",
+      "assertConcurrentMigrationDeploymentResults(concurrentResults);",
+      "assertMigrationDeployerTargetCurrent(",
+      "} finally {",
+      'label: "release B11 ledger barrier"',
+      'label: "settle B11 migration deployments"',
+      'label: "close B11 PostgreSQL client"',
+      'label: "repair B11 acceptance target"',
+      'label: "drain B11 migration deployer backends"',
+      'label: "drop B11 migration deployer login"',
+      'label: "verify B11 migration deployer residue"',
+      'label: "verify B11 final ledger and catalog"',
+      "await collectRuntimeAuthOperationFailures(cleanupFailures)",
+      "if (probeError !== undefined && cleanupError !== undefined)",
+      "throw new AggregateError(",
+    ]);
+    for (const marker of [
+      "const clients:",
+      "const pendingDeployments:",
+      "unexpectedClientErrors",
+      "registered.removeErrorListener();",
+      "await registered.client.end();",
+      "targetModified",
+    ]) {
+      expect(orchestrator).toContain(marker);
+    }
+
+    const catalog = section(
+      "async function verifyMigrationDeployerAuthRoleCatalog(",
+      "function createPostgresMigrationDeployerClient(",
+    );
+    expect(catalog).toContain(
+      "|true|false|false|false|false|false|false|2|true`",
+    );
+    expect(catalog).toContain("|false|false|true`");
+    expect(catalog).toContain("FROM pg_catalog.pg_db_role_setting");
+    expect(catalog).toContain("SELECT count(*) FROM direct_acl");
+    expect(catalog).toContain('"0|0"');
+
+    const targetState = section(
+      "async function collectMigrationDeployerTargetState(",
+      "function assertMigrationDeployerTargetPrefix(",
+    );
+    for (const marker of [
+      "pg_catalog.aclexplode(",
+      "count(*) FILTER (WHERE privilege.grantee = 0)",
+      "count(*) FILTER (WHERE privilege.grantee = procedure.proowner)",
+      "privilege.privilege_type <> 'EXECUTE'",
+      "privilege.grantor <> procedure.proowner",
+      "privilege.is_grantable",
+    ]) {
+      expect(targetState).toContain(marker);
+    }
+    const procedureAssertion = section(
+      "function assertMigrationDeployerProcedureState(",
+      "function extractMigrationDeployerProcedureSource(",
+    );
+    expect(procedureAssertion).toContain(
+      'actual.accessControlFingerprint !== "2|0|1|1|0|0"',
+    );
+    expect(source).not.toMatch(/accessControl(?:List)?\.includes\s*\(/);
+
+    const drift = section(
+      "async function verifyMigrationDeployerLiveChecksumDrift(",
+      "function assertMigrationDeployerTargetCurrentWithDrift(",
+    );
+    expectOrdered(drift, [
+      "await setMigrationDeployerLedgerChecksum(",
+      "const drifted = await collectMigrationDeployerTargetState(containerId);",
+      "const driftError = await captureMigrationDeploymentError(deployer.deploy());",
+      '"POSTGRES_MIGRATION_LEDGER_DRIFT"',
+      '"B11 checksum-drift refusal target fingerprint"',
+      "} finally {",
+      "await setMigrationDeployerLedgerChecksum(",
+      '"B11 checksum-drift repair target fingerprint"',
+    ]);
+    expect(source).toContain(
+      'const POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256 = "0".repeat(64);',
+    );
+    const checksumMutation = section(
+      "async function setMigrationDeployerLedgerChecksum(",
+      "async function beginMigrationDeployerLedgerBarrier(",
+    );
+    expectOrdered(checksumMutation, [
+      "BEGIN;",
+      "pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY}::bigint)",
+      "SET LOCAL ROLE ${MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE};",
+      "LOCK TABLE ONLY shared_data.schema_migrations IN SHARE ROW EXCLUSIVE MODE;",
+      "UPDATE shared_data.schema_migrations",
+      "AND file_name = '${fileName}'",
+      "AND sha256 = '${expectedSha256}'",
+      "IF NOT FOUND THEN",
+      "COMMIT;",
+    ]);
+
+    const barrier = section(
+      "async function beginMigrationDeployerLedgerBarrier(",
+      "async function releaseMigrationDeployerLedgerBarrier(",
+    );
+    expectOrdered(barrier, [
+      'await client.query("BEGIN READ WRITE")',
+      "SET LOCAL statement_timeout = '10s'; SET LOCAL lock_timeout = '5s'",
+      "LOCK TABLE ONLY shared_data.schema_migrations IN ROW EXCLUSIVE MODE",
+      "SELECT pg_catalog.pg_backend_pid() AS backend_pid",
+    ]);
+    const observer = section(
+      "async function waitForMigrationDeployerBlockingChain(",
+      "function delayMigrationDeployerPoll(",
+    );
+    for (const marker of [
+      "pg_catalog.pg_stat_clear_snapshot()",
+      "RowExclusiveLock",
+      "ShareRowExclusiveLock",
+      "held.locktype = 'advisory'",
+      "activity.wait_event = 'advisory'",
+      "pg_catalog.pg_blocking_pids($2::integer)",
+      "pg_catalog.pg_blocking_pids($5::integer)",
+      "result.rows[0]?.valid === true",
+      "valid && now <= deadline",
+    ]) {
+      expect(observer).toContain(marker);
+    }
+
+    const concurrencyResult = section(
+      "function assertConcurrentMigrationDeploymentResults(",
+      "async function repairMigrationDeployerTarget(",
+    );
+    expect(concurrencyResult).toContain(
+      'JSON.stringify(["applied", "current"])',
+    );
+    expect(concurrencyResult).toContain(
+      "assertMigrationDeploymentResult(result, result.status)",
+    );
+
+    const repair = section(
+      "async function repairMigrationDeployerTarget(",
+      "function isMigrationDeployerCanonicalCurrent(",
+    );
+    expectOrdered(repair, [
+      "const state = await collectMigrationDeployerTargetState(containerId);",
+      "assertMigrationDeployerB7Baseline(state, plan);",
+      "if (isMigrationDeployerCanonicalCurrent(state, plan)) return;",
+      "assertMigrationDeployerRepairableState(state, plan);",
+      "pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY}::bigint)",
+      "LOCK TABLE ONLY shared_data.schema_migrations IN SHARE ROW EXCLUSIVE MODE;",
+      "UPDATE shared_data.schema_migrations",
+      "INSERT INTO shared_data.schema_migrations (",
+      "ON CONFLICT (migration_id) DO UPDATE",
+      "assertMigrationDeployerTargetCurrent(",
+    ]);
+    expect(repair).not.toMatch(/DROP OWNED|REASSIGN OWNED/i);
+    const repairGuard = section(
+      "function assertMigrationDeployerRepairableState(",
+      "async function cleanupMigrationDeployerAuthProbe(",
+    );
+    expect(repairGuard).toContain(
+      'throw new Error("B11 cleanup refuses unknown ledger drift")',
+    );
+    expect(repairGuard).toContain(
+      'throw new Error("B11 cleanup refuses unknown procedure drift")',
+    );
+
+    const residue = section(
+      "async function verifyMigrationDeployerAuthResidueAbsent(",
+      "async function verifyMigrationDeployerFinalTarget(",
+    );
+    expect(residue).toContain("FROM pg_catalog.pg_auth_members");
+    expect(residue).toContain("FROM pg_catalog.pg_stat_activity");
+    expect(residue).toContain("application_name IN (");
+    expect(residue).toContain('"0|0|0|0"');
+
+    const finalTarget = section(
+      "async function verifyMigrationDeployerFinalTarget(",
+      "async function verifyAuthenticatedPostgresProjectionPool(",
+    );
+    for (const marker of [
+      "await verifyMigrationLedger(",
+      "await verifyCatalogContract(containerId);",
+      "await verifyB7PlatformArtifactsAfterApplication(containerId);",
+      "await verifyContextCleanup(containerId);",
+    ]) {
+      expect(finalTarget).toContain(marker);
+    }
+
+    const sourceHashes = section(
+      "async function collectAcceptanceSourceHashes(",
+      "async function exactFileSha256(",
+    );
+    expect(sourceHashes).toContain(
+      "exactFileSha256(postgresMigrationDeployerPath)",
+    );
+    expect(sourceHashes).toContain("postgresMigrationDeployerSha256,");
+  });
+
+  it("runs the authenticated backup and bounded restore before v11 evidence", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+    const expectOrdered = (body: string, markers: readonly string[]) => {
+      let previous = -1;
+      for (const marker of markers) {
+        const position = body.indexOf(marker, previous + 1);
+        expect(position, marker).toBeGreaterThan(previous);
+        previous = position;
+      }
+    };
+
+    const entrypoint = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    expectOrdered(entrypoint, [
+      "await verifyVersionedAuthenticatedMigrationPlan(",
+      "await verifyAuthenticatedPostgresMigrationDeployment(",
+      "await verifyAuthenticatedPostgresProjectionPool(",
+      "await verifyAuthenticatedBackupAndBoundedRestore(",
+      "await verifyCheckedOutCommit(environment);",
+      "const sourceHashes = await collectAcceptanceSourceHashes(config);",
+      "const evidence = buildPostgresAcceptanceEvidence({",
+      "const writtenEvidence = await writePostgresAcceptanceEvidence(",
+      "the version 11 success-only run record was written",
     ]);
 
     const orchestrator = section(
@@ -2754,13 +3110,17 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     const b7 = entrypoint.indexOf(
       "await verifyVersionedAuthenticatedMigrationPlan(",
     );
+    const b11 = entrypoint.indexOf(
+      "await verifyAuthenticatedPostgresMigrationDeployment(",
+    );
     const b10 = entrypoint.indexOf(
       "await verifyAuthenticatedPostgresProjectionPool(",
     );
     const b8 = entrypoint.indexOf(
       "await verifyAuthenticatedBackupAndBoundedRestore(",
     );
-    expect(b10).toBeGreaterThan(b7);
+    expect(b11).toBeGreaterThan(b7);
+    expect(b10).toBeGreaterThan(b11);
     expect(b8).toBeGreaterThan(b10);
     expect(
       entrypoint.match(/await verifyAuthenticatedPostgresProjectionPool\(/g),
@@ -2985,7 +3345,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expect(sourceHashes).toContain("postgresProjectionPoolSha256,");
     expect(source).toContain(
-      "the version 10 success-only run record was written",
+      "the version 11 success-only run record was written",
     );
   });
 

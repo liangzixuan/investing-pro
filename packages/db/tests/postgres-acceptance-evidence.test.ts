@@ -31,6 +31,8 @@ import {
   POSTGRES_ACCEPTANCE_V9_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
   PostgresAcceptanceEvidenceError,
   serializePostgresAcceptanceEvidence,
   writePostgresAcceptanceEvidence,
@@ -46,6 +48,7 @@ import {
   type PostgresAcceptanceEvidenceV8,
   type PostgresAcceptanceEvidenceV9,
   type PostgresAcceptanceEvidenceV10,
+  type PostgresAcceptanceEvidenceV11,
 } from "../src/postgres-acceptance-evidence";
 
 const IMAGE_DIGEST = `sha256:${"a".repeat(64)}`;
@@ -101,13 +104,14 @@ function input(
       databasePackageManifestSha256: "e".repeat(64),
       pnpmLockfileSha256: "f".repeat(64),
       postgresProjectionPoolSha256: "0".repeat(64),
+      postgresMigrationDeployerSha256: "1".repeat(64),
     },
     completedAt: "2026-08-15T23:59:58.123Z",
     ...overrides,
   };
 }
 
-function evidence(): PostgresAcceptanceEvidenceV10 {
+function evidence(): PostgresAcceptanceEvidenceV11 {
   return buildPostgresAcceptanceEvidence(input());
 }
 
@@ -237,6 +241,24 @@ function v9SourceHashes(): Record<string, unknown> {
   };
 }
 
+function v10SourceHashes(): Record<string, unknown> {
+  const hashes = input().sourceHashes;
+  return {
+    ...v9SourceHashes(),
+    postgresProjectionPoolSha256: hashes.postgresProjectionPoolSha256,
+  };
+}
+
+function mutableV10Evidence(): Record<string, unknown> {
+  return {
+    ...mutableEvidence(),
+    schemaVersion: 10,
+    sourceHashes: v10SourceHashes(),
+    checksPassed: [...POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED],
+    notProven: [...POSTGRES_ACCEPTANCE_V10_NOT_PROVEN],
+  };
+}
+
 function mutableV9Evidence(): Record<string, unknown> {
   const current = mutableEvidence();
   delete (current.toolVersions as Record<string, unknown>).nodePostgresPool;
@@ -360,6 +382,16 @@ function v9Evidence(): PostgresAcceptanceEvidenceV9 {
   return parsed;
 }
 
+function v10Evidence(): PostgresAcceptanceEvidenceV10 {
+  const parsed = parsePostgresAcceptanceEvidence(
+    JSON.stringify(mutableV10Evidence()),
+  );
+  if (parsed.schemaVersion !== 10) {
+    throw new Error("expected historical v10 evidence");
+  }
+  return parsed;
+}
+
 function expectValueFreeValidationFailure(run: () => unknown): void {
   let caught: unknown;
   try {
@@ -393,10 +425,10 @@ afterEach(async () => {
 });
 
 describe("PostgreSQL acceptance success evidence", () => {
-  it("builds the exact success-only v10 schema in its canonical order", () => {
+  it("builds the exact success-only v11 schema in its canonical order", () => {
     const result = evidence();
     expect(POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME).toBe(
-      "research-cockpit-postgres-acceptance-v10.json",
+      "research-cockpit-postgres-acceptance-v11.json",
     );
     expect(Object.keys(result)).toEqual([
       "schemaVersion",
@@ -421,7 +453,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "completedAt",
     ]);
     expect(result).toEqual({
-      schemaVersion: 10,
+      schemaVersion: 11,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -611,6 +643,30 @@ describe("PostgreSQL acceptance success evidence", () => {
     ]);
     expect(Object.keys(parsed.sourceHashes)).toEqual(
       Object.keys(v9Evidence().sourceHashes),
+    );
+  });
+
+  it("preserves exact historical v10 parsing and canonical serialization", () => {
+    const historical = mutableV10Evidence();
+    const canonical = `${JSON.stringify(historical, null, 2)}\n`;
+    const parsed = parsePostgresAcceptanceEvidence(canonical);
+
+    expect(parsed.schemaVersion).toBe(10);
+    expect(parsed.checksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
+    ]);
+    expect(parsed.notProven).toEqual([...POSTGRES_ACCEPTANCE_V10_NOT_PROVEN]);
+    expect(serializePostgresAcceptanceEvidence(parsed)).toBe(canonical);
+    expect(Object.keys(parsed.toolVersions)).toEqual([
+      "postgres",
+      "psql",
+      "pgDump",
+      "pgRestore",
+      "nodePostgres",
+      "nodePostgresPool",
+    ]);
+    expect(Object.keys(parsed.sourceHashes)).toEqual(
+      Object.keys(v10Evidence().sourceHashes),
     );
   });
 
@@ -811,7 +867,7 @@ describe("PostgreSQL acceptance success evidence", () => {
     expect(POSTGRES_ACCEPTANCE_V10_NOT_PROVEN).not.toContain(
       "application_pool_or_composition_root",
     );
-    expect(Object.keys(evidence().toolVersions)).toEqual([
+    expect(Object.keys(v10Evidence().toolVersions)).toEqual([
       "postgres",
       "psql",
       "pgDump",
@@ -819,11 +875,44 @@ describe("PostgreSQL acceptance success evidence", () => {
       "nodePostgres",
       "nodePostgresPool",
     ]);
-    expect(evidence().toolVersions.nodePostgres).toBe("8.23.0");
-    expect(evidence().toolVersions.nodePostgresPool).toBe("3.14.0");
-    expect(Object.keys(evidence().sourceHashes)).toEqual([
+    expect(v10Evidence().toolVersions.nodePostgres).toBe("8.23.0");
+    expect(v10Evidence().toolVersions.nodePostgresPool).toBe("3.14.0");
+    expect(Object.keys(v10Evidence().sourceHashes)).toEqual([
       ...Object.keys(v9Evidence().sourceHashes),
       "postgresProjectionPoolSha256",
+    ]);
+  });
+
+  it("adds the exact locked migration claim, narrows only its limitations, and binds the v11 deployer source", () => {
+    expect(POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED).toEqual([
+      ...POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
+      "authenticated_locked_migration_ledger_checksum_drift_refusal_one_time_replay_rollback_and_concurrent_deployment",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V11_NOT_PROVEN).toEqual([
+      "resolved_platform_image_manifest",
+      "external_or_production_authenticated_database_sessions",
+      "external_or_production_incremental_migrator_credentials",
+      "arbitrary_manifest_multi_release_or_general_incremental_migrations",
+      "globally_atomic_platform_and_application_bootstrap",
+      "production_migration_orchestration_crash_recovery_cancellation_or_failover",
+      "external_production_incremental_or_continuous_authenticated_backups",
+      "end_user_identity_or_tenant_binding",
+      "production_identity_tls_secrets_or_load_ready_pooling",
+      "production_load_capacity_pool_tuning_or_failover",
+      "prompt_queued_abort_graceful_cancel_request_or_reusable_canceled_backend",
+      "full_schema_global_object_cross_cluster_or_cross_version_restore",
+      "disaster_recovery_storage_encryption_retention_rpo_or_rto",
+      "real_or_licensed_market_data",
+      "application_composition_root",
+      "complete_dossier_history_timeline_or_dimensioned_projection",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V11_NOT_PROVEN).not.toContain(
+      "external_production_or_incremental_authenticated_migrations",
+    );
+    expect(evidence().toolVersions).toEqual(v10Evidence().toolVersions);
+    expect(Object.keys(evidence().sourceHashes)).toEqual([
+      ...Object.keys(v10Evidence().sourceHashes),
+      "postgresMigrationDeployerSha256",
     ]);
   });
 
@@ -930,10 +1019,22 @@ describe("PostgreSQL acceptance success evidence", () => {
       parsePostgresAcceptanceEvidence(JSON.stringify(v9AsV10)),
     );
 
-    const v10AsV9 = mutableEvidence();
+    const v10AsV9 = mutableV10Evidence();
     v10AsV9.schemaVersion = 9;
     expectValueFreeValidationFailure(() =>
       parsePostgresAcceptanceEvidence(JSON.stringify(v10AsV9)),
+    );
+
+    const v10AsV11 = mutableV10Evidence();
+    v10AsV11.schemaVersion = 11;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v10AsV11)),
+    );
+
+    const v11AsV10 = mutableEvidence();
+    v11AsV10.schemaVersion = 10;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v11AsV10)),
     );
 
     const mixedV1 = mutableV1Evidence();
@@ -955,10 +1056,10 @@ describe("PostgreSQL acceptance success evidence", () => {
     );
 
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
     );
   });
 
@@ -1016,7 +1117,7 @@ describe("PostgreSQL acceptance success evidence", () => {
   });
 
   it.each([
-    ["schemaVersion", 11],
+    ["schemaVersion", 12],
     ["suite", "different-suite"],
     ["outcome", "failed"],
     ["job", "different-job"],
@@ -1221,6 +1322,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "databasePackageManifestSha256",
       "pnpmLockfileSha256",
       "postgresProjectionPoolSha256",
+      "postgresMigrationDeployerSha256",
     ] as const) {
       for (const replacement of [
         "f".repeat(63),
@@ -1336,7 +1438,7 @@ describe("PostgreSQL acceptance success evidence", () => {
     }
   });
 
-  it("never writes a historical v1 through v9 record under the v10 filename", async () => {
+  it("never writes a historical v1 through v10 record under the v11 filename", async () => {
     const directory = await mkdtemp(join(tmpdir(), "rc-pg-evidence-"));
     TEMP_DIRECTORIES.push(directory);
 
@@ -1350,10 +1452,11 @@ describe("PostgreSQL acceptance success evidence", () => {
       v7Evidence(),
       v8Evidence(),
       v9Evidence(),
+      v10Evidence(),
     ]) {
       await expect(
         writePostgresAcceptanceEvidence(
-          historical as unknown as PostgresAcceptanceEvidenceV10,
+          historical as unknown as PostgresAcceptanceEvidenceV11,
           { RUNNER_TEMP: directory },
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceError);

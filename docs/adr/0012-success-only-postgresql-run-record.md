@@ -1,6 +1,7 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; version 9 live record retained and reviewed
+Status: accepted; versions 1 through 10 retained and reviewed; version 11 source
+contract accepted with live record pending
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -33,12 +34,15 @@ binds three additional v2 plan inputs. Its pinned live run and review are
 retained below. Version 8 preserves exact v1 through v7 parsing, appends only
 the policy-scoped data dump and bounded clean restore check, and binds the two
 additional B8 plan inputs. Its pinned live run and review are also retained
-below. The current source producer writes
-`research-cockpit-postgres-acceptance-v9.json`. Version 9 preserves exact v1
-through v8 parsing, appends only the single-client read-only projection-adapter
-check, binds four additional B9 sources, and records the exact node-postgres
-version. Its pinned live run and independent review are retained below; source
-presence alone is not evidence.
+below. Version 9 preserves exact v1 through v8 parsing, appends only the
+single-client read-only projection-adapter check, binds four additional B9
+sources, and records the exact node-postgres version. Version 10 preserves
+exact v1 through v9 parsing, appends only the bounded pool lifecycle check,
+binds the pool source, and records the exact pg-pool version. Their pinned live
+runs and independent reviews are retained below. The current source producer
+writes `research-cockpit-postgres-acceptance-v11.json`; its source contract is
+described below, but no live V11 record is yet retained. Source presence alone
+is not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -175,7 +179,7 @@ package manifest, and workspace lockfile, and extends only the V9 tool-version
 shape with `nodePostgres: "8.23.0"`. It replaces only
 `application_driver_pool_or_composition_root` with
 `application_pool_or_composition_root`; every other V8 check, limitation,
-source key, and historical meaning remains fixed. The current filename is
+source key, and historical meaning remains fixed. The V9 filename is
 `research-cockpit-postgres-acceptance-v9.json`, and the artifact is
 `postgres-acceptance-evidence-v9-${sha}-${attempt}`.
 
@@ -222,6 +226,35 @@ the exact anchors and bounded claim. This successor does not alter any version 1
 through version 9 record. See
 [ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
 [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md).
+
+Cycle 1b-b11 has a separate accepted version 11 source/evidence contract. V11
+preserves every V1 through V10 parser branch, source and tool shape, check,
+limitation, and historical meaning. It appends only
+`authenticated_locked_migration_ledger_checksum_drift_refusal_one_time_replay_rollback_and_concurrent_deployment`
+and appends only `postgresMigrationDeployerSha256`, which binds the exact bytes
+of `packages/db/src/postgres-migration-deployer.ts`. No tool field changes;
+V11 retains the exact V10 PostgreSQL, node-postgres, and pg-pool shape.
+
+V11 replaces only
+`external_production_or_incremental_authenticated_migrations` with the ordered
+`external_or_production_incremental_migrator_credentials`,
+`arbitrary_manifest_multi_release_or_general_incremental_migrations`, retained
+`globally_atomic_platform_and_application_bootstrap`, and
+`production_migration_orchestration_crash_recovery_cancellation_or_failover`
+nonclaims. Every other V10 limitation remains exact and ordered.
+
+The V11 filename is `research-cockpit-postgres-acceptance-v11.json`, and the
+workflow artifact name is exactly
+`postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}`.
+The success path ends with the exact terminal fragment
+`the version 11 success-only run record was written.` The writer remains
+exclusive-create and success-only. Focused parser, writer, verifier, and
+reviewer compatibility coverage passes 158 tests, including review of a
+historical V10 commit that does not contain the new deployer blob. Integrated
+local gates pass. A pinned V11 execution, retained record/log hashes, and
+independent `offline_consistent` review remain pending. See
+[ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
+[Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
 
 ## Primary sources
 

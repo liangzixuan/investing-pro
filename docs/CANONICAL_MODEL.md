@@ -193,6 +193,17 @@ run `32161137775` at commit `2dcb259`; its retained version 10 record returned
 [ADR 0022](./adr/0022-bounded-postgresql-projection-pool-lifecycle.md), and the
 [Cycle 1b-b10 exit matrix](./CYCLE_1BB10_EXIT_MATRIX.md).
 
+Cycle 1b-b11 source also changes no canonical entity, tenancy, time, numeric,
+evidence, rights, deletion, or projection semantics. Its
+`PostgresMigrationDeployer` snapshots the existing closed v2 plan and accepts
+only an exact non-empty ledger prefix before applying reviewed pending bodies
+and exact ledger rows under transaction-scoped locks. The acceptance-only
+`v2-0005` reconstruction is a bounded test setup, not a new canonical state,
+down-migration contract, or supported historical model. See
+[ADR 0023](./adr/0023-locked-postgresql-migration-ledger-deployment.md) and the
+[Cycle 1b-b11 exit matrix](./CYCLE_1BB11_EXIT_MATRIX.md). Integrated local
+verification is complete; live V11 review remains pending.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -210,8 +221,11 @@ result. B10 separately defines a bounded two-client pool/concurrency/
 cancellation boundary whose pinned V10 run and independent artifact review are
 complete. Production pool tuning, load capacity, retry/failover, graceful
 cancellation, prompt queued abort, and application composition remain outside
-B10. B11 is the next migration-ledger locking, checksum-drift, and
-concurrent-deployment gate.
+B10. B11 source is implemented only for one exact v2 suffix; external or
+production credentials, arbitrary/multi-release upgrades, online application
+compatibility, crash recovery, cancellation, distributed coordination, global
+atomicity, and production readiness remain outside it. V11 live evidence is
+pending.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
 authenticated-migrator gate. The reviewed B7 result proves only the bounded

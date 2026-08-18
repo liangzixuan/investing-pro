@@ -27,6 +27,14 @@ export const AUTHENTICATED_MIGRATION_APPLICATION_FILES = Object.freeze([
   "0005_non_reusable_resource_ids.sql",
   "0006_null_safe_request_context.sql",
 ] as const);
+const AUTHENTICATED_MIGRATION_APPLICATION_SHA256 = Object.freeze([
+  "37d69e26b370e6a0c9f191e6f46a8d59579612f67c16f918e2ed78a5eb399e2f",
+  "272dce4b0d91e96f58442896621b2d570e8e027fbfc843f83de5f36c005154f6",
+  "d7a1a3d1991cb0a531a1643111fb8192dfad546efa4aa4913d0d8f8f34fed4d2",
+  "ecaf289311eea9a58d8c4e4f342e9f7e40f86f0b05fdebc9d50975aa672930eb",
+  "703205835c4689350ec0d49d4377adaa08dc2abdcc63bf669dda8dee7049d61d",
+  "b3da4be6401accbd0140f0fe9a85d04d4093a06448eab129aa1c9c78be363f91",
+] as const);
 export const AUTHENTICATED_MIGRATION_PLATFORM_SHA256 =
   "21da4c90175b5b22f0e87a21fcd37ce2d6be651ed1c276d30fd01565c9eb41f1" as const;
 export const AUTHENTICATED_MIGRATION_OWNER_ROLE =
@@ -47,7 +55,8 @@ export const AUTHENTICATED_MIGRATION_ROLE_RESET_MARKER =
 export const AUTHENTICATED_MIGRATION_INJECTED_FAILURE_SQLSTATE =
   "22012" as const;
 
-const AUTHENTICATED_MIGRATION_ADVISORY_LOCK = "818476709640328252";
+export const AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY =
+  "818476709640328252" as const;
 const APPLICATION_MIGRATION_COUNT =
   AUTHENTICATED_MIGRATION_APPLICATION_FILES.length;
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -143,9 +152,40 @@ export async function loadAuthenticatedMigrationPlan(
       sql: await readFile(join(applicationDirectory, file), "utf8"),
     })),
   );
-  const plan = freezePlan({ platformSql, manifest, applicationFiles });
-  validateAuthenticatedMigrationPlan(plan);
-  return plan;
+  return snapshotAuthenticatedMigrationPlan({
+    platformSql,
+    manifest,
+    applicationFiles,
+  });
+}
+
+/**
+ * Take one synchronous, validated snapshot before a migration transaction can
+ * await. Callers may retain or mutate their input without changing the
+ * reviewed plan used by the transaction.
+ */
+export function snapshotAuthenticatedMigrationPlan(
+  plan: AuthenticatedMigrationPlan,
+): AuthenticatedMigrationPlan {
+  const snapshot = freezePlan({
+    platformSql: plan.platformSql,
+    manifest: parseAuthenticatedMigrationManifest({
+      schemaVersion: plan.manifest.schemaVersion,
+      planVersion: plan.manifest.planVersion,
+      algorithm: plan.manifest.algorithm,
+      migrations: plan.manifest.migrations.map((entry) => ({
+        id: entry.id,
+        file: entry.file,
+        sha256: entry.sha256,
+      })),
+    }),
+    applicationFiles: plan.applicationFiles.map((migration) => ({
+      file: migration.file,
+      sql: migration.sql,
+    })),
+  });
+  validateAuthenticatedMigrationPlan(snapshot);
+  return snapshot;
 }
 
 export function parseAuthenticatedMigrationManifest(
@@ -244,7 +284,7 @@ export function renderAuthenticatedPlatformMigration(
   validateAuthenticatedMigrationPlan(plan);
   const lines = [
     "BEGIN;",
-    `SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK}::bigint);`,
+    `SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY}::bigint);`,
     stripPlatformTransaction(plan.platformSql),
   ];
   if (injectFailure) lines.push(renderInjectedFailure());
@@ -262,7 +302,7 @@ export function renderAuthenticatedApplicationMigration(
   validateAuthenticatedMigrationPlan(plan);
   const lines = [
     "BEGIN;",
-    `SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK}::bigint);`,
+    `SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY}::bigint);`,
     `SET LOCAL ROLE ${AUTHENTICATED_MIGRATION_OWNER_ROLE};`,
     renderAuthenticatedApplicationPreflight(databaseName),
   ];
@@ -373,6 +413,11 @@ function validateAuthenticatedMigrationPlan(
       );
     }
     validateApplicationSql(migration);
+    if (entry.sha256 !== AUTHENTICATED_MIGRATION_APPLICATION_SHA256[index]) {
+      throw new Error(
+        `Authenticated application checksum differs from the reviewed v2 source: ${entry.file}`,
+      );
+    }
   }
   validateApplicationBundle(plan.applicationFiles);
 }

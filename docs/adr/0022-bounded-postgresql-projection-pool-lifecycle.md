@@ -148,12 +148,17 @@ writes, complete dossiers, real data, deployment, or production readiness.
 ## Consequences
 
 B10 closes only the bounded two-client lifecycle, simultaneous synthetic
-isolation, settlement-before-discard cancellation, server-timeout recovery, and zero-residue
-pool gate. The next database milestone is Cycle 1b-b11: migration-ledger
-locking, checksum-mismatch refusal against live drift, one-time replay,
-injected-failure rollback, and concurrent-deployment behavior. External or
-production incremental migrator credentials and global platform/application
-atomicity are not inferred from B10 or B11.
+isolation, settlement-before-discard cancellation, server-timeout recovery, and
+zero-residue pool gate. Cycle 1b-b11 now has an implemented source contract for
+locked-ledger validation, live-drift refusal, exact once-only suffix replay,
+injected rollback, and two-deployer serialization; its integrated local
+verification is complete, while its live V11 gate remains pending. External or
+production incremental migrator
+credentials, arbitrary or multi-release upgrades, production migration
+orchestration/recovery/cancellation/failover, and global platform/application
+atomicity are not inferred from B10 or B11. See
+[ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
+[Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
 
 ## Related decisions and primary sources
 
@@ -161,6 +166,8 @@ atomicity are not inferred from B10 or B11.
 - [Cycle 1b-b9 exit matrix](../CYCLE_1BB9_EXIT_MATRIX.md)
 - [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md)
 - [Cycle 1b-b10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md)
+- [ADR 0023: Locked PostgreSQL migration-ledger deployment](./0023-locked-postgresql-migration-ledger-deployment.md)
+- [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md)
 - [node-postgres pools](https://node-postgres.com/features/pooling)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [PostgreSQL 17 client connection defaults](https://www.postgresql.org/docs/17/runtime-config-client.html)

@@ -21,6 +21,7 @@ import {
 } from "./clean-bootstrap";
 import { loadMigrationFiles } from "./check-migrations";
 import {
+  AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY,
   AUTHENTICATED_MIGRATION_IDENTITY_MARKER,
   AUTHENTICATED_MIGRATION_DATABASE_NAME,
   AUTHENTICATED_MIGRATION_ROLE_RESET_MARKER,
@@ -33,6 +34,13 @@ import {
   type AuthenticatedMigrationDatabaseName,
   type AuthenticatedMigrationPlan,
 } from "./authenticated-migration-plan";
+import {
+  POSTGRES_MIGRATION_DEPLOYER_LOGIN_ROLE,
+  PostgresMigrationDeployer,
+  PostgresMigrationDeploymentError,
+  renderAuthenticatedMigrationV2PrefixFiveReconstruction,
+  type PostgresMigrationDeploymentResult,
+} from "./postgres-migration-deployer";
 import {
   AUTHENTICATED_BACKUP_ARCHIVE,
   AUTHENTICATED_BACKUP_CAPABILITY_ROLE,
@@ -81,8 +89,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceV10SourceHashes,
-  type PostgresAcceptanceV10ToolVersions,
+  type PostgresAcceptanceV11SourceHashes,
+  type PostgresAcceptanceV11ToolVersions,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -174,6 +182,11 @@ const postgresProjectionPoolAdapterPath = join(
   "src",
   "postgres-projection-pool.ts",
 );
+const postgresMigrationDeployerPath = join(
+  packageRoot,
+  "src",
+  "postgres-migration-deployer.ts",
+);
 const operationProjectionContractPath = join(
   repositoryRoot,
   "modules",
@@ -190,7 +203,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v10-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 const EXPECTED_NODE_POSTGRES_VERSION = "8.23.0" as const;
 const EXPECTED_NODE_POSTGRES_POOL_VERSION = "3.14.0" as const;
@@ -207,6 +220,16 @@ const POSTGRES_PROJECTION_POOL_BLOCKED_BACKEND_DEADLINE_MILLISECONDS =
   POSTGRES_PROJECTION_POOL_STATEMENT_TIMEOUT_MILLISECONDS -
   POSTGRES_PROJECTION_POOL_CONNECTION_TIMEOUT_MILLISECONDS -
   1_000;
+const POSTGRES_MIGRATION_DEPLOYER_ADMIN_PASSWORD =
+  "postgres-acceptance-only" as const;
+const POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A =
+  "research-cockpit-b11-deployer-a" as const;
+const POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B =
+  "research-cockpit-b11-deployer-b" as const;
+const POSTGRES_MIGRATION_DEPLOYER_BARRIER_APPLICATION =
+  "research-cockpit-b11-ledger-barrier" as const;
+const POSTGRES_MIGRATION_DEPLOYER_BLOCKED_DEADLINE_MILLISECONDS = 2_000;
+const POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256 = "0".repeat(64);
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
 export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
@@ -235,6 +258,10 @@ export const MIGRATOR_AUTH_PASSFILE =
   "/tmp/research-cockpit-migrator-login.pgpass" as const;
 export const MIGRATOR_AUTH_WRONG_PASSFILE =
   "/tmp/research-cockpit-migrator-login-wrong.pgpass" as const;
+export const MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE =
+  POSTGRES_MIGRATION_DEPLOYER_LOGIN_ROLE;
+export const MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE =
+  "research_cockpit_owner" as const;
 export const AUTHENTICATED_BACKUP_FORBIDDEN_SET_ROLES = Object.freeze([
   "research_cockpit_owner",
   "research_cockpit_runtime",
@@ -503,6 +530,39 @@ interface AuthenticatedBackupTableFingerprint {
   readonly table: (typeof AUTHENTICATED_BACKUP_RESTORABLE_TABLES)[number];
   readonly rowCount: number;
   readonly sha256: string;
+}
+
+interface MigrationDeployerLedgerRow {
+  readonly migrationId: string;
+  readonly fileName: string;
+  readonly sha256: string;
+  readonly appliedAt: string;
+  readonly appliedBy: string;
+}
+
+interface MigrationDeployerProcedureState {
+  readonly oid: number;
+  readonly owner: string;
+  readonly source: string;
+  readonly accessControlFingerprint: string;
+  readonly configuration: string;
+  readonly securityDefiner: boolean;
+  readonly kind: string;
+}
+
+interface MigrationDeployerTargetState {
+  readonly ledger: readonly MigrationDeployerLedgerRow[];
+  readonly procedure: MigrationDeployerProcedureState;
+}
+
+interface MigrationDeployerClientState {
+  readonly backendPid: number;
+  readonly sessionUser: string;
+  readonly currentUser: string;
+  readonly systemUser: string;
+  readonly applicationName: string;
+  readonly transactionReadOnly: string;
+  readonly ssl: boolean;
 }
 
 interface AcceptanceImageConfig {
@@ -1175,6 +1235,71 @@ export function assertMigratorWrongPasswordRejection(
   }
 }
 
+export function generateMigrationDeployerAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function renderMigrationDeployerAuthProvisioningSql(
+  password: string,
+): string {
+  assertMigrationDeployerAuthPassword(password);
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT 2
+  PASSWORD '${password}';
+GRANT ${MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE}
+  TO ${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
+}
+
+export function renderMigrationDeployerAuthCleanupSql(): string {
+  return `BEGIN;
+DROP ROLE IF EXISTS ${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE};
+COMMIT;
+`;
+}
+
+export function renderMigrationDeployerAuthBackendDrainSql(): string {
+  return `DO $migration_deployer_auth_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE usename = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'
+        AND backend_type = 'client backend'
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'ephemeral migration deployer login backend did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END;
+$migration_deployer_auth_backend_drain$;
+`;
+}
+
 export function renderAuthenticatedOwnerDdlCanaryCreateSql(): string {
   return renderAuthenticatedOwnerDdlCanaryCreate(false);
 }
@@ -1766,6 +1891,11 @@ export async function runPostgresAcceptance(
     fixtureSql,
     adapterEndpoint,
   );
+  await verifyAuthenticatedPostgresMigrationDeployment(
+    containerId,
+    adapterEndpoint,
+    authenticatedMigrationPlan,
+  );
   await verifyAuthenticatedPostgresProjectionPool(containerId, adapterEndpoint);
   await verifyAuthenticatedBackupAndBoundedRestore(
     containerId,
@@ -1790,7 +1920,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 10 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 11 success-only run record was written.\n",
   );
 }
 
@@ -1871,6 +2001,1251 @@ async function verifyVersionedAuthenticatedMigrationPlan(
   await verifyAuthenticatedRuntimeSession(containerId, adapterEndpoint);
   await verifyMigrationLedger(containerId, expectedLedger);
   await verifyB7PlatformArtifactsAfterApplication(containerId);
+}
+
+async function verifyAuthenticatedPostgresMigrationDeployment(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  plan: AuthenticatedMigrationPlan,
+): Promise<void> {
+  await verifyMigrationDeployerAuthResidueAbsent(containerId);
+  const password = generateMigrationDeployerAuthPassword();
+  const clients: Array<{
+    readonly client: Client;
+    readonly removeErrorListener: () => void;
+  }> = [];
+  const unexpectedClientErrors: string[] = [];
+  let clientA: Client | undefined;
+  let clientB: Client | undefined;
+  let barrierClient: Client | undefined;
+  let barrierOpen = false;
+  let targetModified = false;
+  const pendingDeployments: Promise<PostgresMigrationDeploymentResult>[] = [];
+  let probeError: unknown;
+  let cleanupError: unknown;
+
+  const registerClient = (client: Client, label: string): Client => {
+    const recordUnexpectedError = () => {
+      unexpectedClientErrors.push(label);
+    };
+    client.on("error", recordUnexpectedError);
+    clients.push({
+      client,
+      removeErrorListener: () =>
+        client.removeListener("error", recordUnexpectedError),
+    });
+    return client;
+  };
+
+  try {
+    await provisionMigrationDeployerAuthLogin(containerId, password);
+    await verifyMigrationDeployerAuthRoleCatalog(containerId);
+
+    clientA = registerClient(
+      createPostgresMigrationDeployerClient(
+        endpoint,
+        password,
+        POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+      ),
+      "deployer-a",
+    );
+    await clientA.connect();
+    const clientAState = await assertPostgresMigrationDeployerClientIdle(
+      clientA,
+      POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+    );
+    const deployerA = new PostgresMigrationDeployer(clientA, plan);
+
+    await psql(
+      containerId,
+      renderAuthenticatedMigrationV2PrefixFiveReconstruction(plan),
+    );
+    targetModified = true;
+    const injectedPrefix =
+      await collectMigrationDeployerTargetState(containerId);
+    assertMigrationDeployerTargetPrefix(injectedPrefix, plan);
+    const injectedError = await captureMigrationDeploymentError(
+      deployerA.deploy({ injectFailure: true }),
+    );
+    assertMigrationDeploymentError(
+      injectedError,
+      "POSTGRES_MIGRATION_DEPLOYMENT_FAILURE",
+    );
+    const afterInjectedFailure =
+      await collectMigrationDeployerTargetState(containerId);
+    assertEqual(
+      JSON.stringify(afterInjectedFailure),
+      JSON.stringify(injectedPrefix),
+      "B11 injected deployment rollback target fingerprint",
+    );
+    await assertPostgresMigrationDeployerClientIdle(
+      clientA,
+      POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+      clientAState.backendPid,
+    );
+
+    assertMigrationDeploymentResult(await deployerA.deploy(), "applied");
+    const serialAppliedState =
+      await collectMigrationDeployerTargetState(containerId);
+    assertMigrationDeployerTargetCurrent(serialAppliedState, plan);
+    const replayResult = await deployerA.deploy();
+    assertMigrationDeploymentResult(replayResult, "current");
+    const afterReplay = await collectMigrationDeployerTargetState(containerId);
+    assertEqual(
+      JSON.stringify(afterReplay),
+      JSON.stringify(serialAppliedState),
+      "B11 one-time replay target fingerprint",
+    );
+    await assertPostgresMigrationDeployerClientIdle(
+      clientA,
+      POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+      clientAState.backendPid,
+    );
+
+    await verifyMigrationDeployerLiveChecksumDrift(
+      containerId,
+      plan,
+      deployerA,
+      serialAppliedState,
+    );
+
+    clientB = registerClient(
+      createPostgresMigrationDeployerClient(
+        endpoint,
+        password,
+        POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B,
+      ),
+      "deployer-b",
+    );
+    await clientB.connect();
+    const clientBState = await assertPostgresMigrationDeployerClientIdle(
+      clientB,
+      POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B,
+    );
+    await verifyMigrationDeployerConnectionLimit(endpoint, password);
+
+    await psql(
+      containerId,
+      renderAuthenticatedMigrationV2PrefixFiveReconstruction(plan),
+    );
+    assertMigrationDeployerTargetPrefix(
+      await collectMigrationDeployerTargetState(containerId),
+      plan,
+    );
+
+    barrierClient = registerClient(
+      createPostgresMigrationDeployerAdminClient(endpoint),
+      "ledger-barrier",
+    );
+    await barrierClient.connect();
+    const barrierPid = await beginMigrationDeployerLedgerBarrier(barrierClient);
+    barrierOpen = true;
+
+    const deployerB = new PostgresMigrationDeployer(clientB, plan);
+    const deploymentA = deployerA.deploy();
+    pendingDeployments.push(deploymentA);
+    await waitForMigrationDeployerBlockingChain(barrierClient, {
+      barrierPid,
+      deployerAPid: clientAState.backendPid,
+    });
+    const deploymentB = deployerB.deploy();
+    pendingDeployments.push(deploymentB);
+    await waitForMigrationDeployerBlockingChain(barrierClient, {
+      barrierPid,
+      deployerAPid: clientAState.backendPid,
+      deployerBPid: clientBState.backendPid,
+    });
+
+    await releaseMigrationDeployerLedgerBarrier(barrierClient);
+    barrierOpen = false;
+    const concurrentResults =
+      await settleMigrationDeployments(pendingDeployments);
+    assertConcurrentMigrationDeploymentResults(concurrentResults);
+    assertMigrationDeployerTargetCurrent(
+      await collectMigrationDeployerTargetState(containerId),
+      plan,
+    );
+    await assertPostgresMigrationDeployerClientIdle(
+      clientA,
+      POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+      clientAState.backendPid,
+    );
+    await assertPostgresMigrationDeployerClientIdle(
+      clientB,
+      POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B,
+      clientBState.backendPid,
+    );
+    if (unexpectedClientErrors.length > 0) {
+      throw new Error("B11 migration deployer client emitted an idle error");
+    }
+  } catch (error) {
+    probeError = error;
+  } finally {
+    try {
+      const cleanupFailures: RuntimeAuthBestEffortOperation[] = [];
+      if (barrierOpen && barrierClient !== undefined) {
+        const clientToRelease = barrierClient;
+        cleanupFailures.push({
+          label: "release B11 ledger barrier",
+          run: () => releaseMigrationDeployerLedgerBarrier(clientToRelease),
+        });
+      }
+      if (pendingDeployments.length > 0) {
+        cleanupFailures.push({
+          label: "settle B11 migration deployments",
+          run: async () => {
+            await settleMigrationDeployments(pendingDeployments);
+          },
+        });
+      }
+      for (const registered of clients) {
+        cleanupFailures.push({
+          label: "close B11 PostgreSQL client",
+          run: async () => {
+            try {
+              await registered.client.end();
+            } finally {
+              registered.removeErrorListener();
+            }
+          },
+        });
+      }
+      cleanupFailures.push(
+        {
+          label: "repair B11 acceptance target",
+          run: () =>
+            repairMigrationDeployerTarget(containerId, plan, targetModified),
+        },
+        {
+          label: "drain B11 migration deployer backends",
+          run: () => waitForMigrationDeployerAuthBackendDrain(containerId),
+        },
+        {
+          label: "drop B11 migration deployer login",
+          run: () => cleanupMigrationDeployerAuthProbe(containerId),
+        },
+        {
+          label: "verify B11 migration deployer residue",
+          run: () => verifyMigrationDeployerAuthResidueAbsent(containerId),
+        },
+        {
+          label: "verify B11 final ledger and catalog",
+          run: () =>
+            verifyMigrationDeployerFinalTarget(
+              containerId,
+              plan,
+              targetModified,
+            ),
+        },
+      );
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures(cleanupFailures),
+        "B11 migration deployment cleanup failed",
+      );
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+
+  if (probeError !== undefined && cleanupError !== undefined) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "B11 migration deployment probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeError !== undefined) throw migrationDeployerHarnessError(probeError);
+  if (cleanupError !== undefined)
+    throw migrationDeployerHarnessError(cleanupError);
+}
+
+async function provisionMigrationDeployerAuthLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    ],
+    renderMigrationDeployerAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral B11 migration deployer login",
+  );
+}
+
+async function verifyMigrationDeployerAuthRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|2|true`,
+    "B11 migration deployer login attributes and SCRAM verifier",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'
+   OR member_role.rolname = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}';`,
+    ),
+    `${MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE}|${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}|false|false|true`,
+    "B11 migration deployer SET-only owner membership",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH deployer AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_attribute AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.attacl) AS privilege
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole = (SELECT oid FROM deployer)
+) || '|' || (
+  SELECT count(*) FROM direct_acl
+  WHERE grantee = (SELECT oid FROM deployer)
+);`,
+    ),
+    "0|0",
+    "B11 migration deployer role settings and direct ACLs",
+  );
+}
+
+function createPostgresMigrationDeployerClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+  applicationName:
+    | typeof POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A
+    | typeof POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B,
+): Client {
+  assertMigrationDeployerAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: CLEAN_BOOTSTRAP_DATABASE_NAME,
+    user: MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: applicationName,
+    connectionTimeoutMillis: 2_000,
+  });
+}
+
+function createPostgresMigrationDeployerAdminClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+): Client {
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: CLEAN_BOOTSTRAP_DATABASE_NAME,
+    user: "postgres",
+    password: POSTGRES_MIGRATION_DEPLOYER_ADMIN_PASSWORD,
+    ssl: false,
+    application_name: POSTGRES_MIGRATION_DEPLOYER_BARRIER_APPLICATION,
+    connectionTimeoutMillis: 2_000,
+  });
+}
+
+async function assertPostgresMigrationDeployerClientIdle(
+  client: Client,
+  expectedApplicationName:
+    | typeof POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A
+    | typeof POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B,
+  expectedBackendPid?: number,
+): Promise<MigrationDeployerClientState> {
+  const result = await client.query<{ state: string }>({
+    text: `SELECT pg_catalog.json_build_object(
+  'backendPid', pg_catalog.pg_backend_pid(),
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'applicationName', pg_catalog.current_setting('application_name'),
+  'transactionReadOnly', pg_catalog.current_setting('transaction_read_only'),
+  'ssl', EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  )
+)::text AS state;`,
+  });
+  const text = result.rows[0]?.state;
+  if (result.command !== "SELECT" || result.rowCount !== 1 || !text) {
+    throw new Error("B11 migration deployer client state is invalid");
+  }
+  const value = JSON.parse(text) as unknown;
+  if (
+    !isRecord(value) ||
+    !Number.isSafeInteger(value.backendPid) ||
+    (value.backendPid as number) <= 0 ||
+    (expectedBackendPid !== undefined &&
+      value.backendPid !== expectedBackendPid) ||
+    value.sessionUser !== MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE ||
+    value.currentUser !== MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE ||
+    value.systemUser !==
+      `scram-sha-256:${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}` ||
+    value.applicationName !== expectedApplicationName ||
+    value.transactionReadOnly !== "off" ||
+    value.ssl !== false
+  ) {
+    throw new Error("B11 migration deployer client state is unsafe");
+  }
+  return Object.freeze({
+    backendPid: value.backendPid as number,
+    sessionUser: value.sessionUser,
+    currentUser: value.currentUser,
+    systemUser: value.systemUser,
+    applicationName: expectedApplicationName,
+    transactionReadOnly: value.transactionReadOnly,
+    ssl: value.ssl,
+  });
+}
+
+async function verifyMigrationDeployerConnectionLimit(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Promise<void> {
+  const third = createPostgresMigrationDeployerClient(
+    endpoint,
+    password,
+    POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+  );
+  let rejected = false;
+  let cleanupFailed = false;
+  try {
+    await third.connect();
+  } catch (error) {
+    rejected = postgresErrorCode(error) === "53300";
+  } finally {
+    try {
+      await third.end();
+    } catch {
+      cleanupFailed = true;
+    }
+  }
+  if (!rejected || cleanupFailed) {
+    throw new Error("B11 migration deployer connection limit was not enforced");
+  }
+}
+
+async function collectMigrationDeployerTargetState(
+  containerId: string,
+): Promise<MigrationDeployerTargetState> {
+  const value = JSON.parse(
+    await psqlScalar(
+      containerId,
+      `SELECT pg_catalog.json_build_object(
+  'ledger', (
+    SELECT coalesce(
+      pg_catalog.json_agg(
+        pg_catalog.json_build_object(
+          'migrationId', ledger.migration_id,
+          'fileName', ledger.file_name,
+          'sha256', ledger.sha256,
+          'appliedAt', ledger.applied_at::text,
+          'appliedBy', ledger.applied_by
+        ) ORDER BY ledger.migration_id
+      ),
+      '[]'::json
+    )
+    FROM shared_data.schema_migrations AS ledger
+  ),
+  'procedure', (
+    SELECT pg_catalog.json_build_object(
+      'oid', procedure.oid,
+      'owner', pg_catalog.pg_get_userbyid(procedure.proowner),
+      'source', procedure.prosrc,
+      'accessControlFingerprint', (
+        SELECT count(*) || '|' ||
+          count(*) FILTER (WHERE privilege.grantee = 0) || '|' ||
+          count(*) FILTER (WHERE privilege.grantee = procedure.proowner) || '|' ||
+          count(*) FILTER (
+            WHERE privilege.grantee = (
+              SELECT oid FROM pg_catalog.pg_roles
+              WHERE rolname = 'research_cockpit_runtime'
+            )
+          ) || '|' ||
+          count(*) FILTER (
+            WHERE privilege.grantee NOT IN (
+              0,
+              procedure.proowner,
+              (SELECT oid FROM pg_catalog.pg_roles
+               WHERE rolname = 'research_cockpit_runtime')
+            )
+          ) || '|' ||
+          count(*) FILTER (
+            WHERE privilege.privilege_type <> 'EXECUTE'
+               OR privilege.grantor <> procedure.proowner
+               OR privilege.is_grantable
+          )
+        FROM pg_catalog.aclexplode(
+          coalesce(
+            procedure.proacl,
+            pg_catalog.acldefault('f', procedure.proowner)
+          )
+        ) AS privilege
+      ),
+      'configuration', coalesce(
+        pg_catalog.array_to_string(procedure.proconfig, ','), ''
+      ),
+      'securityDefiner', procedure.prosecdef,
+      'kind', procedure.prokind
+    )
+    FROM pg_catalog.pg_proc AS procedure
+    WHERE procedure.oid = 'private_data.set_request_context(uuid,uuid,text,text,text,text)'::pg_catalog.regprocedure
+  )
+)::text;`,
+    ),
+  ) as unknown;
+  if (!isRecord(value) || !Array.isArray(value.ledger)) {
+    throw new Error("B11 migration deployer target state is invalid");
+  }
+  const ledger = value.ledger.map((row, index) => {
+    if (
+      !isRecord(row) ||
+      typeof row.migrationId !== "string" ||
+      typeof row.fileName !== "string" ||
+      typeof row.sha256 !== "string" ||
+      typeof row.appliedAt !== "string" ||
+      row.appliedAt.length === 0 ||
+      typeof row.appliedBy !== "string"
+    ) {
+      throw new Error(`B11 migration deployer ledger row ${index} is invalid`);
+    }
+    return Object.freeze({
+      migrationId: row.migrationId,
+      fileName: row.fileName,
+      sha256: row.sha256,
+      appliedAt: row.appliedAt,
+      appliedBy: row.appliedBy,
+    });
+  });
+  if (!isRecord(value.procedure)) {
+    throw new Error("B11 migration deployer procedure state is invalid");
+  }
+  const procedure = value.procedure;
+  if (
+    !Number.isSafeInteger(procedure.oid) ||
+    (procedure.oid as number) <= 0 ||
+    typeof procedure.owner !== "string" ||
+    typeof procedure.source !== "string" ||
+    typeof procedure.accessControlFingerprint !== "string" ||
+    typeof procedure.configuration !== "string" ||
+    typeof procedure.securityDefiner !== "boolean" ||
+    typeof procedure.kind !== "string"
+  ) {
+    throw new Error("B11 migration deployer procedure catalog is invalid");
+  }
+  return Object.freeze({
+    ledger: Object.freeze(ledger),
+    procedure: Object.freeze({
+      oid: procedure.oid as number,
+      owner: procedure.owner,
+      source: procedure.source,
+      accessControlFingerprint: procedure.accessControlFingerprint,
+      configuration: procedure.configuration,
+      securityDefiner: procedure.securityDefiner,
+      kind: procedure.kind,
+    }),
+  });
+}
+
+function assertMigrationDeployerTargetPrefix(
+  state: MigrationDeployerTargetState,
+  plan: AuthenticatedMigrationPlan,
+): void {
+  assertMigrationDeployerLedgerRows(state.ledger, plan, 5);
+  assertMigrationDeployerProcedureState(
+    state.procedure,
+    extractMigrationDeployerProcedureSource(plan.applicationFiles[0]?.sql),
+  );
+}
+
+function assertMigrationDeployerTargetCurrent(
+  state: MigrationDeployerTargetState,
+  plan: AuthenticatedMigrationPlan,
+): void {
+  assertMigrationDeployerLedgerRows(state.ledger, plan, 6);
+  assertMigrationDeployerProcedureState(
+    state.procedure,
+    extractMigrationDeployerProcedureSource(plan.applicationFiles[5]?.sql),
+  );
+}
+
+function assertMigrationDeployerLedgerRows(
+  actual: readonly MigrationDeployerLedgerRow[],
+  plan: AuthenticatedMigrationPlan,
+  count: 5 | 6,
+): void {
+  const expected = plan.manifest.migrations.slice(0, count);
+  if (actual.length !== expected.length) {
+    throw new Error("B11 migration deployer ledger length differs");
+  }
+  for (const [index, entry] of expected.entries()) {
+    const row = actual[index];
+    const expectedAppliedBy =
+      index < 5 ? MIGRATOR_AUTH_LOGIN_ROLE : MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE;
+    if (
+      row?.migrationId !== entry.id ||
+      row.fileName !== entry.file ||
+      row.sha256 !== entry.sha256 ||
+      row.appliedBy !== expectedAppliedBy
+    ) {
+      throw new Error("B11 migration deployer ledger differs");
+    }
+  }
+}
+
+function assertMigrationDeployerProcedureState(
+  actual: MigrationDeployerProcedureState,
+  expectedSource: string,
+): void {
+  if (
+    actual.owner !== MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE ||
+    actual.source !== expectedSource ||
+    actual.configuration !== "search_path=pg_catalog" ||
+    actual.securityDefiner ||
+    actual.kind !== "p" ||
+    actual.accessControlFingerprint !== "2|0|1|1|0|0"
+  ) {
+    throw new Error("B11 migration deployer procedure state differs");
+  }
+}
+
+function extractMigrationDeployerProcedureSource(
+  sql: string | undefined,
+): string {
+  if (sql === undefined) {
+    throw new Error("B11 migration deployer procedure source is missing");
+  }
+  const matches = [
+    ...sql.matchAll(
+      /CREATE(?: OR REPLACE)? PROCEDURE private_data\.set_request_context\([\s\S]*?AS \$procedure\$([\s\S]*?)\$procedure\$;/g,
+    ),
+  ];
+  if (matches.length !== 1 || matches[0]?.[1] === undefined) {
+    throw new Error("B11 migration deployer procedure source is ambiguous");
+  }
+  return matches[0][1];
+}
+
+function assertMigrationDeploymentResult(
+  result: PostgresMigrationDeploymentResult,
+  expectedStatus: "applied" | "current",
+): void {
+  const expectedIds = expectedStatus === "applied" ? ["v2-0006"] : [];
+  if (
+    result.status !== expectedStatus ||
+    JSON.stringify(result.appliedMigrationIds) !== JSON.stringify(expectedIds)
+  ) {
+    throw new Error("B11 migration deployment result differs");
+  }
+}
+
+async function captureMigrationDeploymentError(
+  promise: Promise<PostgresMigrationDeploymentResult>,
+): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error) {
+    return error;
+  }
+  throw new Error("B11 migration deployment unexpectedly succeeded");
+}
+
+function assertMigrationDeploymentError(
+  error: unknown,
+  expectedCode:
+    "POSTGRES_MIGRATION_LEDGER_DRIFT" | "POSTGRES_MIGRATION_DEPLOYMENT_FAILURE",
+): void {
+  if (
+    !(error instanceof PostgresMigrationDeploymentError) ||
+    error.code !== expectedCode ||
+    error.message !== "PostgreSQL migration deployment failed." ||
+    Object.hasOwn(error, "cause")
+  ) {
+    throw new Error("B11 migration deployment error differs");
+  }
+}
+
+async function verifyMigrationDeployerLiveChecksumDrift(
+  containerId: string,
+  plan: AuthenticatedMigrationPlan,
+  deployer: PostgresMigrationDeployer,
+  baseline: MigrationDeployerTargetState,
+): Promise<void> {
+  const driftEntry = plan.manifest.migrations[2];
+  if (
+    driftEntry === undefined ||
+    driftEntry.sha256 === POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256
+  ) {
+    throw new Error("B11 checksum-drift fixture is invalid");
+  }
+  let driftInstalled = false;
+  let probeError: unknown;
+  let restoreError: unknown;
+  try {
+    await setMigrationDeployerLedgerChecksum(
+      containerId,
+      driftEntry.id,
+      driftEntry.file,
+      driftEntry.sha256,
+      POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256,
+    );
+    driftInstalled = true;
+    const drifted = await collectMigrationDeployerTargetState(containerId);
+    assertMigrationDeployerTargetCurrentWithDrift(drifted, plan, driftEntry.id);
+    const driftError = await captureMigrationDeploymentError(deployer.deploy());
+    assertMigrationDeploymentError(
+      driftError,
+      "POSTGRES_MIGRATION_LEDGER_DRIFT",
+    );
+    assertEqual(
+      JSON.stringify(await collectMigrationDeployerTargetState(containerId)),
+      JSON.stringify(drifted),
+      "B11 checksum-drift refusal target fingerprint",
+    );
+  } catch (error) {
+    probeError = error;
+  } finally {
+    if (driftInstalled) {
+      try {
+        await setMigrationDeployerLedgerChecksum(
+          containerId,
+          driftEntry.id,
+          driftEntry.file,
+          POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256,
+          driftEntry.sha256,
+        );
+        assertEqual(
+          JSON.stringify(
+            await collectMigrationDeployerTargetState(containerId),
+          ),
+          JSON.stringify(baseline),
+          "B11 checksum-drift repair target fingerprint",
+        );
+      } catch (error) {
+        restoreError = error;
+      }
+    }
+  }
+  if (probeError !== undefined && restoreError !== undefined) {
+    throw new AggregateError(
+      [probeError, restoreError],
+      "B11 checksum-drift probe and repair both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeError !== undefined) throw migrationDeployerHarnessError(probeError);
+  if (restoreError !== undefined)
+    throw migrationDeployerHarnessError(restoreError);
+}
+
+function migrationDeployerHarnessError(error: unknown): Error {
+  return error instanceof Error
+    ? error
+    : new Error("B11 PostgreSQL migration-deployment harness failed", {
+        cause: error,
+      });
+}
+
+function assertMigrationDeployerTargetCurrentWithDrift(
+  state: MigrationDeployerTargetState,
+  plan: AuthenticatedMigrationPlan,
+  driftedMigrationId: string,
+): void {
+  if (state.ledger.length !== plan.manifest.migrations.length) {
+    throw new Error("B11 checksum-drift ledger length differs");
+  }
+  for (const [index, entry] of plan.manifest.migrations.entries()) {
+    const row = state.ledger[index];
+    if (
+      row?.migrationId !== entry.id ||
+      row.fileName !== entry.file ||
+      row.sha256 !==
+        (entry.id === driftedMigrationId
+          ? POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256
+          : entry.sha256) ||
+      row.appliedBy !==
+        (index < 5
+          ? MIGRATOR_AUTH_LOGIN_ROLE
+          : MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE)
+    ) {
+      throw new Error("B11 checksum-drift ledger differs");
+    }
+  }
+  assertMigrationDeployerProcedureState(
+    state.procedure,
+    extractMigrationDeployerProcedureSource(plan.applicationFiles[5]?.sql),
+  );
+}
+
+async function setMigrationDeployerLedgerChecksum(
+  containerId: string,
+  migrationId: string,
+  fileName: string,
+  expectedSha256: string,
+  replacementSha256: string,
+): Promise<void> {
+  const result = await psql(
+    containerId,
+    `BEGIN;
+SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY}::bigint);
+SET LOCAL ROLE ${MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE};
+LOCK TABLE ONLY shared_data.schema_migrations IN SHARE ROW EXCLUSIVE MODE;
+DO $b11_checksum_drift$
+BEGIN
+  UPDATE shared_data.schema_migrations
+  SET sha256 = '${replacementSha256}'
+  WHERE migration_id = '${migrationId}'
+    AND file_name = '${fileName}'
+    AND sha256 = '${expectedSha256}';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'B11 checksum-drift source row differs'
+      USING ERRCODE = '55000';
+  END IF;
+END;
+$b11_checksum_drift$;
+COMMIT;
+`,
+  );
+  assertEqual(
+    result.stderr.trim(),
+    "",
+    "B11 checksum-drift mutation diagnostics",
+  );
+}
+
+async function beginMigrationDeployerLedgerBarrier(
+  client: Client,
+): Promise<number> {
+  await client.query("BEGIN READ WRITE");
+  await client.query(
+    "SET LOCAL statement_timeout = '10s'; SET LOCAL lock_timeout = '5s'",
+  );
+  await client.query(
+    "LOCK TABLE ONLY shared_data.schema_migrations IN ROW EXCLUSIVE MODE",
+  );
+  const result = await client.query<{ backend_pid: number }>(
+    "SELECT pg_catalog.pg_backend_pid() AS backend_pid",
+  );
+  const backendPid = result.rows[0]?.backend_pid;
+  if (
+    result.command !== "SELECT" ||
+    result.rowCount !== 1 ||
+    !Number.isSafeInteger(backendPid) ||
+    (backendPid as number) <= 0
+  ) {
+    throw new Error("B11 ledger barrier backend PID is invalid");
+  }
+  return backendPid as number;
+}
+
+async function releaseMigrationDeployerLedgerBarrier(
+  client: Client,
+): Promise<void> {
+  try {
+    await client.query("ROLLBACK");
+  } catch (rollbackError) {
+    try {
+      await client.end();
+    } catch (endError) {
+      throw new AggregateError(
+        [rollbackError, endError],
+        "B11 ledger barrier rollback and client close both failed",
+        { cause: endError },
+      );
+    }
+    throw rollbackError;
+  }
+}
+
+async function waitForMigrationDeployerBlockingChain(
+  observer: Client,
+  expected: {
+    readonly barrierPid: number;
+    readonly deployerAPid: number;
+    readonly deployerBPid?: number;
+  },
+): Promise<void> {
+  const deadline =
+    Date.now() + POSTGRES_MIGRATION_DEPLOYER_BLOCKED_DEADLINE_MILLISECONDS;
+  for (;;) {
+    await observer.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+    const result = await observer.query<{ valid: boolean }>({
+      text: `SELECT (
+  EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'relation'
+      AND held.relation = 'shared_data.schema_migrations'::pg_catalog.regclass
+      AND held.mode = 'RowExclusiveLock'
+      AND held.granted
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_stat_activity AS activity
+    JOIN pg_catalog.pg_locks AS waiting
+      ON waiting.pid = activity.pid
+    WHERE activity.pid = $2::integer
+      AND activity.usename = $3::name
+      AND activity.application_name = $4::text
+      AND activity.state = 'active'
+      AND activity.wait_event_type = 'Lock'
+      AND waiting.locktype = 'relation'
+      AND waiting.relation = 'shared_data.schema_migrations'::pg_catalog.regclass
+      AND waiting.mode = 'ShareRowExclusiveLock'
+      AND NOT waiting.granted
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $2::integer
+      AND held.locktype = 'advisory'
+      AND held.mode = 'ExclusiveLock'
+      AND held.granted
+  )
+  AND $1::integer = ANY (pg_catalog.pg_blocking_pids($2::integer))
+  AND (
+    $5::integer IS NULL
+    OR (
+      EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_stat_activity AS activity
+        JOIN pg_catalog.pg_locks AS waiting
+          ON waiting.pid = activity.pid
+        WHERE activity.pid = $5::integer
+          AND activity.usename = $3::name
+          AND activity.application_name = $6::text
+          AND activity.state = 'active'
+          AND activity.wait_event_type = 'Lock'
+          AND activity.wait_event = 'advisory'
+          AND waiting.locktype = 'advisory'
+          AND waiting.mode = 'ExclusiveLock'
+          AND NOT waiting.granted
+      )
+      AND $2::integer = ANY (pg_catalog.pg_blocking_pids($5::integer))
+    )
+  )
+) AS valid;`,
+      values: [
+        expected.barrierPid,
+        expected.deployerAPid,
+        MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE,
+        POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A,
+        expected.deployerBPid ?? null,
+        POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B,
+      ],
+    });
+    const valid =
+      result.command === "SELECT" &&
+      result.rowCount === 1 &&
+      result.rows[0]?.valid === true;
+    const now = Date.now();
+    if (valid && now <= deadline) return;
+    if (now >= deadline) {
+      throw new Error(
+        "B11 migration deployment blocking chain was not observed",
+      );
+    }
+    await delayMigrationDeployerPoll();
+  }
+}
+
+function delayMigrationDeployerPoll(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 25);
+  });
+}
+
+async function settleMigrationDeployments(
+  deployments: readonly Promise<PostgresMigrationDeploymentResult>[],
+): Promise<readonly PostgresMigrationDeploymentResult[]> {
+  const settled = await Promise.allSettled(deployments);
+  const failures = settled.flatMap((result) =>
+    result.status === "rejected" ? [result.reason as unknown] : [],
+  );
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      "B11 concurrent migration deployment failed",
+      { cause: failures[0] },
+    );
+  }
+  return Object.freeze(
+    settled.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    ),
+  );
+}
+
+function assertConcurrentMigrationDeploymentResults(
+  results: readonly PostgresMigrationDeploymentResult[],
+): void {
+  if (results.length !== 2) {
+    throw new Error("B11 concurrent migration deployment count differs");
+  }
+  const statuses = results.map(({ status }) => status).sort();
+  if (JSON.stringify(statuses) !== JSON.stringify(["applied", "current"])) {
+    throw new Error("B11 concurrent migration deployment statuses differ");
+  }
+  for (const result of results) {
+    assertMigrationDeploymentResult(result, result.status);
+  }
+}
+
+async function repairMigrationDeployerTarget(
+  containerId: string,
+  plan: AuthenticatedMigrationPlan,
+  targetModified: boolean,
+): Promise<void> {
+  const state = await collectMigrationDeployerTargetState(containerId);
+  if (!targetModified) {
+    assertMigrationDeployerB7Baseline(state, plan);
+    return;
+  }
+  if (isMigrationDeployerCanonicalCurrent(state, plan)) return;
+  assertMigrationDeployerRepairableState(state, plan);
+
+  const driftEntry = plan.manifest.migrations[2];
+  const suffixEntry = plan.manifest.migrations[5];
+  const suffixMigration = plan.applicationFiles[5];
+  if (
+    driftEntry === undefined ||
+    suffixEntry === undefined ||
+    suffixMigration?.file !== suffixEntry.file
+  ) {
+    throw new Error("B11 cleanup migration plan is incomplete");
+  }
+  const result = await psql(
+    containerId,
+    `BEGIN;
+SELECT pg_catalog.pg_advisory_xact_lock(${AUTHENTICATED_MIGRATION_ADVISORY_LOCK_KEY}::bigint);
+SET LOCAL ROLE ${MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE};
+LOCK TABLE ONLY shared_data.schema_migrations IN SHARE ROW EXCLUSIVE MODE;
+UPDATE shared_data.schema_migrations
+SET sha256 = '${driftEntry.sha256}'
+WHERE migration_id = '${driftEntry.id}'
+  AND file_name = '${driftEntry.file}'
+  AND sha256 IN (
+    '${driftEntry.sha256}',
+    '${POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256}'
+  );
+${suffixMigration.sql.trimEnd()}
+INSERT INTO shared_data.schema_migrations (
+  migration_id,
+  file_name,
+  sha256,
+  applied_by
+) VALUES (
+  '${suffixEntry.id}',
+  '${suffixEntry.file}',
+  '${suffixEntry.sha256}',
+  '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'
+)
+ON CONFLICT (migration_id) DO UPDATE
+SET file_name = EXCLUDED.file_name,
+    sha256 = EXCLUDED.sha256,
+    applied_by = EXCLUDED.applied_by;
+COMMIT;
+`,
+  );
+  assertEqual(
+    result.stderr.trim(),
+    "",
+    "B11 acceptance target repair diagnostics",
+  );
+  assertMigrationDeployerTargetCurrent(
+    await collectMigrationDeployerTargetState(containerId),
+    plan,
+  );
+}
+
+function isMigrationDeployerCanonicalCurrent(
+  state: MigrationDeployerTargetState,
+  plan: AuthenticatedMigrationPlan,
+): boolean {
+  try {
+    assertMigrationDeployerTargetCurrent(state, plan);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function assertMigrationDeployerB7Baseline(
+  state: MigrationDeployerTargetState,
+  plan: AuthenticatedMigrationPlan,
+): void {
+  if (state.ledger.length !== plan.manifest.migrations.length) {
+    throw new Error("B11 inherited B7 ledger length differs");
+  }
+  for (const [index, entry] of plan.manifest.migrations.entries()) {
+    const row = state.ledger[index];
+    if (
+      row?.migrationId !== entry.id ||
+      row.fileName !== entry.file ||
+      row.sha256 !== entry.sha256 ||
+      row.appliedBy !== MIGRATOR_AUTH_LOGIN_ROLE
+    ) {
+      throw new Error("B11 inherited B7 ledger differs");
+    }
+  }
+  assertMigrationDeployerProcedureState(
+    state.procedure,
+    extractMigrationDeployerProcedureSource(plan.applicationFiles[5]?.sql),
+  );
+}
+
+function assertMigrationDeployerRepairableState(
+  state: MigrationDeployerTargetState,
+  plan: AuthenticatedMigrationPlan,
+): void {
+  if (state.ledger.length !== 5 && state.ledger.length !== 6) {
+    throw new Error("B11 cleanup refuses an unknown ledger length");
+  }
+  for (const [index, row] of state.ledger.entries()) {
+    const entry = plan.manifest.migrations[index];
+    if (
+      entry === undefined ||
+      row.migrationId !== entry.id ||
+      row.fileName !== entry.file ||
+      (row.sha256 !== entry.sha256 &&
+        !(
+          index === 2 && row.sha256 === POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256
+        )) ||
+      row.appliedBy !==
+        (index < 5
+          ? MIGRATOR_AUTH_LOGIN_ROLE
+          : MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE)
+    ) {
+      throw new Error("B11 cleanup refuses unknown ledger drift");
+    }
+  }
+  const prefixSource = extractMigrationDeployerProcedureSource(
+    plan.applicationFiles[0]?.sql,
+  );
+  const currentSource = extractMigrationDeployerProcedureSource(
+    plan.applicationFiles[5]?.sql,
+  );
+  if (
+    state.procedure.source !== prefixSource &&
+    state.procedure.source !== currentSource
+  ) {
+    throw new Error("B11 cleanup refuses unknown procedure drift");
+  }
+  assertMigrationDeployerProcedureState(
+    state.procedure,
+    state.procedure.source,
+  );
+}
+
+async function cleanupMigrationDeployerAuthProbe(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderMigrationDeployerAuthCleanupSql());
+}
+
+async function waitForMigrationDeployerAuthBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psql(containerId, renderMigrationDeployerAuthBackendDrainSql());
+}
+
+async function verifyMigrationDeployerAuthResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH deployer AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'
+)
+SELECT (
+  SELECT count(*) FROM deployer
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_auth_members
+  WHERE roleid IN (SELECT oid FROM deployer)
+     OR member IN (SELECT oid FROM deployer)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_stat_activity
+  WHERE usename = '${MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE}'
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_stat_activity
+  WHERE application_name IN (
+    '${POSTGRES_MIGRATION_DEPLOYER_APPLICATION_A}',
+    '${POSTGRES_MIGRATION_DEPLOYER_APPLICATION_B}',
+    '${POSTGRES_MIGRATION_DEPLOYER_BARRIER_APPLICATION}'
+  )
+);`,
+    ),
+    "0|0|0|0",
+    "B11 migration deployer role, edge, backend, and application residue",
+  );
+}
+
+async function verifyMigrationDeployerFinalTarget(
+  containerId: string,
+  plan: AuthenticatedMigrationPlan,
+  targetModified: boolean,
+): Promise<void> {
+  const state = await collectMigrationDeployerTargetState(containerId);
+  if (targetModified) {
+    assertMigrationDeployerTargetCurrent(state, plan);
+  } else {
+    assertMigrationDeployerB7Baseline(state, plan);
+  }
+  await verifyMigrationLedger(
+    containerId,
+    expectedAuthenticatedMigrationLedgerRows(plan.manifest).map(
+      ({ migrationId, fileName, sha256 }) =>
+        `${migrationId}|${fileName}|${sha256}`,
+    ),
+  );
+  await verifyCatalogContract(containerId);
+  await verifyB7PlatformArtifactsAfterApplication(containerId);
+  await verifyContextCleanup(containerId);
 }
 
 async function verifyAuthenticatedPostgresProjectionPool(
@@ -4873,7 +6248,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV10SourceHashes> {
+): Promise<PostgresAcceptanceV11SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -4891,6 +6266,7 @@ async function collectAcceptanceSourceHashes(
     databasePackageManifestSha256,
     pnpmLockfileSha256,
     postgresProjectionPoolSha256,
+    postgresMigrationDeployerSha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -4908,6 +6284,7 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(databasePackageManifestPath),
     exactFileSha256(pnpmLockfilePath),
     exactFileSha256(postgresProjectionPoolAdapterPath),
+    exactFileSha256(postgresMigrationDeployerPath),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
@@ -4932,6 +6309,7 @@ async function collectAcceptanceSourceHashes(
     databasePackageManifestSha256,
     pnpmLockfileSha256,
     postgresProjectionPoolSha256,
+    postgresMigrationDeployerSha256,
   });
 }
 
@@ -5333,7 +6711,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<PostgresAcceptanceV10ToolVersions> {
+): Promise<PostgresAcceptanceV11ToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -9664,7 +11042,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "7d993fea4c18469ebc07e900c798e06af881f7c1e01f621b3145d9c1fd13af0b" ||
+      "73bc100eb27a1e7884d05f6feb642bc00c224d56e7b480899ba901cd9934f24a" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     typeof value.verifiedOn !== "string" ||
@@ -9731,6 +11109,20 @@ function assertMigratorAuthPassword(password: string): void {
   ) {
     throw new Error(
       "Migrator-auth password must be a 32-byte base64url value without padding",
+    );
+  }
+}
+
+function assertMigrationDeployerAuthPassword(password: string): void {
+  const decoded = Buffer.from(password, "base64url");
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password) ||
+    decoded.length !== 32 ||
+    decoded.toString("base64url") !== password
+  ) {
+    throw new Error(
+      "Migration deployer authentication password must be a 32-byte base64url value without padding",
     );
   }
 }

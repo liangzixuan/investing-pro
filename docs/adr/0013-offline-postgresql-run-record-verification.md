@@ -1,6 +1,7 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained version 9 artifact reviewed successfully
+Status: accepted; retained versions through 10 reviewed successfully; version
+11 source contract accepted with artifact review pending
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,9 +15,10 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v8 support and accepts the current v9 schema without
+historical v1 through v10 support and accepts the current v11 schema without
 mixing any version's closed check, limitation, source-hash, or tool-version
-lists. Retained version 6 through version 9 artifacts have been reviewed.
+lists. The retained artifacts described below through version 10 have been
+reviewed; no version 11 artifact is yet retained.
 Canonical comparison rejects byte-order marks, CRLF or alternate whitespace,
 trailing content, reordered members, and duplicate JSON member names.
 
@@ -31,16 +33,18 @@ recorded in the artifact; validates the reviewed PostgreSQL target against the
 commit's image declaration; and checks the exact ordered migration inventory
 and every migration-body hash.
 
-For versions 7 through 9, the reviewer also requires the fixed v2 platform plan,
+For versions 7 through 11, the reviewer also requires the fixed v2 platform plan,
 application manifest, authenticated renderer, and the exact manifest-listed
-application bodies from the anchored commit. Versions 8 and 9 additionally
+application bodies from the anchored commit. Versions 8 through 11 additionally
 require the fixed restore-platform asset and authenticated backup/restore
-renderer. Version 9 alone also requires the adapter, core operation-projection
-contract, database package manifest, and lockfile, and checks the exact
-node-postgres tool version. It
-rejects missing, extra, non-regular, or mixed-version tree entries and validates
-each body against the closed manifest. Versions 1 through 6 retain their
-historical source shapes and do not acquire these inputs retroactively.
+renderer. Versions 9 through 11 also require the adapter, core
+operation-projection contract, database package manifest, and lockfile, and
+check the exact node-postgres tool version. Versions 10 and 11 additionally
+require the pool source and exact pg-pool version. Version 11 alone requires
+the migration-deployer source. The reviewer rejects missing, extra,
+non-regular, or mixed-version tree entries and validates each body against the
+closed manifest. Versions 1 through 6 retain their historical source shapes and
+do not acquire these inputs retroactively.
 
 The CLI performs no fetch, network request, archive extraction, glob expansion,
 source write, or database operation. It emits a fixed-schema
@@ -200,3 +204,24 @@ failed-backend destruction, close/drain, or zero residue without separate
 review of the pinned workflow and exact logs. See
 [ADR 0022](./0022-bounded-postgresql-projection-pool-lifecycle.md) and the
 [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md).
+
+The accepted Cycle 1b-b11 evidence design adds one explicit V11 verifier and
+reviewer branch while preserving exact V1 through V10 behavior. V11 requires
+the appended
+`authenticated_locked_migration_ledger_checksum_drift_refusal_one_time_replay_rollback_and_concurrent_deployment`
+check, the exact four-item migration nonclaim transformation, unchanged V10
+tool fields, and exact `postgresMigrationDeployerSha256` bytes read from
+`packages/db/src/postgres-migration-deployer.ts` at the independently anchored
+commit. Missing, extra, reordered, historical-version, or mixed-version checks,
+limitations, tools, source keys, and source blobs fail closed. A V10 record and
+commit remain reviewable without the deployer path or hash.
+
+Focused V1 through V11 parser, verifier, and reviewer compatibility coverage
+passes 158 tests. No V11 artifact or `offline_consistent` result is yet
+retained. Source compatibility does not prove the deployer executed, locked the
+live ledger, refused live drift, rolled a suffix back, applied it once,
+serialized two clients, or cleaned up. Those claims remain pending on the
+pinned workflow, exact logs, retained artifact, and independently supplied
+anchors. See
+[ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
+[Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
