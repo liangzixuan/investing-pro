@@ -5171,7 +5171,16 @@ class PostgresPrivacyRetentionError extends Error {
 }
 
 class PostgresPrivacyRetentionDiagnosticError extends Error {
-  constructor(phase: "suffix_ledger" | "suffix_catalog", diagnostic: string) {
+  constructor(
+    phase:
+      | "suffix_ledger"
+      | "suffix_catalog"
+      | "metadata_purge"
+      | "metadata_state"
+      | "tombstone_delete"
+      | "tombstone_state",
+    diagnostic: string,
+  ) {
     super(`B13 privacy-retention diagnostic ${phase}: ${diagnostic}`);
     this.name = "PostgresPrivacyRetentionDiagnosticError";
   }
@@ -5943,6 +5952,25 @@ function summarizePostgresPrivacyRetentionCatalogDiagnostic(
     : `fingerprint=<invalid>;length=${actual.length}`;
 }
 
+function safePostgresPrivacyRetentionDiagnosticScalar(value: unknown): string {
+  if (
+    typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= 1_000_000
+  ) {
+    return String(value);
+  }
+  if (
+    typeof value === "string" &&
+    /^(?:0|[1-9]\d{0,6})(?:\.\d{1,6})?$/.test(value)
+  ) {
+    return value;
+  }
+  if (typeof value === "boolean") return String(value);
+  return "<unexpected>";
+}
+
 async function seedPostgresPrivacyRetentionFixture(
   client: Client,
   fixtureSql: string,
@@ -6186,13 +6214,17 @@ async function verifyPostgresPrivacyRetentionMetadataBoundaries(
       idempotency_rows: string;
       audit_rows: string;
     }>("SELECT * FROM private_data.purge_expired_privacy_metadata()");
+    const purgeRow = purged.rows[0];
     if (
       purged.command !== "SELECT" ||
       purged.rowCount !== 1 ||
-      purged.rows[0]?.idempotency_rows !== "3" ||
-      purged.rows[0]?.audit_rows !== "3"
+      purgeRow?.idempotency_rows !== "3" ||
+      purgeRow?.audit_rows !== "3"
     ) {
-      throw new PostgresPrivacyRetentionError();
+      throw new PostgresPrivacyRetentionDiagnosticError(
+        "metadata_purge",
+        `command=${purged.command === "SELECT" ? "SELECT" : "<unexpected>"};row_count=${safePostgresPrivacyRetentionDiagnosticScalar(purged.rowCount)};idempotency_rows=${safePostgresPrivacyRetentionDiagnosticScalar(purgeRow?.idempotency_rows)};audit_rows=${safePostgresPrivacyRetentionDiagnosticScalar(purgeRow?.audit_rows)}`,
+      );
     }
     await commitPostgresPrivacyRetentionCapabilityTransaction(privacyClient);
   } catch (error) {
@@ -6246,7 +6278,10 @@ async function verifyPostgresPrivacyRetentionMetadataBoundaries(
     Number(row.audit_seconds) !== 7_776_000 ||
     row.future_after_clock !== true
   ) {
-    throw new PostgresPrivacyRetentionError();
+    throw new PostgresPrivacyRetentionDiagnosticError(
+      "metadata_state",
+      `row_count=${safePostgresPrivacyRetentionDiagnosticScalar(boundary.rowCount)};idempotency_past_or_at=${safePostgresPrivacyRetentionDiagnosticScalar(row?.idempotency_past_or_at)};idempotency_future=${safePostgresPrivacyRetentionDiagnosticScalar(row?.idempotency_future)};audit_past_or_at=${safePostgresPrivacyRetentionDiagnosticScalar(row?.audit_past_or_at)};audit_future=${safePostgresPrivacyRetentionDiagnosticScalar(row?.audit_future)};idempotency_seconds=${safePostgresPrivacyRetentionDiagnosticScalar(row?.idempotency_seconds)};audit_seconds=${safePostgresPrivacyRetentionDiagnosticScalar(row?.audit_seconds)};future_after_clock=${safePostgresPrivacyRetentionDiagnosticScalar(row?.future_after_clock)}`,
+    );
   }
 }
 
@@ -6342,7 +6377,10 @@ async function verifyPostgresPrivacyRetentionTombstone(
       deleted.rows[0]?.allocation_id !==
         PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID
     ) {
-      throw new PostgresPrivacyRetentionError();
+      throw new PostgresPrivacyRetentionDiagnosticError(
+        "tombstone_delete",
+        `command=${deleted.command === "SELECT" ? "SELECT" : "<unexpected>"};row_count=${safePostgresPrivacyRetentionDiagnosticScalar(deleted.rowCount)};allocation_match=${String(deleted.rows[0]?.allocation_id === PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID)}`,
+      );
     }
     await commitPostgresPrivacyRetentionCapabilityTransaction(privacyClient);
   } catch (error) {
@@ -6373,7 +6411,10 @@ WHERE allocation_id = $2::uuid;`,
     state.rows[0].raw_cleared !== true ||
     state.rows[0].token_preserved !== true
   ) {
-    throw new PostgresPrivacyRetentionError();
+    throw new PostgresPrivacyRetentionDiagnosticError(
+      "tombstone_state",
+      `row_count=${safePostgresPrivacyRetentionDiagnosticScalar(state.rowCount)};deleted=${safePostgresPrivacyRetentionDiagnosticScalar(state.rows[0]?.deleted)};raw_cleared=${safePostgresPrivacyRetentionDiagnosticScalar(state.rows[0]?.raw_cleared)};token_preserved=${safePostgresPrivacyRetentionDiagnosticScalar(state.rows[0]?.token_preserved)}`,
+    );
   }
   await expectPostgresPrivacyRetentionCapabilityFailure(
     privacyClient,

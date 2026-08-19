@@ -3610,8 +3610,8 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       '"SELECT transaction_timestamp()::text AS reference_time"',
       "await seedPostgresPrivacyRetentionBoundaryRows(seedClient, referenceTime);",
       '"SELECT * FROM private_data.purge_expired_privacy_metadata()"',
-      'purged.rows[0]?.idempotency_rows !== "3"',
-      'purged.rows[0]?.audit_rows !== "3"',
+      'purgeRow?.idempotency_rows !== "3"',
+      'purgeRow?.audit_rows !== "3"',
       "idempotency_past_or_at",
       "audit_past_or_at",
       "future_after_clock",
@@ -3619,6 +3619,14 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "interval '90 days'",
       "interval '1 microsecond'",
     ]);
+    for (const marker of [
+      '"metadata_purge"',
+      "idempotency_rows=${safePostgresPrivacyRetentionDiagnosticScalar(",
+      '"metadata_state"',
+      "future_after_clock=${safePostgresPrivacyRetentionDiagnosticScalar(",
+    ]) {
+      expect(boundaries).toContain(marker);
+    }
 
     const tombstone = section(
       "async function verifyPostgresPrivacyRetentionTombstone(",
@@ -3638,6 +3646,14 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       '"23505"',
     ]);
     expect(tombstone).not.toContain("DELETE FROM private_data.theses");
+    for (const marker of [
+      '"tombstone_delete"',
+      "allocation_match=${String(",
+      '"tombstone_state"',
+      "token_preserved=${safePostgresPrivacyRetentionDiagnosticScalar(",
+    ]) {
+      expect(tombstone).toContain(marker);
+    }
 
     const suffixCatalog = section(
       "async function verifyPostgresPrivacyRetentionSuffixState(",
@@ -3681,6 +3697,10 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(suffixDiagnostics).not.toContain(
       "/^[a-z0-9-]{1,64}$/.test(migrationId)",
     );
+    expect(suffixDiagnostics).toContain(
+      "function safePostgresPrivacyRetentionDiagnosticScalar(",
+    );
+    expect(suffixDiagnostics).toContain('return "<unexpected>"');
 
     const acceptancePolicy = section(
       "function assertPostgresPrivacyRetentionAcceptancePolicy(",

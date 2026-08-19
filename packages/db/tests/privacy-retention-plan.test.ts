@@ -189,6 +189,49 @@ describe("privacy retention plan v1", () => {
     expect(sql).not.toMatch(
       /GRANT DELETE ON (?:TABLE )?private_data\.(?:theses|alert_rules)\s+TO research_cockpit_privacy_retention/,
     );
+    expect(sql).toContain(`CREATE POLICY privacy_owner_active_theses_select
+  ON private_data.theses
+  FOR SELECT TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND EXISTS (
+      SELECT 1
+      FROM private_data.resource_privacy_domains AS domain_row
+      WHERE domain_row.organization_id = theses.organization_id
+        AND domain_row.lifecycle_state = 'active'
+        AND domain_row.data_classification = 'synthetic'
+    )
+  );`);
+    expect(sql).toContain(`CREATE POLICY privacy_owner_active_alert_rules_select
+  ON private_data.alert_rules
+  FOR SELECT TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND EXISTS (
+      SELECT 1
+      FROM private_data.resource_privacy_domains AS domain_row
+      WHERE domain_row.organization_id = alert_rules.organization_id
+        AND domain_row.lifecycle_state = 'active'
+        AND domain_row.data_classification = 'synthetic'
+    )
+  );`);
+    expect(sql)
+      .toContain(`CREATE POLICY privacy_owner_expired_idempotency_update
+  ON private_data.idempotency_records
+  FOR UPDATE TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND expires_at <= transaction_timestamp()
+  )
+  WITH CHECK (false);`);
+    expect(sql).toContain(`CREATE POLICY privacy_owner_expired_audit_update
+  ON private_data.audit_events
+  FOR UPDATE TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND retention_until <= transaction_timestamp()
+  )
+  WITH CHECK (false);`);
     expect(sql).toContain("LIMIT 1000");
     expect(sql).toContain("FOR UPDATE SKIP LOCKED");
   });

@@ -578,9 +578,37 @@ CREATE POLICY privacy_owner_active_theses_delete
     )
   );
 
+CREATE POLICY privacy_owner_active_theses_select
+  ON private_data.theses
+  FOR SELECT TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND EXISTS (
+      SELECT 1
+      FROM private_data.resource_privacy_domains AS domain_row
+      WHERE domain_row.organization_id = theses.organization_id
+        AND domain_row.lifecycle_state = 'active'
+        AND domain_row.data_classification = 'synthetic'
+    )
+  );
+
 CREATE POLICY privacy_owner_active_alert_rules_delete
   ON private_data.alert_rules
   FOR DELETE TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND EXISTS (
+      SELECT 1
+      FROM private_data.resource_privacy_domains AS domain_row
+      WHERE domain_row.organization_id = alert_rules.organization_id
+        AND domain_row.lifecycle_state = 'active'
+        AND domain_row.data_classification = 'synthetic'
+    )
+  );
+
+CREATE POLICY privacy_owner_active_alert_rules_select
+  ON private_data.alert_rules
+  FOR SELECT TO research_cockpit_owner
   USING (
     data_classification = 'synthetic'
     AND EXISTS (
@@ -637,6 +665,24 @@ CREATE POLICY privacy_owner_expired_audit_select
     data_classification = 'synthetic'
     AND retention_until <= transaction_timestamp()
   );
+
+CREATE POLICY privacy_owner_expired_idempotency_update
+  ON private_data.idempotency_records
+  FOR UPDATE TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND expires_at <= transaction_timestamp()
+  )
+  WITH CHECK (false);
+
+CREATE POLICY privacy_owner_expired_audit_update
+  ON private_data.audit_events
+  FOR UPDATE TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND retention_until <= transaction_timestamp()
+  )
+  WITH CHECK (false);
 
 CREATE POLICY privacy_owner_expired_idempotency_delete
   ON private_data.idempotency_records
