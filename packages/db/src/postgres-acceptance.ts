@@ -1956,6 +1956,7 @@ export async function runPostgresAcceptance(
     containerId,
     adapterEndpoint,
     queryPlanLoadFixtureSql,
+    authenticatedMigrationPlan,
   );
   await verifyAuthenticatedPostgresProjectionPool(containerId, adapterEndpoint);
   await verifyAuthenticatedBackupAndBoundedRestore(
@@ -3313,6 +3314,7 @@ async function verifyAuthenticatedPostgresQueryPlanLoad(
   containerId: string,
   endpoint: PostgresProjectionAdapterEndpoint,
   fixtureSql: string,
+  plan: AuthenticatedMigrationPlan,
 ): Promise<void> {
   let sourceBefore: readonly AuthenticatedBackupTableFingerprint[] | undefined;
   let cloneProvisioningStarted = false;
@@ -3549,7 +3551,13 @@ async function verifyAuthenticatedPostgresQueryPlanLoad(
       {
         label: "verify B12 final source catalog",
         run: async () => {
-          await verifyMigrationLedger(containerId);
+          await verifyMigrationLedger(
+            containerId,
+            expectedAuthenticatedMigrationLedgerRows(plan.manifest).map(
+              ({ migrationId, fileName, sha256 }) =>
+                `${migrationId}|${fileName}|${sha256}`,
+            ),
+          );
           await verifyCatalogContract(containerId);
           await verifyB7PlatformArtifactsAfterApplication(containerId);
           await verifyContextCleanup(containerId);

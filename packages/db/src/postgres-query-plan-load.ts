@@ -74,10 +74,10 @@ export const POSTGRES_QUERY_PLAN_LOAD_PROFILE = Object.freeze({
   factRequestCount: 1_000,
   tenantRequestCount: 1_000,
   totalRequestCount: 2_000,
-  connectionTimeoutMilliseconds: 30_000,
+  connectionTimeoutMilliseconds: 120_000,
   statementTimeoutMilliseconds: 10_000,
   lockTimeoutMilliseconds: 5_000,
-  overallTimeoutMilliseconds: 90_000,
+  overallTimeoutMilliseconds: 180_000,
 } as const);
 
 export const POSTGRES_QUERY_PLAN_LOAD_ACTORS = Object.freeze({

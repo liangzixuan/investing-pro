@@ -3150,6 +3150,9 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(
       entrypoint.match(/await verifyAuthenticatedPostgresQueryPlanLoad\(/g),
     ).toHaveLength(1);
+    expect(entrypoint).toContain(
+      "queryPlanLoadFixtureSql,\n    authenticatedMigrationPlan,",
+    );
 
     const lifecycle = section(
       "async function verifyAuthenticatedPostgresQueryPlanLoad(",
@@ -3200,6 +3203,9 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "POSTGRES_QUERY_PLAN_LOAD_PROFILE.totalRequestCount",
     );
     expect(lifecycle).toContain("loadSettlementComplete = true;");
+    expect(lifecycle).toContain(
+      "expectedAuthenticatedMigrationLedgerRows(plan.manifest).map(",
+    );
     expectOrdered(lifecycle, [
       "if (!loadSettlementComplete) throw new PostgresQueryPlanLoadError();",
       "await poolToClose.end();",
