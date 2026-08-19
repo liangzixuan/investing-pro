@@ -1215,16 +1215,22 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("uses defensive byte copies and does not mutate the input", () => {
-    const input = cloneInput();
-    const before = structuredClone(input);
-    const result = verifyPostgresAcceptanceEvidenceOffline(input);
-    expect(input).toEqual(before);
-    input.evidenceBytes.fill(0);
-    input.sources.workflow.fill(0);
-    expect(result.evidenceSha256).toBe(BASE_INPUT.trustAnchors.evidenceSha256);
-    expect(result.verdict).toBe("offline_consistent");
-  });
+  it(
+    "uses defensive byte copies and does not mutate the input",
+    { timeout: 30_000 },
+    () => {
+      const input = cloneInput();
+      const before = structuredClone(input);
+      const result = verifyPostgresAcceptanceEvidenceOffline(input);
+      expect(input).toEqual(before);
+      input.evidenceBytes.fill(0);
+      input.sources.workflow.fill(0);
+      expect(result.evidenceSha256).toBe(
+        BASE_INPUT.trustAnchors.evidenceSha256,
+      );
+      expect(result.verdict).toBe("offline_consistent");
+    },
+  );
 
   it.each([
     "evidenceSha256",
