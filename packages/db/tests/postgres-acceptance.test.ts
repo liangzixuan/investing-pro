@@ -3495,6 +3495,10 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "throw new AggregateError(",
     ]);
     expect(lifecycle).not.toMatch(/process\.stdout|console\.|resource_token/);
+    expect(lifecycle).toContain(
+      "error instanceof PostgresPrivacyRetentionDiagnosticError",
+    );
+    expect(lifecycle).toContain("process.stderr.write(`${error.message}\\n`)");
 
     const deployment = section(
       "async function verifyPostgresPrivacyRetentionPlanDeployment(",
@@ -3634,6 +3638,10 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expectOrdered(suffixCatalog, [
       "`${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`",
       "...expectedAuthenticatedMigrationLedgerRows(",
+      "const actualLedger = await collectMigrationLedger(",
+      '"suffix_ledger"',
+      "const catalogFingerprint = await psqlScalar(",
+      '"suffix_catalog"',
     ]);
     for (const marker of [
       "private_data.delete_live_resource_by_allocation(uuid)",
@@ -3644,6 +3652,27 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     ]) {
       expect(suffixCatalog).toContain(marker);
     }
+    expect(suffixCatalog).toContain(
+      "summarizePostgresPrivacyRetentionLedgerDiagnostic(",
+    );
+    expect(suffixCatalog).toContain(
+      "summarizePostgresPrivacyRetentionCatalogDiagnostic(catalogFingerprint)",
+    );
+    const suffixDiagnostics = section(
+      "function summarizePostgresPrivacyRetentionLedgerDiagnostic(",
+      "async function seedPostgresPrivacyRetentionFixture(",
+    );
+    expect(suffixDiagnostics).not.toMatch(
+      /password|resource_token|fixtureSql|fileName|sha256/,
+    );
+    expect(suffixDiagnostics).toContain("const expectedIds = new Set(");
+    expect(suffixDiagnostics).toContain(
+      'expectedIds.has(migrationId) ? migrationId : "<unexpected>"',
+    );
+    expect(suffixDiagnostics).toContain("field_matches=${fieldMatches}");
+    expect(suffixDiagnostics).not.toContain(
+      "/^[a-z0-9-]{1,64}$/.test(migrationId)",
+    );
 
     const acceptancePolicy = section(
       "function assertPostgresPrivacyRetentionAcceptancePolicy(",

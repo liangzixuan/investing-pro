@@ -5036,7 +5036,10 @@ async function verifyAuthenticatedPostgresPrivacyRetention(
       PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
       PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof PostgresPrivacyRetentionDiagnosticError) {
+      process.stderr.write(`${error.message}\n`);
+    }
     probeError = new PostgresPrivacyRetentionError();
   } finally {
     const cleanupOperations: RuntimeAuthBestEffortOperation[] = [];
@@ -5164,6 +5167,13 @@ class PostgresPrivacyRetentionError extends Error {
   constructor() {
     super("B13 PostgreSQL privacy-retention acceptance failed.");
     this.name = "PostgresPrivacyRetentionError";
+  }
+}
+
+class PostgresPrivacyRetentionDiagnosticError extends Error {
+  constructor(phase: "suffix_ledger" | "suffix_catalog", diagnostic: string) {
+    super(`B13 privacy-retention diagnostic ${phase}: ${diagnostic}`);
+    this.name = "PostgresPrivacyRetentionDiagnosticError";
   }
 }
 
@@ -5780,23 +5790,29 @@ async function verifyPostgresPrivacyRetentionSuffixState(
 ): Promise<void> {
   const privacyEntry = privacyPlan.manifest.migrations[0];
   if (privacyEntry === undefined) throw new PostgresPrivacyRetentionError();
-  await verifyMigrationLedger(
+  const expectedLedger = [
+    `${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`,
+    ...expectedAuthenticatedMigrationLedgerRows(authenticatedPlan.manifest).map(
+      ({ migrationId, fileName, sha256 }) =>
+        `${migrationId}|${fileName}|${sha256}`,
+    ),
+  ];
+  const actualLedger = await collectMigrationLedger(
     containerId,
-    [
-      `${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`,
-      ...expectedAuthenticatedMigrationLedgerRows(
-        authenticatedPlan.manifest,
-      ).map(
-        ({ migrationId, fileName, sha256 }) =>
-          `${migrationId}|${fileName}|${sha256}`,
-      ),
-    ],
     POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
   );
-  assertEqual(
-    await psqlScalar(
-      containerId,
-      `SELECT
+  if (JSON.stringify(actualLedger) !== JSON.stringify(expectedLedger)) {
+    throw new PostgresPrivacyRetentionDiagnosticError(
+      "suffix_ledger",
+      summarizePostgresPrivacyRetentionLedgerDiagnostic(
+        actualLedger,
+        expectedLedger,
+      ),
+    );
+  }
+  const catalogFingerprint = await psqlScalar(
+    containerId,
+    `SELECT
   (pg_catalog.to_regclass('private_data.resource_privacy_domains') IS NOT NULL) || '|' ||
   (SELECT count(*) FROM information_schema.columns
    WHERE table_schema = 'private_data'
@@ -5871,11 +5887,58 @@ async function verifyPostgresPrivacyRetentionSuffixState(
      )) || '|' ||
   (SELECT count(*) FROM private_data.resource_privacy_domains) || '|' ||
   (SELECT count(*) FROM private_data.resource_id_registry);`,
-      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
-    ),
-    "true|3|true|5|5|0|0",
-    "B13 privacy suffix catalog and empty state",
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
   );
+  if (catalogFingerprint !== "true|3|true|5|5|0|0") {
+    throw new PostgresPrivacyRetentionDiagnosticError(
+      "suffix_catalog",
+      summarizePostgresPrivacyRetentionCatalogDiagnostic(catalogFingerprint),
+    );
+  }
+}
+
+function summarizePostgresPrivacyRetentionLedgerDiagnostic(
+  actual: readonly string[],
+  expected: readonly string[],
+): string {
+  const expectedIds = new Set(
+    expected.map((row) => row.split("|", 1)[0] ?? ""),
+  );
+  const safeIds = actual.slice(0, 16).map((row) => {
+    const migrationId = row.split("|", 1)[0] ?? "";
+    return expectedIds.has(migrationId) ? migrationId : "<unexpected>";
+  });
+  const positionMatches = actual
+    .slice(0, 16)
+    .map((row, index) => (row === expected[index] ? "1" : "0"))
+    .join("");
+  const fieldMatches = actual
+    .slice(0, 16)
+    .map((row, index) => {
+      const actualFields = row.split("|");
+      const expectedFields = (expected[index] ?? "").split("|");
+      return [0, 1, 2]
+        .map((field) =>
+          actualFields.length === 3 &&
+          expectedFields.length === 3 &&
+          actualFields[field] === expectedFields[field]
+            ? "1"
+            : "0",
+        )
+        .join("");
+    })
+    .join(",");
+  return `count=${actual.length};ids=${safeIds.join(",")};position_matches=${positionMatches};field_matches=${fieldMatches}`;
+}
+
+function summarizePostgresPrivacyRetentionCatalogDiagnostic(
+  actual: string,
+): string {
+  return /^(?:true|false)\|\d+\|(?:true|false)\|\d+\|\d+\|\d+\|\d+$/.test(
+    actual,
+  )
+    ? `fingerprint=${actual}`
+    : `fingerprint=<invalid>;length=${actual.length}`;
 }
 
 async function seedPostgresPrivacyRetentionFixture(
@@ -10577,7 +10640,15 @@ async function verifyMigrationLedger(
   expected: readonly string[] = LEGACY_MIGRATION_LEDGER_ROWS,
   databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
 ): Promise<void> {
-  const actual = splitLines(
+  const actual = await collectMigrationLedger(containerId, databaseName);
+  assertJsonEqual(actual, expected, "migration ledger");
+}
+
+async function collectMigrationLedger(
+  containerId: string,
+  databaseName: string = CLEAN_BOOTSTRAP_DATABASE_NAME,
+): Promise<string[]> {
+  return splitLines(
     await psqlScalar(
       containerId,
       `SELECT migration_id || '|' || file_name || '|' || sha256
@@ -10586,7 +10657,6 @@ ORDER BY migration_id;`,
       databaseName,
     ),
   );
-  assertJsonEqual(actual, expected, "migration ledger");
 }
 
 async function verifyAuthenticatedTestLoaderSession(
