@@ -191,8 +191,8 @@ ADR 0022 and the
 the implemented B10 source and reviewed V10 result. That successor does not
 change the exact version 9 `notProven` list or any B9 claim. B11 later passed
 its separate bounded live locked-ledger and two-deployer result; it also does
-not widen B9. B12 now has a separate source/local query-plan and bounded
-2,000-submission contract; live V12 review remains pending, and that successor
-does not change this version 9 record. See
+not widen B9. B12 later passed its separate bounded live query-plan and
+2,000-submission result; that successor does not change this version 9 record.
+See the [B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

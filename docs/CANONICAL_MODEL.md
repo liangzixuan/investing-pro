@@ -4,9 +4,8 @@ Status: Cycle 1b-a2 design contract plus live-reviewed bounded Cycle 1b-b2
 runtime authentication, b3 authorization-matrix, b4 projection-query, b5
 test-loader, b6 owner-DDL canary, b7 authenticated application-migration, b8
 policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
-projection-pool, and b11 locked migration-ledger deployment boundaries;
-synthetic data only. The B12 query-plan/load contract is source/local only;
-live V12 review is pending.
+projection-pool, b11 locked migration-ledger deployment, and b12 RLS
+query-plan/load boundaries; synthetic data only.
 
 ## Identity
 
@@ -214,8 +213,10 @@ exact B4 fact-as-known shape and adds one source-controlled tenant thesis read
 only to inspect named-index use and exercise a deterministic synthetic load.
 The B12 fixture and disposable clone are acceptance-only; 1,000 fact plus 1,000
 tenant submissions do not add canonical records, complete dossier breadth, or
-a production load model. Source and integrated local verification are complete;
-live V12 execution and review remain pending. See
+a production load model. Source, integrated local verification, and bounded live
+V12 review are complete. PostgreSQL run `32230667908` passed at commit
+`59c4e58`; its retained record returned `offline_consistent`. See the
+[B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
 
@@ -240,9 +241,9 @@ B10. B11's reviewed result covers only one exact v2 suffix; external or
 production credentials, arbitrary/multi-release upgrades, online application
 compatibility, crash recovery, cancellation, distributed coordination, global
 atomicity, and production readiness remain outside it.
-B12 remains source/local only and bounded to two exact synthetic plan shapes,
-2,000 queued reads, and at most eight runtime workload backends. It does not establish
-1,000/2,000 simultaneous connections, production capacity or SLOs, pool
+B12's reviewed result remains bounded to two exact synthetic plan shapes,
+2,000 queued reads, and at most eight runtime workload backends. It does not
+establish 1,000/2,000 simultaneous connections, production capacity or SLOs, pool
 tuning/failover, planner stability across other data/statistics/hardware/
 versions, real data, application composition, or production readiness.
 B5 closes only one sequential, synthetic, container-local acceptance-only

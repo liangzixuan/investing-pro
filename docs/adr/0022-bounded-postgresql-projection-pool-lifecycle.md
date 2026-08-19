@@ -159,10 +159,10 @@ atomicity are not inferred from B10 or B11. See
 [ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
 [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
 
-B12 now defines a separate source/local query-plan and 2,000-submission gate
-through its own runner-owned eight-client pool. Its live V12 result remains
-pending, and it does not reinterpret B10's reviewed two-client lifecycle as
-load, capacity, or general concurrency evidence.
+B12 later passed its separate bounded live query-plan and 2,000-submission gate
+through its own runner-owned eight-client pool. It does not reinterpret B10's
+reviewed two-client lifecycle as load, capacity, or general concurrency
+evidence.
 
 ## Related decisions and primary sources
 
@@ -175,6 +175,7 @@ load, capacity, or general concurrency evidence.
 - [Cycle 1b-b11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md)
 - [ADR 0024: Bounded PostgreSQL RLS query-plan and 2,000-read load acceptance](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
+- [Cycle 1b-b12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md)
 - [node-postgres pools](https://node-postgres.com/features/pooling)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [PostgreSQL 17 client connection defaults](https://www.postgresql.org/docs/17/runtime-config-client.html)

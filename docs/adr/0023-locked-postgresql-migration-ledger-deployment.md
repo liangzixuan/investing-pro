@@ -158,9 +158,9 @@ production deployment topology.
 
 B11 creates a fail-closed boundary for one exact reviewed v2 suffix and a
 bounded two-deployer serialization proof. Its reviewed V11 result does not
-widen the clean-only B7 claim or any B1 through B10 record. B12 now has a
-separate source/local query-plan and 2,000-submission contract; its live V12
-gate remains pending, and it does not widen this migration result.
+widen the clean-only B7 claim or any B1 through B10 record. B12 later passed its
+separate bounded live query-plan and 2,000-submission result; it does not widen
+this migration result.
 
 ## Related decisions
 
@@ -171,3 +171,4 @@ gate remains pending, and it does not widen this migration result.
 - [Cycle 1b-b11 evidence note](../POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md)
 - [ADR 0024: Bounded PostgreSQL RLS query-plan and 2,000-read load acceptance](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
+- [Cycle 1b-b12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md)

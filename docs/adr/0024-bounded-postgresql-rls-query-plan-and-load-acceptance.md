@@ -1,7 +1,6 @@
 # ADR 0024: Bounded PostgreSQL RLS query-plan and 2,000-read load acceptance
 
-Status: accepted for Cycle 1b-b12 source and integrated local verification;
-live V12 review pending
+Status: accepted; bounded live V12 record retained and reviewed
 
 ## Context
 
@@ -92,11 +91,12 @@ The fixed record filename is
 The writer remains exclusive-create and success-only, and the offline reviewer
 must require both B12 blobs only for V12 while preserving historical review.
 
-Source and integrated local verification do not establish any live PostgreSQL
-result. B12 becomes live-complete only after a clean pinned workflow executes
-the exact bounded plan/load matrix and mandatory cleanup, the V12 record and
-exact logs are retained, and independent commit-bound review returns
-`offline_consistent`. No V12 artifact or post-live evidence note exists yet.
+Source and integrated local verification alone do not establish any live
+PostgreSQL result. PostgreSQL run `32230667908` at commit `59c4e58` executed the
+exact bounded plan/load matrix and mandatory cleanup. Its V12 record and exact
+logs were retained, and independent commit-bound review returned
+`offline_consistent`. See the
+[B12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md).
 
 ## Explicit exclusions
 
@@ -116,10 +116,9 @@ remain in force.
 
 ## Consequences
 
-B12 defines one reproducible source-stage gate for two named-index plan shapes
-and 2,000 queued synthetic reads through at most eight runtime workload backends. It
-does not widen any B1 through B11 record. B12 remains the current database gate
-until the pinned V12 live review closes. After that, the existing unassigned
+B12 defines one reproducible, reviewed gate for two named-index plan shapes and
+2,000 queued synthetic reads through at most eight runtime workload backends.
+It does not widen any B1 through B11 record. The existing unassigned
 [package-roadmap prerequisite](../../packages/db/README.md) is approval of the
 production privacy and retention model for permanent resource identifiers. No
 B13 milestone or claim is assigned here.
@@ -133,6 +132,7 @@ B13 milestone or claim is assigned here.
 - [ADR 0023: Locked PostgreSQL migration-ledger deployment](./0023-locked-postgresql-migration-ledger-deployment.md)
 - [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md)
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
+- [Cycle 1b-b12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md)
 - [PostgreSQL row security policies](https://www.postgresql.org/docs/17/ddl-rowsecurity.html)
 - [PostgreSQL `EXPLAIN`](https://www.postgresql.org/docs/17/sql-explain.html)
 - [PostgreSQL planner statistics](https://www.postgresql.org/docs/17/planner-stats.html)

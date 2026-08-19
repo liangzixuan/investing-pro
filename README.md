@@ -215,20 +215,20 @@ returned `offline_consistent`. See the
 [ADR 0023](./docs/adr/0023-locked-postgresql-migration-ledger-deployment.md),
 and the [Cycle 1b-b11 exit matrix](./docs/CYCLE_1BB11_EXIT_MATRIX.md).
 
-Cycle 1b-b12 source and integrated local verification define one deterministic
-RLS query-plan and bounded 2,000-read load gate; live V12 execution and review
-remain pending. The fixed source module and fixture cover the existing B4
+Cycle 1b-b12 is complete for one deterministic RLS query-plan and bounded
+2,000-read load gate. The fixed source module and fixture cover the existing B4
 fact-as-known shape plus one tenant thesis read. Authenticated forced-RLS plans
-must use `financial_facts_as_known` and `theses_by_instrument` without disabling
+used `financial_facts_as_known` and `theses_by_instrument` without disabling
 sequential scans or creating an acceptance-only index. Exactly 1,000 fact and
-1,000 tenant promises are submitted before one barrier release through a pool
+1,000 tenant promises were submitted before one barrier release through a pool
 and login both bounded to eight connections. The first eight runtime workload
-backends are observed together; a separately connected out-of-band administrator
-observes them but executes none of the 2,000 workload reads. The submissions are not 2,000
-connections. See
+backends were observed together; a separately connected out-of-band
+administrator observed them but executed none of the 2,000 workload reads. The
+submissions were not 2,000 connections. PostgreSQL run `32230667908` passed at
+commit `59c4e58`; its retained V12 record returned `offline_consistent`. See the
+[B12 evidence note](./docs/POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./docs/adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
-and the [Cycle 1b-b12 exit matrix](./docs/CYCLE_1BB12_EXIT_MATRIX.md). No V12
-artifact or post-live B12 evidence note exists yet.
+and the [Cycle 1b-b12 exit matrix](./docs/CYCLE_1BB12_EXIT_MATRIX.md).
 
 Pool transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
@@ -285,6 +285,8 @@ record returned `offline_consistent`. B9's single-client adapter passed in run
 `32161137775` at commit `2dcb259`; its retained version 10 record returned
 `offline_consistent`. B11's locked migration-ledger deployment passed in run
 `32183709701` at commit `5df9d07`; its retained version 11 record returned
+`offline_consistent`. B12's bounded query-plan/load path passed in run
+`32230667908` at commit `59c4e58`; its retained version 12 record returned
 `offline_consistent`. These remain bounded, synthetic acceptance results. The
 offline verifier checks record/source consistency after download but cannot
 authenticate the GitHub run or independently prove PostgreSQL execution.
@@ -335,13 +337,12 @@ authenticate the GitHub run or independently prove PostgreSQL execution.
   arbitrary or multi-release upgrades, application compatibility under live
   writes, crash recovery, cancellation, distributed coordination, global
   platform/application atomicity, or production readiness.
-- B12 is source/local only. Its exact synthetic two-plan, 2,000-submission gate
+- B12 passed only its exact synthetic two-plan, 2,000-submission gate. It
   uses at most eight runtime workload backends plus a separate administrator
-  observer and does not prove 1,000 or 2,000
-  simultaneous connections, production capacity/SLOs or pool tuning/failover,
+  observer and does not prove 1,000 or 2,000 simultaneous connections,
+  production capacity/SLOs or pool tuning/failover,
   plan stability across other data/statistics/hardware/versions, real data,
-  application composition, or production readiness. Live V12 evidence remains
-  pending.
+  application composition, or production readiness.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -374,5 +375,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b11 evidence note](./docs/POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md),
 [ADR 0023](./docs/adr/0023-locked-postgresql-migration-ledger-deployment.md),
 [Cycle 1b-b12 exit matrix](./docs/CYCLE_1BB12_EXIT_MATRIX.md),
+[Cycle 1b-b12 evidence note](./docs/POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./docs/adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md),
 and [architecture decisions](./docs/adr/).

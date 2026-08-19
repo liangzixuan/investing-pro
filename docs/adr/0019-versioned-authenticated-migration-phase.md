@@ -136,9 +136,9 @@ Cycle 1b-b9 later adds a separate live-reviewed single-client application
 adapter; it does not widen B7. The B10 pool/concurrency/cancellation boundary
 later passed its separate bounded live review; it also does not widen B7. B11
 later passed its separate bounded live locked-ledger, exact drift-refusal, and
-two-deployer result; it likewise does not widen B7. B12 now has a separate
-source/local query-plan and bounded 2,000-submission contract; its live V12 gate
-remains pending, and it also does not widen B7.
+two-deployer result; it likewise does not widen B7. B12 later passed its
+separate bounded live query-plan and 2,000-submission result; it also does not
+widen B7.
 
 Historical b1 through b6 records retain their exact source shapes, completed
 checks, limitations, and interpretation. This decision does not retroactively
@@ -156,6 +156,7 @@ widen any of them.
 - [ADR 0022: Bounded PostgreSQL projection-pool lifecycle](./0022-bounded-postgresql-projection-pool-lifecycle.md)
 - [ADR 0024: Bounded PostgreSQL RLS query-plan and 2,000-read load acceptance](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
+- [Cycle 1b-b12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md)
 - [PostgreSQL 17 `GRANT`](https://www.postgresql.org/docs/17/sql-grant.html)
 - [PostgreSQL 17 `SET ROLE`](https://www.postgresql.org/docs/17/sql-set-role.html)
 - [PostgreSQL 17 extension packaging](https://www.postgresql.org/docs/17/extend-extensions.html)

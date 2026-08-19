@@ -1,7 +1,6 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained versions through 11 reviewed successfully; version
-12 source contract accepted with artifact review pending
+Status: accepted; retained versions through 12 reviewed successfully
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -244,11 +243,14 @@ checks, limitations, tools, source keys, and source blobs fail closed. A V11
 record and commit remain reviewable without either B12 path or hash.
 
 V1 through V12 parser, verifier, reviewer, focused plan/load, and integrated
-local compatibility gates pass. No V12 artifact or `offline_consistent` result
-is retained yet. Source compatibility cannot prove authenticated runtime plans,
-named-index use, 2,000 submitted reads through eight runtime workload backends, Alpha/Beta
-isolation, finite execution, or cleanup. Those live claims remain pending on a
-clean pinned workflow, exact logs, retained artifact, and independently
-supplied anchors. No B12 post-live evidence note exists. See
+local compatibility gates pass. The retained V12 record from run `32230667908`,
+attempt 1, at commit `59c4e58` returned `offline_consistent` against
+independently supplied anchors. That verdict proves only agreement among the
+record, anchors, and fixed commit blobs. It cannot by itself prove the runtime
+plans, named-index use, 2,000 submitted reads through eight runtime workload
+backends, Alpha/Beta isolation, finite execution, or cleanup; those claims also
+depend on the reviewed workflow and exact logs. The
+[B12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md) records the exact
+artifact, evidence, source, and offline-output digests. See
 [ADR 0024](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md) and
 the [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md).

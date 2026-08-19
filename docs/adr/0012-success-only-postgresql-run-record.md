@@ -1,7 +1,6 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; versions 1 through 11 retained and reviewed; version 12
-source contract accepted with live record pending
+Status: accepted; versions 1 through 12 retained and reviewed
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -39,11 +38,10 @@ single-client read-only projection-adapter check, binds four additional B9
 sources, and records the exact node-postgres version. Version 10 preserves
 exact v1 through v9 parsing, appends only the bounded pool lifecycle check,
 binds the pool source, and records the exact pg-pool version. Their pinned live
-runs and independent reviews are retained below. Version 11's pinned live
-record and independent review are retained below. The current source producer
-writes `research-cockpit-postgres-acceptance-v12.json`; its source contract is
-described below, but no live V12 record is retained. Source presence alone is
-not evidence.
+runs and independent reviews are retained below. Version 11's and version 12's
+pinned live records and independent reviews are retained below. The current
+source producer writes `research-cockpit-postgres-acceptance-v12.json`.
+Source presence alone is not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -285,9 +283,13 @@ workflow artifact name is exactly
 The success path ends with the exact terminal fragment
 `the version 12 success-only run record was written.` The writer remains
 exclusive-create and success-only. Parser, writer, verifier, reviewer, focused
-plan/load, and integrated local compatibility gates pass. A pinned V12
-execution, retained record/log hashes, and independent `offline_consistent`
-review remain pending; no B12 post-live evidence note exists. See
+plan/load, and integrated local compatibility gates pass. PostgreSQL run
+`32230667908`, attempt 1, at commit `59c4e58` retained the V12 record after the
+complete B12 path and mandatory cleanup passed. Its downloaded bytes returned
+`offline_consistent`; the
+[B12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md) records the exact
+anchors and bounded claim. This successor does not alter any version 1 through
+version 11 record. See
 [ADR 0024](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md) and
 the [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md).
 

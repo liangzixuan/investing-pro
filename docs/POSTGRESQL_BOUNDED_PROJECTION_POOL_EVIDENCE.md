@@ -213,9 +213,9 @@ or global platform/application atomicity. See
 [B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md) records
 the successor's independent anchors without changing this V10 record.
 
-B12 now has a separate source/local contract for two named-index plans and
-exactly 2,000 queued synthetic reads through at most eight runtime workload backends. Live
-V12 execution and review remain pending. That successor does not change this
-version 10 record or promote B10 into production load evidence. See
+B12 later passed its separate two-named-index and exactly 2,000-submission live
+result through at most eight runtime workload backends. That successor does not
+change this version 10 record or promote B10 into production load evidence. See
+the [B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

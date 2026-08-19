@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b11 and Cycle 1b-b12 source/local threat model
+# Sprint 0 through bounded live Cycle 1b-b12 threat model
 
 ## Current trust boundaries
 
@@ -210,19 +210,21 @@ and the bounded live V11 execution, cleanup, artifact, and independent review
 are complete. PostgreSQL run `32183709701` passed at commit `5df9d07`; its
 retained record returned `offline_consistent`.
 
-Cycle 1b-b12 source adds a separate acceptance-only query-plan/load boundary,
+Cycle 1b-b12 adds a separate acceptance-only query-plan/load boundary,
 still disconnected from both running applications. Its fixed module and fixture
 admit no caller-selected SQL, endpoint, planner setting, connection setting, or
-benchmark scenario. The live design uses a disposable clone, a fresh SCRAM `NOBYPASSRLS`
-runtime login, and a runner-owned pool bounded to eight clients. Authenticated
-forced-RLS plans must use the reviewed fact and tenant indexes without disabling
-sequential scans or adding an index. Exactly 2,000 promises are submitted, but
-only the first eight runtime workload backends may execute at once. A separate
-out-of-band administrator observes that barrier but executes none of those
-2,000 workload reads;
-queued promises are not database identities or connections. Source and integrated local verification
-are complete; live V12 execution, cleanup, artifact, and independent review
-remain pending.
+benchmark scenario. The reviewed live path used a disposable clone, a fresh
+SCRAM `NOBYPASSRLS` runtime login, and a runner-owned pool bounded to eight
+clients. Authenticated
+forced-RLS plans used the reviewed fact and tenant indexes without disabling
+sequential scans or adding an index. Exactly 2,000 promises were submitted, but
+only the first eight runtime workload backends could execute at once. A
+separate out-of-band administrator observed that barrier but executed none of
+those 2,000 workload reads; queued promises are not database identities or
+connections. Source and integrated local verification plus the live V12
+execution, cleanup, artifact, and independent review are complete. PostgreSQL
+run `32230667908` passed at commit `59c4e58`; its retained record returned
+`offline_consistent`.
 
 These database logins and injected actors are not user identities. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
@@ -263,7 +265,7 @@ application/schema compatibility, concurrent application writes, crash
 recovery, cancellation, retry/failover, distributed coordination, or global
 platform/application atomicity.
 
-The B12 source/local result does not establish production capacity, throughput,
+The reviewed B12 result does not establish production capacity, throughput,
 latency SLOs, pool sizing/tuning/failover, 1,000 or 2,000 simultaneous database
 backends, or planner stability across other data distributions, statistics,
 hardware, versions, extensions, settings, or schema changes. Its privileged
@@ -380,13 +382,12 @@ checksum-drift-refusal, once-only suffix, rollback, cleanup, and two-deployer
 boundary. It is not a general or production migration system. See the
 [B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md).
 
-B12 currently has source and local evidence only. Its planned live gate submits
-1,000 fact and 1,000 tenant reads through at most eight runtime workload backends,
-requires exact Alpha/Beta isolation and named-index plans, and removes all B12
-login/backend/clone residue. Until V12 passes and is independently reviewed,
-none of those engine rows is complete. Even after that bounded gate, it will not
-be production capacity, general planner stability, real-data, identity, or
-application-composition evidence. See
+B12's reviewed live gate submitted 1,000 fact and 1,000 tenant reads through at
+most eight runtime workload backends, required exact Alpha/Beta isolation and
+named-index plans, and removed all B12 login/backend/clone residue. That bounded
+gate is not production capacity, general planner stability, real-data,
+identity, or application-composition evidence. See the
+[B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
 

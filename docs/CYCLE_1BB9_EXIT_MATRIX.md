@@ -56,9 +56,9 @@ ADR 0022 and the
 that successor's real, bounded two-client pool source and reviewed V10 result.
 None of that successor work changes this matrix or widens the reviewed B9
 claim. B11 later passed its separate bounded live locked-ledger and
-two-deployer result; it also does not widen B9. B12 now has a separate
-source/local contract for two named-index plan shapes and 2,000 queued reads
-through at most eight runtime workload backends; live V12 evidence remains pending, and B12 does
-not widen this reviewed B9 claim. See
+two-deployer result; it also does not widen B9. B12 later passed its separate
+bounded live two-plan and 2,000-submission result through at most eight runtime
+workload backends; it does not widen this reviewed B9 claim. See the
+[B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

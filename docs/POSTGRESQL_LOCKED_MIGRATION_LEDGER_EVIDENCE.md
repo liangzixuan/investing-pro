@@ -198,10 +198,9 @@ recovery, cancellation, retry/failover, distributed or cross-cluster
 coordination, global platform/application atomicity, application composition,
 real data, deployment readiness, or production readiness.
 
-B12 now has a separate source/local contract for the exact fact-as-known and
-tenant named-index plans plus 2,000 queued reads through at most eight runtime workload backends.
-Live V12 execution and independent review remain pending. That successor does
-not change this version 11 record or widen the B11 claim, and no B12 post-live
-evidence note exists. See
+B12 later passed its separate exact fact-as-known and tenant named-index plan
+plus 2,000-submission result through at most eight runtime workload backends.
+That successor does not change this version 11 record or widen the B11 claim.
+See the [B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

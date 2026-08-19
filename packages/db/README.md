@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B11 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B12 SOURCE/LOCAL PASSED, LIVE V12 PENDING — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B12 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -159,14 +159,15 @@ deterministic fixture. The exact B4 fact-as-known shape and one tenant thesis
 read must use the reviewed `financial_facts_as_known` and
 `theses_by_instrument` indexes under authenticated forced RLS without disabling
 sequential scans or adding an index. Exactly 2,000 promises—1,000 fact and 1,000
-tenant reads—are submitted before barrier release through one pool bounded to
+tenant reads—were submitted before barrier release through one pool bounded to
 eight clients and one login with connection limit eight. The first eight runtime
-workload backends are observed simultaneously by a separately connected
-out-of-band administrator that executes none of the 2,000 workload reads; the
-remaining promises queue, so this is not 2,000
-connections. Source and integrated local verification pass. Pinned
-PostgreSQL V12 execution, retained evidence/logs, and independent review remain
-pending. See
+workload backends were observed simultaneously by a separately connected
+out-of-band administrator that executed none of the 2,000 workload reads; the
+remaining promises queued, so this was not 2,000 connections. Source,
+integrated local verification, and the bounded live V12 gate pass. PostgreSQL
+run `32230667908` passed at commit `59c4e58`; the retained record returned
+`offline_consistent`. See the
+[B12 evidence note](../../docs/POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](../../docs/adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](../../docs/CYCLE_1BB12_EXIT_MATRIX.md).
 
@@ -539,29 +540,28 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     against live drift, exact one-time suffix replay, injected-failure rollback,
     two-deployer serialization, mandatory cleanup, retained V11 evidence, and
     independent review passed.
-16. **Cycle 1b-b12 source/local complete; live V12 pending:** require the exact
-    authenticated fact-as-known and tenant plans to use their named indexes,
-    submit exactly 1,000 fact plus 1,000 tenant reads through at most eight
-    runtime workload backends, preserve Alpha/Beta isolation, bound pending
-    checkout and workload/plan/seed/`ANALYZE` statements, require every
-    submission to settle and the pool to close, and leave zero
-    login/client/backend/clone residue. Cleanup calls are not each independently
-    cancellable; the 15-minute workflow timeout is the outer fail-closed bound.
-    Retain V12 evidence and complete independent review before promoting the live
-    rows.
-17. Approve the production privacy and retention model for permanent resource
-    identifiers, including DSAR/erasure, tenant offboarding, backup expiry, and
-    any required pseudonymization or keyed-token replacement. Do not admit real
-    tenant identifiers until that decision is documented and tested.
+16. **Cycle 1b-b12 complete for its bounded scope:** the exact authenticated
+    fact-as-known and tenant plans used their named indexes; exactly 1,000 fact
+    plus 1,000 tenant reads settled through at most eight runtime workload
+    backends; Alpha/Beta isolation held; and cleanup left zero
+    login/client/backend/clone residue. Pending checkout and the
+    workload/plan/seed/`ANALYZE` statements were bounded. The V12 evidence and
+    independent review are retained. Cleanup calls are not each
+    independently cancellable; the 15-minute workflow timeout remains the outer
+    fail-closed bound.
+17. **Next:** approve the production privacy and retention model for permanent
+    resource identifiers, including DSAR/erasure, tenant offboarding, backup
+    expiry, and any required pseudonymization or keyed-token replacement. Do not
+    admit real tenant identifiers until that decision is documented and tested.
 18. If upgrading a populated database, validate an audited registry backfill
     and cutover under concurrent-write controls before adding the live-state
     foreign keys; this static `0005` migration assumes empty live tables.
 
 Until every gate passes, this package is not deployed persistence. Historical
 b1-b6 live evidence remains limited to the exact checks in their retained run
-records. B7 through B11 passed for their separately recorded version 7 through
-version 11 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`, and
-`5df9d07` without widening those records. The
+records. B7 through B12 passed for their separately recorded version 7 through
+version 12 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`,
+`5df9d07`, and `59c4e58` without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
@@ -585,9 +585,9 @@ application composition. B11's reviewed live V11 result proves only its exact
 closed-v2, two-deployer boundary. It does not establish external/production
 credentials, arbitrary or multi-release upgrades, application compatibility
 under concurrent writes, crash recovery, cancellation, distributed
-coordination, global atomicity, or production readiness. Query-plan and load
-testing now has a separate B12 source/local contract, but no live V12 result.
-B12 does not establish 1,000 or 2,000 simultaneous database connections,
-production load capacity/SLOs or pool tuning/failover, plan stability across
-other data distributions/statistics/hardware/versions, real data, application
-composition, or production readiness.
+coordination, global atomicity, or production readiness. B12's reviewed live
+V12 result proves only its fixed two-plan, bounded eight-workload-backend,
+2,000-submission contract. It does not establish 1,000 or 2,000 simultaneous
+database connections, production load capacity/SLOs or pool tuning/failover,
+plan stability across other data distributions/statistics/hardware/versions,
+real data, application composition, or production readiness.
