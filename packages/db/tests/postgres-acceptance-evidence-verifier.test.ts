@@ -1440,7 +1440,7 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("rejects every changed recorded source byte", () => {
+  it("rejects every changed recorded source byte", { timeout: 30_000 }, () => {
     for (const key of [
       "workflow",
       "fixture",

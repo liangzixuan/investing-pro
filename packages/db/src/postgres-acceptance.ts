@@ -5783,13 +5783,13 @@ async function verifyPostgresPrivacyRetentionSuffixState(
   await verifyMigrationLedger(
     containerId,
     [
+      `${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`,
       ...expectedAuthenticatedMigrationLedgerRows(
         authenticatedPlan.manifest,
       ).map(
         ({ migrationId, fileName, sha256 }) =>
           `${migrationId}|${fileName}|${sha256}`,
       ),
-      `${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`,
     ],
     POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
   );

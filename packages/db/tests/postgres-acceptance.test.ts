@@ -3631,6 +3631,10 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "async function verifyPostgresPrivacyRetentionSuffixState(",
       "async function seedPostgresPrivacyRetentionFixture(",
     );
+    expectOrdered(suffixCatalog, [
+      "`${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`",
+      "...expectedAuthenticatedMigrationLedgerRows(",
+    ]);
     for (const marker of [
       "private_data.delete_live_resource_by_allocation(uuid)",
       "pg_catalog.pg_get_function_result(",
