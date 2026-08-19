@@ -216,6 +216,22 @@ describe("privacy retention plan v1", () => {
     )
   );`);
     expect(sql)
+      .toContain(`CREATE POLICY privacy_owner_purged_organizations_select
+  ON private_data.organizations
+  FOR SELECT TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM private_data.resource_privacy_domains AS domain_row
+      WHERE domain_row.organization_id = organizations.id
+    )
+  );`);
+    expect(sql).toContain(`CREATE POLICY privacy_owner_purged_organizations
+  ON private_data.organizations
+  FOR DELETE TO research_cockpit_owner
+  USING (data_classification = 'synthetic');`);
+    expect(sql)
       .toContain(`CREATE POLICY privacy_owner_expired_idempotency_update
   ON private_data.idempotency_records
   FOR UPDATE TO research_cockpit_owner

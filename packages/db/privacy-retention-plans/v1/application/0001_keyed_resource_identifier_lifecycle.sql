@@ -470,6 +470,18 @@ CREATE POLICY privacy_owner_purged_organizations
   FOR DELETE TO research_cockpit_owner
   USING (data_classification = 'synthetic');
 
+CREATE POLICY privacy_owner_purged_organizations_select
+  ON private_data.organizations
+  FOR SELECT TO research_cockpit_owner
+  USING (
+    data_classification = 'synthetic'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM private_data.resource_privacy_domains AS domain_row
+      WHERE domain_row.organization_id = organizations.id
+    )
+  );
+
 CREATE POLICY privacy_owner_offboarding_principals
   ON private_data.principals
   FOR ALL TO research_cockpit_owner
