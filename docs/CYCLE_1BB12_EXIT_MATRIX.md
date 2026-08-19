@@ -53,5 +53,6 @@ The former unassigned
 technical source contract in
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [B13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md). That successor does not
-widen this V12 record. Its live V13 result remains pending, and production
-privacy/legal admission remains blocked.
+widen this V12 record. Its bounded live V13 result is separately retained and
+reviewed; production privacy/legal admission remains blocked. See the
+[B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md).

@@ -247,8 +247,10 @@ accepted synthetic technical decision, not a legal conclusion or evidence that
 a scheduler, DSAR/legal-hold system, KMS/HSM, deletion across replicas/caches/
 logs/search/analytics/third parties, or backup expiry/restore suppression is
 operating. The plan is pristine/empty-data-only; populated backfill and online
-cutover remain unimplemented. Source and V13 evidence branches exist, but no
-live V13 review is yet claimed. See
+cutover remain unimplemented. PostgreSQL run `32305478242` passed the exact
+bounded synthetic lifecycle at commit `a959cba`; its retained V13 record
+returned `offline_consistent`. See the
+[B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
 
@@ -278,6 +280,13 @@ B12's reviewed result remains bounded to two exact synthetic plan shapes,
 establish 1,000/2,000 simultaneous connections, production capacity or SLOs, pool
 tuning/failover, planner stability across other data/statistics/hardware/
 versions, real data, application composition, or production readiness.
+B13's reviewed result remains bounded to the exact synthetic,
+pristine/empty-data-only keyed-identifier lifecycle. It does not establish
+production privacy/legal approval, verified DSAR or legal-hold handling,
+operating scheduler/monitoring, KMS/HSM custody or token authenticity,
+cryptographic erasure, deletion across external planes, populated cutover,
+global deletion proof, real-data admission, application composition, or
+production readiness.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
 authenticated-migrator gate. The reviewed B7 result proves only the bounded

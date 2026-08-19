@@ -123,8 +123,10 @@ It does not widen any B1 through B11 record. The former unassigned
 B13 technical source contract in
 [ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [B13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md). That successor does
-not widen B12 or its retained V12 result; live V13 review is pending and
-production privacy/legal admission remains blocked.
+not widen B12 or its retained V12 result; the bounded live V13 result is
+separately retained and reviewed, and production privacy/legal admission
+remains blocked. See the
+[B13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md).
 
 ## Related decisions and primary sources
 
@@ -136,6 +138,7 @@ production privacy/legal admission remains blocked.
 - [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md)
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
 - [Cycle 1b-b12 evidence note](../POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md)
+- [Cycle 1b-b13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md)
 - [PostgreSQL row security policies](https://www.postgresql.org/docs/17/ddl-rowsecurity.html)
 - [PostgreSQL `EXPLAIN`](https://www.postgresql.org/docs/17/sql-explain.html)
 - [PostgreSQL planner statistics](https://www.postgresql.org/docs/17/planner-stats.html)

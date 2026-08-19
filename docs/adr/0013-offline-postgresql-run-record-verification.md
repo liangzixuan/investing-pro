@@ -263,6 +263,10 @@ bootstrap and application body from the anchored commit, rejects an inexact
 privacy-plan tree, and validates both body hashes against the canonical
 manifest. The image config independently binds the B13 fixture; missing, extra,
 or mixed bundles fail closed. This source compatibility is not a live result:
-no V13 artifact has yet returned `offline_consistent`. See
+the retained V13 record from PostgreSQL run `32305478242`, attempt 1, at commit
+`a959cba` separately returned `offline_consistent` against independent anchors.
+That verdict does not by itself prove the live lifecycle; the claim also
+depends on the reviewed workflow and exact logs. See the
+[B13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md).

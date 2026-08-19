@@ -303,8 +303,12 @@ global-proof/real-data nonclaims recorded in
 The tool shape remains V12 exact. The current source filename is
 `research-cockpit-postgres-acceptance-v13.json`; its workflow artifact name is
 `postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}`.
-The writer remains exclusive-create and success-only. No V13 run, retained
-artifact, or live result is claimed at this source stage; see the
+The writer remains exclusive-create and success-only. PostgreSQL run
+`32305478242`, attempt 1, at commit `a959cba` retained the V13 record after the
+complete B13 path and mandatory cleanup passed. Its downloaded bytes returned
+`offline_consistent`; the
+[B13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md) records the
+exact anchors and bounded claim. See the
 [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md).
 
 ## Primary sources

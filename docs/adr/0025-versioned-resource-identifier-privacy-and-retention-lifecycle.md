@@ -1,6 +1,6 @@
 # ADR 0025: Versioned resource-identifier privacy and retention lifecycle
 
-Status: accepted technical model; bounded synthetic source implemented; live V13 review pending; production admission blocked
+Status: accepted technical model; bounded live V13 record retained and reviewed; production admission blocked
 
 ## Context
 
@@ -94,8 +94,12 @@ production/legal/DSAR/offboarding/KMS/token-verification/database-and-backup
 erasure/populated-cutover/global-proof/real-data nonclaims recorded by the
 evidence schema. Source and local verification do not establish a live
 PostgreSQL result. A V13 live claim requires a retained run, exact log and
-artifact anchors, and independent commit-bound review; none is recorded by
-this decision.
+artifact anchors, and independent commit-bound review; source or local
+verification alone cannot establish it. PostgreSQL run `32305478242` at commit
+`a959cba` executed the exact bounded synthetic lifecycle and mandatory cleanup.
+Its V13 record and logs were retained, and independent commit-bound review
+returned `offline_consistent`. See the
+[B13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md).
 
 ## Consequences
 
@@ -103,6 +107,10 @@ The source now makes one narrow privacy design executable against a pristine,
 synthetic, disposable database. It gives later reviewers deterministic evidence
 for raw-identifier clearing, same-token non-reuse, offboarding admission closure, online
 token purge, and bounded metadata expiry.
+
+The reviewed live V13 result establishes only that exact synthetic lifecycle at
+the tested commit. It does not widen the decision into a production policy or
+operating system.
 
 Production admission remains blocked. Before real tenant or personal data, the
 project still requires explicit product/privacy/legal approval, lawful-basis
@@ -120,3 +128,4 @@ result cannot prove global deletion or cryptographic erasure.
 - [ADR 0024: Bounded PostgreSQL RLS query-plan and 2,000-read load acceptance](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
 - [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md)
+- [Cycle 1b-b13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md)

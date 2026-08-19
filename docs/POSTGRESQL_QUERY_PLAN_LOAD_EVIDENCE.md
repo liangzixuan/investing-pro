@@ -229,5 +229,7 @@ package-roadmap prerequisite now has a separate B13 technical source contract;
 see
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [B13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md). That later source does
-not widen this evidence note or its retained V12 record. No live V13 result is
-yet claimed, and production privacy/legal admission remains blocked.
+not widen this evidence note or its retained V12 record. Its bounded live V13
+result is separately retained and reviewed; production privacy/legal admission
+remains blocked. See the
+[B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md).

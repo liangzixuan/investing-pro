@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b12 and B13 source-stage threat model
+# Sprint 0 through bounded live Cycle 1b-b13 threat model
 
 ## Current trust boundaries
 
@@ -345,7 +345,8 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   idempotency cleanup uses the transaction clock, `SKIP LOCKED`, and a fixed
   1,000-row-per-class bound. Exact roles, triggers, procedures, RLS, grants,
   fixture, policy, manifest, and SQL bodies are source-controlled and bound by
-  V13 review. A live V13 result is still pending.
+  V13 review. PostgreSQL run `32305478242` passed that exact synthetic path at
+  commit `a959cba`; its retained V13 record returned `offline_consistent`.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -412,8 +413,10 @@ restored media, and key-reference removal does not itself prove KMS/HSM key
 destruction or cryptographic erasure. The source also does not authenticate a
 data subject, resolve legal holds, schedule or monitor offboarding/retention,
 support a populated online cutover, or admit real tenant/personal data.
-Production admission remains blocked, and no pinned live V13 artifact is yet
-claimed. See
+Production admission remains blocked. The reviewed live V13 result is limited
+to the exact synthetic, pristine/empty-data-only lifecycle in one disposable
+database. See the
+[B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
 

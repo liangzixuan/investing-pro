@@ -239,8 +239,10 @@ and fixed procedures bound online tenant purge and expired audit/idempotency
 cleanup. Token MAC keys remain behind an external provider, and PostgreSQL does
 not verify HMAC authenticity. The source and V13 evidence contract do not
 constitute production privacy/legal approval. Production admission remains
-blocked, and no live V13 run, artifact, or `offline_consistent` review is yet
-claimed. See [ADR 0025](./docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+blocked. PostgreSQL run `32305478242` passed the exact bounded synthetic path
+at commit `a959cba`; its retained V13 record returned `offline_consistent`. See
+the [B13 evidence note](./docs/POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
+[ADR 0025](./docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./docs/CYCLE_1BB13_EXIT_MATRIX.md).
 
 Pool transfer is exclusive: after construction the caller may not call
@@ -303,8 +305,9 @@ record returned `offline_consistent`. B9's single-client adapter passed in run
 `offline_consistent`. These remain bounded, synthetic acceptance results. The
 offline verifier checks record/source consistency after download but cannot
 authenticate the GitHub run or independently prove PostgreSQL execution.
-B13's source/evidence contract is implemented separately, but its pinned live
-V13 execution and independent artifact review remain pending.
+B13's synthetic privacy/retention lifecycle passed separately in PostgreSQL run
+`32305478242` at commit `a959cba`; its retained version 13 record returned
+`offline_consistent`. Production privacy/legal admission remains blocked.
 
 ## Safety boundary
 
@@ -358,12 +361,13 @@ V13 execution and independent artifact review remain pending.
   production capacity/SLOs or pool tuning/failover,
   plan stability across other data/statistics/hardware/versions, real data,
   application composition, or production readiness.
-- B13 source is synthetic-only and empty-data-only. It does not provide
+- B13 passed only its exact synthetic-only, empty-data-only keyed-identifier
+  lifecycle. It does not provide
   production privacy/legal approval, verified-subject DSAR or legal-hold
   handling, an operating offboarding scheduler, KMS/HSM custody or token
   verification, deletion across online/backup/third-party planes, populated
   migration/cutover, cryptographic erasure, global deletion proof, or
-  real-customer-data admission. Its live V13 result is still pending.
+  real-customer-data admission.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -399,5 +403,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b12 evidence note](./docs/POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./docs/adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md),
 [Cycle 1b-b13 exit matrix](./docs/CYCLE_1BB13_EXIT_MATRIX.md),
+[Cycle 1b-b13 evidence note](./docs/POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md),
 and [architecture decisions](./docs/adr/).

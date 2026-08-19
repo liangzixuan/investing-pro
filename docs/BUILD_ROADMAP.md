@@ -42,8 +42,9 @@ bounded 2,000-read source/evidence contract, pinned V12 execution, and
 independent artifact review are complete for their bounded scope. The next
 package-roadmap prerequisite now has a B13 technical source contract: the
 privacy/retention decision, empty-only keyed-identifier plan, and V13 evidence
-branches are implemented. Pinned live V13 execution and review remain pending,
-and production privacy/legal admission remains blocked.
+branches are implemented. Its pinned live V13 execution and independent
+artifact review are complete for their bounded synthetic scope, while
+production privacy/legal admission remains blocked.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -308,7 +309,7 @@ tool shape and limitations, and inserts only
 nonclaim position. PostgreSQL run `32230667908` passed at commit `59c4e58`; its
 retained V12 record returned `offline_consistent`.
 
-**Cycle 1b-b13 source implemented; live V13 pending:**
+**Cycle 1b-b13 complete for its bounded synthetic scope:**
 policy v1 freezes a synthetic-only technical retention decision with production
 admission false. A separate manifest-bound plan creates the exact privacy
 capability in `research_cockpit_b13_privacy_retention_test` and applies one
@@ -329,12 +330,13 @@ deletion/populated-cutover/global-proof/real-data nonclaims. See
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
 
-This source milestone is not a live-engine result. No V13 run, artifact hash,
-or independent `offline_consistent` review is recorded yet. Even after a
-bounded synthetic live pass, production admission will remain blocked pending
-external product/privacy/legal approval and the operating controls listed in
-ADR 0025. Populated-database backfill and online cutover remain a separate
-package-roadmap item.
+PostgreSQL run `32305478242` passed the exact bounded synthetic path at commit
+`a959cba`; its retained V13 record returned `offline_consistent`. See the
+[B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md). That reviewed
+live result does not establish production admission, which remains blocked
+pending external product/privacy/legal approval and the operating controls
+listed in ADR 0025. Populated-database backfill and online cutover remain
+owned by separate package-roadmap item 18.
 
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
@@ -409,8 +411,8 @@ The B11 locked deployer and bounded live V11 result are reviewed. B12's fixed
 fact-as-known/tenant plan and 2,000-submission contract and bounded live V12
 result are also reviewed.
 The B13 technical policy, empty-only plan, token boundary, and V13 evidence
-source are implemented, but live V13 execution and review remain pending and
-production admission remains blocked.
+source are implemented, and its bounded live V13 result and independent review
+are complete. Production admission remains blocked.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -444,10 +446,11 @@ The reviewed B12 result is also disconnected. Eight observed runtime workload
 backends and 2,000 queued synthetic reads do not establish production capacity,
 SLOs, pool tuning/failover, general plan stability, real-data behavior, or
 application composition.
-The B13 source likewise remains disconnected and synthetic-only. It cannot be
-used as production privacy/legal approval, DSAR or legal-hold evidence, KMS/HSM
-custody, operating offboarding/retention scheduling, backup or third-party
-deletion, populated cutover, global erasure proof, or permission for real data.
+The reviewed B13 result likewise remains disconnected, synthetic-only, and
+empty-data-only. It cannot be used as production privacy/legal approval, DSAR
+or legal-hold evidence, KMS/HSM custody, operating offboarding/retention
+scheduling, backup or third-party deletion, populated cutover, global erasure
+proof, or permission for real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

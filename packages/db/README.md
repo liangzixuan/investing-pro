@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **B1-B12 CLEAN-ONLY LIVE ACCEPTANCE PASSED ONLY FOR THEIR RECORDED SCOPES; B13 SOURCE CONTRACT IMPLEMENTED, LIVE V13 PENDING, PRODUCTION ADMISSION BLOCKED — NOT DEPLOYED PERSISTENCE**
+> **B1-B13 CLEAN-ONLY LIVE ACCEPTANCE PASSED ONLY FOR THEIR RECORDED BOUNDED SYNTHETIC SCOPES; B13 IS PRISTINE/EMPTY-DATA-ONLY AND PRODUCTION ADMISSION REMAINS BLOCKED — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -183,7 +183,9 @@ audit/idempotency expiry. PostgreSQL validates token shape
 and lifecycle but not HMAC authenticity. Production admission is false: the
 source is not privacy/legal approval, production DSAR/KMS/offboarding/backup
 operations, populated cutover, cryptographic erasure, global deletion proof, or
-real-data evidence. No live V13 result is yet claimed. See
+real-data evidence. PostgreSQL run `32305478242` passed the exact bounded path
+at commit `a959cba`; its retained V13 record returned `offline_consistent`. See
+[the B13 evidence note](../../docs/POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](../../docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](../../docs/CYCLE_1BB13_EXIT_MATRIX.md).
 
@@ -565,10 +567,11 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     independent review are retained. Cleanup calls are not each
     independently cancellable; the 15-minute workflow timeout remains the outer
     fail-closed bound.
-17. **Cycle 1b-b13 source implemented; live V13 pending:** retain the exact
+17. **Cycle 1b-b13 complete for its bounded synthetic scope:** retain the exact
     technical policy, externally keyed token framing, pristine/empty-only
     privacy plan, raw-identifier clearing, offboarding admission closure, online
-    synthetic purge, bounded expired-metadata purge, and V13 evidence contract.
+    synthetic purge, bounded expired-metadata purge, retained V13 evidence, and
+    independent `offline_consistent` review.
     Do not admit real tenant identifiers: production privacy/legal approval,
     verified DSAR/legal holds, operating offboarding scheduling/monitoring,
     KMS/HSM custody and destruction, all online/backup/third-party deletion
@@ -579,9 +582,9 @@ resource_type, resource_id)` can never back a live row, while the same UUID
 
 Until every gate passes, this package is not deployed persistence. Historical
 b1-b6 live evidence remains limited to the exact checks in their retained run
-records. B7 through B12 passed for their separately recorded version 7 through
-version 12 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`,
-`5df9d07`, and `59c4e58` without widening those records. The
+records. B7 through B13 passed for their separately recorded version 7 through
+version 13 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`,
+`5df9d07`, `59c4e58`, and `a959cba` without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
@@ -611,8 +614,8 @@ V12 result proves only its fixed two-plan, bounded eight-workload-backend,
 database connections, production load capacity/SLOs or pool tuning/failover,
 plan stability across other data distributions/statistics/hardware/versions,
 real data, application composition, or production readiness.
-B13 currently adds only a synthetic, pristine, empty-data source/evidence
-contract; its live V13 run and independent artifact review remain pending. It
-does not satisfy production privacy/legal, DSAR, scheduler/monitoring, KMS/HSM,
-token-verification, cryptographic-erasure, online/backup/third-party deletion,
-populated-cutover, global-proof, or real-data gates.
+B13's reviewed live V13 result remains only a synthetic, pristine,
+empty-data-only technical lifecycle. It does not satisfy production
+privacy/legal, DSAR, scheduler/monitoring, KMS/HSM, token-verification,
+cryptographic-erasure, online/backup/third-party deletion, populated-cutover,
+global-proof, or real-data gates.
