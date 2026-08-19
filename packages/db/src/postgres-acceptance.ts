@@ -5404,6 +5404,7 @@ WHERE slug = 'privacy-populated-rejection';`,
   await verifyPostgresPrivacyRetentionSuffixAbsent(
     containerId,
     authenticatedPlan,
+    1,
   );
   await psql(
     containerId,
@@ -5765,6 +5766,7 @@ async function verifyPostgresPrivacyRetentionBaseState(
 async function verifyPostgresPrivacyRetentionSuffixAbsent(
   containerId: string,
   authenticatedPlan: AuthenticatedMigrationPlan,
+  expectedOrganizationCount: 0 | 1 = 0,
 ): Promise<void> {
   assertEqual(
     await psqlScalar(
@@ -5778,7 +5780,7 @@ async function verifyPostgresPrivacyRetentionSuffixAbsent(
   (SELECT count(*) FROM private_data.organizations);`,
       POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
     ),
-    `${authenticatedPlan.manifest.migrations.length}|true|0|0`,
+    `${authenticatedPlan.manifest.migrations.length}|true|0|${expectedOrganizationCount}`,
     "B13 privacy suffix absence and base preservation",
   );
 }

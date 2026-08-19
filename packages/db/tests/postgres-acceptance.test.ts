@@ -3521,13 +3521,21 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "await verifyPostgresPrivacyRetentionSuffixAbsent(",
       "privacy-populated-rejection",
       'label: "B13 populated privacy suffix rejection"',
-      "await verifyPostgresPrivacyRetentionSuffixAbsent(",
+      '"B13 populated-rejection transaction preserved its canary"',
+      "await verifyPostgresPrivacyRetentionSuffixAbsent(\n    containerId,\n    authenticatedPlan,\n    1,\n  );",
       "renderPrivacyRetentionApplicationMigration(authenticatedPlan, privacyPlan)",
       "await verifyPostgresPrivacyRetentionSuffixState(",
       'label: "B13 privacy suffix replay"',
     ]);
     expect(deployment).toContain('sqlState: "22012"');
     expect(deployment).toContain('sqlState: "P0001"');
+
+    const suffixAbsence = section(
+      "async function verifyPostgresPrivacyRetentionSuffixAbsent(",
+      "async function verifyPostgresPrivacyRetentionSuffixState(",
+    );
+    expect(suffixAbsence).toContain("expectedOrganizationCount: 0 | 1 = 0");
+    expect(suffixAbsence).toContain("|true|0|${expectedOrganizationCount}`");
 
     const suffixRace = section(
       "async function verifyPostgresPrivacyRetentionSuffixEmptyOnlyRace(",
