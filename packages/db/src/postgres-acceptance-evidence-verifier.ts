@@ -73,6 +73,17 @@ const V12_SOURCE_KEYS = [
   "postgresQueryPlanLoad",
   "queryPlanLoadFixture",
 ] as const;
+const V13_SOURCE_KEYS = [
+  ...V12_SOURCE_KEYS,
+  "privacyRetentionPolicyV1",
+  "privacyRetentionPlanManifestV1",
+  "privacyRetentionPlanPlatformV1",
+  "privacyRetentionPlanMigrationsV1",
+  "privacyRetentionPolicySourceV1",
+  "privacyRetentionPlanSourceV1",
+  "resourceIdentifierTokenV1",
+  "privacyRetentionFixtureV1",
+] as const;
 const MIGRATION_SOURCE_KEYS = ["id", "file", "bytes"] as const;
 const IMAGE_CONFIG_KEYS = [
   "schemaVersion",
@@ -93,6 +104,10 @@ const V12_IMAGE_CONFIG_KEYS = [
   ...IMAGE_CONFIG_KEYS,
   "queryPlanLoadFixtureSha256",
 ] as const;
+const V13_IMAGE_CONFIG_KEYS = [
+  ...V12_IMAGE_CONFIG_KEYS,
+  "privacyRetentionFixtureSha256",
+] as const;
 const IMAGE_RUNNER_KEYS = ["label", "os", "architecture"] as const;
 const MANIFEST_KEYS = ["schemaVersion", "algorithm", "migrations"] as const;
 const MANIFEST_ENTRY_KEYS = ["id", "file", "sha256"] as const;
@@ -102,6 +117,18 @@ const APPLICATION_MANIFEST_V2_KEYS = [
   "algorithm",
   "migrations",
 ] as const;
+const PRIVACY_RETENTION_PLAN_MANIFEST_V1_KEYS = [
+  "schemaVersion",
+  "planVersion",
+  "algorithm",
+  "platform",
+  "migrations",
+] as const;
+const PRIVACY_RETENTION_PLAN_PLATFORM_V1_KEYS = ["file", "sha256"] as const;
+const PRIVACY_RETENTION_PLAN_PLATFORM_V1_FILE = "platform-bootstrap.sql";
+const PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID = "privacy-v1-0001";
+const PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE =
+  "application/0001_keyed_resource_identifier_lifecycle.sql";
 const APPLICATION_MIGRATION_V2_FILES = Object.freeze([
   "0001_request_context_and_ledger.sql",
   "0002_canonical_entities.sql",
@@ -132,6 +159,13 @@ const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1024 * 1024;
 const MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES = 2 * 1024 * 1024;
 const MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES = 2 * 1024 * 1024;
 const MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES = 2 * 1024 * 1024;
+const MAX_PRIVACY_RETENTION_POLICY_V1_BYTES = 64 * 1024;
+const MAX_PRIVACY_RETENTION_PLAN_MANIFEST_V1_BYTES = 64 * 1024;
+const MAX_PRIVACY_RETENTION_PLAN_PLATFORM_V1_BYTES = 2 * 1024 * 1024;
+const MAX_PRIVACY_RETENTION_POLICY_SOURCE_V1_BYTES = 2 * 1024 * 1024;
+const MAX_PRIVACY_RETENTION_PLAN_SOURCE_V1_BYTES = 2 * 1024 * 1024;
+const MAX_RESOURCE_IDENTIFIER_TOKEN_V1_BYTES = 2 * 1024 * 1024;
+const MAX_PRIVACY_RETENTION_FIXTURE_V1_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATION_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATIONS = 100;
 
@@ -186,6 +220,14 @@ export interface PostgresAcceptanceEvidenceSourceBundle {
   readonly postgresMigrationDeployer?: Uint8Array;
   readonly postgresQueryPlanLoad?: Uint8Array;
   readonly queryPlanLoadFixture?: Uint8Array;
+  readonly privacyRetentionPolicyV1?: Uint8Array;
+  readonly privacyRetentionPlanManifestV1?: Uint8Array;
+  readonly privacyRetentionPlanPlatformV1?: Uint8Array;
+  readonly privacyRetentionPlanMigrationsV1?: readonly PostgresAcceptanceMigrationSource[];
+  readonly privacyRetentionPolicySourceV1?: Uint8Array;
+  readonly privacyRetentionPlanSourceV1?: Uint8Array;
+  readonly resourceIdentifierTokenV1?: Uint8Array;
+  readonly privacyRetentionFixtureV1?: Uint8Array;
 }
 
 export interface VerifyPostgresAcceptanceEvidenceOfflineInput {
@@ -233,6 +275,14 @@ interface NormalizedSources {
   readonly postgresMigrationDeployer?: Uint8Array;
   readonly postgresQueryPlanLoad?: Uint8Array;
   readonly queryPlanLoadFixture?: Uint8Array;
+  readonly privacyRetentionPolicyV1?: Uint8Array;
+  readonly privacyRetentionPlanManifestV1?: Uint8Array;
+  readonly privacyRetentionPlanPlatformV1?: Uint8Array;
+  readonly privacyRetentionPlanMigrationsV1?: readonly NormalizedMigrationSource[];
+  readonly privacyRetentionPolicySourceV1?: Uint8Array;
+  readonly privacyRetentionPlanSourceV1?: Uint8Array;
+  readonly resourceIdentifierTokenV1?: Uint8Array;
+  readonly privacyRetentionFixtureV1?: Uint8Array;
 }
 
 interface NormalizedMigrationSource {
@@ -250,6 +300,7 @@ interface ReviewedImageConfig {
   readonly workflowSha256: string;
   readonly fixtureSha256: string;
   readonly queryPlanLoadFixtureSha256: string | undefined;
+  readonly privacyRetentionFixtureSha256: string | undefined;
 }
 
 /** A stable, value-free failure for every rejected offline verification. */
@@ -321,7 +372,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
     ) {
       if (
         sources.projectionQuery === undefined ||
@@ -341,7 +393,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
     ) {
       if (
         sources.platformBootstrapV2 === undefined ||
@@ -368,7 +421,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
     ) {
       if (
         sources.restorePlatformV1 === undefined ||
@@ -386,7 +440,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
     ) {
       if (
         sources.postgresProjectionAdapter === undefined ||
@@ -409,7 +464,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
     if (
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
     ) {
       if (
         sources.postgresProjectionPool === undefined ||
@@ -420,7 +476,11 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 11 || evidence.schemaVersion === 12) {
+    if (
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
+    ) {
       if (
         sources.postgresMigrationDeployer === undefined ||
         evidence.sourceHashes.postgresMigrationDeployerSha256 !==
@@ -430,7 +490,7 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 12) {
+    if (evidence.schemaVersion === 12 || evidence.schemaVersion === 13) {
       if (
         sources.postgresQueryPlanLoad === undefined ||
         sources.queryPlanLoadFixture === undefined ||
@@ -443,6 +503,40 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       ) {
         invalid();
       }
+    }
+
+    if (evidence.schemaVersion === 13) {
+      if (
+        sources.privacyRetentionPolicyV1 === undefined ||
+        sources.privacyRetentionPlanManifestV1 === undefined ||
+        sources.privacyRetentionPlanPlatformV1 === undefined ||
+        sources.privacyRetentionPlanMigrationsV1 === undefined ||
+        sources.privacyRetentionPolicySourceV1 === undefined ||
+        sources.privacyRetentionPlanSourceV1 === undefined ||
+        sources.resourceIdentifierTokenV1 === undefined ||
+        sources.privacyRetentionFixtureV1 === undefined ||
+        evidence.sourceHashes.privacyRetentionPolicyV1Sha256 !==
+          sha256(sources.privacyRetentionPolicyV1) ||
+        evidence.sourceHashes.privacyRetentionPlanManifestV1Sha256 !==
+          sha256(sources.privacyRetentionPlanManifestV1) ||
+        evidence.sourceHashes.privacyRetentionPolicySourceV1Sha256 !==
+          sha256(sources.privacyRetentionPolicySourceV1) ||
+        evidence.sourceHashes.privacyRetentionPlanSourceV1Sha256 !==
+          sha256(sources.privacyRetentionPlanSourceV1) ||
+        evidence.sourceHashes.resourceIdentifierTokenV1Sha256 !==
+          sha256(sources.resourceIdentifierTokenV1) ||
+        evidence.sourceHashes.privacyRetentionFixtureV1Sha256 !==
+          sha256(sources.privacyRetentionFixtureV1) ||
+        imageConfig.privacyRetentionFixtureSha256 !==
+          evidence.sourceHashes.privacyRetentionFixtureV1Sha256
+      ) {
+        invalid();
+      }
+      verifyPrivacyRetentionPlanManifestV1(
+        sources.privacyRetentionPlanManifestV1,
+        sources.privacyRetentionPlanPlatformV1,
+        sources.privacyRetentionPlanMigrationsV1,
+      );
     }
 
     const workflowSha256 = sha256(sources.workflow);
@@ -501,6 +595,127 @@ function normalizeSources(
   value: unknown,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): NormalizedSources {
+  if (schemaVersion === 13) {
+    const sources = exactPlainDataRecord(value, V13_SOURCE_KEYS);
+    return normalizeSourceFields(
+      sources,
+      {
+        projectionQuery: exactBytes(
+          sources.projectionQuery,
+          MAX_PROJECTION_QUERY_BYTES,
+        ),
+        projectionNormalizer: exactBytes(
+          sources.projectionNormalizer,
+          MAX_PROJECTION_NORMALIZER_BYTES,
+        ),
+      },
+      {
+        platformBootstrapV2: exactBytes(
+          sources.platformBootstrapV2,
+          MAX_PLATFORM_BOOTSTRAP_V2_BYTES,
+        ),
+        applicationMigrationManifestV2: exactBytes(
+          sources.applicationMigrationManifestV2,
+          MAX_APPLICATION_MANIFEST_V2_BYTES,
+        ),
+        authenticatedMigrationRendererV2: exactBytes(
+          sources.authenticatedMigrationRendererV2,
+          MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES,
+        ),
+        applicationMigrationsV2: Object.freeze(
+          exactDataArray(
+            sources.applicationMigrationsV2,
+            APPLICATION_MIGRATION_V2_FILES.length,
+            false,
+          ).map((migration) => normalizeApplicationMigrationV2(migration)),
+        ),
+        restorePlatformV1: exactBytes(
+          sources.restorePlatformV1,
+          MAX_RESTORE_PLATFORM_V1_BYTES,
+        ),
+        authenticatedBackupRestorePlanV1: exactBytes(
+          sources.authenticatedBackupRestorePlanV1,
+          MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES,
+        ),
+      },
+      {
+        postgresProjectionAdapter: exactBytes(
+          sources.postgresProjectionAdapter,
+          MAX_POSTGRES_PROJECTION_ADAPTER_BYTES,
+        ),
+        operationProjectionContract: exactBytes(
+          sources.operationProjectionContract,
+          MAX_OPERATION_PROJECTION_CONTRACT_BYTES,
+        ),
+        databasePackageManifest: exactBytes(
+          sources.databasePackageManifest,
+          MAX_DATABASE_PACKAGE_MANIFEST_BYTES,
+        ),
+        pnpmLockfile: exactBytes(sources.pnpmLockfile, MAX_PNPM_LOCKFILE_BYTES),
+      },
+      {
+        postgresProjectionPool: exactBytes(
+          sources.postgresProjectionPool,
+          MAX_POSTGRES_PROJECTION_POOL_BYTES,
+        ),
+      },
+      {
+        postgresMigrationDeployer: exactBytes(
+          sources.postgresMigrationDeployer,
+          MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES,
+        ),
+      },
+      {
+        postgresQueryPlanLoad: exactBytes(
+          sources.postgresQueryPlanLoad,
+          MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES,
+        ),
+        queryPlanLoadFixture: exactBytes(
+          sources.queryPlanLoadFixture,
+          MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES,
+        ),
+      },
+      {
+        privacyRetentionPolicyV1: exactBytes(
+          sources.privacyRetentionPolicyV1,
+          MAX_PRIVACY_RETENTION_POLICY_V1_BYTES,
+        ),
+        privacyRetentionPlanManifestV1: exactBytes(
+          sources.privacyRetentionPlanManifestV1,
+          MAX_PRIVACY_RETENTION_PLAN_MANIFEST_V1_BYTES,
+        ),
+        privacyRetentionPlanPlatformV1: exactBytes(
+          sources.privacyRetentionPlanPlatformV1,
+          MAX_PRIVACY_RETENTION_PLAN_PLATFORM_V1_BYTES,
+        ),
+        privacyRetentionPlanMigrationsV1: Object.freeze(
+          exactDataArray(
+            sources.privacyRetentionPlanMigrationsV1,
+            1,
+            false,
+          ).map((migration) =>
+            normalizePrivacyRetentionPlanMigrationV1(migration),
+          ),
+        ),
+        privacyRetentionPolicySourceV1: exactBytes(
+          sources.privacyRetentionPolicySourceV1,
+          MAX_PRIVACY_RETENTION_POLICY_SOURCE_V1_BYTES,
+        ),
+        privacyRetentionPlanSourceV1: exactBytes(
+          sources.privacyRetentionPlanSourceV1,
+          MAX_PRIVACY_RETENTION_PLAN_SOURCE_V1_BYTES,
+        ),
+        resourceIdentifierTokenV1: exactBytes(
+          sources.resourceIdentifierTokenV1,
+          MAX_RESOURCE_IDENTIFIER_TOKEN_V1_BYTES,
+        ),
+        privacyRetentionFixtureV1: exactBytes(
+          sources.privacyRetentionFixtureV1,
+          MAX_PRIVACY_RETENTION_FIXTURE_V1_BYTES,
+        ),
+      },
+    );
+  }
   if (schemaVersion === 12) {
     const sources = exactPlainDataRecord(value, V12_SOURCE_KEYS);
     return normalizeSourceFields(
@@ -883,7 +1098,7 @@ function normalizeSources(
 
 function usesProjectionSources(
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
-): schemaVersion is 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 {
+): schemaVersion is 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 {
   return (
     schemaVersion === 4 ||
     schemaVersion === 5 ||
@@ -893,7 +1108,8 @@ function usesProjectionSources(
     schemaVersion === 9 ||
     schemaVersion === 10 ||
     schemaVersion === 11 ||
-    schemaVersion === 12
+    schemaVersion === 12 ||
+    schemaVersion === 13
   );
 }
 
@@ -932,6 +1148,17 @@ function normalizeSourceFields(
     NormalizedSources,
     "postgresQueryPlanLoad" | "queryPlanLoadFixture"
   > = {},
+  v13Sources: Pick<
+    NormalizedSources,
+    | "privacyRetentionPolicyV1"
+    | "privacyRetentionPlanManifestV1"
+    | "privacyRetentionPlanPlatformV1"
+    | "privacyRetentionPlanMigrationsV1"
+    | "privacyRetentionPolicySourceV1"
+    | "privacyRetentionPlanSourceV1"
+    | "resourceIdentifierTokenV1"
+    | "privacyRetentionFixtureV1"
+  > = {},
 ): NormalizedSources {
   const migrations = exactDataArray(sources.migrations, MAX_MIGRATIONS, false);
   return Object.freeze({
@@ -952,6 +1179,7 @@ function normalizeSourceFields(
     ...v10Sources,
     ...v11Sources,
     ...v12Sources,
+    ...v13Sources,
   });
 }
 
@@ -979,21 +1207,46 @@ function normalizeApplicationMigrationV2(
   });
 }
 
+function normalizePrivacyRetentionPlanMigrationV1(
+  value: unknown,
+): NormalizedMigrationSource {
+  const migration = exactPlainDataRecord(value, MIGRATION_SOURCE_KEYS);
+  if (
+    migration.id !== PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID ||
+    migration.file !== PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE
+  ) {
+    invalid();
+  }
+  return Object.freeze({
+    id: migration.id,
+    file: migration.file,
+    bytes: exactBytes(migration.bytes, MAX_MIGRATION_BYTES),
+  });
+}
+
 function parseReviewedImageConfig(
   bytes: Uint8Array,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): ReviewedImageConfig {
   const value = exactPlainDataRecord(
     parseCanonicalJson(bytes),
-    schemaVersion === 12 ? V12_IMAGE_CONFIG_KEYS : IMAGE_CONFIG_KEYS,
+    schemaVersion === 13
+      ? V13_IMAGE_CONFIG_KEYS
+      : schemaVersion === 12
+        ? V12_IMAGE_CONFIG_KEYS
+        : IMAGE_CONFIG_KEYS,
   );
   const runner = exactPlainDataRecord(value.runner, IMAGE_RUNNER_KEYS);
   const indexDigest = sha256Digest(value.indexDigest);
   const workflowSha256 = sha256Hex(value.workflowSha256);
   const fixtureSha256 = sha256Hex(value.fixtureSha256);
   const queryPlanLoadFixtureSha256 =
-    schemaVersion === 12
+    schemaVersion === 12 || schemaVersion === 13
       ? sha256Hex(value.queryPlanLoadFixtureSha256)
+      : undefined;
+  const privacyRetentionFixtureSha256 =
+    schemaVersion === 13
+      ? sha256Hex(value.privacyRetentionFixtureSha256)
       : undefined;
   if (
     value.schemaVersion !== 1 ||
@@ -1020,6 +1273,7 @@ function parseReviewedImageConfig(
     workflowSha256,
     fixtureSha256,
     queryPlanLoadFixtureSha256,
+    privacyRetentionFixtureSha256,
   });
 }
 
@@ -1103,6 +1357,50 @@ function verifyApplicationMigrationManifestV2(
       invalid();
     }
   });
+}
+
+function verifyPrivacyRetentionPlanManifestV1(
+  manifestBytes: Uint8Array,
+  platformBytes: Uint8Array,
+  migrationSources: readonly NormalizedMigrationSource[],
+): void {
+  const manifest = exactPlainDataRecord(
+    parseCanonicalJson(manifestBytes),
+    PRIVACY_RETENTION_PLAN_MANIFEST_V1_KEYS,
+  );
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.planVersion !== 1 ||
+    manifest.algorithm !== "sha256"
+  ) {
+    invalid();
+  }
+
+  const platform = exactPlainDataRecord(
+    manifest.platform,
+    PRIVACY_RETENTION_PLAN_PLATFORM_V1_KEYS,
+  );
+  if (
+    platform.file !== PRIVACY_RETENTION_PLAN_PLATFORM_V1_FILE ||
+    sha256(platformBytes) !== sha256Hex(platform.sha256)
+  ) {
+    invalid();
+  }
+
+  const migrations = exactDataArray(manifest.migrations, 1, false);
+  if (migrations.length !== 1 || migrationSources.length !== 1) invalid();
+  const entry = exactPlainDataRecord(migrations[0], MANIFEST_ENTRY_KEYS);
+  const source = migrationSources[0];
+  if (
+    entry.id !== PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID ||
+    entry.file !== PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE ||
+    source === undefined ||
+    source.id !== entry.id ||
+    source.file !== entry.file ||
+    sha256(source.bytes) !== sha256Hex(entry.sha256)
+  ) {
+    invalid();
+  }
 }
 
 function parseCanonicalJson(bytes: Uint8Array): unknown {

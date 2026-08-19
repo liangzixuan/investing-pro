@@ -48,7 +48,10 @@ capacity evidence. A plan accepted only after disabling sequential scans,
 creating an acceptance-only index, or using a privileged reference in place of
 the runtime RLS path would not satisfy this gate.
 
-The next existing unassigned
-[package-roadmap prerequisite](../packages/db/README.md) is approval of the
-production privacy and retention model for permanent resource identifiers; no
-B13 milestone or successor claim is assigned here.
+The former unassigned
+[package-roadmap prerequisite](../packages/db/README.md) now has a separate B13
+technical source contract in
+[ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [B13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md). That successor does not
+widen this V12 record. Its live V13 result remains pending, and production
+privacy/legal admission remains blocked.

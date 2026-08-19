@@ -23,6 +23,7 @@ import {
   EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS,
   extractReviewedSyntheticFixtureBody,
   generateMigrationDeployerAuthPassword,
+  generatePrivacyRetentionAuthPassword,
   generateOwnerDdlAuthPassword,
   generateMigratorAuthPassword,
   generateRuntimeAuthPassword,
@@ -45,6 +46,9 @@ import {
   MIGRATION_DEPLOYER_AUTH_CAPABILITY_ROLE,
   MIGRATION_DEPLOYER_AUTH_LOGIN_ROLE,
   parsePostgresProjectionAdapterEndpoint,
+  POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE,
+  PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
   renderB7AcceptanceTargetResetSql,
   renderAuthenticatedOwnerDdlCanaryCreateSql,
   renderAuthenticatedOwnerDdlCanaryDropSql,
@@ -64,6 +68,7 @@ import {
   renderOwnerDdlAuthPassfile,
   renderOwnerDdlAuthProvisioningSql,
   renderPostgresProjectionPoolProvisioningSql,
+  renderPrivacyRetentionAuthProvisioningSql,
   renderMigratorAuthBackendDrainSql,
   renderMigratorAuthCleanupSql,
   renderMigratorAuthPassfile,
@@ -91,6 +96,43 @@ import {
 } from "../src/postgres-acceptance";
 
 describe("PostgreSQL acceptance harness guardrails", () => {
+  it("renders the exact ephemeral B13 privacy login and SET-only capability edge", () => {
+    const password = "Q".repeat(43);
+    const sql = renderPrivacyRetentionAuthProvisioningSql(password);
+
+    expect(POSTGRES_PRIVACY_RETENTION_DATABASE_NAME).toBe(
+      "research_cockpit_b13_privacy_retention_test",
+    );
+    expect(sql).toContain(`CREATE ROLE ${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}`);
+    expect(sql).not.toContain(
+      `CREATE ROLE ${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}`,
+    );
+    for (const attribute of [
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+    ]) {
+      expect(sql).toContain(attribute);
+    }
+    expect(sql).toContain("CONNECTION LIMIT 2");
+    expect(sql).toContain(
+      `GRANT ${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}\n  TO ${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}\n  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;`,
+    );
+    expect(sql.match(new RegExp(password, "g"))).toHaveLength(1);
+
+    const generated = Array.from({ length: 8 }, () =>
+      generatePrivacyRetentionAuthPassword(),
+    );
+    expect(new Set(generated).size).toBe(generated.length);
+    for (const value of generated) expect(value).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(() =>
+      renderPrivacyRetentionAuthProvisioningSql(`invalid-${password}`),
+    ).toThrow(/32-byte base64url/i);
+  });
+
   it("matches PostgreSQL boolean-to-text catalog serialization", () => {
     expect(EXPECTED_CAPABILITY_ROLE_ATTRIBUTE_ROWS).toEqual([
       "research_cockpit_backup|false|false|false|false|false|false|false",
@@ -1405,17 +1447,19 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "43f4be1ce223e30db25ec052859599deb3c16733829db6f59c2aa5c1d5a70543",
+        "c67ac50f09fd31d0901d6421a2a434c050a319d170866fee70e5a59cd0911966",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
       queryPlanLoadFixtureSha256:
         "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad",
+      privacyRetentionFixtureSha256:
+        "9be0682dffbb981350bde888b2880b99e2bfa587da96acdfae281c41be67a6c7",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v12.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v13.json",
     );
     expect(artifacts.workflow).toContain('          - "127.0.0.1::5432"');
     expect(artifacts.workflow).toContain("      - modules/research-core/**");
@@ -1609,7 +1653,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v12.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v13.json",
         unsafePath,
       );
       expect(
@@ -1649,7 +1693,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1823,10 +1867,10 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).toContain(
       "bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery",
     );
-    expect(source).toContain("version 12 success-only run record");
+    expect(source).toContain("version 13 success-only run record");
   });
 
-  it("finishes mandatory B8 cleanup and hashes its exact sources before v12 evidence", async () => {
+  it("finishes mandatory B8 cleanup and hashes its exact sources before v13 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2399,7 +2443,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 12 success-only run record was written",
+      "the version 13 success-only run record was written",
     ]);
     expect(
       entrypoint.match(
@@ -2632,7 +2676,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(sourceHashes).toContain("postgresMigrationDeployerSha256,");
   });
 
-  it("runs the authenticated backup and bounded restore before v12 evidence", async () => {
+  it("runs the authenticated backup and bounded restore before v13 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2666,7 +2710,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 12 success-only run record was written",
+      "the version 13 success-only run record was written",
     ]);
 
     const orchestrator = section(
@@ -3145,7 +3189,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "await verifyAuthenticatedBackupAndBoundedRestore(",
       "await verifyCheckedOutCommit(environment);",
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
-      "the version 12 success-only run record was written",
+      "the version 13 success-only run record was written",
     ]);
     expect(
       entrypoint.match(/await verifyAuthenticatedPostgresQueryPlanLoad\(/g),
@@ -3363,6 +3407,305 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "queryPlanLoadFixtureSha256 !== config.queryPlanLoadFixtureSha256",
       "postgresQueryPlanLoadSha256,",
       "queryPlanLoadFixtureSha256,",
+    ]) {
+      expect(sourceHashes).toContain(marker);
+    }
+  });
+
+  it("runs B13 keyed privacy retention in a bounded authenticated template0 lane", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+    const expectOrdered = (body: string, markers: readonly string[]) => {
+      let previous = -1;
+      for (const marker of markers) {
+        const position = body.indexOf(marker, previous + 1);
+        expect(position, marker).toBeGreaterThan(previous);
+        previous = position;
+      }
+    };
+
+    const entrypoint = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    expectOrdered(entrypoint, [
+      "const privacyRetentionPolicy = await loadPrivacyRetentionPolicyV1();",
+      "assertPostgresPrivacyRetentionAcceptancePolicy(privacyRetentionPolicy);",
+      "const privacyRetentionPlan = await loadPrivacyRetentionPlanV1();",
+      "const privacyRetentionFixtureSql = await loadPrivacyRetentionFixture();",
+      "await verifyAuthenticatedPostgresQueryPlanLoad(",
+      "await verifyAuthenticatedPostgresPrivacyRetention(",
+      "await verifyAuthenticatedPostgresProjectionPool(",
+      "await verifyAuthenticatedBackupAndBoundedRestore(",
+      "await verifyCheckedOutCommit(environment);",
+      "const sourceHashes = await collectAcceptanceSourceHashes(config);",
+      "the version 13 success-only run record was written",
+    ]);
+    expect(
+      entrypoint.match(/await verifyAuthenticatedPostgresPrivacyRetention\(/g),
+    ).toHaveLength(1);
+    expect(entrypoint).toContain(
+      "privacyRetentionFixtureSql,\n    authenticatedMigrationPlan,\n    privacyRetentionPlan,",
+    );
+
+    const lifecycle = section(
+      "async function verifyAuthenticatedPostgresPrivacyRetention(",
+      "class PostgresPrivacyRetentionError extends Error",
+    );
+    expectOrdered(lifecycle, [
+      "await verifyPostgresPrivacyRetentionResidueAbsent(containerId);",
+      "sourceBefore = await collectAuthenticatedBackupFingerprints(",
+      "const tokens = await derivePrivacyRetentionTokens();",
+      "const renderedFixture = renderPrivacyRetentionFixture(fixtureSql, {",
+      "databaseProvisioningStarted = true;",
+      "await createPostgresPrivacyRetentionDatabase(containerId);",
+      "roleProvisioningStarted = true;",
+      "await verifyPostgresPrivacyRetentionPlanDeployment(",
+      "await provisionTestLoaderAuthLogin(containerId, seedPassword);",
+      "await provisionPostgresPrivacyRetentionLogin(containerId, privacyPassword);",
+      "await verifyPostgresPrivacyRetentionWrongPasswordRejection(",
+      "await seedPostgresPrivacyRetentionFixture(seedClient, renderedFixture);",
+      "await verifyPostgresPrivacyRetentionFixtureState(adminClient, tokens);",
+      "await verifyPostgresPrivacyRetentionDenials(allocationClient);",
+      "await verifyPostgresPrivacyRetentionMetadataBoundaries(",
+      "await verifyPostgresPrivacyRetentionTombstone(",
+      "const betaBefore =",
+      "await verifyPostgresPrivacyRetentionOffboarding(",
+      "const betaAfter =",
+      "if (betaAfter !== betaBefore || clientErrors.length > 0)",
+      "} finally {",
+      'label: "rollback and close B13 PostgreSQL client"',
+      'label: "drain B13 PostgreSQL backends"',
+      'label: "drop B13 template0 database without FORCE"',
+      'label: "drop B13 ephemeral logins and privacy capability"',
+      'label: "verify B13 source fingerprint"',
+      'label: "verify B13 zero residue"',
+      'label: "verify B13 final source catalog"',
+      "await collectRuntimeAuthOperationFailures(cleanupOperations)",
+      "if (probeError !== undefined && cleanupError !== undefined)",
+      "throw new AggregateError(",
+    ]);
+    expect(lifecycle).not.toMatch(/process\.stdout|console\.|resource_token/);
+
+    const deployment = section(
+      "async function verifyPostgresPrivacyRetentionPlanDeployment(",
+      "async function expectPostgresPrivacyRetentionClientFailure(",
+    );
+    expectOrdered(deployment, [
+      "renderPrivacyRetentionPlatformMigration(privacyPlan, true)",
+      "await verifyPostgresPrivacyRetentionPlatformPristine(containerId);",
+      "renderPrivacyRetentionPlatformMigration(privacyPlan)",
+      'label: "B13 privacy platform replay"',
+      "await provisionMigratorAuthLogin(containerId, migratorPassword);",
+      "renderPrivacyRetentionBaseMigration(authenticatedPlan, true)",
+      "await verifyPostgresPrivacyRetentionBasePristine(containerId);",
+      "renderPrivacyRetentionBaseMigration(authenticatedPlan)",
+      "await verifyPostgresPrivacyRetentionBaseState(",
+      "renderPrivacyRetentionBaseMigration(authenticatedPlan)",
+      "renderPrivacyRetentionApplicationMigration(\n      authenticatedPlan,\n      privacyPlan,\n      true,",
+      "await verifyPostgresPrivacyRetentionSuffixAbsent(",
+      "await verifyPostgresPrivacyRetentionSuffixEmptyOnlyRace(",
+      "await verifyPostgresPrivacyRetentionSuffixAbsent(",
+      "privacy-populated-rejection",
+      'label: "B13 populated privacy suffix rejection"',
+      "await verifyPostgresPrivacyRetentionSuffixAbsent(",
+      "renderPrivacyRetentionApplicationMigration(authenticatedPlan, privacyPlan)",
+      "await verifyPostgresPrivacyRetentionSuffixState(",
+      'label: "B13 privacy suffix replay"',
+    ]);
+    expect(deployment).toContain('sqlState: "22012"');
+    expect(deployment).toContain('sqlState: "P0001"');
+
+    const suffixRace = section(
+      "async function verifyPostgresPrivacyRetentionSuffixEmptyOnlyRace(",
+      "async function expectPostgresPrivacyRetentionClientFailure(",
+    );
+    expectOrdered(suffixRace, [
+      "PRIVACY_RETENTION_SUFFIX_WRITER_APPLICATION_NAME",
+      "PRIVACY_RETENTION_SUFFIX_DEPLOYER_APPLICATION_NAME",
+      "await writerClient.connect();",
+      "await deployerClient.connect();",
+      'await writerClient.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE")',
+      "INSERT INTO private_data.organizations",
+      "deployment = deployerClient",
+      "renderPrivacyRetentionApplicationMigration(",
+      "await waitForPostgresPrivacyRetentionSuffixDeploymentBlock(",
+      'const committed = await writerClient.query("COMMIT")',
+      "const outcome = await deployment;",
+      'outcome.code !== "P0001"',
+      "privacy-retention v1 requires empty tenant data",
+      'const rolledBack = await deployerClient.query("ROLLBACK")',
+      "const preserved = await writerClient.query",
+      'text: "DELETE FROM private_data.organizations WHERE id = $1::uuid"',
+      "const reset = await writerClient.query",
+      "if (reset.rows[0]?.row_count !== 0)",
+      "cleanupFailures",
+    ]);
+    for (const marker of [
+      "private_data.organizations'::pg_catalog.regclass",
+      "RowExclusiveLock",
+      "ShareRowExclusiveLock",
+      "pg_catalog.pg_blocking_pids",
+      "PRIVACY_RETENTION_SUFFIX_BLOCKED_DEADLINE_MILLISECONDS",
+    ]) {
+      expect(suffixRace).toContain(marker);
+    }
+
+    const tokenDerivation = section(
+      "async function derivePrivacyRetentionTokens(",
+      "async function verifyPostgresPrivacyRetentionPlanDeployment(",
+    );
+    for (const marker of [
+      "const alphaKey = randomBytes(32);",
+      "const betaKey = randomBytes(32);",
+      "privacyRetentionMacProvider(alphaKey)",
+      "privacyRetentionMacProvider(betaKey)",
+      "PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.alphaThesis",
+      "PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.betaThesis",
+      "PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.alphaAlert",
+      "PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.betaAlert",
+      "deriveResourceIdentifierToken(",
+      "alphaKey.fill(0);",
+      "betaKey.fill(0);",
+    ]) {
+      expect(tokenDerivation).toContain(marker);
+    }
+    expect(tokenDerivation).not.toMatch(/PGPASSWORD|process\.env|console\./);
+
+    const fixtureLoad = section(
+      "async function seedPostgresPrivacyRetentionFixture(",
+      "async function verifyPostgresPrivacyRetentionFixtureState(",
+    );
+    expect(fixtureLoad).toContain('...Array<string>(4).fill("SELECT")');
+    expect(fixtureLoad).toContain('...Array<string>(12).fill("INSERT")');
+    expect(fixtureLoad).toContain('...Array<string>(4).fill("INSERT")');
+
+    const boundaries = section(
+      "async function verifyPostgresPrivacyRetentionMetadataBoundaries(",
+      "async function verifyPostgresPrivacyRetentionTombstone(",
+    );
+    expectOrdered(boundaries, [
+      "await beginPostgresPrivacyRetentionCapabilityTransaction(privacyClient);",
+      '"SELECT transaction_timestamp()::text AS reference_time"',
+      "await seedPostgresPrivacyRetentionBoundaryRows(seedClient, referenceTime);",
+      '"SELECT * FROM private_data.purge_expired_privacy_metadata()"',
+      'purged.rows[0]?.idempotency_rows !== "3"',
+      'purged.rows[0]?.audit_rows !== "3"',
+      "idempotency_past_or_at",
+      "audit_past_or_at",
+      "future_after_clock",
+      "interval '24 hours'",
+      "interval '90 days'",
+      "interval '1 microsecond'",
+    ]);
+
+    const tombstone = section(
+      "async function verifyPostgresPrivacyRetentionTombstone(",
+      "async function collectPostgresPrivacyRetentionBetaFingerprint(",
+    );
+    expectOrdered(tombstone, [
+      "await beginPostgresPrivacyRetentionCapabilityTransaction(privacyClient);",
+      "private_data.delete_live_resource_by_allocation(",
+      "PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID",
+      "await commitPostgresPrivacyRetentionCapabilityTransaction(privacyClient);",
+      "await verifyPostgresPrivacyRetentionClientIdentity(",
+      "lifecycle_state = 'deleted' AS deleted",
+      "organization_id IS NULL AND resource_id IS NULL AS raw_cleared",
+      "resource_token = pg_catalog.decode($1, 'hex') AS token_preserved",
+      "await expectPostgresPrivacyRetentionCapabilityFailure(",
+      "private_data.allocate_resource_identifier(",
+      '"23505"',
+    ]);
+    expect(tombstone).not.toContain("DELETE FROM private_data.theses");
+
+    const suffixCatalog = section(
+      "async function verifyPostgresPrivacyRetentionSuffixState(",
+      "async function seedPostgresPrivacyRetentionFixture(",
+    );
+    for (const marker of [
+      "private_data.delete_live_resource_by_allocation(uuid)",
+      "pg_catalog.pg_get_function_result(",
+      "pg_catalog.has_function_privilege(",
+      "NOT pg_catalog.has_table_privilege(",
+      '"true|3|true|5|5|0|0"',
+    ]) {
+      expect(suffixCatalog).toContain(marker);
+    }
+
+    const acceptancePolicy = section(
+      "function assertPostgresPrivacyRetentionAcceptancePolicy(",
+      "class PostgresPrivacyRetentionError extends Error",
+    );
+    for (const marker of [
+      'policy.status !== "accepted_technical_model_production_blocked"',
+      'policy.dataAdmission !== "synthetic_only"',
+      "policy.productionAdmission.allowed !== false",
+    ]) {
+      expect(acceptancePolicy).toContain(marker);
+    }
+
+    const offboarding = section(
+      "async function verifyPostgresPrivacyRetentionOffboarding(",
+      "async function beginAndCommitPostgresPrivacyRetentionOffboarding(",
+    );
+    expectOrdered(offboarding, [
+      "await beginPostgresPrivacyRetentionCapabilityTransaction(allocationClient);",
+      "private_data.allocate_resource_identifier(",
+      "const offboarding = beginAndCommitPostgresPrivacyRetentionOffboarding(",
+      "await waitForPostgresPrivacyRetentionBlockedOffboarding(",
+      "await commitPostgresPrivacyRetentionCapabilityTransaction(allocationClient);",
+      "offboardingOutcome.privacyDomainId",
+      "await expectPostgresPrivacyRetentionCapabilityFailure(",
+      "private_data.purge_tenant_privacy_domain($1::uuid)",
+      'resource_token_rows: "3"',
+      'privacy_domain_rows: "1"',
+      'organization_rows: "1"',
+      '"0|0|0|0|1|1|2"',
+    ]);
+    expect(offboarding).toContain('"P0001"');
+
+    const databaseLifecycle = section(
+      "async function createPostgresPrivacyRetentionDatabase(",
+      "async function verifyAuthenticatedPostgresProjectionPool(",
+    );
+    expect(databaseLifecycle).toContain(
+      "renderCreatePrivacyRetentionDatabaseSql()",
+    );
+    expect(databaseLifecycle).toContain(
+      "renderDropPrivacyRetentionDatabaseSql()",
+    );
+    expect(databaseLifecycle).toContain(
+      "POSTGRES_PRIVACY_RETENTION_DATABASE_NAME",
+    );
+    expect(databaseLifecycle).not.toMatch(
+      /DROP DATABASE[^;]*(?:FORCE|WITH\s*\()/i,
+    );
+    expect(databaseLifecycle).not.toContain(
+      `WITH TEMPLATE \${CLEAN_BOOTSTRAP_DATABASE_NAME}`,
+    );
+
+    const sourceHashes = section(
+      "async function collectAcceptanceSourceHashes(",
+      "async function exactFileSha256(",
+    );
+    for (const marker of [
+      "exactFileSha256(privacyRetentionPolicyV1Path)",
+      "exactFileSha256(privacyRetentionPlanManifestV1Path)",
+      "exactFileSha256(privacyRetentionPolicySourceV1Path)",
+      "exactFileSha256(privacyRetentionPlanSourceV1Path)",
+      "exactFileSha256(resourceIdentifierTokenV1Path)",
+      "exactFileSha256(privacyRetentionFixtureV1Path)",
+      "privacyRetentionFixtureV1Sha256 !==",
+      "config.privacyRetentionFixtureSha256",
     ]) {
       expect(sourceHashes).toContain(marker);
     }
@@ -3623,7 +3966,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expect(sourceHashes).toContain("postgresProjectionPoolSha256,");
     expect(source).toContain(
-      "the version 12 success-only run record was written",
+      "the version 13 success-only run record was written",
     );
   });
 
@@ -3729,6 +4072,10 @@ async function loadArtifacts(): Promise<AcceptanceArtifacts> {
     ),
     queryPlanLoadFixture: await readFile(
       new URL("../acceptance/query-plan-load-fixture.sql", import.meta.url),
+      "utf8",
+    ),
+    privacyRetentionFixture: await readFile(
+      new URL("../acceptance/privacy-retention-fixture.sql", import.meta.url),
       "utf8",
     ),
   };

@@ -40,8 +40,10 @@ verification, pinned live execution, and independent artifact review are also
 complete for their bounded scope. The B12 deterministic RLS query-plan and
 bounded 2,000-read source/evidence contract, pinned V12 execution, and
 independent artifact review are complete for their bounded scope. The next
-existing unassigned package-roadmap prerequisite is approval of the production
-privacy and retention model for permanent resource identifiers.
+package-roadmap prerequisite now has a B13 technical source contract: the
+privacy/retention decision, empty-only keyed-identifier plan, and V13 evidence
+branches are implemented. Pinned live V13 execution and review remain pending,
+and production privacy/legal admission remains blocked.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -306,6 +308,34 @@ tool shape and limitations, and inserts only
 nonclaim position. PostgreSQL run `32230667908` passed at commit `59c4e58`; its
 retained V12 record returned `offline_consistent`.
 
+**Cycle 1b-b13 source implemented; live V13 pending:**
+policy v1 freezes a synthetic-only technical retention decision with production
+admission false. A separate manifest-bound plan creates the exact privacy
+capability in `research_cockpit_b13_privacy_retention_test` and applies one
+empty-data suffix over the unchanged v2 plan. The suffix introduces tenant
+privacy domains, a write-conflicting empty-only deployment barrier, 32-byte
+externally derived resource tokens, raw UUID clearing
+through a fixed authenticated hard-delete capability, active-to-offboarding
+admission closure, bounded online synthetic tenant purge, and bounded expired
+audit/idempotency purge.
+PostgreSQL cannot verify the external HMAC or operate its key.
+
+V13 preserves V1-V12, retains the exact V12 tools and sources, appends the two
+fixed decision/lifecycle checks and six fixed policy/plan/source/fixture hashes,
+and requires the commit-bound reviewer to validate every SQL body named by the
+privacy manifest. The full V12 limitation list remains, followed by explicit
+production legal/DSAR/offboarding/KMS/token-verification/online-and-backup
+deletion/populated-cutover/global-proof/real-data nonclaims. See
+[ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
+
+This source milestone is not a live-engine result. No V13 run, artifact hash,
+or independent `offline_consistent` review is recorded yet. Even after a
+bounded synthetic live pass, production admission will remain blocked pending
+external product/privacy/legal approval and the operating controls listed in
+ADR 0025. Populated-database backfill and online cutover remain a separate
+package-roadmap item.
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -378,6 +408,9 @@ implemented and locally verified, and its bounded live V10 result is reviewed.
 The B11 locked deployer and bounded live V11 result are reviewed. B12's fixed
 fact-as-known/tenant plan and 2,000-submission contract and bounded live V12
 result are also reviewed.
+The B13 technical policy, empty-only plan, token boundary, and V13 evidence
+source are implemented, but live V13 execution and review remain pending and
+production admission remains blocked.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -411,6 +444,10 @@ The reviewed B12 result is also disconnected. Eight observed runtime workload
 backends and 2,000 queued synthetic reads do not establish production capacity,
 SLOs, pool tuning/failover, general plan stability, real-data behavior, or
 application composition.
+The B13 source likewise remains disconnected and synthetic-only. It cannot be
+used as production privacy/legal approval, DSAR or legal-hold evidence, KMS/HSM
+custody, operating offboarding/retention scheduling, backup or third-party
+deletion, populated cutover, global erasure proof, or permission for real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

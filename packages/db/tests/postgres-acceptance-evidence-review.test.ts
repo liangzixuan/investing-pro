@@ -39,6 +39,8 @@ import {
   POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -73,6 +75,13 @@ const FIXED_SOURCE_PATHS = [
   "packages/db/src/postgres-migration-deployer.ts",
   "packages/db/src/postgres-query-plan-load.ts",
   "packages/db/acceptance/query-plan-load-fixture.sql",
+  "packages/db/privacy-retention-plans/v1/policy.json",
+  "packages/db/privacy-retention-plans/v1/manifest.json",
+  "packages/db/privacy-retention-plans/v1/platform-bootstrap.sql",
+  "packages/db/src/privacy-retention-policy.ts",
+  "packages/db/src/privacy-retention-plan.ts",
+  "packages/db/src/resource-identifier-token.ts",
+  "packages/db/acceptance/privacy-retention-fixture.sql",
 ] as const;
 const REPOSITORY = "example/research-cockpit";
 const REPOSITORY_ID = "123456789";
@@ -660,6 +669,76 @@ function evidenceAdapterTests(): void {
     );
   });
 
+  it("reviews historical v12 at a commit without any v13 privacy-retention source blob", async () => {
+    const fixture = await createFixture();
+    await writeV12ImageConfig(fixture.repositoryPath);
+    await Promise.all([
+      rm(
+        join(fixture.repositoryPath, "packages/db/privacy-retention-plans/v1"),
+        { recursive: true },
+      ),
+      rm(
+        join(
+          fixture.repositoryPath,
+          "packages/db/src/privacy-retention-policy.ts",
+        ),
+      ),
+      rm(
+        join(
+          fixture.repositoryPath,
+          "packages/db/src/privacy-retention-plan.ts",
+        ),
+      ),
+      rm(
+        join(
+          fixture.repositoryPath,
+          "packages/db/src/resource-identifier-token.ts",
+        ),
+      ),
+      rm(
+        join(
+          fixture.repositoryPath,
+          "packages/db/acceptance/privacy-retention-fixture.sql",
+        ),
+      ),
+    ]);
+    git(fixture.repositoryPath, ["add", "--all"]);
+    git(fixture.repositoryPath, ["commit", "-m", "historical v12 sources"]);
+    const historicalCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+    const record = JSON.parse(fixture.evidenceBytes.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    record.schemaVersion = 12;
+    record.commitSha = historicalCommit;
+    deleteV13SourceHashes(record);
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN];
+    const evidenceBytes = Buffer.from(
+      `${JSON.stringify(record, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(fixture.evidencePath, evidenceBytes);
+
+    const result = await reviewPostgresAcceptanceEvidence({
+      ...fixture.input,
+      expectedCommit: historicalCommit,
+      expectedEvidenceSha256: createHash("sha256")
+        .update(evidenceBytes)
+        .digest("hex"),
+    });
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "versioned_privacy_retention_decision_contract",
+    );
+  });
+
   it("rejects a changed v10 projection source at the anchored commit", async () => {
     const fixture = await createFixture();
     await writeFile(
@@ -865,6 +944,61 @@ function evidenceAdapterTests(): void {
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
     }
+  });
+
+  it("rejects changed, missing, or extra v13 privacy-retention plan and source blobs at the anchored commit", async () => {
+    for (const path of [
+      "packages/db/privacy-retention-plans/v1/policy.json",
+      "packages/db/privacy-retention-plans/v1/platform-bootstrap.sql",
+      "packages/db/privacy-retention-plans/v1/application/0001_keyed_resource_identifier_lifecycle.sql",
+      "packages/db/src/privacy-retention-plan.ts",
+      "packages/db/acceptance/privacy-retention-fixture.sql",
+    ]) {
+      const changed = await createFixture();
+      await writeFile(
+        join(changed.repositoryPath, path),
+        "changed v13 privacy-retention source\n",
+      );
+      git(changed.repositoryPath, ["add", "--all"]);
+      git(changed.repositoryPath, ["commit", "-m", "changed v13 source"]);
+      const changedCommit = git(changed.repositoryPath, ["rev-parse", "HEAD"]);
+      await expect(
+        reviewPostgresAcceptanceEvidence(
+          await inputAtCommit(changed, changedCommit),
+        ),
+      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+    }
+
+    const missing = await createFixture();
+    await rm(
+      join(
+        missing.repositoryPath,
+        "packages/db/privacy-retention-plans/v1/manifest.json",
+      ),
+    );
+    git(missing.repositoryPath, ["add", "--all"]);
+    git(missing.repositoryPath, ["commit", "-m", "missing v13 manifest"]);
+    const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(missing, missingCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+
+    const extra = await createFixture();
+    await writeFile(
+      join(
+        extra.repositoryPath,
+        "packages/db/privacy-retention-plans/v1/application/9999_extra.sql",
+      ),
+      "SELECT 1;\n",
+    );
+    git(extra.repositoryPath, ["add", "--all"]);
+    git(extra.repositoryPath, ["commit", "-m", "extra v13 plan body"]);
+    const extraCommit = git(extra.repositoryPath, ["rev-parse", "HEAD"]);
+    await expect(
+      reviewPostgresAcceptanceEvidence(await inputAtCommit(extra, extraCommit)),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
   it("requires every independent trust anchor", async () => {
@@ -1391,6 +1525,7 @@ async function inputAtCommit(
 async function writeHistoricalImageConfig(
   repositoryPath: string,
 ): Promise<void> {
+  await writeV12ImageConfig(repositoryPath);
   const path = join(
     repositoryPath,
     "packages/db/acceptance/postgres-image.json",
@@ -1400,6 +1535,19 @@ async function writeHistoricalImageConfig(
     unknown
   >;
   delete config.queryPlanLoadFixtureSha256;
+  await writeFile(path, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+}
+
+async function writeV12ImageConfig(repositoryPath: string): Promise<void> {
+  const path = join(
+    repositoryPath,
+    "packages/db/acceptance/postgres-image.json",
+  );
+  const config = JSON.parse(await readFile(path, "utf8")) as Record<
+    string,
+    unknown
+  >;
+  delete config.privacyRetentionFixtureSha256;
   await writeFile(path, `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
 
@@ -1444,6 +1592,21 @@ async function createFixture(
   ) as { migrations: { file: string }[] };
   for (const { file } of applicationManifestV2.migrations) {
     const path = join("packages/db/migration-plans/v2/application", file);
+    const destination = join(repositoryPath, path);
+    await mkdir(dirname(destination), { recursive: true });
+    await copyFile(join(SOURCE_REPOSITORY, path), destination);
+  }
+  const privacyRetentionManifestV1 = JSON.parse(
+    await readFile(
+      join(
+        repositoryPath,
+        "packages/db/privacy-retention-plans/v1/manifest.json",
+      ),
+      "utf8",
+    ),
+  ) as { migrations: { file: string }[] };
+  for (const { file } of privacyRetentionManifestV1.migrations) {
+    const path = join("packages/db/privacy-retention-plans/v1", file);
     const destination = join(repositoryPath, path);
     await mkdir(dirname(destination), { recursive: true });
     await copyFile(join(SOURCE_REPOSITORY, path), destination);
@@ -1556,6 +1719,33 @@ async function createFixture(
           "packages/db/acceptance/query-plan-load-fixture.sql",
         ),
       ),
+      privacyRetentionPolicyV1Sha256: await fileSha256(
+        join(
+          repositoryPath,
+          "packages/db/privacy-retention-plans/v1/policy.json",
+        ),
+      ),
+      privacyRetentionPlanManifestV1Sha256: await fileSha256(
+        join(
+          repositoryPath,
+          "packages/db/privacy-retention-plans/v1/manifest.json",
+        ),
+      ),
+      privacyRetentionPolicySourceV1Sha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/privacy-retention-policy.ts"),
+      ),
+      privacyRetentionPlanSourceV1Sha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/privacy-retention-plan.ts"),
+      ),
+      resourceIdentifierTokenV1Sha256: await fileSha256(
+        join(repositoryPath, "packages/db/src/resource-identifier-token.ts"),
+      ),
+      privacyRetentionFixtureV1Sha256: await fileSha256(
+        join(
+          repositoryPath,
+          "packages/db/acceptance/privacy-retention-fixture.sql",
+        ),
+      ),
     },
     completedAt: "2026-08-16T01:02:03.004Z",
   });
@@ -1637,6 +1827,17 @@ function deleteV12SourceHashes(record: Record<string, unknown>): void {
   const hashes = record.sourceHashes as Record<string, unknown>;
   delete hashes.postgresQueryPlanLoadSha256;
   delete hashes.queryPlanLoadFixtureSha256;
+  deleteV13SourceHashes(record);
+}
+
+function deleteV13SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.privacyRetentionPolicyV1Sha256;
+  delete hashes.privacyRetentionPlanManifestV1Sha256;
+  delete hashes.privacyRetentionPolicySourceV1Sha256;
+  delete hashes.privacyRetentionPlanSourceV1Sha256;
+  delete hashes.resourceIdentifierTokenV1Sha256;
+  delete hashes.privacyRetentionFixtureV1Sha256;
 }
 
 function cliArguments(input: PostgresAcceptanceEvidenceReviewInput): string[] {

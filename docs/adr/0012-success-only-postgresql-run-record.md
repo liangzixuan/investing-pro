@@ -293,6 +293,20 @@ version 11 record. See
 [ADR 0024](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md) and
 the [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md).
 
+Cycle 1b-b13 adds a separate version 13 source/evidence contract without
+changing the accepted V12 record above. V13 preserves exact V1 through V12
+branches and appends the two B13 decision/lifecycle checks, the six ordered
+policy/plan/source/fixture hashes, and the exact ordered production/legal/DSAR/
+offboarding/KMS/token-verification/online-and-backup deletion/populated-cutover/
+global-proof/real-data nonclaims recorded in
+[ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md).
+The tool shape remains V12 exact. The current source filename is
+`research-cockpit-postgres-acceptance-v13.json`; its workflow artifact name is
+`postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}`.
+The writer remains exclusive-create and success-only. No V13 run, retained
+artifact, or live result is claimed at this source stage; see the
+[Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md).
+
 ## Primary sources
 
 - [GitHub artifact upload action](https://github.com/actions/upload-artifact)

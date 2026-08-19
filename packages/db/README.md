@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B12 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **B1-B12 CLEAN-ONLY LIVE ACCEPTANCE PASSED ONLY FOR THEIR RECORDED SCOPES; B13 SOURCE CONTRACT IMPLEMENTED, LIVE V13 PENDING, PRODUCTION ADMISSION BLOCKED — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -170,6 +170,22 @@ run `32230667908` passed at commit `59c4e58`; the retained record returned
 [B12 evidence note](../../docs/POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](../../docs/adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](../../docs/CYCLE_1BB12_EXIT_MATRIX.md).
+
+Cycle 1b-b13 adds a separate canonical policy and privacy-retention plan without
+changing the historical v2/legacy inputs. Its application body is an empty-data
+suffix accepted only in the fixed pristine
+`research_cockpit_b13_privacy_retention_test` database. It replaces raw UUID
+tombstones there with stable allocation IDs and 32-byte externally derived
+domain/type/resource tokens; hard deletion clears raw organization/resource
+UUIDs. Fixed procedures gate allocation, authenticated single-resource hard
+deletion, offboarding, online synthetic tenant purge, and bounded
+audit/idempotency expiry. PostgreSQL validates token shape
+and lifecycle but not HMAC authenticity. Production admission is false: the
+source is not privacy/legal approval, production DSAR/KMS/offboarding/backup
+operations, populated cutover, cryptographic erasure, global deletion proof, or
+real-data evidence. No live V13 result is yet claimed. See
+[ADR 0025](../../docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [Cycle 1b-b13 exit matrix](../../docs/CYCLE_1BB13_EXIT_MATRIX.md).
 
 Ownership transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
@@ -549,10 +565,14 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     independent review are retained. Cleanup calls are not each
     independently cancellable; the 15-minute workflow timeout remains the outer
     fail-closed bound.
-17. **Next:** approve the production privacy and retention model for permanent
-    resource identifiers, including DSAR/erasure, tenant offboarding, backup
-    expiry, and any required pseudonymization or keyed-token replacement. Do not
-    admit real tenant identifiers until that decision is documented and tested.
+17. **Cycle 1b-b13 source implemented; live V13 pending:** retain the exact
+    technical policy, externally keyed token framing, pristine/empty-only
+    privacy plan, raw-identifier clearing, offboarding admission closure, online
+    synthetic purge, bounded expired-metadata purge, and V13 evidence contract.
+    Do not admit real tenant identifiers: production privacy/legal approval,
+    verified DSAR/legal holds, operating offboarding scheduling/monitoring,
+    KMS/HSM custody and destruction, all online/backup/third-party deletion
+    planes, cryptographic erasure, and independent deletion proof remain blocked.
 18. If upgrading a populated database, validate an audited registry backfill
     and cutover under concurrent-write controls before adding the live-state
     foreign keys; this static `0005` migration assumes empty live tables.
@@ -591,3 +611,8 @@ V12 result proves only its fixed two-plan, bounded eight-workload-backend,
 database connections, production load capacity/SLOs or pool tuning/failover,
 plan stability across other data distributions/statistics/hardware/versions,
 real data, application composition, or production readiness.
+B13 currently adds only a synthetic, pristine, empty-data source/evidence
+contract; its live V13 run and independent artifact review remain pending. It
+does not satisfy production privacy/legal, DSAR, scheduler/monitoring, KMS/HSM,
+token-verification, cryptographic-erasure, online/backup/third-party deletion,
+populated-cutover, global-proof, or real-data gates.

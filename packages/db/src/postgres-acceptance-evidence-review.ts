@@ -32,6 +32,13 @@ const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1_024 * 1_024;
 const MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES = 2 * 1_024 * 1_024;
 const MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES = 2 * 1_024 * 1_024;
 const MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES = 2 * 1_024 * 1_024;
+const MAX_PRIVACY_RETENTION_POLICY_V1_BYTES = 64 * 1_024;
+const MAX_PRIVACY_RETENTION_PLAN_MANIFEST_V1_BYTES = 64 * 1_024;
+const MAX_PRIVACY_RETENTION_PLAN_PLATFORM_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_PRIVACY_RETENTION_POLICY_SOURCE_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_PRIVACY_RETENTION_PLAN_SOURCE_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_RESOURCE_IDENTIFIER_TOKEN_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_PRIVACY_RETENTION_FIXTURE_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -74,6 +81,20 @@ const POSTGRES_QUERY_PLAN_LOAD_PATH =
   "packages/db/src/postgres-query-plan-load.ts";
 const QUERY_PLAN_LOAD_FIXTURE_PATH =
   "packages/db/acceptance/query-plan-load-fixture.sql";
+const PRIVACY_RETENTION_POLICY_V1_PATH =
+  "packages/db/privacy-retention-plans/v1/policy.json";
+const PRIVACY_RETENTION_PLAN_V1_DIRECTORY =
+  "packages/db/privacy-retention-plans/v1";
+const PRIVACY_RETENTION_PLAN_MANIFEST_V1_PATH =
+  "packages/db/privacy-retention-plans/v1/manifest.json";
+const PRIVACY_RETENTION_POLICY_SOURCE_V1_PATH =
+  "packages/db/src/privacy-retention-policy.ts";
+const PRIVACY_RETENTION_PLAN_SOURCE_V1_PATH =
+  "packages/db/src/privacy-retention-plan.ts";
+const RESOURCE_IDENTIFIER_TOKEN_V1_PATH =
+  "packages/db/src/resource-identifier-token.ts";
+const PRIVACY_RETENTION_FIXTURE_V1_PATH =
+  "packages/db/acceptance/privacy-retention-fixture.sql";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -92,6 +113,14 @@ const APPLICATION_MANIFEST_V2_KEYS = [
   "algorithm",
   "migrations",
 ] as const;
+const PRIVACY_RETENTION_PLAN_MANIFEST_V1_KEYS = [
+  "schemaVersion",
+  "planVersion",
+  "algorithm",
+  "platform",
+  "migrations",
+] as const;
+const PRIVACY_RETENTION_PLAN_PLATFORM_V1_KEYS = ["file", "sha256"] as const;
 const MIGRATION_KEYS = ["id", "file", "sha256"] as const;
 const APPLICATION_MIGRATION_V2_FILES = Object.freeze([
   "0001_request_context_and_ledger.sql",
@@ -101,6 +130,10 @@ const APPLICATION_MIGRATION_V2_FILES = Object.freeze([
   "0005_non_reusable_resource_ids.sql",
   "0006_null_safe_request_context.sql",
 ] as const);
+const PRIVACY_RETENTION_PLAN_PLATFORM_V1_FILE = "platform-bootstrap.sql";
+const PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID = "privacy-v1-0001";
+const PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE =
+  "application/0001_keyed_resource_identifier_lifecycle.sql";
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
@@ -131,6 +164,20 @@ interface ApplicationMigrationV2ManifestEntry {
   readonly id: string;
   readonly file: string;
   readonly sha256: string;
+}
+
+interface PrivacyRetentionPlanV1MigrationEntry {
+  readonly id: string;
+  readonly file: string;
+  readonly sha256: string;
+}
+
+interface PrivacyRetentionPlanV1Manifest {
+  readonly platform: {
+    readonly file: string;
+    readonly sha256: string;
+  };
+  readonly migrations: readonly PrivacyRetentionPlanV1MigrationEntry[];
 }
 
 interface GitTreeEntry {
@@ -222,7 +269,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
@@ -231,7 +279,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
     const backupRestorePlanV1Sources =
@@ -239,7 +288,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
         ? await readBackupRestorePlanV1Sources(
             repositoryPath,
             input.expectedCommit,
@@ -249,22 +299,30 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
         ? await readV9Sources(repositoryPath, input.expectedCommit)
         : {};
     const v10Sources =
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
         ? await readV10Sources(repositoryPath, input.expectedCommit)
         : {};
     const v11Sources =
-      evidence.schemaVersion === 11 || evidence.schemaVersion === 12
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13
         ? await readV11Sources(repositoryPath, input.expectedCommit)
         : {};
     const v12Sources =
-      evidence.schemaVersion === 12
+      evidence.schemaVersion === 12 || evidence.schemaVersion === 13
         ? await readV12Sources(repositoryPath, input.expectedCommit)
+        : {};
+    const v13Sources =
+      evidence.schemaVersion === 13
+        ? await readV13Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -291,11 +349,108 @@ export async function reviewPostgresAcceptanceEvidence(
         ...v10Sources,
         ...v11Sources,
         ...v12Sources,
+        ...v13Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV13Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly privacyRetentionPolicyV1: Uint8Array;
+  readonly privacyRetentionPlanManifestV1: Uint8Array;
+  readonly privacyRetentionPlanPlatformV1: Uint8Array;
+  readonly privacyRetentionPlanMigrationsV1: readonly {
+    id: string;
+    file: string;
+    bytes: Uint8Array;
+  }[];
+  readonly privacyRetentionPolicySourceV1: Uint8Array;
+  readonly privacyRetentionPlanSourceV1: Uint8Array;
+  readonly resourceIdentifierTokenV1: Uint8Array;
+  readonly privacyRetentionFixtureV1: Uint8Array;
+}> {
+  const [
+    privacyRetentionPolicyV1,
+    privacyRetentionPlanManifestV1,
+    privacyRetentionPolicySourceV1,
+    privacyRetentionPlanSourceV1,
+    resourceIdentifierTokenV1,
+    privacyRetentionFixtureV1,
+  ] = await Promise.all([
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PRIVACY_RETENTION_POLICY_V1_PATH,
+      MAX_PRIVACY_RETENTION_POLICY_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PRIVACY_RETENTION_PLAN_MANIFEST_V1_PATH,
+      MAX_PRIVACY_RETENTION_PLAN_MANIFEST_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PRIVACY_RETENTION_POLICY_SOURCE_V1_PATH,
+      MAX_PRIVACY_RETENTION_POLICY_SOURCE_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PRIVACY_RETENTION_PLAN_SOURCE_V1_PATH,
+      MAX_PRIVACY_RETENTION_PLAN_SOURCE_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      RESOURCE_IDENTIFIER_TOKEN_V1_PATH,
+      MAX_RESOURCE_IDENTIFIER_TOKEN_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      PRIVACY_RETENTION_FIXTURE_V1_PATH,
+      MAX_PRIVACY_RETENTION_FIXTURE_V1_BYTES,
+    ),
+  ]);
+  const plan = parsePrivacyRetentionPlanManifestV1(
+    privacyRetentionPlanManifestV1,
+  );
+  await requireExactPrivacyRetentionPlanV1Tree(repositoryPath, commit, plan);
+  const privacyRetentionPlanPlatformV1 = await readFixedGitBlob(
+    repositoryPath,
+    commit,
+    `${PRIVACY_RETENTION_PLAN_V1_DIRECTORY}/${plan.platform.file}`,
+    MAX_PRIVACY_RETENTION_PLAN_PLATFORM_V1_BYTES,
+  );
+  const privacyRetentionPlanMigrationsV1 =
+    await readPrivacyRetentionPlanMigrationsV1(
+      repositoryPath,
+      commit,
+      plan.migrations,
+    );
+  return Object.freeze({
+    privacyRetentionPolicyV1: Uint8Array.from(privacyRetentionPolicyV1),
+    privacyRetentionPlanManifestV1: Uint8Array.from(
+      privacyRetentionPlanManifestV1,
+    ),
+    privacyRetentionPlanPlatformV1: Uint8Array.from(
+      privacyRetentionPlanPlatformV1,
+    ),
+    privacyRetentionPlanMigrationsV1,
+    privacyRetentionPolicySourceV1: Uint8Array.from(
+      privacyRetentionPolicySourceV1,
+    ),
+    privacyRetentionPlanSourceV1: Uint8Array.from(privacyRetentionPlanSourceV1),
+    resourceIdentifierTokenV1: Uint8Array.from(resourceIdentifierTokenV1),
+    privacyRetentionFixtureV1: Uint8Array.from(privacyRetentionFixtureV1),
+  });
 }
 
 async function readV12Sources(
@@ -780,6 +935,74 @@ async function readExactApplicationMigrationV2Tree(
   return Object.freeze(migrations);
 }
 
+async function requireExactPrivacyRetentionPlanV1Tree(
+  repositoryPath: string,
+  commit: string,
+  plan: PrivacyRetentionPlanV1Manifest,
+): Promise<void> {
+  const treeOutput = await executeGit(
+    repositoryPath,
+    [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      commit,
+      "--",
+      PRIVACY_RETENTION_PLAN_V1_DIRECTORY,
+    ],
+    MAX_GIT_METADATA_BYTES,
+  );
+  const treeEntries = parseGitTree(treeOutput);
+  const expectedPaths = [
+    PRIVACY_RETENTION_POLICY_V1_PATH,
+    PRIVACY_RETENTION_PLAN_MANIFEST_V1_PATH,
+    `${PRIVACY_RETENTION_PLAN_V1_DIRECTORY}/${plan.platform.file}`,
+    ...plan.migrations.map(
+      ({ file }) => `${PRIVACY_RETENTION_PLAN_V1_DIRECTORY}/${file}`,
+    ),
+  ].sort(compareCodeUnits);
+  if (
+    treeEntries.some(
+      ({ mode, type }) => mode !== "100644" || type !== "blob",
+    ) ||
+    !sameStrings(
+      treeEntries.map(({ path }) => path),
+      expectedPaths,
+    )
+  ) {
+    invalid();
+  }
+}
+
+async function readPrivacyRetentionPlanMigrationsV1(
+  repositoryPath: string,
+  commit: string,
+  entries: readonly PrivacyRetentionPlanV1MigrationEntry[],
+): Promise<readonly { id: string; file: string; bytes: Uint8Array }[]> {
+  const migrations: { id: string; file: string; bytes: Uint8Array }[] = [];
+  let totalBytes = 0;
+  for (const entry of entries) {
+    const path = `${PRIVACY_RETENTION_PLAN_V1_DIRECTORY}/${entry.file}`;
+    const bytes = await readFixedGitBlob(
+      repositoryPath,
+      commit,
+      path,
+      MAX_MIGRATION_BYTES,
+    );
+    totalBytes += bytes.byteLength;
+    if (totalBytes > MAX_TOTAL_MIGRATION_BYTES) invalid();
+    migrations.push(
+      Object.freeze({
+        id: entry.id,
+        file: entry.file,
+        bytes: Uint8Array.from(bytes),
+      }),
+    );
+  }
+  return Object.freeze(migrations);
+}
+
 function parseMigrationManifest(
   bytes: Buffer,
 ): readonly MigrationManifestEntry[] {
@@ -821,6 +1044,56 @@ function parseMigrationManifest(
     invalid();
   }
   return Object.freeze(entries);
+}
+
+function parsePrivacyRetentionPlanManifestV1(
+  bytes: Buffer,
+): PrivacyRetentionPlanV1Manifest {
+  const manifest = exactPlainDataRecord(
+    parseJsonBytes(bytes, MAX_PRIVACY_RETENTION_PLAN_MANIFEST_V1_BYTES),
+    PRIVACY_RETENTION_PLAN_MANIFEST_V1_KEYS,
+  );
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.planVersion !== 1 ||
+    manifest.algorithm !== "sha256"
+  ) {
+    invalid();
+  }
+  const platform = exactPlainDataRecord(
+    manifest.platform,
+    PRIVACY_RETENTION_PLAN_PLATFORM_V1_KEYS,
+  );
+  if (platform.file !== PRIVACY_RETENTION_PLAN_PLATFORM_V1_FILE) invalid();
+  const platformSha256 = exactPattern(platform.sha256, SHA256_HEX, 64);
+  if (
+    !Array.isArray(manifest.migrations) ||
+    Object.getPrototypeOf(manifest.migrations) !== Array.prototype ||
+    manifest.migrations.length !== 1
+  ) {
+    invalid();
+  }
+  const entry = exactPlainDataRecord(manifest.migrations[0], MIGRATION_KEYS);
+  if (
+    entry.id !== PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID ||
+    entry.file !== PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE
+  ) {
+    invalid();
+  }
+  const migrationSha256 = exactPattern(entry.sha256, SHA256_HEX, 64);
+  return Object.freeze({
+    platform: Object.freeze({
+      file: PRIVACY_RETENTION_PLAN_PLATFORM_V1_FILE,
+      sha256: platformSha256,
+    }),
+    migrations: Object.freeze([
+      Object.freeze({
+        id: PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID,
+        file: PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE,
+        sha256: migrationSha256,
+      }),
+    ]),
+  });
 }
 
 function parseApplicationMigrationManifestV2(

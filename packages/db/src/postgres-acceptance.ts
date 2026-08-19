@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -89,8 +89,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceV12SourceHashes,
-  type PostgresAcceptanceV12ToolVersions,
+  type PostgresAcceptanceV13SourceHashes,
+  type PostgresAcceptanceV13ToolVersions,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -123,6 +123,30 @@ import {
   type PostgresQueryPlanLoadActor,
   type PostgresQueryPlanSummary,
 } from "./postgres-query-plan-load";
+import {
+  deriveResourceIdentifierToken,
+  type ResourceIdentifierTokenMacProviderV1,
+  type ResourceIdentifierTokenV1,
+} from "./resource-identifier-token";
+import {
+  loadPrivacyRetentionPolicyV1,
+  type PrivacyRetentionPolicyV1,
+} from "./privacy-retention-policy";
+import {
+  PRIVACY_RETENTION_ACCEPTANCE_LOGIN_ROLE as REVIEWED_PRIVACY_RETENTION_ACCEPTANCE_LOGIN_ROLE,
+  PRIVACY_RETENTION_CAPABILITY_ROLE as REVIEWED_PRIVACY_RETENTION_CAPABILITY_ROLE,
+  PRIVACY_RETENTION_DATABASE_NAME as REVIEWED_PRIVACY_RETENTION_DATABASE_NAME,
+  PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1,
+  loadPrivacyRetentionFixture,
+  loadPrivacyRetentionPlanV1,
+  renderCreatePrivacyRetentionDatabaseSql,
+  renderDropPrivacyRetentionDatabaseSql,
+  renderPrivacyRetentionApplicationMigration,
+  renderPrivacyRetentionBaseMigration,
+  renderPrivacyRetentionFixture,
+  renderPrivacyRetentionPlatformMigration,
+  type PrivacyRetentionPlanV1,
+} from "./privacy-retention-plan";
 
 const acceptanceRunnerPath = fileURLToPath(import.meta.url);
 const packageRoot = join(dirname(acceptanceRunnerPath), "..");
@@ -213,6 +237,38 @@ const queryPlanLoadFixturePath = join(
   "acceptance",
   "query-plan-load-fixture.sql",
 );
+const privacyRetentionPolicyV1Path = join(
+  packageRoot,
+  "privacy-retention-plans",
+  "v1",
+  "policy.json",
+);
+const privacyRetentionPlanManifestV1Path = join(
+  packageRoot,
+  "privacy-retention-plans",
+  "v1",
+  "manifest.json",
+);
+const privacyRetentionPolicySourceV1Path = join(
+  packageRoot,
+  "src",
+  "privacy-retention-policy.ts",
+);
+const privacyRetentionPlanSourceV1Path = join(
+  packageRoot,
+  "src",
+  "privacy-retention-plan.ts",
+);
+const resourceIdentifierTokenV1Path = join(
+  packageRoot,
+  "src",
+  "resource-identifier-token.ts",
+);
+const privacyRetentionFixtureV1Path = join(
+  packageRoot,
+  "acceptance",
+  "privacy-retention-fixture.sql",
+);
 const operationProjectionContractPath = join(
   repositoryRoot,
   "modules",
@@ -229,7 +285,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 const EXPECTED_NODE_POSTGRES_VERSION = "8.23.0" as const;
 const EXPECTED_NODE_POSTGRES_POOL_VERSION = "3.14.0" as const;
@@ -258,6 +314,52 @@ const POSTGRES_MIGRATION_DEPLOYER_BLOCKED_DEADLINE_MILLISECONDS = 2_000;
 const POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256 = "0".repeat(64);
 const POSTGRES_QUERY_PLAN_LOAD_BLOCKED_DEADLINE_MILLISECONDS =
   POSTGRES_QUERY_PLAN_LOAD_PROFILE.lockTimeoutMilliseconds - 1_000;
+export const POSTGRES_PRIVACY_RETENTION_DATABASE_NAME =
+  REVIEWED_PRIVACY_RETENTION_DATABASE_NAME;
+export const PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE =
+  REVIEWED_PRIVACY_RETENTION_CAPABILITY_ROLE;
+export const PRIVACY_RETENTION_AUTH_LOGIN_ROLE =
+  REVIEWED_PRIVACY_RETENTION_ACCEPTANCE_LOGIN_ROLE;
+export const PRIVACY_RETENTION_AUTH_APPLICATION_NAME =
+  "research-cockpit-b13-privacy-retention" as const;
+const PRIVACY_RETENTION_SEED_APPLICATION_NAME =
+  "research-cockpit-b13-privacy-seed" as const;
+const PRIVACY_RETENTION_ADMIN_APPLICATION_NAME =
+  "research-cockpit-b13-privacy-admin" as const;
+const PRIVACY_RETENTION_MIGRATOR_APPLICATION_NAME =
+  "research-cockpit-b13-privacy-migrator" as const;
+const PRIVACY_RETENTION_SUFFIX_WRITER_APPLICATION_NAME =
+  "research-cockpit-b13-suffix-writer" as const;
+const PRIVACY_RETENTION_SUFFIX_DEPLOYER_APPLICATION_NAME =
+  "research-cockpit-b13-suffix-deployer" as const;
+const PRIVACY_RETENTION_AUTH_CONNECTION_LIMIT = 2 as const;
+const PRIVACY_RETENTION_AUTH_CONNECTION_TIMEOUT_MILLISECONDS = 500;
+const PRIVACY_RETENTION_AUTH_STATEMENT_TIMEOUT_MILLISECONDS = 5_000;
+const PRIVACY_RETENTION_SUFFIX_BLOCKED_DEADLINE_MILLISECONDS = 2_000;
+const PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID =
+  "13000000-0000-4000-8000-000000000001" as const;
+const PRIVACY_RETENTION_BETA_ORGANIZATION_ID =
+  "13000000-0000-4000-8000-000000000002" as const;
+const PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID =
+  "33000000-0000-4000-8000-000000000001" as const;
+const PRIVACY_RETENTION_BETA_PRIVACY_DOMAIN_ID =
+  "33000000-0000-4000-8000-000000000002" as const;
+const PRIVACY_RETENTION_SHARED_THESIS_ID =
+  "53000000-0000-4000-8000-000000000001" as const;
+const PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID =
+  "43000000-0000-4000-8000-000000000001" as const;
+const PRIVACY_RETENTION_CONCURRENT_ALLOCATION_ID =
+  "43000000-0000-4000-8000-000000000005" as const;
+const PRIVACY_RETENTION_CONCURRENT_RESOURCE_ID =
+  "53000000-0000-4000-8000-000000000003" as const;
+const PRIVACY_RETENTION_TOKEN_REUSE_ALLOCATION_ID =
+  "43000000-0000-4000-8000-000000000006" as const;
+const PRIVACY_RETENTION_TOKEN_REUSE_RESOURCE_ID =
+  "53000000-0000-4000-8000-000000000004" as const;
+const PRIVACY_RETENTION_SUFFIX_RACE_ORGANIZATION_ID =
+  "13000000-0000-4000-8000-000000000098" as const;
+const PRIVACY_RETENTION_BETA_PRINCIPAL_ID =
+  "23000000-0000-4000-8000-000000000002" as const;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
 export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
@@ -606,6 +708,7 @@ interface AcceptanceImageConfig {
   workflowSha256: string;
   fixtureSha256: string;
   queryPlanLoadFixtureSha256: string;
+  privacyRetentionFixtureSha256: string;
   verifiedOn: string;
   runner: {
     label: "ubuntu-24.04";
@@ -707,6 +810,41 @@ export interface AcceptanceArtifacts {
   workflow: string;
   fixture: string;
   queryPlanLoadFixture: string;
+  privacyRetentionFixture: string;
+}
+
+export function generatePrivacyRetentionAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function renderPrivacyRetentionAuthProvisioningSql(
+  password: string,
+): string {
+  assertPrivacyRetentionAuthPassword(password);
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT ${PRIVACY_RETENTION_AUTH_CONNECTION_LIMIT}
+  PASSWORD '${password}';
+GRANT ${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}
+  TO ${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
 }
 
 export function generateRuntimeAuthPassword(): string {
@@ -1677,11 +1815,16 @@ export async function checkPostgresAcceptanceHarness(
     join(root, "packages", "db", "acceptance", "query-plan-load-fixture.sql"),
     "utf8",
   );
+  const privacyRetentionFixture = await readFile(
+    join(root, "packages", "db", "acceptance", "privacy-retention-fixture.sql"),
+    "utf8",
+  );
   return inspectPostgresAcceptanceHarness({
     config,
     workflow,
     fixture,
     queryPlanLoadFixture,
+    privacyRetentionFixture,
   });
 }
 
@@ -1711,6 +1854,14 @@ export function inspectPostgresAcceptanceHarness(
     ) {
       violations.push(
         "query-plan/load fixture differs from its reviewed SHA-256",
+      );
+    }
+    if (
+      normalizedSha256(artifacts.privacyRetentionFixture) !==
+      config.privacyRetentionFixtureSha256
+    ) {
+      violations.push(
+        "privacy-retention fixture differs from its reviewed SHA-256",
       );
     }
     requireText(
@@ -1900,11 +2051,15 @@ export async function runPostgresAcceptance(
   const authenticatedMigrationPlan = await loadAuthenticatedMigrationPlan();
   const authenticatedBackupRestorePlan =
     await loadAuthenticatedBackupRestorePlan();
+  const privacyRetentionPolicy = await loadPrivacyRetentionPolicyV1();
+  assertPostgresPrivacyRetentionAcceptancePolicy(privacyRetentionPolicy);
+  const privacyRetentionPlan = await loadPrivacyRetentionPlanV1();
   const fixtureSql = await readFile(syntheticFixturePath, "utf8");
   const queryPlanLoadFixtureSql = await readFile(
     queryPlanLoadFixturePath,
     "utf8",
   );
+  const privacyRetentionFixtureSql = await loadPrivacyRetentionFixture();
 
   await verifyContainerIdentity(containerId, config);
   const toolVersions = await verifyToolVersions(
@@ -1958,6 +2113,13 @@ export async function runPostgresAcceptance(
     queryPlanLoadFixtureSql,
     authenticatedMigrationPlan,
   );
+  await verifyAuthenticatedPostgresPrivacyRetention(
+    containerId,
+    adapterEndpoint,
+    privacyRetentionFixtureSql,
+    authenticatedMigrationPlan,
+    privacyRetentionPlan,
+  );
   await verifyAuthenticatedPostgresProjectionPool(containerId, adapterEndpoint);
   await verifyAuthenticatedBackupAndBoundedRestore(
     containerId,
@@ -1982,7 +2144,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, bounded PostgreSQL RLS query-plan and 2,000-read load, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 12 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, bounded PostgreSQL RLS query-plan and 2,000-read load, authenticated synthetic keyed resource-identifier privacy lifecycle with database-time retention boundaries and tenant-isolated offboarding, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 13 success-only run record was written.\n",
   );
 }
 
@@ -4731,6 +4893,2127 @@ async function withPostgresQueryPlanLoadTimeout<T>(
   } finally {
     if (timeout !== undefined) clearTimeout(timeout);
   }
+}
+
+async function verifyAuthenticatedPostgresPrivacyRetention(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  fixtureSql: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+): Promise<void> {
+  let sourceBefore: readonly AuthenticatedBackupTableFingerprint[] | undefined;
+  let databaseProvisioningStarted = false;
+  let roleProvisioningStarted = false;
+  let seedClient: Client | null = null;
+  let adminClient: Client | null = null;
+  let allocationClient: Client | null = null;
+  let offboardingClient: Client | null = null;
+  const clientErrors: unknown[] = [];
+  const listeners = new Map<Client, (error: Error) => void>();
+  let probeError: unknown;
+  let cleanupError: unknown;
+
+  const registerClient = (client: Client): Client => {
+    const listener = (error: Error) => clientErrors.push(error);
+    client.on("error", listener);
+    listeners.set(client, listener);
+    return client;
+  };
+
+  try {
+    await verifyPostgresPrivacyRetentionResidueAbsent(containerId);
+    sourceBefore = await collectAuthenticatedBackupFingerprints(
+      containerId,
+      CLEAN_BOOTSTRAP_DATABASE_NAME,
+    );
+    const tokens = await derivePrivacyRetentionTokens();
+    const renderedFixture = renderPrivacyRetentionFixture(fixtureSql, {
+      alphaThesis: tokens.alphaThesis,
+      betaThesis: tokens.betaThesis,
+      alphaAlert: tokens.alphaAlert,
+      betaAlert: tokens.betaAlert,
+    });
+
+    databaseProvisioningStarted = true;
+    await createPostgresPrivacyRetentionDatabase(containerId);
+    roleProvisioningStarted = true;
+    await verifyPostgresPrivacyRetentionPlanDeployment(
+      containerId,
+      endpoint,
+      authenticatedPlan,
+      privacyPlan,
+    );
+
+    const seedPassword = generateTestLoaderAuthPassword();
+    const privacyPassword = generatePrivacyRetentionAuthPassword();
+    let wrongPassword = generatePrivacyRetentionAuthPassword();
+    while (wrongPassword === privacyPassword) {
+      wrongPassword = generatePrivacyRetentionAuthPassword();
+    }
+    await provisionTestLoaderAuthLogin(containerId, seedPassword);
+    await verifyTestLoaderAuthRoleCatalog(containerId);
+    await provisionPostgresPrivacyRetentionLogin(containerId, privacyPassword);
+    await verifyPostgresPrivacyRetentionRoleCatalog(containerId);
+    await verifyPostgresPrivacyRetentionWrongPasswordRejection(
+      endpoint,
+      wrongPassword,
+    );
+
+    seedClient = registerClient(
+      createPostgresPrivacyRetentionSeedClient(endpoint, seedPassword),
+    );
+    adminClient = registerClient(
+      createPostgresPrivacyRetentionAdminClient(endpoint),
+    );
+    allocationClient = registerClient(
+      createPostgresPrivacyRetentionClient(endpoint, privacyPassword),
+    );
+    offboardingClient = registerClient(
+      createPostgresPrivacyRetentionClient(endpoint, privacyPassword),
+    );
+    await Promise.all([
+      seedClient.connect(),
+      adminClient.connect(),
+      allocationClient.connect(),
+      offboardingClient.connect(),
+    ]);
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      seedClient,
+      TEST_LOADER_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_SEED_APPLICATION_NAME,
+    );
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      allocationClient,
+      PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+    );
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      offboardingClient,
+      PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+    );
+
+    await seedPostgresPrivacyRetentionFixture(seedClient, renderedFixture);
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      seedClient,
+      TEST_LOADER_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_SEED_APPLICATION_NAME,
+    );
+    await verifyPostgresPrivacyRetentionFixtureState(adminClient, tokens);
+    await verifyPostgresPrivacyRetentionDenials(allocationClient);
+    await verifyPostgresPrivacyRetentionMetadataBoundaries(
+      allocationClient,
+      seedClient,
+      adminClient,
+    );
+    await verifyPostgresPrivacyRetentionTombstone(
+      allocationClient,
+      adminClient,
+      tokens.alphaThesis,
+    );
+    const betaBefore =
+      await collectPostgresPrivacyRetentionBetaFingerprint(adminClient);
+    await verifyPostgresPrivacyRetentionOffboarding(
+      containerId,
+      allocationClient,
+      offboardingClient,
+      adminClient,
+      tokens.alphaConcurrent,
+    );
+    const betaAfter =
+      await collectPostgresPrivacyRetentionBetaFingerprint(adminClient);
+    if (betaAfter !== betaBefore || clientErrors.length > 0) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      allocationClient,
+      PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+    );
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      offboardingClient,
+      PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+    );
+  } catch {
+    probeError = new PostgresPrivacyRetentionError();
+  } finally {
+    const cleanupOperations: RuntimeAuthBestEffortOperation[] = [];
+    for (const client of [
+      allocationClient,
+      offboardingClient,
+      seedClient,
+      adminClient,
+    ]) {
+      if (client === null) continue;
+      cleanupOperations.push({
+        label: "rollback and close B13 PostgreSQL client",
+        run: async () => {
+          await client.query("ROLLBACK").catch(() => undefined);
+          await closePostgresPrivacyRetentionClient(client, listeners);
+        },
+      });
+    }
+    cleanupOperations.push(
+      {
+        label: "verify B13 client error channels",
+        run: () =>
+          clientErrors.length === 0
+            ? Promise.resolve()
+            : Promise.reject(new PostgresPrivacyRetentionError()),
+      },
+      {
+        label: "drain B13 PostgreSQL backends",
+        run: () => waitForPostgresPrivacyRetentionBackendDrain(containerId),
+      },
+      {
+        label: "drop B13 template0 database without FORCE",
+        run: () =>
+          dropPostgresPrivacyRetentionDatabase(
+            containerId,
+            databaseProvisioningStarted,
+          ),
+      },
+      {
+        label: "drop B13 ephemeral logins and privacy capability",
+        run: () =>
+          cleanupPostgresPrivacyRetentionRoles(
+            containerId,
+            roleProvisioningStarted,
+          ),
+      },
+      {
+        label: "verify B13 source fingerprint",
+        run: async () => {
+          if (sourceBefore === undefined) return;
+          assertAuthenticatedBackupFingerprintsEqual(
+            await collectAuthenticatedBackupFingerprints(
+              containerId,
+              CLEAN_BOOTSTRAP_DATABASE_NAME,
+            ),
+            sourceBefore,
+            "B13 privacy-retention probe changed the source database",
+          );
+        },
+      },
+      {
+        label: "verify B13 zero residue",
+        run: () => verifyPostgresPrivacyRetentionResidueAbsent(containerId),
+      },
+      {
+        label: "verify B13 test-loader residue",
+        run: () => verifyTestLoaderAuthResidueAbsent(containerId),
+      },
+      {
+        label: "verify B13 migrator residue",
+        run: () => verifyMigratorAuthResidueAbsent(containerId),
+      },
+      {
+        label: "verify B13 final source catalog",
+        run: async () => {
+          await verifyMigrationLedger(
+            containerId,
+            expectedAuthenticatedMigrationLedgerRows(
+              authenticatedPlan.manifest,
+            ).map(
+              ({ migrationId, fileName, sha256 }) =>
+                `${migrationId}|${fileName}|${sha256}`,
+            ),
+          );
+          await verifyCatalogContract(containerId);
+          await verifyB7PlatformArtifactsAfterApplication(containerId);
+          await verifyContextCleanup(containerId);
+        },
+      },
+    );
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures(cleanupOperations),
+        "B13 privacy-retention cleanup failed",
+      );
+    } catch {
+      cleanupError = new PostgresPrivacyRetentionError();
+    }
+  }
+
+  if (probeError !== undefined && cleanupError !== undefined) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "B13 privacy-retention probe and mandatory cleanup both failed",
+    );
+  }
+  if (probeError !== undefined || cleanupError !== undefined) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+function assertPostgresPrivacyRetentionAcceptancePolicy(
+  policy: PrivacyRetentionPolicyV1,
+): void {
+  if (
+    policy.status !== "accepted_technical_model_production_blocked" ||
+    policy.dataAdmission !== "synthetic_only" ||
+    policy.productionAdmission.allowed !== false
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+class PostgresPrivacyRetentionError extends Error {
+  constructor() {
+    super("B13 PostgreSQL privacy-retention acceptance failed.");
+    this.name = "PostgresPrivacyRetentionError";
+  }
+}
+
+interface PrivacyRetentionDerivedTokens {
+  readonly alphaThesis: ResourceIdentifierTokenV1;
+  readonly betaThesis: ResourceIdentifierTokenV1;
+  readonly alphaAlert: ResourceIdentifierTokenV1;
+  readonly betaAlert: ResourceIdentifierTokenV1;
+  readonly alphaConcurrent: ResourceIdentifierTokenV1;
+}
+
+async function derivePrivacyRetentionTokens(): Promise<PrivacyRetentionDerivedTokens> {
+  const alphaKey = randomBytes(32);
+  const betaKey = randomBytes(32);
+  try {
+    const alphaProvider = privacyRetentionMacProvider(alphaKey);
+    const betaProvider = privacyRetentionMacProvider(betaKey);
+    const [alphaThesis, betaThesis, alphaAlert, betaAlert, alphaConcurrent] =
+      await Promise.all([
+        deriveResourceIdentifierToken(alphaProvider, {
+          ...PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.alphaThesis,
+        }),
+        deriveResourceIdentifierToken(betaProvider, {
+          ...PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.betaThesis,
+        }),
+        deriveResourceIdentifierToken(alphaProvider, {
+          ...PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.alphaAlert,
+        }),
+        deriveResourceIdentifierToken(betaProvider, {
+          ...PRIVACY_RETENTION_FIXTURE_TOKEN_INPUTS_V1.betaAlert,
+        }),
+        deriveResourceIdentifierToken(alphaProvider, {
+          privacyDomainId: PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID,
+          resourceType: "thesis",
+          resourceId: PRIVACY_RETENTION_CONCURRENT_RESOURCE_ID,
+        }),
+      ]);
+    if (
+      new Set([alphaThesis, betaThesis, alphaAlert, betaAlert, alphaConcurrent])
+        .size !== 5
+    ) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    return Object.freeze({
+      alphaThesis,
+      betaThesis,
+      alphaAlert,
+      betaAlert,
+      alphaConcurrent,
+    });
+  } finally {
+    alphaKey.fill(0);
+    betaKey.fill(0);
+  }
+}
+
+async function verifyPostgresPrivacyRetentionPlanDeployment(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+): Promise<void> {
+  await expectPsqlFailure(
+    containerId,
+    renderPrivacyRetentionPlatformMigration(privacyPlan, true),
+    {
+      label: "injected B13 privacy platform rollback",
+      sqlState: "22012",
+      message: "division by zero",
+    },
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  await verifyPostgresPrivacyRetentionPlatformPristine(containerId);
+  await psql(
+    containerId,
+    renderPrivacyRetentionPlatformMigration(privacyPlan),
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  await verifyPostgresPrivacyRetentionPlatformState(containerId);
+  await expectPsqlFailure(
+    containerId,
+    renderPrivacyRetentionPlatformMigration(privacyPlan),
+    {
+      label: "B13 privacy platform replay",
+      sqlState: "P0001",
+      message: "privacy platform bootstrap requires a pristine target",
+    },
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+
+  const migratorPassword = generateMigratorAuthPassword();
+  let migratorClient: Client | null = null;
+  let migratorProvisioned = false;
+  let probeError: unknown;
+  let cleanupError: unknown;
+  try {
+    migratorProvisioned = true;
+    await provisionMigratorAuthLogin(containerId, migratorPassword);
+    await verifyMigratorAuthRoleCatalog(containerId);
+    migratorClient = createPostgresPrivacyRetentionMigratorClient(
+      endpoint,
+      migratorPassword,
+    );
+    await migratorClient.connect();
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      migratorClient,
+      MIGRATOR_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_MIGRATOR_APPLICATION_NAME,
+    );
+    await expectPostgresPrivacyRetentionClientFailure(
+      migratorClient,
+      renderPrivacyRetentionBaseMigration(authenticatedPlan, true),
+      "22012",
+      "division by zero",
+    );
+    await verifyPostgresPrivacyRetentionBasePristine(containerId);
+    await migratorClient.query(
+      renderPrivacyRetentionBaseMigration(authenticatedPlan),
+    );
+    await verifyPostgresPrivacyRetentionClientIdentity(
+      migratorClient,
+      MIGRATOR_AUTH_LOGIN_ROLE,
+      PRIVACY_RETENTION_MIGRATOR_APPLICATION_NAME,
+    );
+    await verifyPostgresPrivacyRetentionBaseState(
+      containerId,
+      authenticatedPlan,
+    );
+    await expectPostgresPrivacyRetentionClientFailure(
+      migratorClient,
+      renderPrivacyRetentionBaseMigration(authenticatedPlan),
+      "P0001",
+      "privacy base migration requires a pristine application target",
+    );
+  } catch (error) {
+    probeError = error;
+  } finally {
+    const operations: RuntimeAuthBestEffortOperation[] = [];
+    if (migratorClient !== null) {
+      const client = migratorClient;
+      operations.push({
+        label: "close B13 migrator client",
+        run: async () => {
+          await client.query("ROLLBACK").catch(() => undefined);
+          await client.end();
+        },
+      });
+    }
+    if (migratorProvisioned) {
+      operations.push({
+        label: "drop B13 migrator login",
+        run: () => cleanupMigratorAuthProbe(containerId),
+      });
+    }
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures(operations),
+        "B13 base-migration cleanup failed",
+      );
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+  if (probeError !== undefined || cleanupError !== undefined) {
+    throw new PostgresPrivacyRetentionError();
+  }
+
+  await expectPsqlFailure(
+    containerId,
+    renderPrivacyRetentionApplicationMigration(
+      authenticatedPlan,
+      privacyPlan,
+      true,
+    ),
+    {
+      label: "injected B13 privacy suffix rollback",
+      sqlState: "22012",
+      message: "division by zero",
+    },
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  await verifyPostgresPrivacyRetentionSuffixAbsent(
+    containerId,
+    authenticatedPlan,
+  );
+
+  await verifyPostgresPrivacyRetentionSuffixEmptyOnlyRace(
+    endpoint,
+    authenticatedPlan,
+    privacyPlan,
+  );
+  await verifyPostgresPrivacyRetentionSuffixAbsent(
+    containerId,
+    authenticatedPlan,
+  );
+
+  await psql(
+    containerId,
+    `INSERT INTO private_data.organizations (id, slug, name, created_at)
+VALUES (
+  '13000000-0000-4000-8000-000000000099',
+  'privacy-populated-rejection',
+  'Privacy populated rejection',
+  transaction_timestamp()
+);`,
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  await expectPsqlFailure(
+    containerId,
+    renderPrivacyRetentionApplicationMigration(authenticatedPlan, privacyPlan),
+    {
+      label: "B13 populated privacy suffix rejection",
+      sqlState: "P0001",
+      message: "privacy-retention v1 requires empty tenant data",
+    },
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT count(*) FROM private_data.organizations
+WHERE slug = 'privacy-populated-rejection';`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "1",
+    "B13 populated-rejection transaction preserved its canary",
+  );
+  await verifyPostgresPrivacyRetentionSuffixAbsent(
+    containerId,
+    authenticatedPlan,
+  );
+  await psql(
+    containerId,
+    `DELETE FROM private_data.organizations
+WHERE slug = 'privacy-populated-rejection';`,
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+
+  await psql(
+    containerId,
+    renderPrivacyRetentionApplicationMigration(authenticatedPlan, privacyPlan),
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  await verifyPostgresPrivacyRetentionSuffixState(
+    containerId,
+    authenticatedPlan,
+    privacyPlan,
+  );
+  await expectPsqlFailure(
+    containerId,
+    renderPrivacyRetentionApplicationMigration(authenticatedPlan, privacyPlan),
+    {
+      label: "B13 privacy suffix replay",
+      sqlState: "P0001",
+      message: "privacy suffix requires the exact six-row v2 ledger",
+    },
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+}
+
+async function verifyPostgresPrivacyRetentionSuffixEmptyOnlyRace(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+): Promise<void> {
+  let writerClient: Client | null = null;
+  let deployerClient: Client | null = null;
+  let writerConnected = false;
+  let deployerConnected = false;
+  let deployment:
+    | Promise<
+        | { readonly ok: true }
+        | {
+            readonly ok: false;
+            readonly code: string | null;
+            readonly message: string;
+          }
+      >
+    | undefined;
+  let probeError: unknown;
+  let cleanupError: unknown;
+
+  try {
+    writerClient = createPostgresPrivacyRetentionAdminClient(
+      endpoint,
+      PRIVACY_RETENTION_SUFFIX_WRITER_APPLICATION_NAME,
+    );
+    deployerClient = createPostgresPrivacyRetentionAdminClient(
+      endpoint,
+      PRIVACY_RETENTION_SUFFIX_DEPLOYER_APPLICATION_NAME,
+    );
+    await writerClient.connect();
+    writerConnected = true;
+    await deployerClient.connect();
+    deployerConnected = true;
+
+    const writerBackend = await writerClient.query<{ pid: number }>(
+      "SELECT pg_catalog.pg_backend_pid() AS pid",
+    );
+    const deployerBackend = await deployerClient.query<{ pid: number }>(
+      "SELECT pg_catalog.pg_backend_pid() AS pid",
+    );
+    const writerPid = writerBackend.rows[0]?.pid;
+    const deployerPid = deployerBackend.rows[0]?.pid;
+    if (
+      !Number.isSafeInteger(writerPid) ||
+      !Number.isSafeInteger(deployerPid) ||
+      writerPid === deployerPid
+    ) {
+      throw new PostgresPrivacyRetentionError();
+    }
+
+    await writerClient.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+    const inserted = await writerClient.query({
+      text: `INSERT INTO private_data.organizations (id, slug, name, created_at)
+VALUES ($1::uuid, 'privacy-suffix-race', 'Privacy suffix race', transaction_timestamp())`,
+      values: [PRIVACY_RETENTION_SUFFIX_RACE_ORGANIZATION_ID],
+    });
+    if (inserted.command !== "INSERT" || inserted.rowCount !== 1) {
+      throw new PostgresPrivacyRetentionError();
+    }
+
+    deployment = deployerClient
+      .query(
+        renderPrivacyRetentionApplicationMigration(
+          authenticatedPlan,
+          privacyPlan,
+        ),
+      )
+      .then(
+        () => ({ ok: true as const }),
+        (error: unknown) => ({
+          ok: false as const,
+          code: postgresErrorCode(error),
+          message:
+            isRecord(error) && typeof error.message === "string"
+              ? error.message.toLowerCase()
+              : "",
+        }),
+      );
+    await waitForPostgresPrivacyRetentionSuffixDeploymentBlock(
+      writerClient,
+      writerPid as number,
+      deployerPid as number,
+    );
+    const committed = await writerClient.query("COMMIT");
+    if (committed.command !== "COMMIT") {
+      throw new PostgresPrivacyRetentionError();
+    }
+
+    const outcome = await deployment;
+    if (
+      outcome.ok ||
+      outcome.code !== "P0001" ||
+      !outcome.message.includes(
+        "privacy-retention v1 requires empty tenant data",
+      )
+    ) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    const rolledBack = await deployerClient.query("ROLLBACK");
+    if (rolledBack.command !== "ROLLBACK") {
+      throw new PostgresPrivacyRetentionError();
+    }
+
+    const preserved = await writerClient.query<{ row_count: number }>({
+      text: `SELECT count(*)::integer AS row_count
+FROM private_data.organizations
+WHERE id = $1::uuid`,
+      values: [PRIVACY_RETENTION_SUFFIX_RACE_ORGANIZATION_ID],
+    });
+    if (preserved.rows[0]?.row_count !== 1) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    const deleted = await writerClient.query({
+      text: "DELETE FROM private_data.organizations WHERE id = $1::uuid",
+      values: [PRIVACY_RETENTION_SUFFIX_RACE_ORGANIZATION_ID],
+    });
+    if (deleted.command !== "DELETE" || deleted.rowCount !== 1) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    const reset = await writerClient.query<{ row_count: number }>({
+      text: `SELECT count(*)::integer AS row_count
+FROM private_data.organizations
+WHERE id = $1::uuid`,
+      values: [PRIVACY_RETENTION_SUFFIX_RACE_ORGANIZATION_ID],
+    });
+    if (reset.rows[0]?.row_count !== 0) {
+      throw new PostgresPrivacyRetentionError();
+    }
+  } catch (error) {
+    probeError = error;
+  } finally {
+    const cleanupFailures: unknown[] = [];
+    if (writerConnected && writerClient !== null) {
+      try {
+        await writerClient.query("ROLLBACK");
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+    }
+    if (deployment !== undefined) {
+      try {
+        await deployment;
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+    }
+    if (deployerConnected && deployerClient !== null) {
+      try {
+        await deployerClient.query("ROLLBACK");
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+    }
+    for (const client of [deployerClient, writerClient]) {
+      if (client === null) continue;
+      try {
+        await client.end();
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+    }
+    if (cleanupFailures.length > 0) {
+      cleanupError = new AggregateError(
+        cleanupFailures,
+        "B13 suffix race cleanup failed",
+      );
+    }
+  }
+
+  if (probeError !== undefined && cleanupError !== undefined) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "B13 suffix empty-only race and cleanup both failed",
+    );
+  }
+  if (probeError !== undefined || cleanupError !== undefined) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function waitForPostgresPrivacyRetentionSuffixDeploymentBlock(
+  observer: Client,
+  writerPid: number,
+  deployerPid: number,
+): Promise<void> {
+  const deadline =
+    Date.now() + PRIVACY_RETENTION_SUFFIX_BLOCKED_DEADLINE_MILLISECONDS;
+  while (Date.now() < deadline) {
+    await observer.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+    const result = await observer.query<{ observed: boolean }>({
+      text: `SELECT (
+  EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'relation'
+      AND held.relation = 'private_data.organizations'::pg_catalog.regclass
+      AND held.mode = 'RowExclusiveLock'
+      AND held.granted
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_stat_activity AS activity
+    JOIN pg_catalog.pg_locks AS waiting ON waiting.pid = activity.pid
+    WHERE activity.pid = $2::integer
+      AND activity.usename = 'postgres'
+      AND activity.application_name = $3::text
+      AND activity.state = 'active'
+      AND activity.wait_event_type = 'Lock'
+      AND waiting.locktype = 'relation'
+      AND waiting.relation = 'private_data.organizations'::pg_catalog.regclass
+      AND waiting.mode = 'ShareRowExclusiveLock'
+      AND NOT waiting.granted
+  )
+  AND $1::integer = ANY(pg_catalog.pg_blocking_pids($2::integer))
+) AS observed;`,
+      values: [
+        writerPid,
+        deployerPid,
+        PRIVACY_RETENTION_SUFFIX_DEPLOYER_APPLICATION_NAME,
+      ],
+    });
+    if (Date.now() < deadline && result.rows[0]?.observed === true) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresPrivacyRetentionError();
+}
+
+async function expectPostgresPrivacyRetentionClientFailure(
+  client: Client,
+  sql: string,
+  expectedCode: string,
+  expectedMessage: string,
+): Promise<void> {
+  let code: string | null = null;
+  let message = "";
+  try {
+    await client.query(sql);
+  } catch (error) {
+    code = postgresErrorCode(error);
+    message =
+      isRecord(error) && typeof error.message === "string"
+        ? error.message.toLowerCase()
+        : "";
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+  if (
+    code !== expectedCode ||
+    !message.includes(expectedMessage.toLowerCase())
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function verifyPostgresPrivacyRetentionPlatformPristine(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT (pg_catalog.to_regnamespace('shared_data') IS NULL) || '|' ||
+  (pg_catalog.to_regnamespace('private_data') IS NULL) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_extension WHERE extname = 'btree_gist') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_roles
+   WHERE rolname = '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}');`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "true|true|0|0",
+    "B13 injected platform rollback",
+  );
+}
+
+async function verifyPostgresPrivacyRetentionPlatformState(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT (pg_catalog.to_regnamespace('shared_data') IS NOT NULL) || '|' ||
+  (pg_catalog.to_regnamespace('private_data') IS NOT NULL) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_extension WHERE extname = 'btree_gist') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_roles
+   WHERE rolname = '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}') || '|' ||
+  (pg_catalog.to_regclass('shared_data.schema_migrations') IS NULL);`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "true|true|1|1|true",
+    "B13 privacy platform state",
+  );
+}
+
+async function verifyPostgresPrivacyRetentionBasePristine(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT (pg_catalog.to_regclass('shared_data.schema_migrations') IS NULL) || '|' ||
+  (pg_catalog.to_regclass('private_data.organizations') IS NULL) || '|' ||
+  (pg_catalog.to_regclass('private_data.resource_id_registry') IS NULL);`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "true|true|true",
+    "B13 injected base rollback",
+  );
+}
+
+async function verifyPostgresPrivacyRetentionBaseState(
+  containerId: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+): Promise<void> {
+  await verifyMigrationLedger(
+    containerId,
+    expectedAuthenticatedMigrationLedgerRows(authenticatedPlan.manifest).map(
+      ({ migrationId, fileName, sha256 }) =>
+        `${migrationId}|${fileName}|${sha256}`,
+    ),
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  await verifyPostgresPrivacyRetentionSuffixAbsent(
+    containerId,
+    authenticatedPlan,
+  );
+}
+
+async function verifyPostgresPrivacyRetentionSuffixAbsent(
+  containerId: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT (SELECT count(*) FROM shared_data.schema_migrations) || '|' ||
+  (pg_catalog.to_regclass('private_data.resource_privacy_domains') IS NULL) || '|' ||
+  (SELECT count(*) FROM information_schema.columns
+   WHERE table_schema = 'private_data'
+     AND table_name = 'resource_id_registry'
+     AND column_name IN ('allocation_id', 'privacy_domain_id', 'resource_token')) || '|' ||
+  (SELECT count(*) FROM private_data.organizations);`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    `${authenticatedPlan.manifest.migrations.length}|true|0|0`,
+    "B13 privacy suffix absence and base preservation",
+  );
+}
+
+async function verifyPostgresPrivacyRetentionSuffixState(
+  containerId: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+): Promise<void> {
+  const privacyEntry = privacyPlan.manifest.migrations[0];
+  if (privacyEntry === undefined) throw new PostgresPrivacyRetentionError();
+  await verifyMigrationLedger(
+    containerId,
+    [
+      ...expectedAuthenticatedMigrationLedgerRows(
+        authenticatedPlan.manifest,
+      ).map(
+        ({ migrationId, fileName, sha256 }) =>
+          `${migrationId}|${fileName}|${sha256}`,
+      ),
+      `${privacyEntry.id}|${privacyEntry.file}|${privacyEntry.sha256}`,
+    ],
+    POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT
+  (pg_catalog.to_regclass('private_data.resource_privacy_domains') IS NOT NULL) || '|' ||
+  (SELECT count(*) FROM information_schema.columns
+   WHERE table_schema = 'private_data'
+     AND table_name = 'resource_id_registry'
+     AND column_name IN ('allocation_id', 'privacy_domain_id', 'resource_token')) || '|' ||
+  coalesce(
+    pg_catalog.to_regprocedure(
+      'private_data.delete_live_resource_by_allocation(uuid)'
+    ) IS NOT NULL
+    AND pg_catalog.pg_get_function_result(
+      pg_catalog.to_regprocedure(
+        'private_data.delete_live_resource_by_allocation(uuid)'
+      )
+    ) = 'uuid'
+    AND pg_catalog.has_function_privilege(
+      '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+      pg_catalog.to_regprocedure(
+        'private_data.delete_live_resource_by_allocation(uuid)'
+      ),
+      'EXECUTE'
+    )
+    AND NOT pg_catalog.has_table_privilege(
+      '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+      'private_data.theses',
+      'DELETE'
+    )
+    AND NOT pg_catalog.has_table_privilege(
+      '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+      'private_data.alert_rules',
+      'DELETE'
+    ),
+    false
+  ) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_proc AS procedure
+   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'private_data'
+     AND procedure.proname IN (
+       'allocate_resource_identifier',
+       'begin_resource_privacy_offboarding',
+       'delete_live_resource_by_allocation',
+       'purge_tenant_privacy_domain',
+       'purge_expired_privacy_metadata'
+     )
+     AND procedure.prosecdef
+     AND procedure.proowner = (
+       SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'research_cockpit_owner'
+     )
+     AND procedure.proconfig = ARRAY['search_path=pg_catalog, private_data']) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_proc AS procedure
+   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'private_data'
+     AND procedure.proname IN (
+       'allocate_resource_identifier',
+       'begin_resource_privacy_offboarding',
+       'delete_live_resource_by_allocation',
+       'purge_tenant_privacy_domain',
+       'purge_expired_privacy_metadata'
+     )
+     AND pg_catalog.has_function_privilege(
+       '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}', procedure.oid, 'EXECUTE'
+     )
+     AND NOT EXISTS (
+       SELECT 1
+       FROM pg_catalog.aclexplode(
+         coalesce(
+           procedure.proacl,
+           pg_catalog.acldefault('f', procedure.proowner)
+         )
+       ) AS privilege
+       WHERE privilege.grantee = 0
+         AND privilege.privilege_type = 'EXECUTE'
+     )) || '|' ||
+  (SELECT count(*) FROM private_data.resource_privacy_domains) || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry);`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "true|3|true|5|5|0|0",
+    "B13 privacy suffix catalog and empty state",
+  );
+}
+
+async function seedPostgresPrivacyRetentionFixture(
+  client: Client,
+  fixtureSql: string,
+): Promise<void> {
+  const result: unknown = await client.query(fixtureSql);
+  const commands = Array.isArray(result)
+    ? result.map((entry: unknown) =>
+        isRecord(entry) && typeof entry.command === "string"
+          ? entry.command
+          : null,
+      )
+    : [];
+  const rowCounts = Array.isArray(result)
+    ? result.map((entry: unknown) =>
+        isRecord(entry) &&
+        (entry.rowCount === null || Number.isSafeInteger(entry.rowCount))
+          ? entry.rowCount
+          : "invalid",
+      )
+    : [];
+  if (
+    !Array.isArray(result) ||
+    JSON.stringify(commands) !==
+      JSON.stringify([
+        "BEGIN",
+        "SET",
+        ...Array<string>(12).fill("INSERT"),
+        ...Array<string>(4).fill("SELECT"),
+        ...Array<string>(4).fill("INSERT"),
+        "COMMIT",
+      ]) ||
+    JSON.stringify(rowCounts) !==
+      JSON.stringify([
+        null,
+        null,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        null,
+      ])
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function verifyPostgresPrivacyRetentionFixtureState(
+  client: Client,
+  tokens: PrivacyRetentionDerivedTokens,
+): Promise<void> {
+  const result = await client.query<{
+    organization_count: number;
+    principal_count: number;
+    privacy_domain_count: number;
+    registry_count: number;
+    thesis_count: number;
+    alert_count: number;
+    idempotency_count: number;
+    audit_count: number;
+    token_match_count: number;
+    distinct_token_count: number;
+    live_raw_count: number;
+  }>({
+    text: `SELECT
+  (SELECT count(*)::integer FROM private_data.organizations) AS organization_count,
+  (SELECT count(*)::integer FROM private_data.principals) AS principal_count,
+  (SELECT count(*)::integer FROM private_data.resource_privacy_domains) AS privacy_domain_count,
+  (SELECT count(*)::integer FROM private_data.resource_id_registry) AS registry_count,
+  (SELECT count(*)::integer FROM private_data.theses) AS thesis_count,
+  (SELECT count(*)::integer FROM private_data.alert_rules) AS alert_count,
+  (SELECT count(*)::integer FROM private_data.idempotency_records) AS idempotency_count,
+  (SELECT count(*)::integer FROM private_data.audit_events) AS audit_count,
+  (SELECT count(*)::integer
+   FROM private_data.resource_id_registry
+   WHERE resource_token IN (
+     pg_catalog.decode($1, 'hex'),
+     pg_catalog.decode($2, 'hex'),
+     pg_catalog.decode($3, 'hex'),
+     pg_catalog.decode($4, 'hex')
+   )) AS token_match_count,
+  (SELECT count(DISTINCT resource_token)::integer
+   FROM private_data.resource_id_registry) AS distinct_token_count,
+  (SELECT count(*)::integer
+   FROM private_data.resource_id_registry
+   WHERE lifecycle_state = 'live'
+     AND organization_id IS NOT NULL
+     AND resource_id IS NOT NULL) AS live_raw_count;`,
+    values: [
+      tokens.alphaThesis,
+      tokens.betaThesis,
+      tokens.alphaAlert,
+      tokens.betaAlert,
+    ],
+  });
+  if (
+    result.command !== "SELECT" ||
+    result.rowCount !== 1 ||
+    JSON.stringify(result.rows[0]) !==
+      JSON.stringify({
+        organization_count: 2,
+        principal_count: 2,
+        privacy_domain_count: 2,
+        registry_count: 4,
+        thesis_count: 2,
+        alert_count: 2,
+        idempotency_count: 2,
+        audit_count: 2,
+        token_match_count: 4,
+        distinct_token_count: 4,
+        live_raw_count: 4,
+      })
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function beginPostgresPrivacyRetentionCapabilityTransaction(
+  client: Client,
+): Promise<void> {
+  await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+  await client.query(
+    `SET LOCAL statement_timeout = '${PRIVACY_RETENTION_AUTH_STATEMENT_TIMEOUT_MILLISECONDS}ms'`,
+  );
+  await client.query(
+    `SET LOCAL ROLE ${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}`,
+  );
+  const identity = await client.query<{ valid: boolean }>(`SELECT (
+  session_user = '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}'
+  AND current_user = '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}'
+  AND system_user = 'scram-sha-256:${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}'
+) AS valid;`);
+  if (identity.rows[0]?.valid !== true) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function commitPostgresPrivacyRetentionCapabilityTransaction(
+  client: Client,
+): Promise<void> {
+  const committed = await client.query("COMMIT");
+  if (committed.command !== "COMMIT") throw new PostgresPrivacyRetentionError();
+}
+
+async function expectPostgresPrivacyRetentionCapabilityFailure(
+  client: Client,
+  query: { readonly text: string; readonly values?: readonly unknown[] },
+  expectedCode: string,
+): Promise<void> {
+  let code: string | null = null;
+  try {
+    await beginPostgresPrivacyRetentionCapabilityTransaction(client);
+    await client.query(
+      query.text,
+      query.values === undefined ? [] : [...query.values],
+    );
+  } catch (error) {
+    code = postgresErrorCode(error);
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+  if (code !== expectedCode) throw new PostgresPrivacyRetentionError();
+}
+
+async function verifyPostgresPrivacyRetentionDenials(
+  client: Client,
+): Promise<void> {
+  for (const role of [
+    "research_cockpit_owner",
+    "research_cockpit_test_seed",
+    "research_cockpit_backup",
+    "postgres",
+  ]) {
+    let code: string | null = null;
+    try {
+      await client.query(`SET ROLE ${role}`);
+    } catch (error) {
+      code = postgresErrorCode(error);
+    } finally {
+      await client.query("RESET ROLE").catch(() => undefined);
+    }
+    if (code !== "42501") throw new PostgresPrivacyRetentionError();
+  }
+  await expectPostgresPrivacyRetentionCapabilityFailure(
+    client,
+    {
+      text: "SELECT count(*) FROM private_data.resource_id_registry",
+    },
+    "42501",
+  );
+  await expectPostgresPrivacyRetentionCapabilityFailure(
+    client,
+    {
+      text: `DELETE FROM private_data.theses
+WHERE organization_id = '${PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID}'::uuid
+  AND id = '${PRIVACY_RETENTION_SHARED_THESIS_ID}'::uuid`,
+    },
+    "42501",
+  );
+  await expectPostgresPrivacyRetentionCapabilityFailure(
+    client,
+    {
+      text: "CREATE TABLE private_data.b13_privacy_escape (id integer)",
+    },
+    "42501",
+  );
+}
+
+async function verifyPostgresPrivacyRetentionMetadataBoundaries(
+  privacyClient: Client,
+  seedClient: Client,
+  adminClient: Client,
+): Promise<void> {
+  let referenceTime: string | undefined;
+  try {
+    await beginPostgresPrivacyRetentionCapabilityTransaction(privacyClient);
+    const clock = await privacyClient.query<{ reference_time: string }>(
+      "SELECT transaction_timestamp()::text AS reference_time",
+    );
+    referenceTime = clock.rows[0]?.reference_time;
+    if (clock.rowCount !== 1 || typeof referenceTime !== "string") {
+      throw new PostgresPrivacyRetentionError();
+    }
+    await seedPostgresPrivacyRetentionBoundaryRows(seedClient, referenceTime);
+    const purged = await privacyClient.query<{
+      idempotency_rows: string;
+      audit_rows: string;
+    }>("SELECT * FROM private_data.purge_expired_privacy_metadata()");
+    if (
+      purged.command !== "SELECT" ||
+      purged.rowCount !== 1 ||
+      purged.rows[0]?.idempotency_rows !== "3" ||
+      purged.rows[0]?.audit_rows !== "3"
+    ) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    await commitPostgresPrivacyRetentionCapabilityTransaction(privacyClient);
+  } catch (error) {
+    await privacyClient.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+
+  const boundary = await adminClient.query<{
+    idempotency_past_or_at: number;
+    idempotency_future: number;
+    audit_past_or_at: number;
+    audit_future: number;
+    idempotency_seconds: string;
+    audit_seconds: string;
+    future_after_clock: boolean;
+  }>({
+    text: `SELECT
+  (SELECT count(*)::integer FROM private_data.idempotency_records
+   WHERE idempotency_key IN ('privacy-boundary-past', 'privacy-boundary-at'))
+    AS idempotency_past_or_at,
+  (SELECT count(*)::integer FROM private_data.idempotency_records
+   WHERE idempotency_key = 'privacy-boundary-future') AS idempotency_future,
+  (SELECT count(*)::integer FROM private_data.audit_events
+   WHERE request_id IN ('privacy-boundary-past', 'privacy-boundary-at'))
+    AS audit_past_or_at,
+  (SELECT count(*)::integer FROM private_data.audit_events
+   WHERE request_id = 'privacy-boundary-future') AS audit_future,
+  (SELECT extract(epoch FROM expires_at - created_at)::text
+   FROM private_data.idempotency_records
+   WHERE idempotency_key = 'privacy-boundary-future') AS idempotency_seconds,
+  (SELECT extract(epoch FROM retention_until - occurred_at)::text
+   FROM private_data.audit_events
+   WHERE request_id = 'privacy-boundary-future') AS audit_seconds,
+  (SELECT expires_at > $1::timestamptz
+   FROM private_data.idempotency_records
+   WHERE idempotency_key = 'privacy-boundary-future')
+  AND
+  (SELECT retention_until > $1::timestamptz
+   FROM private_data.audit_events
+   WHERE request_id = 'privacy-boundary-future') AS future_after_clock;`,
+    values: [referenceTime],
+  });
+  const row = boundary.rows[0];
+  if (
+    boundary.rowCount !== 1 ||
+    row?.idempotency_past_or_at !== 0 ||
+    row.idempotency_future !== 1 ||
+    row.audit_past_or_at !== 0 ||
+    row.audit_future !== 1 ||
+    Number(row.idempotency_seconds) !== 86_400 ||
+    Number(row.audit_seconds) !== 7_776_000 ||
+    row.future_after_clock !== true
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function seedPostgresPrivacyRetentionBoundaryRows(
+  client: Client,
+  referenceTime: string,
+): Promise<void> {
+  try {
+    await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+    await client.query("SET LOCAL ROLE research_cockpit_test_seed");
+    await client.query(
+      `INSERT INTO private_data.idempotency_records (
+  organization_id, principal_id, operation, idempotency_key,
+  request_fingerprint, resource_type, resource_id, resource_version,
+  created_at, expires_at
+)
+SELECT
+  '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}',
+  '${PRIVACY_RETENTION_BETA_PRINCIPAL_ID}',
+  'thesis.create',
+  boundary.idempotency_key,
+  boundary.request_fingerprint,
+  'thesis',
+  '${PRIVACY_RETENTION_SHARED_THESIS_ID}',
+  1,
+  boundary.expires_at - interval '24 hours',
+  boundary.expires_at
+FROM (VALUES
+  ('privacy-boundary-past',
+   'sha256:3300000000000000000000000000000000000000000000000000000000000001',
+   $1::timestamptz - interval '1 microsecond'),
+  ('privacy-boundary-at',
+   'sha256:3300000000000000000000000000000000000000000000000000000000000002',
+   $1::timestamptz),
+  ('privacy-boundary-future',
+   'sha256:3300000000000000000000000000000000000000000000000000000000000003',
+   $1::timestamptz + interval '1 microsecond')
+) AS boundary(idempotency_key, request_fingerprint, expires_at);`,
+      [referenceTime],
+    );
+    await client.query(
+      `INSERT INTO private_data.audit_events (
+  organization_id, id, principal_id, request_id, action, resource_type,
+  resource_id, resource_version, decision, reason_code, occurred_at,
+  retention_until
+)
+SELECT
+  '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}',
+  boundary.id,
+  '${PRIVACY_RETENTION_BETA_PRINCIPAL_ID}',
+  boundary.request_id,
+  'thesis.created',
+  'thesis',
+  '${PRIVACY_RETENTION_SHARED_THESIS_ID}',
+  1,
+  'allowed',
+  'privacy_boundary',
+  boundary.retention_until - interval '90 days',
+  boundary.retention_until
+FROM (VALUES
+  ('63000000-0000-4000-8000-000000000010'::uuid,
+   'privacy-boundary-past', $1::timestamptz - interval '1 microsecond'),
+  ('63000000-0000-4000-8000-000000000011'::uuid,
+   'privacy-boundary-at', $1::timestamptz),
+  ('63000000-0000-4000-8000-000000000012'::uuid,
+   'privacy-boundary-future', $1::timestamptz + interval '1 microsecond')
+) AS boundary(id, request_id, retention_until);`,
+      [referenceTime],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+async function verifyPostgresPrivacyRetentionTombstone(
+  privacyClient: Client,
+  adminClient: Client,
+  token: ResourceIdentifierTokenV1,
+): Promise<void> {
+  try {
+    await beginPostgresPrivacyRetentionCapabilityTransaction(privacyClient);
+    const deleted = await privacyClient.query<{ allocation_id: string }>({
+      text: `SELECT private_data.delete_live_resource_by_allocation(
+  $1::uuid
+)::text AS allocation_id`,
+      values: [PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID],
+    });
+    if (
+      deleted.command !== "SELECT" ||
+      deleted.rowCount !== 1 ||
+      deleted.rows[0]?.allocation_id !==
+        PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID
+    ) {
+      throw new PostgresPrivacyRetentionError();
+    }
+    await commitPostgresPrivacyRetentionCapabilityTransaction(privacyClient);
+  } catch (error) {
+    await privacyClient.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+  await verifyPostgresPrivacyRetentionClientIdentity(
+    privacyClient,
+    PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+    PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+  );
+  const state = await adminClient.query<{
+    deleted: boolean;
+    raw_cleared: boolean;
+    token_preserved: boolean;
+  }>({
+    text: `SELECT
+  lifecycle_state = 'deleted' AS deleted,
+  organization_id IS NULL AND resource_id IS NULL AS raw_cleared,
+  resource_token = pg_catalog.decode($1, 'hex') AS token_preserved
+FROM private_data.resource_id_registry
+WHERE allocation_id = $2::uuid;`,
+    values: [token, PRIVACY_RETENTION_ALPHA_THESIS_ALLOCATION_ID],
+  });
+  if (
+    state.rowCount !== 1 ||
+    state.rows[0]?.deleted !== true ||
+    state.rows[0].raw_cleared !== true ||
+    state.rows[0].token_preserved !== true
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+  await expectPostgresPrivacyRetentionCapabilityFailure(
+    privacyClient,
+    {
+      text: `SELECT private_data.allocate_resource_identifier(
+  $1::uuid, $2::uuid, $3::uuid, 'thesis', $4::uuid,
+  pg_catalog.decode($5, 'hex')
+)`,
+      values: [
+        PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID,
+        PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID,
+        PRIVACY_RETENTION_TOKEN_REUSE_ALLOCATION_ID,
+        PRIVACY_RETENTION_TOKEN_REUSE_RESOURCE_ID,
+        token,
+      ],
+    },
+    "23505",
+  );
+}
+
+async function collectPostgresPrivacyRetentionBetaFingerprint(
+  client: Client,
+): Promise<string> {
+  const result = await client.query<{
+    state: string;
+  }>(`SELECT pg_catalog.jsonb_build_object(
+  'organization', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value) ORDER BY row_value.id)
+    FROM private_data.organizations AS row_value
+    WHERE row_value.id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'principals', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value) ORDER BY row_value.id)
+    FROM private_data.principals AS row_value
+    WHERE row_value.id IN (
+      SELECT principal_id FROM private_data.organization_principals
+      WHERE organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+    )
+  ),
+  'associations', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value)
+      ORDER BY row_value.principal_id)
+    FROM private_data.organization_principals AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'memberships', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value)
+      ORDER BY row_value.principal_id, row_value.active_from)
+    FROM private_data.memberships AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'domains', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value)
+      ORDER BY row_value.privacy_domain_id)
+    FROM private_data.resource_privacy_domains AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'registry', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value)
+      ORDER BY row_value.allocation_id)
+    FROM private_data.resource_id_registry AS row_value
+    WHERE row_value.privacy_domain_id = '${PRIVACY_RETENTION_BETA_PRIVACY_DOMAIN_ID}'
+  ),
+  'theses', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value) ORDER BY row_value.id)
+    FROM private_data.theses AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'alerts', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value) ORDER BY row_value.id)
+    FROM private_data.alert_rules AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'idempotency', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value)
+      ORDER BY row_value.idempotency_key)
+    FROM private_data.idempotency_records AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  ),
+  'audit', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(row_value) ORDER BY row_value.id)
+    FROM private_data.audit_events AS row_value
+    WHERE row_value.organization_id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}'
+  )
+)::text AS state;`);
+  const state = result.rows[0]?.state;
+  if (result.rowCount !== 1 || typeof state !== "string") {
+    throw new PostgresPrivacyRetentionError();
+  }
+  return createHash("sha256").update(state).digest("hex");
+}
+
+async function verifyPostgresPrivacyRetentionOffboarding(
+  containerId: string,
+  allocationClient: Client,
+  offboardingClient: Client,
+  adminClient: Client,
+  concurrentToken: ResourceIdentifierTokenV1,
+): Promise<void> {
+  await beginPostgresPrivacyRetentionCapabilityTransaction(allocationClient);
+  const allocationBackend = await allocationClient.query<{ pid: number }>(
+    "SELECT pg_catalog.pg_backend_pid() AS pid",
+  );
+  const allocationBackendPid = allocationBackend.rows[0]?.pid;
+  if (!Number.isSafeInteger(allocationBackendPid)) {
+    throw new PostgresPrivacyRetentionError();
+  }
+  const allocated = await allocationClient.query<{ allocation_id: string }>({
+    text: `SELECT private_data.allocate_resource_identifier(
+  $1::uuid, $2::uuid, $3::uuid, 'thesis', $4::uuid,
+  pg_catalog.decode($5, 'hex')
+)::text AS allocation_id`,
+    values: [
+      PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID,
+      PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID,
+      PRIVACY_RETENTION_CONCURRENT_ALLOCATION_ID,
+      PRIVACY_RETENTION_CONCURRENT_RESOURCE_ID,
+      concurrentToken,
+    ],
+  });
+  if (
+    allocated.rowCount !== 1 ||
+    allocated.rows[0]?.allocation_id !==
+      PRIVACY_RETENTION_CONCURRENT_ALLOCATION_ID
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+
+  const offboarding = beginAndCommitPostgresPrivacyRetentionOffboarding(
+    offboardingClient,
+  ).then(
+    (privacyDomainId) => ({ ok: true as const, privacyDomainId }),
+    () => ({ ok: false as const }),
+  );
+  await waitForPostgresPrivacyRetentionBlockedOffboarding(
+    adminClient,
+    allocationBackendPid as number,
+  );
+  await commitPostgresPrivacyRetentionCapabilityTransaction(allocationClient);
+  const offboardingOutcome = await offboarding;
+  if (
+    !offboardingOutcome.ok ||
+    offboardingOutcome.privacyDomainId !==
+      PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+
+  await expectPostgresPrivacyRetentionCapabilityFailure(
+    allocationClient,
+    {
+      text: `SELECT private_data.allocate_resource_identifier(
+  $1::uuid, $2::uuid,
+  '43000000-0000-4000-8000-000000000007'::uuid,
+  'thesis', '53000000-0000-4000-8000-000000000007'::uuid,
+  pg_catalog.decode($3, 'hex')
+)`,
+      values: [
+        PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID,
+        PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID,
+        concurrentToken,
+      ],
+    },
+    "P0001",
+  );
+
+  await beginPostgresPrivacyRetentionCapabilityTransaction(allocationClient);
+  const purged = await allocationClient.query<{
+    thesis_rows: string;
+    alert_rule_rows: string;
+    idempotency_rows: string;
+    audit_event_rows: string;
+    entitlement_rows: string;
+    membership_rows: string;
+    organization_principal_rows: string;
+    resource_token_rows: string;
+    orphan_principal_rows: string;
+    privacy_domain_rows: string;
+    organization_rows: string;
+  }>({
+    text: "SELECT * FROM private_data.purge_tenant_privacy_domain($1::uuid)",
+    values: [PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID],
+  });
+  if (
+    purged.rowCount !== 1 ||
+    JSON.stringify(purged.rows[0]) !==
+      JSON.stringify({
+        thesis_rows: "0",
+        alert_rule_rows: "1",
+        idempotency_rows: "0",
+        audit_event_rows: "0",
+        entitlement_rows: "0",
+        membership_rows: "1",
+        organization_principal_rows: "1",
+        resource_token_rows: "3",
+        orphan_principal_rows: "1",
+        privacy_domain_rows: "1",
+        organization_rows: "1",
+      })
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+  await commitPostgresPrivacyRetentionCapabilityTransaction(allocationClient);
+
+  await expectPostgresPrivacyRetentionCapabilityFailure(
+    allocationClient,
+    {
+      text: "SELECT * FROM private_data.purge_tenant_privacy_domain($1::uuid)",
+      values: [PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID],
+    },
+    "P0001",
+  );
+
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT
+  (SELECT count(*) FROM private_data.organizations
+   WHERE id = '${PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID}') || '|' ||
+  (SELECT count(*) FROM private_data.principals
+   WHERE id = '23000000-0000-4000-8000-000000000001') || '|' ||
+  (SELECT count(*) FROM private_data.resource_privacy_domains
+   WHERE privacy_domain_id = '${PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID}') || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry
+   WHERE privacy_domain_id = '${PRIVACY_RETENTION_ALPHA_PRIVACY_DOMAIN_ID}') || '|' ||
+  (SELECT count(*) FROM private_data.organizations
+   WHERE id = '${PRIVACY_RETENTION_BETA_ORGANIZATION_ID}') || '|' ||
+  (SELECT count(*) FROM private_data.resource_privacy_domains
+   WHERE privacy_domain_id = '${PRIVACY_RETENTION_BETA_PRIVACY_DOMAIN_ID}') || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry
+   WHERE privacy_domain_id = '${PRIVACY_RETENTION_BETA_PRIVACY_DOMAIN_ID}');`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "0|0|0|0|1|1|2",
+    "B13 tenant graph purge and other-tenant presence",
+  );
+}
+
+async function beginAndCommitPostgresPrivacyRetentionOffboarding(
+  client: Client,
+): Promise<string> {
+  try {
+    await beginPostgresPrivacyRetentionCapabilityTransaction(client);
+    const result = await client.query<{ privacy_domain_id: string }>({
+      text: `SELECT private_data.begin_resource_privacy_offboarding($1::uuid)::text
+  AS privacy_domain_id`,
+      values: [PRIVACY_RETENTION_ALPHA_ORGANIZATION_ID],
+    });
+    const privacyDomainId = result.rows[0]?.privacy_domain_id;
+    if (result.rowCount !== 1 || typeof privacyDomainId !== "string") {
+      throw new PostgresPrivacyRetentionError();
+    }
+    await commitPostgresPrivacyRetentionCapabilityTransaction(client);
+    return privacyDomainId;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+async function waitForPostgresPrivacyRetentionBlockedOffboarding(
+  adminClient: Client,
+  allocationBackendPid: number,
+): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    await adminClient.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+    const result = await adminClient.query<{ observed: boolean }>({
+      text: `SELECT count(*) = 1 AS observed
+FROM pg_catalog.pg_stat_activity AS activity
+WHERE activity.datname = $1
+  AND activity.usename = $2
+  AND activity.application_name = $3
+  AND activity.state = 'active'
+  AND activity.wait_event_type = 'Lock'
+  AND activity.query LIKE 'SELECT private_data.begin_resource_privacy_offboarding%'
+  AND $4::integer = ANY(pg_catalog.pg_blocking_pids(activity.pid));`,
+      values: [
+        POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+        PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+        PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+        allocationBackendPid,
+      ],
+    });
+    if (Date.now() < deadline && result.rows[0]?.observed === true) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresPrivacyRetentionError();
+}
+
+function privacyRetentionMacProvider(
+  key: Uint8Array,
+): ResourceIdentifierTokenMacProviderV1 {
+  return Object.freeze({
+    macSha256: (message: Uint8Array) =>
+      createHmac("sha256", key).update(message).digest(),
+  });
+}
+
+async function createPostgresPrivacyRetentionDatabase(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(containerId, renderCreatePrivacyRetentionDatabaseSql());
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT datname || '|' || pg_catalog.pg_get_userbyid(datdba) || '|' ||
+  datistemplate || '|' || datallowconn || '|' || datconnlimit || '|' ||
+  pg_catalog.pg_encoding_to_char(encoding)
+FROM pg_catalog.pg_database
+WHERE datname = '${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}';`,
+    ),
+    `${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}|postgres|false|true|-1|UTF8`,
+    "B13 disposable template0 database catalog",
+  );
+}
+
+async function provisionPostgresPrivacyRetentionLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}`,
+    ],
+    renderPrivacyRetentionAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral B13 privacy login",
+  );
+}
+
+async function verifyPostgresPrivacyRetentionRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  coalesce(rolpassword LIKE 'SCRAM-SHA-256$%', false)
+FROM pg_catalog.pg_authid
+WHERE rolname IN (
+  '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+  '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}'
+)
+ORDER BY rolname;`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    [
+      `${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|2|true`,
+      `${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}|false|false|false|false|false|false|false|-1|false`,
+    ].join("\n"),
+    "B13 privacy roles and SCRAM verifier",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname IN (
+  '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+  '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}'
+)
+   OR member_role.rolname IN (
+  '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+  '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}'
+);`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    `${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}|${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}|false|false|true`,
+    "B13 privacy SET-only membership",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname = '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole = (SELECT oid FROM login)
+) || '|' || (
+  SELECT count(*) FROM direct_acl
+  WHERE grantee = (SELECT oid FROM login)
+);`,
+      POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    ),
+    "0|0",
+    "B13 privacy login settings and direct ACLs",
+  );
+}
+
+function createPostgresPrivacyRetentionClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+  applicationName = PRIVACY_RETENTION_AUTH_APPLICATION_NAME,
+): Client {
+  assertPrivacyRetentionAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    user: PRIVACY_RETENTION_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: applicationName,
+    connectionTimeoutMillis:
+      PRIVACY_RETENTION_AUTH_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: PRIVACY_RETENTION_AUTH_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+function createPostgresPrivacyRetentionSeedClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Client {
+  assertTestLoaderAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    user: TEST_LOADER_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: PRIVACY_RETENTION_SEED_APPLICATION_NAME,
+    connectionTimeoutMillis:
+      PRIVACY_RETENTION_AUTH_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: PRIVACY_RETENTION_AUTH_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+function createPostgresPrivacyRetentionAdminClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  applicationName: string = PRIVACY_RETENTION_ADMIN_APPLICATION_NAME,
+): Client {
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    user: "postgres",
+    password: POSTGRES_MIGRATION_DEPLOYER_ADMIN_PASSWORD,
+    ssl: false,
+    application_name: applicationName,
+    connectionTimeoutMillis:
+      PRIVACY_RETENTION_AUTH_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: PRIVACY_RETENTION_AUTH_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+function createPostgresPrivacyRetentionMigratorClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Client {
+  assertMigratorAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+    user: MIGRATOR_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: PRIVACY_RETENTION_MIGRATOR_APPLICATION_NAME,
+    connectionTimeoutMillis:
+      PRIVACY_RETENTION_AUTH_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: PRIVACY_RETENTION_AUTH_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+async function verifyPostgresPrivacyRetentionClientIdentity(
+  client: Client,
+  expectedLoginRole:
+    | typeof PRIVACY_RETENTION_AUTH_LOGIN_ROLE
+    | typeof TEST_LOADER_AUTH_LOGIN_ROLE
+    | typeof MIGRATOR_AUTH_LOGIN_ROLE,
+  expectedApplicationName: string,
+): Promise<void> {
+  const result = await client.query<{
+    state: string;
+  }>(`SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'databaseName', pg_catalog.current_database(),
+  'applicationName', pg_catalog.current_setting('application_name'),
+  'transactionReadOnly', pg_catalog.current_setting('transaction_read_only'),
+  'ssl', EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  )
+)::text AS state;`);
+  const stateText = result.rows[0]?.state;
+  const state =
+    stateText === undefined ? undefined : (JSON.parse(stateText) as unknown);
+  if (
+    result.command !== "SELECT" ||
+    result.rowCount !== 1 ||
+    !isRecord(state) ||
+    state.sessionUser !== expectedLoginRole ||
+    state.currentUser !== expectedLoginRole ||
+    state.systemUser !== `scram-sha-256:${expectedLoginRole}` ||
+    state.databaseName !== POSTGRES_PRIVACY_RETENTION_DATABASE_NAME ||
+    state.applicationName !== expectedApplicationName ||
+    state.transactionReadOnly !== "off" ||
+    state.ssl !== false
+  ) {
+    throw new PostgresPrivacyRetentionError();
+  }
+}
+
+async function verifyPostgresPrivacyRetentionWrongPasswordRejection(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  wrongPassword: string,
+): Promise<void> {
+  const client = createPostgresPrivacyRetentionClient(endpoint, wrongPassword);
+  let rejectionCode: string | null = null;
+  try {
+    await client.connect();
+  } catch (error) {
+    rejectionCode = postgresErrorCode(error);
+  } finally {
+    try {
+      await client.end();
+    } catch {
+      // The failed authentication already owns no reusable connection.
+    }
+  }
+  if (rejectionCode !== "28P01") throw new PostgresPrivacyRetentionError();
+}
+
+async function closePostgresPrivacyRetentionClient(
+  client: Client,
+  listeners: Map<Client, (error: Error) => void>,
+): Promise<void> {
+  try {
+    await client.end();
+  } finally {
+    const listener = listeners.get(client);
+    if (listener !== undefined) client.removeListener("error", listener);
+    listeners.delete(client);
+  }
+}
+
+async function waitForPostgresPrivacyRetentionBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(
+    containerId,
+    `DO $b13_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '10 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE backend_type = 'client backend'
+        AND (
+          datname = '${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}'
+          OR usename IN (
+            '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}',
+            '${TEST_LOADER_AUTH_LOGIN_ROLE}',
+            '${MIGRATOR_AUTH_LOGIN_ROLE}'
+          )
+          OR application_name IN (
+            '${PRIVACY_RETENTION_AUTH_APPLICATION_NAME}',
+            '${PRIVACY_RETENTION_SEED_APPLICATION_NAME}',
+            '${PRIVACY_RETENTION_ADMIN_APPLICATION_NAME}',
+            '${PRIVACY_RETENTION_SUFFIX_WRITER_APPLICATION_NAME}',
+            '${PRIVACY_RETENTION_SUFFIX_DEPLOYER_APPLICATION_NAME}',
+            '${PRIVACY_RETENTION_MIGRATOR_APPLICATION_NAME}'
+          )
+        )
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'B13 PostgreSQL backends did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END
+$b13_backend_drain$;`,
+  );
+}
+
+async function dropPostgresPrivacyRetentionDatabase(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  const exists = await psqlMaintenanceScalar(
+    containerId,
+    `SELECT count(*) FROM pg_catalog.pg_database
+WHERE datname = '${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}';`,
+  );
+  if (exists === "0") return;
+  if (exists !== "1") throw new PostgresPrivacyRetentionError();
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE datname = '${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}'
+  AND backend_type = 'client backend';`,
+    ),
+    "0",
+    "B13 sessions before database drop",
+  );
+  await psqlMaintenance(containerId, renderDropPrivacyRetentionDatabaseSql());
+}
+
+async function cleanupPostgresPrivacyRetentionRoles(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  await psqlMaintenance(
+    containerId,
+    `DROP ROLE IF EXISTS ${PRIVACY_RETENTION_AUTH_LOGIN_ROLE};
+DROP ROLE IF EXISTS ${TEST_LOADER_AUTH_LOGIN_ROLE};
+DROP ROLE IF EXISTS ${MIGRATOR_AUTH_LOGIN_ROLE};
+DROP ROLE IF EXISTS ${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE};`,
+  );
+}
+
+async function verifyPostgresPrivacyRetentionResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `WITH b13_roles AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname IN (
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+    '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}',
+    '${TEST_LOADER_AUTH_LOGIN_ROLE}',
+    '${MIGRATOR_AUTH_LOGIN_ROLE}'
+  )
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_database
+  WHERE datname = '${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}'
+) || '|' || (
+  SELECT count(*) FROM b13_roles
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_auth_members
+  WHERE roleid IN (SELECT oid FROM b13_roles)
+     OR member IN (SELECT oid FROM b13_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole IN (SELECT oid FROM b13_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_stat_activity
+  WHERE backend_type = 'client backend'
+    AND (
+      datname = '${POSTGRES_PRIVACY_RETENTION_DATABASE_NAME}'
+      OR usename IN (
+        '${PRIVACY_RETENTION_AUTH_LOGIN_ROLE}',
+        '${TEST_LOADER_AUTH_LOGIN_ROLE}',
+        '${MIGRATOR_AUTH_LOGIN_ROLE}'
+      )
+      OR application_name IN (
+        '${PRIVACY_RETENTION_AUTH_APPLICATION_NAME}',
+        '${PRIVACY_RETENTION_SEED_APPLICATION_NAME}',
+        '${PRIVACY_RETENTION_ADMIN_APPLICATION_NAME}',
+        '${PRIVACY_RETENTION_SUFFIX_WRITER_APPLICATION_NAME}',
+        '${PRIVACY_RETENTION_SUFFIX_DEPLOYER_APPLICATION_NAME}',
+        '${PRIVACY_RETENTION_MIGRATOR_APPLICATION_NAME}'
+      )
+    )
+);`,
+    ),
+    "0|0|0|0|0",
+    "B13 database, role, membership, setting, and backend residue",
+  );
 }
 
 async function verifyAuthenticatedPostgresProjectionPool(
@@ -7733,7 +10016,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV12SourceHashes> {
+): Promise<PostgresAcceptanceV13SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -7754,6 +10037,12 @@ async function collectAcceptanceSourceHashes(
     postgresMigrationDeployerSha256,
     postgresQueryPlanLoadSha256,
     queryPlanLoadFixtureSha256,
+    privacyRetentionPolicyV1Sha256,
+    privacyRetentionPlanManifestV1Sha256,
+    privacyRetentionPolicySourceV1Sha256,
+    privacyRetentionPlanSourceV1Sha256,
+    resourceIdentifierTokenV1Sha256,
+    privacyRetentionFixtureV1Sha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -7774,11 +10063,18 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(postgresMigrationDeployerPath),
     exactFileSha256(postgresQueryPlanLoadPath),
     exactFileSha256(queryPlanLoadFixturePath),
+    exactFileSha256(privacyRetentionPolicyV1Path),
+    exactFileSha256(privacyRetentionPlanManifestV1Path),
+    exactFileSha256(privacyRetentionPolicySourceV1Path),
+    exactFileSha256(privacyRetentionPlanSourceV1Path),
+    exactFileSha256(resourceIdentifierTokenV1Path),
+    exactFileSha256(privacyRetentionFixtureV1Path),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
     fixtureSha256 !== config.fixtureSha256 ||
-    queryPlanLoadFixtureSha256 !== config.queryPlanLoadFixtureSha256
+    queryPlanLoadFixtureSha256 !== config.queryPlanLoadFixtureSha256 ||
+    privacyRetentionFixtureV1Sha256 !== config.privacyRetentionFixtureSha256
   ) {
     throw new Error("Reviewed acceptance source bytes changed during the run");
   }
@@ -7802,6 +10098,12 @@ async function collectAcceptanceSourceHashes(
     postgresMigrationDeployerSha256,
     postgresQueryPlanLoadSha256,
     queryPlanLoadFixtureSha256,
+    privacyRetentionPolicyV1Sha256,
+    privacyRetentionPlanManifestV1Sha256,
+    privacyRetentionPolicySourceV1Sha256,
+    privacyRetentionPlanSourceV1Sha256,
+    resourceIdentifierTokenV1Sha256,
+    privacyRetentionFixtureV1Sha256,
   });
 }
 
@@ -8203,7 +10505,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<PostgresAcceptanceV12ToolVersions> {
+): Promise<PostgresAcceptanceV13ToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -12512,6 +14814,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     "workflowSha256",
     "fixtureSha256",
     "queryPlanLoadFixtureSha256",
+    "privacyRetentionFixtureSha256",
     "verifiedOn",
     "runner",
   ];
@@ -12535,11 +14838,13 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "43f4be1ce223e30db25ec052859599deb3c16733829db6f59c2aa5c1d5a70543" ||
+      "c67ac50f09fd31d0901d6421a2a434c050a319d170866fee70e5a59cd0911966" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     value.queryPlanLoadFixtureSha256 !==
       "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad" ||
+    value.privacyRetentionFixtureSha256 !==
+      "9be0682dffbb981350bde888b2880b99e2bfa587da96acdfae281c41be67a6c7" ||
     typeof value.verifiedOn !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(value.verifiedOn) ||
     value.runner.label !== "ubuntu-24.04" ||
@@ -12559,6 +14864,20 @@ function parseJsonObject(value: string): Record<string, unknown> {
   const parsed = JSON.parse(value) as unknown;
   if (!isRecord(parsed)) throw new Error("Expected a PostgreSQL JSON object");
   return parsed;
+}
+
+function assertPrivacyRetentionAuthPassword(password: string): void {
+  const decoded = Buffer.from(password, "base64url");
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password) ||
+    decoded.length !== 32 ||
+    decoded.toString("base64url") !== password
+  ) {
+    throw new Error(
+      "Privacy-retention-auth password must be a 32-byte base64url value without padding",
+    );
+  }
 }
 
 function assertRuntimeAuthPassword(password: string): void {

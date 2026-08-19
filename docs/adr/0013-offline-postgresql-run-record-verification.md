@@ -254,3 +254,15 @@ depend on the reviewed workflow and exact logs. The
 artifact, evidence, source, and offline-output digests. See
 [ADR 0024](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md) and
 the [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md).
+
+The accepted B13 source design adds one explicit V13 verifier/reviewer branch
+while preserving exact V1 through V12 behavior, including review of a V12
+commit with no B13 paths or hashes. V13 requires the exact six new recorded
+hashes and source blobs. The reviewer also reads the manifest-named platform
+bootstrap and application body from the anchored commit, rejects an inexact
+privacy-plan tree, and validates both body hashes against the canonical
+manifest. The image config independently binds the B13 fixture; missing, extra,
+or mixed bundles fail closed. This source compatibility is not a live result:
+no V13 artifact has yet returned `offline_consistent`. See
+[ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md).

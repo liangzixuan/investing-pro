@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": 1,
+  "status": "accepted_technical_model_production_blocked",
+  "dataAdmission": "synthetic_only",
+  "resourceIdentifiers": {
+    "classification": "pseudonymous_identifier",
+    "tokenScheme": "hmac-sha256-v1",
+    "tokenBytes": 32,
+    "keyScope": "tenant_privacy_domain",
+    "keyCustody": "external_non_exportable_kms",
+    "tokenInput": "internal_only",
+    "rawDeletedRegistryRetention": "none",
+    "tokenRetention": "active_tenant_lifetime"
+  },
+  "ephemeralMetadata": {
+    "idempotencyHours": 24,
+    "securityAuditDays": 90,
+    "purgeClock": "database_transaction_timestamp",
+    "maximumPurgeBatchRows": 1000
+  },
+  "tenantOffboarding": {
+    "blockNewAllocationsBeforePurge": true,
+    "purgeOnlineResourceTokens": true,
+    "destroyExternalTokenKey": true,
+    "onlinePurgeTargetHours": 24
+  },
+  "backup": {
+    "maximumExpiryDays": 30,
+    "restoreRequiresErasureReplay": true
+  },
+  "dsar": {
+    "responseTargetDays": 30,
+    "tokensNeverExported": true,
+    "deletedRegistryTokensRemainPrincipalFree": true
+  },
+  "productionAdmission": {
+    "allowed": false,
+    "requiredExternalGates": [
+      "product_privacy_legal_approval",
+      "production_kms_and_secret_operations",
+      "production_dsar_and_legal_hold_orchestration",
+      "production_retention_scheduler_and_monitoring",
+      "external_backup_expiry_deletion_and_restore_erasure_replay",
+      "populated_database_backfill_and_online_cutover"
+    ]
+  },
+  "explicitNonClaims": [
+    "real_tenant_or_personal_data",
+    "production_kms_key_custody_rotation_destruction_or_attestation",
+    "database_verification_of_externally_keyed_resource_tokens",
+    "production_dsar_identity_resolution_legal_hold_or_regulatory_compliance",
+    "production_retention_scheduler_monitoring_or_failure_recovery",
+    "external_backup_expiry_deletion_or_restore_erasure_replay",
+    "populated_database_privacy_migration_backfill_or_online_cutover"
+  ]
+}

@@ -225,6 +225,9 @@ hardware, versions, extensions, settings, or schemas.
 The result also excludes end-user identity binding, external/TLS transport,
 managed secrets, real or licensed data, complete dossiers, application/API
 composition, writes, deployment, and production readiness. The next existing
-unassigned package-roadmap prerequisite is approval of the production privacy
-and retention model for permanent resource identifiers. No B13 milestone or
-successor claim is assigned by this note.
+package-roadmap prerequisite now has a separate B13 technical source contract;
+see
+[ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [B13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md). That later source does
+not widen this evidence note or its retained V12 record. No live V13 result is
+yet claimed, and production privacy/legal admission remains blocked.

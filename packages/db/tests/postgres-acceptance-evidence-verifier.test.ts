@@ -31,6 +31,8 @@ import {
   POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -78,6 +80,18 @@ interface MutableInput {
     postgresMigrationDeployer?: Uint8Array;
     postgresQueryPlanLoad?: Uint8Array;
     queryPlanLoadFixture?: Uint8Array;
+    privacyRetentionPolicyV1?: Uint8Array;
+    privacyRetentionPlanManifestV1?: Uint8Array;
+    privacyRetentionPlanPlatformV1?: Uint8Array;
+    privacyRetentionPolicySourceV1?: Uint8Array;
+    privacyRetentionPlanSourceV1?: Uint8Array;
+    resourceIdentifierTokenV1?: Uint8Array;
+    privacyRetentionFixtureV1?: Uint8Array;
+    privacyRetentionPlanMigrationsV1?: Array<{
+      id: string;
+      file: string;
+      bytes: Uint8Array;
+    }>;
     applicationMigrationsV2?: Array<{
       id: string;
       file: string;
@@ -146,6 +160,35 @@ function cloneInput(): MutableInput {
         BASE_INPUT.sources.postgresQueryPlanLoad!,
       ),
       queryPlanLoadFixture: exactCopy(BASE_INPUT.sources.queryPlanLoadFixture!),
+      privacyRetentionPolicyV1: exactCopy(
+        BASE_INPUT.sources.privacyRetentionPolicyV1!,
+      ),
+      privacyRetentionPlanManifestV1: exactCopy(
+        BASE_INPUT.sources.privacyRetentionPlanManifestV1!,
+      ),
+      privacyRetentionPlanPlatformV1: exactCopy(
+        BASE_INPUT.sources.privacyRetentionPlanPlatformV1!,
+      ),
+      privacyRetentionPolicySourceV1: exactCopy(
+        BASE_INPUT.sources.privacyRetentionPolicySourceV1!,
+      ),
+      privacyRetentionPlanSourceV1: exactCopy(
+        BASE_INPUT.sources.privacyRetentionPlanSourceV1!,
+      ),
+      resourceIdentifierTokenV1: exactCopy(
+        BASE_INPUT.sources.resourceIdentifierTokenV1!,
+      ),
+      privacyRetentionFixtureV1: exactCopy(
+        BASE_INPUT.sources.privacyRetentionFixtureV1!,
+      ),
+      privacyRetentionPlanMigrationsV1:
+        BASE_INPUT.sources.privacyRetentionPlanMigrationsV1!.map(
+          (migration) => ({
+            id: migration.id,
+            file: migration.file,
+            bytes: exactCopy(migration.bytes),
+          }),
+        ),
       applicationMigrationsV2: BASE_INPUT.sources.applicationMigrationsV2!.map(
         (migration) => ({
           id: migration.id,
@@ -258,6 +301,16 @@ function removeV12SourceHashes(record: Record<string, unknown>): void {
   delete hashes.queryPlanLoadFixtureSha256;
 }
 
+function removeV13SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.privacyRetentionPolicyV1Sha256;
+  delete hashes.privacyRetentionPlanManifestV1Sha256;
+  delete hashes.privacyRetentionPolicySourceV1Sha256;
+  delete hashes.privacyRetentionPlanSourceV1Sha256;
+  delete hashes.resourceIdentifierTokenV1Sha256;
+  delete hashes.privacyRetentionFixtureV1Sha256;
+}
+
 function removeV7Sources(input: MutableInput): void {
   delete input.sources.platformBootstrapV2;
   delete input.sources.applicationMigrationManifestV2;
@@ -290,8 +343,38 @@ function removeV12Sources(input: MutableInput): void {
   delete input.sources.queryPlanLoadFixture;
 }
 
-function v11Input(): MutableInput {
+function removeV13Sources(input: MutableInput): void {
+  delete input.sources.privacyRetentionPolicyV1;
+  delete input.sources.privacyRetentionPlanManifestV1;
+  delete input.sources.privacyRetentionPlanPlatformV1;
+  delete input.sources.privacyRetentionPlanMigrationsV1;
+  delete input.sources.privacyRetentionPolicySourceV1;
+  delete input.sources.privacyRetentionPlanSourceV1;
+  delete input.sources.resourceIdentifierTokenV1;
+  delete input.sources.privacyRetentionFixtureV1;
+}
+
+function v12Input(): MutableInput {
   let input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 12;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN];
+    removeV13SourceHashes(record);
+  });
+  removeV13Sources(input);
+  input = replaceCanonicalSourceJson(
+    input,
+    "imageConfig",
+    (imageConfig) => {
+      delete imageConfig.privacyRetentionFixtureSha256;
+    },
+    false,
+  );
+  return input;
+}
+
+function v11Input(): MutableInput {
+  let input = mutateEvidence(v12Input(), (record) => {
     record.schemaVersion = 11;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V11_NOT_PROVEN];
@@ -382,7 +465,11 @@ function v5Input(): MutableInput {
 
 function replaceCanonicalSourceJson(
   input: VerifyPostgresAcceptanceEvidenceOfflineInput,
-  key: "imageConfig" | "migrationManifest" | "applicationMigrationManifestV2",
+  key:
+    | "imageConfig"
+    | "migrationManifest"
+    | "applicationMigrationManifestV2"
+    | "privacyRetentionPlanManifestV1",
   mutate: (value: Record<string, unknown>) => void,
   updateRecordedHash: boolean,
 ): MutableInput {
@@ -395,7 +482,9 @@ function replaceCanonicalSourceJson(
   const replacement = canonicalJson(value);
   next.sources = { ...next.sources, [key]: replacement };
   if (
-    (key === "migrationManifest" || key === "applicationMigrationManifestV2") &&
+    (key === "migrationManifest" ||
+      key === "applicationMigrationManifestV2" ||
+      key === "privacyRetentionPlanManifestV1") &&
     updateRecordedHash
   ) {
     return mutateEvidence(next, (record) => {
@@ -403,7 +492,9 @@ function replaceCanonicalSourceJson(
       hashes[
         key === "migrationManifest"
           ? "migrationManifestSha256"
-          : "applicationMigrationManifestV2Sha256"
+          : key === "applicationMigrationManifestV2"
+            ? "applicationMigrationManifestV2Sha256"
+            : "privacyRetentionPlanManifestV1Sha256"
       ] = sha256(replacement);
     });
   }
@@ -510,6 +601,67 @@ function cloneFrom(
         ? {}
         : {
             queryPlanLoadFixture: exactCopy(input.sources.queryPlanLoadFixture),
+          }),
+      ...(input.sources.privacyRetentionPolicyV1 === undefined
+        ? {}
+        : {
+            privacyRetentionPolicyV1: exactCopy(
+              input.sources.privacyRetentionPolicyV1,
+            ),
+          }),
+      ...(input.sources.privacyRetentionPlanManifestV1 === undefined
+        ? {}
+        : {
+            privacyRetentionPlanManifestV1: exactCopy(
+              input.sources.privacyRetentionPlanManifestV1,
+            ),
+          }),
+      ...(input.sources.privacyRetentionPlanPlatformV1 === undefined
+        ? {}
+        : {
+            privacyRetentionPlanPlatformV1: exactCopy(
+              input.sources.privacyRetentionPlanPlatformV1,
+            ),
+          }),
+      ...(input.sources.privacyRetentionPolicySourceV1 === undefined
+        ? {}
+        : {
+            privacyRetentionPolicySourceV1: exactCopy(
+              input.sources.privacyRetentionPolicySourceV1,
+            ),
+          }),
+      ...(input.sources.privacyRetentionPlanSourceV1 === undefined
+        ? {}
+        : {
+            privacyRetentionPlanSourceV1: exactCopy(
+              input.sources.privacyRetentionPlanSourceV1,
+            ),
+          }),
+      ...(input.sources.resourceIdentifierTokenV1 === undefined
+        ? {}
+        : {
+            resourceIdentifierTokenV1: exactCopy(
+              input.sources.resourceIdentifierTokenV1,
+            ),
+          }),
+      ...(input.sources.privacyRetentionFixtureV1 === undefined
+        ? {}
+        : {
+            privacyRetentionFixtureV1: exactCopy(
+              input.sources.privacyRetentionFixtureV1,
+            ),
+          }),
+      ...(input.sources.privacyRetentionPlanMigrationsV1 === undefined
+        ? {}
+        : {
+            privacyRetentionPlanMigrationsV1:
+              input.sources.privacyRetentionPlanMigrationsV1.map(
+                (migration) => ({
+                  id: migration.id,
+                  file: migration.file,
+                  bytes: exactCopy(migration.bytes),
+                }),
+              ),
           }),
       ...(input.sources.applicationMigrationsV2 === undefined
         ? {}
@@ -795,6 +947,23 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v12 evidence without v13 privacy-retention sources or config field", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v12Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "versioned_privacy_retention_decision_contract",
+    );
+    expect(result.recordedNotProven).not.toContain(
+      "real_customer_tenant_or_personal_data",
+    );
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -845,6 +1014,12 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(v11Input(), (record) => {
         record.schemaVersion = 12;
       }),
+      mutateEvidence(v12Input(), (record) => {
+        record.schemaVersion = 13;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 12;
+      }),
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 11;
       }),
@@ -878,6 +1053,23 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("requires the exact version-specific source bundle", () => {
+    for (const key of [
+      "privacyRetentionPolicyV1",
+      "privacyRetentionPlanManifestV1",
+      "privacyRetentionPlanPlatformV1",
+      "privacyRetentionPlanMigrationsV1",
+      "privacyRetentionPolicySourceV1",
+      "privacyRetentionPlanSourceV1",
+      "resourceIdentifierTokenV1",
+      "privacyRetentionFixtureV1",
+    ] as const) {
+      const missing = cloneInput();
+      delete missing.sources[key];
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(missing),
+      );
+    }
+
     const missingV12Module = cloneInput();
     delete missingV12Module.sources.postgresQueryPlanLoad;
     expectValueFreeFailure(() =>
@@ -1005,11 +1197,21 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       verifyPostgresAcceptanceEvidenceOffline(extraV11),
     );
 
+    const extraV12 = v12Input();
+    (
+      extraV12.sources as unknown as Record<string, unknown>
+    ).privacyRetentionPolicyV1 = exactCopy(
+      BASE_INPUT.sources.privacyRetentionPolicyV1!,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraV12),
+    );
+
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
     );
   });
 
@@ -1259,6 +1461,13 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "postgresMigrationDeployer",
       "postgresQueryPlanLoad",
       "queryPlanLoadFixture",
+      "privacyRetentionPolicyV1",
+      "privacyRetentionPlanManifestV1",
+      "privacyRetentionPlanPlatformV1",
+      "privacyRetentionPolicySourceV1",
+      "privacyRetentionPlanSourceV1",
+      "resourceIdentifierTokenV1",
+      "privacyRetentionFixtureV1",
     ] as const) {
       const input = cloneInput();
       input.sources = {
@@ -1269,6 +1478,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
         verifyPostgresAcceptanceEvidenceOffline(input),
       );
     }
+
+    const changedPrivacyMigration = cloneInput();
+    changedPrivacyMigration.sources.privacyRetentionPlanMigrationsV1![0] = {
+      ...changedPrivacyMigration.sources.privacyRetentionPlanMigrationsV1![0]!,
+      bytes: changedByte(
+        changedPrivacyMigration.sources.privacyRetentionPlanMigrationsV1![0]!
+          .bytes,
+      ),
+    };
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(changedPrivacyMigration),
+    );
   });
 
   it("rejects image target, version, runner, and reviewed-input inconsistencies", () => {
@@ -1290,6 +1511,9 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       },
       (value) => {
         value.queryPlanLoadFixtureSha256 = "0".repeat(64);
+      },
+      (value) => {
+        value.privacyRetentionFixtureSha256 = "0".repeat(64);
       },
       (value) => {
         (value.runner as Record<string, unknown>).architecture = "arm64";
@@ -1330,6 +1554,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(missingV12FixtureHash),
+    );
+
+    const missingV13FixtureHash = replaceCanonicalSourceJson(
+      cloneInput(),
+      "imageConfig",
+      (value) => {
+        delete value.privacyRetentionFixtureSha256;
+      },
+      false,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV13FixtureHash),
     );
 
     const extra = replaceCanonicalSourceJson(
@@ -1607,6 +1843,64 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("validates every body named by the exact v1 privacy-retention plan manifest", () => {
+    const changes: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        value.planVersion = 2;
+      },
+      (value) => {
+        (value.platform as Record<string, unknown>).file = "wrong.sql";
+      },
+      (value) => {
+        (value.platform as Record<string, unknown>).sha256 = "0".repeat(64);
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.id = "privacy-v1-0002";
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.file = "application/0001_wrong.sql";
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.sha256 = "0".repeat(64);
+      },
+      (value) => {
+        (value.migrations as unknown[]).push(
+          (value.migrations as unknown[])[0],
+        );
+      },
+      (value) => {
+        value.secret = SECRET_CANARY;
+      },
+    ];
+    for (const change of changes) {
+      const input = replaceCanonicalSourceJson(
+        cloneInput(),
+        "privacyRetentionPlanManifestV1",
+        change,
+        true,
+      );
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(input),
+      );
+    }
+
+    const noncanonical = cloneInput();
+    const replacement = bytes(
+      ` ${decoder.decode(noncanonical.sources.privacyRetentionPlanManifestV1)}`,
+    );
+    noncanonical.sources.privacyRetentionPlanManifestV1 = replacement;
+    const changed = mutateEvidence(noncanonical, (record) => {
+      const hashes = record.sourceHashes as Record<string, unknown>;
+      hashes.privacyRetentionPlanManifestV1Sha256 = sha256(replacement);
+    });
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(changed),
+    );
+  });
+
   it("rejects accessor-backed and symbol-decorated migration arrays", () => {
     const accessor = cloneInput();
     const migrations = [...accessor.sources.migrations];
@@ -1658,6 +1952,13 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     postgresMigrationDeployer,
     postgresQueryPlanLoad,
     queryPlanLoadFixture,
+    privacyRetentionPolicyV1,
+    privacyRetentionPlanManifestV1,
+    privacyRetentionPlanPlatformV1,
+    privacyRetentionPolicySourceV1,
+    privacyRetentionPlanSourceV1,
+    resourceIdentifierTokenV1,
+    privacyRetentionFixtureV1,
   ] = await Promise.all([
     readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
     readExact(
@@ -1711,6 +2012,24 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     readExact(
       new URL("../acceptance/query-plan-load-fixture.sql", import.meta.url),
     ),
+    readExact(
+      new URL("../privacy-retention-plans/v1/policy.json", import.meta.url),
+    ),
+    readExact(
+      new URL("../privacy-retention-plans/v1/manifest.json", import.meta.url),
+    ),
+    readExact(
+      new URL(
+        "../privacy-retention-plans/v1/platform-bootstrap.sql",
+        import.meta.url,
+      ),
+    ),
+    readExact(new URL("../src/privacy-retention-policy.ts", import.meta.url)),
+    readExact(new URL("../src/privacy-retention-plan.ts", import.meta.url)),
+    readExact(new URL("../src/resource-identifier-token.ts", import.meta.url)),
+    readExact(
+      new URL("../acceptance/privacy-retention-fixture.sql", import.meta.url),
+    ),
   ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
     reference: string;
@@ -1758,6 +2077,23 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       bytes: await readExact(
         new URL(
           `../migration-plans/v2/application/${migration.file}`,
+          import.meta.url,
+        ),
+      ),
+    })),
+  );
+  const privacyRetentionManifestV1 = JSON.parse(
+    decoder.decode(privacyRetentionPlanManifestV1),
+  ) as {
+    migrations: Array<{ id: string; file: string }>;
+  };
+  const privacyRetentionPlanMigrationsV1 = await Promise.all(
+    privacyRetentionManifestV1.migrations.map(async (migration) => ({
+      id: migration.id,
+      file: migration.file,
+      bytes: await readExact(
+        new URL(
+          `../privacy-retention-plans/v1/${migration.file}`,
           import.meta.url,
         ),
       ),
@@ -1818,6 +2154,16 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       postgresMigrationDeployerSha256: sha256(postgresMigrationDeployer),
       postgresQueryPlanLoadSha256: sha256(postgresQueryPlanLoad),
       queryPlanLoadFixtureSha256: sha256(queryPlanLoadFixture),
+      privacyRetentionPolicyV1Sha256: sha256(privacyRetentionPolicyV1),
+      privacyRetentionPlanManifestV1Sha256: sha256(
+        privacyRetentionPlanManifestV1,
+      ),
+      privacyRetentionPolicySourceV1Sha256: sha256(
+        privacyRetentionPolicySourceV1,
+      ),
+      privacyRetentionPlanSourceV1Sha256: sha256(privacyRetentionPlanSourceV1),
+      resourceIdentifierTokenV1Sha256: sha256(resourceIdentifierTokenV1),
+      privacyRetentionFixtureV1Sha256: sha256(privacyRetentionFixtureV1),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -1853,6 +2199,14 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       postgresMigrationDeployer,
       postgresQueryPlanLoad,
       queryPlanLoadFixture,
+      privacyRetentionPolicyV1,
+      privacyRetentionPlanManifestV1,
+      privacyRetentionPlanPlatformV1,
+      privacyRetentionPlanMigrationsV1,
+      privacyRetentionPolicySourceV1,
+      privacyRetentionPlanSourceV1,
+      resourceIdentifierTokenV1,
+      privacyRetentionFixtureV1,
       applicationMigrationsV2,
       migrations,
     },

@@ -118,10 +118,13 @@ remain in force.
 
 B12 defines one reproducible, reviewed gate for two named-index plan shapes and
 2,000 queued synthetic reads through at most eight runtime workload backends.
-It does not widen any B1 through B11 record. The existing unassigned
-[package-roadmap prerequisite](../../packages/db/README.md) is approval of the
-production privacy and retention model for permanent resource identifiers. No
-B13 milestone or claim is assigned here.
+It does not widen any B1 through B11 record. The former unassigned
+[package-roadmap prerequisite](../../packages/db/README.md) now has the separate
+B13 technical source contract in
+[ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [B13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md). That successor does
+not widen B12 or its retained V12 result; live V13 review is pending and
+production privacy/legal admission remains blocked.
 
 ## Related decisions and primary sources
 

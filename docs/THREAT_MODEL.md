@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b12 threat model
+# Sprint 0 through bounded live Cycle 1b-b12 and B13 source-stage threat model
 
 ## Current trust boundaries
 
@@ -334,6 +334,18 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   15-minute job timeout is the outer fail-closed bound. Runtime RLS and
   privileged reference plans remain distinct, and disabling sequential scans or
   creating an acceptance-only index is forbidden.
+- The B13 privacy plan is a separate manifest-bound, pristine/empty-data-only
+  suffix over the unchanged v2 plan in one fixed disposable database. Stable
+  resource tokens use exact externally keyed HMAC framing, while the database
+  accepts only 32-byte token shape and uniqueness and makes no authenticity
+  claim. Raw tenant/resource UUID pairs in registry allocations exist only
+  while that allocation is live and are cleared on the exact hard-delete
+  transition. Active-to-offboarding locks
+  out allocation before bounded online synthetic purge; expired audit and
+  idempotency cleanup uses the transaction clock, `SKIP LOCKED`, and a fixed
+  1,000-row-per-class bound. Exact roles, triggers, procedures, RLS, grants,
+  fixture, policy, manifest, and SQL bodies are source-controlled and bound by
+  V13 review. A live V13 result is still pending.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -390,6 +402,20 @@ identity, or application-composition evidence. See the
 [B12 evidence note](./POSTGRESQL_QUERY_PLAN_LOAD_EVIDENCE.md),
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
+
+B13 reduces raw permanent-identifier retention only inside its separate
+synthetic plan. A pseudonymous token can still be linkable within its privacy
+domain, and PostgreSQL cannot distinguish a genuine external HMAC from an
+attacker-supplied 32-byte value. Database deletion does not prove deletion from
+replicas, caches, logs, search/analytics, third parties, backups, archives, or
+restored media, and key-reference removal does not itself prove KMS/HSM key
+destruction or cryptographic erasure. The source also does not authenticate a
+data subject, resolve legal holds, schedule or monitor offboarding/retention,
+support a populated online cutover, or admit real tenant/personal data.
+Production admission remains blocked, and no pinned live V13 artifact is yet
+claimed. See
+[ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 

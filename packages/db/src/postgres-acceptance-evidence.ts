@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v12.json";
+  "research-cockpit-postgres-acceptance-v13.json";
 
 export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
@@ -233,13 +233,34 @@ export const POSTGRES_ACCEPTANCE_V12_NOT_PROVEN = Object.freeze([
   "complete_dossier_history_timeline_or_dimensioned_projection",
 ] as const);
 
+export const POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
+  "versioned_privacy_retention_decision_contract",
+  "authenticated_bounded_synthetic_resource_identifier_privacy_retention_lifecycle",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_V13_NOT_PROVEN = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+  "production_privacy_legal_approval_lawful_basis_notices_or_legal_holds",
+  "verified_data_subject_identity_or_production_dsar_fulfillment",
+  "production_tenant_offboarding_retention_scheduler_or_monitoring",
+  "external_kms_hsm_key_custody_rotation_destruction_or_recovery",
+  "database_verification_of_externally_keyed_resource_tokens",
+  "cryptographic_erasure_of_plaintext_database_or_backup_data",
+  "production_primary_replica_cache_log_search_analytics_or_third_party_deletion",
+  "production_backup_archive_expiry_deletion_restore_suppression_or_media_sanitization",
+  "populated_database_privacy_migration_backfill_or_online_cutover",
+  "globally_complete_or_independently_audited_deletion_proof",
+  "real_customer_tenant_or_personal_data",
+] as const);
+
 /** The exact completed-check list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_CHECKS_PASSED =
-  POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED;
+  POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED;
 
 /** The exact limitation list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_NOT_PROVEN =
-  POSTGRES_ACCEPTANCE_V12_NOT_PROVEN;
+  POSTGRES_ACCEPTANCE_V13_NOT_PROVEN;
 
 const BUILD_INPUT_KEYS = [
   "githubEnvironment",
@@ -321,6 +342,15 @@ const V12_SOURCE_HASH_KEYS = [
   "postgresQueryPlanLoadSha256",
   "queryPlanLoadFixtureSha256",
 ] as const;
+const V13_SOURCE_HASH_KEYS = [
+  ...V12_SOURCE_HASH_KEYS,
+  "privacyRetentionPolicyV1Sha256",
+  "privacyRetentionPlanManifestV1Sha256",
+  "privacyRetentionPolicySourceV1Sha256",
+  "privacyRetentionPlanSourceV1Sha256",
+  "resourceIdentifierTokenV1Sha256",
+  "privacyRetentionFixtureV1Sha256",
+] as const;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const SHA1_HEX = /^[0-9a-f]{40}$/;
@@ -354,6 +384,9 @@ export type PostgresAcceptanceV11ToolVersions =
 
 export type PostgresAcceptanceV12ToolVersions =
   PostgresAcceptanceV11ToolVersions;
+
+export type PostgresAcceptanceV13ToolVersions =
+  PostgresAcceptanceV12ToolVersions;
 
 export interface HistoricalPostgresAcceptanceSourceHashes {
   readonly workflowSha256: string;
@@ -398,6 +431,15 @@ export interface PostgresAcceptanceV12SourceHashes extends PostgresAcceptanceV11
   readonly queryPlanLoadFixtureSha256: string;
 }
 
+export interface PostgresAcceptanceV13SourceHashes extends PostgresAcceptanceV12SourceHashes {
+  readonly privacyRetentionPolicyV1Sha256: string;
+  readonly privacyRetentionPlanManifestV1Sha256: string;
+  readonly privacyRetentionPolicySourceV1Sha256: string;
+  readonly privacyRetentionPlanSourceV1Sha256: string;
+  readonly resourceIdentifierTokenV1Sha256: string;
+  readonly privacyRetentionFixtureV1Sha256: string;
+}
+
 export interface BuildPostgresAcceptanceEvidenceInput {
   /**
    * The complete environment may be supplied, but the builder reads only the
@@ -406,8 +448,8 @@ export interface BuildPostgresAcceptanceEvidenceInput {
   readonly githubEnvironment: Environment;
   readonly reviewedImageReference: string;
   readonly reviewedImageIndexDigest: string;
-  readonly toolVersions: PostgresAcceptanceV12ToolVersions;
-  readonly sourceHashes: PostgresAcceptanceV12SourceHashes;
+  readonly toolVersions: PostgresAcceptanceV13ToolVersions;
+  readonly sourceHashes: PostgresAcceptanceV13SourceHashes;
   readonly completedAt: string;
 }
 
@@ -519,6 +561,15 @@ export interface PostgresAcceptanceEvidenceV12 extends PostgresAcceptanceEvidenc
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V12_NOT_PROVEN;
 }
 
+export interface PostgresAcceptanceEvidenceV13 extends PostgresAcceptanceEvidenceFields<
+  PostgresAcceptanceV13SourceHashes,
+  PostgresAcceptanceV13ToolVersions
+> {
+  readonly schemaVersion: 13;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V13_NOT_PROVEN;
+}
+
 export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV1
   | PostgresAcceptanceEvidenceV2
@@ -531,7 +582,8 @@ export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV9
   | PostgresAcceptanceEvidenceV10
   | PostgresAcceptanceEvidenceV11
-  | PostgresAcceptanceEvidenceV12;
+  | PostgresAcceptanceEvidenceV12
+  | PostgresAcceptanceEvidenceV13;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -556,7 +608,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidenceV12 {
+): PostgresAcceptanceEvidenceV13 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -592,11 +644,11 @@ export function buildPostgresAcceptanceEvidence(
       reviewedImageIndexDigest,
     );
     const toolVersions = normalizeV10ToolVersions(input.toolVersions);
-    const sourceHashes = normalizeV12SourceHashes(input.sourceHashes);
+    const sourceHashes = normalizeV13SourceHashes(input.sourceHashes);
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 12,
+      schemaVersion: 13,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -653,14 +705,14 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidenceV12,
+  value: PostgresAcceptanceEvidenceV13,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
     const normalized = normalizeEvidence(value);
-    if (normalized.schemaVersion !== 12) invalid();
+    if (normalized.schemaVersion !== 13) invalid();
     bytes = Buffer.from(
       serializePostgresAcceptanceEvidence(normalized),
       "utf8",
@@ -940,6 +992,24 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
     });
   }
 
+  if (evidence.schemaVersion === 13) {
+    const sourceHashes = normalizeV13SourceHashes(evidence.sourceHashes);
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V13_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 13,
+      ...common,
+      toolVersions: normalizeV10ToolVersions(evidence.toolVersions),
+      sourceHashes,
+      checksPassed: POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
   invalid();
 }
 
@@ -1213,6 +1283,67 @@ function normalizeV12SourceHashes(
     ),
     postgresQueryPlanLoadSha256: sha256Hex(hashes.postgresQueryPlanLoadSha256),
     queryPlanLoadFixtureSha256: sha256Hex(hashes.queryPlanLoadFixtureSha256),
+  });
+}
+
+function normalizeV13SourceHashes(
+  value: unknown,
+): PostgresAcceptanceV13SourceHashes {
+  const hashes = exactPlainDataRecord(value, V13_SOURCE_HASH_KEYS);
+  return Object.freeze({
+    workflowSha256: sha256Hex(hashes.workflowSha256),
+    fixtureSha256: sha256Hex(hashes.fixtureSha256),
+    migrationManifestSha256: sha256Hex(hashes.migrationManifestSha256),
+    acceptanceRunnerSha256: sha256Hex(hashes.acceptanceRunnerSha256),
+    projectionQuerySha256: sha256Hex(hashes.projectionQuerySha256),
+    projectionNormalizerSha256: sha256Hex(hashes.projectionNormalizerSha256),
+    platformBootstrapV2Sha256: sha256Hex(hashes.platformBootstrapV2Sha256),
+    applicationMigrationManifestV2Sha256: sha256Hex(
+      hashes.applicationMigrationManifestV2Sha256,
+    ),
+    authenticatedMigrationRendererV2Sha256: sha256Hex(
+      hashes.authenticatedMigrationRendererV2Sha256,
+    ),
+    restorePlatformV1Sha256: sha256Hex(hashes.restorePlatformV1Sha256),
+    authenticatedBackupRestorePlanV1Sha256: sha256Hex(
+      hashes.authenticatedBackupRestorePlanV1Sha256,
+    ),
+    postgresProjectionAdapterSha256: sha256Hex(
+      hashes.postgresProjectionAdapterSha256,
+    ),
+    operationProjectionContractSha256: sha256Hex(
+      hashes.operationProjectionContractSha256,
+    ),
+    databasePackageManifestSha256: sha256Hex(
+      hashes.databasePackageManifestSha256,
+    ),
+    pnpmLockfileSha256: sha256Hex(hashes.pnpmLockfileSha256),
+    postgresProjectionPoolSha256: sha256Hex(
+      hashes.postgresProjectionPoolSha256,
+    ),
+    postgresMigrationDeployerSha256: sha256Hex(
+      hashes.postgresMigrationDeployerSha256,
+    ),
+    postgresQueryPlanLoadSha256: sha256Hex(hashes.postgresQueryPlanLoadSha256),
+    queryPlanLoadFixtureSha256: sha256Hex(hashes.queryPlanLoadFixtureSha256),
+    privacyRetentionPolicyV1Sha256: sha256Hex(
+      hashes.privacyRetentionPolicyV1Sha256,
+    ),
+    privacyRetentionPlanManifestV1Sha256: sha256Hex(
+      hashes.privacyRetentionPlanManifestV1Sha256,
+    ),
+    privacyRetentionPolicySourceV1Sha256: sha256Hex(
+      hashes.privacyRetentionPolicySourceV1Sha256,
+    ),
+    privacyRetentionPlanSourceV1Sha256: sha256Hex(
+      hashes.privacyRetentionPlanSourceV1Sha256,
+    ),
+    resourceIdentifierTokenV1Sha256: sha256Hex(
+      hashes.resourceIdentifierTokenV1Sha256,
+    ),
+    privacyRetentionFixtureV1Sha256: sha256Hex(
+      hashes.privacyRetentionFixtureV1Sha256,
+    ),
   });
 }
 

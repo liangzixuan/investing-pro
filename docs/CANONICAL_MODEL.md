@@ -220,6 +220,38 @@ V12 review are complete. PostgreSQL run `32230667908` passed at commit
 [ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
 and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
 
+Cycle 1b-b13 defines a separate, versioned privacy model for permanent thesis
+and alert identifiers without changing historical v2 semantics. In the privacy
+v1 plan, a canonical resource allocation is identified internally by
+`allocation_id` and belongs to one tenant privacy domain. Its stable external
+comparison value is a 32-byte `hmac-sha256-v1` token over the frozen domain,
+resource-type, and resource-ID framing. The MAC key and derivation remain
+outside PostgreSQL. The database treats the token as a pseudonymous identifier,
+checks only its shape and uniqueness, and cannot attest that it is a genuine
+HMAC.
+
+A `live` allocation temporarily carries organization and resource UUIDs so the
+thesis/alert row can hold an exact live-state foreign key. Hard deletion must
+atomically remove that row and transition exactly one allocation to `deleted`,
+clearing both raw UUIDs. The retained domain/type/token tuple is therefore not
+a raw tenant/resource mapping and cannot be revived or reused. A tenant privacy
+domain transitions only from `active` to `offboarding`; the transition blocks
+new allocations before the fixed synthetic purge removes online resource
+tokens and the tenant graph. External key destruction is a separate production
+operation.
+
+Policy v1 also fixes technical targets for 24-hour idempotency metadata,
+90-day audit metadata, bounded 1,000-row transaction-clock purge batches,
+24-hour online offboarding, and 30-day backup expiry. Those values are an
+accepted synthetic technical decision, not a legal conclusion or evidence that
+a scheduler, DSAR/legal-hold system, KMS/HSM, deletion across replicas/caches/
+logs/search/analytics/third parties, or backup expiry/restore suppression is
+operating. The plan is pristine/empty-data-only; populated backfill and online
+cutover remain unimplemented. Source and V13 evidence branches exist, but no
+live V13 review is yet claimed. See
+[ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
+and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

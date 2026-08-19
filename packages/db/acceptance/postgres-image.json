@@ -8,9 +8,10 @@
   "expectedServerVersion": "17.11",
   "expectedServerVersionNumber": 170011,
   "databaseName": "research_cockpit_acceptance_test",
-  "workflowSha256": "43f4be1ce223e30db25ec052859599deb3c16733829db6f59c2aa5c1d5a70543",
+  "workflowSha256": "c67ac50f09fd31d0901d6421a2a434c050a319d170866fee70e5a59cd0911966",
   "fixtureSha256": "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
   "queryPlanLoadFixtureSha256": "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad",
+  "privacyRetentionFixtureSha256": "9be0682dffbb981350bde888b2880b99e2bfa587da96acdfae281c41be67a6c7",
   "verifiedOn": "2026-08-15",
   "runner": {
     "label": "ubuntu-24.04",
