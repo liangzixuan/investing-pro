@@ -1,6 +1,7 @@
 # ADR 0013: Offline PostgreSQL run-record verification
 
-Status: accepted; retained versions through 11 reviewed successfully
+Status: accepted; retained versions through 11 reviewed successfully; version
+12 source contract accepted with artifact review pending
 
 ADR 0012 defines a success-only PostgreSQL acceptance run record. Its schema
 parser can reject malformed fields, but parsing alone cannot establish that a
@@ -14,7 +15,7 @@ those expected values may be inferred from the record being checked. The
 evidence file must be a regular non-symlink file no larger than 32 KiB. Its
 original bytes must be valid UTF-8 and exactly equal the canonical
 serialization for their declared supported version. The verifier retains exact
-historical v1 through v10 support and accepts the current v11 schema without
+historical v1 through v11 support and accepts the current v12 schema without
 mixing any version's closed check, limitation, source-hash, or tool-version
 lists. The retained artifacts described below through version 11 have been
 reviewed.
@@ -32,15 +33,16 @@ recorded in the artifact; validates the reviewed PostgreSQL target against the
 commit's image declaration; and checks the exact ordered migration inventory
 and every migration-body hash.
 
-For versions 7 through 11, the reviewer also requires the fixed v2 platform plan,
+For versions 7 through 12, the reviewer also requires the fixed v2 platform plan,
 application manifest, authenticated renderer, and the exact manifest-listed
-application bodies from the anchored commit. Versions 8 through 11 additionally
+application bodies from the anchored commit. Versions 8 through 12 additionally
 require the fixed restore-platform asset and authenticated backup/restore
-renderer. Versions 9 through 11 also require the adapter, core
+renderer. Versions 9 through 12 also require the adapter, core
 operation-projection contract, database package manifest, and lockfile, and
-check the exact node-postgres tool version. Versions 10 and 11 additionally
-require the pool source and exact pg-pool version. Version 11 alone requires
-the migration-deployer source. The reviewer rejects missing, extra,
+check the exact node-postgres tool version. Versions 10 through 12 additionally
+require the pool source and exact pg-pool version. Versions 11 and 12 require
+the migration-deployer source. Version 12 alone requires the fixed query-plan/
+load module and deterministic B12 fixture. The reviewer rejects missing, extra,
 non-regular, or mixed-version tree entries and validates each body against the
 closed manifest. Versions 1 through 6 retain their historical source shapes and
 do not acquire these inputs retroactively.
@@ -227,3 +229,26 @@ workflow and exact logs. The
 the exact artifact, evidence, source, and offline-output digests. See
 [ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
 [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
+
+The accepted Cycle 1b-b12 evidence design adds one explicit V12 verifier and
+reviewer branch while preserving exact V1 through V11 behavior. V12 requires
+the appended
+`authenticated_rls_indexed_query_plans_and_bounded_2000_read_load` check,
+unchanged V11 tool fields and limitations except for the single ordered
+`thousand_simultaneous_database_backends_or_connections` insertion, and exact
+`postgresQueryPlanLoadSha256` plus `queryPlanLoadFixtureSha256` bytes read from
+`packages/db/src/postgres-query-plan-load.ts` and
+`packages/db/acceptance/query-plan-load-fixture.sql` at the independently
+anchored commit. Missing, extra, reordered, historical-version, or mixed-version
+checks, limitations, tools, source keys, and source blobs fail closed. A V11
+record and commit remain reviewable without either B12 path or hash.
+
+V1 through V12 parser, verifier, reviewer, focused plan/load, and integrated
+local compatibility gates pass. No V12 artifact or `offline_consistent` result
+is retained yet. Source compatibility cannot prove authenticated runtime plans,
+named-index use, 2,000 submitted reads through eight runtime workload backends, Alpha/Beta
+isolation, finite execution, or cleanup. Those live claims remain pending on a
+clean pinned workflow, exact logs, retained artifact, and independently
+supplied anchors. No B12 post-live evidence note exists. See
+[ADR 0024](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md) and
+the [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md).

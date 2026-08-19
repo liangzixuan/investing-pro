@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b11 threat model
+# Sprint 0 through bounded live Cycle 1b-b11 and Cycle 1b-b12 source/local threat model
 
 ## Current trust boundaries
 
@@ -210,6 +210,20 @@ and the bounded live V11 execution, cleanup, artifact, and independent review
 are complete. PostgreSQL run `32183709701` passed at commit `5df9d07`; its
 retained record returned `offline_consistent`.
 
+Cycle 1b-b12 source adds a separate acceptance-only query-plan/load boundary,
+still disconnected from both running applications. Its fixed module and fixture
+admit no caller-selected SQL, endpoint, planner setting, connection setting, or
+benchmark scenario. The live design uses a disposable clone, a fresh SCRAM `NOBYPASSRLS`
+runtime login, and a runner-owned pool bounded to eight clients. Authenticated
+forced-RLS plans must use the reviewed fact and tenant indexes without disabling
+sequential scans or adding an index. Exactly 2,000 promises are submitted, but
+only the first eight runtime workload backends may execute at once. A separate
+out-of-band administrator observes that barrier but executes none of those
+2,000 workload reads;
+queued promises are not database identities or connections. Source and integrated local verification
+are complete; live V12 execution, cleanup, artifact, and independent review
+remain pending.
+
 These database logins and injected actors are not user identities. The runtime service still chooses
 the synthetic principal and organization passed to `set_request_context`, so a
 compromised service account could choose another synthetic context unless a
@@ -248,6 +262,14 @@ arbitrary manifests, general incremental or multi-release migration, online
 application/schema compatibility, concurrent application writes, crash
 recovery, cancellation, retry/failover, distributed coordination, or global
 platform/application atomicity.
+
+The B12 source/local result does not establish production capacity, throughput,
+latency SLOs, pool sizing/tuning/failover, 1,000 or 2,000 simultaneous database
+backends, or planner stability across other data distributions, statistics,
+hardware, versions, extensions, settings, or schema changes. Its privileged
+synthetic reference plan is not a runtime authorization path. Real data,
+end-user identity, application composition, deployment, and production
+readiness remain outside B12.
 
 The offline record verifier accepts only a small regular non-symlink file,
 requires independent repository/run/hash anchors, and compares canonical bytes
@@ -300,6 +322,16 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   timeouts and lock ordering, validates the ledger object and exact manifest
   prefix, applies a pending suffix and its ledger rows atomically, fails drift
   through one stable value-free error, and poisons ambiguous client state.
+- The B12 plan/load source accepts no caller-selected SQL, fixture, endpoint,
+  planner knob, connection configuration, logger, production load profile, or caller
+  concurrency. It freezes two query shapes, two named indexes, a deterministic
+  fixture, exactly 2,000 submissions, a pool maximum of eight, and configured
+  bounds on pending checkout and workload/plan/seed/`ANALYZE` statements.
+  Success still requires every submission to settle and the pool to close;
+  cleanup calls are not each independently cancellable, so the workflow's
+  15-minute job timeout is the outer fail-closed bound. Runtime RLS and
+  privileged reference plans remain distinct, and disabling sequential scans or
+  creating an acceptance-only index is forbidden.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -347,6 +379,16 @@ B11's reviewed V11 result covers the exact locked-ledger,
 checksum-drift-refusal, once-only suffix, rollback, cleanup, and two-deployer
 boundary. It is not a general or production migration system. See the
 [B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md).
+
+B12 currently has source and local evidence only. Its planned live gate submits
+1,000 fact and 1,000 tenant reads through at most eight runtime workload backends,
+requires exact Alpha/Beta isolation and named-index plans, and removes all B12
+login/backend/clone residue. Until V12 passes and is independently reviewed,
+none of those engine rows is complete. Even after that bounded gate, it will not
+be production capacity, general planner stability, real-data, identity, or
+application-composition evidence. See
+[ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 

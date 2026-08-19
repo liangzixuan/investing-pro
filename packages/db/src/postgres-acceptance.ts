@@ -89,8 +89,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceV11SourceHashes,
-  type PostgresAcceptanceV11ToolVersions,
+  type PostgresAcceptanceV12SourceHashes,
+  type PostgresAcceptanceV12ToolVersions,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -107,6 +107,22 @@ import {
   PooledPostgresFinancialFactProjectionSource,
   PostgresProjectionPoolError,
 } from "./postgres-projection-pool";
+import {
+  POSTGRES_QUERY_PLAN_LOAD_ACTORS,
+  POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY,
+  POSTGRES_QUERY_PLAN_LOAD_PLANNER_SETTINGS,
+  POSTGRES_QUERY_PLAN_LOAD_PROFILE,
+  PostgresQueryPlanLoadError,
+  assertPostgresQueryPlan,
+  assertPostgresTenantThesisRows,
+  inspectPostgresQueryPlanLoadFixture,
+  renderPostgresFinancialFactExplainQuery,
+  renderPostgresQueryPlanLoadFixtureTransaction,
+  renderPostgresTenantThesisExplainQuery,
+  renderPostgresTenantThesisReadQuery,
+  type PostgresQueryPlanLoadActor,
+  type PostgresQueryPlanSummary,
+} from "./postgres-query-plan-load";
 
 const acceptanceRunnerPath = fileURLToPath(import.meta.url);
 const packageRoot = join(dirname(acceptanceRunnerPath), "..");
@@ -187,6 +203,16 @@ const postgresMigrationDeployerPath = join(
   "src",
   "postgres-migration-deployer.ts",
 );
+const postgresQueryPlanLoadPath = join(
+  packageRoot,
+  "src",
+  "postgres-query-plan-load.ts",
+);
+const queryPlanLoadFixturePath = join(
+  packageRoot,
+  "acceptance",
+  "query-plan-load-fixture.sql",
+);
 const operationProjectionContractPath = join(
   repositoryRoot,
   "modules",
@@ -203,7 +229,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 const EXPECTED_NODE_POSTGRES_VERSION = "8.23.0" as const;
 const EXPECTED_NODE_POSTGRES_POOL_VERSION = "3.14.0" as const;
@@ -230,6 +256,8 @@ const POSTGRES_MIGRATION_DEPLOYER_BARRIER_APPLICATION =
   "research-cockpit-b11-ledger-barrier" as const;
 const POSTGRES_MIGRATION_DEPLOYER_BLOCKED_DEADLINE_MILLISECONDS = 2_000;
 const POSTGRES_MIGRATION_DEPLOYER_DRIFT_SHA256 = "0".repeat(64);
+const POSTGRES_QUERY_PLAN_LOAD_BLOCKED_DEADLINE_MILLISECONDS =
+  POSTGRES_QUERY_PLAN_LOAD_PROFILE.lockTimeoutMilliseconds - 1_000;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
 export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
@@ -577,6 +605,7 @@ interface AcceptanceImageConfig {
   databaseName: typeof CLEAN_BOOTSTRAP_DATABASE_NAME;
   workflowSha256: string;
   fixtureSha256: string;
+  queryPlanLoadFixtureSha256: string;
   verifiedOn: string;
   runner: {
     label: "ubuntu-24.04";
@@ -677,6 +706,7 @@ export interface AcceptanceArtifacts {
   config: unknown;
   workflow: string;
   fixture: string;
+  queryPlanLoadFixture: string;
 }
 
 export function generateRuntimeAuthPassword(): string {
@@ -1643,7 +1673,16 @@ export async function checkPostgresAcceptanceHarness(
     join(root, "packages", "db", "acceptance", "synthetic-fixture.sql"),
     "utf8",
   );
-  return inspectPostgresAcceptanceHarness({ config, workflow, fixture });
+  const queryPlanLoadFixture = await readFile(
+    join(root, "packages", "db", "acceptance", "query-plan-load-fixture.sql"),
+    "utf8",
+  );
+  return inspectPostgresAcceptanceHarness({
+    config,
+    workflow,
+    fixture,
+    queryPlanLoadFixture,
+  });
 }
 
 export function inspectPostgresAcceptanceHarness(
@@ -1665,6 +1704,14 @@ export function inspectPostgresAcceptanceHarness(
     }
     if (normalizedSha256(artifacts.fixture) !== config.fixtureSha256) {
       violations.push("synthetic fixture differs from its reviewed SHA-256");
+    }
+    if (
+      normalizedSha256(artifacts.queryPlanLoadFixture) !==
+      config.queryPlanLoadFixtureSha256
+    ) {
+      violations.push(
+        "query-plan/load fixture differs from its reviewed SHA-256",
+      );
     }
     requireText(
       artifacts.workflow,
@@ -1779,6 +1826,11 @@ export function inspectPostgresAcceptanceHarness(
     violations.push("synthetic fixture must not contain network locations");
   }
   violations.push(...inspectInsertOnlyFixture(artifacts.fixture));
+  try {
+    inspectPostgresQueryPlanLoadFixture(artifacts.queryPlanLoadFixture);
+  } catch {
+    violations.push("query-plan/load fixture contract is invalid");
+  }
   const registryPosition = artifacts.fixture.indexOf(
     "INSERT INTO private_data.resource_id_registry",
   );
@@ -1849,6 +1901,10 @@ export async function runPostgresAcceptance(
   const authenticatedBackupRestorePlan =
     await loadAuthenticatedBackupRestorePlan();
   const fixtureSql = await readFile(syntheticFixturePath, "utf8");
+  const queryPlanLoadFixtureSql = await readFile(
+    queryPlanLoadFixturePath,
+    "utf8",
+  );
 
   await verifyContainerIdentity(containerId, config);
   const toolVersions = await verifyToolVersions(
@@ -1896,6 +1952,11 @@ export async function runPostgresAcceptance(
     adapterEndpoint,
     authenticatedMigrationPlan,
   );
+  await verifyAuthenticatedPostgresQueryPlanLoad(
+    containerId,
+    adapterEndpoint,
+    queryPlanLoadFixtureSql,
+  );
   await verifyAuthenticatedPostgresProjectionPool(containerId, adapterEndpoint);
   await verifyAuthenticatedBackupAndBoundedRestore(
     containerId,
@@ -1920,7 +1981,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 11 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, bounded PostgreSQL RLS query-plan and 2,000-read load, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 12 success-only run record was written.\n",
   );
 }
 
@@ -3246,6 +3307,1422 @@ async function verifyMigrationDeployerFinalTarget(
   await verifyCatalogContract(containerId);
   await verifyB7PlatformArtifactsAfterApplication(containerId);
   await verifyContextCleanup(containerId);
+}
+
+async function verifyAuthenticatedPostgresQueryPlanLoad(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  fixtureSql: string,
+): Promise<void> {
+  let sourceBefore: readonly AuthenticatedBackupTableFingerprint[] | undefined;
+  let cloneProvisioningStarted = false;
+  let seedLoginProvisioningStarted = false;
+  let loginProvisioningStarted = false;
+  let seedClient: Client | null = null;
+  let adminClient: Client | null = null;
+  let runtimePlanClient: Client | null = null;
+  let pool: Pool | null = null;
+  let barrierHeld = false;
+  let loadSettlement: Promise<
+    readonly PromiseSettledResult<PostgresQueryPlanLoadReadResult>[]
+  > | null = null;
+  let loadSettlementComplete = false;
+  const clientErrors: unknown[] = [];
+  const clientErrorListeners = new Map<Client, (error: Error) => void>();
+  let poolErrorListener: ((error: Error) => void) | null = null;
+  let probeError: unknown;
+  let cleanupError: unknown;
+
+  const registerClient = (client: Client): Client => {
+    const listener = (error: Error) => clientErrors.push(error);
+    client.on("error", listener);
+    clientErrorListeners.set(client, listener);
+    return client;
+  };
+
+  try {
+    await verifyPostgresQueryPlanLoadResidueAbsent(containerId);
+    sourceBefore = await collectAuthenticatedBackupFingerprints(
+      containerId,
+      CLEAN_BOOTSTRAP_DATABASE_NAME,
+    );
+    const inspection = inspectPostgresQueryPlanLoadFixture(fixtureSql);
+    if (
+      inspection.listingCount !==
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.listingCount ||
+      inspection.factCount !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.factCount ||
+      inspection.thesisCount !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.thesisCount
+    ) {
+      throw new PostgresQueryPlanLoadError();
+    }
+
+    await assertPostgresQueryPlanLoadSourceSessionsAbsent(containerId);
+    cloneProvisioningStarted = true;
+    await createPostgresQueryPlanLoadClone(containerId);
+
+    const seedPassword = generateRuntimeAuthPassword();
+    seedLoginProvisioningStarted = true;
+    await provisionPostgresQueryPlanLoadSeedLogin(containerId, seedPassword);
+    await verifyPostgresQueryPlanLoadRoleCatalog(containerId, "seed");
+    seedClient = registerClient(
+      createPostgresQueryPlanLoadSeedClient(endpoint, seedPassword),
+    );
+    await seedClient.connect();
+    await verifyPostgresQueryPlanLoadClientIdentity(
+      seedClient,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedApplicationName,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole,
+    );
+    await seedPostgresQueryPlanLoadClone(seedClient, fixtureSql);
+    await verifyPostgresQueryPlanLoadClientIdentity(
+      seedClient,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedApplicationName,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole,
+    );
+    await closePostgresQueryPlanLoadClient(seedClient, clientErrorListeners);
+    seedClient = null;
+    await analyzePostgresQueryPlanLoadClone(containerId);
+    await verifyPostgresQueryPlanLoadFixtureState(containerId);
+
+    const password = generateRuntimeAuthPassword();
+    loginProvisioningStarted = true;
+    await provisionPostgresQueryPlanLoadLogin(containerId, password);
+    await verifyPostgresQueryPlanLoadRoleCatalog(containerId, "runtime");
+
+    adminClient = registerClient(
+      createPostgresQueryPlanLoadAdminClient(endpoint),
+    );
+    runtimePlanClient = registerClient(
+      createPostgresQueryPlanLoadRuntimeClient(
+        endpoint,
+        password,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName,
+      ),
+    );
+    await adminClient.connect();
+    await runtimePlanClient.connect();
+    await verifyPostgresQueryPlanLoadClientIdentity(
+      runtimePlanClient,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName,
+    );
+    await verifyPostgresQueryPlanLoadPlans(adminClient, runtimePlanClient);
+    await verifyPostgresQueryPlanLoadClientIdentity(
+      runtimePlanClient,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName,
+    );
+
+    await closePostgresQueryPlanLoadClient(
+      runtimePlanClient,
+      clientErrorListeners,
+    );
+    runtimePlanClient = null;
+
+    await beginPostgresQueryPlanLoadBarrier(adminClient);
+    barrierHeld = true;
+    pool = createPostgresQueryPlanLoadPool(endpoint, password);
+    poolErrorListener = (error: Error) => clientErrors.push(error);
+    pool.on("error", poolErrorListener);
+
+    const requests = submitPostgresQueryPlanLoadRequests(pool);
+    if (
+      requests.length !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.totalRequestCount
+    ) {
+      throw new PostgresQueryPlanLoadError();
+    }
+    loadSettlement = Promise.allSettled(requests);
+    await waitForPostgresQueryPlanLoadBlockedBackends(adminClient);
+    await releasePostgresQueryPlanLoadBarrier(adminClient);
+    barrierHeld = false;
+
+    const outcomes = await withPostgresQueryPlanLoadTimeout(
+      loadSettlement,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.overallTimeoutMilliseconds,
+    );
+    loadSettlementComplete = true;
+    assertPostgresQueryPlanLoadOutcomes(outcomes);
+    if (clientErrors.length > 0) throw new PostgresQueryPlanLoadError();
+  } catch (error) {
+    probeError = error;
+  } finally {
+    const cleanupOperations: RuntimeAuthBestEffortOperation[] = [];
+    if (barrierHeld && adminClient !== null) {
+      const client = adminClient;
+      cleanupOperations.push({
+        label: "release B12 query-load barrier",
+        run: async () => {
+          await releasePostgresQueryPlanLoadBarrier(client);
+          barrierHeld = false;
+        },
+      });
+    }
+    if (loadSettlement !== null) {
+      const settlement = loadSettlement;
+      cleanupOperations.push({
+        label: "settle B12 submitted reads",
+        run: async () => {
+          await withPostgresQueryPlanLoadTimeout(
+            settlement,
+            POSTGRES_QUERY_PLAN_LOAD_PROFILE.overallTimeoutMilliseconds,
+          );
+          loadSettlementComplete = true;
+        },
+      });
+    }
+    if (pool !== null) {
+      const poolToClose = pool;
+      const listener = poolErrorListener;
+      cleanupOperations.push({
+        label: "close B12 bounded PostgreSQL pool",
+        run: async () => {
+          if (!loadSettlementComplete) throw new PostgresQueryPlanLoadError();
+          await poolToClose.end();
+          if (listener !== null) poolToClose.removeListener("error", listener);
+          if (
+            poolToClose.totalCount !== 0 ||
+            poolToClose.idleCount !== 0 ||
+            poolToClose.waitingCount !== 0
+          ) {
+            throw new PostgresQueryPlanLoadError();
+          }
+        },
+      });
+    }
+    for (const client of [seedClient, runtimePlanClient, adminClient]) {
+      if (client === null) continue;
+      cleanupOperations.push({
+        label: "close B12 PostgreSQL client",
+        run: () =>
+          closePostgresQueryPlanLoadClient(client, clientErrorListeners),
+      });
+    }
+    cleanupOperations.push(
+      {
+        label: "verify B12 client error channels",
+        run: () =>
+          clientErrors.length > 0
+            ? Promise.reject(new PostgresQueryPlanLoadError())
+            : Promise.resolve(),
+      },
+      {
+        label: "drain B12 PostgreSQL backends",
+        run: () => waitForPostgresQueryPlanLoadBackendDrain(containerId),
+      },
+      {
+        label: "drop B12 disposable clone without FORCE",
+        run: () =>
+          dropPostgresQueryPlanLoadClone(containerId, cloneProvisioningStarted),
+      },
+      {
+        label: "drop B12 ephemeral runtime login",
+        run: () =>
+          cleanupPostgresQueryPlanLoadLogin(
+            containerId,
+            loginProvisioningStarted,
+          ),
+      },
+      {
+        label: "drop B12 ephemeral seed login",
+        run: () =>
+          cleanupPostgresQueryPlanLoadSeedLogin(
+            containerId,
+            seedLoginProvisioningStarted,
+          ),
+      },
+      {
+        label: "verify B12 source fingerprint",
+        run: async () => {
+          if (sourceBefore === undefined) return;
+          assertAuthenticatedBackupFingerprintsEqual(
+            await collectAuthenticatedBackupFingerprints(
+              containerId,
+              CLEAN_BOOTSTRAP_DATABASE_NAME,
+            ),
+            sourceBefore,
+            "B12 query-plan/load probe changed the source database",
+          );
+        },
+      },
+      {
+        label: "verify B12 zero residue",
+        run: () => verifyPostgresQueryPlanLoadResidueAbsent(containerId),
+      },
+      {
+        label: "verify B12 final source catalog",
+        run: async () => {
+          await verifyMigrationLedger(containerId);
+          await verifyCatalogContract(containerId);
+          await verifyB7PlatformArtifactsAfterApplication(containerId);
+          await verifyContextCleanup(containerId);
+        },
+      },
+    );
+
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures(cleanupOperations),
+        "B12 query-plan/load cleanup failed",
+      );
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+
+  if (probeError !== undefined && cleanupError !== undefined) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "B12 query-plan/load probe and mandatory cleanup both failed",
+      { cause: probeError },
+    );
+  }
+  if (probeError !== undefined)
+    throw postgresQueryPlanLoadHarnessError(probeError);
+  if (cleanupError !== undefined)
+    throw postgresQueryPlanLoadHarnessError(cleanupError);
+}
+
+interface PostgresQueryPlanLoadReadResult {
+  readonly kind: "fact" | "tenant";
+  readonly actor: PostgresQueryPlanLoadActor;
+}
+
+async function assertPostgresQueryPlanLoadSourceSessionsAbsent(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT count(*)
+FROM pg_catalog.pg_stat_activity
+WHERE datname = '${CLEAN_BOOTSTRAP_DATABASE_NAME}'
+  AND backend_type = 'client backend';`,
+    ),
+    "0",
+    "B12 source sessions before clone",
+  );
+}
+
+async function createPostgresQueryPlanLoadClone(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(
+    containerId,
+    `CREATE DATABASE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}
+  WITH TEMPLATE ${CLEAN_BOOTSTRAP_DATABASE_NAME}
+       OWNER postgres;`,
+  );
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT datname || '|' || pg_catalog.pg_get_userbyid(datdba) || '|' ||
+  datistemplate || '|' || datallowconn || '|' || datconnlimit
+FROM pg_catalog.pg_database
+WHERE datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}';`,
+    ),
+    `${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}|postgres|false|true|-1`,
+    "B12 disposable clone catalog",
+  );
+}
+
+async function provisionPostgresQueryPlanLoadSeedLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}`,
+    ],
+    renderPostgresQueryPlanLoadLoginProvisioningSql(password, "seed"),
+  );
+  assertSensitiveCommandSuccess(result, "provision ephemeral B12 seed login");
+}
+
+async function provisionPostgresQueryPlanLoadLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}`,
+    ],
+    renderPostgresQueryPlanLoadLoginProvisioningSql(password, "runtime"),
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral B12 runtime login",
+  );
+}
+
+function renderPostgresQueryPlanLoadLoginProvisioningSql(
+  password: string,
+  kind: "seed" | "runtime",
+): string {
+  assertPostgresQueryPlanLoadPassword(password);
+  const loginRole =
+    kind === "seed"
+      ? POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole
+      : POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole;
+  const capabilityRole =
+    kind === "seed"
+      ? POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedCapabilityRole
+      : POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeCapabilityRole;
+  const connectionLimit =
+    kind === "seed" ? 1 : POSTGRES_QUERY_PLAN_LOAD_PROFILE.loginConnectionLimit;
+  return `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${loginRole}
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION
+  NOINHERIT
+  NOBYPASSRLS
+  CONNECTION LIMIT ${connectionLimit}
+  PASSWORD '${password}';
+GRANT ${capabilityRole}
+  TO ${loginRole}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;
+`;
+}
+
+async function verifyPostgresQueryPlanLoadRoleCatalog(
+  containerId: string,
+  kind: "seed" | "runtime",
+): Promise<void> {
+  const loginRole =
+    kind === "seed"
+      ? POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole
+      : POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole;
+  const capabilityRole =
+    kind === "seed"
+      ? POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedCapabilityRole
+      : POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeCapabilityRole;
+  const connectionLimit =
+    kind === "seed" ? 1 : POSTGRES_QUERY_PLAN_LOAD_PROFILE.loginConnectionLimit;
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  (rolpassword LIKE 'SCRAM-SHA-256$%')
+FROM pg_catalog.pg_authid
+WHERE rolname = '${loginRole}';`,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    ),
+    `${loginRole}|true|false|false|false|false|false|false|${connectionLimit}|true`,
+    `B12 ${kind} login attributes and SCRAM verifier`,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${loginRole}'
+   OR member_role.rolname = '${loginRole}';`,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    ),
+    `${capabilityRole}|${loginRole}|false|false|true`,
+    `B12 ${kind} SET-only membership`,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles WHERE rolname = '${loginRole}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_attribute AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.attacl) AS privilege
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole = (SELECT oid FROM login)
+) || '|' || (
+  SELECT count(*) FROM direct_acl
+  WHERE grantee = (SELECT oid FROM login)
+);`,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    ),
+    "0|0",
+    `B12 ${kind} login settings and direct ACLs`,
+  );
+}
+
+function createPostgresQueryPlanLoadSeedClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Client {
+  assertPostgresQueryPlanLoadPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    user: POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole,
+    password,
+    ssl: false,
+    application_name: POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedApplicationName,
+    connectionTimeoutMillis:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.connectionTimeoutMilliseconds,
+    statement_timeout:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds,
+  });
+}
+
+function createPostgresQueryPlanLoadRuntimeClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+  applicationName: typeof POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName,
+): Client {
+  assertPostgresQueryPlanLoadPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    user: POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole,
+    password,
+    ssl: false,
+    application_name: applicationName,
+    connectionTimeoutMillis:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.connectionTimeoutMilliseconds,
+    statement_timeout:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds,
+  });
+}
+
+function createPostgresQueryPlanLoadAdminClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+): Client {
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    user: "postgres",
+    password: POSTGRES_MIGRATION_DEPLOYER_ADMIN_PASSWORD,
+    ssl: false,
+    application_name: POSTGRES_QUERY_PLAN_LOAD_PROFILE.adminApplicationName,
+    connectionTimeoutMillis:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.connectionTimeoutMilliseconds,
+    statement_timeout:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds,
+  });
+}
+
+async function verifyPostgresQueryPlanLoadClientIdentity(
+  client: Client,
+  expectedApplicationName:
+    | typeof POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedApplicationName
+    | typeof POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName,
+  expectedLoginRole:
+    | typeof POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole
+    | typeof POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole = POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole,
+): Promise<void> {
+  const result = await client.query<{
+    state: string;
+  }>(`SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'databaseName', pg_catalog.current_database(),
+  'applicationName', pg_catalog.current_setting('application_name'),
+  'transactionReadOnly', pg_catalog.current_setting('transaction_read_only'),
+  'ssl', EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  )
+)::text AS state;`);
+  const stateText = result.rows[0]?.state;
+  if (result.command !== "SELECT" || result.rowCount !== 1 || !stateText) {
+    throw new PostgresQueryPlanLoadError();
+  }
+  const state = JSON.parse(stateText) as unknown;
+  if (
+    !isRecord(state) ||
+    state.sessionUser !== expectedLoginRole ||
+    state.currentUser !== expectedLoginRole ||
+    state.systemUser !== `scram-sha-256:${expectedLoginRole}` ||
+    state.databaseName !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName ||
+    state.applicationName !== expectedApplicationName ||
+    state.transactionReadOnly !== "off" ||
+    state.ssl !== false
+  ) {
+    throw new PostgresQueryPlanLoadError();
+  }
+}
+
+async function seedPostgresQueryPlanLoadClone(
+  client: Client,
+  fixtureSql: string,
+): Promise<void> {
+  inspectPostgresQueryPlanLoadFixture(fixtureSql);
+  const result: unknown = await client.query(
+    renderPostgresQueryPlanLoadFixtureTransaction(fixtureSql),
+  );
+  const commands = Array.isArray(result)
+    ? result.map((entry: unknown) =>
+        isRecord(entry) && typeof entry.command === "string"
+          ? entry.command
+          : null,
+      )
+    : [];
+  const rowCounts = Array.isArray(result)
+    ? result.map((entry: unknown) =>
+        isRecord(entry) &&
+        (entry.rowCount === null || Number.isSafeInteger(entry.rowCount))
+          ? entry.rowCount
+          : "invalid",
+      )
+    : [];
+  if (
+    !Array.isArray(result) ||
+    result.length !== 9 ||
+    JSON.stringify(commands) !==
+      JSON.stringify([
+        "BEGIN",
+        "SET",
+        "INSERT",
+        "INSERT",
+        "INSERT",
+        "INSERT",
+        "INSERT",
+        "INSERT",
+        "COMMIT",
+      ]) ||
+    JSON.stringify(rowCounts) !==
+      JSON.stringify([
+        null,
+        null,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.listingCount,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.listingCount,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.listingCount,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.factCount,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.thesisCount,
+        POSTGRES_QUERY_PLAN_LOAD_PROFILE.thesisCount,
+        null,
+      ])
+  ) {
+    throw new PostgresQueryPlanLoadError();
+  }
+}
+
+async function analyzePostgresQueryPlanLoadClone(
+  containerId: string,
+): Promise<void> {
+  const result = await psql(
+    containerId,
+    `SET statement_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds}ms';
+ANALYZE shared_data.securities;
+ANALYZE shared_data.share_classes;
+ANALYZE shared_data.listings;
+ANALYZE shared_data.financial_facts;
+ANALYZE private_data.resource_id_registry;
+ANALYZE private_data.theses;`,
+    POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+  );
+  assertEqual(result.stderr.trim(), "", "B12 ANALYZE diagnostics");
+}
+
+async function verifyPostgresQueryPlanLoadFixtureState(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT
+  count(*) FILTER (WHERE security.id LIKE 'security-b12-%') || '|' ||
+  (SELECT count(*) FROM shared_data.listings
+   WHERE id LIKE 'listing-b12-%') || '|' ||
+  (SELECT count(*) FROM shared_data.financial_facts
+   WHERE id LIKE 'fact-b12-%') || '|' ||
+  (SELECT count(*) FROM private_data.theses
+   WHERE id::text LIKE 'b120000%')
+FROM shared_data.securities AS security;`,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    ),
+    `${POSTGRES_QUERY_PLAN_LOAD_PROFILE.listingCount}|${POSTGRES_QUERY_PLAN_LOAD_PROFILE.listingCount}|${POSTGRES_QUERY_PLAN_LOAD_PROFILE.factCount}|${POSTGRES_QUERY_PLAN_LOAD_PROFILE.thesisCount}`,
+    "B12 fixture cardinalities",
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT pg_catalog.string_agg(indexname, ',' ORDER BY indexname)
+FROM pg_catalog.pg_indexes
+WHERE (schemaname, tablename, indexname) IN (
+  ('shared_data', 'financial_facts', 'financial_facts_as_known'),
+  ('private_data', 'theses', 'theses_by_instrument')
+);`,
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    ),
+    "financial_facts_as_known,theses_by_instrument",
+    "B12 reviewed indexes",
+  );
+}
+
+async function verifyPostgresQueryPlanLoadPlans(
+  adminClient: Client,
+  runtimeClient: Client,
+): Promise<void> {
+  await verifyPostgresQueryPlanLoadAdminIdentity(adminClient);
+  const summaries: PostgresQueryPlanSummary[] = [];
+  for (const [authorization, client] of [
+    ["runtime_rls", runtimeClient],
+    ["superuser_bypass", adminClient],
+  ] as const) {
+    const factPlan = await executePostgresQueryPlanLoadPlan(
+      client,
+      authorization,
+      "fact",
+    );
+    summaries.push(assertPostgresQueryPlan("fact", authorization, factPlan));
+    const tenantPlan = await executePostgresQueryPlanLoadPlan(
+      client,
+      authorization,
+      "tenant",
+    );
+    summaries.push(
+      assertPostgresQueryPlan("tenant", authorization, tenantPlan),
+    );
+  }
+  if (summaries.length !== 4) throw new PostgresQueryPlanLoadError();
+  process.stdout.write(renderPostgresQueryPlanLoadMetrics(summaries));
+}
+
+function renderPostgresQueryPlanLoadMetrics(
+  summaries: readonly PostgresQueryPlanSummary[],
+): string {
+  return `B12 PostgreSQL plan metrics: ${summaries
+    .map(
+      (summary) =>
+        `${summary.query}.${summary.authorization}` +
+        ` planning_ms=${summary.planningTimeMilliseconds}` +
+        ` execution_ms=${summary.executionTimeMilliseconds}` +
+        ` shared_hit_blocks=${summary.sharedHitBlocks}` +
+        ` shared_read_blocks=${summary.sharedReadBlocks}`,
+    )
+    .join("; ")}\n`;
+}
+
+async function verifyPostgresQueryPlanLoadAdminIdentity(
+  client: Client,
+): Promise<void> {
+  const result = await client.query<{ valid: boolean }>(`SELECT
+  session_user = 'postgres'
+  AND current_user = 'postgres'
+  AND system_user = 'scram-sha-256:postgres'
+  AND pg_catalog.current_database() = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}'
+  AND pg_catalog.current_setting('application_name') =
+    '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.adminApplicationName}'
+  AND pg_catalog.current_setting('transaction_read_only') = 'off'
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  ) AS valid;`);
+  if (
+    result.command !== "SELECT" ||
+    result.rowCount !== 1 ||
+    result.rows[0]?.valid !== true
+  ) {
+    throw new PostgresQueryPlanLoadError();
+  }
+}
+
+async function executePostgresQueryPlanLoadPlan(
+  client: Client,
+  authorization: "runtime_rls" | "superuser_bypass",
+  query: "fact" | "tenant",
+): Promise<unknown> {
+  let rollbackRequired = false;
+  try {
+    await client.query("ROLLBACK");
+    rollbackRequired = true;
+    await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY");
+    await client.query(
+      `SET LOCAL statement_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds}ms'`,
+    );
+    await client.query(
+      `SET LOCAL lock_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.lockTimeoutMilliseconds}ms'`,
+    );
+    for (const setting of POSTGRES_QUERY_PLAN_LOAD_PLANNER_SETTINGS) {
+      await client.query(setting);
+    }
+    if (authorization === "runtime_rls") {
+      await client.query(
+        `SET LOCAL ROLE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeCapabilityRole}`,
+      );
+    }
+    await setPostgresQueryPlanLoadRequestContext(client, "alpha");
+    const result =
+      query === "fact"
+        ? await client.query<{ "QUERY PLAN": unknown }>({
+            text: renderPostgresFinancialFactExplainQuery(),
+            values: [
+              POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.instrumentId,
+              POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.publicKnownAt,
+              POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.systemRecordedAt,
+            ],
+          })
+        : await client.query<{ "QUERY PLAN": unknown }>({
+            text: renderPostgresTenantThesisExplainQuery(),
+            values: [POSTGRES_QUERY_PLAN_LOAD_PROFILE.targetInstrumentId],
+          });
+    const plan = result.rows[0]?.["QUERY PLAN"];
+    if (
+      result.command !== "EXPLAIN" ||
+      result.rowCount !== null ||
+      result.rows.length !== 1 ||
+      result.fields.length !== 1 ||
+      result.fields[0]?.name !== "QUERY PLAN" ||
+      result.fields[0]?.dataTypeID !== 114 ||
+      plan === undefined
+    ) {
+      throw new PostgresQueryPlanLoadError();
+    }
+    await client.query("COMMIT");
+    rollbackRequired = false;
+    return plan;
+  } catch {
+    if (rollbackRequired) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // The caller treats the client as poisoned and mandatory cleanup ends it.
+      }
+    }
+    throw new PostgresQueryPlanLoadError();
+  }
+}
+
+async function setPostgresQueryPlanLoadRequestContext(
+  client: Client | PoolClient,
+  actor: PostgresQueryPlanLoadActor,
+): Promise<void> {
+  const selected = POSTGRES_QUERY_PLAN_LOAD_ACTORS[actor];
+  const result = await client.query({
+    text: `CALL private_data.set_request_context(
+  $1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::text
+)`,
+    values: [
+      selected.principalId,
+      selected.organizationId,
+      "display",
+      "api",
+      "demo_only",
+      "synthetic",
+    ],
+  });
+  if (result.command !== "CALL" || result.rowCount !== null) {
+    throw new PostgresQueryPlanLoadError();
+  }
+}
+
+function createPostgresQueryPlanLoadPool(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Pool {
+  assertPostgresQueryPlanLoadPassword(password);
+  return new Pool({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName,
+    user: POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole,
+    password,
+    ssl: false,
+    application_name: POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName,
+    max: POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax,
+    connectionTimeoutMillis:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.connectionTimeoutMilliseconds,
+    statement_timeout:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds,
+    idleTimeoutMillis:
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.overallTimeoutMilliseconds,
+  });
+}
+
+function submitPostgresQueryPlanLoadRequests(
+  pool: Pool,
+): readonly Promise<PostgresQueryPlanLoadReadResult>[] {
+  const requests: Promise<PostgresQueryPlanLoadReadResult>[] = [];
+  for (
+    let index = 0;
+    index < POSTGRES_QUERY_PLAN_LOAD_PROFILE.factRequestCount;
+    index += 1
+  ) {
+    const actor: PostgresQueryPlanLoadActor =
+      index % 2 === 0 ? "alpha" : "beta";
+    requests.push(runPostgresQueryPlanLoadFactRead(pool, actor));
+    requests.push(runPostgresQueryPlanLoadTenantRead(pool, actor));
+  }
+  if (
+    POSTGRES_QUERY_PLAN_LOAD_PROFILE.factRequestCount !==
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.tenantRequestCount ||
+    requests.length !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.totalRequestCount
+  ) {
+    throw new PostgresQueryPlanLoadError();
+  }
+  return Object.freeze(requests);
+}
+
+async function runPostgresQueryPlanLoadFactRead(
+  pool: Pool,
+  actor: PostgresQueryPlanLoadActor,
+): Promise<PostgresQueryPlanLoadReadResult> {
+  const client = await pool.connect();
+  let releaseWithError = true;
+  let rollbackRequired = false;
+  try {
+    await beginPostgresQueryPlanLoadRuntimeRead(client, actor);
+    rollbackRequired = true;
+    const query = postgresQueryPlanLoadFactProjectionQuery();
+    const result = await client.query<[unknown], [string, string, string]>({
+      text: renderPostgresFinancialFactProjectionQuery(query.operation),
+      values: [
+        query.scope.instrumentId,
+        query.scope.publicKnownAt,
+        query.scope.systemRecordedAt,
+      ],
+      rowMode: "array",
+    });
+    if (
+      result.command !== "SELECT" ||
+      result.rowCount !== POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.expectedRows ||
+      result.rows.length !== POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.expectedRows ||
+      result.fields.length !== 1 ||
+      result.fields[0]?.name !== "row_to_json" ||
+      result.fields[0]?.dataTypeID !== 25
+    ) {
+      throw new PostgresQueryPlanLoadError();
+    }
+    const stdout = result.rows
+      .map((row) => {
+        const value = row[0];
+        if (typeof value !== "string") throw new PostgresQueryPlanLoadError();
+        return value;
+      })
+      .join("\n");
+    const normalized = normalizePostgresFinancialFactProjectionRows(
+      query,
+      parsePostgresFinancialFactProjectionRows(stdout),
+    );
+    assertRuntimeAuthenticatedFinancialFactProjectionResult(
+      postgresQueryPlanLoadFactAcceptanceCase(actor),
+      normalized,
+    );
+    await client.query("COMMIT");
+    rollbackRequired = false;
+    releaseWithError = false;
+    return Object.freeze({ kind: "fact", actor });
+  } catch {
+    if (rollbackRequired) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // Destroying the lease below is the cleanup boundary for this failure.
+      }
+    }
+    throw new PostgresQueryPlanLoadError();
+  } finally {
+    client.release(releaseWithError);
+  }
+}
+
+async function runPostgresQueryPlanLoadTenantRead(
+  pool: Pool,
+  actor: PostgresQueryPlanLoadActor,
+): Promise<PostgresQueryPlanLoadReadResult> {
+  const client = await pool.connect();
+  let releaseWithError = true;
+  let rollbackRequired = false;
+  try {
+    await beginPostgresQueryPlanLoadRuntimeRead(client, actor);
+    rollbackRequired = true;
+    const result = await client.query({
+      text: renderPostgresTenantThesisReadQuery(),
+      values: [POSTGRES_QUERY_PLAN_LOAD_PROFILE.targetInstrumentId],
+    });
+    if (
+      result.command !== "SELECT" ||
+      result.rowCount !== 1 ||
+      result.rows.length !== 1
+    ) {
+      throw new PostgresQueryPlanLoadError();
+    }
+    assertPostgresTenantThesisRows(actor, result.rows);
+    await client.query("COMMIT");
+    rollbackRequired = false;
+    releaseWithError = false;
+    return Object.freeze({ kind: "tenant", actor });
+  } catch {
+    if (rollbackRequired) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // Destroying the lease below is the cleanup boundary for this failure.
+      }
+    }
+    throw new PostgresQueryPlanLoadError();
+  } finally {
+    client.release(releaseWithError);
+  }
+}
+
+async function beginPostgresQueryPlanLoadRuntimeRead(
+  client: PoolClient,
+  actor: PostgresQueryPlanLoadActor,
+): Promise<void> {
+  await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY");
+  await client.query(
+    `SET LOCAL statement_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds}ms'`,
+  );
+  await client.query(
+    `SET LOCAL lock_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.lockTimeoutMilliseconds}ms'`,
+  );
+  await client.query(
+    `SET LOCAL ROLE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeCapabilityRole}`,
+  );
+  await setPostgresQueryPlanLoadRequestContext(client, actor);
+}
+
+function postgresQueryPlanLoadFactProjectionQuery(): OperationProjectionQuery {
+  return {
+    scope: {
+      instrumentId: POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.instrumentId,
+      publicKnownAt: POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.publicKnownAt,
+      systemRecordedAt: POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.systemRecordedAt,
+    },
+    operation: POSTGRES_QUERY_PLAN_LOAD_FACT_QUERY.operation,
+    context: {
+      territory: "demo_only",
+      evaluatedAt: POSTGRES_PROJECTION_EVALUATED_AT,
+    },
+  };
+}
+
+function postgresQueryPlanLoadFactAcceptanceCase(
+  actor: PostgresQueryPlanLoadActor,
+): RuntimeProjectionAcceptanceCase {
+  return {
+    label: `B12 ${actor} bounded fact read`,
+    principalId: POSTGRES_QUERY_PLAN_LOAD_ACTORS[actor].principalId,
+    organizationId: POSTGRES_QUERY_PLAN_LOAD_ACTORS[actor].organizationId,
+    query: postgresQueryPlanLoadFactProjectionQuery(),
+    expectedCandidates: Object.freeze(
+      Array.from(
+        { length: POSTGRES_QUERY_PLAN_LOAD_PROFILE.factsPerListing },
+        (_, index) => {
+          const factNumber = index + 1;
+          const suffix = String(factNumber).padStart(2, "0");
+          return Object.freeze({
+            rowId: `fact-b12-001024-${suffix}`,
+            conceptKey: `b12_concept_${suffix}`,
+            value: `${POSTGRES_QUERY_PLAN_LOAD_PROFILE.targetOrdinal * 100 + factNumber}.00`,
+            evidenceId: "evidence-full-v1",
+            rightsPolicyId: "synthetic.full",
+          });
+        },
+      ),
+    ),
+    expectedPolicyIds: Object.freeze(["synthetic.full"]),
+  };
+}
+
+function assertPostgresQueryPlanLoadOutcomes(
+  outcomes: readonly PromiseSettledResult<PostgresQueryPlanLoadReadResult>[],
+): void {
+  if (outcomes.length !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.totalRequestCount) {
+    throw new PostgresQueryPlanLoadError();
+  }
+  for (let index = 0; index < outcomes.length; index += 1) {
+    const outcome = outcomes[index];
+    const requestNumber = Math.floor(index / 2);
+    const expectedActor: PostgresQueryPlanLoadActor =
+      requestNumber % 2 === 0 ? "alpha" : "beta";
+    const expectedKind = index % 2 === 0 ? "fact" : "tenant";
+    if (
+      outcome?.status !== "fulfilled" ||
+      outcome.value.kind !== expectedKind ||
+      outcome.value.actor !== expectedActor
+    ) {
+      throw new PostgresQueryPlanLoadError();
+    }
+  }
+}
+
+async function beginPostgresQueryPlanLoadBarrier(
+  client: Client,
+): Promise<void> {
+  await client.query("ROLLBACK");
+  await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+  await client.query(
+    `SET LOCAL statement_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds}ms'`,
+  );
+  await client.query(
+    `SET LOCAL lock_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.lockTimeoutMilliseconds}ms'`,
+  );
+  await client.query(
+    "LOCK TABLE ONLY shared_data.financial_facts IN ACCESS EXCLUSIVE MODE",
+  );
+  await client.query(
+    "LOCK TABLE ONLY private_data.theses IN ACCESS EXCLUSIVE MODE",
+  );
+}
+
+async function waitForPostgresQueryPlanLoadBlockedBackends(
+  client: Client,
+): Promise<void> {
+  const deadline =
+    Date.now() + POSTGRES_QUERY_PLAN_LOAD_BLOCKED_DEADLINE_MILLISECONDS;
+  while (Date.now() < deadline) {
+    await client.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+    const result = await client.query<{
+      observed: string;
+    }>(`WITH application_backends AS (
+  SELECT activity.pid
+  FROM pg_catalog.pg_stat_activity AS activity
+  WHERE activity.datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}'
+    AND activity.usename = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole}'
+    AND activity.application_name = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName}'
+    AND activity.backend_type = 'client backend'
+), blocked_backends AS (
+  SELECT DISTINCT
+    activity.pid AS backend_pid,
+    namespace.nspname AS schema_name,
+    relation.relname AS relation_name,
+    pg_catalog.pg_blocking_pids(activity.pid) AS blocking_pids
+  FROM pg_catalog.pg_stat_activity AS activity
+  JOIN pg_catalog.pg_locks AS waiting_lock
+    ON waiting_lock.pid = activity.pid
+   AND waiting_lock.locktype = 'relation'
+   AND NOT waiting_lock.granted
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.oid = waiting_lock.relation
+  JOIN pg_catalog.pg_namespace AS namespace
+    ON namespace.oid = relation.relnamespace
+  WHERE activity.pid IN (SELECT pid FROM application_backends)
+    AND activity.state = 'active'
+    AND activity.wait_event_type = 'Lock'
+    AND (
+      (namespace.nspname = 'shared_data'
+        AND relation.relname = 'financial_facts'
+        AND activity.query LIKE 'WITH bounded_projection AS (%')
+      OR
+      (namespace.nspname = 'private_data'
+        AND relation.relname = 'theses'
+        AND activity.query LIKE 'SELECT%FROM private_data.theses AS thesis%')
+    )
+)
+SELECT pg_catalog.json_build_object(
+  'barrierBackendPid', pg_catalog.pg_backend_pid(),
+  'applicationBackendCount', (SELECT count(*) FROM application_backends),
+  'blocked', coalesce((
+    SELECT pg_catalog.json_agg(pg_catalog.json_build_object(
+      'backendPid', blocked.backend_pid,
+      'schemaName', blocked.schema_name,
+      'relationName', blocked.relation_name,
+      'blockingPids', blocked.blocking_pids
+    ) ORDER BY blocked.backend_pid)
+    FROM blocked_backends AS blocked
+  ), '[]'::json)
+)::text AS observed;`);
+    const observedText = result.rows[0]?.observed;
+    if (
+      Date.now() < deadline &&
+      result.command === "SELECT" &&
+      result.rowCount === 1 &&
+      observedText !== undefined &&
+      isPostgresQueryPlanLoadBlockedObservation(
+        JSON.parse(observedText) as unknown,
+      )
+    ) {
+      return;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresQueryPlanLoadError();
+}
+
+function isPostgresQueryPlanLoadBlockedObservation(value: unknown): boolean {
+  if (
+    !isRecord(value) ||
+    !Number.isSafeInteger(value.barrierBackendPid) ||
+    (value.barrierBackendPid as number) <= 0 ||
+    value.applicationBackendCount !==
+      POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax ||
+    !Array.isArray(value.blocked) ||
+    value.blocked.length !== POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax
+  ) {
+    return false;
+  }
+  const backendPids = new Set<number>();
+  let factCount = 0;
+  let tenantCount = 0;
+  for (const row of value.blocked) {
+    if (
+      !isRecord(row) ||
+      !Number.isSafeInteger(row.backendPid) ||
+      (row.backendPid as number) <= 0 ||
+      !Array.isArray(row.blockingPids) ||
+      row.blockingPids.length !== 1 ||
+      !Number.isSafeInteger(row.blockingPids[0]) ||
+      row.blockingPids[0] !== value.barrierBackendPid
+    ) {
+      return false;
+    }
+    backendPids.add(row.backendPid as number);
+    if (
+      row.schemaName === "shared_data" &&
+      row.relationName === "financial_facts"
+    ) {
+      factCount += 1;
+    } else if (
+      row.schemaName === "private_data" &&
+      row.relationName === "theses"
+    ) {
+      tenantCount += 1;
+    } else {
+      return false;
+    }
+  }
+  return (
+    backendPids.size === POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax &&
+    factCount === POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax / 2 &&
+    tenantCount === POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax / 2
+  );
+}
+
+async function releasePostgresQueryPlanLoadBarrier(
+  client: Client,
+): Promise<void> {
+  const result = await client.query("ROLLBACK");
+  if (result.command !== "ROLLBACK") throw new PostgresQueryPlanLoadError();
+}
+
+async function closePostgresQueryPlanLoadClient(
+  client: Client,
+  listeners: Map<Client, (error: Error) => void>,
+): Promise<void> {
+  try {
+    await client.end();
+  } finally {
+    const listener = listeners.get(client);
+    if (listener !== undefined) client.removeListener("error", listener);
+    listeners.delete(client);
+  }
+}
+
+async function waitForPostgresQueryPlanLoadBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(
+    containerId,
+    `DO $b12_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '10 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE backend_type = 'client backend'
+        AND (
+          datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}'
+          OR usename IN (
+            '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole}',
+            '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole}'
+          )
+          OR application_name IN (
+            '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedApplicationName}',
+            '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName}',
+            '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.adminApplicationName}'
+          )
+        )
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'B12 PostgreSQL backends did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END
+$b12_backend_drain$;`,
+  );
+}
+
+async function dropPostgresQueryPlanLoadClone(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  const exists = await psqlMaintenanceScalar(
+    containerId,
+    `SELECT count(*) FROM pg_catalog.pg_database
+WHERE datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}';`,
+  );
+  if (exists === "0") return;
+  if (exists !== "1") throw new PostgresQueryPlanLoadError();
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}'
+  AND backend_type = 'client backend';`,
+    ),
+    "0",
+    "B12 clone sessions before drop",
+  );
+  await psqlMaintenance(
+    containerId,
+    `DROP DATABASE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName};`,
+  );
+}
+
+async function cleanupPostgresQueryPlanLoadLogin(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  await psqlMaintenance(
+    containerId,
+    `DROP ROLE IF EXISTS ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole};`,
+  );
+}
+
+async function cleanupPostgresQueryPlanLoadSeedLogin(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  await psqlMaintenance(
+    containerId,
+    `DROP ROLE IF EXISTS ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole};`,
+  );
+}
+
+async function verifyPostgresQueryPlanLoadResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `WITH b12_roles AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname IN (
+    '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole}',
+    '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole}'
+  )
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_database
+  WHERE datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}'
+) || '|' || (
+  SELECT count(*) FROM b12_roles
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_auth_members
+  WHERE roleid IN (SELECT oid FROM b12_roles)
+     OR member IN (SELECT oid FROM b12_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole IN (SELECT oid FROM b12_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_stat_activity
+  WHERE backend_type = 'client backend'
+    AND (
+      datname = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}'
+      OR usename IN (
+        '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedLoginRole}',
+        '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeLoginRole}'
+      )
+      OR application_name IN (
+        '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.seedApplicationName}',
+        '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeApplicationName}',
+        '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.adminApplicationName}'
+      )
+    )
+) || '|' || (
+  SELECT count(*)
+  FROM pg_catalog.pg_locks AS held_lock
+  JOIN pg_catalog.pg_stat_activity AS activity ON activity.pid = held_lock.pid
+  WHERE activity.application_name =
+    '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.adminApplicationName}'
+);`,
+    ),
+    "0|0|0|0|0|0",
+    "B12 clone, role, backend, application, and barrier residue",
+  );
+}
+
+function assertPostgresQueryPlanLoadPassword(password: string): void {
+  const decoded = Buffer.from(password, "base64url");
+  if (
+    password.length !== 43 ||
+    !BASE64URL_RUNTIME_AUTH_PASSWORD.test(password) ||
+    decoded.length !== 32 ||
+    decoded.toString("base64url") !== password
+  ) {
+    throw new PostgresQueryPlanLoadError();
+  }
+}
+
+function postgresQueryPlanLoadHarnessError(error: unknown): Error {
+  return error instanceof Error ? error : new PostgresQueryPlanLoadError();
+}
+
+async function withPostgresQueryPlanLoadTimeout<T>(
+  promise: Promise<T>,
+  milliseconds: number,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(
+      () => reject(new PostgresQueryPlanLoadError()),
+      milliseconds,
+    );
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
 }
 
 async function verifyAuthenticatedPostgresProjectionPool(
@@ -6248,7 +7725,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV11SourceHashes> {
+): Promise<PostgresAcceptanceV12SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -6267,6 +7744,8 @@ async function collectAcceptanceSourceHashes(
     pnpmLockfileSha256,
     postgresProjectionPoolSha256,
     postgresMigrationDeployerSha256,
+    postgresQueryPlanLoadSha256,
+    queryPlanLoadFixtureSha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -6285,10 +7764,13 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(pnpmLockfilePath),
     exactFileSha256(postgresProjectionPoolAdapterPath),
     exactFileSha256(postgresMigrationDeployerPath),
+    exactFileSha256(postgresQueryPlanLoadPath),
+    exactFileSha256(queryPlanLoadFixturePath),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
-    fixtureSha256 !== config.fixtureSha256
+    fixtureSha256 !== config.fixtureSha256 ||
+    queryPlanLoadFixtureSha256 !== config.queryPlanLoadFixtureSha256
   ) {
     throw new Error("Reviewed acceptance source bytes changed during the run");
   }
@@ -6310,6 +7792,8 @@ async function collectAcceptanceSourceHashes(
     pnpmLockfileSha256,
     postgresProjectionPoolSha256,
     postgresMigrationDeployerSha256,
+    postgresQueryPlanLoadSha256,
+    queryPlanLoadFixtureSha256,
   });
 }
 
@@ -6711,7 +8195,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<PostgresAcceptanceV11ToolVersions> {
+): Promise<PostgresAcceptanceV12ToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -11019,6 +12503,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     "databaseName",
     "workflowSha256",
     "fixtureSha256",
+    "queryPlanLoadFixtureSha256",
     "verifiedOn",
     "runner",
   ];
@@ -11042,9 +12527,11 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "73bc100eb27a1e7884d05f6feb642bc00c224d56e7b480899ba901cd9934f24a" ||
+      "43f4be1ce223e30db25ec052859599deb3c16733829db6f59c2aa5c1d5a70543" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
+    value.queryPlanLoadFixtureSha256 !==
+      "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad" ||
     typeof value.verifiedOn !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(value.verifiedOn) ||
     value.runner.label !== "ubuntu-24.04" ||

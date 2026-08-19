@@ -136,7 +136,8 @@ application composition outside the adapter. The separate bounded Cycle 1b-b10
 pool/concurrency/cancellation source and live V10 result are reviewed under ADR
 0022; that successor does not widen B9. B11 later passed its separate bounded
 live locked-ledger and two-deployer result; it also does not widen B9.
-Query-plan and load testing is the next existing database gate. Application
+B12 now has a separate source/local two-plan, 2,000-submission contract; its
+live V12 gate remains pending, and it likewise does not widen B9. Application
 composition, production identity, external TLS, and managed secrets remain
 later work.
 
@@ -151,6 +152,8 @@ later work.
 - [ADR 0022: Bounded PostgreSQL projection-pool lifecycle](./0022-bounded-postgresql-projection-pool-lifecycle.md)
 - [Cycle 1b-b10 exit matrix](../CYCLE_1BB10_EXIT_MATRIX.md)
 - [Cycle 1b-b10 evidence note](../POSTGRESQL_BOUNDED_PROJECTION_POOL_EVIDENCE.md)
+- [ADR 0024: Bounded PostgreSQL RLS query-plan and 2,000-read load acceptance](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+- [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
 - [node-postgres queries](https://node-postgres.com/features/queries)
 - [node-postgres transactions](https://node-postgres.com/features/transactions)
 - [GitHub Actions PostgreSQL service containers](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers)

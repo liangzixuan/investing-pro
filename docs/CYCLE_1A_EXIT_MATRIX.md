@@ -26,8 +26,9 @@ refusal, and injected rollback against pinned PostgreSQL 17.11. Later b2/b3
 runs added one bounded container-local authenticated runtime service account
 and the reviewed synthetic authorization matrix. They did not exercise a
 database adapter, application identity resolver, trusted tenant-selection
-boundary, or an application/future authorized writer path. Later B8, B9, and
-B10 results do not widen this historical Cycle 1a result. These remaining gates
+boundary, or an application/future authorized writer path. Later B8 through B11
+results and the B12 source/local contract do not widen this historical Cycle 1a
+result. These remaining gates
 stay mandatory before any application-composed database adapter or tenant API
 is enabled:
 
@@ -41,7 +42,10 @@ is enabled:
   separately supplied one reviewed single-client adapter, and B10 supplied one
   bounded two-client pool result, but none is an application composition-root
   proof;
-- at least 1,000 alternating/concurrent tenant operations;
+- at least 1,000 alternating/concurrent tenant operations; B12 now defines a
+  source/local gate for 1,000 fact plus 1,000 tenant submissions through at most
+  eight runtime workload backends, not 1,000 simultaneous database sessions, but live V12
+  execution and review remain pending;
 - broad live checksum-drift handling and broad restore evidence; B11 separately
   proved only one exact bounded live ledger-checksum drift refusal, and B8
   separately proved only one bounded policy-scoped same-cluster restore with

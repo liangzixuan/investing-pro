@@ -198,6 +198,10 @@ recovery, cancellation, retry/failover, distributed or cross-cluster
 coordination, global platform/application atomicity, application composition,
 real data, deployment readiness, or production readiness.
 
-The next existing database roadmap gate is query-plan and load testing for
-fact-as-known and tenant reads, including RLS overhead and index use. This note
-does not assign a B12 label or claim that work is implemented.
+B12 now has a separate source/local contract for the exact fact-as-known and
+tenant named-index plans plus 2,000 queued reads through at most eight runtime workload backends.
+Live V12 execution and independent review remain pending. That successor does
+not change this version 11 record or widen the B11 claim, and no B12 post-live
+evidence note exists. See
+[ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

@@ -1,6 +1,6 @@
 # PostgreSQL security contract and acceptance harness
 
-> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B11 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES — NOT DEPLOYED PERSISTENCE**
+> **CLEAN-ONLY LIVE ACCEPTANCE PASSED (B1); B2-B11 LIVE ACCEPTANCE PASSED FOR THEIR RECORDED SCOPES; B12 SOURCE/LOCAL PASSED, LIVE V12 PENDING — NOT DEPLOYED PERSISTENCE**
 
 This package contains forward SQL, static security checks, and a clean-only
 synthetic acceptance harness for the future PostgreSQL persistence boundary.
@@ -154,6 +154,22 @@ passed at commit `5df9d07`; the retained record returned
 [ADR 0023](../../docs/adr/0023-locked-postgresql-migration-ledger-deployment.md),
 and the [Cycle 1b-b11 exit matrix](../../docs/CYCLE_1BB11_EXIT_MATRIX.md).
 
+Cycle 1b-b12 adds a fixed, acceptance-only query-plan/load source and
+deterministic fixture. The exact B4 fact-as-known shape and one tenant thesis
+read must use the reviewed `financial_facts_as_known` and
+`theses_by_instrument` indexes under authenticated forced RLS without disabling
+sequential scans or adding an index. Exactly 2,000 promises—1,000 fact and 1,000
+tenant reads—are submitted before barrier release through one pool bounded to
+eight clients and one login with connection limit eight. The first eight runtime
+workload backends are observed simultaneously by a separately connected
+out-of-band administrator that executes none of the 2,000 workload reads; the
+remaining promises queue, so this is not 2,000
+connections. Source and integrated local verification pass. Pinned
+PostgreSQL V12 execution, retained evidence/logs, and independent review remain
+pending. See
+[ADR 0024](../../docs/adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](../../docs/CYCLE_1BB12_EXIT_MATRIX.md).
+
 Ownership transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
 the pool while the source owns it. Only read-only counters may be checked after
@@ -170,7 +186,9 @@ runner, retained credential, externally configured or production-ready pool,
 or application-composed database client in this package. B11 adds only one
 exact closed-v2 suffix deployer and an acceptance-only prefix reconstruction;
 B10's transferred two-client pool remains a separate synthetic acceptance
-boundary. The historical
+boundary. B12 adds only a separate runner-owned eight-client acceptance pool,
+closed plan shapes, and synthetic fixture; it does not replace or widen the B10
+pool contract. The historical
 clean-bootstrap renderer validates its immutable
 manifest and emits all seven historical bodies. The authenticated V2
 application renderer separately validates its closed manifest and emits all six
@@ -521,8 +539,16 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     against live drift, exact one-time suffix replay, injected-failure rollback,
     two-deployer serialization, mandatory cleanup, retained V11 evidence, and
     independent review passed.
-16. **Next:** run query plans and load tests for fact-as-known and tenant reads, including
-    RLS overhead and index use.
+16. **Cycle 1b-b12 source/local complete; live V12 pending:** require the exact
+    authenticated fact-as-known and tenant plans to use their named indexes,
+    submit exactly 1,000 fact plus 1,000 tenant reads through at most eight
+    runtime workload backends, preserve Alpha/Beta isolation, bound pending
+    checkout and workload/plan/seed/`ANALYZE` statements, require every
+    submission to settle and the pool to close, and leave zero
+    login/client/backend/clone residue. Cleanup calls are not each independently
+    cancellable; the 15-minute workflow timeout is the outer fail-closed bound.
+    Retain V12 evidence and complete independent review before promoting the live
+    rows.
 17. Approve the production privacy and retention model for permanent resource
     identifiers, including DSAR/erasure, tenant offboarding, backup expiry, and
     any required pseudonymization or keyed-token replacement. Do not admit real
@@ -560,4 +586,8 @@ closed-v2, two-deployer boundary. It does not establish external/production
 credentials, arbitrary or multi-release upgrades, application compatibility
 under concurrent writes, crash recovery, cancellation, distributed
 coordination, global atomicity, or production readiness. Query-plan and load
-testing is the next existing database roadmap gate.
+testing now has a separate B12 source/local contract, but no live V12 result.
+B12 does not establish 1,000 or 2,000 simultaneous database connections,
+production load capacity/SLOs or pool tuning/failover, plan stability across
+other data distributions/statistics/hardware/versions, real data, application
+composition, or production readiness.

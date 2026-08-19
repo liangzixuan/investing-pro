@@ -30,6 +30,8 @@ const MAX_DATABASE_PACKAGE_MANIFEST_BYTES = 64 * 1_024;
 const MAX_PNPM_LOCKFILE_BYTES = 512 * 1_024;
 const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1_024 * 1_024;
 const MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES = 2 * 1_024 * 1_024;
+const MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES = 2 * 1_024 * 1_024;
+const MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -68,6 +70,10 @@ const POSTGRES_PROJECTION_POOL_PATH =
   "packages/db/src/postgres-projection-pool.ts";
 const POSTGRES_MIGRATION_DEPLOYER_PATH =
   "packages/db/src/postgres-migration-deployer.ts";
+const POSTGRES_QUERY_PLAN_LOAD_PATH =
+  "packages/db/src/postgres-query-plan-load.ts";
+const QUERY_PLAN_LOAD_FIXTURE_PATH =
+  "packages/db/acceptance/query-plan-load-fixture.sql";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -215,7 +221,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
@@ -223,14 +230,16 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
     const backupRestorePlanV1Sources =
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
         ? await readBackupRestorePlanV1Sources(
             repositoryPath,
             input.expectedCommit,
@@ -239,16 +248,23 @@ export async function reviewPostgresAcceptanceEvidence(
     const v9Sources =
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
         ? await readV9Sources(repositoryPath, input.expectedCommit)
         : {};
     const v10Sources =
-      evidence.schemaVersion === 10 || evidence.schemaVersion === 11
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
         ? await readV10Sources(repositoryPath, input.expectedCommit)
         : {};
     const v11Sources =
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 || evidence.schemaVersion === 12
         ? await readV11Sources(repositoryPath, input.expectedCommit)
+        : {};
+    const v12Sources =
+      evidence.schemaVersion === 12
+        ? await readV12Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -274,11 +290,39 @@ export async function reviewPostgresAcceptanceEvidence(
         ...v9Sources,
         ...v10Sources,
         ...v11Sources,
+        ...v12Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV12Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly postgresQueryPlanLoad: Uint8Array;
+  readonly queryPlanLoadFixture: Uint8Array;
+}> {
+  const [postgresQueryPlanLoad, queryPlanLoadFixture] = await Promise.all([
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      POSTGRES_QUERY_PLAN_LOAD_PATH,
+      MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      QUERY_PLAN_LOAD_FIXTURE_PATH,
+      MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES,
+    ),
+  ]);
+  return Object.freeze({
+    postgresQueryPlanLoad: Uint8Array.from(postgresQueryPlanLoad),
+    queryPlanLoadFixture: Uint8Array.from(queryPlanLoadFixture),
+  });
 }
 
 async function readV11Sources(

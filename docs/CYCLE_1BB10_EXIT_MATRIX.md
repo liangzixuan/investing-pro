@@ -69,3 +69,10 @@ cancellation/failover, or global platform/application atomicity. See
 [Cycle 1b-b11 exit matrix](./CYCLE_1BB11_EXIT_MATRIX.md); the
 [B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md) records
 the successor's independent anchors without changing this V10 record.
+
+Cycle 1b-b12 now has its own source/local contract for authenticated
+named-index plans and exactly 2,000 queued reads through at most eight runtime workload backends.
+Its live V12 result remains pending. It neither changes this V10 record nor
+turns B10's reviewed two-client pool into load or capacity evidence. See
+[ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

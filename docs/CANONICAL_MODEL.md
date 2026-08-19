@@ -5,7 +5,8 @@ runtime authentication, b3 authorization-matrix, b4 projection-query, b5
 test-loader, b6 owner-DDL canary, b7 authenticated application-migration, b8
 policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
 projection-pool, and b11 locked migration-ledger deployment boundaries;
-synthetic data only.
+synthetic data only. The B12 query-plan/load contract is source/local only;
+live V12 review is pending.
 
 ## Identity
 
@@ -207,6 +208,17 @@ down-migration contract, or supported historical model. See
 record returned `offline_consistent`. See the
 [B11 evidence note](./POSTGRESQL_LOCKED_MIGRATION_LEDGER_EVIDENCE.md).
 
+Cycle 1b-b12 likewise changes no canonical entity, tenancy, time, numeric,
+evidence, rights, deletion, or projection semantics. Its fixed module reuses the
+exact B4 fact-as-known shape and adds one source-controlled tenant thesis read
+only to inspect named-index use and exercise a deterministic synthetic load.
+The B12 fixture and disposable clone are acceptance-only; 1,000 fact plus 1,000
+tenant submissions do not add canonical records, complete dossier breadth, or
+a production load model. Source and integrated local verification are complete;
+live V12 execution and review remain pending. See
+[ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -228,6 +240,11 @@ B10. B11's reviewed result covers only one exact v2 suffix; external or
 production credentials, arbitrary/multi-release upgrades, online application
 compatibility, crash recovery, cancellation, distributed coordination, global
 atomicity, and production readiness remain outside it.
+B12 remains source/local only and bounded to two exact synthetic plan shapes,
+2,000 queued reads, and at most eight runtime workload backends. It does not establish
+1,000/2,000 simultaneous connections, production capacity or SLOs, pool
+tuning/failover, planner stability across other data/statistics/hardware/
+versions, real data, application composition, or production readiness.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
 authenticated-migrator gate. The reviewed B7 result proves only the bounded

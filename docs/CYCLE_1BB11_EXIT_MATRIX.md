@@ -52,6 +52,10 @@ Mock-only lock ordering, a checksum comparison performed only before database
 I/O, an unlocked ledger read, replay that reruns an applied body, or two
 sequential invocations presented as concurrency would not satisfy this gate.
 
-No B12 milestone label is assigned here. The next existing database roadmap
-gate is query-plan and load testing for fact-as-known and tenant reads,
-including RLS overhead and index use.
+Cycle 1b-b12 now has a separate accepted source/local contract for the exact B4
+fact-as-known and tenant thesis named-index plans plus 2,000 queued reads through
+at most eight runtime workload backends. Live V12 execution and review remain pending. That
+successor does not change this matrix, widen the reviewed B11 migration claim,
+or create B12 post-live evidence. See
+[ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).

@@ -37,8 +37,9 @@ implemented, locally verified, and live-reviewed; the pinned V10 execution and
 independent artifact review are complete for their bounded scope. The B11
 locked migration-ledger deployer, V11 evidence contract, integrated local
 verification, pinned live execution, and independent artifact review are also
-complete for their bounded scope. Query-plan and load testing is the next
-existing database gate.
+complete for their bounded scope. The B12 deterministic RLS query-plan and
+bounded 2,000-read source/evidence contract is implemented and locally
+verified; pinned V12 execution and independent artifact review remain pending.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -270,6 +271,36 @@ license inventory alone could not enumerate a pre-existing pnpm-store entry for
 `@fastify/cors@11.3.0`; the later clean cross-platform CI install and release
 gate passed at the tested commit.
 
+**Cycle 1b-b12 source and integrated local gates complete; live gate pending:**
+the fixed query-plan/load module and deterministic fixture add no caller-selected
+SQL, endpoint, planner setting, connection setting, or benchmark input. In a disposable fixed-name clone,
+the live plan will load the synthetic fixture, run `ANALYZE`, and require the
+authenticated forced-RLS B4 fact-as-known and tenant thesis shapes to use
+`financial_facts_as_known` and `theses_by_instrument` without disabling
+sequential scans or adding an index. A separate privileged synthetic plan is a
+reference only, not an application authorization path.
+
+The bounded load source submits exactly 1,000 fact and 1,000 tenant promises
+before one barrier release through a pool fixed at eight clients and a fresh
+SCRAM runtime login with connection limit eight. A separately connected
+out-of-band administrator must observe exactly the first eight runtime workload
+backends blocked, then the gate must prove every Alpha/Beta result, configured
+bounds on pending checkout and workload/plan/seed/`ANALYZE` statements,
+source-clone isolation, complete settlement and pool closure, and zero
+client/login/backend/clone residue. Cleanup calls are not each independently
+cancellable; the workflow's 15-minute job timeout is the outer fail-closed
+bound. This is 2,000 queued submissions, not 2,000 connections or 1,000
+simultaneous database sessions. See
+[ADR 0024](./adr/0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md)
+and the [Cycle 1b-b12 exit matrix](./CYCLE_1BB12_EXIT_MATRIX.md).
+
+V12 preserves V1-V11, appends only
+`authenticated_rls_indexed_query_plans_and_bounded_2000_read_load`, adds only
+`postgresQueryPlanLoadSha256` and `queryPlanLoadFixtureSha256`, retains the V11
+tool shape and limitations, and inserts only
+`thousand_simultaneous_database_backends_or_connections` at the frozen load
+nonclaim position. There is no V12 live artifact or B12 evidence note yet.
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -298,8 +329,10 @@ gate passed at the tested commit.
    reviewed b3 run passed that exact matrix through the service account. The b1
    null/malformed/unsupported-context failures remain impersonated-capability
    evidence. The reviewed B9 result adds one real sequential client, not
-   concurrent reads. B10 is limited to two simultaneous synthetic reads; at
-   least 1,000 concurrent reads remain pending. If a writer
+   concurrent reads. B10 is limited to two simultaneous synthetic reads. B12
+   now defines a source/local gate for 2,000 concurrently submitted reads
+   through at most eight runtime workload backends, but live V12 execution remains pending and
+   does not claim 1,000 simultaneous database sessions. If a writer
    capability is added, also test viewer writes, composite-FK attacks,
    idempotency races, and rollback before enabling it elsewhere.
 6. **Sequential cleanup complete:** b1 proves transaction-local context clears
@@ -337,8 +370,9 @@ production/incremental and global-atomicity nonclaims. The reviewed B8 result
 covers its bounded version 8 scope. The reviewed B9 run passed the separate real
 single-client read-only adapter boundary. B10's bounded pool lifecycle source is
 implemented and locally verified, and its bounded live V10 result is reviewed.
-The B11 locked deployer and bounded live V11 result are reviewed. Query-plan
-and load testing for fact-as-known and tenant reads is the next database gate.
+The B11 locked deployer and bounded live V11 result are reviewed. B12's fixed
+fact-as-known/tenant plan and 2,000-submission source contract is locally
+verified; its live V12 gate remains pending.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -368,6 +402,10 @@ service-account results, including the separate reviewed B5 test-loader result,
 as permission to wire the database into the app or accept real data.
 The reviewed B11 result similarly remains disconnected and limited to the exact
 v2 suffix. It is not a general or production migration system.
+The B12 source/local result is also disconnected. Eight observed runtime
+workload backends and 2,000 queued synthetic reads do not establish production capacity,
+SLOs, pool tuning/failover, general plan stability, real-data behavior, or
+application composition. No live V12 result is claimed.
 
 ## Cycle 1c — demo identity and API contract proof
 

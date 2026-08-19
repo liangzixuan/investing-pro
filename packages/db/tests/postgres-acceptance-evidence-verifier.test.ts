@@ -29,6 +29,8 @@ import {
   POSTGRES_ACCEPTANCE_V10_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -74,6 +76,8 @@ interface MutableInput {
     pnpmLockfile?: Uint8Array;
     postgresProjectionPool?: Uint8Array;
     postgresMigrationDeployer?: Uint8Array;
+    postgresQueryPlanLoad?: Uint8Array;
+    queryPlanLoadFixture?: Uint8Array;
     applicationMigrationsV2?: Array<{
       id: string;
       file: string;
@@ -138,6 +142,10 @@ function cloneInput(): MutableInput {
       postgresMigrationDeployer: exactCopy(
         BASE_INPUT.sources.postgresMigrationDeployer!,
       ),
+      postgresQueryPlanLoad: exactCopy(
+        BASE_INPUT.sources.postgresQueryPlanLoad!,
+      ),
+      queryPlanLoadFixture: exactCopy(BASE_INPUT.sources.queryPlanLoadFixture!),
       applicationMigrationsV2: BASE_INPUT.sources.applicationMigrationsV2!.map(
         (migration) => ({
           id: migration.id,
@@ -244,6 +252,12 @@ function removeV11SourceHashes(record: Record<string, unknown>): void {
   delete hashes.postgresMigrationDeployerSha256;
 }
 
+function removeV12SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.postgresQueryPlanLoadSha256;
+  delete hashes.queryPlanLoadFixtureSha256;
+}
+
 function removeV7Sources(input: MutableInput): void {
   delete input.sources.platformBootstrapV2;
   delete input.sources.applicationMigrationManifestV2;
@@ -271,8 +285,32 @@ function removeV11Sources(input: MutableInput): void {
   delete input.sources.postgresMigrationDeployer;
 }
 
+function removeV12Sources(input: MutableInput): void {
+  delete input.sources.postgresQueryPlanLoad;
+  delete input.sources.queryPlanLoadFixture;
+}
+
+function v11Input(): MutableInput {
+  let input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 11;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V11_NOT_PROVEN];
+    removeV12SourceHashes(record);
+  });
+  removeV12Sources(input);
+  input = replaceCanonicalSourceJson(
+    input,
+    "imageConfig",
+    (imageConfig) => {
+      delete imageConfig.queryPlanLoadFixtureSha256;
+    },
+    false,
+  );
+  return input;
+}
+
 function v10Input(): MutableInput {
-  const input = mutateEvidence(cloneInput(), (record) => {
+  const input = mutateEvidence(v11Input(), (record) => {
     record.schemaVersion = 10;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V10_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V10_NOT_PROVEN];
@@ -460,6 +498,18 @@ function cloneFrom(
             postgresMigrationDeployer: exactCopy(
               input.sources.postgresMigrationDeployer,
             ),
+          }),
+      ...(input.sources.postgresQueryPlanLoad === undefined
+        ? {}
+        : {
+            postgresQueryPlanLoad: exactCopy(
+              input.sources.postgresQueryPlanLoad,
+            ),
+          }),
+      ...(input.sources.queryPlanLoadFixture === undefined
+        ? {}
+        : {
+            queryPlanLoadFixture: exactCopy(input.sources.queryPlanLoadFixture),
           }),
       ...(input.sources.applicationMigrationsV2 === undefined
         ? {}
@@ -728,6 +778,23 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v11 evidence without v12 load sources or config field", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v11Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "authenticated_rls_indexed_query_plans_and_bounded_2000_read_load",
+    );
+    expect(result.recordedNotProven).not.toContain(
+      "thousand_simultaneous_database_backends_or_connections",
+    );
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -775,6 +842,12 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(v10Input(), (record) => {
         record.schemaVersion = 11;
       }),
+      mutateEvidence(v11Input(), (record) => {
+        record.schemaVersion = 12;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 11;
+      }),
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 10;
       }),
@@ -805,6 +878,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
   });
 
   it("requires the exact version-specific source bundle", () => {
+    const missingV12Module = cloneInput();
+    delete missingV12Module.sources.postgresQueryPlanLoad;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV12Module),
+    );
+
+    const missingV12Fixture = cloneInput();
+    delete missingV12Fixture.sources.queryPlanLoadFixture;
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV12Fixture),
+    );
+
     const missingV11 = cloneInput();
     delete missingV11.sources.postgresMigrationDeployer;
     expectValueFreeFailure(() =>
@@ -910,11 +995,21 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       verifyPostgresAcceptanceEvidenceOffline(extraV10),
     );
 
+    const extraV11 = v11Input();
+    (
+      extraV11.sources as unknown as Record<string, unknown>
+    ).postgresQueryPlanLoad = exactCopy(
+      BASE_INPUT.sources.postgresQueryPlanLoad!,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraV11),
+    );
+
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V11_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V11_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
     );
   });
 
@@ -1162,6 +1257,8 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "pnpmLockfile",
       "postgresProjectionPool",
       "postgresMigrationDeployer",
+      "postgresQueryPlanLoad",
+      "queryPlanLoadFixture",
     ] as const) {
       const input = cloneInput();
       input.sources = {
@@ -1192,6 +1289,9 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
         value.workflowSha256 = "0".repeat(64);
       },
       (value) => {
+        value.queryPlanLoadFixtureSha256 = "0".repeat(64);
+      },
+      (value) => {
         (value.runner as Record<string, unknown>).architecture = "arm64";
       },
     ];
@@ -1218,6 +1318,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     };
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(noncanonical),
+    );
+
+    const missingV12FixtureHash = replaceCanonicalSourceJson(
+      cloneInput(),
+      "imageConfig",
+      (value) => {
+        delete value.queryPlanLoadFixtureSha256;
+      },
+      false,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV12FixtureHash),
     );
 
     const extra = replaceCanonicalSourceJson(
@@ -1544,6 +1656,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     pnpmLockfile,
     postgresProjectionPool,
     postgresMigrationDeployer,
+    postgresQueryPlanLoad,
+    queryPlanLoadFixture,
   ] = await Promise.all([
     readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
     readExact(
@@ -1592,6 +1706,10 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     readExact(new URL("../src/postgres-projection-pool.ts", import.meta.url)),
     readExact(
       new URL("../src/postgres-migration-deployer.ts", import.meta.url),
+    ),
+    readExact(new URL("../src/postgres-query-plan-load.ts", import.meta.url)),
+    readExact(
+      new URL("../acceptance/query-plan-load-fixture.sql", import.meta.url),
     ),
   ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
@@ -1698,6 +1816,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       pnpmLockfileSha256: sha256(pnpmLockfile),
       postgresProjectionPoolSha256: sha256(postgresProjectionPool),
       postgresMigrationDeployerSha256: sha256(postgresMigrationDeployer),
+      postgresQueryPlanLoadSha256: sha256(postgresQueryPlanLoad),
+      queryPlanLoadFixtureSha256: sha256(queryPlanLoadFixture),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -1731,6 +1851,8 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       pnpmLockfile,
       postgresProjectionPool,
       postgresMigrationDeployer,
+      postgresQueryPlanLoad,
+      queryPlanLoadFixture,
       applicationMigrationsV2,
       migrations,
     },

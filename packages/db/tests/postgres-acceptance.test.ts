@@ -1405,15 +1405,17 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "73bc100eb27a1e7884d05f6feb642bc00c224d56e7b480899ba901cd9934f24a",
+        "43f4be1ce223e30db25ec052859599deb3c16733829db6f59c2aa5c1d5a70543",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
+      queryPlanLoadFixtureSha256:
+        "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v11.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v12.json",
     );
     expect(artifacts.workflow).toContain('          - "127.0.0.1::5432"');
     expect(artifacts.workflow).toContain("      - modules/research-core/**");
@@ -1607,7 +1609,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v11.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v12.json",
         unsafePath,
       );
       expect(
@@ -1647,7 +1649,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v11-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1709,6 +1711,25 @@ CREATE DATABASE research_cockpit_acceptance_test
       expect.arrayContaining([
         "synthetic fixture differs from its reviewed SHA-256",
         "synthetic fixture must not contain psql meta-commands",
+      ]),
+    );
+  });
+
+  it("rejects query-plan/load fixture drift and contract widening", async () => {
+    const artifacts = await loadArtifacts();
+    const mutatedFixture = artifacts.queryPlanLoadFixture.replace(
+      "generate_series(1, 2048)",
+      "generate_series(1, 2049)",
+    );
+    expect(
+      inspectPostgresAcceptanceHarness({
+        ...artifacts,
+        queryPlanLoadFixture: mutatedFixture,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "query-plan/load fixture differs from its reviewed SHA-256",
+        "query-plan/load fixture contract is invalid",
       ]),
     );
   });
@@ -1802,10 +1823,10 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).toContain(
       "bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery",
     );
-    expect(source).toContain("version 11 success-only run record");
+    expect(source).toContain("version 12 success-only run record");
   });
 
-  it("finishes mandatory B8 cleanup and hashes its exact sources before v11 evidence", async () => {
+  it("finishes mandatory B8 cleanup and hashes its exact sources before v12 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2378,7 +2399,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 11 success-only run record was written",
+      "the version 12 success-only run record was written",
     ]);
     expect(
       entrypoint.match(
@@ -2611,7 +2632,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(sourceHashes).toContain("postgresMigrationDeployerSha256,");
   });
 
-  it("runs the authenticated backup and bounded restore before v11 evidence", async () => {
+  it("runs the authenticated backup and bounded restore before v12 evidence", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
       "utf8",
@@ -2645,7 +2666,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 11 success-only run record was written",
+      "the version 12 success-only run record was written",
     ]);
 
     const orchestrator = section(
@@ -3091,6 +3112,256 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     expect(versions).toContain("nodePostgres: nodePostgresPackage.version");
   });
 
+  it("runs B12 authenticated indexed plans and 2,000 bounded reads with zero residue", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+    const expectOrdered = (body: string, markers: readonly string[]) => {
+      let previous = -1;
+      for (const marker of markers) {
+        const position = body.indexOf(marker, previous + 1);
+        expect(position, marker).toBeGreaterThan(previous);
+        previous = position;
+      }
+    };
+
+    const entrypoint = section(
+      "export async function runPostgresAcceptance(",
+      "async function verifyVersionedAuthenticatedMigrationPlan(",
+    );
+    expectOrdered(entrypoint, [
+      "await verifyVersionedAuthenticatedMigrationPlan(",
+      "await verifyAuthenticatedPostgresMigrationDeployment(",
+      "await verifyAuthenticatedPostgresQueryPlanLoad(",
+      "await verifyAuthenticatedPostgresProjectionPool(",
+      "await verifyAuthenticatedBackupAndBoundedRestore(",
+      "await verifyCheckedOutCommit(environment);",
+      "const sourceHashes = await collectAcceptanceSourceHashes(config);",
+      "the version 12 success-only run record was written",
+    ]);
+    expect(
+      entrypoint.match(/await verifyAuthenticatedPostgresQueryPlanLoad\(/g),
+    ).toHaveLength(1);
+
+    const lifecycle = section(
+      "async function verifyAuthenticatedPostgresQueryPlanLoad(",
+      "interface PostgresQueryPlanLoadReadResult",
+    );
+    expectOrdered(lifecycle, [
+      "await verifyPostgresQueryPlanLoadResidueAbsent(containerId);",
+      "sourceBefore = await collectAuthenticatedBackupFingerprints(",
+      "inspectPostgresQueryPlanLoadFixture(fixtureSql)",
+      "await assertPostgresQueryPlanLoadSourceSessionsAbsent(containerId);",
+      "cloneProvisioningStarted = true;",
+      "await createPostgresQueryPlanLoadClone(containerId);",
+      "seedLoginProvisioningStarted = true;",
+      "await provisionPostgresQueryPlanLoadSeedLogin(containerId, seedPassword);",
+      'verifyPostgresQueryPlanLoadRoleCatalog(containerId, "seed")',
+      "await seedPostgresQueryPlanLoadClone(seedClient, fixtureSql);",
+      "await analyzePostgresQueryPlanLoadClone(containerId);",
+      "await verifyPostgresQueryPlanLoadFixtureState(containerId);",
+      "loginProvisioningStarted = true;",
+      "await provisionPostgresQueryPlanLoadLogin(containerId, password);",
+      'verifyPostgresQueryPlanLoadRoleCatalog(containerId, "runtime")',
+      "await verifyPostgresQueryPlanLoadPlans(adminClient, runtimePlanClient);",
+      "await beginPostgresQueryPlanLoadBarrier(adminClient);",
+      "pool = createPostgresQueryPlanLoadPool(endpoint, password);",
+      "const requests = submitPostgresQueryPlanLoadRequests(pool);",
+      "loadSettlement = Promise.allSettled(requests);",
+      "await waitForPostgresQueryPlanLoadBlockedBackends(adminClient);",
+      "await releasePostgresQueryPlanLoadBarrier(adminClient);",
+      "const outcomes = await withPostgresQueryPlanLoadTimeout(",
+      "assertPostgresQueryPlanLoadOutcomes(outcomes);",
+      "} finally {",
+      'label: "release B12 query-load barrier"',
+      'label: "settle B12 submitted reads"',
+      'label: "close B12 bounded PostgreSQL pool"',
+      'label: "close B12 PostgreSQL client"',
+      'label: "drain B12 PostgreSQL backends"',
+      'label: "drop B12 disposable clone without FORCE"',
+      'label: "drop B12 ephemeral runtime login"',
+      'label: "drop B12 ephemeral seed login"',
+      'label: "verify B12 source fingerprint"',
+      'label: "verify B12 zero residue"',
+      'label: "verify B12 final source catalog"',
+      "await collectRuntimeAuthOperationFailures(cleanupOperations)",
+      "if (probeError !== undefined && cleanupError !== undefined)",
+      "throw new AggregateError(",
+    ]);
+    expect(lifecycle).toContain(
+      "POSTGRES_QUERY_PLAN_LOAD_PROFILE.totalRequestCount",
+    );
+    expect(lifecycle).toContain("loadSettlementComplete = true;");
+    expectOrdered(lifecycle, [
+      "if (!loadSettlementComplete) throw new PostgresQueryPlanLoadError();",
+      "await poolToClose.end();",
+    ]);
+
+    const clone = section(
+      "async function assertPostgresQueryPlanLoadSourceSessionsAbsent(",
+      "async function provisionPostgresQueryPlanLoadSeedLogin(",
+    );
+    expectOrdered(clone, [
+      "FROM pg_catalog.pg_stat_activity",
+      "AND backend_type = 'client backend';",
+      "CREATE DATABASE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName}",
+      "WITH TEMPLATE ${CLEAN_BOOTSTRAP_DATABASE_NAME}",
+      "OWNER postgres;",
+    ]);
+    expect(clone).not.toContain("FORCE");
+
+    const provisioning = section(
+      "function renderPostgresQueryPlanLoadLoginProvisioningSql(",
+      "async function verifyPostgresQueryPlanLoadRoleCatalog(",
+    );
+    for (const marker of [
+      "NOSUPERUSER",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOREPLICATION",
+      "NOINHERIT",
+      "NOBYPASSRLS",
+      "POSTGRES_QUERY_PLAN_LOAD_PROFILE.loginConnectionLimit",
+      "WITH ADMIN FALSE, INHERIT FALSE, SET TRUE",
+    ]) {
+      expect(provisioning).toContain(marker);
+    }
+    expect(provisioning).toContain("assertPostgresQueryPlanLoadPassword");
+
+    const seed = section(
+      "async function seedPostgresQueryPlanLoadClone(",
+      "async function analyzePostgresQueryPlanLoadClone(",
+    );
+    expect(seed).toContain(
+      "renderPostgresQueryPlanLoadFixtureTransaction(fixtureSql)",
+    );
+    expect(seed).toContain("result.length !== 9");
+    expect(seed.match(/"INSERT"/g)).toHaveLength(6);
+    expect(seed).toContain("POSTGRES_QUERY_PLAN_LOAD_PROFILE.factCount");
+    expect(seed).toContain("POSTGRES_QUERY_PLAN_LOAD_PROFILE.thesisCount");
+    const finiteSeedAndAnalyze = section(
+      "function createPostgresQueryPlanLoadSeedClient(",
+      "async function verifyPostgresQueryPlanLoadFixtureState(",
+    );
+    expect(finiteSeedAndAnalyze).toContain(
+      "statement_timeout:\n      POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds",
+    );
+    expect(finiteSeedAndAnalyze).toContain(
+      "SET statement_timeout = '${POSTGRES_QUERY_PLAN_LOAD_PROFILE.statementTimeoutMilliseconds}ms';",
+    );
+
+    const plans = section(
+      "async function verifyPostgresQueryPlanLoadPlans(",
+      "async function setPostgresQueryPlanLoadRequestContext(",
+    );
+    expectOrdered(plans, [
+      '["runtime_rls", runtimeClient]',
+      '["superuser_bypass", adminClient]',
+      'executePostgresQueryPlanLoadPlan(\n      client,\n      authorization,\n      "fact"',
+      'assertPostgresQueryPlan("fact", authorization, factPlan)',
+      'executePostgresQueryPlanLoadPlan(\n      client,\n      authorization,\n      "tenant"',
+      'assertPostgresQueryPlan("tenant", authorization, tenantPlan)',
+      "process.stdout.write(renderPostgresQueryPlanLoadMetrics(summaries));",
+    ]);
+    for (const marker of [
+      "planning_ms=",
+      "execution_ms=",
+      "shared_hit_blocks=",
+      "shared_read_blocks=",
+      "BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY",
+      "POSTGRES_QUERY_PLAN_LOAD_PLANNER_SETTINGS",
+      "SET LOCAL ROLE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeCapabilityRole}",
+      "renderPostgresFinancialFactExplainQuery()",
+      "renderPostgresTenantThesisExplainQuery()",
+      'result.command !== "EXPLAIN"',
+      "result.rowCount !== null",
+      'result.fields[0]?.name !== "QUERY PLAN"',
+      "result.fields[0]?.dataTypeID !== 114",
+    ]) {
+      expect(plans).toContain(marker);
+    }
+    expect(plans).not.toContain("enable_seqscan");
+
+    const submissions = section(
+      "function submitPostgresQueryPlanLoadRequests(",
+      "function assertPostgresQueryPlanLoadOutcomes(",
+    );
+    expectOrdered(submissions, [
+      "index < POSTGRES_QUERY_PLAN_LOAD_PROFILE.factRequestCount",
+      'index % 2 === 0 ? "alpha" : "beta"',
+      "requests.push(runPostgresQueryPlanLoadFactRead(pool, actor));",
+      "requests.push(runPostgresQueryPlanLoadTenantRead(pool, actor));",
+      "POSTGRES_QUERY_PLAN_LOAD_PROFILE.tenantRequestCount",
+      "POSTGRES_QUERY_PLAN_LOAD_PROFILE.totalRequestCount",
+    ]);
+    expect(submissions).toContain(
+      "BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY",
+    );
+    expect(submissions).toContain(
+      "SET LOCAL ROLE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.runtimeCapabilityRole}",
+    );
+    expect(submissions).toContain(
+      "assertPostgresTenantThesisRows(actor, result.rows)",
+    );
+    expect(submissions).toContain(
+      "assertRuntimeAuthenticatedFinancialFactProjectionResult(",
+    );
+
+    const barrier = section(
+      "async function beginPostgresQueryPlanLoadBarrier(",
+      "async function closePostgresQueryPlanLoadClient(",
+    );
+    expectOrdered(barrier, [
+      "LOCK TABLE ONLY shared_data.financial_facts IN ACCESS EXCLUSIVE MODE",
+      "LOCK TABLE ONLY private_data.theses IN ACCESS EXCLUSIVE MODE",
+      "POSTGRES_QUERY_PLAN_LOAD_BLOCKED_DEADLINE_MILLISECONDS",
+      "pg_catalog.pg_stat_clear_snapshot()",
+      "pg_catalog.pg_blocking_pids(activity.pid)",
+      "Date.now() < deadline &&",
+      "isPostgresQueryPlanLoadBlockedObservation(",
+      "backendPids.size === POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax",
+      "factCount === POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax / 2",
+      "tenantCount === POSTGRES_QUERY_PLAN_LOAD_PROFILE.poolMax / 2",
+      'await client.query("ROLLBACK")',
+    ]);
+    expect(barrier).toContain(
+      "row.blockingPids[0] !== value.barrierBackendPid",
+    );
+
+    const cleanup = section(
+      "async function waitForPostgresQueryPlanLoadBackendDrain(",
+      "function assertPostgresQueryPlanLoadPassword(",
+    );
+    expect(cleanup).toContain(
+      "DROP DATABASE ${POSTGRES_QUERY_PLAN_LOAD_PROFILE.databaseName};",
+    );
+    expect(cleanup).not.toMatch(/DROP DATABASE[^;]*(?:FORCE|WITH\s*\()/i);
+    expect(cleanup).toContain("DROP ROLE IF EXISTS");
+    expect(cleanup).toContain('"0|0|0|0|0|0"');
+
+    const sourceHashes = section(
+      "async function collectAcceptanceSourceHashes(",
+      "async function exactFileSha256(",
+    );
+    for (const marker of [
+      "exactFileSha256(postgresQueryPlanLoadPath)",
+      "exactFileSha256(queryPlanLoadFixturePath)",
+      "queryPlanLoadFixtureSha256 !== config.queryPlanLoadFixtureSha256",
+      "postgresQueryPlanLoadSha256,",
+      "queryPlanLoadFixtureSha256,",
+    ]) {
+      expect(sourceHashes).toContain(marker);
+    }
+  });
+
   it("runs B10 once through a bounded two-backend pool and destroys interrupted leases", async () => {
     const source = await readFile(
       new URL("../src/postgres-acceptance.ts", import.meta.url),
@@ -3346,7 +3617,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expect(sourceHashes).toContain("postgresProjectionPoolSha256,");
     expect(source).toContain(
-      "the version 11 success-only run record was written",
+      "the version 12 success-only run record was written",
     );
   });
 
@@ -3448,6 +3719,10 @@ async function loadArtifacts(): Promise<AcceptanceArtifacts> {
     ),
     fixture: await readFile(
       new URL("../acceptance/synthetic-fixture.sql", import.meta.url),
+      "utf8",
+    ),
+    queryPlanLoadFixture: await readFile(
+      new URL("../acceptance/query-plan-load-fixture.sql", import.meta.url),
       "utf8",
     ),
   };

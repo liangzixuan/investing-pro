@@ -1,6 +1,7 @@
 # ADR 0012: Success-only PostgreSQL acceptance run record
 
-Status: accepted; versions 1 through 11 retained and reviewed
+Status: accepted; versions 1 through 11 retained and reviewed; version 12
+source contract accepted with live record pending
 
 Cycle 1b-b1 defines a digest-pinned PostgreSQL acceptance workflow, but a
 terminal success message is not a durable, machine-readable link between the
@@ -38,10 +39,11 @@ single-client read-only projection-adapter check, binds four additional B9
 sources, and records the exact node-postgres version. Version 10 preserves
 exact v1 through v9 parsing, appends only the bounded pool lifecycle check,
 binds the pool source, and records the exact pg-pool version. Their pinned live
-runs and independent reviews are retained below. The current source producer
-writes `research-cockpit-postgres-acceptance-v11.json`; its pinned live record
-and independent review are retained below. Source presence alone is not
-evidence.
+runs and independent reviews are retained below. Version 11's pinned live
+record and independent review are retained below. The current source producer
+writes `research-cockpit-postgres-acceptance-v12.json`; its source contract is
+described below, but no live V12 record is retained. Source presence alone is
+not evidence.
 
 The writer creates the current file with
 exclusive-create semantics and restrictive local permissions, so an old or
@@ -258,6 +260,36 @@ records the exact anchors and bounded claim. This successor does not alter any
 version 1 through version 10 record. See
 [ADR 0023](./0023-locked-postgresql-migration-ledger-deployment.md) and the
 [Cycle 1b-b11 exit matrix](../CYCLE_1BB11_EXIT_MATRIX.md).
+
+Cycle 1b-b12 has a separate accepted version 12 source/evidence contract. V12
+preserves every V1 through V11 parser branch, source and tool shape, check,
+limitation, record, and historical meaning. It appends only
+`authenticated_rls_indexed_query_plans_and_bounded_2000_read_load` and appends
+only these source hashes:
+
+- `postgresQueryPlanLoadSha256`, binding
+  `packages/db/src/postgres-query-plan-load.ts`; and
+- `queryPlanLoadFixtureSha256`, binding
+  `packages/db/acceptance/query-plan-load-fixture.sql`.
+
+No tool field changes; V12 retains the exact V11 PostgreSQL, node-postgres, and
+pg-pool shape. It preserves the complete ordered V11 limitation list and
+inserts only `thousand_simultaneous_database_backends_or_connections`
+immediately after `production_load_capacity_pool_tuning_or_failover`. This
+addition records that 2,000 submitted promises through at most eight runtime
+workload backends do not prove 1,000 or 2,000 simultaneous database connections.
+
+The V12 filename is `research-cockpit-postgres-acceptance-v12.json`, and the
+workflow artifact name is exactly
+`postgres-acceptance-evidence-v12-${{ github.sha }}-${{ github.run_attempt }}`.
+The success path ends with the exact terminal fragment
+`the version 12 success-only run record was written.` The writer remains
+exclusive-create and success-only. Parser, writer, verifier, reviewer, focused
+plan/load, and integrated local compatibility gates pass. A pinned V12
+execution, retained record/log hashes, and independent `offline_consistent`
+review remain pending; no B12 post-live evidence note exists. See
+[ADR 0024](./0024-bounded-postgresql-rls-query-plan-and-load-acceptance.md) and
+the [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md).
 
 ## Primary sources
 

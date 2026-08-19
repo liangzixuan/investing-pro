@@ -68,6 +68,11 @@ const V11_SOURCE_KEYS = [
   ...V10_SOURCE_KEYS,
   "postgresMigrationDeployer",
 ] as const;
+const V12_SOURCE_KEYS = [
+  ...V11_SOURCE_KEYS,
+  "postgresQueryPlanLoad",
+  "queryPlanLoadFixture",
+] as const;
 const MIGRATION_SOURCE_KEYS = ["id", "file", "bytes"] as const;
 const IMAGE_CONFIG_KEYS = [
   "schemaVersion",
@@ -83,6 +88,10 @@ const IMAGE_CONFIG_KEYS = [
   "fixtureSha256",
   "verifiedOn",
   "runner",
+] as const;
+const V12_IMAGE_CONFIG_KEYS = [
+  ...IMAGE_CONFIG_KEYS,
+  "queryPlanLoadFixtureSha256",
 ] as const;
 const IMAGE_RUNNER_KEYS = ["label", "os", "architecture"] as const;
 const MANIFEST_KEYS = ["schemaVersion", "algorithm", "migrations"] as const;
@@ -121,6 +130,8 @@ const MAX_DATABASE_PACKAGE_MANIFEST_BYTES = 64 * 1024;
 const MAX_PNPM_LOCKFILE_BYTES = 512 * 1024;
 const MAX_POSTGRES_PROJECTION_POOL_BYTES = 2 * 1024 * 1024;
 const MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES = 2 * 1024 * 1024;
+const MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES = 2 * 1024 * 1024;
+const MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATION_BYTES = 2 * 1024 * 1024;
 const MAX_MIGRATIONS = 100;
 
@@ -173,6 +184,8 @@ export interface PostgresAcceptanceEvidenceSourceBundle {
   readonly pnpmLockfile?: Uint8Array;
   readonly postgresProjectionPool?: Uint8Array;
   readonly postgresMigrationDeployer?: Uint8Array;
+  readonly postgresQueryPlanLoad?: Uint8Array;
+  readonly queryPlanLoadFixture?: Uint8Array;
 }
 
 export interface VerifyPostgresAcceptanceEvidenceOfflineInput {
@@ -218,6 +231,8 @@ interface NormalizedSources {
   readonly pnpmLockfile?: Uint8Array;
   readonly postgresProjectionPool?: Uint8Array;
   readonly postgresMigrationDeployer?: Uint8Array;
+  readonly postgresQueryPlanLoad?: Uint8Array;
+  readonly queryPlanLoadFixture?: Uint8Array;
 }
 
 interface NormalizedMigrationSource {
@@ -234,6 +249,7 @@ interface ReviewedImageConfig {
   readonly databaseName: string;
   readonly workflowSha256: string;
   readonly fixtureSha256: string;
+  readonly queryPlanLoadFixtureSha256: string | undefined;
 }
 
 /** A stable, value-free failure for every rejected offline verification. */
@@ -281,7 +297,10 @@ export function verifyPostgresAcceptanceEvidenceOffline(
 
     const sources = normalizeSources(input.sources, evidence.schemaVersion);
 
-    const imageConfig = parseReviewedImageConfig(sources.imageConfig);
+    const imageConfig = parseReviewedImageConfig(
+      sources.imageConfig,
+      evidence.schemaVersion,
+    );
     if (
       evidence.reviewedImageReference !== imageConfig.reference ||
       evidence.reviewedImageIndexDigest !== imageConfig.indexDigest ||
@@ -301,7 +320,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
     ) {
       if (
         sources.projectionQuery === undefined ||
@@ -320,7 +340,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
     ) {
       if (
         sources.platformBootstrapV2 === undefined ||
@@ -346,7 +367,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       evidence.schemaVersion === 8 ||
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
     ) {
       if (
         sources.restorePlatformV1 === undefined ||
@@ -363,7 +385,8 @@ export function verifyPostgresAcceptanceEvidenceOffline(
     if (
       evidence.schemaVersion === 9 ||
       evidence.schemaVersion === 10 ||
-      evidence.schemaVersion === 11
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
     ) {
       if (
         sources.postgresProjectionAdapter === undefined ||
@@ -383,7 +406,11 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 10 || evidence.schemaVersion === 11) {
+    if (
+      evidence.schemaVersion === 10 ||
+      evidence.schemaVersion === 11 ||
+      evidence.schemaVersion === 12
+    ) {
       if (
         sources.postgresProjectionPool === undefined ||
         evidence.sourceHashes.postgresProjectionPoolSha256 !==
@@ -393,11 +420,26 @@ export function verifyPostgresAcceptanceEvidenceOffline(
       }
     }
 
-    if (evidence.schemaVersion === 11) {
+    if (evidence.schemaVersion === 11 || evidence.schemaVersion === 12) {
       if (
         sources.postgresMigrationDeployer === undefined ||
         evidence.sourceHashes.postgresMigrationDeployerSha256 !==
           sha256(sources.postgresMigrationDeployer)
+      ) {
+        invalid();
+      }
+    }
+
+    if (evidence.schemaVersion === 12) {
+      if (
+        sources.postgresQueryPlanLoad === undefined ||
+        sources.queryPlanLoadFixture === undefined ||
+        evidence.sourceHashes.postgresQueryPlanLoadSha256 !==
+          sha256(sources.postgresQueryPlanLoad) ||
+        evidence.sourceHashes.queryPlanLoadFixtureSha256 !==
+          sha256(sources.queryPlanLoadFixture) ||
+        imageConfig.queryPlanLoadFixtureSha256 !==
+          evidence.sourceHashes.queryPlanLoadFixtureSha256
       ) {
         invalid();
       }
@@ -459,6 +501,88 @@ function normalizeSources(
   value: unknown,
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
 ): NormalizedSources {
+  if (schemaVersion === 12) {
+    const sources = exactPlainDataRecord(value, V12_SOURCE_KEYS);
+    return normalizeSourceFields(
+      sources,
+      {
+        projectionQuery: exactBytes(
+          sources.projectionQuery,
+          MAX_PROJECTION_QUERY_BYTES,
+        ),
+        projectionNormalizer: exactBytes(
+          sources.projectionNormalizer,
+          MAX_PROJECTION_NORMALIZER_BYTES,
+        ),
+      },
+      {
+        platformBootstrapV2: exactBytes(
+          sources.platformBootstrapV2,
+          MAX_PLATFORM_BOOTSTRAP_V2_BYTES,
+        ),
+        applicationMigrationManifestV2: exactBytes(
+          sources.applicationMigrationManifestV2,
+          MAX_APPLICATION_MANIFEST_V2_BYTES,
+        ),
+        authenticatedMigrationRendererV2: exactBytes(
+          sources.authenticatedMigrationRendererV2,
+          MAX_AUTHENTICATED_MIGRATION_RENDERER_V2_BYTES,
+        ),
+        applicationMigrationsV2: Object.freeze(
+          exactDataArray(
+            sources.applicationMigrationsV2,
+            APPLICATION_MIGRATION_V2_FILES.length,
+            false,
+          ).map((migration) => normalizeApplicationMigrationV2(migration)),
+        ),
+        restorePlatformV1: exactBytes(
+          sources.restorePlatformV1,
+          MAX_RESTORE_PLATFORM_V1_BYTES,
+        ),
+        authenticatedBackupRestorePlanV1: exactBytes(
+          sources.authenticatedBackupRestorePlanV1,
+          MAX_AUTHENTICATED_BACKUP_RESTORE_PLAN_V1_BYTES,
+        ),
+      },
+      {
+        postgresProjectionAdapter: exactBytes(
+          sources.postgresProjectionAdapter,
+          MAX_POSTGRES_PROJECTION_ADAPTER_BYTES,
+        ),
+        operationProjectionContract: exactBytes(
+          sources.operationProjectionContract,
+          MAX_OPERATION_PROJECTION_CONTRACT_BYTES,
+        ),
+        databasePackageManifest: exactBytes(
+          sources.databasePackageManifest,
+          MAX_DATABASE_PACKAGE_MANIFEST_BYTES,
+        ),
+        pnpmLockfile: exactBytes(sources.pnpmLockfile, MAX_PNPM_LOCKFILE_BYTES),
+      },
+      {
+        postgresProjectionPool: exactBytes(
+          sources.postgresProjectionPool,
+          MAX_POSTGRES_PROJECTION_POOL_BYTES,
+        ),
+      },
+      {
+        postgresMigrationDeployer: exactBytes(
+          sources.postgresMigrationDeployer,
+          MAX_POSTGRES_MIGRATION_DEPLOYER_BYTES,
+        ),
+      },
+      {
+        postgresQueryPlanLoad: exactBytes(
+          sources.postgresQueryPlanLoad,
+          MAX_POSTGRES_QUERY_PLAN_LOAD_BYTES,
+        ),
+        queryPlanLoadFixture: exactBytes(
+          sources.queryPlanLoadFixture,
+          MAX_QUERY_PLAN_LOAD_FIXTURE_BYTES,
+        ),
+      },
+    );
+  }
   if (schemaVersion === 11) {
     const sources = exactPlainDataRecord(value, V11_SOURCE_KEYS);
     return normalizeSourceFields(
@@ -759,7 +883,7 @@ function normalizeSources(
 
 function usesProjectionSources(
   schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
-): schemaVersion is 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 {
+): schemaVersion is 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 {
   return (
     schemaVersion === 4 ||
     schemaVersion === 5 ||
@@ -768,7 +892,8 @@ function usesProjectionSources(
     schemaVersion === 8 ||
     schemaVersion === 9 ||
     schemaVersion === 10 ||
-    schemaVersion === 11
+    schemaVersion === 11 ||
+    schemaVersion === 12
   );
 }
 
@@ -803,6 +928,10 @@ function normalizeSourceFields(
   > = {},
   v10Sources: Pick<NormalizedSources, "postgresProjectionPool"> = {},
   v11Sources: Pick<NormalizedSources, "postgresMigrationDeployer"> = {},
+  v12Sources: Pick<
+    NormalizedSources,
+    "postgresQueryPlanLoad" | "queryPlanLoadFixture"
+  > = {},
 ): NormalizedSources {
   const migrations = exactDataArray(sources.migrations, MAX_MIGRATIONS, false);
   return Object.freeze({
@@ -822,6 +951,7 @@ function normalizeSourceFields(
     ...v9Sources,
     ...v10Sources,
     ...v11Sources,
+    ...v12Sources,
   });
 }
 
@@ -849,15 +979,22 @@ function normalizeApplicationMigrationV2(
   });
 }
 
-function parseReviewedImageConfig(bytes: Uint8Array): ReviewedImageConfig {
+function parseReviewedImageConfig(
+  bytes: Uint8Array,
+  schemaVersion: PostgresAcceptanceEvidence["schemaVersion"],
+): ReviewedImageConfig {
   const value = exactPlainDataRecord(
     parseCanonicalJson(bytes),
-    IMAGE_CONFIG_KEYS,
+    schemaVersion === 12 ? V12_IMAGE_CONFIG_KEYS : IMAGE_CONFIG_KEYS,
   );
   const runner = exactPlainDataRecord(value.runner, IMAGE_RUNNER_KEYS);
   const indexDigest = sha256Digest(value.indexDigest);
   const workflowSha256 = sha256Hex(value.workflowSha256);
   const fixtureSha256 = sha256Hex(value.fixtureSha256);
+  const queryPlanLoadFixtureSha256 =
+    schemaVersion === 12
+      ? sha256Hex(value.queryPlanLoadFixtureSha256)
+      : undefined;
   if (
     value.schemaVersion !== 1 ||
     value.repository !== "docker.io/library/postgres" ||
@@ -882,6 +1019,7 @@ function parseReviewedImageConfig(bytes: Uint8Array): ReviewedImageConfig {
     databaseName: value.databaseName,
     workflowSha256,
     fixtureSha256,
+    queryPlanLoadFixtureSha256,
   });
 }
 
