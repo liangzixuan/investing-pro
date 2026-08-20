@@ -7,11 +7,11 @@ design is recorded in
 Browser persistence remains local, PostgreSQL remains disconnected, and no
 production identity or external network boundary is established.
 
-Current status: **Implemented and locally verified only for the bounded
-synthetic loopback source/test contract; not remote/live-engine or production
-evidence.** The full frozen-byte local release gate passes. CI review remains
-pending. Cycle 1c is not B15 or V15 and does not change any B1 through B14
-claim, artifact, or historical result.
+Current status: **Implemented and verified only for the bounded synthetic
+loopback source/test contract; not remote/live-engine or production evidence.**
+The full frozen-byte local release gate and two-OS CI pass on exact commit
+`84f6b92163e93fa8c5c079a786e49f8134b81f56`. Cycle 1c is not B15 or V15 and
+does not change any B1 through B14 claim, artifact, or historical result.
 
 | Gate                             | Evidence required                                                                                                                                                                                                                                              | Current status                                                        |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -29,12 +29,40 @@ claim, artifact, or historical result.
 | Error minimization               | Malformed input `400`, forbidden `403`, scoped absence `404`, idempotency conflict `409`, stale version `412`, missing precondition `428`, and unexpected `500` disclose no rejected values or tenant-state detail                                             | Pass — source/focused tests                                           |
 | Browser profile                  | Existing browser-local thesis and alert persistence remains unchanged; UI does not depend on the new server write routes                                                                                                                                       | Pass — frozen-byte local regression                                   |
 | Integrated local verification    | Format, lint, all guardrails, all typechecks, workspace tests/builds, exact API/contract suites, and unchanged database gates pass together                                                                                                                    | Pass — DB 18 files/582; API 49; state 48; contracts 5; core 62; web 3 |
-| CI/review                        | Required repository CI passes on the exact candidate commit and the final diff is reviewed                                                                                                                                                                     | Pending                                                               |
+| CI/review                        | Required repository CI passes on the exact candidate commit and the final diff is reviewed                                                                                                                                                                     | Pass — run `32401541724`, attempt 1, Ubuntu and Windows               |
+| PostgreSQL regression health     | Separate PostgreSQL workflow rechecks unchanged V14 without creating Cycle 1c engine evidence or replacing canonical B14                                                                                                                                       | Pass — health only; run `32401541467`, attempt 1                      |
 | Production admission             | End-user identity, external transport, PostgreSQL durability/RLS, production writer authorization, load/operations, privacy/legal controls, and real data are separately proved                                                                                | Blocked; explicitly outside Cycle 1c                                  |
+
+## Frozen verification anchors
+
+- Exact candidate commit:
+  `84f6b92163e93fa8c5c079a786e49f8134b81f56`.
+- Repository CI run `32401541724`, attempt 1, succeeded. Ubuntu job
+  `96530645568` ran `2026-08-20T18:08:32Z` through
+  `2026-08-20T18:10:21Z`, with its release gate at
+  `2026-08-20T18:08:47Z` through `2026-08-20T18:10:16Z`. Windows job
+  `96530645979` ran `2026-08-20T18:08:33Z` through
+  `2026-08-20T18:13:50Z`, with its release gate at
+  `2026-08-20T18:09:16Z` through `2026-08-20T18:13:40Z`.
+- PostgreSQL health run `32401541467`, attempt 1, job `96530645327`, succeeded
+  from `2026-08-20T18:08:33Z` through `2026-08-20T18:12:28Z`. Acceptance ran
+  `2026-08-20T18:09:01Z` through `2026-08-20T18:12:21Z`; upload ran
+  `2026-08-20T18:12:21Z` through `2026-08-20T18:12:22Z`.
+- Health artifact `9418771742` is named
+  `postgres-acceptance-evidence-v14-84f6b92163e93fa8c5c079a786e49f8134b81f56-1`,
+  is 3,516 bytes, and has SHA-256
+  `691edbced0b6a7823528b1326a56a6e67bdd9e72f83146d0ce8010ee35a32921`.
+  It was created and updated at `2026-08-20T18:12:22Z`, expires at
+  `2026-09-19T18:12:21Z`, and was not expired at review.
+- The PostgreSQL result is unchanged V14 regression health only. It is not
+  Cycle 1c engine evidence, a Cycle 1c PostgreSQL acceptance record, B15/V15,
+  or a replacement for canonical B14. Canonical B14 remains commit
+  `d688aa21e969feef6611f6efcd1aeaaed6e31df9`, run `32343225599`, artifact
+  `9397159387`.
 
 ## Bounded claim and nonclaims
 
-The only bounded claim proposed for final exit is
+The completed bounded source/test claim is
 `bounded_loopback_synthetic_persona_thesis_alert_write_contract`.
 
 The exact ordered nonclaims are:
@@ -54,9 +82,10 @@ The exact ordered nonclaims are:
 
 ## Exit rule
 
-Do not promote the bounded claim until the CI row passes on the exact candidate
-bytes. Even after that promotion, the result remains only a deterministic
-source/test proof for two seeded synthetic loopback updates.
+Cycle 1c exits only for the bounded source/test claim on the exact candidate and
+CI anchors above. The result remains only a deterministic source/test proof for
+two seeded synthetic loopback updates. The separate PostgreSQL health run does
+not add Cycle 1c engine evidence or create B15/V15.
 It cannot be cited as authentication, a secret persona mechanism, general
 BOLA protection, deployed durability, remote/live-engine evidence, production
 readiness, or permission to use real tenant or personal data.

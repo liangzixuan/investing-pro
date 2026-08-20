@@ -505,14 +505,18 @@ replay, and a replay after the recorded version is superseded also returns
 and organization may therefore use one identical key independently on the
 thesis and alert paths, and both valid operations can succeed.
 
-**Cycle 1c source-stage status:** Implemented and locally verified only for the
+**Cycle 1c bounded source/test status:** Implemented and verified only for the
 bounded synthetic loopback source/test contract; not remote/live-engine or
-production evidence. The full frozen-byte local release gate passes; CI review
-remains pending. The browser-local profile remains unchanged, the adapter is in
-memory, and no PostgreSQL or production identity boundary is connected. The
-sole bounded claim is
+production evidence. The full frozen-byte local release gate and two-OS CI run
+`32401541724` passed on exact commit
+`84f6b92163e93fa8c5c079a786e49f8134b81f56`. The separate PostgreSQL run
+`32401541467` is unchanged V14 regression health only, not Cycle 1c engine
+evidence, B15/V15, or a replacement for the canonical B14 result at
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`. The browser-local profile remains
+unchanged, the adapter is in memory, and no PostgreSQL or production identity
+boundary is connected. The sole bounded claim is
 `bounded_loopback_synthetic_persona_thesis_alert_write_contract`; its exact
-nonclaims and pending exit gates are in
+nonclaims and exact completed verification gates are in
 [ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
 [Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md). Cycle 1c is not B15 or V15
 and does not change B1 through B14 evidence or history. Production OIDC,

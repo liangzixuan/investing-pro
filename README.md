@@ -27,10 +27,15 @@ Cycle 1c source now composes only two seeded in-memory update operations:
 public, non-secret synthetic persona selector, a strong `If-Match`, and an
 operation-scoped `Idempotency-Key`, and they accept only an exact loopback
 peer. Browser thesis/alert state remains local; no PostgreSQL adapter or
-identity provider is connected. **Implemented and locally verified only for
-the bounded synthetic loopback source/test contract; not remote/live-engine or
-production evidence.** The full frozen-byte local release gate passes; CI
-review remains pending. See
+identity provider is connected. **Implemented and verified only for the bounded
+synthetic loopback source/test contract; not remote/live-engine or production
+evidence.** The full frozen-byte local release gate and two-OS CI run
+`32401541724` passed on exact commit
+`84f6b92163e93fa8c5c079a786e49f8134b81f56`. The separate PostgreSQL run
+`32401541467` is unchanged V14 regression health only; it is not Cycle 1c
+engine evidence, B15/V15, or a replacement for the canonical B14 result at
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`. Production admission remains
+blocked. See
 [ADR 0027](./docs/adr/0027-loopback-synthetic-persona-research-state-api.md)
 and the [Cycle 1c exit matrix](./docs/CYCLE_1C_EXIT_MATRIX.md).
 

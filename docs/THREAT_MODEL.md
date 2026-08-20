@@ -482,21 +482,26 @@ exact bounded sequence above. See the
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
 
-Cycle 1c is implemented and locally verified only for the bounded synthetic
-loopback source/test contract; it is not remote/live-engine or production
-evidence. The full frozen-byte local release gate passes; CI review remains
-pending. Its public selector does not prove end-user authentication, account
-ownership, secrecy, unforgeability, or impersonation resistance. Exact loopback checks do
-not prove external TLS, CORS/CSRF/DNS-rebinding safety, reverse-proxy safety, or
-defense from a hostile local process. The in-memory adapter supplies no
+Cycle 1c is implemented and verified only for the bounded synthetic loopback
+source/test contract; it is not remote/live-engine or production evidence. The
+full frozen-byte local release gate and two-OS CI run `32401541724` passed on
+exact commit `84f6b92163e93fa8c5c079a786e49f8134b81f56`. Separate PostgreSQL
+run `32401541467` is unchanged V14 regression health only; it is not Cycle 1c
+engine evidence, B15/V15, or a replacement for the canonical B14 result at
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`. Its public selector does not prove
+end-user authentication, account ownership, secrecy, unforgeability, or
+impersonation resistance. Exact loopback checks do not prove external TLS,
+CORS/CSRF/DNS-rebinding safety, reverse-proxy safety, or defense from a hostile
+local process. The in-memory adapter supplies no
 PostgreSQL/RLS, durable persistence, database-context cleanup, process-restart,
 multi-process, or cross-instance continuity. The two exact updates do not prove
 general API BOLA, research-state create/delete/read/list/export, alert
 evaluation/delivery, production writer or B13/B14 token integration, browser-state migration,
 tamper-evident denial audit, production load/SLO/failover behavior, or
 production privacy/legal/DSAR/retention/KMS/backup/global-deletion controls.
-Real customer, tenant, and personal data remain prohibited. Cycle 1c is not B15
-or V15 and does not widen any B1 through B14 evidence. See
+Real customer, tenant, and personal data remain prohibited. Cycle 1c does not
+widen any B1 through B14 evidence, and production admission remains blocked.
+See
 [ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
 [Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md).
 

@@ -1,7 +1,7 @@
 # ADR 0027: Loopback synthetic-persona research-state API
 
-Status: source and frozen-byte local integration pass; CI review pending;
-production admission blocked
+Status: bounded source/test contract and frozen-byte local/two-OS CI
+verification complete; production admission blocked
 
 ## Context
 
@@ -123,14 +123,36 @@ browser call to these routes and no state migration.
 The sole bounded claim is
 `bounded_loopback_synthetic_persona_thesis_alert_write_contract`.
 
-Its source-stage status is: **Implemented and locally verified only for the
-bounded synthetic loopback source/test contract; not remote/live-engine or
-production evidence.** The full frozen-byte local release gate passes:
-formatting, lint, all guardrails, all typechecks, all workspace builds, and
-workspace tests comprising database 18 files/582 tests, API 49, research-state
-48, contracts 5, core 62, and web 3. CI review remains pending. Cycle 1c is not
-B15 or V15, creates no PostgreSQL acceptance record, and does not alter any B1
-through B14 evidence or history.
+Its bounded status is: **Implemented and verified only for the bounded synthetic
+loopback source/test contract; not remote/live-engine or production evidence.**
+The full frozen-byte local release gate passes: formatting, lint, all
+guardrails, all typechecks, all workspace builds, and workspace tests comprising
+database 18 files/582 tests, API 49, research-state 48, contracts 5, core 62,
+and web 3.
+
+Repository CI run `32401541724`, attempt 1, passed on exact commit
+`84f6b92163e93fa8c5c079a786e49f8134b81f56`. Ubuntu job `96530645568` ran from
+`2026-08-20T18:08:32Z` through `2026-08-20T18:10:21Z`; its release gate ran from
+`2026-08-20T18:08:47Z` through `2026-08-20T18:10:16Z`. Windows job
+`96530645979` ran from `2026-08-20T18:08:33Z` through
+`2026-08-20T18:13:50Z`; its release gate ran from `2026-08-20T18:09:16Z`
+through `2026-08-20T18:13:40Z`.
+
+The separate PostgreSQL workflow is regression health for the unchanged V14
+contract only. Run `32401541467`, attempt 1, job `96530645327`, passed from
+`2026-08-20T18:08:33Z` through `2026-08-20T18:12:28Z`; acceptance ran from
+`2026-08-20T18:09:01Z` through `2026-08-20T18:12:21Z`, and upload ran from
+`2026-08-20T18:12:21Z` through `2026-08-20T18:12:22Z`. Health artifact
+`9418771742`, named
+`postgres-acceptance-evidence-v14-84f6b92163e93fa8c5c079a786e49f8134b81f56-1`,
+is 3,516 bytes with SHA-256
+`691edbced0b6a7823528b1326a56a6e67bdd9e72f83146d0ce8010ee35a32921`;
+it was created and updated at `2026-08-20T18:12:22Z`, expires at
+`2026-09-19T18:12:21Z`, and was not expired at review. This health result is not
+Cycle 1c engine evidence, a Cycle 1c PostgreSQL acceptance record, B15/V15, or
+a replacement for canonical B14. Canonical B14 remains commit
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`, run `32343225599`, artifact
+`9397159387`. Cycle 1c does not alter any B1 through B14 evidence or history.
 
 The exact ordered nonclaims are:
 

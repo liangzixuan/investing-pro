@@ -293,11 +293,15 @@ Browser-local state remains separate. See
 [ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
 [Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md).
 
-This Cycle 1c source is implemented and locally verified only for the bounded
-synthetic loopback source/test contract; it is not remote/live-engine or
-production evidence. The full frozen-byte local release gate passes; CI review
-remains pending. It is not B15 or V15 and does not widen any B1 through B14
-result.
+This Cycle 1c source is implemented and verified only for the bounded synthetic
+loopback source/test contract; it is not remote/live-engine or production
+evidence. The full frozen-byte local release gate and two-OS CI run
+`32401541724` passed on exact commit
+`84f6b92163e93fa8c5c079a786e49f8134b81f56`. Separate PostgreSQL run
+`32401541467` is unchanged V14 regression health only; it is not Cycle 1c
+engine evidence, B15/V15, or a replacement for the canonical B14 result at
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`. Cycle 1c does not widen any B1
+through B14 result, and production admission remains blocked.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
