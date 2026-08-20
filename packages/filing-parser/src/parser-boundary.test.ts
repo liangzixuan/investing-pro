@@ -149,6 +149,19 @@ describe("Cycle 2a filing parser worker", () => {
     expect(imageVerifier).not.toMatch(
       /process\.(?:stderr|stdout)\.write|console\./u,
     );
+    const boundarySetup = source.slice(
+      source.indexOf('acceptanceStage = "signing_setup";'),
+      source.indexOf("const outcomes: FilingParserEvidenceCaseOutcome[] = [];"),
+    );
+    expect(boundarySetup).toContain(
+      'acceptanceStage = "signing_setup";\n    const signing = signingHarness();\n    acceptanceStage = "process_runner_setup";\n    const processRunner = new AuditedDockerProcessRunner(imageId);\n    acceptanceStage = "boundary_setup";\n    const boundary = createDockerFilingParserBoundary({',
+    );
+    expect(source.indexOf('acceptanceStage = "boundary_setup";')).toBeLessThan(
+      source.indexOf('acceptanceStage = "case_execution";'),
+    );
+    expect(source).toContain(
+      'const outcomes: FilingParserEvidenceCaseOutcome[] = [];\n    const acceptedReplay: SignedFilingParserResult[] = [];\n\n    acceptanceStage = "case_execution";',
+    );
     const runnerClass = source.slice(
       source.indexOf("class AuditedDockerProcessRunner"),
       source.indexOf("function dockerFailurePhase"),

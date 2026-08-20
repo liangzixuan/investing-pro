@@ -55,6 +55,7 @@ const MAX_COMMAND_OUTPUT_BYTES = 4_194_304;
 
 type FilingParserAcceptanceStage =
   | "bootstrap"
+  | "boundary_setup"
   | "case_execution"
   | "commit_boundary"
   | "environment"
@@ -67,6 +68,8 @@ type FilingParserAcceptanceStage =
   | "replay_validation"
   | "residue_validation"
   | "revision"
+  | "process_runner_setup"
+  | "signing_setup"
   | "source_hashes"
   | "tool_versions"
   | "worktree";
@@ -169,8 +172,11 @@ async function main(): Promise<void> {
     acceptanceStage = "image_inspection";
     await verifyBuiltImage(imageId);
 
+    acceptanceStage = "signing_setup";
     const signing = signingHarness();
+    acceptanceStage = "process_runner_setup";
     const processRunner = new AuditedDockerProcessRunner(imageId);
+    acceptanceStage = "boundary_setup";
     const boundary = createDockerFilingParserBoundary({
       imageId,
       signer: signing.signer,
