@@ -124,10 +124,16 @@ const CONTRACT_FINALIZATION_MARKER =
 const CONTRACT_EPOCH_MARKER = "__POPULATED_CUTOVER_EXPECTED_CAPTURE_EPOCH__";
 const TARGET_FINALIZATION_START =
   "CREATE OR REPLACE FUNCTION private_data.guard_live_resource_identity()";
+const TARGET_IDENTITY_TRIGGER_INSERTION_ANCHOR =
+  "CREATE FUNCTION private_data.guard_resource_privacy_domain()";
 const TARGET_ALLOCATION_START =
   "CREATE FUNCTION private_data.allocate_resource_identifier(";
 const TARGET_ALLOCATION_END =
   "CREATE FUNCTION private_data.delete_live_resource_by_allocation(";
+const EXCLUDED_IDENTITY_TRIGGERS_START =
+  "CREATE TRIGGER theses_identity_immutable";
+const EXCLUDED_IDENTITY_TRIGGERS_END =
+  "CREATE TRIGGER theses_tombstone_after_delete";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const reviewedPlanRoot = join(
@@ -733,7 +739,10 @@ export function renderPopulatedCutoverContractFinalize(
   const finalization = replaceExactlyOnce(
     finalize,
     CONTRACT_FINALIZATION_MARKER,
-    extractTargetFinalizationWithoutAllocation(targetSql),
+    extractTargetFinalizationWithoutAllocation(
+      targetSql,
+      extractExcludedIdentityTriggers(base, cutover),
+    ),
   );
   const lines = [
     renderOpenContractIdentityAssertion(),
@@ -1177,7 +1186,10 @@ function extractTargetAllocationFunction(sql: string): string {
   return sql.slice(start, end).trimEnd();
 }
 
-function extractTargetFinalizationWithoutAllocation(sql: string): string {
+function extractTargetFinalizationWithoutAllocation(
+  sql: string,
+  identityTriggers: string,
+): string {
   const finalizationStart = sql.indexOf(TARGET_FINALIZATION_START);
   const allocationStart = sql.indexOf(TARGET_ALLOCATION_START);
   const allocationEnd = sql.indexOf(TARGET_ALLOCATION_END);
@@ -1188,9 +1200,45 @@ function extractTargetFinalizationWithoutAllocation(sql: string): string {
   ) {
     throw new Error("B13 target finalization anchors changed");
   }
-  return `${sql.slice(finalizationStart, allocationStart)}${sql.slice(
-    allocationEnd,
-  )}`.trimEnd();
+  const finalizationWithoutAllocation = `${sql.slice(
+    finalizationStart,
+    allocationStart,
+  )}${sql.slice(allocationEnd)}`;
+  return replaceExactlyOnce(
+    finalizationWithoutAllocation,
+    TARGET_IDENTITY_TRIGGER_INSERTION_ANCHOR,
+    `${identityTriggers.trimEnd()}\n\n${TARGET_IDENTITY_TRIGGER_INSERTION_ANCHOR}`,
+  ).trimEnd();
+}
+
+function extractExcludedIdentityTriggers(
+  base: AuthenticatedMigrationPlan,
+  cutover: PopulatedCutoverPlanV1,
+): string {
+  const excluded = cutover.manifest.base.excludedMigration;
+  const excludedIndex = base.manifest.migrations.findIndex(
+    (entry) => entry.id === excluded.id,
+  );
+  const excludedSource = base.applicationFiles[excludedIndex];
+  if (
+    excludedIndex < 0 ||
+    excludedSource?.file !== excluded.file ||
+    sha256(excludedSource.sql) !== excluded.sha256
+  ) {
+    throw new Error("Populated cutover excluded v2-0005 source changed");
+  }
+  const start = excludedSource.sql.indexOf(EXCLUDED_IDENTITY_TRIGGERS_START);
+  const end = excludedSource.sql.indexOf(EXCLUDED_IDENTITY_TRIGGERS_END);
+  if (
+    start < 0 ||
+    end <= start ||
+    countOccurrences(excludedSource.sql, EXCLUDED_IDENTITY_TRIGGERS_START) !==
+      1 ||
+    countOccurrences(excludedSource.sql, EXCLUDED_IDENTITY_TRIGGERS_END) !== 1
+  ) {
+    throw new Error("Populated cutover inherited identity triggers changed");
+  }
+  return excludedSource.sql.slice(start, end).trimEnd();
 }
 
 function splitContractSql(sql: string): {

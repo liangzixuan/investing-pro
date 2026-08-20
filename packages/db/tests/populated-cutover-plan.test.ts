@@ -264,7 +264,16 @@ describe("populated cutover plan v1", () => {
       privacy,
       cutover,
       9,
+      true,
     );
+    const excludedIndex = base.manifest.migrations.findIndex(
+      ({ id }) => id === POPULATED_CUTOVER_BASE_EXCLUDED_ID,
+    );
+    const inheritedIdentityTriggers = section(
+      base.applicationFiles[excludedIndex]?.sql ?? "",
+      "CREATE TRIGGER theses_identity_immutable",
+      "CREATE TRIGGER theses_tombstone_after_delete",
+    ).trimEnd();
 
     expectOrdered(barrier, [
       `pg_advisory_xact_lock(${POPULATED_CUTOVER_ADVISORY_LOCK_KEY}::bigint)`,
@@ -289,6 +298,24 @@ describe("populated cutover plan v1", () => {
     expect(finalize).toContain(
       "CREATE FUNCTION private_data.delete_live_resource_by_allocation(",
     );
+    expect(finalize).toContain(inheritedIdentityTriggers);
+    expectOrdered(finalize, [
+      "DROP TRIGGER theses_cutover_identity_immutable",
+      "DROP TRIGGER alert_rules_cutover_identity_immutable",
+      "CREATE OR REPLACE FUNCTION private_data.guard_live_resource_identity()",
+      "CREATE TRIGGER theses_identity_immutable",
+      "CREATE TRIGGER alert_rules_identity_immutable",
+      "CREATE FUNCTION private_data.guard_resource_privacy_domain()",
+      "SELECT 1 / 0;",
+      "INSERT INTO shared_data.schema_migrations",
+      "COMMIT;",
+    ]);
+    expect(
+      finalize.split("CREATE TRIGGER theses_identity_immutable"),
+    ).toHaveLength(2);
+    expect(
+      finalize.split("CREATE TRIGGER alert_rules_identity_immutable"),
+    ).toHaveLength(2);
     expect(finalize).not.toContain(
       "CREATE FUNCTION private_data.allocate_resource_identifier(",
     );
