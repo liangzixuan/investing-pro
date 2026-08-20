@@ -134,7 +134,21 @@ describe("Cycle 2a filing parser worker", () => {
     expect(source).toContain(
       'if (firstDockerFailurePhase !== "none" || phase === "none") return;',
     );
+    expect(source).toContain('if (firstInspectionCheck !== "none") return;');
     expect(source.match(/resetDockerFailureDiagnostic\(\);/gu)).toHaveLength(5);
+    const imageVerifier = source.slice(
+      source.indexOf("async function verifyBuiltImage"),
+      source.indexOf("function signingHarness"),
+    );
+    expect(imageVerifier).toContain(
+      'latchImageInspectionFailure("inspect_command")',
+    );
+    expect(imageVerifier).toContain(
+      "error instanceof FilingParserImageInspectionError",
+    );
+    expect(imageVerifier).not.toMatch(
+      /process\.(?:stderr|stdout)\.write|console\./u,
+    );
     const runnerClass = source.slice(
       source.indexOf("class AuditedDockerProcessRunner"),
       source.indexOf("function dockerFailurePhase"),

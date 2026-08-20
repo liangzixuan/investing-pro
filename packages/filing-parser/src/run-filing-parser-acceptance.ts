@@ -29,13 +29,16 @@ import {
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_EVIDENCE_WORKFLOW,
   FilingParserContainerInspectionError,
+  FilingParserImageInspectionError,
   createFilingParserEvidence,
   filingParserEvidenceSha256,
   serializeCanonicalFilingParserEvidence,
   validateFilingParserContainerInspection,
+  validateFilingParserImageInspection,
   type FilingParserContainerInspectionCheckCode,
   type FilingParserEvidenceCaseOutcome,
   type FilingParserEvidenceSourceHash,
+  type FilingParserImageInspectionCheckCode,
 } from "./filing-parser-evidence";
 import { verifyCycle2aCommitBoundary } from "./filing-parser-evidence-verifier";
 import { buildParserSecurityCases } from "./test-archive-builder";
@@ -79,6 +82,7 @@ type FilingParserDockerFailurePhase =
 
 type FilingParserInspectionDiagnosticCode =
   | FilingParserContainerInspectionCheckCode
+  | FilingParserImageInspectionCheckCode
   | "create_result_shape"
   | "inspect_command"
   | "inspect_json"
@@ -618,6 +622,13 @@ function latchDockerFailure(
     phase === "container_inspection" ? inspectionCheck : "none";
 }
 
+function latchImageInspectionFailure(
+  inspectionCheck: Exclude<FilingParserInspectionDiagnosticCode, "none">,
+): void {
+  if (firstInspectionCheck !== "none") return;
+  firstInspectionCheck = inspectionCheck;
+}
+
 function resetDockerFailureDiagnostic(): void {
   firstDockerFailurePhase = "none";
   firstInspectionCheck = "none";
@@ -761,43 +772,29 @@ async function verifyFixtureInventory(
 }
 
 async function verifyBuiltImage(imageId: `sha256:${string}`): Promise<void> {
-  const result = await runCommand(
-    "docker",
-    ["image", "inspect", imageId],
-    10_000,
-    262_144,
-    16_384,
-  );
-  if (result.exitCode !== 0 || result.stderr.byteLength !== 0) fail();
-  let parsed: unknown;
+  let result: FilingParserProcessResult;
   try {
-    parsed = JSON.parse(new TextDecoder().decode(result.stdout)) as unknown;
-  } catch {
-    return fail();
+    result = await runCommand(
+      "docker",
+      ["image", "inspect", imageId],
+      10_000,
+      262_144,
+      16_384,
+    );
+  } catch (error) {
+    latchImageInspectionFailure("inspect_command");
+    throw error;
   }
-  if (!Array.isArray(parsed) || parsed.length !== 1 || !isRecord(parsed[0]))
-    fail();
-  const image = parsed[0];
-  const config = image.Config;
-  if (
-    image.Id !== imageId ||
-    image.Os !== "linux" ||
-    image.Architecture !== "amd64" ||
-    !isRecord(config) ||
-    config.User !== "65532:65532" ||
-    config.WorkingDir !== "/worker" ||
-    !absentNullOrEmptyArray(config.Cmd) ||
-    !absentNullOrEmptyRecord(config.ExposedPorts) ||
-    canonicalJson(config.Entrypoint) !==
-      canonicalJson(["python", "-I", "-B", "/worker/parser.py"]) ||
-    !Array.isArray(config.Env) ||
-    config.Env.some(
-      (entry) =>
-        typeof entry !== "string" ||
-        /(?:PASSWORD|PRIVATE|SECRET|TOKEN)=/iu.test(entry),
-    )
-  )
-    fail();
+  try {
+    validateFilingParserImageInspection(result, imageId);
+  } catch (error) {
+    latchImageInspectionFailure(
+      error instanceof FilingParserImageInspectionError
+        ? error.checkCode
+        : "validator_unexpected",
+    );
+    throw error;
+  }
 }
 
 function signingHarness(): {
@@ -1055,22 +1052,6 @@ function canonicalJson(value: unknown): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function absentNullOrEmptyArray(value: unknown): boolean {
-  return (
-    value === undefined ||
-    value === null ||
-    (Array.isArray(value) && value.length === 0)
-  );
-}
-
-function absentNullOrEmptyRecord(value: unknown): boolean {
-  return (
-    value === undefined ||
-    value === null ||
-    (isRecord(value) && Object.keys(value).length === 0)
-  );
 }
 
 function sha256(value: Uint8Array): `sha256:${string}` {

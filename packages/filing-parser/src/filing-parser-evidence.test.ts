@@ -8,14 +8,18 @@ import {
   FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_EVIDENCE_WORKFLOW,
+  FILING_PARSER_IMAGE_INSPECTION_CHECK_CODES,
   FilingParserContainerInspectionError,
+  FilingParserImageInspectionError,
   createFilingParserEvidence,
   filingParserEvidenceSha256,
   parseCanonicalFilingParserEvidence,
   serializeCanonicalFilingParserEvidence,
   validateFilingParserContainerInspection,
+  validateFilingParserImageInspection,
   type FilingParserContainerInspectionCheckCode,
   type FilingParserEvidenceInput,
+  type FilingParserImageInspectionCheckCode,
 } from "./filing-parser-evidence";
 
 const HASH_A = `sha256:${"a".repeat(64)}` as const;
@@ -123,6 +127,114 @@ describe("filing parser evidence v1", () => {
         ),
       ),
     ).toThrow("Filing parser evidence is invalid.");
+  });
+
+  it("classifies every strict built-image inspection failure in exact order", () => {
+    const image = builtImageInspection(HASH_A);
+    const inspection = imageInspectionCommand([image]);
+    expect(() =>
+      validateFilingParserImageInspection(inspection, HASH_A),
+    ).not.toThrow();
+
+    const omittedEmptyConfig = { ...image.Config } as Record<string, unknown>;
+    delete omittedEmptyConfig.Cmd;
+    delete omittedEmptyConfig.ExposedPorts;
+    expect(() =>
+      validateFilingParserImageInspection(
+        imageInspectionCommand([{ ...image, Config: omittedEmptyConfig }]),
+        HASH_A,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateFilingParserImageInspection(
+        imageInspectionCommand([
+          { ...image, Config: { ...image.Config, Cmd: [], ExposedPorts: {} } },
+        ]),
+        HASH_A,
+      ),
+    ).not.toThrow();
+
+    const failures: Array<
+      readonly [
+        FilingParserImageInspectionCheckCode,
+        ReturnType<typeof imageInspectionCommand>,
+      ]
+    > = [
+      ["inspect_command", { ...inspection, exitCode: 1 }],
+      [
+        "inspect_json",
+        { ...inspection, stdout: new TextEncoder().encode("{") },
+      ],
+      ["inspect_result_count", imageInspectionCommand([])],
+      ["image_id", imageInspectionCommand([{ ...image, Id: HASH_B }])],
+      ["image_os", imageInspectionCommand([{ ...image, Os: "windows" }])],
+      [
+        "image_architecture",
+        imageInspectionCommand([{ ...image, Architecture: "arm64" }]),
+      ],
+      ["config_shape", imageInspectionCommand([{ ...image, Config: null }])],
+      [
+        "config_user",
+        imageInspectionCommand([
+          { ...image, Config: { ...image.Config, User: "0:0" } },
+        ]),
+      ],
+      [
+        "config_working_directory",
+        imageInspectionCommand([
+          { ...image, Config: { ...image.Config, WorkingDir: "/input" } },
+        ]),
+      ],
+      [
+        "config_cmd",
+        imageInspectionCommand([
+          { ...image, Config: { ...image.Config, Cmd: ["python3"] } },
+        ]),
+      ],
+      [
+        "config_exposed_ports",
+        imageInspectionCommand([
+          {
+            ...image,
+            Config: {
+              ...image.Config,
+              ExposedPorts: { "8080/tcp": {} },
+            },
+          },
+        ]),
+      ],
+      [
+        "config_entrypoint",
+        imageInspectionCommand([
+          { ...image, Config: { ...image.Config, Entrypoint: ["python3"] } },
+        ]),
+      ],
+      [
+        "config_env",
+        imageInspectionCommand([
+          { ...image, Config: { ...image.Config, Env: ["TOKEN=x"] } },
+        ]),
+      ],
+    ];
+
+    expect(failures.map(([checkCode]) => checkCode)).toEqual(
+      FILING_PARSER_IMAGE_INSPECTION_CHECK_CODES,
+    );
+    for (const [checkCode, failure] of failures) {
+      let observed: unknown;
+      try {
+        validateFilingParserImageInspection(failure, HASH_A);
+      } catch (error) {
+        observed = error;
+      }
+      expect(observed).toBeInstanceOf(FilingParserImageInspectionError);
+      expect((observed as FilingParserImageInspectionError).checkCode).toBe(
+        checkCode,
+      );
+      expect((observed as Error).message).toBe(
+        "Filing parser evidence is invalid.",
+      );
+    }
   });
 
   it("requires inspected runtime controls rather than trusting create argv", () => {
@@ -447,6 +559,32 @@ function withoutKey<T extends Record<string, unknown>>(
   const output: Record<string, unknown> = { ...value };
   delete output[String(key)];
   return output;
+}
+
+function builtImageInspection(imageId: `sha256:${string}`) {
+  return {
+    Architecture: "amd64",
+    Config: {
+      Cmd: null,
+      Entrypoint: ["python", "-I", "-B", "/worker/parser.py"],
+      Env: ["LANG=C.UTF-8"],
+      ExposedPorts: null,
+      User: "65532:65532",
+      WorkingDir: "/worker",
+    },
+    Id: imageId,
+    Os: "linux",
+  };
+}
+
+function imageInspectionCommand(value: unknown) {
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) throw new Error("Invalid test fixture.");
+  return {
+    exitCode: 0,
+    stderr: new Uint8Array(),
+    stdout: new TextEncoder().encode(serialized),
+  };
 }
 
 function containerInspection(expected: {

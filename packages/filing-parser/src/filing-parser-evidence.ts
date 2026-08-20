@@ -182,6 +182,40 @@ export interface FilingParserEvidence {
 
 export type FilingParserEvidenceInput = FilingParserEvidence;
 
+export interface FilingParserImageInspectionCommandResult {
+  readonly exitCode: number;
+  readonly stderr: Uint8Array;
+  readonly stdout: Uint8Array;
+}
+
+export const FILING_PARSER_IMAGE_INSPECTION_CHECK_CODES = [
+  "inspect_command",
+  "inspect_json",
+  "inspect_result_count",
+  "image_id",
+  "image_os",
+  "image_architecture",
+  "config_shape",
+  "config_user",
+  "config_working_directory",
+  "config_cmd",
+  "config_exposed_ports",
+  "config_entrypoint",
+  "config_env",
+] as const;
+
+export type FilingParserImageInspectionCheckCode =
+  (typeof FILING_PARSER_IMAGE_INSPECTION_CHECK_CODES)[number];
+
+export class FilingParserImageInspectionError extends Error {
+  public constructor(
+    public readonly checkCode: FilingParserImageInspectionCheckCode,
+  ) {
+    super("Filing parser evidence is invalid.");
+    this.name = "FilingParserImageInspectionError";
+  }
+}
+
 export interface FilingParserContainerInspectionExpected {
   readonly containerId: string;
   readonly containerName: string;
@@ -293,6 +327,55 @@ export function filingParserEvidenceSha256(
   return sha256(
     new TextEncoder().encode(serializeCanonicalFilingParserEvidence(evidence)),
   );
+}
+
+export function validateFilingParserImageInspection(
+  result: FilingParserImageInspectionCommandResult,
+  expectedImageId: `sha256:${string}`,
+): void {
+  if (result.exitCode !== 0 || result.stderr.byteLength !== 0)
+    invalidImageInspection("inspect_command");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(result.stdout),
+    ) as unknown;
+  } catch {
+    return invalidImageInspection("inspect_json");
+  }
+  if (!Array.isArray(parsed) || parsed.length !== 1 || !isRecord(parsed[0]))
+    invalidImageInspection("inspect_result_count");
+  const image = parsed[0];
+  if (image.Id !== expectedImageId) invalidImageInspection("image_id");
+  if (image.Os !== "linux") invalidImageInspection("image_os");
+  if (image.Architecture !== "amd64")
+    invalidImageInspection("image_architecture");
+  if (!isRecord(image.Config)) invalidImageInspection("config_shape");
+  const config = image.Config;
+  if (config.User !== "65532:65532") invalidImageInspection("config_user");
+  if (config.WorkingDir !== "/worker")
+    invalidImageInspection("config_working_directory");
+  if (!absentNullOrEmptyArray(config.Cmd)) invalidImageInspection("config_cmd");
+  if (!absentNullOrEmptyRecord(config.ExposedPorts))
+    invalidImageInspection("config_exposed_ports");
+  const expectedEntrypoint = ["python", "-I", "-B", "/worker/parser.py"];
+  if (
+    !Array.isArray(config.Entrypoint) ||
+    config.Entrypoint.length !== expectedEntrypoint.length ||
+    config.Entrypoint.some(
+      (entry, index) => entry !== expectedEntrypoint[index],
+    )
+  )
+    invalidImageInspection("config_entrypoint");
+  if (
+    !Array.isArray(config.Env) ||
+    config.Env.some(
+      (entry) =>
+        typeof entry !== "string" ||
+        /(?:PASSWORD|PRIVATE|SECRET|TOKEN)=/iu.test(entry),
+    )
+  )
+    invalidImageInspection("config_env");
 }
 
 export function validateFilingParserContainerInspection(
@@ -839,6 +922,12 @@ function invalidContainerInspection(
   checkCode: FilingParserContainerInspectionCheckCode,
 ): never {
   throw new FilingParserContainerInspectionError(checkCode);
+}
+
+function invalidImageInspection(
+  checkCode: FilingParserImageInspectionCheckCode,
+): never {
+  throw new FilingParserImageInspectionError(checkCode);
 }
 
 function absentNullOrEmptyArray(value: unknown): boolean {
