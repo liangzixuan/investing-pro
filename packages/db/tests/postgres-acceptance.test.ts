@@ -4201,6 +4201,21 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       injectedRollback.match(/POPULATED_CUTOVER_DATABASE_NAME/g),
     ).toHaveLength(2);
 
+    const targetCatalogFingerprint = section(
+      "async function collectPostgresPrivacyTargetCatalogFingerprint(",
+      "function summarizePostgresPrivacyRetentionLedgerDiagnostic(",
+    );
+    expect(targetCatalogFingerprint).toContain("ELSE collation_row.collname");
+    expect(targetCatalogFingerprint).toContain(
+      "LEFT JOIN pg_catalog.pg_collation AS collation_row",
+    );
+    expect(targetCatalogFingerprint).toContain(
+      "ON collation_row.oid = attribute.attcollation",
+    );
+    expect(targetCatalogFingerprint).not.toMatch(
+      /\bcollation\.collname\b|\bAS collation\b/,
+    );
+
     const barrier = section(
       "async function waitForPostgresPopulatedCutoverBarrier(",
       "async function verifyPostgresPopulatedCutoverFinalState(",

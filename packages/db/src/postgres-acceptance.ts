@@ -8652,7 +8652,7 @@ async function collectPostgresPrivacyTargetCatalogFingerprint(
       pg_catalog.pg_get_expr(default_value.adbin, default_value.adrelid),
       CASE
         WHEN attribute.attcollation = type_row.typcollation THEN NULL
-        ELSE collation.collname
+        ELSE collation_row.collname
       END,
       attribute.attstorage,
       attribute.attcompression
@@ -8665,8 +8665,8 @@ async function collectPostgresPrivacyTargetCatalogFingerprint(
   LEFT JOIN pg_catalog.pg_attrdef AS default_value
     ON default_value.adrelid = attribute.attrelid
    AND default_value.adnum = attribute.attnum
-  LEFT JOIN pg_catalog.pg_collation AS collation
-    ON collation.oid = attribute.attcollation
+  LEFT JOIN pg_catalog.pg_collation AS collation_row
+    ON collation_row.oid = attribute.attcollation
   WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'f')
     AND attribute.attnum > 0
     AND NOT attribute.attisdropped
