@@ -2606,6 +2606,14 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     ]) {
       expect(observer).toContain(marker);
     }
+    for (const b14OnlyMarker of [
+      "POPULATED_CUTOVER_ADVISORY_LOCK_KEY",
+      "classid::bigint",
+      "objid::bigint",
+      "$4::bigint",
+    ]) {
+      expect(observer).not.toContain(b14OnlyMarker);
+    }
 
     const concurrencyResult = section(
       "function assertConcurrentMigrationDeploymentResults(",

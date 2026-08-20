@@ -3270,10 +3270,6 @@ async function waitForMigrationDeployerBlockingChain(
       AND held.locktype = 'advisory'
       AND held.mode = 'ExclusiveLock'
       AND held.granted
-      AND held.classid::bigint =
-        (($4::bigint >> 32) & 4294967295::bigint)
-      AND held.objid::bigint = ($4::bigint & 4294967295::bigint)
-      AND held.objsubid = 1
   )
   AND $1::integer = ANY (pg_catalog.pg_blocking_pids($2::integer))
   AND (
