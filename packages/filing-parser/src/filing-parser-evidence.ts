@@ -342,7 +342,7 @@ export function validateFilingParserContainerInspection(
     mount.Type !== "bind" ||
     mount.Source !== expected.inputSource ||
     mount.Destination !== "/input/filing.zip" ||
-    mount.Mode !== "ro" ||
+    mount.Mode !== "" ||
     mount.RW !== false
   )
     invalidEvidence();

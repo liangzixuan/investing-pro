@@ -187,6 +187,14 @@ describe("filing parser evidence v1", () => {
         ...inspection,
         HostConfig: { ...inspection.HostConfig, Tmpfs: { "/tmp": "rw" } },
       },
+      {
+        ...inspection,
+        Mounts: [{ ...inspection.Mounts[0], Mode: "ro" }],
+      },
+      {
+        ...inspection,
+        Mounts: [{ ...inspection.Mounts[0], Mode: "rw" }],
+      },
       { ...inspection, Mounts: [] },
       {
         ...inspection,
@@ -246,7 +254,7 @@ function containerInspection(expected: {
     Mounts: [
       {
         Destination: "/input/filing.zip",
-        Mode: "ro",
+        Mode: "",
         RW: false,
         Source: expected.inputSource,
         Type: "bind",
