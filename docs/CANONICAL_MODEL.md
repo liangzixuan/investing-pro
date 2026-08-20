@@ -6,7 +6,8 @@ test-loader, b6 owner-DDL canary, b7 authenticated application-migration, b8
 policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
 projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
-boundaries; synthetic data only.
+boundaries, plus the source-stage Cycle 1c loopback research-state write
+contract; synthetic data only.
 
 ## Identity
 
@@ -273,6 +274,30 @@ physical B13 catalog equivalence. See the
 [B14 evidence note](./POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
+
+Cycle 1c changes no canonical entity, tenant, temporal, numeric, evidence,
+rights, deletion, or PostgreSQL contract. It composes the existing in-memory
+service into only two seeded update operations. A fixed public fixture selector
+resolves the synthetic organization and principal only for an exact loopback
+peer; caller identity/tenant/role fields and authority headers are rejected.
+The request body carries resource payload only, while a strong `If-Match`
+supplies the expected version. Idempotency remains organization + principal +
+operation + key scoped, where operation includes resource type and ID. Thus a
+same-path key with a changed body or `If-Match` conflicts, authorization is
+re-evaluated before replay, and an exact replay conflicts after the recorded
+resource version has been superseded. Another path/resource is a separate
+operation scope, so one resolved principal and organization may use an
+identical key for independent valid thesis and alert writes. Responses omit
+organization, principal, creator/updater, audit, and idempotency metadata.
+Browser-local state remains separate. See
+[ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
+[Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md).
+
+This Cycle 1c source is implemented and locally verified only for the bounded
+synthetic loopback source/test contract; it is not remote/live-engine or
+production evidence. The full frozen-byte local release gate passes; CI review
+remains pending. It is not B15 or V15 and does not widen any B1 through B14
+result.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

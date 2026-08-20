@@ -125,6 +125,55 @@ export interface ValuationResultDto {
   formulaTrace: string[];
 }
 
+/**
+ * Complete replacement payload for the bounded synthetic thesis update route.
+ * Identity and tenancy come only from the server-resolved demo context;
+ * version and idempotency come from strict precondition headers. None is
+ * accepted in this body.
+ */
+export interface ThesisWriteRequestDto {
+  instrumentId: string;
+  claim: string;
+  evidence: string;
+  risks: string;
+  invalidation: string;
+}
+
+/** Complete replacement payload for the bounded synthetic alert update route. */
+export interface AlertWriteRequestDto {
+  instrumentId: string;
+  metricKey: string;
+  operator: AlertOperator;
+  threshold: string;
+}
+
+export interface ThesisWriteResponseDto {
+  schemaVersion: "1.0.0";
+  synthetic: true;
+  id: string;
+  instrumentId: string;
+  claim: string;
+  evidence: string;
+  risks: string;
+  invalidation: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AlertWriteResponseDto {
+  schemaVersion: "1.0.0";
+  synthetic: true;
+  id: string;
+  instrumentId: string;
+  metricKey: string;
+  operator: AlertOperator;
+  threshold: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LocalThesisDto {
   schemaVersion: "1.0.0";
   instrumentId: string;

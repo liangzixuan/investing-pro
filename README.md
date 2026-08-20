@@ -19,8 +19,20 @@ It uses **only deterministic synthetic data**. It does not call market-data prov
 
 Cycle 1a also includes a disconnected synthetic tenant/authorization module and
 a statically checked PostgreSQL migration contract. They are development proof
-artifacts only: the running API remains GET-only, browser state remains local,
-and no database or identity provider is connected.
+artifacts only: at that cycle's exit the running API remained GET-only, browser
+state remained local, and no database or identity provider was connected.
+
+Cycle 1c source now composes only two seeded in-memory update operations:
+`PUT /v1/theses/{thesisId}` and `PUT /v1/alerts/{alertId}`. They require a
+public, non-secret synthetic persona selector, a strong `If-Match`, and an
+operation-scoped `Idempotency-Key`, and they accept only an exact loopback
+peer. Browser thesis/alert state remains local; no PostgreSQL adapter or
+identity provider is connected. **Implemented and locally verified only for
+the bounded synthetic loopback source/test contract; not remote/live-engine or
+production evidence.** The full frozen-byte local release gate passes; CI
+review remains pending. See
+[ADR 0027](./docs/adr/0027-loopback-synthetic-persona-research-state-api.md)
+and the [Cycle 1c exit matrix](./docs/CYCLE_1C_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -395,6 +407,12 @@ blocked.
   crash/restart/failover/downgrade behavior, recovery of identifiers deleted
   before capture, physical catalog equivalence, or permission for real tenant
   or personal data.
+- Cycle 1c adds only two update-only seeded in-memory routes on an exact
+  loopback boundary. Its public persona selectors are not credentials; it does
+  not establish end-user authentication, general BOLA protection, external
+  network safety, PostgreSQL/RLS or durable persistence, production writer
+  integration, browser-state migration, load/operational readiness,
+  privacy/legal controls, or permission for real data.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -435,4 +453,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b14 exit matrix](./docs/CYCLE_1BB14_EXIT_MATRIX.md),
 [Cycle 1b-b14 evidence note](./docs/POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md),
+[Cycle 1c exit matrix](./docs/CYCLE_1C_EXIT_MATRIX.md),
+[ADR 0027](./docs/adr/0027-loopback-synthetic-persona-research-state-api.md),
 and [architecture decisions](./docs/adr/).

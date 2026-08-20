@@ -2,6 +2,8 @@ import { readFile, readdir } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import ts from "typescript";
+
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const sourceRoots = [
   ".github",
@@ -56,6 +58,15 @@ const forbiddenDependencies = [
   "openbb",
   "yfinance",
 ];
+const forbiddenWebModuleImports = [
+  "@research-cockpit/db",
+  "@research-cockpit/research-state",
+];
+const forbiddenApiWriteDependencies = [
+  "@research-cockpit/db",
+  "pg",
+  "postgres",
+];
 const copiedAssetExtensions = new Set([
   ".gif",
   ".jpeg",
@@ -96,6 +107,28 @@ for (const expected of [
   if (!isRootBoundaryFile(expected))
     throw new Error(`Boundary root-surface classifier missed ${expected}`);
 }
+if (
+  !referencesModule(
+    'import { ResearchStateService } from "@research-cockpit/research-state";',
+    "@research-cockpit/research-state",
+  ) ||
+  !referencesModule('const pg = await import("pg");', "pg") ||
+  !referencesModule('import "pg";', "pg") ||
+  !referencesModule('import/* boundary */"pg";', "pg") ||
+  !referencesModule('void import("p" + "g");', "pg") ||
+  !referencesModule('type Client = import("pg").Client;', "pg") ||
+  !referencesModule('import "@research-cockpit/db";', "@research-cockpit/db") ||
+  !referencesModule(
+    'import "@research-cockpit/research-state";',
+    "@research-cockpit/research-state",
+  ) ||
+  referencesModule(
+    'import { buildDossier } from "@research-cockpit/research-core";',
+    "@research-cockpit/research-state",
+  ) ||
+  forbiddenApiWriteDependencies.includes("@research-cockpit/research-state")
+)
+  throw new Error("Composition-boundary import classifier regressed");
 
 for (const file of filesToInspect) {
   const relativePath = relative(root, file).replaceAll("\\", "/");
@@ -140,6 +173,7 @@ for (const file of filesToInspect) {
   if (file.endsWith("package.json")) {
     inspectDependencies(relativePath, JSON.parse(content) as unknown);
   }
+  inspectCompositionBoundary(relativePath, content);
 }
 
 if (violations.length > 0) {
@@ -163,7 +197,118 @@ function inspectDependencies(path: string, manifest: unknown): void {
     if (forbiddenDependencies.includes(dependency)) {
       violations.push(`${path}: forbidden dependency ${dependency}`);
     }
+    if (
+      path === "apps/web/package.json" &&
+      forbiddenWebModuleImports.includes(dependency)
+    )
+      violations.push(`${path}: web must not depend on ${dependency}`);
+    if (
+      path === "apps/api/package.json" &&
+      forbiddenApiWriteDependencies.includes(dependency)
+    )
+      violations.push(`${path}: API must not depend on ${dependency}`);
   }
+}
+
+function inspectCompositionBoundary(path: string, content: string): void {
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path.startsWith("apps/web/")) {
+    for (const moduleName of forbiddenWebModuleImports) {
+      if (referencesModuleSpecifier(moduleSpecifiers, moduleName))
+        violations.push(`${path}: web must not import ${moduleName}`);
+    }
+    if (/(?:modules[\\/]research-state|packages[\\/]db)/i.test(content))
+      violations.push(
+        `${path}: web must not reference research-state or database source paths`,
+      );
+  }
+  if (path.startsWith("apps/api/")) {
+    for (const moduleName of forbiddenApiWriteDependencies) {
+      if (referencesModuleSpecifier(moduleSpecifiers, moduleName))
+        violations.push(`${path}: API must not import ${moduleName}`);
+    }
+    if (/packages[\\/]db/i.test(content))
+      violations.push(`${path}: API must not reference database source paths`);
+  }
+}
+
+function referencesModule(content: string, moduleName: string): boolean {
+  return referencesModuleSpecifier(
+    collectModuleSpecifiers(content),
+    moduleName,
+  );
+}
+
+function referencesModuleSpecifier(
+  moduleSpecifiers: readonly string[],
+  moduleName: string,
+): boolean {
+  return moduleSpecifiers.some(
+    (specifier) =>
+      specifier === moduleName || specifier.startsWith(`${moduleName}/`),
+  );
+}
+
+function collectModuleSpecifiers(content: string): string[] {
+  const sourceFile = ts.createSourceFile(
+    "boundary-source.tsx",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const specifiers: string[] = [];
+
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    ) {
+      specifiers.push(node.moduleSpecifier.text);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression &&
+      ts.isStringLiteralLike(node.moduleReference.expression)
+    ) {
+      specifiers.push(node.moduleReference.expression.text);
+    } else if (
+      ts.isImportTypeNode(node) &&
+      ts.isLiteralTypeNode(node.argument) &&
+      ts.isStringLiteralLike(node.argument.literal)
+    ) {
+      specifiers.push(node.argument.literal.text);
+    } else if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "require"))
+    ) {
+      const specifier = staticStringValue(node.arguments[0]);
+      if (specifier !== null) specifiers.push(specifier);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return specifiers;
+}
+
+function staticStringValue(node: ts.Expression | undefined): string | null {
+  if (!node) return null;
+  if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node))
+    return node.text;
+  if (ts.isParenthesizedExpression(node))
+    return staticStringValue(node.expression);
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    const left = staticStringValue(node.left);
+    const right = staticStringValue(node.right);
+    return left === null || right === null ? null : left + right;
+  }
+  return null;
 }
 
 function recordKeys(value: unknown): string[] {

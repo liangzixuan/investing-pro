@@ -1,14 +1,36 @@
-# Sprint 0 through bounded live Cycle 1b-b14 threat model
+# Sprint 0 through bounded live Cycle 1b-b14 and source-stage Cycle 1c threat model
 
 ## Current trust boundaries
 
-The browser accepts dossier JSON only from the local Fastify API. The API reads only source-controlled synthetic fixtures and remains GET-only. Browser thesis and alert state remains local. There is no authentication, customer tenant data, live database, file upload, external fetch, email, broker, payment, model, or filing-parser boundary in the running profile.
+The browser accepts dossier JSON only from the local Fastify API and keeps its
+thesis and alert profile local. The API reads only source-controlled synthetic
+fixtures and now has exactly two additional update-only routes over seeded
+synthetic in-memory research state. The write composition accepts only an exact
+loopback peer and a fixed public fixture persona selector; the selector is not
+a credential. There is no authentication, customer tenant data, live database,
+file upload, external fetch, email, broker, payment, model, or filing-parser
+boundary in the running profile.
 
-Cycle 1a adds an isolated synthetic authorization harness and PostgreSQL
-migration contract. The contract now has a reviewed clean-only acceptance execution,
-but neither database component is imported by the API or web application.
-Synthetic actor context is test-controlled and trusted; it does not establish
+Cycle 1a added an isolated synthetic authorization harness and PostgreSQL
+migration contract. At that historical exit neither component was imported by
+the API or web application. Cycle 1c now imports only the in-memory
+research-state service into the API for two seeded update operations; the
+PostgreSQL contract and every database adapter remain disconnected. Synthetic
+actor context is fixture-controlled and trusted; it does not establish
 identity.
+
+Cycle 1c resolves one of six public, non-secret persona labels only after an
+exact loopback peer check and rejection of caller-supplied organization,
+principal, tenant, or role authority headers. Missing, duplicate, malformed, or
+unresolved persona, non-loopback, and caller-authority cases are denied before
+body parsing. After valid syntax, owner/researcher updates flow directly through the
+existing atomic service while viewer, inactive, and no-membership contexts are
+denied before resource, version, or idempotency observation. Strong ETags and
+organization + principal + operation + key idempotency apply only to the two
+exact update paths. Operation includes the resource type and ID, so a
+cross-path/resource key is a separate scope rather than a claimed conflict.
+Browser state remains local and no server research-state create, delete,
+read/list, export, evaluation, delivery, or background route is added.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -284,12 +306,26 @@ The operator-controlled local Git database and PATH-resolved Git executable are
 part of this verifier's trusted computing base; the CLI is not a sandbox for an
 untrusted repository.
 
-Assets at risk are source integrity, fixture provenance, rights-policy behavior, browser-local thesis text, and the guarantee that restricted fixture data does not leave the server projection.
+Assets at risk are source integrity, fixture provenance, rights-policy behavior,
+browser-local thesis text, seeded synthetic in-memory research state, denial
+response minimization, and the guarantee that restricted fixture data does not
+leave the server projection.
 
 ## Implemented controls
 
 - Server-side allow/deny checks run before API serialization; denial paths have tests.
-- The API exposes GET only, permits CORS only from the two local web origins, disables caching, emits trace IDs, and applies security headers.
+- The API exposes the four existing reads plus exactly two update-only
+  synthetic research-state routes, permits CORS only from the two local web
+  origins, disables caching, emits trace IDs, and applies security headers.
+- The Cycle 1c write composition requires an exact loopback peer, one fixed
+  public persona selector, one strong safe-integer `If-Match`, and one bounded
+  `Idempotency-Key`; it rejects query strings, duplicate/comma-joined headers,
+  caller authority headers, non-allowlisted body fields, and aggregate bodies
+  above 384 KiB. Authorization is re-evaluated before idempotent replay.
+  The server generates its trace identifier and ignores a caller trace rather
+  than using it as request or audit identity. Response DTOs omit organization,
+  principal, creator/updater, audit, and idempotency metadata; failure bodies
+  disclose no rejected values or tenant-state detail.
 - The web app applies a CSP, denies framing, disables unused browser permissions, has no third-party scripts/fonts/assets, and renders evidence as React text rather than HTML.
 - Fixture excerpts have SHA-256 hashes, a provenance manifest, and a gate that rejects missing, stale, or mismatched records.
 - Clean-room and dependency gates reject competitor references, unapproved collectors, copied raster assets, and forbidden packages in application source.
@@ -445,6 +481,24 @@ exact bounded sequence above. See the
 [B14 evidence note](./POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
+
+Cycle 1c is implemented and locally verified only for the bounded synthetic
+loopback source/test contract; it is not remote/live-engine or production
+evidence. The full frozen-byte local release gate passes; CI review remains
+pending. Its public selector does not prove end-user authentication, account
+ownership, secrecy, unforgeability, or impersonation resistance. Exact loopback checks do
+not prove external TLS, CORS/CSRF/DNS-rebinding safety, reverse-proxy safety, or
+defense from a hostile local process. The in-memory adapter supplies no
+PostgreSQL/RLS, durable persistence, database-context cleanup, process-restart,
+multi-process, or cross-instance continuity. The two exact updates do not prove
+general API BOLA, research-state create/delete/read/list/export, alert
+evaluation/delivery, production writer or B13/B14 token integration, browser-state migration,
+tamper-evident denial audit, production load/SLO/failover behavior, or
+production privacy/legal/DSAR/retention/KMS/backup/global-deletion controls.
+Real customer, tenant, and personal data remain prohibited. Cycle 1c is not B15
+or V15 and does not widen any B1 through B14 evidence. See
+[ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
+[Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 

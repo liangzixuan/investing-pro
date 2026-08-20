@@ -15,6 +15,7 @@
     "@fastify/helmet": "13.1.0",
     "@research-cockpit/contracts": "workspace:*",
     "@research-cockpit/research-core": "workspace:*",
+    "@research-cockpit/research-state": "workspace:*",
     "fastify": "5.12.0"
   }
 }

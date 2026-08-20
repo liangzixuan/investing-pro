@@ -14,6 +14,11 @@ import Fastify, {
   type FastifyRequest,
 } from "fastify";
 
+import { createDemoResearchStateComposition } from "./demo-research-state";
+import { registerResearchStateRoutes } from "./research-state-routes";
+
+const DEMO_API_BODY_LIMIT_BYTES = 384 * 1024;
+
 interface DossierParams {
   symbol: string;
 }
@@ -28,10 +33,12 @@ interface EvidenceParams {
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
+    bodyLimit: DEMO_API_BODY_LIMIT_BYTES,
     logger: false,
-    genReqId: (request) =>
-      request.headers["x-trace-id"]?.toString() ?? cryptoTraceId(),
+    trustProxy: false,
+    genReqId: () => cryptoTraceId(),
   });
+  const researchState = createDemoResearchStateComposition();
 
   await app.register(cors, {
     origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -114,6 +121,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
   );
 
+  await registerResearchStateRoutes(app, researchState);
+
   app.setNotFoundHandler((request, reply) =>
     sendProblem(
       reply,
@@ -125,13 +134,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   );
 
   app.setErrorHandler((error, request, reply) => {
-    const detail =
-      process.env.NODE_ENV === "production"
-        ? "An unexpected error occurred."
-        : error instanceof Error
-          ? error.message
-          : "An unknown error occurred.";
-    return sendProblem(reply, request, 500, "Internal server error", detail);
+    void error;
+    return sendProblem(
+      reply,
+      request,
+      500,
+      "Internal server error",
+      "An unexpected error occurred.",
+    );
   });
 
   return app;
@@ -149,7 +159,7 @@ function sendProblem(
     title,
     status,
     detail,
-    instance: request.url,
+    instance: request.url.split("?", 1)[0] ?? "/",
     traceId: request.id,
   };
   return reply.status(status).type("application/problem+json").send(problem);

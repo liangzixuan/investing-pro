@@ -149,7 +149,7 @@ function assertText(value: string, field: string, maximum: number): void {
   if (
     typeof value !== "string" ||
     value.trim().length === 0 ||
-    value.length > maximum ||
+    exceedsCodePointLimit(value, maximum) ||
     containsDisallowedControl(value)
   )
     throw invalidInput(
@@ -168,6 +168,19 @@ function assertExactRecord(
   const keys = Object.keys(value);
   if (keys.length !== allowed.size || keys.some((key) => !allowed.has(key)))
     throw invalidInput(`${label} contains missing or unknown fields.`);
+}
+
+function exceedsCodePointLimit(value: string, maximum: number): boolean {
+  let length = 0;
+  let index = 0;
+  while (index < value.length) {
+    const codePoint = value.codePointAt(index);
+    if (codePoint === undefined) return true;
+    index += codePoint > 0xffff ? 2 : 1;
+    length += 1;
+    if (length > maximum) return true;
+  }
+  return false;
 }
 
 function containsDisallowedControl(value: string): boolean {

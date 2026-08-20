@@ -443,6 +443,69 @@ describe("context-bound research state", () => {
     }
   });
 
+  it("counts astral thesis text maxima as Unicode code points", async () => {
+    const { service, unitOfWork } = harness();
+    const symbol = "🔬";
+    const payload = {
+      instrumentId: INSTRUMENT,
+      claim: symbol.repeat(4_000),
+      evidence: symbol.repeat(8_000),
+      risks: symbol.repeat(8_000),
+      invalidation: symbol.repeat(4_000),
+    };
+
+    expect([...payload.claim]).toHaveLength(4_000);
+    expect(payload.claim).toHaveLength(8_000);
+    expect([...payload.evidence]).toHaveLength(8_000);
+    expect(payload.evidence).toHaveLength(16_000);
+
+    const updated = await service.saveThesis(ownerA, {
+      id: SHARED_THESIS_ID,
+      payload,
+      expectedVersion: 1,
+      idempotencyKey: "unicode.maximum-1",
+    });
+    expect(updated).toMatchObject({ ...payload, version: 2 });
+
+    const snapshot = await unitOfWork.snapshotForTesting();
+    expect(
+      snapshot.theses.find((item) => item.id === SHARED_THESIS_ID),
+    ).toMatchObject({
+      claim: payload.claim,
+      evidence: payload.evidence,
+      risks: payload.risks,
+      invalidation: payload.invalidation,
+      version: 2,
+    });
+    expect(snapshot.idempotency).toHaveLength(1);
+    expect(snapshot.audit).toHaveLength(1);
+  });
+
+  it.each<["claim" | "evidence" | "risks" | "invalidation", number]>([
+    ["claim", 4_001],
+    ["evidence", 8_001],
+    ["risks", 8_001],
+    ["invalidation", 4_001],
+  ])(
+    "rejects astral %s text above its Unicode code-point limit without side effects",
+    async (field, length) => {
+      const { service, unitOfWork } = harness();
+      const before = await unitOfWork.snapshotForTesting();
+      const payload = thesisPayload("Valid claim");
+      payload[field] = "🔬".repeat(length);
+
+      await expect(
+        service.saveThesis(ownerA, {
+          id: SHARED_THESIS_ID,
+          payload,
+          expectedVersion: 1,
+          idempotencyKey: `unicode.over-${field}`,
+        }),
+      ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+      expect(await unitOfWork.snapshotForTesting()).toEqual(before);
+    },
+  );
+
   it("rejects duplicate audit identifiers and rolls back the enclosing mutation", async () => {
     const { unitOfWork, clock } = harness();
     const duplicateAuditId = "00000000-0000-4000-8000-000000000123";

@@ -29,3 +29,10 @@ Repository and unit-of-work ports are trusted infrastructure surfaces, not
 request-handler APIs. Application mutations must enter through
 `ResearchStateService`, which couples the resource, idempotency record, and
 success audit in one unit of work.
+
+Successor note: Cycle 1c composes only `saveThesis` and `saveAlert` into two
+loopback-only, update-only synthetic API routes. The routes resolve a fixed
+fixture actor, call the service directly without a pre-read, and expose no
+tenant or principal fields. This does not widen the historical Cycle 1a proof
+to authentication, durable persistence, PostgreSQL/RLS, or production BOLA.
+See [ADR 0027](./0027-loopback-synthetic-persona-research-state-api.md).

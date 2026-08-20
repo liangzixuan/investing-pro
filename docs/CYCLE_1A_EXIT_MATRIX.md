@@ -54,3 +54,12 @@ is enabled:
 The `OmissionSummaryDto` gained `hasOmissions` and a nullable count while the API
 is version `0.1.0`; route inventory and query parameters are unchanged, but this
 is intentionally not described as byte-for-byte response compatibility.
+
+## Successor note
+
+Cycle 1c later composes two update-only synthetic loopback routes over the
+existing service while leaving this historical Cycle 1a result unchanged. Its
+public fixture persona selector is not authentication; its in-memory writes do
+not establish PostgreSQL/RLS or durable persistence; and browser state remains
+local. See [ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md)
+and the [Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md).

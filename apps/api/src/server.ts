@@ -1,17 +1,13 @@
 import { buildApp } from "./app";
-
-const port = Number(process.env.PORT ?? 3100);
-const host = process.env.HOST ?? "127.0.0.1";
-const app = await buildApp();
+import { resolveDemoApiListenOptions } from "./listen-options";
 
 try {
-  await app.listen({ port, host });
-  process.stdout.write(
-    `Research Cockpit demo API listening on http://${host}:${port}\n`,
-  );
+  const { host, port } = resolveDemoApiListenOptions(process.env);
+  const app = await buildApp();
+  const address = await app.listen({ port, host });
+  process.stdout.write(`Research Cockpit demo API listening on ${address}\n`);
 } catch (error) {
-  process.stderr.write(
-    `${error instanceof Error ? error.message : String(error)}\n`,
-  );
+  void error;
+  process.stderr.write("Research Cockpit demo API failed to start.\n");
   process.exitCode = 1;
 }

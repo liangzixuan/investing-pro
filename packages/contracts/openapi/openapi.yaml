@@ -1,10 +1,13 @@
 openapi: 3.1.0
 info:
   title: Research Cockpit Demo API
-  version: 0.1.0
-  description: Synthetic-only evidence-first research API.
+  version: 0.2.0
+  description: >-
+    Synthetic-only evidence-first research API. The two research-state PUT
+    operations are an update-only loopback demo contract. X-Demo-Persona
+    values are public selectors, not secrets, credentials, or authentication.
 servers:
-  - url: http://localhost:3100
+  - url: http://127.0.0.1:3100
 paths:
   /health/live:
     get:
@@ -58,3 +61,516 @@ paths:
           description: Rights-cleared evidence passport.
         "404":
           description: Evidence is unknown or not display-authorized.
+  /v1/theses/{thesisId}:
+    put:
+      operationId: updateSyntheticThesis
+      summary: Replace one existing synthetic thesis.
+      description: >-
+        Updates only the thesis visible through the resolved synthetic persona.
+        Exactly one X-Demo-Persona, If-Match, Idempotency-Key, and JSON
+        Content-Type header is required; Content-Type is application/json with
+        only an optional charset=utf-8 parameter. Query parameters and
+        caller-supplied identity or tenancy
+        headers (X-Organization-Id, X-Principal-Id, X-Membership-Role,
+        X-Tenant-Id, or X-Role) are forbidden. The organization and principal
+        come only from the resolved loopback request context. Idempotency is
+        scoped by organization, principal, and this thesis-update operation;
+        the operation includes this resource type and thesisId. The aggregate
+        request body is capped at 384 KiB; after context resolution, an
+        oversized body returns the same value-free 400 shape as other
+        malformed input. Authorization is
+        re-evaluated before an idempotent replay. A missing, duplicated,
+        malformed, or unresolved persona, a non-loopback peer, or a caller
+        authority header returns 403 before body parsing. A resolved context
+        reaches input validation; viewer, inactive, and no-membership denial
+        occurs in the service only after syntactically valid input and before
+        existence, version, or idempotency evaluation.
+      parameters:
+        - $ref: "#/components/parameters/ThesisId"
+        - $ref: "#/components/parameters/XDemoPersona"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ThesisWriteRequest"
+      responses:
+        "200":
+          description: >-
+            Thesis updated, or an authorized exact replay returned while the
+            resource remains at the recorded version.
+          headers:
+            ETag:
+              $ref: "#/components/headers/VersionETag"
+            X-Trace-Id:
+              $ref: "#/components/headers/ServerTraceId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThesisWriteResponse"
+        "400":
+          $ref: "#/components/responses/InvalidWriteRequest"
+        "403":
+          $ref: "#/components/responses/WriteForbidden"
+        "404":
+          $ref: "#/components/responses/ScopedResourceNotFound"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "412":
+          $ref: "#/components/responses/VersionConflict"
+        "428":
+          $ref: "#/components/responses/IfMatchRequired"
+        "500":
+          $ref: "#/components/responses/UnexpectedWriteFailure"
+  /v1/alerts/{alertId}:
+    put:
+      operationId: updateSyntheticAlert
+      summary: Replace one existing synthetic alert rule.
+      description: >-
+        Updates only the alert visible through the resolved synthetic persona.
+        Exactly one X-Demo-Persona, If-Match, Idempotency-Key, and JSON
+        Content-Type header is required; Content-Type is application/json with
+        only an optional charset=utf-8 parameter. Query parameters and
+        caller-supplied identity or tenancy
+        headers (X-Organization-Id, X-Principal-Id, X-Membership-Role,
+        X-Tenant-Id, or X-Role) are forbidden. The organization and principal
+        come only from the resolved loopback request context. Idempotency is
+        scoped by organization, principal, and this alert-update operation;
+        the operation includes this resource type and alertId. The aggregate
+        request body is capped at 384 KiB; after context resolution, an
+        oversized body returns the same value-free 400 shape as other
+        malformed input. Authorization is
+        re-evaluated before an idempotent replay. A missing, duplicated,
+        malformed, or unresolved persona, a non-loopback peer, or a caller
+        authority header returns 403 before body parsing. A resolved context
+        reaches input validation; viewer, inactive, and no-membership denial
+        occurs in the service only after syntactically valid input and before
+        existence, version, or idempotency evaluation.
+      parameters:
+        - $ref: "#/components/parameters/AlertId"
+        - $ref: "#/components/parameters/XDemoPersona"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertWriteRequest"
+      responses:
+        "200":
+          description: >-
+            Alert updated, or an authorized exact replay returned while the
+            resource remains at the recorded version.
+          headers:
+            ETag:
+              $ref: "#/components/headers/VersionETag"
+            X-Trace-Id:
+              $ref: "#/components/headers/ServerTraceId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertWriteResponse"
+        "400":
+          $ref: "#/components/responses/InvalidWriteRequest"
+        "403":
+          $ref: "#/components/responses/WriteForbidden"
+        "404":
+          $ref: "#/components/responses/ScopedResourceNotFound"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "412":
+          $ref: "#/components/responses/VersionConflict"
+        "428":
+          $ref: "#/components/responses/IfMatchRequired"
+        "500":
+          $ref: "#/components/responses/UnexpectedWriteFailure"
+components:
+  parameters:
+    ThesisId:
+      name: thesisId
+      in: path
+      required: true
+      description: Existing synthetic thesis UUID.
+      schema:
+        type: string
+        format: uuid
+        pattern: "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$"
+    AlertId:
+      name: alertId
+      in: path
+      required: true
+      description: Existing synthetic alert UUID.
+      schema:
+        type: string
+        format: uuid
+        pattern: "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$"
+    XDemoPersona:
+      name: X-Demo-Persona
+      in: header
+      required: true
+      description: >-
+        Exactly one public, non-secret synthetic persona selector. It is not a
+        credential and does not establish authentication or persona
+        authenticity.
+      schema:
+        type: string
+        enum:
+          - synp_7f33c6a91d20
+          - synp_b4108e2c753d
+          - synp_0d94f6b821ae
+          - synp_e62a1c9074bf
+          - synp_5a6d91c20ef4
+          - synp_c8e2475b109d
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: >-
+        Exactly one strong quoted positive JavaScript-safe integer version,
+        such as "1". Weak tags, wildcard tags, lists, duplicates, zero,
+        leading zeroes, malformed values, and values above 9007199254740991
+        are rejected.
+      schema:
+        type: string
+        pattern: '^"[1-9][0-9]*"$'
+        maxLength: 18
+        examples:
+          - '"1"'
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: >-
+        Exactly one idempotency key, scoped by resolved organization,
+        resolved principal, and operation. The operation includes the resource
+        type and path ID, so another path or resource is a separate scope. For
+        the same resolved organization and principal, one identical key may be
+        used independently on a thesis path and an alert path; both valid
+        operations can succeed and retain separate records.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: "^[A-Za-z0-9._:-]+$"
+        examples:
+          - thesis.update-0001
+  headers:
+    VersionETag:
+      description: Strong quoted positive safe-integer resource version.
+      required: true
+      schema:
+        type: string
+        pattern: '^"[1-9][0-9]*"$'
+        maxLength: 18
+        examples:
+          - '"2"'
+    ServerTraceId:
+      description: >-
+        Server-generated request trace. A caller X-Trace-Id is ignored and
+        never becomes request or audit identity.
+      required: true
+      schema:
+        type: string
+        pattern: "^trace-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    NoStore:
+      description: The response must not be stored.
+      required: true
+      schema:
+        type: string
+        const: no-store
+  responses:
+    InvalidWriteRequest:
+      description: >-
+        Idempotency-Key or Content-Type is missing, a non-persona header is
+        malformed or duplicated, or the content type, path, body, or query
+        shape is invalid. Missing If-Match is instead 428. The response is
+        deliberately value-free.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    WriteForbidden:
+      description: >-
+        The demo-persona header is missing, malformed, duplicated, or
+        unresolved; the exact peer is not loopback; a caller authority header
+        is present; or, after syntactically valid input, the resolved membership
+        cannot update. The response is deliberately value-free.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    ScopedResourceNotFound:
+      description: >-
+        No resource is visible in the resolved synthetic context. The response
+        is deliberately value-free and does not disclose another scope.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    IdempotencyConflict:
+      description: >-
+        In the same organization, principal, and path operation, this key was
+        already used with a different body or If-Match value. Keys used on a
+        different path or resource are in a separate operation scope. An exact
+        replay also conflicts after the recorded resource version is
+        superseded. The response is deliberately value-free.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    VersionConflict:
+      description: >-
+        The strong If-Match version is stale. The response is deliberately
+        value-free and does not disclose the current version.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    IfMatchRequired:
+      description: >-
+        The required If-Match precondition is absent. The response is
+        deliberately value-free.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    UnexpectedWriteFailure:
+      description: An unexpected value-free internal failure.
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/ServerTraceId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+  schemas:
+    ThesisWriteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - instrumentId
+        - claim
+        - evidence
+        - risks
+        - invalidation
+      properties:
+        instrumentId:
+          $ref: "#/components/schemas/InstrumentId"
+        claim:
+          $ref: "#/components/schemas/ThesisClaim"
+        evidence:
+          $ref: "#/components/schemas/ThesisEvidence"
+        risks:
+          $ref: "#/components/schemas/ThesisRisks"
+        invalidation:
+          $ref: "#/components/schemas/ThesisInvalidation"
+    AlertWriteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - instrumentId
+        - metricKey
+        - operator
+        - threshold
+      properties:
+        instrumentId:
+          $ref: "#/components/schemas/InstrumentId"
+        metricKey:
+          type: string
+          pattern: "^[a-z][a-z0-9_.-]{0,63}$"
+        operator:
+          type: string
+          enum:
+            - above
+            - below
+        threshold:
+          type: string
+          maxLength: 64
+          pattern: "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    ThesisWriteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - synthetic
+        - id
+        - instrumentId
+        - claim
+        - evidence
+        - risks
+        - invalidation
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        synthetic:
+          const: true
+        id:
+          type: string
+          format: uuid
+        instrumentId:
+          $ref: "#/components/schemas/InstrumentId"
+        claim:
+          $ref: "#/components/schemas/ThesisClaim"
+        evidence:
+          $ref: "#/components/schemas/ThesisEvidence"
+        risks:
+          $ref: "#/components/schemas/ThesisRisks"
+        invalidation:
+          $ref: "#/components/schemas/ThesisInvalidation"
+        version:
+          $ref: "#/components/schemas/ResourceVersion"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AlertWriteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - synthetic
+        - id
+        - instrumentId
+        - metricKey
+        - operator
+        - threshold
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        synthetic:
+          const: true
+        id:
+          type: string
+          format: uuid
+        instrumentId:
+          $ref: "#/components/schemas/InstrumentId"
+        metricKey:
+          type: string
+          pattern: "^[a-z][a-z0-9_.-]{0,63}$"
+        operator:
+          type: string
+          enum:
+            - above
+            - below
+        threshold:
+          type: string
+          maxLength: 64
+          pattern: "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        version:
+          $ref: "#/components/schemas/ResourceVersion"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    InstrumentId:
+      type: string
+      minLength: 3
+      maxLength: 160
+      pattern: "^[A-Za-z0-9._:-]+$"
+    ThesisClaim:
+      type: string
+      description: Safe text whose length limit counts Unicode code points.
+      minLength: 1
+      maxLength: 4000
+      pattern: '^(?=[\s\S]*\S)[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$'
+    ThesisEvidence:
+      type: string
+      description: Safe text whose length limit counts Unicode code points.
+      minLength: 1
+      maxLength: 8000
+      pattern: '^(?=[\s\S]*\S)[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$'
+    ThesisRisks:
+      type: string
+      description: Safe text whose length limit counts Unicode code points.
+      minLength: 1
+      maxLength: 8000
+      pattern: '^(?=[\s\S]*\S)[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$'
+    ThesisInvalidation:
+      type: string
+      description: Safe text whose length limit counts Unicode code points.
+      minLength: 1
+      maxLength: 4000
+      pattern: '^(?=[\s\S]*\S)[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$'
+    ResourceVersion:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    ProblemDetails:
+      type: object
+      description: >-
+        Stable problem shape with no rejected value, resolved identity or
+        role, tenant-state detail, current resource version, or cross-scope
+        existence detail.
+      additionalProperties: false
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+        - traceId
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        traceId:
+          type: string

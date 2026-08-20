@@ -492,11 +492,33 @@ catalog equivalence, or admit real data.
 
 ## Cycle 1c — demo identity and API contract proof
 
-Only after Cycle 1b, add loopback-only opaque synthetic personas and minimal
-thesis/alert API writes with `If-Match` and `Idempotency-Key`. The organization
-must come from resolved context, never a URL or body. Preserve the browser-local
-profile until the full API authorization suite passes. Production OIDC remains
-separate gated work.
+Cycle 1c source now adds exactly two update-only seeded in-memory routes:
+`PUT /v1/theses/{thesisId}` and `PUT /v1/alerts/{alertId}`. Both require one
+public, non-secret synthetic persona selector, one strong `If-Match`, and one
+operation-scoped `Idempotency-Key` over an exact loopback peer boundary.
+Organization and principal come only from the fixed resolver, never from a URL,
+body, query, or caller authority header. Operation scope includes resource type
+and ID, so only same-path key reuse with a changed body or `If-Match` is the
+bounded fingerprint-conflict claim. Authorization is re-evaluated before
+replay, and a replay after the recorded version is superseded also returns
+`409`; another path/resource is a separate scope. The same resolved principal
+and organization may therefore use one identical key independently on the
+thesis and alert paths, and both valid operations can succeed.
+
+**Cycle 1c source-stage status:** Implemented and locally verified only for the
+bounded synthetic loopback source/test contract; not remote/live-engine or
+production evidence. The full frozen-byte local release gate passes; CI review
+remains pending. The browser-local profile remains unchanged, the adapter is in
+memory, and no PostgreSQL or production identity boundary is connected. The
+sole bounded claim is
+`bounded_loopback_synthetic_persona_thesis_alert_write_contract`; its exact
+nonclaims and pending exit gates are in
+[ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
+[Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md). Cycle 1c is not B15 or V15
+and does not change B1 through B14 evidence or history. Production OIDC,
+external exposure, durable persistence, general API BOLA, production writer
+authorization, browser migration, operational load, privacy/legal controls,
+and real data remain separate gated work.
 
 ## Cycle 2 — filing ingestion proof
 
