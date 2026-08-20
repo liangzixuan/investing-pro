@@ -253,8 +253,11 @@ epoch and short final write-conflicting barrier gate target validation and
 contract. The acceptance actors are test-only and the design neither recovers
 identifiers deleted before capture nor proves a production writer/dual-write
 protocol, uninterrupted writes, crash/failover recovery, production scale, or
-real-data safety. Local integration is complete on the frozen source bytes; a
-retained live V14 run and independent artifact review are still pending. See
+real-data safety. PostgreSQL run `32343225599` passed the exact bounded
+synthetic path at commit `d688aa21e969feef6611f6efcd1aeaaed6e31df9`;
+its retained V14 record returned `offline_consistent`. The final catalog check
+is semantic rather than physical equivalence to B13. See the
+[B14 evidence note](./docs/POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./docs/CYCLE_1BB14_EXIT_MATRIX.md).
 
@@ -320,7 +323,11 @@ offline verifier checks record/source consistency after download but cannot
 authenticate the GitHub run or independently prove PostgreSQL execution.
 B13's synthetic privacy/retention lifecycle passed separately in PostgreSQL run
 `32305478242` at commit `a959cba`; its retained version 13 record returned
-`offline_consistent`. Production privacy/legal admission remains blocked.
+`offline_consistent`. B14's bounded synthetic populated cutover passed in
+PostgreSQL run `32343225599` at commit
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`; its retained version 14 record
+also returned `offline_consistent`. Production privacy/legal admission remains
+blocked.
 
 ## Safety boundary
 
@@ -381,12 +388,13 @@ B13's synthetic privacy/retention lifecycle passed separately in PostgreSQL run
   verification, deletion across online/backup/third-party planes, populated
   migration/cutover, cryptographic erasure, global deletion proof, or
   real-customer-data admission.
-- B14 is currently a locally integrated, bounded synthetic populated-cutover
-  contract, not a retained live result. It does not establish production
-  application-writer integration or authorization, a dual-write/allocation-gap protocol,
-  continuous zero downtime, production duration/SLO/lock budgets,
+- B14 passed only its exact bounded synthetic populated-cutover sequence in
+  one disposable database. It does not establish production
+  application-writer integration or authorization, a dual-write/allocation-gap
+  protocol, continuous zero downtime, production duration/SLO/lock budgets,
   crash/restart/failover/downgrade behavior, recovery of identifiers deleted
-  before capture, or permission for real tenant or personal data.
+  before capture, physical catalog equivalence, or permission for real tenant
+  or personal data.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -425,5 +433,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b13 evidence note](./docs/POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md),
 [Cycle 1b-b14 exit matrix](./docs/CYCLE_1BB14_EXIT_MATRIX.md),
+[Cycle 1b-b14 evidence note](./docs/POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md),
 and [architecture decisions](./docs/adr/).

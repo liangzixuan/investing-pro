@@ -324,8 +324,14 @@ source filename is `research-cockpit-postgres-acceptance-v14.json`; its
 workflow artifact name is
 `postgres-acceptance-evidence-v14-${{ github.sha }}-${{ github.run_attempt }}`.
 The writer remains exclusive-create and success-only. Source and local
-verification are not a live result; a retained green V14 run and independent
-commit-bound review remain required. See
+verification alone are not a live result. PostgreSQL run `32343225599`,
+attempt 1, at commit `d688aa21e969feef6611f6efcd1aeaaed6e31df9`
+retained the exact V14 record after the complete bounded cutover path and
+mandatory cleanup passed. The downloaded `7835`-byte JSON had SHA-256
+`d7d11b23a8f4fd84337383d3b78c7a7a05e0eb5dbb5a60b3d6b9c0efc0e05ada`
+and returned `offline_consistent`; the
+[B14 evidence note](../POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md) records the
+exact anchors and bounded claim. See
 [ADR 0026](./0026-bounded-populated-resource-identifier-online-cutover.md) and
 the [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md).
 

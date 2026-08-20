@@ -259,13 +259,17 @@ authenticity. The accepted time targets are technical decision values, not
 proof that production schedulers, legal holds, DSAR identity, deletion planes,
 backup expiry, restore suppression, or KMS/HSM operations exist.
 
-Production admission remains blocked. Item 18 of the package roadmap still
-owns populated-database registry backfill and online cutover under concurrent
-writes. This result does not establish that cutover, global deletion,
-cryptographic erasure, real-customer-data admission, application composition,
-deployment, or production readiness.
+Production admission remains blocked. This V13 result does not establish a
+populated cutover, global deletion, cryptographic erasure,
+real-customer-data admission, application composition, deployment, or
+production readiness.
 
-The successor B14 source design is recorded in
+The separately versioned B14 successor later passed one exact bounded
+synthetic populated cutover at commit
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`. Its retained V14 review is
+recorded in the
+[B14 evidence note](./POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md). It preserves
-this V13 evidence exactly; source-stage B14 work is not a new live result.
+this V13 evidence exactly and does not retroactively remove V13's recorded
+empty-data or populated-cutover nonclaim.

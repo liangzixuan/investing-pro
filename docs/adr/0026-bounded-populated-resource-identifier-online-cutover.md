@@ -1,6 +1,6 @@
 # ADR 0026: Bounded populated resource-identifier online cutover
 
-Status: accepted source design; local integration complete; live V14 evidence pending; production admission blocked
+Status: accepted technical model; bounded live V14 record retained and reviewed; production admission blocked
 
 ## Context
 
@@ -107,15 +107,24 @@ narrower cutover limitations inserted in its place:
 - `real_customer_tenant_personal_or_non_synthetic_cutover`
 - `recovery_of_resource_identifiers_deleted_before_b14_capture_boundary`
 
-Source and local verification cannot establish a live V14 result. A live claim
-requires a retained green workflow run, exact log and artifact anchors, and an
-independent commit-bound `offline_consistent` review.
+Source and local verification alone cannot establish a live V14 result. The
+bounded claim also requires a retained green workflow run, exact log and
+artifact anchors, and an independent commit-bound `offline_consistent` review.
+PostgreSQL run `32343225599`, attempt 1, at commit
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9` met those requirements. The
+retained version 14 JSON contains 28 ordered source hashes, 27 ordered checks,
+35 ordered nonclaims, and the unchanged six-tool shape; the separately
+anchored offline review returned `offline_consistent`. See the
+[B14 evidence note](../POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md).
 
 ## Consequences
 
-The source closes the design gap for one exact populated synthetic pre-`0005`
-to B13-shaped transition while preserving all historical inputs. It makes the
-capture window, backfill work, final barrier, and target validation auditable.
+The reviewed result closes the bounded evidence gap for one exact populated
+synthetic pre-`0005` to B13-shaped transition while preserving all historical
+inputs. It makes the capture window, backfill work, final barrier, and target
+validation auditable. Its final catalog comparison is normalized semantic
+equivalence to the B13 target, not physical-layout, OID, page, or storage
+equivalence.
 
 Production admission remains blocked. B14 does not establish production
 writer compatibility, uninterrupted writes, arbitrary allocation gaps,
@@ -131,3 +140,4 @@ production cutover runbook.
 - [ADR 0025: Versioned resource-identifier privacy and retention lifecycle](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 - [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md)
 - [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md)
+- [Cycle 1b-b14 evidence note](../POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md)

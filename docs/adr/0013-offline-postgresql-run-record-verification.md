@@ -279,7 +279,11 @@ requires the exact plan tree and validates the manifest-bound platform and two
 application bodies, the selected pre-`0005` base, the explicit `0005`
 exclusion, and the B13 target bindings at the anchored commit. The image config
 independently binds the B14 fixture. This source compatibility is not a live
-result; a retained V14 artifact and independently anchored review remain
-required. See
+result by itself. The retained V14 record from PostgreSQL run `32343225599`,
+attempt 1, at commit `d688aa21e969feef6611f6efcd1aeaaed6e31df9`
+separately returned `offline_consistent` against independent anchors. That
+verdict does not by itself prove the live cutover; the bounded claim also
+depends on the reviewed workflow and exact logs. See the
+[B14 evidence note](../POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./0026-bounded-populated-resource-identifier-online-cutover.md) and
 the [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md).

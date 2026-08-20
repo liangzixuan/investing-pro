@@ -39,9 +39,11 @@ offline reviewer returned `offline_consistent`. See the
 The reviewed live V13 result remains bounded to synthetic mechanics in one
 disposable database. Production admission stays blocked until every
 external approval and operating control in the final matrix row is separately
-implemented, tested, and approved. Item 18 of the package roadmap continues to
-own any populated-database backfill and online cutover; B13 does not satisfy it.
-The accepted successor source design is documented in
+implemented, tested, and approved. B13 does not satisfy package-roadmap item 18.
+Its exact bounded synthetic successor completed separately in B14 without
+widening this empty-only result; it is not a production populated-database
+protocol. The reviewed successor evidence is documented in the
+[B14 evidence note](./POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
-and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md); it does not
-retroactively widen this retained V13 result.
+and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md). It does not
+retroactively widen this retained V13 result or its original nonclaims.

@@ -118,8 +118,11 @@ and notice decisions, verified-subject DSAR and legal-hold orchestration,
 production offboarding scheduling and monitoring, external KMS/HSM custody and
 destruction evidence, primary/replica/cache/log/search/analytics/third-party
 deletion, backup/archive expiry and restore suppression, and a separately
-audited populated-database backfill and online cutover. The synthetic database
-result cannot prove global deletion or cryptographic erasure.
+audited production populated-database backfill and online cutover. The later
+B14 result covers only one bounded synthetic successor sequence and does not
+widen this empty-only V13 evidence or satisfy that production requirement. The
+synthetic database results cannot prove global deletion or cryptographic
+erasure.
 
 ## Related decisions
 
@@ -131,3 +134,4 @@ result cannot prove global deletion or cryptographic erasure.
 - [Cycle 1b-b13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md)
 - [ADR 0026: Bounded populated resource-identifier online cutover](./0026-bounded-populated-resource-identifier-online-cutover.md)
 - [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md)
+- [Cycle 1b-b14 evidence note](../POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md)

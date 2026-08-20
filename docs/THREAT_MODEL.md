@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b13 threat model
+# Sprint 0 through bounded live Cycle 1b-b14 threat model
 
 ## Current trust boundaries
 
@@ -355,8 +355,11 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   target and removing capture objects. The gate's test-seed insert and
   migrator-to-owner delete are not production writer authentication or a
   dual-write/allocation protocol. Identifiers deleted before capture have no
-  authoritative recovery source. The V14 source/history review branch exists,
-  but a retained live V14 run and independent artifact verdict remain pending.
+  authoritative recovery source. PostgreSQL run `32343225599` passed this exact
+  bounded synthetic sequence at commit
+  `d688aa21e969feef6611f6efcd1aeaaed6e31df9`; its retained V14 record returned
+  `offline_consistent`. The catalog check is normalized semantic, not physical,
+  equivalence to B13.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -437,7 +440,9 @@ production volume/duration/SLO/lock budgets, process or cluster crash recovery,
 restart/resume, failover/replication/prepared-transaction concurrency,
 post-contract downgrade, recovery of identifiers deleted before capture,
 external key operations, global deletion, or real-data admission. Source-stage
-work is not live engine evidence. See
+work alone is not live engine evidence; the reviewed run establishes only the
+exact bounded sequence above. See the
+[B14 evidence note](./POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
 

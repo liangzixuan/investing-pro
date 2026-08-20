@@ -1,9 +1,10 @@
 # PostgreSQL security contract and acceptance harness
 
-> **B1-B13 CLEAN-ONLY LIVE ACCEPTANCE PASSED ONLY FOR THEIR RECORDED BOUNDED SYNTHETIC SCOPES; B13 IS PRISTINE/EMPTY-DATA-ONLY AND PRODUCTION ADMISSION REMAINS BLOCKED — NOT DEPLOYED PERSISTENCE**
+> **B1-B14 LIVE ACCEPTANCE PASSED ONLY FOR THEIR RECORDED BOUNDED SYNTHETIC SCOPES; B13 IS PRISTINE/EMPTY-DATA-ONLY, B14 IS ONE FIXED POPULATED CUTOVER, AND PRODUCTION ADMISSION REMAINS BLOCKED — NOT DEPLOYED PERSISTENCE**
 
-This package contains forward SQL, static security checks, and a clean-only
-synthetic acceptance harness for the future PostgreSQL persistence boundary.
+This package contains forward SQL, static security checks, and a synthetic
+acceptance harness with clean-bootstrap and bounded cutover branches for the
+future PostgreSQL persistence boundary.
 The seven migrations and b1 probes passed in the first reviewed run against the
 pinned PostgreSQL 17.11 service at commit `611c93d`; see the
 [retained evidence note](../../docs/POSTGRESQL_ACCEPTANCE_EVIDENCE.md). That run
@@ -195,13 +196,16 @@ historical v2 or privacy v1 inputs. Its exact base selects v2 `0001`-`0004` and
 synthetic fixture, captures post-boundary thesis/alert inserts and deletes in
 an audited temporary work registry, performs authenticated bounded token
 backfill, and contracts to the exact B13 keyed target behind an exact capture
-epoch and short final write barrier. The source-stage V14 evidence contract
-binds the plan manifest/source/fixture and independently reviews the
-manifest-named bodies. Local integration is complete on the frozen source
-bytes; live V14 evidence and independent artifact review remain pending. This
-is not a production writer/dual-write protocol, continuous zero-downtime
+epoch and short final write barrier. The V14 evidence contract binds the plan
+manifest/source/fixture and independently reviews the manifest-named bodies.
+PostgreSQL run `32343225599` passed the exact bounded synthetic path at commit
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`; its retained V14 record returned
+`offline_consistent`. The target-catalog check proves normalized semantic, not
+physical, B13 equivalence. This is not a production writer/dual-write protocol,
+continuous zero-downtime
 deployment, general cutover, recovery of identifiers deleted before capture,
 or real-data admission. See
+[the B14 evidence note](../../docs/POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](../../docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](../../docs/CYCLE_1BB14_EXIT_MATRIX.md).
 
@@ -592,20 +596,21 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     verified DSAR/legal holds, operating offboarding scheduling/monitoring,
     KMS/HSM custody and destruction, all online/backup/third-party deletion
     planes, cryptographic erasure, and independent deletion proof remain blocked.
-18. **Cycle 1b-b14 source and local integration complete; live exit pending:** use
-    the separate manifest-bound populated-cutover plan for the exact synthetic
-    pre-`0005` branch. It establishes capture, bounded backfill, and a final
-    contract barrier instead of applying static `0005`. Do not use it for a
-    production upgrade until application-writer authorization and
-    allocation/dual-write coordination, zero-downtime and lock/SLO budgets,
-    crash/restart/failover recovery, pre-capture deletion handling, real-data
-    approval, retained V14 evidence, and independent review all pass.
+18. **Cycle 1b-b14 bounded synthetic cutover complete and reviewed:** use the
+    separate manifest-bound populated-cutover plan only for the exact tested
+    pre-`0005` branch. Run `32343225599` establishes capture, bounded backfill,
+    retry, and a final contract barrier instead of applying static `0005`.
+    Do not use it for a production upgrade until application-writer
+    authorization and allocation/dual-write coordination, uninterrupted-write
+    and lock/SLO budgets, crash/restart/failover recovery, pre-capture deletion
+    handling, and real-data approval all pass.
 
 Until every gate passes, this package is not deployed persistence. Historical
 b1-b6 live evidence remains limited to the exact checks in their retained run
-records. B7 through B13 passed for their separately recorded version 7 through
-version 13 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`,
-`5df9d07`, `59c4e58`, and `a959cba` without widening those records. The
+records. B7 through B14 passed for their separately recorded version 7 through
+version 14 scopes at commits `41d13dd`, `49d3a96`, `8e470e9`, `2dcb259`,
+`5df9d07`, `59c4e58`, `a959cba`, and
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9` without widening those records. The
 b2-b6 results cover only sequential, synthetic, container-local runtime,
 test-loader, and owner-DDL canary service accounts plus one narrow dimensionless
 financial-fact projection. B6 executes no migration. External/TLS
@@ -640,8 +645,8 @@ empty-data-only technical lifecycle. It does not satisfy production
 privacy/legal, DSAR, scheduler/monitoring, KMS/HSM, token-verification,
 cryptographic-erasure, online/backup/third-party deletion, populated-cutover,
 global-proof, or real-data gates.
-B14 currently adds only the separate locally integrated populated-cutover
-contract. It has no retained live V14 result yet and does not widen B13 or
-establish production writer integration, uninterrupted writes, arbitrary allocation
-gaps, production scale/SLOs, recovery/failover/downgrade, identifiers deleted
-before capture, real data, or production readiness.
+B14's reviewed live V14 result remains only the separate bounded synthetic
+populated-cutover sequence. It does not widen B13 or establish production
+writer integration, uninterrupted writes, arbitrary allocation gaps,
+production scale/SLOs, recovery/failover/downgrade, identifiers deleted before
+capture, physical catalog equivalence, real data, or production readiness.

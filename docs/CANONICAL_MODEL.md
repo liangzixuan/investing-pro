@@ -5,7 +5,8 @@ runtime authentication, b3 authorization-matrix, b4 projection-query, b5
 test-loader, b6 owner-DDL canary, b7 authenticated application-migration, b8
 policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
 projection-pool, b11 locked migration-ledger deployment, and b12 RLS
-query-plan/load boundaries; synthetic data only.
+query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
+boundaries; synthetic data only.
 
 ## Identity
 
@@ -246,10 +247,10 @@ Policy v1 also fixes technical targets for 24-hour idempotency metadata,
 accepted synthetic technical decision, not a legal conclusion or evidence that
 a scheduler, DSAR/legal-hold system, KMS/HSM, deletion across replicas/caches/
 logs/search/analytics/third parties, or backup expiry/restore suppression is
-operating. The plan is pristine/empty-data-only; populated backfill and online
-cutover remain unimplemented. PostgreSQL run `32305478242` passed the exact
-bounded synthetic lifecycle at commit `a959cba`; its retained V13 record
-returned `offline_consistent`. See the
+operating. The B13 plan is pristine/empty-data-only; its separate bounded B14
+successor does not widen that historical result. PostgreSQL run `32305478242`
+passed the exact bounded synthetic lifecycle at commit `a959cba`; its retained
+V13 record returned `offline_consistent`. See the
 [B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
@@ -264,9 +265,12 @@ source/registry correspondence, and a short final write-conflicting barrier
 before the temporary capture surface is removed and the B13 lifecycle target
 is finalized. There is no authoritative record for identifiers deleted before
 capture. The acceptance writer identities do not define a production
-allocation, authorization, or dual-write protocol. The B14 source, V14
-contract, and frozen-byte local integration exist, but the live V14 run and
-artifact review remain pending. See
+allocation, authorization, or dual-write protocol. PostgreSQL run
+`32343225599` passed this exact bounded synthetic transition at commit
+`d688aa21e969feef6611f6efcd1aeaaed6e31df9`; its retained V14 record returned
+`offline_consistent`. The final target check is normalized semantic rather than
+physical B13 catalog equivalence. See the
+[B14 evidence note](./POSTGRESQL_POPULATED_CUTOVER_EVIDENCE.md),
 [ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
 and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
 
@@ -303,11 +307,11 @@ operating scheduler/monitoring, KMS/HSM custody or token authenticity,
 cryptographic erasure, deletion across external planes, populated cutover,
 global deletion proof, real-data admission, application composition, or
 production readiness.
-B14's locally integrated transition remains bounded to synthetic data in one
-fixed disposable database and has no retained live V14 result yet. It does not
-establish continuous zero downtime, production writer integration or
-allocation-gap handling, production scale/locks/SLOs, crash/failover/restart or
-downgrade behavior, recovery of pre-capture deletions, real-data admission, or
+B14's reviewed live transition remains bounded to synthetic data in one fixed
+disposable database. It does not establish continuous zero downtime,
+production writer integration or allocation-gap handling, production
+scale/locks/SLOs, crash/failover/restart or downgrade behavior, recovery of
+pre-capture deletions, physical catalog equivalence, real-data admission, or
 production readiness.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the
