@@ -139,6 +139,46 @@ describe("populated cutover plan v1", () => {
     );
   });
 
+  it("checks populated source rows only after owner policies make them visible", async () => {
+    const [base, privacy, cutover] = await Promise.all([
+      loadAuthenticatedMigrationPlan(),
+      loadPrivacyRetentionPlanV1(),
+      loadPopulatedCutoverPlanV1(),
+    ]);
+    const sql = renderPopulatedCutoverExpandMigration(
+      base,
+      privacy,
+      cutover,
+      true,
+    );
+    const populationCheck = "IF NOT EXISTS (SELECT 1 FROM private_data.theses)";
+    const alertPopulationCheck =
+      "OR NOT EXISTS (SELECT 1 FROM private_data.alert_rules)";
+    const preflight = section(
+      sql,
+      "$populated_cutover_expand_preflight$",
+      "-- populated cutover migration populated-cutover-v1-0001:",
+    );
+
+    expectOrdered(sql, [
+      "CREATE POLICY populated_cutover_owner_theses",
+      "CREATE POLICY populated_cutover_owner_alert_rules",
+      "$populated_cutover_expanded_source_population$",
+      populationCheck,
+      alertPopulationCheck,
+      "SELECT 1 / 0;",
+      "INSERT INTO shared_data.schema_migrations",
+      "COMMIT;",
+    ]);
+    expect(sql.split(populationCheck)).toHaveLength(2);
+    expect(sql.split(alertPopulationCheck)).toHaveLength(2);
+    expect(preflight).not.toContain("FROM private_data.theses");
+    expect(preflight).not.toContain("FROM private_data.alert_rules");
+    expect(preflight).toContain(
+      "to_regclass(\n      'private_data.resource_identifier_cutover_work'",
+    );
+  });
+
   it("installs the exact target allocation function without an early execute grant", async () => {
     const [base, privacy, cutover] = await Promise.all([
       loadAuthenticatedMigrationPlan(),

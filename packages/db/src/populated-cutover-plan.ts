@@ -656,6 +656,7 @@ export function renderPopulatedCutoverExpandMigration(
     ),
     `-- populated cutover migration ${entry.id}: ${entry.file}`,
     expandSql.trimEnd(),
+    renderExpandedSourcePopulationAssertion(),
   ];
   if (injectFailure) lines.push(renderInjectedFailure());
   lines.push(
@@ -1044,9 +1045,7 @@ function renderPhasePreflight(
     .join(",\n      ");
   const phaseCheck =
     phase === "expand"
-      ? `IF NOT EXISTS (SELECT 1 FROM private_data.theses)
-    OR NOT EXISTS (SELECT 1 FROM private_data.alert_rules)
-    OR pg_catalog.to_regclass(
+      ? `IF pg_catalog.to_regclass(
       'private_data.resource_identifier_cutover_work'
     ) IS NOT NULL
   THEN
@@ -1097,6 +1096,19 @@ BEGIN
   ${phaseCheck}
 END;
 $populated_cutover_${phase}_preflight$;`;
+}
+
+function renderExpandedSourcePopulationAssertion(): string {
+  return `DO $populated_cutover_expanded_source_population$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM private_data.theses)
+    OR NOT EXISTS (SELECT 1 FROM private_data.alert_rules)
+  THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001',
+      MESSAGE = 'populated cutover expand requires populated pre-0005 state';
+  END IF;
+END;
+$populated_cutover_expanded_source_population$;`;
 }
 
 function renderOpenContractIdentityAssertion(): string {
