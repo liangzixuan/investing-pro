@@ -99,14 +99,6 @@ let acceptanceCaseIndex = -1;
 let firstDockerFailurePhase: FilingParserDockerFailurePhase = "none";
 let firstInspectionCheck: FilingParserInspectionDiagnosticCode = "none";
 
-await main().catch(() => {
-  process.stderr.write(
-    `Filing parser isolation diagnostic stage=${acceptanceStage} case=${acceptanceCaseIndex} docker=${firstDockerFailurePhase} inspection=${firstInspectionCheck}.\n`,
-  );
-  process.stderr.write("Filing parser isolation acceptance failed.\n");
-  process.exitCode = 1;
-});
-
 async function main(): Promise<void> {
   acceptanceStage = "environment";
   const environment = acceptanceEnvironment();
@@ -1123,3 +1115,11 @@ function processFailure(): FilingParserProcessError {
 function fail(): never {
   throw new Error("Filing parser isolation acceptance failed.");
 }
+
+await main().catch(() => {
+  process.stderr.write(
+    `Filing parser isolation diagnostic stage=${acceptanceStage} case=${acceptanceCaseIndex} docker=${firstDockerFailurePhase} inspection=${firstInspectionCheck}.\n`,
+  );
+  process.stderr.write("Filing parser isolation acceptance failed.\n");
+  process.exitCode = 1;
+});

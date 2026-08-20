@@ -121,10 +121,7 @@ describe("Cycle 2a filing parser worker", () => {
 
   it("keeps live diagnostics value-free and latches the first Docker failure through cleanup", () => {
     const source = readFileSync(ACCEPTANCE_RUNNER_PATH, "utf8");
-    const catchBlock = source.slice(
-      source.indexOf("await main().catch"),
-      source.indexOf("async function main"),
-    );
+    const catchBlock = source.slice(source.indexOf("await main().catch"));
     expect(catchBlock).toContain(
       "stage=${acceptanceStage} case=${acceptanceCaseIndex} docker=${firstDockerFailurePhase} inspection=${firstInspectionCheck}",
     );
@@ -161,6 +158,10 @@ describe("Cycle 2a filing parser worker", () => {
     );
     expect(source).toContain(
       'const outcomes: FilingParserEvidenceCaseOutcome[] = [];\n    const acceptedReplay: SignedFilingParserResult[] = [];\n\n    acceptanceStage = "case_execution";',
+    );
+    expect(source.match(/await main\(\)\.catch/gu)).toHaveLength(1);
+    expect(source.indexOf("class AuditedDockerProcessRunner")).toBeLessThan(
+      source.indexOf("await main().catch"),
     );
     const runnerClass = source.slice(
       source.indexOf("class AuditedDockerProcessRunner"),
