@@ -256,10 +256,8 @@ export function validateFilingParserContainerInspection(
     invalidEvidence();
   const state = exactRecordAtLeast(container.State, ["Status"]);
   const config = exactRecordAtLeast(container.Config, [
-    "Cmd",
     "Entrypoint",
     "Env",
-    "ExposedPorts",
     "Image",
     "User",
   ]);
@@ -286,8 +284,8 @@ export function validateFilingParserContainerInspection(
     state.Status !== "created" ||
     config.Image !== expected.imageId ||
     config.User !== "65532:65532" ||
-    config.Cmd !== null ||
-    config.ExposedPorts !== null ||
+    !absentNullOrEmptyArray(config.Cmd) ||
+    !absentNullOrEmptyRecord(config.ExposedPorts) ||
     canonicalJson(config.Entrypoint) !==
       canonicalJson(["python", "-I", "-B", "/worker/parser.py"]) ||
     !Array.isArray(config.Env) ||
@@ -300,7 +298,7 @@ export function validateFilingParserContainerInspection(
     host.ReadonlyRootfs !== true ||
     host.Privileged !== false ||
     host.PublishAllPorts !== false ||
-    !nullOrEmptyArray(host.CapAdd) ||
+    !absentNullOrEmptyArray(host.CapAdd) ||
     canonicalJson(host.CapDrop) !== canonicalJson(["ALL"]) ||
     canonicalJson(host.SecurityOpt) !==
       canonicalJson(["no-new-privileges=true"]) ||
@@ -309,8 +307,8 @@ export function validateFilingParserContainerInspection(
     host.MemorySwap !== FILING_PARSER_LIMITS.memoryBytes ||
     host.NanoCpus !== FILING_PARSER_LIMITS.cpuCount * 1_000_000_000 ||
     host.IpcMode !== "none" ||
-    !nullOrEmptyRecord(host.PortBindings) ||
-    !nullOrEmptyRecord(network.Ports)
+    !absentNullOrEmptyRecord(host.PortBindings) ||
+    !absentNullOrEmptyRecord(network.Ports)
   )
     invalidEvidence();
   if (!Array.isArray(host.Ulimits) || host.Ulimits.length !== 1)
@@ -709,18 +707,28 @@ function exactRecord<const TKeys extends readonly string[]>(
 function exactRecordAtLeast<const TKeys extends readonly string[]>(
   value: unknown,
   keys: TKeys,
-): Readonly<Record<TKeys[number], unknown>> {
+): Readonly<Record<string, unknown> & Record<TKeys[number], unknown>> {
   if (!isRecord(value) || keys.some((key) => !(key in value)))
     return invalidEvidence();
-  return value as Readonly<Record<TKeys[number], unknown>>;
+  return value as Readonly<
+    Record<string, unknown> & Record<TKeys[number], unknown>
+  >;
 }
 
-function nullOrEmptyArray(value: unknown): boolean {
-  return value === null || (Array.isArray(value) && value.length === 0);
+function absentNullOrEmptyArray(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (Array.isArray(value) && value.length === 0)
+  );
 }
 
-function nullOrEmptyRecord(value: unknown): boolean {
-  return value === null || (isRecord(value) && Object.keys(value).length === 0);
+function absentNullOrEmptyRecord(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (isRecord(value) && Object.keys(value).length === 0)
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

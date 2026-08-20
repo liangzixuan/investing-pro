@@ -628,8 +628,8 @@ async function verifyBuiltImage(imageId: `sha256:${string}`): Promise<void> {
     !isRecord(config) ||
     config.User !== "65532:65532" ||
     config.WorkingDir !== "/worker" ||
-    config.Cmd !== null ||
-    config.ExposedPorts !== null ||
+    !absentNullOrEmptyArray(config.Cmd) ||
+    !absentNullOrEmptyRecord(config.ExposedPorts) ||
     canonicalJson(config.Entrypoint) !==
       canonicalJson(["python", "-I", "-B", "/worker/parser.py"]) ||
     !Array.isArray(config.Env) ||
@@ -897,6 +897,22 @@ function canonicalJson(value: unknown): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function absentNullOrEmptyArray(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+function absentNullOrEmptyRecord(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (isRecord(value) && Object.keys(value).length === 0)
+  );
 }
 
 function sha256(value: Uint8Array): `sha256:${string}` {

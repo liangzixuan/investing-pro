@@ -134,10 +134,39 @@ describe("filing parser evidence v1", () => {
     expect(() =>
       validateFilingParserContainerInspection(inspection, expected),
     ).not.toThrow();
+    const omittedEmptyConfig = { ...inspection.Config } as Record<
+      string,
+      unknown
+    >;
+    delete omittedEmptyConfig.Cmd;
+    delete omittedEmptyConfig.ExposedPorts;
+    expect(() =>
+      validateFilingParserContainerInspection(
+        { ...inspection, Config: omittedEmptyConfig },
+        expected,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateFilingParserContainerInspection(
+        {
+          ...inspection,
+          Config: { ...inspection.Config, Cmd: [], ExposedPorts: {} },
+        },
+        expected,
+      ),
+    ).not.toThrow();
 
     const mutations = [
       { ...inspection, Image: HASH_B },
       { ...inspection, Config: { ...inspection.Config, User: "0:0" } },
+      {
+        ...inspection,
+        Config: { ...inspection.Config, Cmd: ["python3"] },
+      },
+      {
+        ...inspection,
+        Config: { ...inspection.Config, ExposedPorts: { "8080/tcp": {} } },
+      },
       {
         ...inspection,
         HostConfig: { ...inspection.HostConfig, NetworkMode: "bridge" },
