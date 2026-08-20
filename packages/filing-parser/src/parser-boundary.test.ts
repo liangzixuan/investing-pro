@@ -21,6 +21,9 @@ const CASES_PATH = fileURLToPath(
     import.meta.url,
   ),
 );
+const ACCEPTANCE_RUNNER_PATH = fileURLToPath(
+  new URL("./run-filing-parser-acceptance.ts", import.meta.url),
+);
 
 const PYTHON_HARNESS = String.raw`
 import base64
@@ -114,6 +117,33 @@ describe("Cycle 2a filing parser worker", () => {
     expect(
       readFileSync(`${REPOSITORY_ROOT}/pnpm-workspace.yaml`, "utf8"),
     ).toContain("- packages/*");
+  });
+
+  it("keeps live diagnostics value-free and latches the first Docker failure through cleanup", () => {
+    const source = readFileSync(ACCEPTANCE_RUNNER_PATH, "utf8");
+    const catchBlock = source.slice(
+      source.indexOf("await main().catch"),
+      source.indexOf("async function main"),
+    );
+    expect(catchBlock).toContain(
+      "stage=${acceptanceStage} case=${acceptanceCaseIndex} docker=${firstDockerFailurePhase} inspection=${firstInspectionCheck}",
+    );
+    expect(catchBlock).not.toMatch(
+      /\$\{[^}]*(?:archive|error|input|message|path|payload|stderr|stdout)[^}]*\}/iu,
+    );
+    expect(source).toContain(
+      'if (firstDockerFailurePhase !== "none" || phase === "none") return;',
+    );
+    expect(source.match(/resetDockerFailureDiagnostic\(\);/gu)).toHaveLength(5);
+    const runnerClass = source.slice(
+      source.indexOf("class AuditedDockerProcessRunner"),
+      source.indexOf("function dockerFailurePhase"),
+    );
+    expect(runnerClass).not.toContain("resetDockerFailureDiagnostic");
+    expect(runnerClass).toContain(
+      'latchDockerFailure("container_inspection", "inspect_command")',
+    );
+    expect(runnerClass).toContain('latchDockerFailure("label_residue")');
   });
 });
 

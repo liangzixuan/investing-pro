@@ -189,6 +189,67 @@ export interface FilingParserContainerInspectionExpected {
   readonly inputSource: string;
 }
 
+export const FILING_PARSER_CONTAINER_INSPECTION_CHECK_CODES = [
+  "container_shape",
+  "container_id",
+  "container_image",
+  "container_name",
+  "state_shape",
+  "state_status",
+  "config_shape",
+  "config_image",
+  "config_user",
+  "config_cmd",
+  "config_exposed_ports",
+  "config_entrypoint",
+  "config_env",
+  "host_shape",
+  "host_network_mode",
+  "host_read_only_root",
+  "host_privileged",
+  "host_publish_all_ports",
+  "host_cap_add",
+  "host_cap_drop",
+  "host_security_options",
+  "host_pids",
+  "host_memory",
+  "host_memory_swap",
+  "host_cpu",
+  "host_ipc",
+  "host_port_bindings",
+  "network_shape",
+  "network_ports",
+  "ulimit_shape",
+  "ulimit_nofile",
+  "tmpfs_shape",
+  "tmpfs_options",
+  "mount_count",
+  "mount_shape",
+  "mount_type",
+  "mount_source",
+  "mount_destination",
+  "mount_mode",
+  "mount_read_only",
+  "host_mount_count",
+  "host_mount_shape",
+  "host_mount_type",
+  "host_mount_source",
+  "host_mount_target",
+  "host_mount_read_only",
+] as const;
+
+export type FilingParserContainerInspectionCheckCode =
+  (typeof FILING_PARSER_CONTAINER_INSPECTION_CHECK_CODES)[number];
+
+export class FilingParserContainerInspectionError extends Error {
+  public constructor(
+    public readonly checkCode: FilingParserContainerInspectionCheckCode,
+  ) {
+    super("Filing parser evidence is invalid.");
+    this.name = "FilingParserContainerInspectionError";
+  }
+}
+
 export function createFilingParserEvidence(
   value: FilingParserEvidenceInput,
 ): FilingParserEvidence {
@@ -238,129 +299,172 @@ export function validateFilingParserContainerInspection(
   value: unknown,
   expected: FilingParserContainerInspectionExpected,
 ): void {
-  const container = exactRecordAtLeast(value, [
-    "Config",
-    "HostConfig",
-    "Id",
-    "Image",
-    "Mounts",
-    "Name",
-    "NetworkSettings",
-    "State",
-  ]);
+  const container = inspectionRecordAtLeast(
+    value,
+    [
+      "Config",
+      "HostConfig",
+      "Id",
+      "Image",
+      "Mounts",
+      "Name",
+      "NetworkSettings",
+      "State",
+    ],
+    "container_shape",
+  );
+  if (container.Id !== expected.containerId)
+    invalidContainerInspection("container_id");
+  if (container.Image !== expected.imageId)
+    invalidContainerInspection("container_image");
+  if (container.Name !== `/${expected.containerName}`)
+    invalidContainerInspection("container_name");
+
+  const state = inspectionRecordAtLeast(
+    container.State,
+    ["Status"],
+    "state_shape",
+  );
+  if (state.Status !== "created") invalidContainerInspection("state_status");
+
+  const config = inspectionRecordAtLeast(
+    container.Config,
+    ["Entrypoint", "Env", "Image", "User"],
+    "config_shape",
+  );
+  if (config.Image !== expected.imageId)
+    invalidContainerInspection("config_image");
+  if (config.User !== "65532:65532") invalidContainerInspection("config_user");
+  if (!absentNullOrEmptyArray(config.Cmd))
+    invalidContainerInspection("config_cmd");
+  if (!absentNullOrEmptyRecord(config.ExposedPorts))
+    invalidContainerInspection("config_exposed_ports");
   if (
-    container.Id !== expected.containerId ||
-    container.Image !== expected.imageId ||
-    container.Name !== `/${expected.containerName}`
-  )
-    invalidEvidence();
-  const state = exactRecordAtLeast(container.State, ["Status"]);
-  const config = exactRecordAtLeast(container.Config, [
-    "Entrypoint",
-    "Env",
-    "Image",
-    "User",
-  ]);
-  const host = exactRecordAtLeast(container.HostConfig, [
-    "CapAdd",
-    "CapDrop",
-    "IpcMode",
-    "Memory",
-    "MemorySwap",
-    "Mounts",
-    "NanoCpus",
-    "NetworkMode",
-    "PidsLimit",
-    "PortBindings",
-    "Privileged",
-    "PublishAllPorts",
-    "ReadonlyRootfs",
-    "SecurityOpt",
-    "Tmpfs",
-    "Ulimits",
-  ]);
-  const network = exactRecordAtLeast(container.NetworkSettings, ["Ports"]);
-  if (
-    state.Status !== "created" ||
-    config.Image !== expected.imageId ||
-    config.User !== "65532:65532" ||
-    !absentNullOrEmptyArray(config.Cmd) ||
-    !absentNullOrEmptyRecord(config.ExposedPorts) ||
     canonicalJson(config.Entrypoint) !==
-      canonicalJson(["python", "-I", "-B", "/worker/parser.py"]) ||
+    canonicalJson(["python", "-I", "-B", "/worker/parser.py"])
+  )
+    invalidContainerInspection("config_entrypoint");
+  if (
     !Array.isArray(config.Env) ||
     config.Env.some(
       (entry) =>
         typeof entry !== "string" ||
         /(?:PASSWORD|PRIVATE|SECRET|TOKEN)=/iu.test(entry),
-    ) ||
-    host.NetworkMode !== "none" ||
-    host.ReadonlyRootfs !== true ||
-    host.Privileged !== false ||
-    host.PublishAllPorts !== false ||
-    !absentNullOrEmptyArray(host.CapAdd) ||
-    canonicalJson(host.CapDrop) !== canonicalJson(["ALL"]) ||
-    canonicalJson(host.SecurityOpt) !==
-      canonicalJson(["no-new-privileges=true"]) ||
-    host.PidsLimit !== FILING_PARSER_LIMITS.pids ||
-    host.Memory !== FILING_PARSER_LIMITS.memoryBytes ||
-    host.MemorySwap !== FILING_PARSER_LIMITS.memoryBytes ||
-    host.NanoCpus !== FILING_PARSER_LIMITS.cpuCount * 1_000_000_000 ||
-    host.IpcMode !== "none" ||
-    !absentNullOrEmptyRecord(host.PortBindings) ||
-    !absentNullOrEmptyRecord(network.Ports)
+    )
   )
-    invalidEvidence();
+    invalidContainerInspection("config_env");
+
+  const host = inspectionRecordAtLeast(
+    container.HostConfig,
+    [
+      "CapAdd",
+      "CapDrop",
+      "IpcMode",
+      "Memory",
+      "MemorySwap",
+      "Mounts",
+      "NanoCpus",
+      "NetworkMode",
+      "PidsLimit",
+      "PortBindings",
+      "Privileged",
+      "PublishAllPorts",
+      "ReadonlyRootfs",
+      "SecurityOpt",
+      "Tmpfs",
+      "Ulimits",
+    ],
+    "host_shape",
+  );
+  if (host.NetworkMode !== "none")
+    invalidContainerInspection("host_network_mode");
+  if (host.ReadonlyRootfs !== true)
+    invalidContainerInspection("host_read_only_root");
+  if (host.Privileged !== false) invalidContainerInspection("host_privileged");
+  if (host.PublishAllPorts !== false)
+    invalidContainerInspection("host_publish_all_ports");
+  if (!absentNullOrEmptyArray(host.CapAdd))
+    invalidContainerInspection("host_cap_add");
+  if (canonicalJson(host.CapDrop) !== canonicalJson(["ALL"]))
+    invalidContainerInspection("host_cap_drop");
+  if (
+    canonicalJson(host.SecurityOpt) !==
+    canonicalJson(["no-new-privileges=true"])
+  )
+    invalidContainerInspection("host_security_options");
+  if (host.PidsLimit !== FILING_PARSER_LIMITS.pids)
+    invalidContainerInspection("host_pids");
+  if (host.Memory !== FILING_PARSER_LIMITS.memoryBytes)
+    invalidContainerInspection("host_memory");
+  if (host.MemorySwap !== FILING_PARSER_LIMITS.memoryBytes)
+    invalidContainerInspection("host_memory_swap");
+  if (host.NanoCpus !== FILING_PARSER_LIMITS.cpuCount * 1_000_000_000)
+    invalidContainerInspection("host_cpu");
+  if (host.IpcMode !== "none") invalidContainerInspection("host_ipc");
+  if (!absentNullOrEmptyRecord(host.PortBindings))
+    invalidContainerInspection("host_port_bindings");
+
+  const network = inspectionRecordAtLeast(
+    container.NetworkSettings,
+    ["Ports"],
+    "network_shape",
+  );
+  if (!absentNullOrEmptyRecord(network.Ports))
+    invalidContainerInspection("network_ports");
+
   if (!Array.isArray(host.Ulimits) || host.Ulimits.length !== 1)
-    invalidEvidence();
-  const nofile = exactRecordAtLeast(host.Ulimits[0], ["Hard", "Name", "Soft"]);
+    invalidContainerInspection("ulimit_shape");
+  const nofile = inspectionRecordAtLeast(
+    host.Ulimits[0],
+    ["Hard", "Name", "Soft"],
+    "ulimit_shape",
+  );
   if (
     nofile.Name !== "nofile" ||
     nofile.Hard !== FILING_PARSER_LIMITS.openFiles ||
     nofile.Soft !== FILING_PARSER_LIMITS.openFiles
   )
-    invalidEvidence();
-  const tmpfs = exactRecord(host.Tmpfs, ["/tmp"]);
-  const tmpfsOptions = stringMatching(tmpfs["/tmp"], VERSION_TEXT)
-    .split(",")
-    .sort();
+    invalidContainerInspection("ulimit_nofile");
+
+  const tmpfs = inspectionExactRecord(host.Tmpfs, ["/tmp"], "tmpfs_shape");
+  if (typeof tmpfs["/tmp"] !== "string" || !VERSION_TEXT.test(tmpfs["/tmp"]))
+    invalidContainerInspection("tmpfs_shape");
+  const tmpfsOptions = tmpfs["/tmp"].split(",").sort();
   if (
     canonicalJson(tmpfsOptions) !==
     canonicalJson(["rw", "noexec", "nosuid", "nodev", "size=8388608"].sort())
   )
-    invalidEvidence();
+    invalidContainerInspection("tmpfs_options");
+
   if (!Array.isArray(container.Mounts) || container.Mounts.length !== 1)
-    invalidEvidence();
-  const mount = exactRecordAtLeast(container.Mounts[0], [
-    "Destination",
-    "Mode",
-    "RW",
-    "Source",
-    "Type",
-  ]);
-  if (
-    mount.Type !== "bind" ||
-    mount.Source !== expected.inputSource ||
-    mount.Destination !== "/input/filing.zip" ||
-    mount.Mode !== "" ||
-    mount.RW !== false
-  )
-    invalidEvidence();
+    invalidContainerInspection("mount_count");
+  const mount = inspectionRecordAtLeast(
+    container.Mounts[0],
+    ["Destination", "Mode", "RW", "Source", "Type"],
+    "mount_shape",
+  );
+  if (mount.Type !== "bind") invalidContainerInspection("mount_type");
+  if (mount.Source !== expected.inputSource)
+    invalidContainerInspection("mount_source");
+  if (mount.Destination !== "/input/filing.zip")
+    invalidContainerInspection("mount_destination");
+  if (mount.Mode !== "") invalidContainerInspection("mount_mode");
+  if (mount.RW !== false) invalidContainerInspection("mount_read_only");
+
   if (!Array.isArray(host.Mounts) || host.Mounts.length !== 1)
-    invalidEvidence();
-  const hostMount = exactRecordAtLeast(host.Mounts[0], [
-    "ReadOnly",
-    "Source",
-    "Target",
-    "Type",
-  ]);
-  if (
-    hostMount.Type !== "bind" ||
-    hostMount.Source !== expected.inputSource ||
-    hostMount.Target !== "/input/filing.zip" ||
-    hostMount.ReadOnly !== true
-  )
-    invalidEvidence();
+    invalidContainerInspection("host_mount_count");
+  const hostMount = inspectionRecordAtLeast(
+    host.Mounts[0],
+    ["ReadOnly", "Source", "Target", "Type"],
+    "host_mount_shape",
+  );
+  if (hostMount.Type !== "bind") invalidContainerInspection("host_mount_type");
+  if (hostMount.Source !== expected.inputSource)
+    invalidContainerInspection("host_mount_source");
+  if (hostMount.Target !== "/input/filing.zip")
+    invalidContainerInspection("host_mount_target");
+  if (hostMount.ReadOnly !== true)
+    invalidContainerInspection("host_mount_read_only");
 }
 
 function normalizeEvidence(value: unknown): FilingParserEvidence {
@@ -704,15 +808,37 @@ function exactRecord<const TKeys extends readonly string[]>(
   return value as Readonly<Record<TKeys[number], unknown>>;
 }
 
-function exactRecordAtLeast<const TKeys extends readonly string[]>(
+function inspectionRecordAtLeast<const TKeys extends readonly string[]>(
   value: unknown,
   keys: TKeys,
+  checkCode: FilingParserContainerInspectionCheckCode,
 ): Readonly<Record<string, unknown> & Record<TKeys[number], unknown>> {
   if (!isRecord(value) || keys.some((key) => !(key in value)))
-    return invalidEvidence();
+    return invalidContainerInspection(checkCode);
   return value as Readonly<
     Record<string, unknown> & Record<TKeys[number], unknown>
   >;
+}
+
+function inspectionExactRecord<const TKeys extends readonly string[]>(
+  value: unknown,
+  keys: TKeys,
+  checkCode: FilingParserContainerInspectionCheckCode,
+): Readonly<Record<TKeys[number], unknown>> {
+  if (!isRecord(value)) return invalidContainerInspection(checkCode);
+  const actualKeys = Object.keys(value);
+  if (
+    actualKeys.length !== keys.length ||
+    actualKeys.some((key) => !keys.includes(key))
+  )
+    return invalidContainerInspection(checkCode);
+  return value as Readonly<Record<TKeys[number], unknown>>;
+}
+
+function invalidContainerInspection(
+  checkCode: FilingParserContainerInspectionCheckCode,
+): never {
+  throw new FilingParserContainerInspectionError(checkCode);
 }
 
 function absentNullOrEmptyArray(value: unknown): boolean {

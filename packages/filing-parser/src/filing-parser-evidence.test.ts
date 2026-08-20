@@ -1,17 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FILING_PARSER_CONTAINER_INSPECTION_CHECK_CODES,
   FILING_PARSER_EVIDENCE_CHECKS,
   FILING_PARSER_EVIDENCE_CLAIM,
   FILING_PARSER_EVIDENCE_NOT_PROVEN,
   FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_EVIDENCE_WORKFLOW,
+  FilingParserContainerInspectionError,
   createFilingParserEvidence,
   filingParserEvidenceSha256,
   parseCanonicalFilingParserEvidence,
   serializeCanonicalFilingParserEvidence,
   validateFilingParserContainerInspection,
+  type FilingParserContainerInspectionCheckCode,
   type FilingParserEvidenceInput,
 } from "./filing-parser-evidence";
 
@@ -156,58 +159,295 @@ describe("filing parser evidence v1", () => {
       ),
     ).not.toThrow();
 
-    const mutations = [
-      { ...inspection, Image: HASH_B },
-      { ...inspection, Config: { ...inspection.Config, User: "0:0" } },
-      {
-        ...inspection,
-        Config: { ...inspection.Config, Cmd: ["python3"] },
-      },
-      {
-        ...inspection,
-        Config: { ...inspection.Config, ExposedPorts: { "8080/tcp": {} } },
-      },
-      {
-        ...inspection,
-        HostConfig: { ...inspection.HostConfig, NetworkMode: "bridge" },
-      },
-      {
-        ...inspection,
-        HostConfig: { ...inspection.HostConfig, ReadonlyRootfs: false },
-      },
-      {
-        ...inspection,
-        HostConfig: { ...inspection.HostConfig, CapDrop: [] },
-      },
-      {
-        ...inspection,
-        HostConfig: { ...inspection.HostConfig, PidsLimit: 0 },
-      },
-      {
-        ...inspection,
-        HostConfig: { ...inspection.HostConfig, Tmpfs: { "/tmp": "rw" } },
-      },
-      {
-        ...inspection,
-        Mounts: [{ ...inspection.Mounts[0], Mode: "ro" }],
-      },
-      {
-        ...inspection,
-        Mounts: [{ ...inspection.Mounts[0], Mode: "rw" }],
-      },
-      { ...inspection, Mounts: [] },
-      {
-        ...inspection,
-        NetworkSettings: { Ports: { "8080/tcp": [{ HostPort: "8080" }] } },
-      },
+    const failures: Array<
+      readonly [FilingParserContainerInspectionCheckCode, unknown]
+    > = [
+      ["container_shape", withoutKey(inspection, "Config")],
+      ["container_id", { ...inspection, Id: "d".repeat(64) }],
+      ["container_image", { ...inspection, Image: HASH_B }],
+      ["container_name", { ...inspection, Name: "/unexpected" }],
+      ["state_shape", { ...inspection, State: {} }],
+      ["state_status", { ...inspection, State: { Status: "running" } }],
+      ["config_shape", { ...inspection, Config: {} }],
+      [
+        "config_image",
+        { ...inspection, Config: { ...inspection.Config, Image: HASH_B } },
+      ],
+      [
+        "config_user",
+        { ...inspection, Config: { ...inspection.Config, User: "0:0" } },
+      ],
+      [
+        "config_cmd",
+        { ...inspection, Config: { ...inspection.Config, Cmd: ["python3"] } },
+      ],
+      [
+        "config_exposed_ports",
+        {
+          ...inspection,
+          Config: { ...inspection.Config, ExposedPorts: { "8080/tcp": {} } },
+        },
+      ],
+      [
+        "config_entrypoint",
+        {
+          ...inspection,
+          Config: { ...inspection.Config, Entrypoint: ["python3"] },
+        },
+      ],
+      [
+        "config_env",
+        { ...inspection, Config: { ...inspection.Config, Env: ["TOKEN=x"] } },
+      ],
+      ["host_shape", { ...inspection, HostConfig: {} }],
+      [
+        "host_network_mode",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, NetworkMode: "bridge" },
+        },
+      ],
+      [
+        "host_read_only_root",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, ReadonlyRootfs: false },
+        },
+      ],
+      [
+        "host_privileged",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Privileged: true },
+        },
+      ],
+      [
+        "host_publish_all_ports",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, PublishAllPorts: true },
+        },
+      ],
+      [
+        "host_cap_add",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, CapAdd: ["NET_ADMIN"] },
+        },
+      ],
+      [
+        "host_cap_drop",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, CapDrop: [] },
+        },
+      ],
+      [
+        "host_security_options",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, SecurityOpt: [] },
+        },
+      ],
+      [
+        "host_pids",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, PidsLimit: 0 },
+        },
+      ],
+      [
+        "host_memory",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Memory: 0 },
+        },
+      ],
+      [
+        "host_memory_swap",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, MemorySwap: 0 },
+        },
+      ],
+      [
+        "host_cpu",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, NanoCpus: 0 },
+        },
+      ],
+      [
+        "host_ipc",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, IpcMode: "private" },
+        },
+      ],
+      [
+        "host_port_bindings",
+        {
+          ...inspection,
+          HostConfig: {
+            ...inspection.HostConfig,
+            PortBindings: { "8080/tcp": [] },
+          },
+        },
+      ],
+      ["network_shape", { ...inspection, NetworkSettings: {} }],
+      [
+        "network_ports",
+        {
+          ...inspection,
+          NetworkSettings: { Ports: { "8080/tcp": [{ HostPort: "8080" }] } },
+        },
+      ],
+      [
+        "ulimit_shape",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Ulimits: [] },
+        },
+      ],
+      [
+        "ulimit_nofile",
+        {
+          ...inspection,
+          HostConfig: {
+            ...inspection.HostConfig,
+            Ulimits: [{ Hard: 65, Name: "nofile", Soft: 64 }],
+          },
+        },
+      ],
+      [
+        "tmpfs_shape",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Tmpfs: {} },
+        },
+      ],
+      [
+        "tmpfs_options",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Tmpfs: { "/tmp": "rw" } },
+        },
+      ],
+      ["mount_count", { ...inspection, Mounts: [] }],
+      ["mount_shape", { ...inspection, Mounts: [{}] }],
+      [
+        "mount_type",
+        {
+          ...inspection,
+          Mounts: [{ ...inspection.Mounts[0], Type: "volume" }],
+        },
+      ],
+      [
+        "mount_source",
+        {
+          ...inspection,
+          Mounts: [{ ...inspection.Mounts[0], Source: "/tmp/x" }],
+        },
+      ],
+      [
+        "mount_destination",
+        {
+          ...inspection,
+          Mounts: [{ ...inspection.Mounts[0], Destination: "/x" }],
+        },
+      ],
+      [
+        "mount_mode",
+        { ...inspection, Mounts: [{ ...inspection.Mounts[0], Mode: "ro" }] },
+      ],
+      [
+        "mount_read_only",
+        { ...inspection, Mounts: [{ ...inspection.Mounts[0], RW: true }] },
+      ],
+      [
+        "host_mount_count",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Mounts: [] },
+        },
+      ],
+      [
+        "host_mount_shape",
+        {
+          ...inspection,
+          HostConfig: { ...inspection.HostConfig, Mounts: [{}] },
+        },
+      ],
+      [
+        "host_mount_type",
+        {
+          ...inspection,
+          HostConfig: {
+            ...inspection.HostConfig,
+            Mounts: [{ ...inspection.HostConfig.Mounts[0], Type: "volume" }],
+          },
+        },
+      ],
+      [
+        "host_mount_source",
+        {
+          ...inspection,
+          HostConfig: {
+            ...inspection.HostConfig,
+            Mounts: [{ ...inspection.HostConfig.Mounts[0], Source: "/tmp/x" }],
+          },
+        },
+      ],
+      [
+        "host_mount_target",
+        {
+          ...inspection,
+          HostConfig: {
+            ...inspection.HostConfig,
+            Mounts: [{ ...inspection.HostConfig.Mounts[0], Target: "/x" }],
+          },
+        },
+      ],
+      [
+        "host_mount_read_only",
+        {
+          ...inspection,
+          HostConfig: {
+            ...inspection.HostConfig,
+            Mounts: [{ ...inspection.HostConfig.Mounts[0], ReadOnly: false }],
+          },
+        },
+      ],
     ];
-    for (const mutation of mutations) {
-      expect(() =>
-        validateFilingParserContainerInspection(mutation, expected),
-      ).toThrow("Filing parser evidence is invalid.");
+    expect(failures.map(([checkCode]) => checkCode)).toEqual(
+      FILING_PARSER_CONTAINER_INSPECTION_CHECK_CODES,
+    );
+    for (const [checkCode, mutation] of failures) {
+      let observed: unknown;
+      try {
+        validateFilingParserContainerInspection(mutation, expected);
+      } catch (error) {
+        observed = error;
+      }
+      expect(observed).toBeInstanceOf(FilingParserContainerInspectionError);
+      expect((observed as FilingParserContainerInspectionError).checkCode).toBe(
+        checkCode,
+      );
+      expect((observed as Error).message).toBe(
+        "Filing parser evidence is invalid.",
+      );
     }
   });
 });
+
+function withoutKey<T extends Record<string, unknown>>(
+  value: T,
+  key: keyof T,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = { ...value };
+  delete output[String(key)];
+  return output;
+}
 
 function containerInspection(expected: {
   containerId: string;

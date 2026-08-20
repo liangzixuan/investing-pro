@@ -28,10 +28,12 @@ import {
   FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_EVIDENCE_WORKFLOW,
+  FilingParserContainerInspectionError,
   createFilingParserEvidence,
   filingParserEvidenceSha256,
   serializeCanonicalFilingParserEvidence,
   validateFilingParserContainerInspection,
+  type FilingParserContainerInspectionCheckCode,
   type FilingParserEvidenceCaseOutcome,
   type FilingParserEvidenceSourceHash,
 } from "./filing-parser-evidence";
@@ -48,19 +50,67 @@ const SIGNING_KEY_ID = "cycle2a-ephemeral-ed25519-v1";
 const EVIDENCE_FILE_NAME = "research-cockpit-filing-parser-isolation-v1.json";
 const MAX_COMMAND_OUTPUT_BYTES = 4_194_304;
 
+type FilingParserAcceptanceStage =
+  | "bootstrap"
+  | "case_execution"
+  | "commit_boundary"
+  | "environment"
+  | "evidence_construction"
+  | "evidence_write"
+  | "fixture_inventory"
+  | "image_build"
+  | "image_inspection"
+  | "image_removal"
+  | "replay_validation"
+  | "residue_validation"
+  | "revision"
+  | "source_hashes"
+  | "tool_versions"
+  | "worktree";
+
+type FilingParserDockerFailurePhase =
+  | "container_create"
+  | "container_inspection"
+  | "container_remove"
+  | "container_start"
+  | "label_residue"
+  | "name_residue"
+  | "none";
+
+type FilingParserInspectionDiagnosticCode =
+  | FilingParserContainerInspectionCheckCode
+  | "create_result_shape"
+  | "inspect_command"
+  | "inspect_json"
+  | "inspect_result_count"
+  | "mount_argument_shape"
+  | "none"
+  | "validator_unexpected";
+
+let acceptanceStage: FilingParserAcceptanceStage = "bootstrap";
+let acceptanceCaseIndex = -1;
+let firstDockerFailurePhase: FilingParserDockerFailurePhase = "none";
+let firstInspectionCheck: FilingParserInspectionDiagnosticCode = "none";
+
 await main().catch(() => {
+  process.stderr.write(
+    `Filing parser isolation diagnostic stage=${acceptanceStage} case=${acceptanceCaseIndex} docker=${firstDockerFailurePhase} inspection=${firstInspectionCheck}.\n`,
+  );
   process.stderr.write("Filing parser isolation acceptance failed.\n");
   process.exitCode = 1;
 });
 
 async function main(): Promise<void> {
+  acceptanceStage = "environment";
   const environment = acceptanceEnvironment();
   const startedAt = new Date().toISOString();
   const repositoryPath = resolve(process.cwd());
+  acceptanceStage = "revision";
   const revision = oneLine(
     await checkedCommandStdout("git", ["rev-parse", "HEAD"], 5_000),
   );
   if (revision !== environment.revision) fail();
+  acceptanceStage = "worktree";
   const worktree = await runCommand(
     "git",
     ["status", "--porcelain=v1", "--untracked-files=all"],
@@ -72,22 +122,27 @@ async function main(): Promise<void> {
     worktree.stderr.byteLength !== 0
   )
     fail();
+  acceptanceStage = "commit_boundary";
   await verifyCycle2aCommitBoundary(repositoryPath, revision);
 
+  acceptanceStage = "source_hashes";
   const sourceHashes = await committedSourceHashes(repositoryPath, revision);
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
     "fixtures/synthetic/filing-parser/v1/manifest.json",
   );
   const cases = buildParserSecurityCases();
+  acceptanceStage = "fixture_inventory";
   await verifyFixtureInventory(repositoryPath, cases, sourceHashes);
 
+  acceptanceStage = "image_build";
   const buildDirectory = await mkdtemp(
     join(environment.runnerTemp, "filing-parser-build-"),
   );
   const imageIdPath = join(buildDirectory, "image-id.txt");
   let imageId: `sha256:${string}` | null = null;
   try {
+    acceptanceStage = "image_build";
     const build = await runCommand(
       "docker",
       [
@@ -107,6 +162,7 @@ async function main(): Promise<void> {
     );
     if (build.exitCode !== 0) fail();
     imageId = imageIdValue(await readFile(imageIdPath, "utf8"));
+    acceptanceStage = "image_inspection";
     await verifyBuiltImage(imageId);
 
     const signing = signingHarness();
@@ -119,7 +175,10 @@ async function main(): Promise<void> {
     const outcomes: FilingParserEvidenceCaseOutcome[] = [];
     const acceptedReplay: SignedFilingParserResult[] = [];
 
-    for (const parserCase of cases) {
+    acceptanceStage = "case_execution";
+    for (const [caseIndex, parserCase] of cases.entries()) {
+      acceptanceCaseIndex = caseIndex;
+      resetDockerFailureDiagnostic();
       const signed = await boundary.parse(Uint8Array.from(parserCase.archive));
       if (
         signed.result.status !== parserCase.expected.status ||
@@ -172,6 +231,9 @@ async function main(): Promise<void> {
       });
     }
 
+    acceptanceCaseIndex = -1;
+    resetDockerFailureDiagnostic();
+    acceptanceStage = "replay_validation";
     if (
       acceptedReplay.length !== 2 ||
       canonicalJson(acceptedReplay[0]) !== canonicalJson(acceptedReplay[1]) ||
@@ -189,12 +251,16 @@ async function main(): Promise<void> {
         (outcome as { replayMatched: boolean }).replayMatched = true;
     }
 
+    acceptanceStage = "residue_validation";
+    resetDockerFailureDiagnostic();
     await processRunner.verifyNoResidue();
+    acceptanceStage = "tool_versions";
     const tools = await toolVersions();
     const accepted = outcomes.filter(
       (outcome) => outcome.observedStatus === "accepted",
     ).length;
     const completedAt = new Date().toISOString();
+    acceptanceStage = "evidence_construction";
     const evidence = createFilingParserEvidence({
       caseOutcomes: outcomes,
       checksPassed: FILING_PARSER_EVIDENCE_CHECKS,
@@ -251,6 +317,8 @@ async function main(): Promise<void> {
       },
     });
 
+    acceptanceStage = "image_removal";
+    resetDockerFailureDiagnostic();
     const imageRemoval = await runCommand(
       "docker",
       ["image", "rm", "--force", imageId],
@@ -258,8 +326,11 @@ async function main(): Promise<void> {
     );
     if (imageRemoval.exitCode !== 0) fail();
     imageId = null;
+    acceptanceStage = "residue_validation";
     await processRunner.verifyNoResidue();
 
+    acceptanceStage = "evidence_write";
+    resetDockerFailureDiagnostic();
     const serialized = serializeCanonicalFilingParserEvidence(evidence);
     const temporaryEvidencePath = join(
       environment.runnerTemp,
@@ -304,38 +375,53 @@ class AuditedDockerProcessRunner implements FilingParserProcessRunner {
       request.stderrLimitBytes < 1
     )
       return Promise.reject(processFailure());
-    this.verifyCommand(request.args);
-    const result = await runDockerBoundaryProcess(request);
-    if (
-      request.args[0] === "create" &&
-      result.exitCode === 0 &&
-      result.stderr.byteLength === 0
-    )
-      await this.verifyCreatedContainer(request.args, result.stdout);
-    return result;
+    const phase = dockerFailurePhase(request.args);
+    try {
+      this.verifyCommand(request.args);
+      const result = await runDockerBoundaryProcess(request);
+      if (dockerResultFailed(phase, result)) latchDockerFailure(phase);
+      if (
+        request.args[0] === "create" &&
+        result.exitCode === 0 &&
+        result.stderr.byteLength === 0
+      )
+        await this.verifyCreatedContainer(request.args, result.stdout);
+      return result;
+    } catch (error) {
+      latchDockerFailure(phase);
+      throw error;
+    }
   }
 
   public async verifyNoResidue(): Promise<void> {
-    const result = await runCommand(
-      "docker",
-      [
-        "container",
-        "ls",
-        "--all",
-        "--quiet",
-        "--filter",
-        `label=${FILING_PARSER_CONTAINER_LABEL}`,
-      ],
-      FILING_PARSER_LIMITS.dockerControlMilliseconds,
-      256,
-      FILING_PARSER_LIMITS.stderrBytes,
-    );
+    let result: FilingParserProcessResult;
+    try {
+      result = await runCommand(
+        "docker",
+        [
+          "container",
+          "ls",
+          "--all",
+          "--quiet",
+          "--filter",
+          `label=${FILING_PARSER_CONTAINER_LABEL}`,
+        ],
+        FILING_PARSER_LIMITS.dockerControlMilliseconds,
+        256,
+        FILING_PARSER_LIMITS.stderrBytes,
+      );
+    } catch (error) {
+      latchDockerFailure("label_residue");
+      throw error;
+    }
     if (
       result.exitCode !== 0 ||
       result.stdout.byteLength !== 0 ||
       result.stderr.byteLength !== 0
-    )
+    ) {
+      latchDockerFailure("label_residue");
       fail();
+    }
   }
 
   private verifyCommand(args: readonly string[]): void {
@@ -433,36 +519,108 @@ class AuditedDockerProcessRunner implements FilingParserProcessRunner {
       containerName === undefined ||
       mount === undefined ||
       !/^[0-9a-f]{64}$/u.test(containerId)
-    )
+    ) {
+      latchDockerFailure("container_inspection", "create_result_shape");
       fail();
+    }
     const prefix = "type=bind,source=";
     const suffix = ",destination=/input/filing.zip,readonly";
-    if (!mount.startsWith(prefix) || !mount.endsWith(suffix)) fail();
+    if (!mount.startsWith(prefix) || !mount.endsWith(suffix)) {
+      latchDockerFailure("container_inspection", "mount_argument_shape");
+      fail();
+    }
     const inputSource = mount.slice(prefix.length, -suffix.length);
-    const inspection = await runCommand(
-      "docker",
-      ["container", "inspect", containerName],
-      FILING_PARSER_LIMITS.dockerControlMilliseconds,
-      262_144,
-      FILING_PARSER_LIMITS.stderrBytes,
-    );
-    if (inspection.exitCode !== 0 || inspection.stderr.byteLength !== 0) fail();
+    let inspection: FilingParserProcessResult;
+    try {
+      inspection = await runCommand(
+        "docker",
+        ["container", "inspect", containerName],
+        FILING_PARSER_LIMITS.dockerControlMilliseconds,
+        262_144,
+        FILING_PARSER_LIMITS.stderrBytes,
+      );
+    } catch (error) {
+      latchDockerFailure("container_inspection", "inspect_command");
+      throw error;
+    }
+    if (inspection.exitCode !== 0 || inspection.stderr.byteLength !== 0) {
+      latchDockerFailure("container_inspection", "inspect_command");
+      fail();
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(
         new TextDecoder().decode(inspection.stdout),
       ) as unknown;
     } catch {
+      latchDockerFailure("container_inspection", "inspect_json");
       return fail();
     }
-    if (!Array.isArray(parsed) || parsed.length !== 1) fail();
-    validateFilingParserContainerInspection(parsed[0], {
-      containerId,
-      containerName,
-      imageId: this.imageId,
-      inputSource,
-    });
+    if (!Array.isArray(parsed) || parsed.length !== 1) {
+      latchDockerFailure("container_inspection", "inspect_result_count");
+      fail();
+    }
+    try {
+      validateFilingParserContainerInspection(parsed[0], {
+        containerId,
+        containerName,
+        imageId: this.imageId,
+        inputSource,
+      });
+    } catch (error) {
+      latchDockerFailure(
+        "container_inspection",
+        error instanceof FilingParserContainerInspectionError
+          ? error.checkCode
+          : "validator_unexpected",
+      );
+      throw error;
+    }
   }
+}
+
+function dockerFailurePhase(
+  args: readonly string[],
+): FilingParserDockerFailurePhase {
+  if (args[0] === "create") return "container_create";
+  if (args[0] === "start") return "container_start";
+  if (args[0] === "rm") return "container_remove";
+  if (args[0] === "container") return "name_residue";
+  return "none";
+}
+
+function dockerResultFailed(
+  phase: FilingParserDockerFailurePhase,
+  result: FilingParserProcessResult,
+): boolean {
+  if (phase === "name_residue")
+    return (
+      result.exitCode !== 0 ||
+      result.stdout.byteLength !== 0 ||
+      result.stderr.byteLength !== 0
+    );
+  if (
+    phase === "container_create" ||
+    phase === "container_remove" ||
+    phase === "container_start"
+  )
+    return result.exitCode !== 0 || result.stderr.byteLength !== 0;
+  return false;
+}
+
+function latchDockerFailure(
+  phase: FilingParserDockerFailurePhase,
+  inspectionCheck: FilingParserInspectionDiagnosticCode = "none",
+): void {
+  if (firstDockerFailurePhase !== "none" || phase === "none") return;
+  firstDockerFailurePhase = phase;
+  firstInspectionCheck =
+    phase === "container_inspection" ? inspectionCheck : "none";
+}
+
+function resetDockerFailureDiagnostic(): void {
+  firstDockerFailurePhase = "none";
+  firstInspectionCheck = "none";
 }
 
 function runDockerBoundaryProcess(
