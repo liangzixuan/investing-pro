@@ -254,6 +254,22 @@ returned `offline_consistent`. See the
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
 
+B14 defines a separate transition into that keyed model for one populated,
+synthetic pre-`0005` branch. At the capture boundary, every current thesis and
+alert raw identifier enters a temporary audited work registry. Post-boundary
+inserts and deletes update that registry while authenticated bounded backfill
+assigns stable allocation IDs and externally derived tokens. Contract requires
+the exact observed capture epoch, no pending work, complete bidirectional
+source/registry correspondence, and a short final write-conflicting barrier
+before the temporary capture surface is removed and the B13 lifecycle target
+is finalized. There is no authoritative record for identifiers deleted before
+capture. The acceptance writer identities do not define a production
+allocation, authorization, or dual-write protocol. The B14 source, V14
+contract, and frozen-byte local integration exist, but the live V14 run and
+artifact review remain pending. See
+[ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
@@ -286,6 +302,12 @@ production privacy/legal approval, verified DSAR or legal-hold handling,
 operating scheduler/monitoring, KMS/HSM custody or token authenticity,
 cryptographic erasure, deletion across external planes, populated cutover,
 global deletion proof, real-data admission, application composition, or
+production readiness.
+B14's locally integrated transition remains bounded to synthetic data in one
+fixed disposable database and has no retained live V14 result yet. It does not
+establish continuous zero downtime, production writer integration or
+allocation-gap handling, production scale/locks/SLOs, crash/failover/restart or
+downgrade behavior, recovery of pre-capture deletions, real-data admission, or
 production readiness.
 B5 closes only one sequential, synthetic, container-local acceptance-only
 test-loader result. B6 does not execute a migration or close the

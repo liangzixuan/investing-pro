@@ -347,6 +347,16 @@ Assets at risk are source integrity, fixture provenance, rights-policy behavior,
   fixture, policy, manifest, and SQL bodies are source-controlled and bound by
   V13 review. PostgreSQL run `32305478242` passed that exact synthetic path at
   commit `a959cba`; its retained V13 record returned `offline_consistent`.
+- The B14 populated-cutover source starts only from the exact v2 pre-`0005`
+  synthetic branch. An audited temporary work registry captures current and
+  post-boundary thesis/alert identifiers while authenticated bounded token
+  backfill runs. Contract rechecks the exact capture epoch and zero pending
+  work under a short final write-conflicting barrier before installing the B13
+  target and removing capture objects. The gate's test-seed insert and
+  migrator-to-owner delete are not production writer authentication or a
+  dual-write/allocation protocol. Identifiers deleted before capture have no
+  authoritative recovery source. The V14 source/history review branch exists,
+  but a retained live V14 run and independent artifact verdict remain pending.
 - The b3 acceptance source preserves the bounded b2 authentication controls and
   reuses the reviewed b1 tenant/rights assertions through the authenticated
   runtime session. It retains per-transaction `SET LOCAL ROLE`, sequential
@@ -419,6 +429,17 @@ database. See the
 [B13 evidence note](./POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./CYCLE_1BB13_EXIT_MATRIX.md).
+
+B14 narrows only the historical populated-cutover gap for one synthetic
+capture/backfill/contract sequence. It does not establish production writer
+authorization or allocation-gap coordination, continuous zero downtime,
+production volume/duration/SLO/lock budgets, process or cluster crash recovery,
+restart/resume, failover/replication/prepared-transaction concurrency,
+post-contract downgrade, recovery of identifiers deleted before capture,
+external key operations, global deletion, or real-data admission. Source-stage
+work is not live engine evidence. See
+[ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 

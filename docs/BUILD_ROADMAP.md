@@ -44,7 +44,10 @@ package-roadmap prerequisite now has a B13 technical source contract: the
 privacy/retention decision, empty-only keyed-identifier plan, and V13 evidence
 branches are implemented. Its pinned live V13 execution and independent
 artifact review are complete for their bounded synthetic scope, while
-production privacy/legal admission remains blocked.
+production privacy/legal admission remains blocked. The B14 populated-cutover
+source and V14 evidence contract are implemented for one bounded synthetic
+pre-`0005` transition, and local integration is complete on the frozen source
+bytes. Pinned live execution and independent V14 artifact review remain pending.
 
 **Cycle 1b-b1 source status:** the clean-only acceptance renderer, immutable
 PostgreSQL 17.11 service declaration, synthetic two-tenant fixture, and
@@ -338,6 +341,26 @@ pending external product/privacy/legal approval and the operating controls
 listed in ADR 0025. Populated-database backfill and online cutover remain
 owned by separate package-roadmap item 18.
 
+**Cycle 1b-b14 source and local integration complete; live exit pending:**
+populated-cutover plan v1 binds the exact v2 `0001`-`0004` plus `0006` base, explicitly excludes
+unsafe `0005`, and targets the exact B13 keyed lifecycle. Its two phases create
+an audited capture/work registry and bounded authenticated token backfill, then
+validate the exact capture epoch and contract under a short final
+write-conflicting barrier. The deterministic synthetic gate includes a
+post-capture insert and delete, but its test-seed and migrator-to-owner actors
+do not model a production application writer. V14 preserves every exact V1
+through V13 branch, appends two checks and three top-level source hashes, and
+commit-binds the manifest-named platform and two application bodies. See
+[ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md).
+
+B14 is not yet a live result and is not a general production cutover. It does
+not prove uninterrupted writes, application allocation/dual-write gap
+handling, production duration/SLO/lock budgets, crash/restart/failover or
+downgrade behavior, prepared-transaction/replication concurrency, recovery of
+identifiers deleted before capture, external key custody, real-data safety, or
+production admission.
+
 1. **Cycle 1b-b1 clean bootstrap complete:** seven migrations executed from an
    empty database through the explicitly limited ephemeral superuser, and the
    declared `NOLOGIN` capabilities were exercised through impersonation. The
@@ -413,6 +436,10 @@ result are also reviewed.
 The B13 technical policy, empty-only plan, token boundary, and V13 evidence
 source are implemented, and its bounded live V13 result and independent review
 are complete. Production admission remains blocked.
+The B14 populated-cutover plan and V14 evidence source are implemented, and
+their integrated local exit is complete on the frozen source bytes. The pinned
+live run, retained artifact, and independent review remain pending. Production
+admission remains blocked.
 The row-normalization contract is already frozen; the B4 query and unit contract
 provides a reviewed input to B9 without retroactively proving that adapter.
 
@@ -451,6 +478,11 @@ empty-data-only. It cannot be used as production privacy/legal approval, DSAR
 or legal-hold evidence, KMS/HSM custody, operating offboarding/retention
 scheduling, backup or third-party deletion, populated cutover, global erasure
 proof, or permission for real data.
+The B14 source remains disconnected and synthetic-only. Until a retained V14
+run and independent review exist, it is not live evidence even for its bounded
+scope; regardless, it cannot authorize a production writer, promise continuous
+zero downtime, cover crash/failover/restart or production lock budgets, recover
+pre-capture deletions, or admit real data.
 
 ## Cycle 1c — demo identity and API contract proof
 

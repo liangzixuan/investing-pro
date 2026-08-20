@@ -33,6 +33,8 @@ import {
   POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V14_NOT_PROVEN,
   serializePostgresAcceptanceEvidence,
 } from "../src/postgres-acceptance-evidence";
 import {
@@ -87,7 +89,16 @@ interface MutableInput {
     privacyRetentionPlanSourceV1?: Uint8Array;
     resourceIdentifierTokenV1?: Uint8Array;
     privacyRetentionFixtureV1?: Uint8Array;
+    populatedCutoverPlanManifestV1?: Uint8Array;
+    populatedCutoverPlanPlatformV1?: Uint8Array;
+    populatedCutoverPlanSourceV1?: Uint8Array;
+    populatedCutoverFixtureV1?: Uint8Array;
     privacyRetentionPlanMigrationsV1?: Array<{
+      id: string;
+      file: string;
+      bytes: Uint8Array;
+    }>;
+    populatedCutoverPlanMigrationsV1?: Array<{
       id: string;
       file: string;
       bytes: Uint8Array;
@@ -183,6 +194,26 @@ function cloneInput(): MutableInput {
       ),
       privacyRetentionPlanMigrationsV1:
         BASE_INPUT.sources.privacyRetentionPlanMigrationsV1!.map(
+          (migration) => ({
+            id: migration.id,
+            file: migration.file,
+            bytes: exactCopy(migration.bytes),
+          }),
+        ),
+      populatedCutoverPlanManifestV1: exactCopy(
+        BASE_INPUT.sources.populatedCutoverPlanManifestV1!,
+      ),
+      populatedCutoverPlanPlatformV1: exactCopy(
+        BASE_INPUT.sources.populatedCutoverPlanPlatformV1!,
+      ),
+      populatedCutoverPlanSourceV1: exactCopy(
+        BASE_INPUT.sources.populatedCutoverPlanSourceV1!,
+      ),
+      populatedCutoverFixtureV1: exactCopy(
+        BASE_INPUT.sources.populatedCutoverFixtureV1!,
+      ),
+      populatedCutoverPlanMigrationsV1:
+        BASE_INPUT.sources.populatedCutoverPlanMigrationsV1!.map(
           (migration) => ({
             id: migration.id,
             file: migration.file,
@@ -311,6 +342,13 @@ function removeV13SourceHashes(record: Record<string, unknown>): void {
   delete hashes.privacyRetentionFixtureV1Sha256;
 }
 
+function removeV14SourceHashes(record: Record<string, unknown>): void {
+  const hashes = record.sourceHashes as Record<string, unknown>;
+  delete hashes.populatedCutoverPlanManifestV1Sha256;
+  delete hashes.populatedCutoverPlanSourceV1Sha256;
+  delete hashes.populatedCutoverFixtureV1Sha256;
+}
+
 function removeV7Sources(input: MutableInput): void {
   delete input.sources.platformBootstrapV2;
   delete input.sources.applicationMigrationManifestV2;
@@ -354,8 +392,35 @@ function removeV13Sources(input: MutableInput): void {
   delete input.sources.privacyRetentionFixtureV1;
 }
 
-function v12Input(): MutableInput {
+function removeV14Sources(input: MutableInput): void {
+  delete input.sources.populatedCutoverPlanManifestV1;
+  delete input.sources.populatedCutoverPlanPlatformV1;
+  delete input.sources.populatedCutoverPlanMigrationsV1;
+  delete input.sources.populatedCutoverPlanSourceV1;
+  delete input.sources.populatedCutoverFixtureV1;
+}
+
+function v13Input(): MutableInput {
   let input = mutateEvidence(cloneInput(), (record) => {
+    record.schemaVersion = 13;
+    record.checksPassed = [...POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED];
+    record.notProven = [...POSTGRES_ACCEPTANCE_V13_NOT_PROVEN];
+    removeV14SourceHashes(record);
+  });
+  removeV14Sources(input);
+  input = replaceCanonicalSourceJson(
+    input,
+    "imageConfig",
+    (imageConfig) => {
+      delete imageConfig.populatedCutoverFixtureSha256;
+    },
+    false,
+  );
+  return input;
+}
+
+function v12Input(): MutableInput {
+  let input = mutateEvidence(v13Input(), (record) => {
     record.schemaVersion = 12;
     record.checksPassed = [...POSTGRES_ACCEPTANCE_V12_CHECKS_PASSED];
     record.notProven = [...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN];
@@ -469,7 +534,8 @@ function replaceCanonicalSourceJson(
     | "imageConfig"
     | "migrationManifest"
     | "applicationMigrationManifestV2"
-    | "privacyRetentionPlanManifestV1",
+    | "privacyRetentionPlanManifestV1"
+    | "populatedCutoverPlanManifestV1",
   mutate: (value: Record<string, unknown>) => void,
   updateRecordedHash: boolean,
 ): MutableInput {
@@ -484,7 +550,8 @@ function replaceCanonicalSourceJson(
   if (
     (key === "migrationManifest" ||
       key === "applicationMigrationManifestV2" ||
-      key === "privacyRetentionPlanManifestV1") &&
+      key === "privacyRetentionPlanManifestV1" ||
+      key === "populatedCutoverPlanManifestV1") &&
     updateRecordedHash
   ) {
     return mutateEvidence(next, (record) => {
@@ -494,7 +561,9 @@ function replaceCanonicalSourceJson(
           ? "migrationManifestSha256"
           : key === "applicationMigrationManifestV2"
             ? "applicationMigrationManifestV2Sha256"
-            : "privacyRetentionPlanManifestV1Sha256"
+            : key === "privacyRetentionPlanManifestV1"
+              ? "privacyRetentionPlanManifestV1Sha256"
+              : "populatedCutoverPlanManifestV1Sha256"
       ] = sha256(replacement);
     });
   }
@@ -656,6 +725,46 @@ function cloneFrom(
         : {
             privacyRetentionPlanMigrationsV1:
               input.sources.privacyRetentionPlanMigrationsV1.map(
+                (migration) => ({
+                  id: migration.id,
+                  file: migration.file,
+                  bytes: exactCopy(migration.bytes),
+                }),
+              ),
+          }),
+      ...(input.sources.populatedCutoverPlanManifestV1 === undefined
+        ? {}
+        : {
+            populatedCutoverPlanManifestV1: exactCopy(
+              input.sources.populatedCutoverPlanManifestV1,
+            ),
+          }),
+      ...(input.sources.populatedCutoverPlanPlatformV1 === undefined
+        ? {}
+        : {
+            populatedCutoverPlanPlatformV1: exactCopy(
+              input.sources.populatedCutoverPlanPlatformV1,
+            ),
+          }),
+      ...(input.sources.populatedCutoverPlanSourceV1 === undefined
+        ? {}
+        : {
+            populatedCutoverPlanSourceV1: exactCopy(
+              input.sources.populatedCutoverPlanSourceV1,
+            ),
+          }),
+      ...(input.sources.populatedCutoverFixtureV1 === undefined
+        ? {}
+        : {
+            populatedCutoverFixtureV1: exactCopy(
+              input.sources.populatedCutoverFixtureV1,
+            ),
+          }),
+      ...(input.sources.populatedCutoverPlanMigrationsV1 === undefined
+        ? {}
+        : {
+            populatedCutoverPlanMigrationsV1:
+              input.sources.populatedCutoverPlanMigrationsV1.map(
                 (migration) => ({
                   id: migration.id,
                   file: migration.file,
@@ -964,6 +1073,23 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("verifies canonical historical v13 evidence without v14 populated-cutover sources or config field", () => {
+    const result = verifyPostgresAcceptanceEvidenceOffline(v13Input());
+
+    expect(result.recordedChecksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+    ]);
+    expect(result.recordedNotProven).toEqual([
+      ...POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+    ]);
+    expect(result.recordedChecksPassed).not.toContain(
+      "versioned_populated_resource_identifier_cutover_contract",
+    );
+    expect(result.recordedNotProven).toContain(
+      "populated_database_privacy_migration_backfill_or_online_cutover",
+    );
+  });
+
   it("rejects evidence that mixes claims and source bundles across versions", () => {
     for (const input of [
       mutateEvidence(cloneInput(), (record) => {
@@ -1017,6 +1143,12 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       mutateEvidence(v12Input(), (record) => {
         record.schemaVersion = 13;
       }),
+      mutateEvidence(v13Input(), (record) => {
+        record.schemaVersion = 14;
+      }),
+      mutateEvidence(cloneInput(), (record) => {
+        record.schemaVersion = 13;
+      }),
       mutateEvidence(cloneInput(), (record) => {
         record.schemaVersion = 12;
       }),
@@ -1054,6 +1186,20 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
 
   it("requires the exact version-specific source bundle", () => {
     for (const key of [
+      "populatedCutoverPlanManifestV1",
+      "populatedCutoverPlanPlatformV1",
+      "populatedCutoverPlanMigrationsV1",
+      "populatedCutoverPlanSourceV1",
+      "populatedCutoverFixtureV1",
+    ] as const) {
+      const missing = cloneInput();
+      delete missing.sources[key];
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(missing),
+      );
+    }
+
+    for (const key of [
       "privacyRetentionPolicyV1",
       "privacyRetentionPlanManifestV1",
       "privacyRetentionPlanPlatformV1",
@@ -1062,6 +1208,10 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       "privacyRetentionPlanSourceV1",
       "resourceIdentifierTokenV1",
       "privacyRetentionFixtureV1",
+      "populatedCutoverPlanManifestV1",
+      "populatedCutoverPlanPlatformV1",
+      "populatedCutoverPlanSourceV1",
+      "populatedCutoverFixtureV1",
     ] as const) {
       const missing = cloneInput();
       delete missing.sources[key];
@@ -1207,11 +1357,21 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       verifyPostgresAcceptanceEvidenceOffline(extraV12),
     );
 
+    const extraV13 = v13Input();
+    (
+      extraV13.sources as unknown as Record<string, unknown>
+    ).populatedCutoverPlanManifestV1 = exactCopy(
+      BASE_INPUT.sources.populatedCutoverPlanManifestV1!,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(extraV13),
+    );
+
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V14_NOT_PROVEN,
     );
   });
 
@@ -1496,6 +1656,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(changedPrivacyMigration),
     );
+
+    const changedCutoverMigration = cloneInput();
+    changedCutoverMigration.sources.populatedCutoverPlanMigrationsV1![0] = {
+      ...changedCutoverMigration.sources.populatedCutoverPlanMigrationsV1![0]!,
+      bytes: changedByte(
+        changedCutoverMigration.sources.populatedCutoverPlanMigrationsV1![0]!
+          .bytes,
+      ),
+    };
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(changedCutoverMigration),
+    );
   });
 
   it("rejects image target, version, runner, and reviewed-input inconsistencies", () => {
@@ -1520,6 +1692,9 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
       },
       (value) => {
         value.privacyRetentionFixtureSha256 = "0".repeat(64);
+      },
+      (value) => {
+        value.populatedCutoverFixtureSha256 = "0".repeat(64);
       },
       (value) => {
         (value.runner as Record<string, unknown>).architecture = "arm64";
@@ -1572,6 +1747,18 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
     expectValueFreeFailure(() =>
       verifyPostgresAcceptanceEvidenceOffline(missingV13FixtureHash),
+    );
+
+    const missingV14FixtureHash = replaceCanonicalSourceJson(
+      cloneInput(),
+      "imageConfig",
+      (value) => {
+        delete value.populatedCutoverFixtureSha256;
+      },
+      false,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(missingV14FixtureHash),
     );
 
     const extra = replaceCanonicalSourceJson(
@@ -1907,6 +2094,76 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
+  it("validates the exact populated-cutover base, target, phases, and every manifest-named body", () => {
+    const changes: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        value.planVersion = 2;
+      },
+      (value) => {
+        (value.platform as Record<string, unknown>).file = "wrong.sql";
+      },
+      (value) => {
+        (value.platform as Record<string, unknown>).sha256 = "0".repeat(64);
+      },
+      (value) => {
+        (value.base as Record<string, unknown>).manifestSha256 = "0".repeat(64);
+      },
+      (value) => {
+        const base = value.base as Record<string, unknown>;
+        (base.selectedMigrations as unknown[]).reverse();
+      },
+      (value) => {
+        const base = value.base as Record<string, unknown>;
+        (base.excludedMigration as Record<string, unknown>).reason = "wrong";
+      },
+      (value) => {
+        (value.target as Record<string, unknown>).policySha256 = "0".repeat(64);
+      },
+      (value) => {
+        (value.target as Record<string, unknown>).applicationSha256 =
+          "0".repeat(64);
+      },
+      (value) => {
+        (value.migrations as unknown[]).reverse();
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.phase = "wrong";
+      },
+      (value) => {
+        const migrations = value.migrations as Array<Record<string, unknown>>;
+        migrations[0]!.sha256 = "0".repeat(64);
+      },
+      (value) => {
+        value.secret = SECRET_CANARY;
+      },
+    ];
+    for (const change of changes) {
+      const input = replaceCanonicalSourceJson(
+        cloneInput(),
+        "populatedCutoverPlanManifestV1",
+        change,
+        true,
+      );
+      expectValueFreeFailure(() =>
+        verifyPostgresAcceptanceEvidenceOffline(input),
+      );
+    }
+
+    const noncanonical = cloneInput();
+    const replacement = bytes(
+      ` ${decoder.decode(noncanonical.sources.populatedCutoverPlanManifestV1)}`,
+    );
+    noncanonical.sources.populatedCutoverPlanManifestV1 = replacement;
+    const changed = mutateEvidence(noncanonical, (record) => {
+      const hashes = record.sourceHashes as Record<string, unknown>;
+      hashes.populatedCutoverPlanManifestV1Sha256 = sha256(replacement);
+    });
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(changed),
+    );
+  });
+
   it("rejects accessor-backed and symbol-decorated migration arrays", () => {
     const accessor = cloneInput();
     const migrations = [...accessor.sources.migrations];
@@ -1965,6 +2222,10 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     privacyRetentionPlanSourceV1,
     resourceIdentifierTokenV1,
     privacyRetentionFixtureV1,
+    populatedCutoverPlanManifestV1,
+    populatedCutoverPlanPlatformV1,
+    populatedCutoverPlanSourceV1,
+    populatedCutoverFixtureV1,
   ] = await Promise.all([
     readExact(new URL("../acceptance/postgres-image.json", import.meta.url)),
     readExact(
@@ -2036,6 +2297,19 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
     readExact(
       new URL("../acceptance/privacy-retention-fixture.sql", import.meta.url),
     ),
+    readExact(
+      new URL("../populated-cutover-plans/v1/manifest.json", import.meta.url),
+    ),
+    readExact(
+      new URL(
+        "../populated-cutover-plans/v1/platform-bootstrap.sql",
+        import.meta.url,
+      ),
+    ),
+    readExact(new URL("../src/populated-cutover-plan.ts", import.meta.url)),
+    readExact(
+      new URL("../acceptance/populated-cutover-fixture.sql", import.meta.url),
+    ),
   ]);
   const image = JSON.parse(decoder.decode(imageConfig)) as {
     reference: string;
@@ -2100,6 +2374,23 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       bytes: await readExact(
         new URL(
           `../privacy-retention-plans/v1/${migration.file}`,
+          import.meta.url,
+        ),
+      ),
+    })),
+  );
+  const populatedCutoverManifestV1 = JSON.parse(
+    decoder.decode(populatedCutoverPlanManifestV1),
+  ) as {
+    migrations: Array<{ id: string; file: string }>;
+  };
+  const populatedCutoverPlanMigrationsV1 = await Promise.all(
+    populatedCutoverManifestV1.migrations.map(async (migration) => ({
+      id: migration.id,
+      file: migration.file,
+      bytes: await readExact(
+        new URL(
+          `../populated-cutover-plans/v1/${migration.file}`,
           import.meta.url,
         ),
       ),
@@ -2170,6 +2461,11 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       privacyRetentionPlanSourceV1Sha256: sha256(privacyRetentionPlanSourceV1),
       resourceIdentifierTokenV1Sha256: sha256(resourceIdentifierTokenV1),
       privacyRetentionFixtureV1Sha256: sha256(privacyRetentionFixtureV1),
+      populatedCutoverPlanManifestV1Sha256: sha256(
+        populatedCutoverPlanManifestV1,
+      ),
+      populatedCutoverPlanSourceV1Sha256: sha256(populatedCutoverPlanSourceV1),
+      populatedCutoverFixtureV1Sha256: sha256(populatedCutoverFixtureV1),
     },
     completedAt: "2026-08-16T02:03:04.567Z",
   });
@@ -2213,6 +2509,11 @@ async function createValidInput(): Promise<VerifyPostgresAcceptanceEvidenceOffli
       privacyRetentionPlanSourceV1,
       resourceIdentifierTokenV1,
       privacyRetentionFixtureV1,
+      populatedCutoverPlanManifestV1,
+      populatedCutoverPlanPlatformV1,
+      populatedCutoverPlanMigrationsV1,
+      populatedCutoverPlanSourceV1,
+      populatedCutoverFixtureV1,
       applicationMigrationsV2,
       migrations,
     },

@@ -39,6 +39,10 @@ const MAX_PRIVACY_RETENTION_POLICY_SOURCE_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_PRIVACY_RETENTION_PLAN_SOURCE_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_RESOURCE_IDENTIFIER_TOKEN_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_PRIVACY_RETENTION_FIXTURE_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_POPULATED_CUTOVER_PLAN_MANIFEST_V1_BYTES = 64 * 1_024;
+const MAX_POPULATED_CUTOVER_PLAN_PLATFORM_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_POPULATED_CUTOVER_PLAN_SOURCE_V1_BYTES = 2 * 1_024 * 1_024;
+const MAX_POPULATED_CUTOVER_FIXTURE_V1_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_BYTES = 2 * 1_024 * 1_024;
 const MAX_MIGRATION_COUNT = 100;
 const MAX_TOTAL_MIGRATION_BYTES = 32 * 1_024 * 1_024;
@@ -95,6 +99,14 @@ const RESOURCE_IDENTIFIER_TOKEN_V1_PATH =
   "packages/db/src/resource-identifier-token.ts";
 const PRIVACY_RETENTION_FIXTURE_V1_PATH =
   "packages/db/acceptance/privacy-retention-fixture.sql";
+const POPULATED_CUTOVER_PLAN_V1_DIRECTORY =
+  "packages/db/populated-cutover-plans/v1";
+const POPULATED_CUTOVER_PLAN_MANIFEST_V1_PATH =
+  "packages/db/populated-cutover-plans/v1/manifest.json";
+const POPULATED_CUTOVER_PLAN_SOURCE_V1_PATH =
+  "packages/db/src/populated-cutover-plan.ts";
+const POPULATED_CUTOVER_FIXTURE_V1_PATH =
+  "packages/db/acceptance/populated-cutover-fixture.sql";
 
 const REVIEW_INPUT_KEYS = [
   "evidencePath",
@@ -121,6 +133,22 @@ const PRIVACY_RETENTION_PLAN_MANIFEST_V1_KEYS = [
   "migrations",
 ] as const;
 const PRIVACY_RETENTION_PLAN_PLATFORM_V1_KEYS = ["file", "sha256"] as const;
+const POPULATED_CUTOVER_PLAN_MANIFEST_V1_KEYS = [
+  "schemaVersion",
+  "planVersion",
+  "algorithm",
+  "platform",
+  "base",
+  "target",
+  "migrations",
+] as const;
+const POPULATED_CUTOVER_PLAN_PLATFORM_V1_KEYS = ["file", "sha256"] as const;
+const POPULATED_CUTOVER_PLAN_MIGRATION_V1_KEYS = [
+  "id",
+  "phase",
+  "file",
+  "sha256",
+] as const;
 const MIGRATION_KEYS = ["id", "file", "sha256"] as const;
 const APPLICATION_MIGRATION_V2_FILES = Object.freeze([
   "0001_request_context_and_ledger.sql",
@@ -134,6 +162,19 @@ const PRIVACY_RETENTION_PLAN_PLATFORM_V1_FILE = "platform-bootstrap.sql";
 const PRIVACY_RETENTION_PLAN_MIGRATION_V1_ID = "privacy-v1-0001";
 const PRIVACY_RETENTION_PLAN_MIGRATION_V1_FILE =
   "application/0001_keyed_resource_identifier_lifecycle.sql";
+const POPULATED_CUTOVER_PLAN_PLATFORM_V1_FILE = "platform-bootstrap.sql";
+const POPULATED_CUTOVER_PLAN_MIGRATIONS_V1 = Object.freeze([
+  Object.freeze({
+    id: "populated-cutover-v1-0001",
+    phase: "expand_capture_backfill",
+    file: "application/0001_expand_capture_and_backfill.sql",
+  }),
+  Object.freeze({
+    id: "populated-cutover-v1-0002",
+    phase: "validate_contract",
+    file: "application/0002_validate_and_contract.sql",
+  }),
+] as const);
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
@@ -178,6 +219,21 @@ interface PrivacyRetentionPlanV1Manifest {
     readonly sha256: string;
   };
   readonly migrations: readonly PrivacyRetentionPlanV1MigrationEntry[];
+}
+
+interface PopulatedCutoverPlanV1MigrationEntry {
+  readonly id: string;
+  readonly phase: string;
+  readonly file: string;
+  readonly sha256: string;
+}
+
+interface PopulatedCutoverPlanV1Manifest {
+  readonly platform: {
+    readonly file: string;
+    readonly sha256: string;
+  };
+  readonly migrations: readonly PopulatedCutoverPlanV1MigrationEntry[];
 }
 
 interface GitTreeEntry {
@@ -270,7 +326,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
       evidence.schemaVersion === 12 ||
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readProjectionSources(repositoryPath, input.expectedCommit)
         : {};
     const migrationPlanV2Sources =
@@ -280,7 +337,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
       evidence.schemaVersion === 12 ||
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readMigrationPlanV2Sources(repositoryPath, input.expectedCommit)
         : {};
     const backupRestorePlanV1Sources =
@@ -289,7 +347,8 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
       evidence.schemaVersion === 12 ||
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readBackupRestorePlanV1Sources(
             repositoryPath,
             input.expectedCommit,
@@ -300,29 +359,38 @@ export async function reviewPostgresAcceptanceEvidence(
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
       evidence.schemaVersion === 12 ||
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readV9Sources(repositoryPath, input.expectedCommit)
         : {};
     const v10Sources =
       evidence.schemaVersion === 10 ||
       evidence.schemaVersion === 11 ||
       evidence.schemaVersion === 12 ||
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readV10Sources(repositoryPath, input.expectedCommit)
         : {};
     const v11Sources =
       evidence.schemaVersion === 11 ||
       evidence.schemaVersion === 12 ||
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readV11Sources(repositoryPath, input.expectedCommit)
         : {};
     const v12Sources =
-      evidence.schemaVersion === 12 || evidence.schemaVersion === 13
+      evidence.schemaVersion === 12 ||
+      evidence.schemaVersion === 13 ||
+      evidence.schemaVersion === 14
         ? await readV12Sources(repositoryPath, input.expectedCommit)
         : {};
     const v13Sources =
-      evidence.schemaVersion === 13
+      evidence.schemaVersion === 13 || evidence.schemaVersion === 14
         ? await readV13Sources(repositoryPath, input.expectedCommit)
+        : {};
+    const v14Sources =
+      evidence.schemaVersion === 14
+        ? await readV14Sources(repositoryPath, input.expectedCommit)
         : {};
 
     return verifyPostgresAcceptanceEvidenceOffline({
@@ -350,11 +418,79 @@ export async function reviewPostgresAcceptanceEvidence(
         ...v11Sources,
         ...v12Sources,
         ...v13Sources,
+        ...v14Sources,
       },
     });
   } catch {
     throw new PostgresAcceptanceEvidenceReviewError();
   }
+}
+
+async function readV14Sources(
+  repositoryPath: string,
+  commit: string,
+): Promise<{
+  readonly populatedCutoverPlanManifestV1: Uint8Array;
+  readonly populatedCutoverPlanPlatformV1: Uint8Array;
+  readonly populatedCutoverPlanMigrationsV1: readonly {
+    id: string;
+    file: string;
+    bytes: Uint8Array;
+  }[];
+  readonly populatedCutoverPlanSourceV1: Uint8Array;
+  readonly populatedCutoverFixtureV1: Uint8Array;
+}> {
+  const [
+    populatedCutoverPlanManifestV1,
+    populatedCutoverPlanSourceV1,
+    populatedCutoverFixtureV1,
+  ] = await Promise.all([
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      POPULATED_CUTOVER_PLAN_MANIFEST_V1_PATH,
+      MAX_POPULATED_CUTOVER_PLAN_MANIFEST_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      POPULATED_CUTOVER_PLAN_SOURCE_V1_PATH,
+      MAX_POPULATED_CUTOVER_PLAN_SOURCE_V1_BYTES,
+    ),
+    readFixedGitBlob(
+      repositoryPath,
+      commit,
+      POPULATED_CUTOVER_FIXTURE_V1_PATH,
+      MAX_POPULATED_CUTOVER_FIXTURE_V1_BYTES,
+    ),
+  ]);
+  const plan = parsePopulatedCutoverPlanManifestV1(
+    populatedCutoverPlanManifestV1,
+  );
+  await requireExactPopulatedCutoverPlanV1Tree(repositoryPath, commit, plan);
+  const populatedCutoverPlanPlatformV1 = await readFixedGitBlob(
+    repositoryPath,
+    commit,
+    `${POPULATED_CUTOVER_PLAN_V1_DIRECTORY}/${plan.platform.file}`,
+    MAX_POPULATED_CUTOVER_PLAN_PLATFORM_V1_BYTES,
+  );
+  const populatedCutoverPlanMigrationsV1 =
+    await readPopulatedCutoverPlanMigrationsV1(
+      repositoryPath,
+      commit,
+      plan.migrations,
+    );
+  return Object.freeze({
+    populatedCutoverPlanManifestV1: Uint8Array.from(
+      populatedCutoverPlanManifestV1,
+    ),
+    populatedCutoverPlanPlatformV1: Uint8Array.from(
+      populatedCutoverPlanPlatformV1,
+    ),
+    populatedCutoverPlanMigrationsV1,
+    populatedCutoverPlanSourceV1: Uint8Array.from(populatedCutoverPlanSourceV1),
+    populatedCutoverFixtureV1: Uint8Array.from(populatedCutoverFixtureV1),
+  });
 }
 
 async function readV13Sources(
@@ -1003,6 +1139,73 @@ async function readPrivacyRetentionPlanMigrationsV1(
   return Object.freeze(migrations);
 }
 
+async function requireExactPopulatedCutoverPlanV1Tree(
+  repositoryPath: string,
+  commit: string,
+  plan: PopulatedCutoverPlanV1Manifest,
+): Promise<void> {
+  const treeOutput = await executeGit(
+    repositoryPath,
+    [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      commit,
+      "--",
+      POPULATED_CUTOVER_PLAN_V1_DIRECTORY,
+    ],
+    MAX_GIT_METADATA_BYTES,
+  );
+  const treeEntries = parseGitTree(treeOutput);
+  const expectedPaths = [
+    POPULATED_CUTOVER_PLAN_MANIFEST_V1_PATH,
+    `${POPULATED_CUTOVER_PLAN_V1_DIRECTORY}/${plan.platform.file}`,
+    ...plan.migrations.map(
+      ({ file }) => `${POPULATED_CUTOVER_PLAN_V1_DIRECTORY}/${file}`,
+    ),
+  ].sort(compareCodeUnits);
+  if (
+    treeEntries.some(
+      ({ mode, type }) => mode !== "100644" || type !== "blob",
+    ) ||
+    !sameStrings(
+      treeEntries.map(({ path }) => path),
+      expectedPaths,
+    )
+  ) {
+    invalid();
+  }
+}
+
+async function readPopulatedCutoverPlanMigrationsV1(
+  repositoryPath: string,
+  commit: string,
+  entries: readonly PopulatedCutoverPlanV1MigrationEntry[],
+): Promise<readonly { id: string; file: string; bytes: Uint8Array }[]> {
+  const migrations: { id: string; file: string; bytes: Uint8Array }[] = [];
+  let totalBytes = 0;
+  for (const entry of entries) {
+    const path = `${POPULATED_CUTOVER_PLAN_V1_DIRECTORY}/${entry.file}`;
+    const bytes = await readFixedGitBlob(
+      repositoryPath,
+      commit,
+      path,
+      MAX_MIGRATION_BYTES,
+    );
+    totalBytes += bytes.byteLength;
+    if (totalBytes > MAX_TOTAL_MIGRATION_BYTES) invalid();
+    migrations.push(
+      Object.freeze({
+        id: entry.id,
+        file: entry.file,
+        bytes: Uint8Array.from(bytes),
+      }),
+    );
+  }
+  return Object.freeze(migrations);
+}
+
 function parseMigrationManifest(
   bytes: Buffer,
 ): readonly MigrationManifestEntry[] {
@@ -1093,6 +1296,63 @@ function parsePrivacyRetentionPlanManifestV1(
         sha256: migrationSha256,
       }),
     ]),
+  });
+}
+
+function parsePopulatedCutoverPlanManifestV1(
+  bytes: Buffer,
+): PopulatedCutoverPlanV1Manifest {
+  const manifest = exactPlainDataRecord(
+    parseJsonBytes(bytes, MAX_POPULATED_CUTOVER_PLAN_MANIFEST_V1_BYTES),
+    POPULATED_CUTOVER_PLAN_MANIFEST_V1_KEYS,
+  );
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.planVersion !== 1 ||
+    manifest.algorithm !== "sha256"
+  ) {
+    invalid();
+  }
+  const platform = exactPlainDataRecord(
+    manifest.platform,
+    POPULATED_CUTOVER_PLAN_PLATFORM_V1_KEYS,
+  );
+  if (platform.file !== POPULATED_CUTOVER_PLAN_PLATFORM_V1_FILE) invalid();
+  const platformSha256 = exactPattern(platform.sha256, SHA256_HEX, 64);
+  if (
+    !Array.isArray(manifest.migrations) ||
+    Object.getPrototypeOf(manifest.migrations) !== Array.prototype ||
+    manifest.migrations.length !== POPULATED_CUTOVER_PLAN_MIGRATIONS_V1.length
+  ) {
+    invalid();
+  }
+  const migrations = manifest.migrations.map((value, index) => {
+    const entry = exactPlainDataRecord(
+      value,
+      POPULATED_CUTOVER_PLAN_MIGRATION_V1_KEYS,
+    );
+    const expected = POPULATED_CUTOVER_PLAN_MIGRATIONS_V1[index];
+    if (
+      expected === undefined ||
+      entry.id !== expected.id ||
+      entry.phase !== expected.phase ||
+      entry.file !== expected.file
+    ) {
+      invalid();
+    }
+    return Object.freeze({
+      id: expected.id,
+      phase: expected.phase,
+      file: expected.file,
+      sha256: exactPattern(entry.sha256, SHA256_HEX, 64),
+    });
+  });
+  return Object.freeze({
+    platform: Object.freeze({
+      file: POPULATED_CUTOVER_PLAN_PLATFORM_V1_FILE,
+      sha256: platformSha256,
+    }),
+    migrations: Object.freeze(migrations),
   });
 }
 

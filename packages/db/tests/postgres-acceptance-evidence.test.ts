@@ -37,6 +37,8 @@ import {
   POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
   POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
   POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+  POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED,
+  POSTGRES_ACCEPTANCE_V14_NOT_PROVEN,
   PostgresAcceptanceEvidenceError,
   serializePostgresAcceptanceEvidence,
   writePostgresAcceptanceEvidence,
@@ -55,6 +57,7 @@ import {
   type PostgresAcceptanceEvidenceV11,
   type PostgresAcceptanceEvidenceV12,
   type PostgresAcceptanceEvidenceV13,
+  type PostgresAcceptanceEvidenceV14,
 } from "../src/postgres-acceptance-evidence";
 
 const IMAGE_DIGEST = `sha256:${"a".repeat(64)}`;
@@ -119,13 +122,16 @@ function input(
       privacyRetentionPlanSourceV1Sha256: "7".repeat(64),
       resourceIdentifierTokenV1Sha256: "8".repeat(64),
       privacyRetentionFixtureV1Sha256: "9".repeat(64),
+      populatedCutoverPlanManifestV1Sha256: "a".repeat(64),
+      populatedCutoverPlanSourceV1Sha256: "b".repeat(64),
+      populatedCutoverFixtureV1Sha256: "c".repeat(64),
     },
     completedAt: "2026-08-15T23:59:58.123Z",
     ...overrides,
   };
 }
 
-function evidence(): PostgresAcceptanceEvidenceV13 {
+function evidence(): PostgresAcceptanceEvidenceV14 {
   return buildPostgresAcceptanceEvidence(input());
 }
 
@@ -277,6 +283,32 @@ function v12SourceHashes(): Record<string, unknown> {
     ...v11SourceHashes(),
     postgresQueryPlanLoadSha256: hashes.postgresQueryPlanLoadSha256,
     queryPlanLoadFixtureSha256: hashes.queryPlanLoadFixtureSha256,
+  };
+}
+
+function v13SourceHashes(): Record<string, unknown> {
+  const hashes = input().sourceHashes;
+  return {
+    ...v12SourceHashes(),
+    privacyRetentionPolicyV1Sha256: hashes.privacyRetentionPolicyV1Sha256,
+    privacyRetentionPlanManifestV1Sha256:
+      hashes.privacyRetentionPlanManifestV1Sha256,
+    privacyRetentionPolicySourceV1Sha256:
+      hashes.privacyRetentionPolicySourceV1Sha256,
+    privacyRetentionPlanSourceV1Sha256:
+      hashes.privacyRetentionPlanSourceV1Sha256,
+    resourceIdentifierTokenV1Sha256: hashes.resourceIdentifierTokenV1Sha256,
+    privacyRetentionFixtureV1Sha256: hashes.privacyRetentionFixtureV1Sha256,
+  };
+}
+
+function mutableV13Evidence(): Record<string, unknown> {
+  return {
+    ...mutableEvidence(),
+    schemaVersion: 13,
+    sourceHashes: v13SourceHashes(),
+    checksPassed: [...POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED],
+    notProven: [...POSTGRES_ACCEPTANCE_V13_NOT_PROVEN],
   };
 }
 
@@ -463,6 +495,16 @@ function v12Evidence(): PostgresAcceptanceEvidenceV12 {
   return parsed;
 }
 
+function v13Evidence(): PostgresAcceptanceEvidenceV13 {
+  const parsed = parsePostgresAcceptanceEvidence(
+    JSON.stringify(mutableV13Evidence()),
+  );
+  if (parsed.schemaVersion !== 13) {
+    throw new Error("expected historical v13 evidence");
+  }
+  return parsed;
+}
+
 function expectValueFreeValidationFailure(run: () => unknown): void {
   let caught: unknown;
   try {
@@ -496,10 +538,10 @@ afterEach(async () => {
 });
 
 describe("PostgreSQL acceptance success evidence", () => {
-  it("builds the exact success-only v13 schema in its canonical order", () => {
+  it("builds the exact success-only v14 schema in its canonical order", () => {
     const result = evidence();
     expect(POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME).toBe(
-      "research-cockpit-postgres-acceptance-v13.json",
+      "research-cockpit-postgres-acceptance-v14.json",
     );
     expect(Object.keys(result)).toEqual([
       "schemaVersion",
@@ -524,7 +566,7 @@ describe("PostgreSQL acceptance success evidence", () => {
       "completedAt",
     ]);
     expect(result).toEqual({
-      schemaVersion: 13,
+      schemaVersion: 14,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -772,6 +814,23 @@ describe("PostgreSQL acceptance success evidence", () => {
     expect(parsed.toolVersions).toEqual(v11Evidence().toolVersions);
     expect(Object.keys(parsed.sourceHashes)).toEqual(
       Object.keys(v12Evidence().sourceHashes),
+    );
+  });
+
+  it("preserves exact historical v13 parsing and canonical serialization", () => {
+    const historical = mutableV13Evidence();
+    const canonical = `${JSON.stringify(historical, null, 2)}\n`;
+    const parsed = parsePostgresAcceptanceEvidence(canonical);
+
+    expect(parsed.schemaVersion).toBe(13);
+    expect(parsed.checksPassed).toEqual([
+      ...POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+    ]);
+    expect(parsed.notProven).toEqual([...POSTGRES_ACCEPTANCE_V13_NOT_PROVEN]);
+    expect(serializePostgresAcceptanceEvidence(parsed)).toBe(canonical);
+    expect(parsed.toolVersions).toEqual(v12Evidence().toolVersions);
+    expect(Object.keys(parsed.sourceHashes)).toEqual(
+      Object.keys(v13Evidence().sourceHashes),
     );
   });
 
@@ -1073,8 +1132,8 @@ describe("PostgreSQL acceptance success evidence", () => {
       "globally_complete_or_independently_audited_deletion_proof",
       "real_customer_tenant_or_personal_data",
     ]);
-    expect(evidence().toolVersions).toEqual(v12Evidence().toolVersions);
-    expect(Object.keys(evidence().sourceHashes)).toEqual([
+    expect(v13Evidence().toolVersions).toEqual(v12Evidence().toolVersions);
+    expect(Object.keys(v13Evidence().sourceHashes)).toEqual([
       ...Object.keys(v12Evidence().sourceHashes),
       "privacyRetentionPolicyV1Sha256",
       "privacyRetentionPlanManifestV1Sha256",
@@ -1082,6 +1141,45 @@ describe("PostgreSQL acceptance success evidence", () => {
       "privacyRetentionPlanSourceV1Sha256",
       "resourceIdentifierTokenV1Sha256",
       "privacyRetentionFixtureV1Sha256",
+    ]);
+  });
+
+  it("adds the exact populated cutover contract and bounded online-cutover claims and three reviewed sources in v14", () => {
+    expect(POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED).toEqual([
+      ...POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+      "versioned_populated_resource_identifier_cutover_contract",
+      "authenticated_bounded_synthetic_populated_resource_identifier_online_cutover",
+    ]);
+    expect(POSTGRES_ACCEPTANCE_V14_NOT_PROVEN).not.toContain(
+      "populated_database_privacy_migration_backfill_or_online_cutover",
+    );
+    expect(POSTGRES_ACCEPTANCE_V14_NOT_PROVEN).toEqual([
+      ...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+      "production_privacy_legal_approval_lawful_basis_notices_or_legal_holds",
+      "verified_data_subject_identity_or_production_dsar_fulfillment",
+      "production_tenant_offboarding_retention_scheduler_or_monitoring",
+      "external_kms_hsm_key_custody_rotation_destruction_or_recovery",
+      "database_verification_of_externally_keyed_resource_tokens",
+      "cryptographic_erasure_of_plaintext_database_or_backup_data",
+      "production_primary_replica_cache_log_search_analytics_or_third_party_deletion",
+      "production_backup_archive_expiry_deletion_restore_suppression_or_media_sanitization",
+      "external_or_production_populated_database_privacy_migration_or_cutover",
+      "zero_downtime_uninterrupted_writes_or_application_dual_write_deployment",
+      "production_application_writer_integration_authorization_or_dual_write_protocol",
+      "production_cutover_volume_duration_slo_or_lock_budget",
+      "migration_process_or_cluster_crash_recovery_resume_or_post_commit_downgrade",
+      "long_running_prepared_transaction_ddl_replication_or_failover_concurrency",
+      "real_customer_tenant_personal_or_non_synthetic_cutover",
+      "recovery_of_resource_identifiers_deleted_before_b14_capture_boundary",
+      "globally_complete_or_independently_audited_deletion_proof",
+      "real_customer_tenant_or_personal_data",
+    ]);
+    expect(evidence().toolVersions).toEqual(v13Evidence().toolVersions);
+    expect(Object.keys(evidence().sourceHashes)).toEqual([
+      ...Object.keys(v13Evidence().sourceHashes),
+      "populatedCutoverPlanManifestV1Sha256",
+      "populatedCutoverPlanSourceV1Sha256",
+      "populatedCutoverFixtureV1Sha256",
     ]);
   });
 
@@ -1224,10 +1322,22 @@ describe("PostgreSQL acceptance success evidence", () => {
       parsePostgresAcceptanceEvidence(JSON.stringify(v12AsV13)),
     );
 
-    const v13AsV12 = mutableEvidence();
+    const v13AsV12 = mutableV13Evidence();
     v13AsV12.schemaVersion = 12;
     expectValueFreeValidationFailure(() =>
       parsePostgresAcceptanceEvidence(JSON.stringify(v13AsV12)),
+    );
+
+    const v13AsV14 = mutableV13Evidence();
+    v13AsV14.schemaVersion = 14;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v13AsV14)),
+    );
+
+    const v14AsV13 = mutableEvidence();
+    v14AsV13.schemaVersion = 13;
+    expectValueFreeValidationFailure(() =>
+      parsePostgresAcceptanceEvidence(JSON.stringify(v14AsV13)),
     );
 
     const mixedV1 = mutableV1Evidence();
@@ -1249,10 +1359,10 @@ describe("PostgreSQL acceptance success evidence", () => {
     );
 
     expect(POSTGRES_ACCEPTANCE_CHECKS_PASSED).toBe(
-      POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+      POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED,
     );
     expect(POSTGRES_ACCEPTANCE_NOT_PROVEN).toBe(
-      POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+      POSTGRES_ACCEPTANCE_V14_NOT_PROVEN,
     );
   });
 
@@ -1310,7 +1420,7 @@ describe("PostgreSQL acceptance success evidence", () => {
   });
 
   it.each([
-    ["schemaVersion", 14],
+    ["schemaVersion", 15],
     ["suite", "different-suite"],
     ["outcome", "failed"],
     ["job", "different-job"],
@@ -1524,6 +1634,9 @@ describe("PostgreSQL acceptance success evidence", () => {
       "privacyRetentionPlanSourceV1Sha256",
       "resourceIdentifierTokenV1Sha256",
       "privacyRetentionFixtureV1Sha256",
+      "populatedCutoverPlanManifestV1Sha256",
+      "populatedCutoverPlanSourceV1Sha256",
+      "populatedCutoverFixtureV1Sha256",
     ] as const) {
       for (const replacement of [
         "f".repeat(63),
@@ -1639,7 +1752,7 @@ describe("PostgreSQL acceptance success evidence", () => {
     }
   });
 
-  it("never writes a historical v1 through v12 record under the v13 filename", async () => {
+  it("never writes a historical v1 through v13 record under the v14 filename", async () => {
     const directory = await mkdtemp(join(tmpdir(), "rc-pg-evidence-"));
     TEMP_DIRECTORIES.push(directory);
 
@@ -1656,10 +1769,11 @@ describe("PostgreSQL acceptance success evidence", () => {
       v10Evidence(),
       v11Evidence(),
       v12Evidence(),
+      v13Evidence(),
     ]) {
       await expect(
         writePostgresAcceptanceEvidence(
-          historical as unknown as PostgresAcceptanceEvidenceV13,
+          historical as unknown as PostgresAcceptanceEvidenceV14,
           { RUNNER_TEMP: directory },
         ),
       ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceError);

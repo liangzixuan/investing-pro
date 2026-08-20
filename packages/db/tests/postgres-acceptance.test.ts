@@ -1447,19 +1447,21 @@ CREATE DATABASE research_cockpit_acceptance_test
     const artifacts = await loadArtifacts();
     expect(artifacts.config).toMatchObject({
       workflowSha256:
-        "c67ac50f09fd31d0901d6421a2a434c050a319d170866fee70e5a59cd0911966",
+        "5f8ab0336cfb9fc35363f5b69d5db4564eaa79c7dd7fc16eecb266aa902e844f",
       fixtureSha256:
         "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7",
       queryPlanLoadFixtureSha256:
         "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad",
       privacyRetentionFixtureSha256:
         "9be0682dffbb981350bde888b2880b99e2bfa587da96acdfae281c41be67a6c7",
+      populatedCutoverFixtureSha256:
+        "f30651fd5b847a6d1b365830c32335c98ff8106f49200dc40b4f33494a583198",
     });
     expect(artifacts.workflow).toContain(
-      "name: postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}",
+      "name: postgres-acceptance-evidence-v14-${{ github.sha }}-${{ github.run_attempt }}",
     );
     expect(artifacts.workflow).toContain(
-      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v13.json",
+      "path: ${{ runner.temp }}/research-cockpit-postgres-acceptance-v14.json",
     );
     expect(artifacts.workflow).toContain('          - "127.0.0.1::5432"');
     expect(artifacts.workflow).toContain("      - modules/research-core/**");
@@ -1653,7 +1655,7 @@ CREATE DATABASE research_cockpit_acceptance_test
       "./research-cockpit-postgres-acceptance-v4.json",
     ]) {
       const workflow = artifacts.workflow.replace(
-        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v13.json",
+        "${{ runner.temp }}/research-cockpit-postgres-acceptance-v14.json",
         unsafePath,
       );
       expect(
@@ -1693,7 +1695,7 @@ CREATE DATABASE research_cockpit_acceptance_test
   it("binds the evidence artifact name to the commit and run attempt", async () => {
     const artifacts = await loadArtifacts();
     const workflow = artifacts.workflow.replace(
-      "postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}",
+      "postgres-acceptance-evidence-v14-${{ github.sha }}-${{ github.run_attempt }}",
       "postgres-acceptance-evidence-latest",
     );
     expect(
@@ -1867,7 +1869,7 @@ CREATE DATABASE research_cockpit_acceptance_test
     expect(source).toContain(
       "bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery",
     );
-    expect(source).toContain("version 13 success-only run record");
+    expect(source).toContain("version 14 success-only run record");
   });
 
   it("finishes mandatory B8 cleanup and hashes its exact sources before v13 evidence", async () => {
@@ -2443,7 +2445,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 13 success-only run record was written",
+      "the version 14 success-only run record was written",
     ]);
     expect(
       entrypoint.match(
@@ -2710,7 +2712,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
       "const evidence = buildPostgresAcceptanceEvidence({",
       "const writtenEvidence = await writePostgresAcceptanceEvidence(",
-      "the version 13 success-only run record was written",
+      "the version 14 success-only run record was written",
     ]);
 
     const orchestrator = section(
@@ -3189,7 +3191,7 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "await verifyAuthenticatedBackupAndBoundedRestore(",
       "await verifyCheckedOutCommit(environment);",
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
-      "the version 13 success-only run record was written",
+      "the version 14 success-only run record was written",
     ]);
     expect(
       entrypoint.match(/await verifyAuthenticatedPostgresQueryPlanLoad\(/g),
@@ -3441,25 +3443,29 @@ WHERE role.rolname = 'research_cockpit_owner';`);
       "const privacyRetentionPolicy = await loadPrivacyRetentionPolicyV1();",
       "assertPostgresPrivacyRetentionAcceptancePolicy(privacyRetentionPolicy);",
       "const privacyRetentionPlan = await loadPrivacyRetentionPlanV1();",
+      "const populatedCutoverPlan = await loadPopulatedCutoverPlanV1();",
       "const privacyRetentionFixtureSql = await loadPrivacyRetentionFixture();",
+      "const populatedCutoverFixtureSql = await loadPopulatedCutoverFixture();",
       "await verifyAuthenticatedPostgresQueryPlanLoad(",
+      "const keyedPrivacyCatalogFingerprint =",
       "await verifyAuthenticatedPostgresPrivacyRetention(",
+      "await verifyAuthenticatedPostgresPopulatedCutover(",
       "await verifyAuthenticatedPostgresProjectionPool(",
       "await verifyAuthenticatedBackupAndBoundedRestore(",
       "await verifyCheckedOutCommit(environment);",
       "const sourceHashes = await collectAcceptanceSourceHashes(config);",
-      "the version 13 success-only run record was written",
+      "the version 14 success-only run record was written",
     ]);
     expect(
       entrypoint.match(/await verifyAuthenticatedPostgresPrivacyRetention\(/g),
     ).toHaveLength(1);
-    expect(entrypoint).toContain(
-      "privacyRetentionFixtureSql,\n    authenticatedMigrationPlan,\n    privacyRetentionPlan,",
+    expect(entrypoint).toMatch(
+      /privacyRetentionFixtureSql,\s+authenticatedMigrationPlan,\s+privacyRetentionPlan,/,
     );
 
     const lifecycle = section(
       "async function verifyAuthenticatedPostgresPrivacyRetention(",
-      "class PostgresPrivacyRetentionError extends Error",
+      "async function verifyAuthenticatedPostgresPopulatedCutover(",
     );
     expectOrdered(lifecycle, [
       "await verifyPostgresPrivacyRetentionResidueAbsent(containerId);",
@@ -4027,7 +4033,241 @@ WHERE role.rolname = 'research_cockpit_owner';`);
     );
     expect(sourceHashes).toContain("postgresProjectionPoolSha256,");
     expect(source).toContain(
-      "the version 13 success-only run record was written",
+      "the version 14 success-only run record was written",
+    );
+  });
+
+  it("runs B14 populated resource-registry cutover with bounded concurrent-write proofs", async () => {
+    const source = await readFile(
+      new URL("../src/postgres-acceptance.ts", import.meta.url),
+      "utf8",
+    );
+    const section = (start: string, end: string) => {
+      const startIndex = source.indexOf(start);
+      const endIndex = source.indexOf(end, startIndex + start.length);
+      expect(startIndex, start).toBeGreaterThan(-1);
+      expect(endIndex, end).toBeGreaterThan(startIndex);
+      return source.slice(startIndex, endIndex);
+    };
+    const expectOrdered = (body: string, markers: readonly string[]) => {
+      let previous = -1;
+      for (const marker of markers) {
+        const position = body.indexOf(marker, previous + 1);
+        expect(position, marker).toBeGreaterThan(previous);
+        previous = position;
+      }
+    };
+
+    const lifecycle = section(
+      "async function verifyAuthenticatedPostgresPopulatedCutover(",
+      "type PopulatedCutoverAsyncOutcome =",
+    );
+    expectOrdered(lifecycle, [
+      "await verifyPostgresPopulatedCutoverResidueAbsent(containerId);",
+      "sourceBefore = await collectAuthenticatedBackupFingerprints(",
+      "databaseProvisioningStarted = true;",
+      "await createPostgresPopulatedCutoverDatabase(containerId);",
+      "await verifyPostgresPopulatedCutoverPlatformDeployment(",
+      "await provisionPostgresPopulatedCutoverMigratorLogin(",
+      "await deployPostgresPopulatedCutoverBase(",
+      "await provisionPostgresPopulatedCutoverSeedLogin(",
+      "await verifyPostgresPopulatedCutoverSeedRoleCatalog(containerId);",
+      "await seedPostgresPopulatedCutoverFixture(seedClient, fixtureSql);",
+      "await deployPostgresPopulatedCutoverExpand(",
+      "await provisionPostgresPopulatedCutoverLogin(",
+      "await verifyPostgresPopulatedCutoverWrongPasswordRejection(",
+      "await verifyPostgresPopulatedCutoverDenials(cutoverClientA);",
+      "await createPostgresPopulatedCutoverPrivacyDomains(cutoverClientA);",
+      "const initialClaims = await claimPostgresPopulatedCutoverSkipLocked(",
+      "await derivePostgresPopulatedCutoverClaims(",
+      "await verifyPostgresPopulatedCutoverDeleteApplyRace(",
+      "await drainPostgresPopulatedCutoverWork(",
+      "await verifyPostgresPopulatedCutoverInjectedContractRollback(",
+      "const staleCaptureEpoch = inspection.captureEpoch;",
+      "await insertPostgresPopulatedCutoverConcurrentLegacyResource(seedClient);",
+      "contractAttempts += 1;",
+      "await expectPostgresPopulatedCutoverContractFailure(",
+      "populated cutover capture changed before contract",
+      "await drainPostgresPopulatedCutoverWork(",
+      "const postContractToken = await derivePostgresPopulatedCutoverResourceToken(",
+      "contractAttempts += 1;",
+      "renderPopulatedCutoverContractBarrier(",
+      "pendingPostContractWriter = runPostgresPopulatedCutoverPostContractWriter(",
+      "pendingContractReplay = runPostgresPopulatedCutoverContractReplay(",
+      "await waitForPostgresPopulatedCutoverBarrier(",
+      "renderPopulatedCutoverContractFinalize(",
+      "await verifyPostgresPopulatedCutoverFinalState(",
+      "await verifyPostgresPopulatedCutoverTokenReuseRejection(",
+      "await collectPostgresPrivacyTargetCatalogFingerprint(",
+      "if (finalCatalogFingerprint !== keyedPrivacyCatalogFingerprint)",
+      "alphaKey.fill(0);",
+      "betaKey.fill(0);",
+      "derivedTokens.clear();",
+      'label: "rollback B14 open contract barrier"',
+      'label: "settle B14 post-contract writer"',
+      'label: "settle B14 serialized contract replay"',
+      'label: "drain B14 PostgreSQL backends"',
+      'label: "drop B14 template0 database without FORCE"',
+      'label: "drop B14 ephemeral and plan roles"',
+      'label: "verify B14 source fingerprint"',
+      'label: "verify B14 zero residue"',
+    ]);
+    expect(lifecycle).not.toMatch(/console\.|process\.stdout/);
+    expect(lifecycle).toContain(
+      "error instanceof PostgresPopulatedCutoverDiagnosticError",
+    );
+
+    const finalBarrier = lifecycle.slice(
+      lifecycle.indexOf("const barrierResult:"),
+      lifecycle.indexOf("const finalizeResult:"),
+    );
+    expect(finalBarrier).not.toMatch(
+      /deriveResourceIdentifierToken|createHmac|derivePostgresPopulatedCutover/,
+    );
+
+    const deleteRace = section(
+      "async function verifyPostgresPopulatedCutoverDeleteApplyRace(",
+      "async function waitForPostgresPopulatedCutoverApplyBlockedByDelete(",
+    );
+    expectOrdered(deleteRace, [
+      'deleteClient.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE")',
+      "deleteClient.query(renderPopulatedCutoverSharedAdvisorySql())",
+      "SET LOCAL ROLE ${MIGRATOR_AUTH_CAPABILITY_ROLE}",
+      "DELETE FROM private_data.alert_rules",
+      "applyOutcome = runPostgresPopulatedCutoverApply(",
+      "await waitForPostgresPopulatedCutoverApplyBlockedByDelete(",
+      'deleteClient.query("COMMIT")',
+      'outcome.code !== "P0001"',
+    ]);
+
+    const applyBlock = section(
+      "async function waitForPostgresPopulatedCutoverApplyBlockedByDelete(",
+      "async function claimPostgresPopulatedCutoverBatch(",
+    );
+    for (const marker of [
+      "private_data.alert_rules",
+      "private_data.resource_identifier_cutover_work",
+      "RowExclusiveLock",
+      "pg_catalog.pg_blocking_pids",
+      "wait_event_type = 'Lock'",
+    ]) {
+      expect(applyBlock).toContain(marker);
+    }
+
+    const claim = section(
+      "async function claimPostgresPopulatedCutoverSkipLocked(",
+      "async function applyPostgresPopulatedCutoverClaim(",
+    );
+    expectOrdered(claim, [
+      "const claimed = await queryPostgresPopulatedCutoverClaims(first);",
+      "const skipped = await queryPostgresPopulatedCutoverClaims(second);",
+      "await commitPostgresPopulatedCutoverCapabilityTransaction(second);",
+      "await commitPostgresPopulatedCutoverCapabilityTransaction(first);",
+      "return claimed;",
+    ]);
+    expect(claim).not.toMatch(/derive|createHmac/);
+
+    const backfill = section(
+      "async function applyPostgresPopulatedCutoverClaim(",
+      "async function runPostgresPopulatedCutoverApply(",
+    );
+    expect(backfill).toContain("$5::bigint");
+    expect(backfill).toContain("pg_catalog.decode($7::text, 'hex')");
+    expect(backfill).toContain("values: [");
+
+    const injectedRollback = section(
+      "async function verifyPostgresPopulatedCutoverInjectedContractRollback(",
+      "async function expectPostgresPopulatedCutoverContractFailure(",
+    );
+    expectOrdered(injectedRollback, [
+      "const catalogFingerprintBefore =",
+      "await collectPostgresPrivacyTargetCatalogFingerprint(",
+      "await expectPostgresPopulatedCutoverContractFailure(",
+      "const catalogFingerprintAfter =",
+      "await collectPostgresPrivacyTargetCatalogFingerprint(",
+      "catalogFingerprintAfter !== catalogFingerprintBefore",
+      '"scope=injected_rollback;equal=false"',
+      "await verifyPostgresPopulatedCutoverExpandedState(",
+    ]);
+    expect(
+      injectedRollback.match(/POPULATED_CUTOVER_DATABASE_NAME/g),
+    ).toHaveLength(2);
+
+    const barrier = section(
+      "async function waitForPostgresPopulatedCutoverBarrier(",
+      "async function verifyPostgresPopulatedCutoverFinalState(",
+    );
+    for (const marker of [
+      "ExclusiveLock",
+      "ShareRowExclusiveLock",
+      "ShareLock",
+      "private_data.resource_privacy_domains",
+      "private_data.theses",
+      "private_data.alert_rules",
+      "private_data.resource_identifier_cutover_work",
+      "private_data.resource_id_registry",
+      "POPULATED_CUTOVER_CONTRACT_A_APPLICATION_NAME",
+      "POPULATED_CUTOVER_CONTRACT_B_APPLICATION_NAME",
+      "POPULATED_CUTOVER_POST_CONTRACT_WRITER_APPLICATION_NAME",
+    ]) {
+      expect(barrier).toContain(marker);
+    }
+    expect(barrier).toContain("POPULATED_CUTOVER_ADVISORY_LOCK_KEY");
+    expect(
+      barrier.match(
+        /database_row\.datname = pg_catalog\.current_database\(\)/g,
+      ),
+    ).toHaveLength(3);
+    expect(barrier.match(/classid::bigint = 190566459::bigint/g)).toHaveLength(
+      3,
+    );
+    expect(barrier.match(/objid::bigint = 520803390::bigint/g)).toHaveLength(3);
+    expect(barrier.match(/objsubid = 1/g)).toHaveLength(3);
+    expect(
+      barrier.match(
+        /classid::bigint =\s*\(\(\$4::bigint >> 32\) & 4294967295::bigint\)/g,
+      ),
+    ).toHaveLength(3);
+    expect(
+      barrier.match(/objid::bigint = \(\$4::bigint & 4294967295::bigint\)/g),
+    ).toHaveLength(3);
+
+    const expandedState = section(
+      "async function verifyPostgresPopulatedCutoverExpandedState(",
+      "async function verifyPostgresPopulatedCutoverDenials(",
+    );
+    expect(expandedState).toContain(
+      "'private_data.allocate_resource_identifier(uuid,uuid,uuid,text,uuid,bytea)'",
+    );
+    expect(expandedState).toContain("PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE");
+    expect(expandedState).toContain("TEST_LOADER_AUTH_CAPABILITY_ROLE");
+    expect(expandedState).toContain("false,\n    false,");
+
+    const finalState = section(
+      "async function verifyPostgresPopulatedCutoverFinalState(",
+      "async function verifyPostgresPopulatedCutoverTokenReuseRejection(",
+    );
+    expect(finalState).toContain("TEST_LOADER_AUTH_CAPABILITY_ROLE");
+    expect(finalState).toContain("lifecycle_state = 'deleted'");
+    expect(finalState).toContain("organization_id IS NULL");
+    expect(finalState).toContain("resource_id IS NULL");
+    expect(finalState).toContain("matched_tokens !== 6");
+    expect(finalState).toContain("distinct_tokens !== 6");
+
+    const cleanup = section(
+      "async function dropPostgresPopulatedCutoverDatabase(",
+      "async function cleanupPostgresPopulatedCutoverRoles(",
+    );
+    expect(cleanup).toContain("renderDropPopulatedCutoverDatabaseSql()");
+    expect(cleanup).not.toMatch(
+      /WITH\s*\(\s*FORCE\s*\)|DROP DATABASE[^;]*FORCE/i,
+    );
+
+    expect(source).toContain(
+      "authenticated bounded synthetic populated resource-registry backfill and online cutover",
+    );
+    expect(source).toContain(
+      "the version 14 success-only run record was written",
     );
   });
 
@@ -4137,6 +4377,10 @@ async function loadArtifacts(): Promise<AcceptanceArtifacts> {
     ),
     privacyRetentionFixture: await readFile(
       new URL("../acceptance/privacy-retention-fixture.sql", import.meta.url),
+      "utf8",
+    ),
+    populatedCutoverFixture: await readFile(
+      new URL("../acceptance/populated-cutover-fixture.sql", import.meta.url),
       "utf8",
     ),
   };

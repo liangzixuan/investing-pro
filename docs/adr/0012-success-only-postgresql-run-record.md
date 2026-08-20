@@ -300,7 +300,7 @@ policy/plan/source/fixture hashes, and the exact ordered production/legal/DSAR/
 offboarding/KMS/token-verification/online-and-backup deletion/populated-cutover/
 global-proof/real-data nonclaims recorded in
 [ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md).
-The tool shape remains V12 exact. The current source filename is
+The tool shape remains V12 exact. The V13 filename is
 `research-cockpit-postgres-acceptance-v13.json`; its workflow artifact name is
 `postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}`.
 The writer remains exclusive-create and success-only. PostgreSQL run
@@ -310,6 +310,24 @@ complete B13 path and mandatory cleanup passed. Its downloaded bytes returned
 [B13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md) records the
 exact anchors and bounded claim. See the
 [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md).
+
+Cycle 1b-b14 adds a separate version 14 source/evidence contract without
+changing the accepted V13 record above. V14 preserves exact V1 through V13
+branches, appends the two bounded populated-cutover checks, and appends only
+`populatedCutoverPlanManifestV1Sha256`,
+`populatedCutoverPlanSourceV1Sha256`, and
+`populatedCutoverFixtureV1Sha256`. The tool shape remains V13 exact. V14
+removes only the broad V13 populated-cutover nonclaim and replaces it with the
+exact narrower synthetic/production/writer/zero-downtime/load/recovery/
+concurrency/real-data/pre-capture-deletion boundaries in ADR 0026. The current
+source filename is `research-cockpit-postgres-acceptance-v14.json`; its
+workflow artifact name is
+`postgres-acceptance-evidence-v14-${{ github.sha }}-${{ github.run_attempt }}`.
+The writer remains exclusive-create and success-only. Source and local
+verification are not a live result; a retained green V14 run and independent
+commit-bound review remain required. See
+[ADR 0026](./0026-bounded-populated-resource-identifier-online-cutover.md) and
+the [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md).
 
 ## Primary sources
 

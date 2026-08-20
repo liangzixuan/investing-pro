@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "planVersion": 1,
+  "algorithm": "sha256",
+  "platform": {
+    "file": "platform-bootstrap.sql",
+    "sha256": "63524caa33c8c05e4ea653fbfcbf23e29f43028af34f8d3b297abdb1048dfc0c"
+  },
+  "base": {
+    "planVersion": 2,
+    "manifestFile": "../../migration-plans/v2/application-manifest.json",
+    "manifestSha256": "633edec9283a7767a37a1b5c67d5376036fa1d422d884288e28019caae74fb35",
+    "selectedMigrations": [
+      {
+        "id": "v2-0001",
+        "file": "0001_request_context_and_ledger.sql",
+        "sha256": "37d69e26b370e6a0c9f191e6f46a8d59579612f67c16f918e2ed78a5eb399e2f"
+      },
+      {
+        "id": "v2-0002",
+        "file": "0002_canonical_entities.sql",
+        "sha256": "272dce4b0d91e96f58442896621b2d570e8e027fbfc843f83de5f36c005154f6"
+      },
+      {
+        "id": "v2-0003",
+        "file": "0003_temporal_constraints_and_indexes.sql",
+        "sha256": "d7a1a3d1991cb0a531a1643111fb8192dfad546efa4aa4913d0d8f8f34fed4d2"
+      },
+      {
+        "id": "v2-0004",
+        "file": "0004_row_security_and_runtime_grants.sql",
+        "sha256": "ecaf289311eea9a58d8c4e4f342e9f7e40f86f0b05fdebc9d50975aa672930eb"
+      },
+      {
+        "id": "v2-0006",
+        "file": "0006_null_safe_request_context.sql",
+        "sha256": "b3da4be6401accbd0140f0fe9a85d04d4093a06448eab129aa1c9c78be363f91"
+      }
+    ],
+    "excludedMigration": {
+      "id": "v2-0005",
+      "file": "0005_non_reusable_resource_ids.sql",
+      "sha256": "703205835c4689350ec0d49d4377adaa08dc2abdcc63bf669dda8dee7049d61d",
+      "reason": "replaced_by_audited_populated_cutover"
+    }
+  },
+  "target": {
+    "privacyPlanVersion": 1,
+    "manifestFile": "../../privacy-retention-plans/v1/manifest.json",
+    "manifestSha256": "28f0b9f0a3fb5981fc5c96cf9f5544e189fdc63a5e9c72c20fda1e01f8f702d7",
+    "policyFile": "../../privacy-retention-plans/v1/policy.json",
+    "policySha256": "6bc14df7cd812a5e41107f7db4ad099d634cd24ac71eea36e528289bd5990b32",
+    "applicationFile": "../../privacy-retention-plans/v1/application/0001_keyed_resource_identifier_lifecycle.sql",
+    "applicationSha256": "87df05b88653621b1999343786de0c3a60d0f5e7468348dc24269d6ae493af62"
+  },
+  "migrations": [
+    {
+      "id": "populated-cutover-v1-0001",
+      "phase": "expand_capture_backfill",
+      "file": "application/0001_expand_capture_and_backfill.sql",
+      "sha256": "c7d876614be5bcfe4a7339e75cf14046c63a4bb4ea5d4d109a1ab582f3c70431"
+    },
+    {
+      "id": "populated-cutover-v1-0002",
+      "phase": "validate_contract",
+      "file": "application/0002_validate_and_contract.sql",
+      "sha256": "60b38c8f2c91363408e2c3544b68181234d19bccf4a72de5d54023ba42ba7f64"
+    }
+  ]
+}

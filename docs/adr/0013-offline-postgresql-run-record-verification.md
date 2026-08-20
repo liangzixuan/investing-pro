@@ -270,3 +270,16 @@ depends on the reviewed workflow and exact logs. See the
 [B13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md).
+
+The accepted B14 source design adds one explicit V14 verifier/reviewer branch
+while preserving exact V1 through V13 behavior, including review of a V13
+commit with no B14 paths, hashes, or image-config field. V14 appends the exact
+populated-cutover manifest, source, and fixture hashes. The reviewer also
+requires the exact plan tree and validates the manifest-bound platform and two
+application bodies, the selected pre-`0005` base, the explicit `0005`
+exclusion, and the B13 target bindings at the anchored commit. The image config
+independently binds the B14 fixture. This source compatibility is not a live
+result; a retained V14 artifact and independently anchored review remain
+required. See
+[ADR 0026](./0026-bounded-populated-resource-identifier-online-cutover.md) and
+the [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md).

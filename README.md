@@ -245,6 +245,19 @@ the [B13 evidence note](./docs/POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](./docs/CYCLE_1BB13_EXIT_MATRIX.md).
 
+Cycle 1b-b14 now adds the source contract for one bounded synthetic populated
+cutover from the exact v2 pre-`0005` branch to the B13 keyed lifecycle. A
+temporary audited work registry captures post-boundary thesis/alert inserts
+and deletes while authenticated bounded backfill is open; an exact capture
+epoch and short final write-conflicting barrier gate target validation and
+contract. The acceptance actors are test-only and the design neither recovers
+identifiers deleted before capture nor proves a production writer/dual-write
+protocol, uninterrupted writes, crash/failover recovery, production scale, or
+real-data safety. Local integration is complete on the frozen source bytes; a
+retained live V14 run and independent artifact review are still pending. See
+[ADR 0026](./docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](./docs/CYCLE_1BB14_EXIT_MATRIX.md).
+
 Pool transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
 the pool while the source owns it. Only read-only counters may be inspected
@@ -368,6 +381,12 @@ B13's synthetic privacy/retention lifecycle passed separately in PostgreSQL run
   verification, deletion across online/backup/third-party planes, populated
   migration/cutover, cryptographic erasure, global deletion proof, or
   real-customer-data admission.
+- B14 is currently a locally integrated, bounded synthetic populated-cutover
+  contract, not a retained live result. It does not establish production
+  application-writer integration or authorization, a dual-write/allocation-gap protocol,
+  continuous zero downtime, production duration/SLO/lock budgets,
+  crash/restart/failover/downgrade behavior, recovery of identifiers deleted
+  before capture, or permission for real tenant or personal data.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -405,4 +424,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1b-b13 exit matrix](./docs/CYCLE_1BB13_EXIT_MATRIX.md),
 [Cycle 1b-b13 evidence note](./docs/POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md),
 [ADR 0025](./docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md),
+[Cycle 1b-b14 exit matrix](./docs/CYCLE_1BB14_EXIT_MATRIX.md),
+[ADR 0026](./docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md),
 and [architecture decisions](./docs/adr/).

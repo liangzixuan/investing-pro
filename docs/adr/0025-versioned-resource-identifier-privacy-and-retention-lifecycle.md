@@ -129,3 +129,5 @@ result cannot prove global deletion or cryptographic erasure.
 - [Cycle 1b-b12 exit matrix](../CYCLE_1BB12_EXIT_MATRIX.md)
 - [Cycle 1b-b13 exit matrix](../CYCLE_1BB13_EXIT_MATRIX.md)
 - [Cycle 1b-b13 evidence note](../POSTGRESQL_PRIVACY_RETENTION_EVIDENCE.md)
+- [ADR 0026: Bounded populated resource-identifier online cutover](./0026-bounded-populated-resource-identifier-online-cutover.md)
+- [Cycle 1b-b14 exit matrix](../CYCLE_1BB14_EXIT_MATRIX.md)

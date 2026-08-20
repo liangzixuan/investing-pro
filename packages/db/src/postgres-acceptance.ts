@@ -89,8 +89,8 @@ import {
   buildPostgresAcceptanceEvidence,
   POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME,
   writePostgresAcceptanceEvidence,
-  type PostgresAcceptanceV13SourceHashes,
-  type PostgresAcceptanceV13ToolVersions,
+  type PostgresAcceptanceV14SourceHashes,
+  type PostgresAcceptanceV14ToolVersions,
 } from "./postgres-acceptance-evidence";
 import {
   normalizePostgresFinancialFactProjectionRows,
@@ -147,6 +147,43 @@ import {
   renderPrivacyRetentionPlatformMigration,
   type PrivacyRetentionPlanV1,
 } from "./privacy-retention-plan";
+import {
+  POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE,
+  POPULATED_CUTOVER_ADVISORY_LOCK_KEY,
+  POPULATED_CUTOVER_BASE_IDENTITY_MARKER,
+  POPULATED_CUTOVER_BASE_EXCLUDED_ID,
+  POPULATED_CUTOVER_CAPABILITY_ROLE,
+  POPULATED_CUTOVER_CLAIM_BATCH_ROWS,
+  POPULATED_CUTOVER_CONTRACT_BARRIER_MARKER,
+  POPULATED_CUTOVER_CONTRACT_DEADLINE_MILLISECONDS,
+  POPULATED_CUTOVER_CONTRACT_IDENTITY_MARKER,
+  POPULATED_CUTOVER_CONTRACT_MAX_ATTEMPTS,
+  POPULATED_CUTOVER_DATABASE_NAME,
+  POPULATED_CUTOVER_EXPAND_IDENTITY_MARKER,
+  POPULATED_CUTOVER_FIXTURE_IDS_V1,
+  POPULATED_CUTOVER_FIXTURE_RESOURCES_V1,
+  POPULATED_CUTOVER_INJECTED_FAILURE_SQLSTATE,
+  POPULATED_CUTOVER_PLAN_MIGRATION_IDS,
+  POPULATED_CUTOVER_ROLE_RESET_MARKER,
+  expectedPopulatedCutoverBaseLedgerRowsV1,
+  expectedPopulatedCutoverLedgerRowsV1,
+  loadPopulatedCutoverFixture,
+  loadPopulatedCutoverPlanV1,
+  renderCreatePopulatedCutoverDatabaseSql,
+  renderDropPopulatedCutoverDatabaseSql,
+  renderPopulatedCutoverBaseMigration,
+  renderPopulatedCutoverConcurrentLegacyInsert,
+  renderPopulatedCutoverContractBarrier,
+  renderPopulatedCutoverContractFinalize,
+  renderPopulatedCutoverContractMigration,
+  renderPopulatedCutoverExpandMigration,
+  renderPopulatedCutoverFixture,
+  renderPopulatedCutoverPlatformMigration,
+  renderPopulatedCutoverPostContractInsert,
+  renderPopulatedCutoverSharedAdvisorySql,
+  type PopulatedCutoverFixtureResourceV1,
+  type PopulatedCutoverPlanV1,
+} from "./populated-cutover-plan";
 
 const acceptanceRunnerPath = fileURLToPath(import.meta.url);
 const packageRoot = join(dirname(acceptanceRunnerPath), "..");
@@ -269,6 +306,22 @@ const privacyRetentionFixtureV1Path = join(
   "acceptance",
   "privacy-retention-fixture.sql",
 );
+const populatedCutoverPlanManifestV1Path = join(
+  packageRoot,
+  "populated-cutover-plans",
+  "v1",
+  "manifest.json",
+);
+const populatedCutoverPlanSourceV1Path = join(
+  packageRoot,
+  "src",
+  "populated-cutover-plan.ts",
+);
+const populatedCutoverFixtureV1Path = join(
+  packageRoot,
+  "acceptance",
+  "populated-cutover-fixture.sql",
+);
 const operationProjectionContractPath = join(
   repositoryRoot,
   "modules",
@@ -285,7 +338,7 @@ const EXPECTED_SERVER_VERSION = "17.11";
 const EXPECTED_UPLOAD_ARTIFACT_ACTION =
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 const EXPECTED_EVIDENCE_ARTIFACT_NAME =
-  "postgres-acceptance-evidence-v13-${{ github.sha }}-${{ github.run_attempt }}";
+  "postgres-acceptance-evidence-v14-${{ github.sha }}-${{ github.run_attempt }}";
 const EXPECTED_EVIDENCE_ARTIFACT_PATH = `\${{ runner.temp }}/${POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME}`;
 const EXPECTED_NODE_POSTGRES_VERSION = "8.23.0" as const;
 const EXPECTED_NODE_POSTGRES_POOL_VERSION = "3.14.0" as const;
@@ -360,6 +413,28 @@ const PRIVACY_RETENTION_SUFFIX_RACE_ORGANIZATION_ID =
   "13000000-0000-4000-8000-000000000098" as const;
 const PRIVACY_RETENTION_BETA_PRINCIPAL_ID =
   "23000000-0000-4000-8000-000000000002" as const;
+const POPULATED_CUTOVER_AUTH_APPLICATION_NAME =
+  "research-cockpit-b14-populated-cutover" as const;
+const POPULATED_CUTOVER_SEED_APPLICATION_NAME =
+  "research-cockpit-b14-populated-seed" as const;
+const POPULATED_CUTOVER_MIGRATOR_APPLICATION_NAME =
+  "research-cockpit-b14-populated-migrator" as const;
+const POPULATED_CUTOVER_ADMIN_APPLICATION_NAME =
+  "research-cockpit-b14-populated-admin" as const;
+const POPULATED_CUTOVER_CONTRACT_A_APPLICATION_NAME =
+  "research-cockpit-b14-contract-a" as const;
+const POPULATED_CUTOVER_CONTRACT_B_APPLICATION_NAME =
+  "research-cockpit-b14-contract-b" as const;
+const POPULATED_CUTOVER_POST_CONTRACT_WRITER_APPLICATION_NAME =
+  "research-cockpit-b14-post-contract-writer" as const;
+const POPULATED_CUTOVER_AUTH_CONNECTION_LIMIT = 2 as const;
+const POPULATED_CUTOVER_CONNECTION_TIMEOUT_MILLISECONDS = 500;
+const POPULATED_CUTOVER_STATEMENT_TIMEOUT_MILLISECONDS = 12_000;
+const POPULATED_CUTOVER_BLOCKED_DEADLINE_MILLISECONDS = 2_000;
+const POPULATED_CUTOVER_TOKEN_REUSE_ALLOCATION_ID =
+  "14000000-0000-4000-8000-000000000599" as const;
+const POPULATED_CUTOVER_TOKEN_REUSE_RESOURCE_ID =
+  "14000000-0000-4000-8000-000000000299" as const;
 export const RUNTIME_AUTH_LOGIN_ROLE =
   "research_cockpit_runtime_login" as const;
 export const RUNTIME_AUTH_CAPABILITY_ROLE = "research_cockpit_runtime" as const;
@@ -709,6 +784,7 @@ interface AcceptanceImageConfig {
   fixtureSha256: string;
   queryPlanLoadFixtureSha256: string;
   privacyRetentionFixtureSha256: string;
+  populatedCutoverFixtureSha256: string;
   verifiedOn: string;
   runner: {
     label: "ubuntu-24.04";
@@ -811,6 +887,7 @@ export interface AcceptanceArtifacts {
   fixture: string;
   queryPlanLoadFixture: string;
   privacyRetentionFixture: string;
+  populatedCutoverFixture: string;
 }
 
 export function generatePrivacyRetentionAuthPassword(): string {
@@ -1819,12 +1896,17 @@ export async function checkPostgresAcceptanceHarness(
     join(root, "packages", "db", "acceptance", "privacy-retention-fixture.sql"),
     "utf8",
   );
+  const populatedCutoverFixture = await readFile(
+    join(root, "packages", "db", "acceptance", "populated-cutover-fixture.sql"),
+    "utf8",
+  );
   return inspectPostgresAcceptanceHarness({
     config,
     workflow,
     fixture,
     queryPlanLoadFixture,
     privacyRetentionFixture,
+    populatedCutoverFixture,
   });
 }
 
@@ -1862,6 +1944,14 @@ export function inspectPostgresAcceptanceHarness(
     ) {
       violations.push(
         "privacy-retention fixture differs from its reviewed SHA-256",
+      );
+    }
+    if (
+      normalizedSha256(artifacts.populatedCutoverFixture) !==
+      config.populatedCutoverFixtureSha256
+    ) {
+      violations.push(
+        "populated-cutover fixture differs from its reviewed SHA-256",
       );
     }
     requireText(
@@ -2054,12 +2144,14 @@ export async function runPostgresAcceptance(
   const privacyRetentionPolicy = await loadPrivacyRetentionPolicyV1();
   assertPostgresPrivacyRetentionAcceptancePolicy(privacyRetentionPolicy);
   const privacyRetentionPlan = await loadPrivacyRetentionPlanV1();
+  const populatedCutoverPlan = await loadPopulatedCutoverPlanV1();
   const fixtureSql = await readFile(syntheticFixturePath, "utf8");
   const queryPlanLoadFixtureSql = await readFile(
     queryPlanLoadFixturePath,
     "utf8",
   );
   const privacyRetentionFixtureSql = await loadPrivacyRetentionFixture();
+  const populatedCutoverFixtureSql = await loadPopulatedCutoverFixture();
 
   await verifyContainerIdentity(containerId, config);
   const toolVersions = await verifyToolVersions(
@@ -2113,12 +2205,22 @@ export async function runPostgresAcceptance(
     queryPlanLoadFixtureSql,
     authenticatedMigrationPlan,
   );
-  await verifyAuthenticatedPostgresPrivacyRetention(
+  const keyedPrivacyCatalogFingerprint =
+    await verifyAuthenticatedPostgresPrivacyRetention(
+      containerId,
+      adapterEndpoint,
+      privacyRetentionFixtureSql,
+      authenticatedMigrationPlan,
+      privacyRetentionPlan,
+    );
+  await verifyAuthenticatedPostgresPopulatedCutover(
     containerId,
     adapterEndpoint,
-    privacyRetentionFixtureSql,
+    populatedCutoverFixtureSql,
     authenticatedMigrationPlan,
     privacyRetentionPlan,
+    populatedCutoverPlan,
+    keyedPrivacyCatalogFingerprint,
   );
   await verifyAuthenticatedPostgresProjectionPool(containerId, adapterEndpoint);
   await verifyAuthenticatedBackupAndBoundedRestore(
@@ -2144,7 +2246,7 @@ export async function runPostgresAcceptance(
 
   process.stdout.write(
     `PostgreSQL acceptance evidence SHA-256: ${writtenEvidence.sha256}\n` +
-      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, bounded PostgreSQL RLS query-plan and 2,000-read load, authenticated synthetic keyed resource-identifier privacy lifecycle with database-time retention boundaries and tenant-isolated offboarding, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 13 success-only run record was written.\n",
+      "PostgreSQL 17.11 legacy clean-bootstrap regression, versioned platform bootstrap, authenticated clean application migrations, locked migration-ledger checksum-drift refusal, one-time suffix replay, injected rollback, concurrent deployment serialization, bounded PostgreSQL RLS query-plan and 2,000-read load, authenticated synthetic keyed resource-identifier privacy lifecycle with database-time retention boundaries and tenant-isolated offboarding, authenticated bounded synthetic populated resource-registry backfill and online cutover with capture-epoch retry, concurrent-write serialization, raw-cleared tombstones, and B13 catalog equivalence, authenticated policy-scoped application-data dump and bounded clean restore, impersonated-capability, authenticated test-loader, authenticated owner-DDL canary, container-local SCRAM runtime, driverless financial-fact projection, single-client read-only financial-fact projection adapter, and bounded two-client pool lifecycle/concurrency/cancellation/timeout recovery acceptance passed; the version 14 success-only run record was written.\n",
   );
 }
 
@@ -3168,6 +3270,10 @@ async function waitForMigrationDeployerBlockingChain(
       AND held.locktype = 'advisory'
       AND held.mode = 'ExclusiveLock'
       AND held.granted
+      AND held.classid::bigint =
+        (($4::bigint >> 32) & 4294967295::bigint)
+      AND held.objid::bigint = ($4::bigint & 4294967295::bigint)
+      AND held.objsubid = 1
   )
   AND $1::integer = ANY (pg_catalog.pg_blocking_pids($2::integer))
   AND (
@@ -4901,8 +5007,9 @@ async function verifyAuthenticatedPostgresPrivacyRetention(
   fixtureSql: string,
   authenticatedPlan: AuthenticatedMigrationPlan,
   privacyPlan: PrivacyRetentionPlanV1,
-): Promise<void> {
+): Promise<string> {
   let sourceBefore: readonly AuthenticatedBackupTableFingerprint[] | undefined;
+  let targetCatalogFingerprint: string | undefined;
   let databaseProvisioningStarted = false;
   let roleProvisioningStarted = false;
   let seedClient: Client | null = null;
@@ -4944,6 +5051,11 @@ async function verifyAuthenticatedPostgresPrivacyRetention(
       authenticatedPlan,
       privacyPlan,
     );
+    targetCatalogFingerprint =
+      await collectPostgresPrivacyTargetCatalogFingerprint(
+        containerId,
+        POSTGRES_PRIVACY_RETENTION_DATABASE_NAME,
+      );
 
     const seedPassword = generateTestLoaderAuthPassword();
     const privacyPassword = generatePrivacyRetentionAuthPassword();
@@ -5149,6 +5261,2574 @@ async function verifyAuthenticatedPostgresPrivacyRetention(
   if (probeError !== undefined || cleanupError !== undefined) {
     throw new PostgresPrivacyRetentionError();
   }
+  if (targetCatalogFingerprint === undefined) {
+    throw new PostgresPrivacyRetentionError();
+  }
+  return targetCatalogFingerprint;
+}
+
+async function verifyAuthenticatedPostgresPopulatedCutover(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  fixtureSql: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+  cutoverPlan: PopulatedCutoverPlanV1,
+  keyedPrivacyCatalogFingerprint: string,
+): Promise<void> {
+  let sourceBefore: readonly AuthenticatedBackupTableFingerprint[] | undefined;
+  let databaseProvisioningStarted = false;
+  let ephemeralRoleProvisioningStarted = false;
+  let seedClient: Client | null = null;
+  let cutoverClientA: Client | null = null;
+  let cutoverClientB: Client | null = null;
+  let adminClient: Client | null = null;
+  let contractClientA: Client | null = null;
+  let contractClientB: Client | null = null;
+  let contractATransactionOpen = false;
+  let pendingContractReplay: Promise<PopulatedCutoverAsyncOutcome> | undefined;
+  let pendingPostContractWriter:
+    Promise<PopulatedCutoverAsyncOutcome> | undefined;
+  const clientErrors: unknown[] = [];
+  const listeners = new Map<Client, (error: Error) => void>();
+  const alphaKey = randomBytes(32);
+  const betaKey = randomBytes(32);
+  const derivedTokens = new Map<string, ResourceIdentifierTokenV1>();
+  let probeError: unknown;
+  let cleanupError: unknown;
+
+  const registerClient = (client: Client): Client => {
+    const listener = (error: Error) => clientErrors.push(error);
+    client.on("error", listener);
+    listeners.set(client, listener);
+    return client;
+  };
+
+  try {
+    await verifyPostgresPopulatedCutoverResidueAbsent(containerId);
+    sourceBefore = await collectAuthenticatedBackupFingerprints(
+      containerId,
+      CLEAN_BOOTSTRAP_DATABASE_NAME,
+    );
+
+    databaseProvisioningStarted = true;
+    await createPostgresPopulatedCutoverDatabase(containerId);
+    await verifyPostgresPopulatedCutoverPlatformDeployment(
+      containerId,
+      cutoverPlan,
+    );
+
+    const migratorPassword = generateMigratorAuthPassword();
+    const seedPassword = generateTestLoaderAuthPassword();
+    const cutoverPassword = generatePopulatedCutoverAuthPassword();
+    let wrongCutoverPassword = generatePopulatedCutoverAuthPassword();
+    while (wrongCutoverPassword === cutoverPassword) {
+      wrongCutoverPassword = generatePopulatedCutoverAuthPassword();
+    }
+
+    ephemeralRoleProvisioningStarted = true;
+    await provisionPostgresPopulatedCutoverMigratorLogin(
+      containerId,
+      migratorPassword,
+    );
+    await verifyPostgresPopulatedCutoverMigratorRoleCatalog(containerId);
+    await deployPostgresPopulatedCutoverBase(
+      containerId,
+      endpoint,
+      migratorPassword,
+      authenticatedPlan,
+      cutoverPlan,
+    );
+
+    await provisionPostgresPopulatedCutoverSeedLogin(containerId, seedPassword);
+    await verifyPostgresPopulatedCutoverSeedRoleCatalog(containerId);
+    seedClient = registerClient(
+      createPostgresPopulatedCutoverSeedClient(endpoint, seedPassword),
+    );
+    await seedClient.connect();
+    await verifyPostgresPopulatedCutoverClientIdentity(
+      seedClient,
+      TEST_LOADER_AUTH_LOGIN_ROLE,
+      POPULATED_CUTOVER_SEED_APPLICATION_NAME,
+    );
+    await seedPostgresPopulatedCutoverFixture(seedClient, fixtureSql);
+    await verifyPostgresPopulatedCutoverFixtureState(containerId);
+
+    await deployPostgresPopulatedCutoverExpand(
+      containerId,
+      endpoint,
+      migratorPassword,
+      authenticatedPlan,
+      privacyPlan,
+      cutoverPlan,
+    );
+    await verifyPostgresPopulatedCutoverExpandedState(
+      containerId,
+      cutoverPlan,
+      4,
+      4,
+      4,
+      0,
+      0,
+    );
+
+    await provisionPostgresPopulatedCutoverLogin(containerId, cutoverPassword);
+    await verifyPostgresPopulatedCutoverRoleCatalog(containerId);
+    await verifyPostgresPopulatedCutoverWrongPasswordRejection(
+      endpoint,
+      wrongCutoverPassword,
+    );
+
+    cutoverClientA = registerClient(
+      createPostgresPopulatedCutoverClient(endpoint, cutoverPassword),
+    );
+    cutoverClientB = registerClient(
+      createPostgresPopulatedCutoverClient(
+        endpoint,
+        cutoverPassword,
+        `${POPULATED_CUTOVER_AUTH_APPLICATION_NAME}-b`,
+      ),
+    );
+    adminClient = registerClient(
+      createPostgresPopulatedCutoverAdminClient(endpoint),
+    );
+    await Promise.all([
+      cutoverClientA.connect(),
+      cutoverClientB.connect(),
+      adminClient.connect(),
+    ]);
+    await verifyPostgresPopulatedCutoverClientIdentity(
+      cutoverClientA,
+      POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE,
+      POPULATED_CUTOVER_AUTH_APPLICATION_NAME,
+    );
+    await verifyPostgresPopulatedCutoverDenials(cutoverClientA);
+
+    await createPostgresPopulatedCutoverPrivacyDomains(cutoverClientA);
+    const initialClaims = await claimPostgresPopulatedCutoverSkipLocked(
+      cutoverClientA,
+      cutoverClientB,
+      4,
+    );
+    await derivePostgresPopulatedCutoverClaims(
+      initialClaims,
+      alphaKey,
+      betaKey,
+      derivedTokens,
+    );
+
+    await verifyPostgresPopulatedCutoverDeleteApplyRace(
+      containerId,
+      endpoint,
+      migratorPassword,
+      adminClient,
+      cutoverClientA,
+      initialClaims,
+      derivedTokens,
+    );
+    await drainPostgresPopulatedCutoverWork(
+      cutoverClientA,
+      alphaKey,
+      betaKey,
+      derivedTokens,
+    );
+    let inspection = await inspectPostgresPopulatedCutover(cutoverClientA);
+    assertPostgresPopulatedCutoverInspection(inspection, 5, 0, 3, 1);
+    await verifyPostgresPopulatedCutoverExpandedState(
+      containerId,
+      cutoverPlan,
+      5,
+      0,
+      3,
+      1,
+      4,
+    );
+
+    await verifyPostgresPopulatedCutoverInjectedContractRollback(
+      containerId,
+      endpoint,
+      migratorPassword,
+      authenticatedPlan,
+      privacyPlan,
+      cutoverPlan,
+      inspection.captureEpoch,
+    );
+
+    const contractStartedAt = Date.now();
+    let contractAttempts = 0;
+    const staleCaptureEpoch = inspection.captureEpoch;
+    await insertPostgresPopulatedCutoverConcurrentLegacyResource(seedClient);
+    inspection = await inspectPostgresPopulatedCutover(cutoverClientA);
+    assertPostgresPopulatedCutoverInspection(inspection, 6, 1, 4, 1);
+
+    contractAttempts += 1;
+    await expectPostgresPopulatedCutoverContractFailure(
+      endpoint,
+      migratorPassword,
+      renderPopulatedCutoverContractMigration(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+        staleCaptureEpoch,
+      ),
+      "P0001",
+      "populated cutover capture changed before contract",
+    );
+    await verifyPostgresPopulatedCutoverExpandedState(
+      containerId,
+      cutoverPlan,
+      6,
+      1,
+      4,
+      1,
+      4,
+    );
+    assertPostgresPopulatedCutoverRetryBudget(
+      contractStartedAt,
+      contractAttempts,
+    );
+
+    await drainPostgresPopulatedCutoverWork(
+      cutoverClientA,
+      alphaKey,
+      betaKey,
+      derivedTokens,
+    );
+    inspection = await inspectPostgresPopulatedCutover(cutoverClientA);
+    assertPostgresPopulatedCutoverInspection(inspection, 6, 0, 4, 1);
+    const postContractToken = await derivePostgresPopulatedCutoverResourceToken(
+      POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaPostContractThesis,
+      alphaKey,
+      betaKey,
+    );
+    rememberPostgresPopulatedCutoverToken(
+      POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaPostContractThesis,
+      postContractToken,
+      derivedTokens,
+    );
+
+    contractAttempts += 1;
+    assertPostgresPopulatedCutoverRetryBudget(
+      contractStartedAt,
+      contractAttempts,
+    );
+    contractClientA = registerClient(
+      createPostgresPopulatedCutoverMigratorClient(
+        endpoint,
+        migratorPassword,
+        POPULATED_CUTOVER_CONTRACT_A_APPLICATION_NAME,
+      ),
+    );
+    contractClientB = registerClient(
+      createPostgresPopulatedCutoverMigratorClient(
+        endpoint,
+        migratorPassword,
+        POPULATED_CUTOVER_CONTRACT_B_APPLICATION_NAME,
+      ),
+    );
+    await Promise.all([contractClientA.connect(), contractClientB.connect()]);
+    const contractAPid = await collectPostgresBackendPid(contractClientA);
+    const contractBPid = await collectPostgresBackendPid(contractClientB);
+    const writerPid = await collectPostgresBackendPid(seedClient);
+
+    const barrierResult: unknown = await contractClientA.query(
+      renderPopulatedCutoverContractBarrier(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+        inspection.captureEpoch,
+      ),
+    );
+    contractATransactionOpen = true;
+    assertPostgresPopulatedCutoverMigrationMarkers(barrierResult, [
+      POPULATED_CUTOVER_CONTRACT_BARRIER_MARKER,
+    ]);
+
+    pendingPostContractWriter = runPostgresPopulatedCutoverPostContractWriter(
+      seedClient,
+      postContractToken,
+    );
+    pendingContractReplay = runPostgresPopulatedCutoverContractReplay(
+      contractClientB,
+      renderPopulatedCutoverContractMigration(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+        inspection.captureEpoch,
+      ),
+    );
+    await waitForPostgresPopulatedCutoverBarrier(
+      adminClient,
+      contractAPid,
+      contractBPid,
+      writerPid,
+    );
+
+    const finalizeResult: unknown = await contractClientA.query(
+      renderPopulatedCutoverContractFinalize(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+        inspection.captureEpoch,
+      ),
+    );
+    contractATransactionOpen = false;
+    assertPostgresPopulatedCutoverMigrationMarkers(finalizeResult, [
+      POPULATED_CUTOVER_CONTRACT_IDENTITY_MARKER,
+      POPULATED_CUTOVER_ROLE_RESET_MARKER,
+    ]);
+    assertPostgresPopulatedCutoverRetryBudget(
+      contractStartedAt,
+      contractAttempts,
+    );
+    if (contractAttempts !== 2) {
+      throw new PostgresPopulatedCutoverError();
+    }
+
+    const [writerOutcome, replayOutcome] = await Promise.all([
+      pendingPostContractWriter,
+      pendingContractReplay,
+    ]);
+    pendingPostContractWriter = undefined;
+    pendingContractReplay = undefined;
+    if (
+      !writerOutcome.ok ||
+      replayOutcome.ok ||
+      replayOutcome.code !== "P0001"
+    ) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    await contractClientB.query("ROLLBACK").catch(() => undefined);
+
+    await verifyPostgresPopulatedCutoverFinalState(
+      containerId,
+      adminClient,
+      cutoverPlan,
+      derivedTokens,
+    );
+    await verifyPostgresPopulatedCutoverTokenReuseRejection(
+      seedClient,
+      derivedTokens,
+    );
+    const finalCatalogFingerprint =
+      await collectPostgresPrivacyTargetCatalogFingerprint(
+        containerId,
+        POPULATED_CUTOVER_DATABASE_NAME,
+      );
+    if (finalCatalogFingerprint !== keyedPrivacyCatalogFingerprint) {
+      throw new PostgresPopulatedCutoverDiagnosticError(
+        "catalog_equivalence",
+        "match=false",
+      );
+    }
+    if (clientErrors.length > 0) {
+      throw new PostgresPopulatedCutoverError();
+    }
+  } catch (error) {
+    if (error instanceof PostgresPopulatedCutoverDiagnosticError) {
+      process.stderr.write(`${error.message}\n`);
+    }
+    probeError = new PostgresPopulatedCutoverError();
+  } finally {
+    alphaKey.fill(0);
+    betaKey.fill(0);
+    derivedTokens.clear();
+
+    const cleanupOperations: RuntimeAuthBestEffortOperation[] = [];
+    if (contractATransactionOpen && contractClientA !== null) {
+      cleanupOperations.push({
+        label: "rollback B14 open contract barrier",
+        run: async () => {
+          await contractClientA?.query("ROLLBACK").catch(() => undefined);
+          contractATransactionOpen = false;
+        },
+      });
+    }
+    if (pendingPostContractWriter !== undefined) {
+      cleanupOperations.push({
+        label: "settle B14 post-contract writer",
+        run: async () => {
+          await pendingPostContractWriter?.catch(() => undefined);
+          pendingPostContractWriter = undefined;
+        },
+      });
+    }
+    if (pendingContractReplay !== undefined) {
+      cleanupOperations.push({
+        label: "settle B14 serialized contract replay",
+        run: async () => {
+          await pendingContractReplay?.catch(() => undefined);
+          pendingContractReplay = undefined;
+        },
+      });
+    }
+    for (const client of [
+      contractClientB,
+      contractClientA,
+      cutoverClientB,
+      cutoverClientA,
+      seedClient,
+      adminClient,
+    ]) {
+      if (client === null) continue;
+      cleanupOperations.push({
+        label: "rollback and close B14 PostgreSQL client",
+        run: async () => {
+          await client.query("ROLLBACK").catch(() => undefined);
+          await closePostgresPopulatedCutoverClient(client, listeners);
+        },
+      });
+    }
+    cleanupOperations.push(
+      {
+        label: "verify B14 client error channels",
+        run: () =>
+          clientErrors.length === 0
+            ? Promise.resolve()
+            : Promise.reject(new PostgresPopulatedCutoverError()),
+      },
+      {
+        label: "drain B14 PostgreSQL backends",
+        run: () => waitForPostgresPopulatedCutoverBackendDrain(containerId),
+      },
+      {
+        label: "drop B14 template0 database without FORCE",
+        run: () =>
+          dropPostgresPopulatedCutoverDatabase(
+            containerId,
+            databaseProvisioningStarted,
+          ),
+      },
+      {
+        label: "drop B14 ephemeral and plan roles",
+        run: () =>
+          cleanupPostgresPopulatedCutoverRoles(
+            containerId,
+            ephemeralRoleProvisioningStarted || databaseProvisioningStarted,
+          ),
+      },
+      {
+        label: "verify B14 source fingerprint",
+        run: async () => {
+          if (sourceBefore === undefined) return;
+          assertAuthenticatedBackupFingerprintsEqual(
+            await collectAuthenticatedBackupFingerprints(
+              containerId,
+              CLEAN_BOOTSTRAP_DATABASE_NAME,
+            ),
+            sourceBefore,
+            "B14 populated cutover changed the source database",
+          );
+        },
+      },
+      {
+        label: "verify B14 zero residue",
+        run: () => verifyPostgresPopulatedCutoverResidueAbsent(containerId),
+      },
+      {
+        label: "verify B14 source catalog",
+        run: async () => {
+          await verifyMigrationLedger(
+            containerId,
+            expectedAuthenticatedMigrationLedgerRows(
+              authenticatedPlan.manifest,
+            ).map(
+              ({ migrationId, fileName, sha256 }) =>
+                `${migrationId}|${fileName}|${sha256}`,
+            ),
+          );
+          await verifyCatalogContract(containerId);
+          await verifyB7PlatformArtifactsAfterApplication(containerId);
+          await verifyContextCleanup(containerId);
+        },
+      },
+    );
+
+    try {
+      throwRuntimeAuthOperationFailures(
+        await collectRuntimeAuthOperationFailures(cleanupOperations),
+        "B14 populated-cutover cleanup failed",
+      );
+    } catch {
+      cleanupError = new PostgresPopulatedCutoverError();
+    }
+  }
+
+  if (probeError !== undefined && cleanupError !== undefined) {
+    throw new AggregateError(
+      [probeError, cleanupError],
+      "B14 populated-cutover probe and mandatory cleanup both failed",
+    );
+  }
+  if (probeError !== undefined || cleanupError !== undefined) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+type PopulatedCutoverAsyncOutcome =
+  Readonly<{ ok: true }> | Readonly<{ ok: false; code: string | null }>;
+
+interface PostgresPopulatedCutoverClaim {
+  readonly organizationId: string;
+  readonly resourceType: "thesis" | "alert";
+  readonly resourceId: string;
+  readonly workVersion: string;
+  readonly desiredState: "live" | "deleted";
+}
+
+interface PostgresPopulatedCutoverInspection {
+  readonly captureEpoch: number;
+  readonly pendingRows: number;
+  readonly liveRows: number;
+  readonly deletedRows: number;
+}
+
+class PostgresPopulatedCutoverError extends Error {
+  constructor() {
+    super("B14 PostgreSQL populated-cutover acceptance failed.");
+    this.name = "PostgresPopulatedCutoverError";
+  }
+}
+
+class PostgresPopulatedCutoverDiagnosticError extends Error {
+  constructor(
+    phase: "catalog_equivalence" | "expanded_state" | "final_state" | "ledger",
+    diagnostic: string,
+  ) {
+    super(`B14 populated-cutover diagnostic ${phase}: ${diagnostic}`);
+    this.name = "PostgresPopulatedCutoverDiagnosticError";
+  }
+}
+
+function generatePopulatedCutoverAuthPassword(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+function assertPopulatedCutoverAuthPassword(password: string): void {
+  const decoded = Buffer.from(password, "base64url");
+  if (
+    password.length !== 43 ||
+    decoded.length !== 32 ||
+    decoded.toString("base64url") !== password
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+function assertPostgresPopulatedCutoverRetryBudget(
+  startedAt: number,
+  attempts: number,
+): void {
+  if (
+    attempts < 1 ||
+    attempts > POPULATED_CUTOVER_CONTRACT_MAX_ATTEMPTS ||
+    Date.now() - startedAt >= POPULATED_CUTOVER_CONTRACT_DEADLINE_MILLISECONDS
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+function safePostgresPopulatedCutoverCount(value: unknown): number {
+  const text = typeof value === "number" ? String(value) : value;
+  if (typeof text !== "string" || !/^(?:0|[1-9]\d{0,6})$/.test(text)) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  const parsed = Number(text);
+  if (!Number.isSafeInteger(parsed) || parsed > 1_000_000) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  return parsed;
+}
+
+function postgresPopulatedCutoverResourceKey(
+  resource: Pick<
+    PopulatedCutoverFixtureResourceV1,
+    "organizationId" | "resourceType" | "resourceId"
+  >,
+): string {
+  return [
+    resource.organizationId,
+    resource.resourceType,
+    resource.resourceId,
+  ].join("|");
+}
+
+function findPostgresPopulatedCutoverResource(
+  claim: PostgresPopulatedCutoverClaim,
+): PopulatedCutoverFixtureResourceV1 {
+  const match = Object.values(POPULATED_CUTOVER_FIXTURE_RESOURCES_V1).find(
+    (resource) =>
+      resource.organizationId === claim.organizationId &&
+      resource.resourceType === claim.resourceType &&
+      resource.resourceId === claim.resourceId,
+  );
+  if (match === undefined) throw new PostgresPopulatedCutoverError();
+  return match;
+}
+
+function rememberPostgresPopulatedCutoverToken(
+  resource: PopulatedCutoverFixtureResourceV1,
+  token: ResourceIdentifierTokenV1,
+  tokens: Map<string, ResourceIdentifierTokenV1>,
+): void {
+  const key = postgresPopulatedCutoverResourceKey(resource);
+  const existing = tokens.get(key);
+  if (existing !== undefined && existing !== token) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  tokens.set(key, token);
+  if (new Set(tokens.values()).size !== tokens.size) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function derivePostgresPopulatedCutoverResourceToken(
+  resource: PopulatedCutoverFixtureResourceV1,
+  alphaKey: Uint8Array,
+  betaKey: Uint8Array,
+): Promise<ResourceIdentifierTokenV1> {
+  const key =
+    resource.organizationId ===
+    POPULATED_CUTOVER_FIXTURE_IDS_V1.organizations.alpha
+      ? alphaKey
+      : resource.organizationId ===
+          POPULATED_CUTOVER_FIXTURE_IDS_V1.organizations.beta
+        ? betaKey
+        : undefined;
+  if (key === undefined) throw new PostgresPopulatedCutoverError();
+  return deriveResourceIdentifierToken(privacyRetentionMacProvider(key), {
+    privacyDomainId: resource.privacyDomainId,
+    resourceType: resource.resourceType,
+    resourceId: resource.resourceId,
+  });
+}
+
+async function derivePostgresPopulatedCutoverClaims(
+  claims: readonly PostgresPopulatedCutoverClaim[],
+  alphaKey: Uint8Array,
+  betaKey: Uint8Array,
+  tokens: Map<string, ResourceIdentifierTokenV1>,
+): Promise<void> {
+  for (const claim of claims) {
+    const resource = findPostgresPopulatedCutoverResource(claim);
+    rememberPostgresPopulatedCutoverToken(
+      resource,
+      await derivePostgresPopulatedCutoverResourceToken(
+        resource,
+        alphaKey,
+        betaKey,
+      ),
+      tokens,
+    );
+  }
+}
+
+async function createPostgresPopulatedCutoverDatabase(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(containerId, renderCreatePopulatedCutoverDatabaseSql());
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT datname || '|' || pg_catalog.pg_get_userbyid(datdba) || '|' ||
+  datistemplate || '|' || datallowconn || '|' || datconnlimit || '|' ||
+  pg_catalog.pg_encoding_to_char(encoding)
+FROM pg_catalog.pg_database
+WHERE datname = '${POPULATED_CUTOVER_DATABASE_NAME}';`,
+    ),
+    `${POPULATED_CUTOVER_DATABASE_NAME}|postgres|false|true|-1|UTF8`,
+    "B14 disposable template0 database catalog",
+  );
+}
+
+async function verifyPostgresPopulatedCutoverPlatformDeployment(
+  containerId: string,
+  cutoverPlan: PopulatedCutoverPlanV1,
+): Promise<void> {
+  await expectPsqlFailure(
+    containerId,
+    renderPopulatedCutoverPlatformMigration(cutoverPlan, true),
+    {
+      label: "injected B14 populated platform rollback",
+      sqlState: POPULATED_CUTOVER_INJECTED_FAILURE_SQLSTATE,
+      message: "division by zero",
+    },
+    POPULATED_CUTOVER_DATABASE_NAME,
+  );
+  await verifyPostgresPopulatedCutoverPlatformPristine(containerId);
+  await psql(
+    containerId,
+    renderPopulatedCutoverPlatformMigration(cutoverPlan),
+    POPULATED_CUTOVER_DATABASE_NAME,
+  );
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT
+  (pg_catalog.to_regnamespace('shared_data') IS NOT NULL) || '|' ||
+  (pg_catalog.to_regnamespace('private_data') IS NOT NULL) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_extension WHERE extname = 'btree_gist') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_authid WHERE rolname IN (
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+    '${POPULATED_CUTOVER_CAPABILITY_ROLE}'
+  )
+    AND NOT rolcanlogin
+    AND NOT rolsuper
+    AND NOT rolcreatedb
+    AND NOT rolcreaterole
+    AND NOT rolreplication
+    AND NOT rolinherit
+    AND NOT rolbypassrls
+    AND rolconnlimit = -1
+    AND rolpassword IS NULL
+    AND rolvaliduntil IS NULL) || '|' ||
+  (pg_catalog.to_regclass('shared_data.schema_migrations') IS NULL);`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    "true|true|1|2|true",
+    "B14 populated platform state",
+  );
+  await expectPsqlFailure(
+    containerId,
+    renderPopulatedCutoverPlatformMigration(cutoverPlan),
+    {
+      label: "B14 populated platform replay",
+      sqlState: "P0001",
+      message: "populated cutover platform requires a pristine target",
+    },
+    POPULATED_CUTOVER_DATABASE_NAME,
+  );
+}
+
+async function verifyPostgresPopulatedCutoverPlatformPristine(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT
+  (pg_catalog.to_regnamespace('shared_data') IS NULL) || '|' ||
+  (pg_catalog.to_regnamespace('private_data') IS NULL) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_extension WHERE extname = 'btree_gist') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_roles WHERE rolname IN (
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+    '${POPULATED_CUTOVER_CAPABILITY_ROLE}'
+  ));`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    "true|true|0|0",
+    "B14 injected platform rollback",
+  );
+}
+
+async function provisionPostgresPopulatedCutoverMigratorLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  assertMigratorAuthPassword(password);
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${POPULATED_CUTOVER_DATABASE_NAME}`,
+    ],
+    `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${MIGRATOR_AUTH_LOGIN_ROLE}
+  LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+  NOINHERIT NOBYPASSRLS CONNECTION LIMIT 2 PASSWORD '${password}';
+GRANT ${MIGRATOR_AUTH_CAPABILITY_ROLE}
+  TO ${MIGRATOR_AUTH_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;`,
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral B14 migrator login",
+  );
+}
+
+async function verifyPostgresPopulatedCutoverMigratorRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  coalesce(rolpassword LIKE 'SCRAM-SHA-256$%', false)
+FROM pg_catalog.pg_authid
+WHERE rolname = '${MIGRATOR_AUTH_LOGIN_ROLE}';`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    `${MIGRATOR_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|2|true`,
+    "B14 migrator role attributes",
+  );
+  await verifyPostgresPopulatedCutoverSetOnlyMembership(
+    containerId,
+    MIGRATOR_AUTH_CAPABILITY_ROLE,
+    MIGRATOR_AUTH_LOGIN_ROLE,
+  );
+}
+
+async function deployPostgresPopulatedCutoverBase(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  migratorPassword: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  cutoverPlan: PopulatedCutoverPlanV1,
+): Promise<void> {
+  const client = createPostgresPopulatedCutoverMigratorClient(
+    endpoint,
+    migratorPassword,
+    POPULATED_CUTOVER_MIGRATOR_APPLICATION_NAME,
+  );
+  try {
+    await client.connect();
+    await verifyPostgresPopulatedCutoverClientIdentity(
+      client,
+      MIGRATOR_AUTH_LOGIN_ROLE,
+      POPULATED_CUTOVER_MIGRATOR_APPLICATION_NAME,
+    );
+    await expectPostgresPopulatedCutoverClientFailure(
+      client,
+      renderPopulatedCutoverBaseMigration(authenticatedPlan, cutoverPlan, true),
+      POPULATED_CUTOVER_INJECTED_FAILURE_SQLSTATE,
+      "division by zero",
+    );
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        `SELECT
+  (pg_catalog.to_regclass('shared_data.schema_migrations') IS NULL) || '|' ||
+  (pg_catalog.to_regclass('private_data.organizations') IS NULL);`,
+        POPULATED_CUTOVER_DATABASE_NAME,
+      ),
+      "true|true",
+      "B14 injected base rollback",
+    );
+    const result: unknown = await client.query(
+      renderPopulatedCutoverBaseMigration(authenticatedPlan, cutoverPlan),
+    );
+    assertPostgresPopulatedCutoverMigrationMarkers(result, [
+      POPULATED_CUTOVER_BASE_IDENTITY_MARKER,
+      POPULATED_CUTOVER_ROLE_RESET_MARKER,
+    ]);
+    await verifyPostgresPopulatedCutoverLedger(
+      containerId,
+      expectedPopulatedCutoverBaseLedgerRowsV1(cutoverPlan),
+    );
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        `SELECT count(*) FROM shared_data.schema_migrations
+WHERE migration_id = '${POPULATED_CUTOVER_BASE_EXCLUDED_ID}';`,
+        POPULATED_CUTOVER_DATABASE_NAME,
+      ),
+      "0",
+      "B14 excludes v2-0005",
+    );
+    await expectPostgresPopulatedCutoverClientFailure(
+      client,
+      renderPopulatedCutoverBaseMigration(authenticatedPlan, cutoverPlan),
+      "P0001",
+      "populated cutover base requires a pristine application target",
+    );
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await client.end().catch(() => undefined);
+  }
+}
+
+async function provisionPostgresPopulatedCutoverSeedLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${POPULATED_CUTOVER_DATABASE_NAME}`,
+    ],
+    renderTestLoaderAuthProvisioningSql(password),
+  );
+  assertSensitiveCommandSuccess(result, "provision ephemeral B14 seed login");
+}
+
+async function verifyPostgresPopulatedCutoverSeedRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  coalesce(rolpassword LIKE 'SCRAM-SHA-256$%', false)
+FROM pg_catalog.pg_authid
+WHERE rolname = '${TEST_LOADER_AUTH_LOGIN_ROLE}';`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    `${TEST_LOADER_AUTH_LOGIN_ROLE}|true|false|false|false|false|false|false|1|true`,
+    "B14 seed role attributes",
+  );
+  await verifyPostgresPopulatedCutoverSetOnlyMembership(
+    containerId,
+    TEST_LOADER_AUTH_CAPABILITY_ROLE,
+    TEST_LOADER_AUTH_LOGIN_ROLE,
+  );
+}
+
+async function deployPostgresPopulatedCutoverExpand(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  migratorPassword: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+  cutoverPlan: PopulatedCutoverPlanV1,
+): Promise<void> {
+  const client = createPostgresPopulatedCutoverMigratorClient(
+    endpoint,
+    migratorPassword,
+    POPULATED_CUTOVER_MIGRATOR_APPLICATION_NAME,
+  );
+  try {
+    await client.connect();
+    await expectPostgresPopulatedCutoverClientFailure(
+      client,
+      renderPopulatedCutoverExpandMigration(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+        true,
+      ),
+      POPULATED_CUTOVER_INJECTED_FAILURE_SQLSTATE,
+      "division by zero",
+    );
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        `SELECT
+  (pg_catalog.to_regclass('private_data.resource_identifier_cutover_work') IS NULL) || '|' ||
+  (SELECT count(*) FROM shared_data.schema_migrations);`,
+        POPULATED_CUTOVER_DATABASE_NAME,
+      ),
+      "true|5",
+      "B14 injected expand rollback",
+    );
+    const result: unknown = await client.query(
+      renderPopulatedCutoverExpandMigration(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+      ),
+    );
+    assertPostgresPopulatedCutoverMigrationMarkers(result, [
+      POPULATED_CUTOVER_EXPAND_IDENTITY_MARKER,
+      POPULATED_CUTOVER_ROLE_RESET_MARKER,
+    ]);
+    await verifyPostgresPopulatedCutoverLedger(containerId, [
+      ...expectedPopulatedCutoverBaseLedgerRowsV1(cutoverPlan),
+      {
+        migrationId: cutoverPlan.manifest.migrations[0]?.id ?? "",
+        fileName: cutoverPlan.manifest.migrations[0]?.file ?? "",
+        sha256: cutoverPlan.manifest.migrations[0]?.sha256 ?? "",
+      },
+    ]);
+    await expectPostgresPopulatedCutoverClientFailure(
+      client,
+      renderPopulatedCutoverExpandMigration(
+        authenticatedPlan,
+        privacyPlan,
+        cutoverPlan,
+      ),
+      "P0001",
+      "populated cutover expand ledger is not exact",
+    );
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await client.end().catch(() => undefined);
+  }
+}
+
+async function provisionPostgresPopulatedCutoverLogin(
+  containerId: string,
+  password: string,
+): Promise<void> {
+  assertPopulatedCutoverAuthPassword(password);
+  const result = await dockerExec(
+    containerId,
+    [
+      "psql",
+      "--no-psqlrc",
+      "--quiet",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      `--dbname=${POPULATED_CUTOVER_DATABASE_NAME}`,
+    ],
+    `BEGIN;
+SET LOCAL log_statement = 'none';
+SET LOCAL log_min_error_statement = 'panic';
+SET LOCAL log_duration = off;
+SET LOCAL log_min_duration_statement = -1;
+SET LOCAL log_min_duration_sample = -1;
+SET LOCAL log_statement_sample_rate = 0;
+SET LOCAL log_transaction_sample_rate = 0;
+SET LOCAL password_encryption = 'scram-sha-256';
+CREATE ROLE ${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}
+  LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+  NOINHERIT NOBYPASSRLS
+  CONNECTION LIMIT ${POPULATED_CUTOVER_AUTH_CONNECTION_LIMIT}
+  PASSWORD '${password}';
+GRANT ${POPULATED_CUTOVER_CAPABILITY_ROLE}
+  TO ${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}
+  WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+COMMIT;`,
+  );
+  assertSensitiveCommandSuccess(
+    result,
+    "provision ephemeral B14 cutover login",
+  );
+}
+
+async function verifyPostgresPopulatedCutoverRoleCatalog(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT rolname || '|' || rolcanlogin || '|' || rolsuper || '|' ||
+  rolcreatedb || '|' || rolcreaterole || '|' || rolreplication || '|' ||
+  rolinherit || '|' || rolbypassrls || '|' || rolconnlimit || '|' ||
+  coalesce(rolpassword LIKE 'SCRAM-SHA-256$%', false)
+FROM pg_catalog.pg_authid
+WHERE rolname IN (
+  '${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}',
+  '${POPULATED_CUTOVER_CAPABILITY_ROLE}'
+)
+ORDER BY rolname;`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    [
+      `${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}|true|false|false|false|false|false|false|${POPULATED_CUTOVER_AUTH_CONNECTION_LIMIT}|true`,
+      `${POPULATED_CUTOVER_CAPABILITY_ROLE}|false|false|false|false|false|false|false|-1|false`,
+    ].join("\n"),
+    "B14 cutover roles and SCRAM verifier",
+  );
+  await verifyPostgresPopulatedCutoverSetOnlyMembership(
+    containerId,
+    POPULATED_CUTOVER_CAPABILITY_ROLE,
+    POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE,
+  );
+}
+
+async function verifyPostgresPopulatedCutoverSetOnlyMembership(
+  containerId: string,
+  capabilityRole: string,
+  loginRole: string,
+): Promise<void> {
+  const result = await psqlScalar(
+    containerId,
+    `SELECT granted_role.rolname || '|' || member_role.rolname || '|' ||
+  membership.admin_option || '|' || membership.inherit_option || '|' ||
+  membership.set_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+WHERE granted_role.rolname = '${capabilityRole}'
+  AND member_role.rolname = '${loginRole}';`,
+    POPULATED_CUTOVER_DATABASE_NAME,
+  );
+  if (result !== `${capabilityRole}|${loginRole}|false|false|true`) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `WITH login AS (
+  SELECT oid FROM pg_catalog.pg_roles WHERE rolname = '${loginRole}'
+), direct_acl AS (
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_database AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.datacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_namespace AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.nspacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_class AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.relacl) AS privilege
+  UNION ALL
+  SELECT privilege.grantee
+  FROM pg_catalog.pg_proc AS object_row
+  CROSS JOIN LATERAL pg_catalog.aclexplode(object_row.proacl) AS privilege
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole = (SELECT oid FROM login)
+) || '|' || (
+  SELECT count(*) FROM direct_acl WHERE grantee = (SELECT oid FROM login)
+);`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    "0|0",
+    "B14 login settings and direct ACLs",
+  );
+}
+
+function createPostgresPopulatedCutoverClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+  applicationName: string = POPULATED_CUTOVER_AUTH_APPLICATION_NAME,
+): Client {
+  assertPopulatedCutoverAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POPULATED_CUTOVER_DATABASE_NAME,
+    user: POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: applicationName,
+    connectionTimeoutMillis: POPULATED_CUTOVER_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: POPULATED_CUTOVER_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+function createPostgresPopulatedCutoverSeedClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+): Client {
+  assertTestLoaderAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POPULATED_CUTOVER_DATABASE_NAME,
+    user: TEST_LOADER_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: POPULATED_CUTOVER_SEED_APPLICATION_NAME,
+    connectionTimeoutMillis: POPULATED_CUTOVER_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: POPULATED_CUTOVER_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+function createPostgresPopulatedCutoverMigratorClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  password: string,
+  applicationName: string,
+): Client {
+  assertMigratorAuthPassword(password);
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POPULATED_CUTOVER_DATABASE_NAME,
+    user: MIGRATOR_AUTH_LOGIN_ROLE,
+    password,
+    ssl: false,
+    application_name: applicationName,
+    connectionTimeoutMillis: POPULATED_CUTOVER_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: POPULATED_CUTOVER_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+function createPostgresPopulatedCutoverAdminClient(
+  endpoint: PostgresProjectionAdapterEndpoint,
+): Client {
+  return new Client({
+    host: endpoint.host,
+    port: endpoint.port,
+    database: POPULATED_CUTOVER_DATABASE_NAME,
+    user: "postgres",
+    password: POSTGRES_MIGRATION_DEPLOYER_ADMIN_PASSWORD,
+    ssl: false,
+    application_name: POPULATED_CUTOVER_ADMIN_APPLICATION_NAME,
+    connectionTimeoutMillis: POPULATED_CUTOVER_CONNECTION_TIMEOUT_MILLISECONDS,
+    statement_timeout: POPULATED_CUTOVER_STATEMENT_TIMEOUT_MILLISECONDS,
+  });
+}
+
+async function verifyPostgresPopulatedCutoverClientIdentity(
+  client: Client,
+  expectedLoginRole:
+    | typeof POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE
+    | typeof TEST_LOADER_AUTH_LOGIN_ROLE
+    | typeof MIGRATOR_AUTH_LOGIN_ROLE,
+  expectedApplicationName: string,
+): Promise<void> {
+  const result = await client.query<{
+    state: string;
+  }>(`SELECT pg_catalog.json_build_object(
+  'sessionUser', session_user,
+  'currentUser', current_user,
+  'systemUser', system_user,
+  'databaseName', pg_catalog.current_database(),
+  'applicationName', pg_catalog.current_setting('application_name'),
+  'transactionReadOnly', pg_catalog.current_setting('transaction_read_only'),
+  'ssl', EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_ssl
+    WHERE pid = pg_catalog.pg_backend_pid() AND ssl
+  )
+)::text AS state;`);
+  const stateText = result.rows[0]?.state;
+  const state =
+    stateText === undefined ? undefined : (JSON.parse(stateText) as unknown);
+  if (
+    result.command !== "SELECT" ||
+    result.rowCount !== 1 ||
+    !isRecord(state) ||
+    state.sessionUser !== expectedLoginRole ||
+    state.currentUser !== expectedLoginRole ||
+    state.systemUser !== `scram-sha-256:${expectedLoginRole}` ||
+    state.databaseName !== POPULATED_CUTOVER_DATABASE_NAME ||
+    state.applicationName !== expectedApplicationName ||
+    state.transactionReadOnly !== "off" ||
+    state.ssl !== false
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function verifyPostgresPopulatedCutoverWrongPasswordRejection(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  wrongPassword: string,
+): Promise<void> {
+  const client = createPostgresPopulatedCutoverClient(endpoint, wrongPassword);
+  let code: string | null = null;
+  try {
+    await client.connect();
+  } catch (error) {
+    code = postgresErrorCode(error);
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+  if (code !== "28P01") throw new PostgresPopulatedCutoverError();
+}
+
+async function expectPostgresPopulatedCutoverClientFailure(
+  client: Client,
+  sql: string,
+  expectedCode: string,
+  expectedMessage: string,
+): Promise<void> {
+  let code: string | null = null;
+  let message = "";
+  try {
+    await client.query(sql);
+  } catch (error) {
+    code = postgresErrorCode(error);
+    message =
+      isRecord(error) && typeof error.message === "string"
+        ? error.message.toLowerCase()
+        : "";
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+  if (
+    code !== expectedCode ||
+    !message.includes(expectedMessage.toLowerCase())
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+function assertPostgresPopulatedCutoverMigrationMarkers(
+  result: unknown,
+  expected: readonly string[],
+): void {
+  const entries = Array.isArray(result) ? result : [result];
+  const markers: string[] = [];
+  for (const entry of entries) {
+    if (!isRecord(entry) || !Array.isArray(entry.rows)) continue;
+    for (const row of entry.rows) {
+      if (!isRecord(row)) continue;
+      for (const value of Object.values(row)) {
+        if (typeof value === "string" && value.startsWith("b14-")) {
+          markers.push(value);
+        }
+      }
+    }
+  }
+  if (JSON.stringify(markers) !== JSON.stringify(expected)) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function verifyPostgresPopulatedCutoverLedger(
+  containerId: string,
+  expectedRows: readonly Readonly<{
+    migrationId: string;
+    fileName: string;
+    sha256: string;
+  }>[],
+): Promise<void> {
+  const expected = [...expectedRows]
+    .sort((left, right) => left.migrationId.localeCompare(right.migrationId))
+    .map(
+      ({ migrationId, fileName, sha256 }) =>
+        `${migrationId}|${fileName}|${sha256}|${MIGRATOR_AUTH_LOGIN_ROLE}`,
+    );
+  const actual = splitLines(
+    await psqlScalar(
+      containerId,
+      `SELECT migration_id || '|' || file_name || '|' || sha256 || '|' || applied_by
+FROM shared_data.schema_migrations
+ORDER BY migration_id;`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+  );
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new PostgresPopulatedCutoverDiagnosticError(
+      "ledger",
+      `actual=${actual.length};expected=${expected.length}`,
+    );
+  }
+}
+
+async function seedPostgresPopulatedCutoverFixture(
+  client: Client,
+  fixtureSql: string,
+): Promise<void> {
+  const result: unknown = await client.query(
+    renderPopulatedCutoverFixture(fixtureSql),
+  );
+  const entries = Array.isArray(result) ? result : [];
+  const commands = entries
+    .filter(isRecord)
+    .map((entry) =>
+      typeof entry.command === "string" ? entry.command : "<invalid>",
+    );
+  if (
+    commands[0] !== "BEGIN" ||
+    commands[1] !== "SET" ||
+    commands.at(-1) !== "COMMIT" ||
+    commands.filter((command) => command === "INSERT").length !== 13
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function verifyPostgresPopulatedCutoverFixtureState(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlScalar(
+      containerId,
+      `SELECT
+  (SELECT count(*) FROM private_data.organizations) || '|' ||
+  (SELECT count(*) FROM private_data.principals) || '|' ||
+  (SELECT count(*) FROM private_data.theses) || '|' ||
+  (SELECT count(*) FROM private_data.alert_rules) || '|' ||
+  (pg_catalog.to_regclass('private_data.resource_id_registry') IS NULL) || '|' ||
+  (SELECT count(*) FROM shared_data.schema_migrations);`,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    ),
+    "2|2|2|2|true|5",
+    "B14 populated pre-0005 fixture state",
+  );
+}
+
+async function verifyPostgresPopulatedCutoverExpandedState(
+  containerId: string,
+  cutoverPlan: PopulatedCutoverPlanV1,
+  expectedEpoch: number,
+  expectedPending: number,
+  expectedLive: number,
+  expectedDeleted: number,
+  expectedRegistry: number,
+): Promise<void> {
+  const expectedDomainCount = expectedRegistry === 0 ? 0 : 2;
+  const actual = await psqlScalar(
+    containerId,
+    `SELECT
+  (SELECT capture_epoch FROM private_data.resource_identifier_cutover_control
+   WHERE singleton) || '|' ||
+  (SELECT count(*) FROM private_data.resource_identifier_cutover_work
+   WHERE allocation_id IS NULL) || '|' ||
+  (SELECT count(*) FROM private_data.resource_identifier_cutover_work
+   WHERE desired_state = 'live') || '|' ||
+  (SELECT count(*) FROM private_data.resource_identifier_cutover_work
+   WHERE desired_state = 'deleted') || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry) || '|' ||
+  (SELECT count(*) FROM private_data.resource_privacy_domains) || '|' ||
+  (SELECT count(*) FROM shared_data.schema_migrations
+   WHERE migration_id = '${POPULATED_CUTOVER_PLAN_MIGRATION_IDS[1]}') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_trigger AS trigger_row
+   JOIN pg_catalog.pg_class AS relation ON relation.oid = trigger_row.tgrelid
+   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+   WHERE namespace.nspname = 'private_data'
+     AND trigger_row.tgname IN (
+       'resource_id_registry_cutover_guard',
+       'theses_cutover_identity_immutable',
+       'alert_rules_cutover_identity_immutable',
+       'theses_cutover_capture',
+       'alert_rules_cutover_capture'
+     )
+     AND NOT trigger_row.tgisinternal) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_policy
+   WHERE polname LIKE 'populated_cutover_owner_%') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_proc AS procedure
+   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'private_data'
+     AND procedure.proname IN (
+       'guard_resource_id_registry_cutover',
+       'guard_live_resource_identity_cutover',
+       'capture_resource_identifier_cutover',
+       'create_resource_privacy_domain_for_cutover',
+       'claim_resource_identifier_cutover_batch',
+       'backfill_resource_identifier_cutover',
+       'inspect_resource_identifier_cutover'
+     )
+     AND procedure.prosecdef
+     AND procedure.proowner = (
+       SELECT oid FROM pg_catalog.pg_roles
+       WHERE rolname = '${MIGRATOR_AUTH_CAPABILITY_ROLE}'
+     )
+     AND procedure.proconfig = ARRAY['search_path=pg_catalog, private_data']) || '|' ||
+  pg_catalog.has_schema_privilege(
+    '${POPULATED_CUTOVER_CAPABILITY_ROLE}', 'private_data', 'USAGE'
+  ) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_proc AS procedure
+   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'private_data'
+     AND procedure.proname IN (
+       'create_resource_privacy_domain_for_cutover',
+       'claim_resource_identifier_cutover_batch',
+       'backfill_resource_identifier_cutover',
+       'inspect_resource_identifier_cutover'
+     )
+     AND pg_catalog.has_function_privilege(
+       '${POPULATED_CUTOVER_CAPABILITY_ROLE}', procedure.oid, 'EXECUTE'
+     )) || '|' ||
+  pg_catalog.has_function_privilege(
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+    'private_data.allocate_resource_identifier(uuid,uuid,uuid,text,uuid,bytea)',
+    'EXECUTE'
+  ) || '|' ||
+  pg_catalog.has_function_privilege(
+    '${TEST_LOADER_AUTH_CAPABILITY_ROLE}',
+    'private_data.allocate_resource_identifier(uuid,uuid,uuid,text,uuid,bytea)',
+    'EXECUTE'
+  ) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_class AS relation
+   CROSS JOIN LATERAL pg_catalog.aclexplode(relation.relacl) AS privilege
+   WHERE privilege.grantee = (
+     SELECT oid FROM pg_catalog.pg_roles
+     WHERE rolname = '${POPULATED_CUTOVER_CAPABILITY_ROLE}'
+   ));`,
+    POPULATED_CUTOVER_DATABASE_NAME,
+  );
+  const expected = [
+    expectedEpoch,
+    expectedPending,
+    expectedLive,
+    expectedDeleted,
+    expectedRegistry,
+    expectedDomainCount,
+    0,
+    5,
+    7,
+    7,
+    true,
+    4,
+    false,
+    false,
+    0,
+  ].join("|");
+  if (actual !== expected) {
+    throw new PostgresPopulatedCutoverDiagnosticError(
+      "expanded_state",
+      /^(?:\d+\|){10}(?:true|false)\|\d+\|(?:true|false)\|(?:true|false)\|\d+$/.test(
+        actual,
+      )
+        ? `shape=${actual}`
+        : `shape=<invalid>;length=${actual.length}`,
+    );
+  }
+  const expandEntry = cutoverPlan.manifest.migrations[0];
+  if (expandEntry === undefined) throw new PostgresPopulatedCutoverError();
+  await verifyPostgresPopulatedCutoverLedger(containerId, [
+    ...expectedPopulatedCutoverBaseLedgerRowsV1(cutoverPlan),
+    {
+      migrationId: expandEntry.id,
+      fileName: expandEntry.file,
+      sha256: expandEntry.sha256,
+    },
+  ]);
+}
+
+async function verifyPostgresPopulatedCutoverDenials(
+  client: Client,
+): Promise<void> {
+  for (const role of [
+    MIGRATOR_AUTH_CAPABILITY_ROLE,
+    TEST_LOADER_AUTH_CAPABILITY_ROLE,
+    PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE,
+    "postgres",
+  ]) {
+    let code: string | null = null;
+    try {
+      await client.query(`SET ROLE ${role}`);
+    } catch (error) {
+      code = postgresErrorCode(error);
+    } finally {
+      await client.query("RESET ROLE").catch(() => undefined);
+    }
+    if (code !== "42501") throw new PostgresPopulatedCutoverError();
+  }
+  await beginPostgresPopulatedCutoverCapabilityTransaction(client);
+  let tableCode: string | null = null;
+  try {
+    await client.query(
+      "SELECT count(*) FROM private_data.resource_identifier_cutover_work",
+    );
+  } catch (error) {
+    tableCode = postgresErrorCode(error);
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+  if (tableCode !== "42501") throw new PostgresPopulatedCutoverError();
+}
+
+async function beginPostgresPopulatedCutoverCapabilityTransaction(
+  client: Client,
+): Promise<void> {
+  await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+  await client.query(
+    `SET LOCAL statement_timeout = '${POPULATED_CUTOVER_STATEMENT_TIMEOUT_MILLISECONDS}ms'`,
+  );
+  await client.query(`SET LOCAL ROLE ${POPULATED_CUTOVER_CAPABILITY_ROLE}`);
+  const identity = await client.query<{ valid: boolean }>(`SELECT (
+  session_user = '${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}'
+  AND current_user = '${POPULATED_CUTOVER_CAPABILITY_ROLE}'
+  AND system_user = 'scram-sha-256:${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}'
+) AS valid;`);
+  if (identity.rows[0]?.valid !== true) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function commitPostgresPopulatedCutoverCapabilityTransaction(
+  client: Client,
+): Promise<void> {
+  const result = await client.query("COMMIT");
+  if (result.command !== "COMMIT") throw new PostgresPopulatedCutoverError();
+}
+
+async function createPostgresPopulatedCutoverPrivacyDomains(
+  client: Client,
+): Promise<void> {
+  try {
+    await beginPostgresPopulatedCutoverCapabilityTransaction(client);
+    for (const tenant of ["alpha", "beta"] as const) {
+      const result = await client.query<{ privacy_domain_id: string }>({
+        text: `SELECT private_data.create_resource_privacy_domain_for_cutover(
+  $1::uuid, $2::uuid, $3::uuid
+)::text AS privacy_domain_id`,
+        values: [
+          POPULATED_CUTOVER_FIXTURE_IDS_V1.privacyDomains[tenant],
+          POPULATED_CUTOVER_FIXTURE_IDS_V1.organizations[tenant],
+          POPULATED_CUTOVER_FIXTURE_IDS_V1.keyReferences[tenant],
+        ],
+      });
+      if (
+        result.rowCount !== 1 ||
+        result.rows[0]?.privacy_domain_id !==
+          POPULATED_CUTOVER_FIXTURE_IDS_V1.privacyDomains[tenant]
+      ) {
+        throw new PostgresPopulatedCutoverError();
+      }
+    }
+    await commitPostgresPopulatedCutoverCapabilityTransaction(client);
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+async function queryPostgresPopulatedCutoverClaims(
+  client: Client,
+): Promise<readonly PostgresPopulatedCutoverClaim[]> {
+  const result = await client.query<{
+    organization_id: string;
+    resource_type: string;
+    resource_id: string;
+    work_version: string;
+    desired_state: string;
+  }>(`SELECT organization_id::text, resource_type, resource_id::text,
+  work_version::text, desired_state
+FROM private_data.claim_resource_identifier_cutover_batch()`);
+  if (
+    result.command !== "SELECT" ||
+    result.rows.length > POPULATED_CUTOVER_CLAIM_BATCH_ROWS
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  return Object.freeze(
+    result.rows.map((row) => {
+      if (
+        !/^[0-9a-f-]{36}$/.test(row.organization_id) ||
+        !/^[0-9a-f-]{36}$/.test(row.resource_id) ||
+        !/^[1-9]\d*$/.test(row.work_version) ||
+        (row.resource_type !== "thesis" && row.resource_type !== "alert") ||
+        (row.desired_state !== "live" && row.desired_state !== "deleted")
+      ) {
+        throw new PostgresPopulatedCutoverError();
+      }
+      return Object.freeze({
+        organizationId: row.organization_id,
+        resourceType: row.resource_type,
+        resourceId: row.resource_id,
+        workVersion: row.work_version,
+        desiredState: row.desired_state,
+      });
+    }),
+  );
+}
+
+async function claimPostgresPopulatedCutoverSkipLocked(
+  first: Client,
+  second: Client,
+  expectedClaims: number,
+): Promise<readonly PostgresPopulatedCutoverClaim[]> {
+  try {
+    await beginPostgresPopulatedCutoverCapabilityTransaction(first);
+    const claimed = await queryPostgresPopulatedCutoverClaims(first);
+    await beginPostgresPopulatedCutoverCapabilityTransaction(second);
+    const skipped = await queryPostgresPopulatedCutoverClaims(second);
+    await commitPostgresPopulatedCutoverCapabilityTransaction(second);
+    await commitPostgresPopulatedCutoverCapabilityTransaction(first);
+    if (claimed.length !== expectedClaims || skipped.length !== 0) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    return claimed;
+  } catch (error) {
+    await Promise.all([
+      first.query("ROLLBACK").catch(() => undefined),
+      second.query("ROLLBACK").catch(() => undefined),
+    ]);
+    throw error;
+  }
+}
+
+async function applyPostgresPopulatedCutoverClaim(
+  client: Client,
+  claim: PostgresPopulatedCutoverClaim,
+  tokens: ReadonlyMap<string, ResourceIdentifierTokenV1>,
+): Promise<void> {
+  const resource = findPostgresPopulatedCutoverResource(claim);
+  const token = tokens.get(postgresPopulatedCutoverResourceKey(resource));
+  if (token === undefined) throw new PostgresPopulatedCutoverError();
+  try {
+    await beginPostgresPopulatedCutoverCapabilityTransaction(client);
+    const result = await client.query<{ allocation_id: string }>({
+      text: `SELECT private_data.backfill_resource_identifier_cutover(
+  $1::uuid, $2::uuid, $3::text, $4::uuid, $5::bigint, $6::uuid,
+  pg_catalog.decode($7::text, 'hex')
+)::text AS allocation_id`,
+      values: [
+        resource.privacyDomainId,
+        claim.organizationId,
+        claim.resourceType,
+        claim.resourceId,
+        claim.workVersion,
+        resource.allocationId,
+        token,
+      ],
+    });
+    if (
+      result.rowCount !== 1 ||
+      result.rows[0]?.allocation_id !== resource.allocationId
+    ) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    await commitPostgresPopulatedCutoverCapabilityTransaction(client);
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+async function runPostgresPopulatedCutoverApply(
+  client: Client,
+  claim: PostgresPopulatedCutoverClaim,
+  tokens: ReadonlyMap<string, ResourceIdentifierTokenV1>,
+): Promise<PopulatedCutoverAsyncOutcome> {
+  try {
+    await applyPostgresPopulatedCutoverClaim(client, claim, tokens);
+    return Object.freeze({ ok: true as const });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    return Object.freeze({
+      ok: false as const,
+      code: postgresErrorCode(error),
+    });
+  }
+}
+
+async function verifyPostgresPopulatedCutoverDeleteApplyRace(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  migratorPassword: string,
+  adminClient: Client,
+  cutoverClient: Client,
+  claims: readonly PostgresPopulatedCutoverClaim[],
+  tokens: ReadonlyMap<string, ResourceIdentifierTokenV1>,
+): Promise<void> {
+  const targetResource =
+    POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaDeletedAlert;
+  const targetClaim = claims.find(
+    (claim) =>
+      postgresPopulatedCutoverResourceKey(claim) ===
+      postgresPopulatedCutoverResourceKey(targetResource),
+  );
+  if (
+    targetClaim === undefined ||
+    targetClaim.desiredState !== "live" ||
+    targetClaim.workVersion !== "1"
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+
+  const deleteClient = createPostgresPopulatedCutoverMigratorClient(
+    endpoint,
+    migratorPassword,
+    `${POPULATED_CUTOVER_MIGRATOR_APPLICATION_NAME}-delete`,
+  );
+  let deleteTransactionOpen = false;
+  let applyOutcome: Promise<PopulatedCutoverAsyncOutcome> | undefined;
+  try {
+    await deleteClient.connect();
+    const deletePid = await collectPostgresBackendPid(deleteClient);
+    const applyPid = await collectPostgresBackendPid(cutoverClient);
+    await deleteClient.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+    deleteTransactionOpen = true;
+    await deleteClient.query(renderPopulatedCutoverSharedAdvisorySql());
+    await deleteClient.query(`SET LOCAL ROLE ${MIGRATOR_AUTH_CAPABILITY_ROLE}`);
+    const identity = await deleteClient.query<{ valid: boolean }>(`SELECT (
+  session_user = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+  AND current_user = '${MIGRATOR_AUTH_CAPABILITY_ROLE}'
+  AND system_user = 'scram-sha-256:${MIGRATOR_AUTH_LOGIN_ROLE}'
+) AS valid;`);
+    if (identity.rows[0]?.valid !== true) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const deleted = await deleteClient.query({
+      text: `DELETE FROM private_data.alert_rules
+WHERE organization_id = $1::uuid AND id = $2::uuid`,
+      values: [targetResource.organizationId, targetResource.resourceId],
+    });
+    if (deleted.command !== "DELETE" || deleted.rowCount !== 1) {
+      throw new PostgresPopulatedCutoverError();
+    }
+
+    applyOutcome = runPostgresPopulatedCutoverApply(
+      cutoverClient,
+      targetClaim,
+      tokens,
+    );
+    await waitForPostgresPopulatedCutoverApplyBlockedByDelete(
+      adminClient,
+      deletePid,
+      applyPid,
+    );
+    const committed = await deleteClient.query("COMMIT");
+    deleteTransactionOpen = false;
+    if (committed.command !== "COMMIT") {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const outcome = await applyOutcome;
+    applyOutcome = undefined;
+    if (outcome.ok || outcome.code !== "P0001") {
+      throw new PostgresPopulatedCutoverError();
+    }
+
+    for (const claim of claims) {
+      if (claim !== targetClaim) {
+        await applyPostgresPopulatedCutoverClaim(cutoverClient, claim, tokens);
+      }
+    }
+    assertEqual(
+      await psqlScalar(
+        containerId,
+        `SELECT count(*) FROM private_data.resource_id_registry
+WHERE allocation_id = '${targetResource.allocationId}';`,
+        POPULATED_CUTOVER_DATABASE_NAME,
+      ),
+      "0",
+      "B14 stale delete/apply produced no allocation",
+    );
+  } finally {
+    if (deleteTransactionOpen) {
+      await deleteClient.query("ROLLBACK").catch(() => undefined);
+    }
+    if (applyOutcome !== undefined) {
+      await deleteClient.query("ROLLBACK").catch(() => undefined);
+      await applyOutcome.catch(() => undefined);
+    }
+    await deleteClient.end().catch(() => undefined);
+  }
+}
+
+async function waitForPostgresPopulatedCutoverApplyBlockedByDelete(
+  adminClient: Client,
+  deletePid: number,
+  applyPid: number,
+): Promise<void> {
+  const deadline = Date.now() + POPULATED_CUTOVER_BLOCKED_DEADLINE_MILLISECONDS;
+  while (Date.now() < deadline) {
+    await adminClient.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+    const result = await adminClient.query<{ observed: boolean }>({
+      text: `SELECT (
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity AS blocker
+    WHERE blocker.pid = $1::integer
+      AND blocker.usename = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+      AND blocker.state = 'idle in transaction'
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'relation'
+      AND held.relation = 'private_data.alert_rules'::pg_catalog.regclass
+      AND held.mode = 'RowExclusiveLock'
+      AND held.granted
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'relation'
+      AND held.relation =
+        'private_data.resource_identifier_cutover_work'::pg_catalog.regclass
+      AND held.mode = 'RowExclusiveLock'
+      AND held.granted
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity AS waiter
+    WHERE waiter.pid = $2::integer
+      AND waiter.usename = '${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}'
+      AND waiter.state = 'active'
+      AND waiter.wait_event_type = 'Lock'
+      AND $1::integer = ANY(pg_catalog.pg_blocking_pids(waiter.pid))
+  )
+) AS observed;`,
+      values: [deletePid, applyPid],
+    });
+    if (result.rows[0]?.observed === true) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresPopulatedCutoverError();
+}
+
+async function claimPostgresPopulatedCutoverBatch(
+  client: Client,
+): Promise<readonly PostgresPopulatedCutoverClaim[]> {
+  try {
+    await beginPostgresPopulatedCutoverCapabilityTransaction(client);
+    const claims = await queryPostgresPopulatedCutoverClaims(client);
+    await commitPostgresPopulatedCutoverCapabilityTransaction(client);
+    return claims;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+async function drainPostgresPopulatedCutoverWork(
+  client: Client,
+  alphaKey: Uint8Array,
+  betaKey: Uint8Array,
+  tokens: Map<string, ResourceIdentifierTokenV1>,
+): Promise<void> {
+  for (let batch = 0; batch < 8; batch += 1) {
+    const claims = await claimPostgresPopulatedCutoverBatch(client);
+    if (claims.length === 0) {
+      const inspection = await inspectPostgresPopulatedCutover(client);
+      if (inspection.pendingRows !== 0) {
+        throw new PostgresPopulatedCutoverError();
+      }
+      return;
+    }
+    await derivePostgresPopulatedCutoverClaims(
+      claims,
+      alphaKey,
+      betaKey,
+      tokens,
+    );
+    for (const claim of claims) {
+      await applyPostgresPopulatedCutoverClaim(client, claim, tokens);
+    }
+  }
+  throw new PostgresPopulatedCutoverError();
+}
+
+async function inspectPostgresPopulatedCutover(
+  client: Client,
+): Promise<PostgresPopulatedCutoverInspection> {
+  try {
+    await beginPostgresPopulatedCutoverCapabilityTransaction(client);
+    const result = await client.query<{
+      capture_epoch: string;
+      pending_rows: string;
+      live_rows: string;
+      deleted_rows: string;
+    }>(`SELECT capture_epoch::text, pending_rows::text,
+  live_rows::text, deleted_rows::text
+FROM private_data.inspect_resource_identifier_cutover()`);
+    await commitPostgresPopulatedCutoverCapabilityTransaction(client);
+    if (result.rowCount !== 1 || result.rows[0] === undefined) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    return Object.freeze({
+      captureEpoch: safePostgresPopulatedCutoverCount(
+        result.rows[0].capture_epoch,
+      ),
+      pendingRows: safePostgresPopulatedCutoverCount(
+        result.rows[0].pending_rows,
+      ),
+      liveRows: safePostgresPopulatedCutoverCount(result.rows[0].live_rows),
+      deletedRows: safePostgresPopulatedCutoverCount(
+        result.rows[0].deleted_rows,
+      ),
+    });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+function assertPostgresPopulatedCutoverInspection(
+  actual: PostgresPopulatedCutoverInspection,
+  captureEpoch: number,
+  pendingRows: number,
+  liveRows: number,
+  deletedRows: number,
+): void {
+  if (
+    actual.captureEpoch !== captureEpoch ||
+    actual.pendingRows !== pendingRows ||
+    actual.liveRows !== liveRows ||
+    actual.deletedRows !== deletedRows
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function verifyPostgresPopulatedCutoverInjectedContractRollback(
+  containerId: string,
+  endpoint: PostgresProjectionAdapterEndpoint,
+  migratorPassword: string,
+  authenticatedPlan: AuthenticatedMigrationPlan,
+  privacyPlan: PrivacyRetentionPlanV1,
+  cutoverPlan: PopulatedCutoverPlanV1,
+  captureEpoch: number,
+): Promise<void> {
+  const catalogFingerprintBefore =
+    await collectPostgresPrivacyTargetCatalogFingerprint(
+      containerId,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    );
+  await expectPostgresPopulatedCutoverContractFailure(
+    endpoint,
+    migratorPassword,
+    renderPopulatedCutoverContractMigration(
+      authenticatedPlan,
+      privacyPlan,
+      cutoverPlan,
+      captureEpoch,
+      true,
+    ),
+    POPULATED_CUTOVER_INJECTED_FAILURE_SQLSTATE,
+    "division by zero",
+  );
+  const catalogFingerprintAfter =
+    await collectPostgresPrivacyTargetCatalogFingerprint(
+      containerId,
+      POPULATED_CUTOVER_DATABASE_NAME,
+    );
+  if (catalogFingerprintAfter !== catalogFingerprintBefore) {
+    throw new PostgresPopulatedCutoverDiagnosticError(
+      "catalog_equivalence",
+      "scope=injected_rollback;equal=false",
+    );
+  }
+  await verifyPostgresPopulatedCutoverExpandedState(
+    containerId,
+    cutoverPlan,
+    captureEpoch,
+    0,
+    3,
+    1,
+    4,
+  );
+}
+
+async function expectPostgresPopulatedCutoverContractFailure(
+  endpoint: PostgresProjectionAdapterEndpoint,
+  migratorPassword: string,
+  sql: string,
+  expectedCode: string,
+  expectedMessage: string,
+): Promise<void> {
+  const client = createPostgresPopulatedCutoverMigratorClient(
+    endpoint,
+    migratorPassword,
+    `${POPULATED_CUTOVER_MIGRATOR_APPLICATION_NAME}-contract-probe`,
+  );
+  try {
+    await client.connect();
+    await expectPostgresPopulatedCutoverClientFailure(
+      client,
+      sql,
+      expectedCode,
+      expectedMessage,
+    );
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await client.end().catch(() => undefined);
+  }
+}
+
+async function insertPostgresPopulatedCutoverConcurrentLegacyResource(
+  client: Client,
+): Promise<void> {
+  try {
+    await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+    await client.query(renderPopulatedCutoverSharedAdvisorySql());
+    await client.query(`SET LOCAL ROLE ${TEST_LOADER_AUTH_CAPABILITY_ROLE}`);
+    const identity = await client.query<{ valid: boolean }>(`SELECT (
+  session_user = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+  AND current_user = '${TEST_LOADER_AUTH_CAPABILITY_ROLE}'
+  AND system_user = 'scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}'
+) AS valid;`);
+    if (identity.rows[0]?.valid !== true) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const inserted = await client.query(
+      renderPopulatedCutoverConcurrentLegacyInsert(),
+    );
+    if (inserted.command !== "INSERT" || inserted.rowCount !== 1) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const committed = await client.query("COMMIT");
+    if (committed.command !== "COMMIT") {
+      throw new PostgresPopulatedCutoverError();
+    }
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
+async function collectPostgresBackendPid(client: Client): Promise<number> {
+  const result = await client.query<{ pid: number }>(
+    "SELECT pg_catalog.pg_backend_pid() AS pid",
+  );
+  const pid = result.rows[0]?.pid;
+  if (!Number.isSafeInteger(pid) || (pid as number) <= 0) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  return pid as number;
+}
+
+async function runPostgresPopulatedCutoverPostContractWriter(
+  client: Client,
+  token: ResourceIdentifierTokenV1,
+): Promise<PopulatedCutoverAsyncOutcome> {
+  const resource =
+    POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaPostContractThesis;
+  try {
+    await client.query(
+      `SET application_name = '${POPULATED_CUTOVER_POST_CONTRACT_WRITER_APPLICATION_NAME}'`,
+    );
+    await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+    await client.query(renderPopulatedCutoverSharedAdvisorySql());
+    await client.query(`SET LOCAL ROLE ${TEST_LOADER_AUTH_CAPABILITY_ROLE}`);
+    const identity = await client.query<{ valid: boolean }>(`SELECT (
+  session_user = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+  AND current_user = '${TEST_LOADER_AUTH_CAPABILITY_ROLE}'
+  AND system_user = 'scram-sha-256:${TEST_LOADER_AUTH_LOGIN_ROLE}'
+) AS valid;`);
+    if (identity.rows[0]?.valid !== true) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const allocation = await client.query<{ allocation_id: string }>({
+      text: `SELECT private_data.allocate_resource_identifier(
+  $1::uuid, $2::uuid, $3::uuid, $4::text, $5::uuid,
+  pg_catalog.decode($6::text, 'hex')
+)::text AS allocation_id`,
+      values: [
+        resource.privacyDomainId,
+        resource.organizationId,
+        resource.allocationId,
+        resource.resourceType,
+        resource.resourceId,
+        token,
+      ],
+    });
+    if (
+      allocation.rowCount !== 1 ||
+      allocation.rows[0]?.allocation_id !== resource.allocationId
+    ) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const inserted = await client.query(
+      renderPopulatedCutoverPostContractInsert(),
+    );
+    if (inserted.command !== "INSERT" || inserted.rowCount !== 1) {
+      throw new PostgresPopulatedCutoverError();
+    }
+    const committed = await client.query("COMMIT");
+    if (committed.command !== "COMMIT") {
+      throw new PostgresPopulatedCutoverError();
+    }
+    return Object.freeze({ ok: true as const });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    return Object.freeze({
+      ok: false as const,
+      code: postgresErrorCode(error),
+    });
+  }
+}
+
+async function runPostgresPopulatedCutoverContractReplay(
+  client: Client,
+  sql: string,
+): Promise<PopulatedCutoverAsyncOutcome> {
+  try {
+    await client.query(sql);
+    return Object.freeze({ ok: true as const });
+  } catch (error) {
+    const code = postgresErrorCode(error);
+    await client.query("ROLLBACK").catch(() => undefined);
+    return Object.freeze({ ok: false as const, code });
+  }
+}
+
+async function waitForPostgresPopulatedCutoverBarrier(
+  adminClient: Client,
+  contractAPid: number,
+  contractBPid: number,
+  writerPid: number,
+): Promise<void> {
+  const deadline = Date.now() + POPULATED_CUTOVER_BLOCKED_DEADLINE_MILLISECONDS;
+  while (Date.now() < deadline) {
+    await adminClient.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+    const result = await adminClient.query<{ observed: boolean }>({
+      text: `SELECT (
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity AS activity
+    WHERE activity.pid = $1::integer
+      AND activity.usename = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+      AND activity.application_name = '${POPULATED_CUTOVER_CONTRACT_A_APPLICATION_NAME}'
+      AND activity.state = 'idle in transaction'
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'advisory'
+      AND held.mode = 'ExclusiveLock'
+      AND held.granted
+      AND held.database = (
+        SELECT database_row.oid
+        FROM pg_catalog.pg_database AS database_row
+        WHERE database_row.datname = pg_catalog.current_database()
+      )
+      AND held.classid::bigint = 190566459::bigint
+      AND held.classid::bigint =
+        (($4::bigint >> 32) & 4294967295::bigint)
+      AND held.objid::bigint = 520803390::bigint
+      AND held.objid::bigint = ($4::bigint & 4294967295::bigint)
+      AND held.objsubid = 1
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'relation'
+      AND held.relation =
+        'private_data.resource_privacy_domains'::pg_catalog.regclass
+      AND held.mode = 'ExclusiveLock'
+      AND held.granted
+  )
+  AND (
+    SELECT count(*) FROM pg_catalog.pg_locks AS held
+    WHERE held.pid = $1::integer
+      AND held.locktype = 'relation'
+      AND held.relation IN (
+        'private_data.theses'::pg_catalog.regclass,
+        'private_data.alert_rules'::pg_catalog.regclass,
+        'private_data.resource_identifier_cutover_work'::pg_catalog.regclass,
+        'private_data.resource_id_registry'::pg_catalog.regclass
+      )
+      AND held.mode = 'ShareRowExclusiveLock'
+      AND held.granted
+  ) = 4
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity AS activity
+    JOIN pg_catalog.pg_locks AS waiting ON waiting.pid = activity.pid
+    WHERE activity.pid = $2::integer
+      AND activity.usename = '${MIGRATOR_AUTH_LOGIN_ROLE}'
+      AND activity.application_name = '${POPULATED_CUTOVER_CONTRACT_B_APPLICATION_NAME}'
+      AND activity.state = 'active'
+      AND activity.wait_event_type = 'Lock'
+      AND waiting.locktype = 'advisory'
+      AND waiting.mode = 'ExclusiveLock'
+      AND NOT waiting.granted
+      AND waiting.database = (
+        SELECT database_row.oid
+        FROM pg_catalog.pg_database AS database_row
+        WHERE database_row.datname = pg_catalog.current_database()
+      )
+      AND waiting.classid::bigint = 190566459::bigint
+      AND waiting.classid::bigint =
+        (($4::bigint >> 32) & 4294967295::bigint)
+      AND waiting.objid::bigint = 520803390::bigint
+      AND waiting.objid::bigint = ($4::bigint & 4294967295::bigint)
+      AND waiting.objsubid = 1
+      AND $1::integer = ANY(pg_catalog.pg_blocking_pids(activity.pid))
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_stat_activity AS activity
+    JOIN pg_catalog.pg_locks AS waiting ON waiting.pid = activity.pid
+    WHERE activity.pid = $3::integer
+      AND activity.usename = '${TEST_LOADER_AUTH_LOGIN_ROLE}'
+      AND activity.application_name =
+        '${POPULATED_CUTOVER_POST_CONTRACT_WRITER_APPLICATION_NAME}'
+      AND activity.state = 'active'
+      AND activity.wait_event_type = 'Lock'
+      AND waiting.locktype = 'advisory'
+      AND waiting.mode = 'ShareLock'
+      AND NOT waiting.granted
+      AND waiting.database = (
+        SELECT database_row.oid
+        FROM pg_catalog.pg_database AS database_row
+        WHERE database_row.datname = pg_catalog.current_database()
+      )
+      AND waiting.classid::bigint = 190566459::bigint
+      AND waiting.classid::bigint =
+        (($4::bigint >> 32) & 4294967295::bigint)
+      AND waiting.objid::bigint = 520803390::bigint
+      AND waiting.objid::bigint = ($4::bigint & 4294967295::bigint)
+      AND waiting.objsubid = 1
+      AND $1::integer = ANY(pg_catalog.pg_blocking_pids(activity.pid))
+  )
+) AS observed;`,
+      values: [
+        contractAPid,
+        contractBPid,
+        writerPid,
+        POPULATED_CUTOVER_ADVISORY_LOCK_KEY,
+      ],
+    });
+    if (result.rows[0]?.observed === true) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+  throw new PostgresPopulatedCutoverError();
+}
+
+async function verifyPostgresPopulatedCutoverFinalState(
+  containerId: string,
+  adminClient: Client,
+  cutoverPlan: PopulatedCutoverPlanV1,
+  tokens: ReadonlyMap<string, ResourceIdentifierTokenV1>,
+): Promise<void> {
+  await verifyPostgresPopulatedCutoverLedger(
+    containerId,
+    expectedPopulatedCutoverLedgerRowsV1(cutoverPlan),
+  );
+  const catalogState = await psqlScalar(
+    containerId,
+    `SELECT
+  (pg_catalog.to_regclass('private_data.resource_identifier_cutover_control') IS NULL) || '|' ||
+  (pg_catalog.to_regclass('private_data.resource_identifier_cutover_work') IS NULL) || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_proc AS procedure
+   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'private_data'
+     AND procedure.proname LIKE '%cutover%') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_trigger AS trigger_row
+   WHERE trigger_row.tgname LIKE '%cutover%') || '|' ||
+  (SELECT count(*) FROM pg_catalog.pg_policy
+   WHERE polname LIKE 'populated_cutover_%') || '|' ||
+  pg_catalog.has_schema_privilege(
+    '${POPULATED_CUTOVER_CAPABILITY_ROLE}', 'private_data', 'USAGE'
+  ) || '|' ||
+  pg_catalog.has_schema_privilege(
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}', 'private_data', 'USAGE'
+  ) || '|' ||
+  pg_catalog.has_function_privilege(
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}',
+    'private_data.allocate_resource_identifier(uuid,uuid,uuid,text,uuid,bytea)',
+    'EXECUTE'
+  ) || '|' ||
+  pg_catalog.has_function_privilege(
+    '${TEST_LOADER_AUTH_CAPABILITY_ROLE}',
+    'private_data.allocate_resource_identifier(uuid,uuid,uuid,text,uuid,bytea)',
+    'EXECUTE'
+  ) || '|' ||
+  (SELECT count(*) FROM private_data.resource_privacy_domains) || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry) || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry
+   WHERE lifecycle_state = 'live') || '|' ||
+  (SELECT count(*) FROM private_data.resource_id_registry
+   WHERE lifecycle_state = 'deleted'
+     AND organization_id IS NULL
+     AND resource_id IS NULL
+     AND tombstoned_at IS NOT NULL) || '|' ||
+  (SELECT count(*) FROM private_data.theses) || '|' ||
+  (SELECT count(*) FROM private_data.alert_rules) || '|' ||
+  (SELECT count(*) FROM private_data.theses
+   WHERE registered_allocation_id IS NOT NULL) || '|' ||
+  (SELECT count(*) FROM private_data.alert_rules
+   WHERE registered_allocation_id IS NOT NULL);`,
+    POPULATED_CUTOVER_DATABASE_NAME,
+  );
+  if (catalogState !== "true|true|0|0|0|false|true|true|true|2|6|5|1|4|1|4|1") {
+    throw new PostgresPopulatedCutoverDiagnosticError(
+      "final_state",
+      /^(?:(?:true|false)|\d+)(?:\|(?:(?:true|false)|\d+)){16}$/.test(
+        catalogState,
+      )
+        ? `shape=${catalogState}`
+        : `shape=<invalid>;length=${catalogState.length}`,
+    );
+  }
+
+  const resources = Object.values(POPULATED_CUTOVER_FIXTURE_RESOURCES_V1);
+  const orderedTokens = resources.map((resource) =>
+    tokens.get(postgresPopulatedCutoverResourceKey(resource)),
+  );
+  if (orderedTokens.some((token) => token === undefined)) {
+    throw new PostgresPopulatedCutoverError();
+  }
+  const deletedToken = tokens.get(
+    postgresPopulatedCutoverResourceKey(
+      POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaDeletedAlert,
+    ),
+  );
+  if (deletedToken === undefined) throw new PostgresPopulatedCutoverError();
+  const tokenState = await adminClient.query<{
+    matched_tokens: number;
+    distinct_tokens: number;
+    deleted_token_matches: number;
+  }>({
+    text: `SELECT
+  (SELECT count(*)::integer FROM private_data.resource_id_registry
+   WHERE resource_token IN (
+     pg_catalog.decode($1::text, 'hex'),
+     pg_catalog.decode($2::text, 'hex'),
+     pg_catalog.decode($3::text, 'hex'),
+     pg_catalog.decode($4::text, 'hex'),
+     pg_catalog.decode($5::text, 'hex'),
+     pg_catalog.decode($6::text, 'hex')
+   )) AS matched_tokens,
+  (SELECT count(DISTINCT resource_token)::integer
+   FROM private_data.resource_id_registry) AS distinct_tokens,
+  (SELECT count(*)::integer FROM private_data.resource_id_registry
+   WHERE allocation_id = $8::uuid
+     AND lifecycle_state = 'deleted'
+     AND organization_id IS NULL
+     AND resource_id IS NULL
+     AND resource_token = pg_catalog.decode($7::text, 'hex'))
+    AS deleted_token_matches;`,
+    values: [
+      ...(orderedTokens as ResourceIdentifierTokenV1[]),
+      deletedToken,
+      POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaDeletedAlert.allocationId,
+    ],
+  });
+  if (
+    tokenState.rows[0]?.matched_tokens !== 6 ||
+    tokenState.rows[0]?.distinct_tokens !== 6 ||
+    tokenState.rows[0]?.deleted_token_matches !== 1
+  ) {
+    throw new PostgresPopulatedCutoverError();
+  }
+}
+
+async function verifyPostgresPopulatedCutoverTokenReuseRejection(
+  client: Client,
+  tokens: ReadonlyMap<string, ResourceIdentifierTokenV1>,
+): Promise<void> {
+  const resource = POPULATED_CUTOVER_FIXTURE_RESOURCES_V1.alphaThesis;
+  const token = tokens.get(postgresPopulatedCutoverResourceKey(resource));
+  if (token === undefined) throw new PostgresPopulatedCutoverError();
+  let code: string | null = null;
+  try {
+    await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE");
+    await client.query(`SET LOCAL ROLE ${TEST_LOADER_AUTH_CAPABILITY_ROLE}`);
+    await client.query({
+      text: `SELECT private_data.allocate_resource_identifier(
+  $1::uuid, $2::uuid, $3::uuid, 'thesis', $4::uuid,
+  pg_catalog.decode($5::text, 'hex')
+)`,
+      values: [
+        resource.privacyDomainId,
+        resource.organizationId,
+        POPULATED_CUTOVER_TOKEN_REUSE_ALLOCATION_ID,
+        POPULATED_CUTOVER_TOKEN_REUSE_RESOURCE_ID,
+        token,
+      ],
+    });
+  } catch (error) {
+    code = postgresErrorCode(error);
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+  if (code !== "23505") throw new PostgresPopulatedCutoverError();
+}
+
+async function closePostgresPopulatedCutoverClient(
+  client: Client,
+  listeners: Map<Client, (error: Error) => void>,
+): Promise<void> {
+  try {
+    await client.end();
+  } finally {
+    const listener = listeners.get(client);
+    if (listener !== undefined) client.removeListener("error", listener);
+    listeners.delete(client);
+  }
+}
+
+async function waitForPostgresPopulatedCutoverBackendDrain(
+  containerId: string,
+): Promise<void> {
+  await psqlMaintenance(
+    containerId,
+    `DO $b14_backend_drain$
+DECLARE
+  deadline timestamptz := pg_catalog.clock_timestamp() + interval '12 seconds';
+BEGIN
+  LOOP
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_stat_activity
+      WHERE backend_type = 'client backend'
+        AND (
+          datname = '${POPULATED_CUTOVER_DATABASE_NAME}'
+          OR usename IN (
+            '${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}',
+            '${TEST_LOADER_AUTH_LOGIN_ROLE}',
+            '${MIGRATOR_AUTH_LOGIN_ROLE}'
+          )
+          OR application_name LIKE 'research-cockpit-b14-%'
+        )
+    );
+    IF pg_catalog.clock_timestamp() >= deadline THEN
+      RAISE EXCEPTION 'B14 PostgreSQL backends did not drain'
+        USING ERRCODE = '55000';
+    END IF;
+    PERFORM pg_catalog.pg_sleep(0.05);
+  END LOOP;
+END
+$b14_backend_drain$;`,
+  );
+}
+
+async function dropPostgresPopulatedCutoverDatabase(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  const exists = await psqlMaintenanceScalar(
+    containerId,
+    `SELECT count(*) FROM pg_catalog.pg_database
+WHERE datname = '${POPULATED_CUTOVER_DATABASE_NAME}';`,
+  );
+  if (exists === "0") return;
+  if (exists !== "1") throw new PostgresPopulatedCutoverError();
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `SELECT count(*) FROM pg_catalog.pg_stat_activity
+WHERE datname = '${POPULATED_CUTOVER_DATABASE_NAME}'
+  AND backend_type = 'client backend';`,
+    ),
+    "0",
+    "B14 sessions before database drop",
+  );
+  await psqlMaintenance(containerId, renderDropPopulatedCutoverDatabaseSql());
+}
+
+async function cleanupPostgresPopulatedCutoverRoles(
+  containerId: string,
+  provisioningStarted: boolean,
+): Promise<void> {
+  if (!provisioningStarted) return;
+  await psqlMaintenance(
+    containerId,
+    `DROP ROLE IF EXISTS ${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE};
+DROP ROLE IF EXISTS ${TEST_LOADER_AUTH_LOGIN_ROLE};
+DROP ROLE IF EXISTS ${MIGRATOR_AUTH_LOGIN_ROLE};
+DROP ROLE IF EXISTS ${POPULATED_CUTOVER_CAPABILITY_ROLE};
+DROP ROLE IF EXISTS ${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE};`,
+  );
+}
+
+async function verifyPostgresPopulatedCutoverResidueAbsent(
+  containerId: string,
+): Promise<void> {
+  assertEqual(
+    await psqlMaintenanceScalar(
+      containerId,
+      `WITH b14_roles AS (
+  SELECT oid FROM pg_catalog.pg_roles
+  WHERE rolname IN (
+    '${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}',
+    '${TEST_LOADER_AUTH_LOGIN_ROLE}',
+    '${MIGRATOR_AUTH_LOGIN_ROLE}',
+    '${POPULATED_CUTOVER_CAPABILITY_ROLE}',
+    '${PRIVACY_RETENTION_AUTH_CAPABILITY_ROLE}'
+  )
+)
+SELECT (
+  SELECT count(*) FROM pg_catalog.pg_database
+  WHERE datname = '${POPULATED_CUTOVER_DATABASE_NAME}'
+) || '|' || (
+  SELECT count(*) FROM b14_roles
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_auth_members
+  WHERE roleid IN (SELECT oid FROM b14_roles)
+     OR member IN (SELECT oid FROM b14_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_db_role_setting
+  WHERE setrole IN (SELECT oid FROM b14_roles)
+) || '|' || (
+  SELECT count(*) FROM pg_catalog.pg_stat_activity
+  WHERE backend_type = 'client backend'
+    AND (
+      datname = '${POPULATED_CUTOVER_DATABASE_NAME}'
+      OR usename IN (
+        '${POPULATED_CUTOVER_ACCEPTANCE_LOGIN_ROLE}',
+        '${TEST_LOADER_AUTH_LOGIN_ROLE}',
+        '${MIGRATOR_AUTH_LOGIN_ROLE}'
+      )
+      OR application_name LIKE 'research-cockpit-b14-%'
+    )
+);`,
+    ),
+    "0|0|0|0|0",
+    "B14 database, role, membership, setting, and backend residue",
+  );
 }
 
 function assertPostgresPrivacyRetentionAcceptancePolicy(
@@ -5906,6 +8586,338 @@ async function verifyPostgresPrivacyRetentionSuffixState(
       summarizePostgresPrivacyRetentionCatalogDiagnostic(catalogFingerprint),
     );
   }
+}
+
+async function collectPostgresPrivacyTargetCatalogFingerprint(
+  containerId: string,
+  databaseName: string,
+): Promise<string> {
+  const catalog = await psqlScalar(
+    containerId,
+    `WITH application_namespaces AS (
+  SELECT oid, nspname, nspowner, nspacl
+  FROM pg_catalog.pg_namespace
+  WHERE nspname IN ('private_data', 'shared_data')
+), catalog_rows AS (
+  SELECT
+    'schema'::text AS category,
+    namespace.nspname AS object_name,
+    ''::text AS subobject_name,
+    pg_catalog.jsonb_build_array(
+      pg_catalog.pg_get_userbyid(namespace.nspowner)
+    ) AS detail
+  FROM application_namespaces AS namespace
+
+  UNION ALL
+
+  SELECT
+    'relation',
+    namespace.nspname || '.' || relation.relname,
+    '',
+    pg_catalog.jsonb_build_array(
+      relation.relkind,
+      relation.relpersistence,
+      pg_catalog.pg_get_userbyid(relation.relowner),
+      relation.relrowsecurity,
+      relation.relforcerowsecurity,
+      relation.relreplident,
+      access_method.amname,
+      coalesce(
+        (SELECT pg_catalog.jsonb_agg(option_value ORDER BY option_value)
+         FROM pg_catalog.unnest(relation.reloptions) AS option_value),
+        '[]'::pg_catalog.jsonb
+      )
+    )
+  FROM pg_catalog.pg_class AS relation
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = relation.relnamespace
+  LEFT JOIN pg_catalog.pg_am AS access_method
+    ON access_method.oid = relation.relam
+  WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_depend AS dependency
+      WHERE dependency.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+        AND dependency.objid = relation.oid
+        AND dependency.deptype = 'e'
+    )
+
+  UNION ALL
+
+  SELECT
+    'column',
+    namespace.nspname || '.' || relation.relname,
+    attribute.attname,
+    pg_catalog.jsonb_build_array(
+      pg_catalog.format_type(attribute.atttypid, attribute.atttypmod),
+      attribute.attnotnull,
+      attribute.attidentity,
+      attribute.attgenerated,
+      pg_catalog.pg_get_expr(default_value.adbin, default_value.adrelid),
+      CASE
+        WHEN attribute.attcollation = type_row.typcollation THEN NULL
+        ELSE collation.collname
+      END,
+      attribute.attstorage,
+      attribute.attcompression
+    )
+  FROM pg_catalog.pg_attribute AS attribute
+  JOIN pg_catalog.pg_class AS relation ON relation.oid = attribute.attrelid
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = relation.relnamespace
+  JOIN pg_catalog.pg_type AS type_row ON type_row.oid = attribute.atttypid
+  LEFT JOIN pg_catalog.pg_attrdef AS default_value
+    ON default_value.adrelid = attribute.attrelid
+   AND default_value.adnum = attribute.attnum
+  LEFT JOIN pg_catalog.pg_collation AS collation
+    ON collation.oid = attribute.attcollation
+  WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+    AND attribute.attnum > 0
+    AND NOT attribute.attisdropped
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_depend AS dependency
+      WHERE dependency.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+        AND dependency.objid = relation.oid
+        AND dependency.deptype = 'e'
+    )
+
+  UNION ALL
+
+  SELECT
+    'constraint',
+    namespace.nspname || '.' || relation.relname,
+    constraint_row.conname,
+    pg_catalog.jsonb_build_array(
+      constraint_row.contype,
+      constraint_row.condeferrable,
+      constraint_row.condeferred,
+      constraint_row.convalidated,
+      constraint_row.connoinherit,
+      pg_catalog.pg_get_constraintdef(constraint_row.oid, false)
+    )
+  FROM pg_catalog.pg_constraint AS constraint_row
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.oid = constraint_row.conrelid
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = relation.relnamespace
+
+  UNION ALL
+
+  SELECT
+    'index',
+    namespace.nspname || '.' || table_row.relname,
+    index_row.relname,
+    pg_catalog.jsonb_build_array(
+      index_state.indisunique,
+      index_state.indisprimary,
+      index_state.indisexclusion,
+      index_state.indimmediate,
+      index_state.indisvalid,
+      index_state.indisready,
+      index_state.indislive,
+      pg_catalog.pg_get_indexdef(index_row.oid)
+    )
+  FROM pg_catalog.pg_index AS index_state
+  JOIN pg_catalog.pg_class AS index_row
+    ON index_row.oid = index_state.indexrelid
+  JOIN pg_catalog.pg_class AS table_row
+    ON table_row.oid = index_state.indrelid
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = table_row.relnamespace
+
+  UNION ALL
+
+  SELECT
+    'trigger',
+    namespace.nspname || '.' || relation.relname,
+    trigger_row.tgname,
+    pg_catalog.jsonb_build_array(
+      trigger_row.tgenabled,
+      pg_catalog.pg_get_triggerdef(trigger_row.oid, false)
+    )
+  FROM pg_catalog.pg_trigger AS trigger_row
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.oid = trigger_row.tgrelid
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = relation.relnamespace
+  WHERE NOT trigger_row.tgisinternal
+
+  UNION ALL
+
+  SELECT
+    'policy',
+    namespace.nspname || '.' || relation.relname,
+    policy.polname,
+    pg_catalog.jsonb_build_array(
+      policy.polcmd,
+      policy.polpermissive,
+      coalesce(
+        (SELECT pg_catalog.jsonb_agg(role_name ORDER BY role_name)
+         FROM (
+           SELECT CASE
+             WHEN role_oid = 0 THEN 'PUBLIC'
+             ELSE pg_catalog.pg_get_userbyid(role_oid)
+           END AS role_name
+           FROM pg_catalog.unnest(policy.polroles) AS role_oid
+         ) AS policy_roles),
+        '[]'::pg_catalog.jsonb
+      ),
+      pg_catalog.pg_get_expr(policy.polqual, policy.polrelid),
+      pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid)
+    )
+  FROM pg_catalog.pg_policy AS policy
+  JOIN pg_catalog.pg_class AS relation ON relation.oid = policy.polrelid
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = relation.relnamespace
+
+  UNION ALL
+
+  SELECT
+    'routine',
+    namespace.nspname || '.' || procedure.proname,
+    pg_catalog.pg_get_function_identity_arguments(procedure.oid),
+    pg_catalog.jsonb_build_array(
+      pg_catalog.pg_get_function_result(procedure.oid),
+      language.lanname,
+      procedure.prokind,
+      procedure.provolatile,
+      procedure.proparallel,
+      procedure.prosecdef,
+      procedure.proleakproof,
+      procedure.proisstrict,
+      procedure.proretset,
+      pg_catalog.pg_get_userbyid(procedure.proowner),
+      coalesce(
+        (SELECT pg_catalog.jsonb_agg(config_value ORDER BY config_value)
+         FROM pg_catalog.unnest(procedure.proconfig) AS config_value),
+        '[]'::pg_catalog.jsonb
+      ),
+      pg_catalog.pg_get_functiondef(procedure.oid)
+    )
+  FROM pg_catalog.pg_proc AS procedure
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = procedure.pronamespace
+  JOIN pg_catalog.pg_language AS language
+    ON language.oid = procedure.prolang
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_depend AS dependency
+    WHERE dependency.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+      AND dependency.objid = procedure.oid
+      AND dependency.deptype = 'e'
+  )
+
+  UNION ALL
+
+  SELECT
+    'schema_acl',
+    namespace.nspname,
+    coalesce(
+      CASE WHEN privilege.grantee = 0 THEN 'PUBLIC'
+      ELSE pg_catalog.pg_get_userbyid(privilege.grantee) END,
+      '<missing>'
+    ),
+    pg_catalog.jsonb_build_array(
+      pg_catalog.pg_get_userbyid(privilege.grantor),
+      privilege.privilege_type,
+      privilege.is_grantable
+    )
+  FROM application_namespaces AS namespace
+  CROSS JOIN LATERAL pg_catalog.aclexplode(
+    coalesce(
+      namespace.nspacl,
+      pg_catalog.acldefault('n', namespace.nspowner)
+    )
+  ) AS privilege
+
+  UNION ALL
+
+  SELECT
+    'relation_acl',
+    namespace.nspname || '.' || relation.relname,
+    coalesce(
+      CASE WHEN privilege.grantee = 0 THEN 'PUBLIC'
+      ELSE pg_catalog.pg_get_userbyid(privilege.grantee) END,
+      '<missing>'
+    ),
+    pg_catalog.jsonb_build_array(
+      pg_catalog.pg_get_userbyid(privilege.grantor),
+      privilege.privilege_type,
+      privilege.is_grantable
+    )
+  FROM pg_catalog.pg_class AS relation
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = relation.relnamespace
+  CROSS JOIN LATERAL pg_catalog.aclexplode(
+    coalesce(
+      relation.relacl,
+      pg_catalog.acldefault(
+        (CASE WHEN relation.relkind = 'S' THEN 'S' ELSE 'r' END)::"char",
+        relation.relowner
+      )
+    )
+  ) AS privilege
+  WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_depend AS dependency
+      WHERE dependency.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+        AND dependency.objid = relation.oid
+        AND dependency.deptype = 'e'
+    )
+
+  UNION ALL
+
+  SELECT
+    'routine_acl',
+    namespace.nspname || '.' || procedure.proname,
+    pg_catalog.pg_get_function_identity_arguments(procedure.oid) || '|' ||
+      coalesce(
+        CASE WHEN privilege.grantee = 0 THEN 'PUBLIC'
+        ELSE pg_catalog.pg_get_userbyid(privilege.grantee) END,
+        '<missing>'
+      ),
+    pg_catalog.jsonb_build_array(
+      pg_catalog.pg_get_userbyid(privilege.grantor),
+      privilege.privilege_type,
+      privilege.is_grantable
+    )
+  FROM pg_catalog.pg_proc AS procedure
+  JOIN application_namespaces AS namespace
+    ON namespace.oid = procedure.pronamespace
+  CROSS JOIN LATERAL pg_catalog.aclexplode(
+    coalesce(
+      procedure.proacl,
+      pg_catalog.acldefault('f', procedure.proowner)
+    )
+  ) AS privilege
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_depend AS dependency
+    WHERE dependency.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+      AND dependency.objid = procedure.oid
+      AND dependency.deptype = 'e'
+  )
+)
+SELECT coalesce(
+  pg_catalog.jsonb_agg(
+    pg_catalog.jsonb_build_array(
+      category,
+      object_name,
+      subobject_name,
+      detail
+    ) ORDER BY category, object_name, subobject_name, detail::text
+  ),
+  '[]'::pg_catalog.jsonb
+)::text
+FROM catalog_rows;`,
+    databaseName,
+  );
+  if (catalog.length < 2 || catalog[0] !== "[") {
+    throw new PostgresPrivacyRetentionError();
+  }
+  return createHash("sha256").update(catalog).digest("hex");
 }
 
 function summarizePostgresPrivacyRetentionLedgerDiagnostic(
@@ -10122,7 +13134,7 @@ async function verifyCheckedOutCommit(
 
 async function collectAcceptanceSourceHashes(
   config: AcceptanceImageConfig,
-): Promise<PostgresAcceptanceV13SourceHashes> {
+): Promise<PostgresAcceptanceV14SourceHashes> {
   const [
     workflowSha256,
     fixtureSha256,
@@ -10149,6 +13161,9 @@ async function collectAcceptanceSourceHashes(
     privacyRetentionPlanSourceV1Sha256,
     resourceIdentifierTokenV1Sha256,
     privacyRetentionFixtureV1Sha256,
+    populatedCutoverPlanManifestV1Sha256,
+    populatedCutoverPlanSourceV1Sha256,
+    populatedCutoverFixtureV1Sha256,
   ] = await Promise.all([
     exactFileSha256(workflowPath),
     exactFileSha256(syntheticFixturePath),
@@ -10175,12 +13190,16 @@ async function collectAcceptanceSourceHashes(
     exactFileSha256(privacyRetentionPlanSourceV1Path),
     exactFileSha256(resourceIdentifierTokenV1Path),
     exactFileSha256(privacyRetentionFixtureV1Path),
+    exactFileSha256(populatedCutoverPlanManifestV1Path),
+    exactFileSha256(populatedCutoverPlanSourceV1Path),
+    exactFileSha256(populatedCutoverFixtureV1Path),
   ]);
   if (
     workflowSha256 !== config.workflowSha256 ||
     fixtureSha256 !== config.fixtureSha256 ||
     queryPlanLoadFixtureSha256 !== config.queryPlanLoadFixtureSha256 ||
-    privacyRetentionFixtureV1Sha256 !== config.privacyRetentionFixtureSha256
+    privacyRetentionFixtureV1Sha256 !== config.privacyRetentionFixtureSha256 ||
+    populatedCutoverFixtureV1Sha256 !== config.populatedCutoverFixtureSha256
   ) {
     throw new Error("Reviewed acceptance source bytes changed during the run");
   }
@@ -10210,6 +13229,9 @@ async function collectAcceptanceSourceHashes(
     privacyRetentionPlanSourceV1Sha256,
     resourceIdentifierTokenV1Sha256,
     privacyRetentionFixtureV1Sha256,
+    populatedCutoverPlanManifestV1Sha256,
+    populatedCutoverPlanSourceV1Sha256,
+    populatedCutoverFixtureV1Sha256,
   });
 }
 
@@ -10611,7 +13633,7 @@ async function verifyToolVersions(
   containerId: string,
   expectedVersion: string,
   expectedVersionNumber: number,
-): Promise<PostgresAcceptanceV13ToolVersions> {
+): Promise<PostgresAcceptanceV14ToolVersions> {
   const serverVersionNumber = await psqlScalar(
     containerId,
     "SHOW server_version_num;",
@@ -14928,6 +17950,7 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     "fixtureSha256",
     "queryPlanLoadFixtureSha256",
     "privacyRetentionFixtureSha256",
+    "populatedCutoverFixtureSha256",
     "verifiedOn",
     "runner",
   ];
@@ -14951,13 +17974,15 @@ function parseImageConfig(value: unknown): AcceptanceImageConfig {
     value.expectedServerVersionNumber !== 170011 ||
     value.databaseName !== CLEAN_BOOTSTRAP_DATABASE_NAME ||
     value.workflowSha256 !==
-      "c67ac50f09fd31d0901d6421a2a434c050a319d170866fee70e5a59cd0911966" ||
+      "5f8ab0336cfb9fc35363f5b69d5db4564eaa79c7dd7fc16eecb266aa902e844f" ||
     value.fixtureSha256 !==
       "0c1436ca60b51ebddb2f8bf77b24960f77831efd2010bcb4449a837c1d9a78e7" ||
     value.queryPlanLoadFixtureSha256 !==
       "e344c31adeb4cef3d7de2fad65bd4837a0c51c57f3b359a634eb42da9d0642ad" ||
     value.privacyRetentionFixtureSha256 !==
       "9be0682dffbb981350bde888b2880b99e2bfa587da96acdfae281c41be67a6c7" ||
+    value.populatedCutoverFixtureSha256 !==
+      "f30651fd5b847a6d1b365830c32335c98ff8106f49200dc40b4f33494a583198" ||
     typeof value.verifiedOn !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(value.verifiedOn) ||
     value.runner.label !== "ubuntu-24.04" ||

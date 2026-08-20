@@ -41,3 +41,7 @@ disposable database. Production admission stays blocked until every
 external approval and operating control in the final matrix row is separately
 implemented, tested, and approved. Item 18 of the package roadmap continues to
 own any populated-database backfill and online cutover; B13 does not satisfy it.
+The accepted successor source design is documented in
+[ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md); it does not
+retroactively widen this retained V13 result.

@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
 export const POSTGRES_ACCEPTANCE_EVIDENCE_FILENAME =
-  "research-cockpit-postgres-acceptance-v13.json";
+  "research-cockpit-postgres-acceptance-v14.json";
 
 export const POSTGRES_ACCEPTANCE_V1_CHECKS_PASSED = Object.freeze([
   "pristine_target",
@@ -254,13 +254,41 @@ export const POSTGRES_ACCEPTANCE_V13_NOT_PROVEN = Object.freeze([
   "real_customer_tenant_or_personal_data",
 ] as const);
 
+export const POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
+  "versioned_populated_resource_identifier_cutover_contract",
+  "authenticated_bounded_synthetic_populated_resource_identifier_online_cutover",
+] as const);
+
+export const POSTGRES_ACCEPTANCE_V14_NOT_PROVEN = Object.freeze([
+  ...POSTGRES_ACCEPTANCE_V12_NOT_PROVEN,
+  "production_privacy_legal_approval_lawful_basis_notices_or_legal_holds",
+  "verified_data_subject_identity_or_production_dsar_fulfillment",
+  "production_tenant_offboarding_retention_scheduler_or_monitoring",
+  "external_kms_hsm_key_custody_rotation_destruction_or_recovery",
+  "database_verification_of_externally_keyed_resource_tokens",
+  "cryptographic_erasure_of_plaintext_database_or_backup_data",
+  "production_primary_replica_cache_log_search_analytics_or_third_party_deletion",
+  "production_backup_archive_expiry_deletion_restore_suppression_or_media_sanitization",
+  "external_or_production_populated_database_privacy_migration_or_cutover",
+  "zero_downtime_uninterrupted_writes_or_application_dual_write_deployment",
+  "production_application_writer_integration_authorization_or_dual_write_protocol",
+  "production_cutover_volume_duration_slo_or_lock_budget",
+  "migration_process_or_cluster_crash_recovery_resume_or_post_commit_downgrade",
+  "long_running_prepared_transaction_ddl_replication_or_failover_concurrency",
+  "real_customer_tenant_personal_or_non_synthetic_cutover",
+  "recovery_of_resource_identifiers_deleted_before_b14_capture_boundary",
+  "globally_complete_or_independently_audited_deletion_proof",
+  "real_customer_tenant_or_personal_data",
+] as const);
+
 /** The exact completed-check list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_CHECKS_PASSED =
-  POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED;
+  POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED;
 
 /** The exact limitation list emitted by the current evidence builder. */
 export const POSTGRES_ACCEPTANCE_NOT_PROVEN =
-  POSTGRES_ACCEPTANCE_V13_NOT_PROVEN;
+  POSTGRES_ACCEPTANCE_V14_NOT_PROVEN;
 
 const BUILD_INPUT_KEYS = [
   "githubEnvironment",
@@ -351,6 +379,12 @@ const V13_SOURCE_HASH_KEYS = [
   "resourceIdentifierTokenV1Sha256",
   "privacyRetentionFixtureV1Sha256",
 ] as const;
+const V14_SOURCE_HASH_KEYS = [
+  ...V13_SOURCE_HASH_KEYS,
+  "populatedCutoverPlanManifestV1Sha256",
+  "populatedCutoverPlanSourceV1Sha256",
+  "populatedCutoverFixtureV1Sha256",
+] as const;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const SHA1_HEX = /^[0-9a-f]{40}$/;
@@ -387,6 +421,9 @@ export type PostgresAcceptanceV12ToolVersions =
 
 export type PostgresAcceptanceV13ToolVersions =
   PostgresAcceptanceV12ToolVersions;
+
+export type PostgresAcceptanceV14ToolVersions =
+  PostgresAcceptanceV13ToolVersions;
 
 export interface HistoricalPostgresAcceptanceSourceHashes {
   readonly workflowSha256: string;
@@ -440,6 +477,12 @@ export interface PostgresAcceptanceV13SourceHashes extends PostgresAcceptanceV12
   readonly privacyRetentionFixtureV1Sha256: string;
 }
 
+export interface PostgresAcceptanceV14SourceHashes extends PostgresAcceptanceV13SourceHashes {
+  readonly populatedCutoverPlanManifestV1Sha256: string;
+  readonly populatedCutoverPlanSourceV1Sha256: string;
+  readonly populatedCutoverFixtureV1Sha256: string;
+}
+
 export interface BuildPostgresAcceptanceEvidenceInput {
   /**
    * The complete environment may be supplied, but the builder reads only the
@@ -448,8 +491,8 @@ export interface BuildPostgresAcceptanceEvidenceInput {
   readonly githubEnvironment: Environment;
   readonly reviewedImageReference: string;
   readonly reviewedImageIndexDigest: string;
-  readonly toolVersions: PostgresAcceptanceV13ToolVersions;
-  readonly sourceHashes: PostgresAcceptanceV13SourceHashes;
+  readonly toolVersions: PostgresAcceptanceV14ToolVersions;
+  readonly sourceHashes: PostgresAcceptanceV14SourceHashes;
   readonly completedAt: string;
 }
 
@@ -570,6 +613,15 @@ export interface PostgresAcceptanceEvidenceV13 extends PostgresAcceptanceEvidenc
   readonly notProven: typeof POSTGRES_ACCEPTANCE_V13_NOT_PROVEN;
 }
 
+export interface PostgresAcceptanceEvidenceV14 extends PostgresAcceptanceEvidenceFields<
+  PostgresAcceptanceV14SourceHashes,
+  PostgresAcceptanceV14ToolVersions
+> {
+  readonly schemaVersion: 14;
+  readonly checksPassed: typeof POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED;
+  readonly notProven: typeof POSTGRES_ACCEPTANCE_V14_NOT_PROVEN;
+}
+
 export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV1
   | PostgresAcceptanceEvidenceV2
@@ -583,7 +635,8 @@ export type PostgresAcceptanceEvidence =
   | PostgresAcceptanceEvidenceV10
   | PostgresAcceptanceEvidenceV11
   | PostgresAcceptanceEvidenceV12
-  | PostgresAcceptanceEvidenceV13;
+  | PostgresAcceptanceEvidenceV13
+  | PostgresAcceptanceEvidenceV14;
 
 export interface WrittenPostgresAcceptanceEvidence {
   readonly path: string;
@@ -608,7 +661,7 @@ export class PostgresAcceptanceEvidenceError extends Error {
  */
 export function buildPostgresAcceptanceEvidence(
   value: BuildPostgresAcceptanceEvidenceInput,
-): PostgresAcceptanceEvidenceV13 {
+): PostgresAcceptanceEvidenceV14 {
   try {
     const input = exactPlainDataRecord(value, BUILD_INPUT_KEYS);
     const environment = environmentRecord(input.githubEnvironment);
@@ -644,11 +697,11 @@ export function buildPostgresAcceptanceEvidence(
       reviewedImageIndexDigest,
     );
     const toolVersions = normalizeV10ToolVersions(input.toolVersions);
-    const sourceHashes = normalizeV13SourceHashes(input.sourceHashes);
+    const sourceHashes = normalizeV14SourceHashes(input.sourceHashes);
     const completedAt = canonicalTimestamp(input.completedAt);
 
     return freezeEvidence({
-      schemaVersion: 13,
+      schemaVersion: 14,
       suite: "research-cockpit-postgresql-acceptance",
       outcome: "passed",
       job: "postgres-acceptance",
@@ -705,14 +758,14 @@ export function serializePostgresAcceptanceEvidence(
  * bytes passed to `writeFile`.
  */
 export async function writePostgresAcceptanceEvidence(
-  value: PostgresAcceptanceEvidenceV13,
+  value: PostgresAcceptanceEvidenceV14,
   environment: Environment,
 ): Promise<WrittenPostgresAcceptanceEvidence> {
   let bytes: Buffer;
   let path: string;
   try {
     const normalized = normalizeEvidence(value);
-    if (normalized.schemaVersion !== 13) invalid();
+    if (normalized.schemaVersion !== 14) invalid();
     bytes = Buffer.from(
       serializePostgresAcceptanceEvidence(normalized),
       "utf8",
@@ -1006,6 +1059,24 @@ function normalizeEvidence(value: unknown): PostgresAcceptanceEvidence {
       sourceHashes,
       checksPassed: POSTGRES_ACCEPTANCE_V13_CHECKS_PASSED,
       notProven: POSTGRES_ACCEPTANCE_V13_NOT_PROVEN,
+      completedAt,
+    });
+  }
+
+  if (evidence.schemaVersion === 14) {
+    const sourceHashes = normalizeV14SourceHashes(evidence.sourceHashes);
+    exactLiteralArray(
+      evidence.checksPassed,
+      POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED,
+    );
+    exactLiteralArray(evidence.notProven, POSTGRES_ACCEPTANCE_V14_NOT_PROVEN);
+    return freezeEvidence({
+      schemaVersion: 14,
+      ...common,
+      toolVersions: normalizeV10ToolVersions(evidence.toolVersions),
+      sourceHashes,
+      checksPassed: POSTGRES_ACCEPTANCE_V14_CHECKS_PASSED,
+      notProven: POSTGRES_ACCEPTANCE_V14_NOT_PROVEN,
       completedAt,
     });
   }
@@ -1343,6 +1414,76 @@ function normalizeV13SourceHashes(
     ),
     privacyRetentionFixtureV1Sha256: sha256Hex(
       hashes.privacyRetentionFixtureV1Sha256,
+    ),
+  });
+}
+
+function normalizeV14SourceHashes(
+  value: unknown,
+): PostgresAcceptanceV14SourceHashes {
+  const hashes = exactPlainDataRecord(value, V14_SOURCE_HASH_KEYS);
+  return Object.freeze({
+    workflowSha256: sha256Hex(hashes.workflowSha256),
+    fixtureSha256: sha256Hex(hashes.fixtureSha256),
+    migrationManifestSha256: sha256Hex(hashes.migrationManifestSha256),
+    acceptanceRunnerSha256: sha256Hex(hashes.acceptanceRunnerSha256),
+    projectionQuerySha256: sha256Hex(hashes.projectionQuerySha256),
+    projectionNormalizerSha256: sha256Hex(hashes.projectionNormalizerSha256),
+    platformBootstrapV2Sha256: sha256Hex(hashes.platformBootstrapV2Sha256),
+    applicationMigrationManifestV2Sha256: sha256Hex(
+      hashes.applicationMigrationManifestV2Sha256,
+    ),
+    authenticatedMigrationRendererV2Sha256: sha256Hex(
+      hashes.authenticatedMigrationRendererV2Sha256,
+    ),
+    restorePlatformV1Sha256: sha256Hex(hashes.restorePlatformV1Sha256),
+    authenticatedBackupRestorePlanV1Sha256: sha256Hex(
+      hashes.authenticatedBackupRestorePlanV1Sha256,
+    ),
+    postgresProjectionAdapterSha256: sha256Hex(
+      hashes.postgresProjectionAdapterSha256,
+    ),
+    operationProjectionContractSha256: sha256Hex(
+      hashes.operationProjectionContractSha256,
+    ),
+    databasePackageManifestSha256: sha256Hex(
+      hashes.databasePackageManifestSha256,
+    ),
+    pnpmLockfileSha256: sha256Hex(hashes.pnpmLockfileSha256),
+    postgresProjectionPoolSha256: sha256Hex(
+      hashes.postgresProjectionPoolSha256,
+    ),
+    postgresMigrationDeployerSha256: sha256Hex(
+      hashes.postgresMigrationDeployerSha256,
+    ),
+    postgresQueryPlanLoadSha256: sha256Hex(hashes.postgresQueryPlanLoadSha256),
+    queryPlanLoadFixtureSha256: sha256Hex(hashes.queryPlanLoadFixtureSha256),
+    privacyRetentionPolicyV1Sha256: sha256Hex(
+      hashes.privacyRetentionPolicyV1Sha256,
+    ),
+    privacyRetentionPlanManifestV1Sha256: sha256Hex(
+      hashes.privacyRetentionPlanManifestV1Sha256,
+    ),
+    privacyRetentionPolicySourceV1Sha256: sha256Hex(
+      hashes.privacyRetentionPolicySourceV1Sha256,
+    ),
+    privacyRetentionPlanSourceV1Sha256: sha256Hex(
+      hashes.privacyRetentionPlanSourceV1Sha256,
+    ),
+    resourceIdentifierTokenV1Sha256: sha256Hex(
+      hashes.resourceIdentifierTokenV1Sha256,
+    ),
+    privacyRetentionFixtureV1Sha256: sha256Hex(
+      hashes.privacyRetentionFixtureV1Sha256,
+    ),
+    populatedCutoverPlanManifestV1Sha256: sha256Hex(
+      hashes.populatedCutoverPlanManifestV1Sha256,
+    ),
+    populatedCutoverPlanSourceV1Sha256: sha256Hex(
+      hashes.populatedCutoverPlanSourceV1Sha256,
+    ),
+    populatedCutoverFixtureV1Sha256: sha256Hex(
+      hashes.populatedCutoverFixtureV1Sha256,
     ),
   });
 }

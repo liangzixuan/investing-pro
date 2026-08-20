@@ -264,3 +264,8 @@ owns populated-database registry backfill and online cutover under concurrent
 writes. This result does not establish that cutover, global deletion,
 cryptographic erasure, real-customer-data admission, application composition,
 deployment, or production readiness.
+
+The successor B14 source design is recorded in
+[ADR 0026](./adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](./CYCLE_1BB14_EXIT_MATRIX.md). It preserves
+this V13 evidence exactly; source-stage B14 work is not a new live result.

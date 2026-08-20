@@ -189,6 +189,22 @@ at commit `a959cba`; its retained V13 record returned `offline_consistent`. See
 [ADR 0025](../../docs/adr/0025-versioned-resource-identifier-privacy-and-retention-lifecycle.md)
 and the [Cycle 1b-b13 exit matrix](../../docs/CYCLE_1BB13_EXIT_MATRIX.md).
 
+Cycle 1b-b14 adds a separate populated-cutover plan without changing the
+historical v2 or privacy v1 inputs. Its exact base selects v2 `0001`-`0004` and
+`0006`, explicitly replaces unsafe `0005`, loads a deterministic populated
+synthetic fixture, captures post-boundary thesis/alert inserts and deletes in
+an audited temporary work registry, performs authenticated bounded token
+backfill, and contracts to the exact B13 keyed target behind an exact capture
+epoch and short final write barrier. The source-stage V14 evidence contract
+binds the plan manifest/source/fixture and independently reviews the
+manifest-named bodies. Local integration is complete on the frozen source
+bytes; live V14 evidence and independent artifact review remain pending. This
+is not a production writer/dual-write protocol, continuous zero-downtime
+deployment, general cutover, recovery of identifiers deleted before capture,
+or real-data admission. See
+[ADR 0026](../../docs/adr/0026-bounded-populated-resource-identifier-online-cutover.md)
+and the [Cycle 1b-b14 exit matrix](../../docs/CYCLE_1BB14_EXIT_MATRIX.md).
+
 Ownership transfer is exclusive: after construction the caller may not call
 `connect()`, query or release a client, call `end()`, or otherwise inspect or use
 the pool while the source owns it. Only read-only counters may be checked after
@@ -576,9 +592,14 @@ resource_type, resource_id)` can never back a live row, while the same UUID
     verified DSAR/legal holds, operating offboarding scheduling/monitoring,
     KMS/HSM custody and destruction, all online/backup/third-party deletion
     planes, cryptographic erasure, and independent deletion proof remain blocked.
-18. If upgrading a populated database, validate an audited registry backfill
-    and cutover under concurrent-write controls before adding the live-state
-    foreign keys; this static `0005` migration assumes empty live tables.
+18. **Cycle 1b-b14 source and local integration complete; live exit pending:** use
+    the separate manifest-bound populated-cutover plan for the exact synthetic
+    pre-`0005` branch. It establishes capture, bounded backfill, and a final
+    contract barrier instead of applying static `0005`. Do not use it for a
+    production upgrade until application-writer authorization and
+    allocation/dual-write coordination, zero-downtime and lock/SLO budgets,
+    crash/restart/failover recovery, pre-capture deletion handling, real-data
+    approval, retained V14 evidence, and independent review all pass.
 
 Until every gate passes, this package is not deployed persistence. Historical
 b1-b6 live evidence remains limited to the exact checks in their retained run
@@ -619,3 +640,8 @@ empty-data-only technical lifecycle. It does not satisfy production
 privacy/legal, DSAR, scheduler/monitoring, KMS/HSM, token-verification,
 cryptographic-erasure, online/backup/third-party deletion, populated-cutover,
 global-proof, or real-data gates.
+B14 currently adds only the separate locally integrated populated-cutover
+contract. It has no retained live V14 result yet and does not widen B13 or
+establish production writer integration, uninterrupted writes, arbitrary allocation
+gaps, production scale/SLOs, recovery/failover/downgrade, identifiers deleted
+before capture, real data, or production readiness.
