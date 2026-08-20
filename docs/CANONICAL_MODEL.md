@@ -7,7 +7,8 @@ policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
 projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
-contract; synthetic data only.
+contract and disconnected source-stage Cycle 2a filing-parser envelope;
+synthetic data only.
 
 ## Identity
 
@@ -302,6 +303,31 @@ evidence. The full frozen-byte local release gate and two-OS CI run
 engine evidence, B15/V15, or a replacement for the canonical B14 result at
 `d688aa21e969feef6611f6efcd1aeaaed6e31df9`. Cycle 1c does not widen any B1
 through B14 result, and production admission remains blocked.
+
+## Cycle 2a parser-envelope boundary
+
+Cycle 2a adds no canonical market, tenant, research-state, evidence-passport,
+or PostgreSQL entity. It defines one separate parser-domain candidate whose
+only accepted facts are the two fixed synthetic sentinel concepts. The parser
+candidate retains exact accession, accepted/available timestamps, parser and
+taxonomy versions, unit, empty dimensions, source archive hash, synthetic
+marker, and the exact built image ID in outside-worker signed provenance. It is
+not persisted or projected into the canonical application model.
+
+A rejected archive is represented only by an allowlisted quarantine code and
+an empty fact array; partial facts and silent repair are forbidden. Exact-byte
+replay equality applies to the normalized candidate and domain-separated
+signing payload, not to application idempotency, delivery exactly-once, or
+correction/supersession lineage.
+
+The source and exact frozen-byte local `pnpm verify` gate are complete: format,
+lint, every guardrail, seven-project typechecking, all builds, and 32 test files
+with 789 tests pass. Dedicated Linux live evidence, artifact retention, and
+independent offline review remain pending. It is not B15/V15, changes no B1
+through B14 or Cycle 1c result, and cannot be composed into the API, web,
+database, or real-data model based on source-stage evidence. See
+[ADR 0028](./adr/0028-bounded-synthetic-filing-parser-isolation.md) and the
+[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

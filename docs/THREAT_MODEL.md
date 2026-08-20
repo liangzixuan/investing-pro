@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b14 and source-stage Cycle 1c threat model
+# Sprint 0 through bounded live Cycle 1b-b14, Cycle 1c, and source-stage Cycle 2a threat model
 
 ## Current trust boundaries
 
@@ -31,6 +31,14 @@ exact update paths. Operation includes the resource type and ID, so a
 cross-path/resource key is a separate scope rather than a claimed conflict.
 Browser state remains local and no server research-state create, delete,
 read/list, export, evaluation, delivery, or background route is added.
+
+Cycle 2a introduces a disconnected source-stage parser boundary, not a running
+application upload or fetch surface. Each nonempty, host-size-eligible bounded
+synthetic archive is staged as one read-only file for one new locked-down Linux
+container; empty and host-oversize inputs quarantine without a process. The worker has no
+network, secret, signing key, tenant, database, application, or arbitrary
+plugin context. Its dedicated live isolation evidence and offline review are
+pending; source and unit tests alone do not establish a live container result.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -404,6 +412,15 @@ leave the server projection.
   pool or concurrent-backend result.
 - Exact dependency pins, a lockfile, a single allowed install script, an allowlisted production-license gate, dependency review, and two-OS CI reduce supply-chain drift.
 - The evidence dialog traps/restores focus; chart values have a semantic table; reduced-motion and high-contrast preferences are respected.
+- The source-stage Cycle 2a parser uses a digest-pinned, zero-pip Python 3.12.13
+  image, numeric non-root execution, dropped capabilities,
+  no-new-privileges, network none, no ports, read-only root/input, hardened
+  tmpfs, bounded CPU/memory/PIDs/nofile/output/time, exact archive/XML/taxonomy
+  allowlists, atomic quarantine, exact-byte replay, and outside-worker
+  ephemeral Ed25519 provenance bound to the built image ID. Its exact
+  frozen-byte local `pnpm verify` gate passes format, lint, every guardrail,
+  seven-project typechecking, all builds, and 32 test files with 789 tests. The
+  separate Linux live artifact and offline review remain pending.
 
 ## Non-production constraints
 
@@ -504,6 +521,17 @@ widen any B1 through B14 evidence, and production admission remains blocked.
 See
 [ADR 0027](./adr/0027-loopback-synthetic-persona-research-state-api.md) and the
 [Cycle 1c exit matrix](./CYCLE_1C_EXIT_MATRIX.md).
+
+Cycle 2a is source-stage only. It does not prove real public SEC filings,
+counsel-approved corpus rights, ten-fact coverage, precision/recall or
+adjudicated quality, general XBRL/iXBRL/taxonomy/plugins, external EDGAR/DNS/
+TLS/SSRF/rate-limit handling, source authenticity, production KMS/HSM keys,
+production container-host/kernel/daemon isolation, malware or zero-day safety,
+distributed queues/retries/exactly-once, database/API/web composition or
+B15/V15, retention/crypto-erasure/quarantine operations, correction lineage,
+load/SLOs, or real-data/production admission. The full ordered boundary is in
+[ADR 0028](./adr/0028-bounded-synthetic-filing-parser-isolation.md) and the
+[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 

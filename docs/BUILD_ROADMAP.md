@@ -524,6 +524,34 @@ external exposure, durable persistence, general API BOLA, production writer
 authorization, browser migration, operational load, privacy/legal controls,
 and real data remain separate gated work.
 
+## Cycle 2a — bounded synthetic filing-parser isolation gate
+
+Status: source implementation and the exact frozen-byte local `pnpm verify`
+gate are complete; dedicated Linux live evidence and independent offline review
+pending; production admission blocked.
+
+Cycle 2a implements only the parser threat-model precondition: one nonempty,
+host-size-eligible bounded synthetic ZIP containing an exact manifest and XML
+document enters one new non-root, network-none, read-only, resource-limited
+container. Empty and host-oversize inputs quarantine without a worker. A closed worker
+returns either an accepted two-sentinel candidate or an atomic value-free
+quarantine. The host validates canonical output, signs the exact result and
+built image ID with an outside-worker ephemeral Ed25519 key, tests exact-byte
+replay/tamper rejection, and requires zero container/staging residue.
+
+The digest-pinned Python 3.12.13 slim-bookworm worker installs no packages and
+has no parser plugin seam. A separate success-only filing-parser evidence v1,
+dedicated Linux workflow, source/fixture/image hash chain, and offline verifier
+do not append PostgreSQL V1 through V14. No upload/API/web/database/queue or
+external fetch is added, no real filing is used, and this work is not B15/V15.
+
+The sole proposed bounded claim is
+`bounded_synthetic_one_shot_filing_parser_isolation_quarantine_replay_and_provenance_binding`.
+Its exact fixed checks, nonclaims, and pending exit rule are recorded in
+[ADR 0028](./adr/0028-bounded-synthetic-filing-parser-isolation.md) and the
+[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md). Source-stage implementation
+alone is not live isolation evidence and production admission remains blocked.
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -535,6 +563,11 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 5. Measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against independently adjudicated ground truth.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
+
+Cycle 2a does not satisfy this exit gate. Real public filings, corpus rights,
+ten-fact coverage, independently adjudicated precision/recall, general
+XBRL/iXBRL and taxonomy/plugin support, correction lineage, production
+operations, and real-data admission remain pending.
 
 ## Cycle 3 — product breadth
 

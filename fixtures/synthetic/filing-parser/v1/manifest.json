@@ -1,0 +1,30 @@
+{
+  "acceptedCases": 3,
+  "caseCount": 103,
+  "casesSha256": "sha256:05e05a0865f5b5f74f08e91b326f5a316f1b5e0235dd55c463eb827d78389d0c",
+  "files": [
+    {
+      "path": "packages/filing-parser/acceptance/python-image.json",
+      "sha256": "sha256:3c89a16768a4dcac237c0ce5bab75fbdbda35084c4088daeb86cbdc705b9327a"
+    },
+    {
+      "path": "packages/filing-parser/src/test-archive-builder.ts",
+      "sha256": "sha256:688e4281ee801f42f381daf82fa828c6f49cd4fe99bda1726d3c20c2199f686d"
+    },
+    {
+      "path": "packages/filing-parser/worker/Dockerfile",
+      "sha256": "sha256:2f50135778787401c223eb6a2bf2ce133d43126f0dfc9b5b5dbf99479ab193a0"
+    },
+    {
+      "path": "packages/filing-parser/worker/parser.py",
+      "sha256": "sha256:7c4796b43da755970439e0f5e982f98fc0b9e207a8b1a325100c0fc975025b40"
+    },
+    {
+      "path": "packages/filing-parser/worker/taxonomy-v1.json",
+      "sha256": "sha256:d46b603088cc0f415fa8a01a296d649e8917751ffe7ad7fe2dc9d91967ae0691"
+    }
+  ],
+  "quarantinedCases": 100,
+  "schemaVersion": "1.0.0",
+  "synthetic": true
+}

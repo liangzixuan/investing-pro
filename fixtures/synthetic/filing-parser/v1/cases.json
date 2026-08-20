@@ -1,0 +1,827 @@
+{
+  "cases": [
+    {
+      "archiveSha256": "sha256:8549e5f8e2c5dac21ee44e248fa2631a1a1772686083092182140404f7a80bc4",
+      "expected": {
+        "status": "accepted"
+      },
+      "id": "accepted_canonical"
+    },
+    {
+      "archiveSha256": "sha256:8549e5f8e2c5dac21ee44e248fa2631a1a1772686083092182140404f7a80bc4",
+      "expected": {
+        "status": "accepted"
+      },
+      "id": "accepted_exact_replay"
+    },
+    {
+      "archiveSha256": "sha256:08756c105abb0ee586b10736665870c81720ce08d02eba155ebb0f938f1530af",
+      "expected": {
+        "status": "accepted"
+      },
+      "id": "accepted_decimal_boundaries"
+    },
+    {
+      "archiveSha256": "sha256:29f006eec0cc13bba10442235e59fe6e6fdd51f35c1da33d7a722fb8bf7db79e",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_one_byte_mutation"
+    },
+    {
+      "archiveSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_empty"
+    },
+    {
+      "archiveSha256": "sha256:2cb74edba754a81d121c9db6833704a8e7d417e5b13d1a19f4a52f007d644264",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_limit_exceeded"
+      },
+      "id": "archive_host_size_limit"
+    },
+    {
+      "archiveSha256": "sha256:f300f6a921e42e9c177aa31cb9085db9067972ed4901536757e8e339158c6814",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_bad_magic"
+    },
+    {
+      "archiveSha256": "sha256:379a50cc109b6a93087ec50a62ae9e62e5cbf0c1d6f2c3463fc7cca69b4667d4",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_truncated_eocd"
+    },
+    {
+      "archiveSha256": "sha256:08ada7c154893a8b76628af3cefb552bba3a2db97a448582d1505cf74e2843a4",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_prepended_polyglot"
+    },
+    {
+      "archiveSha256": "sha256:56a7e95df3d489fa463dc1775c41ab4c6c60f4e48bb6618dd2892eefafdb376d",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_trailing_polyglot"
+    },
+    {
+      "archiveSha256": "sha256:07b210ce73569c79c10808a6ecf85e10cfe08fac8955112f2b43683f48a40892",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_eocd_comment"
+    },
+    {
+      "archiveSha256": "sha256:12308f7bcf46bfe30e3e6f229c3da052577bea3a21b6e9cc57c6eccb84437cfa",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_multidisk_number"
+    },
+    {
+      "archiveSha256": "sha256:e55a72783c7e4c7216057e9f3cdec983ae9fac2c48d0aca25c33a1c145f0836b",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_multidisk_central_directory"
+    },
+    {
+      "archiveSha256": "sha256:ae1183fe95879d3024180b723e7f7bc5db80a4028eb71c613883729bdead79a6",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_entry_count_ambiguity"
+    },
+    {
+      "archiveSha256": "sha256:a38cc98cd9990ee247031c7f141af21c019429f2e206a70d0d0b2b492aa68e79",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_zip64_signature"
+    },
+    {
+      "archiveSha256": "sha256:8b48baeeb28b8bb0b7e11e4e3c24b8373f22634f480b717c5a6707003213276b",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_central_extra_field"
+    },
+    {
+      "archiveSha256": "sha256:9d9712f80228b33801eb6ad5a32a64c2ab9170fd19c26fd0dc0d022112ec4719",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_local_extra_field"
+    },
+    {
+      "archiveSha256": "sha256:d89b8d48e4b9e3f8be9497518466ca3b7c3351268cc2abc8876538aa3190ccc5",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_data_descriptor_flag"
+    },
+    {
+      "archiveSha256": "sha256:112b7a9778e0f94fb644e1e0ae049a6d440d176900f001aa5a7e188f5dbfcdaf",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_local_central_filename_mismatch"
+    },
+    {
+      "archiveSha256": "sha256:b7e1429a48428d61f329f7e29698ab20bfd995597b3785f992b3b85c85db7fea",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_local_central_crc_mismatch"
+    },
+    {
+      "archiveSha256": "sha256:d94e770fc1523d8a08437c4f8c34928bd946b2f96b730dcda3b74f8ffcc5c517",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_local_central_compressed_size_mismatch"
+    },
+    {
+      "archiveSha256": "sha256:ed0fece243f96ed4a0114f19b1f669fdc8d11edec68d7e5bdc1d0d110d265031",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_local_central_uncompressed_size_mismatch"
+    },
+    {
+      "archiveSha256": "sha256:15fc4c087d3c1a4b6aaf900bf160b52385227b4ffc1a703d68051dc31d1e041b",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_deflate_hidden_tail"
+    },
+    {
+      "archiveSha256": "sha256:4df170bf5e1f640ad9d0a90d9c165677e5a41ed312c0fd7d8b4d0b1fbc942025",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_central_local_offset_mismatch"
+    },
+    {
+      "archiveSha256": "sha256:99d5a0c2df564418cb22a390cce7ab951c9222634ecb51a4298691eb1ba79689",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_local_only_entry"
+    },
+    {
+      "archiveSha256": "sha256:0747d12792854cb86c9b7a39abd2780a31ca0ab4be1ee58bb9cf17fbdc868250",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_central_only_entry"
+    },
+    {
+      "archiveSha256": "sha256:32dd14465f36b6b1ef5a0b54b2be483e133edd31ef37347d3945dde68529a9b4",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_orphan_local_entry"
+    },
+    {
+      "archiveSha256": "sha256:a337cc755c65965503a1ee33e5a964c682059409928d6229bd9350aec7395a38",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_orphan_central_entry"
+    },
+    {
+      "archiveSha256": "sha256:adee527c8a6895c0bebd7c564356bff0b6b6851f91b432bc18f464d1543394b6",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_missing_entry"
+    },
+    {
+      "archiveSha256": "sha256:ebafa008aaf0f4fd88bcfc48512d080d470453f8cc010289561437dc1805ee55",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_extra_entry"
+    },
+    {
+      "archiveSha256": "sha256:d9ce93d45c73a393de76081794aa7df828b4af035fe2c951943a662b6259b9c1",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_duplicate_entry"
+    },
+    {
+      "archiveSha256": "sha256:670c709d03709fdfdabdcb8413b676f8fdf046d98aeaf26f672265b51551534e",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_case_colliding_entry"
+    },
+    {
+      "archiveSha256": "sha256:5d88d3b4fb13fdc360e69f99f33c696adc603dba847130c4ecd8cda839699917",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_parent_traversal"
+    },
+    {
+      "archiveSha256": "sha256:528dd0646efed96a2b4c9241522a503daab9f2bce1e8fab2c351b36bb387b649",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_absolute_path"
+    },
+    {
+      "archiveSha256": "sha256:81de51565680dda24c236e90a165475d4730ca73b8fb7bd0c506b62a044cb60e",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_windows_drive"
+    },
+    {
+      "archiveSha256": "sha256:fd2d3b8cdc633de3356012ed5acc964cd204630092c1f707fbc992c06d99ecea",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_backslash"
+    },
+    {
+      "archiveSha256": "sha256:fe0d27b0ef56ea2fbfa00ca9a9011126b2bdd0dd09d00c963a071c340f2de32f",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_nul"
+    },
+    {
+      "archiveSha256": "sha256:63561f5c01367170291e2a1079cd12150e1483ccbc6a3a3fe3a92c47e8e0a346",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_non_ascii"
+    },
+    {
+      "archiveSha256": "sha256:e981ab9829a4ec2aaef2b82e41528429b66bfa4f3780026906b07cfabed603a9",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_unspecified_mode"
+    },
+    {
+      "archiveSha256": "sha256:71177b55b3adbb7c801dbbec104d33a4cd165702dc7b945a59e4b1612aa49b48",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_permissions_only_mode"
+    },
+    {
+      "archiveSha256": "sha256:fb51c0dd076f41c276eda799e2c7698ce4f5892f7be2f8c17a1788ba81052beb",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_hybrid_directory_mode"
+    },
+    {
+      "archiveSha256": "sha256:d39013eefdb5620b5f8c2743116e874f8784ff1d8df90cfa9e95708202921a5f",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_directory_mode"
+    },
+    {
+      "archiveSha256": "sha256:af932decccaf97c01863147abe9e55b79dc38fe51facfdd7a346c3dfda359416",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_symlink_mode"
+    },
+    {
+      "archiveSha256": "sha256:981583f88e6576036272a6cd3891cc8a7e4298b5755883e0e1c16b3c545a45dd",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_fifo_mode"
+    },
+    {
+      "archiveSha256": "sha256:cfc57e8fc1643f1ea6cb52b8ecf9ce823d9e6eda42b2de2e11b7518c2b5805fa",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_socket_mode"
+    },
+    {
+      "archiveSha256": "sha256:1ad565e3d77ac8bd66d85f4d08b180ed692f8b7fe2e5a1f7aa6f6f6d27d85afe",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_block_device_mode"
+    },
+    {
+      "archiveSha256": "sha256:c946168e7a965526ea387b4fd44d8c67a01f8b75988d9a01eed3d9b99e200bc8",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_character_device_mode"
+    },
+    {
+      "archiveSha256": "sha256:3f6425cad01f14c609b49b1c31cb626971a417ceba12372af4ed6b3f9ba50d86",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_entry_invalid"
+      },
+      "id": "archive_entry_non_unix_origin"
+    },
+    {
+      "archiveSha256": "sha256:94b9ef64051bf7d4883fe9732e4f51b1b6f75df23de42abb36cde8b1931bb144",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_encrypted"
+      },
+      "id": "archive_encrypted_entry"
+    },
+    {
+      "archiveSha256": "sha256:c682c46761624abdb278f5180b769a65d6e234fde280f40a48bd836c8ad4812f",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_invalid"
+      },
+      "id": "archive_unsupported_compression"
+    },
+    {
+      "archiveSha256": "sha256:7543e8ab4faad1c159d30c5bee54b26d82b2ee24d69dddf25b2f5d66e78ff259",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_limit_exceeded"
+      },
+      "id": "archive_compression_ratio_limit"
+    },
+    {
+      "archiveSha256": "sha256:1c5edec4698a6cd14b695ce9a598a9181b8b61e707c23daaa8987326f99d076d",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_nested"
+      },
+      "id": "archive_nested_zip_manifest"
+    },
+    {
+      "archiveSha256": "sha256:12b8a99ea24ead1b6fdf4e2c2c7841c4fcede7c86ca1de3c678e83dee196ba4d",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_nested"
+      },
+      "id": "archive_nested_zip_xml"
+    },
+    {
+      "archiveSha256": "sha256:357e0c598fac30617fe4a452e10c7ef2ccd34f7f4982467afae250da1fa3e667",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_nested"
+      },
+      "id": "archive_nested_gzip_manifest"
+    },
+    {
+      "archiveSha256": "sha256:73c8e6e823e86096b9c1f985c14e7c5f2332ab87f08fd3b85079f10fa1bbe37a",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_nested"
+      },
+      "id": "archive_nested_gzip_xml"
+    },
+    {
+      "archiveSha256": "sha256:071caf8d4a12c0e4dce020a99f8e53051db507733b75009cc9a22d05c2cbc310",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_nested"
+      },
+      "id": "archive_nested_tar_manifest"
+    },
+    {
+      "archiveSha256": "sha256:84bb25b4b35c3058faeb5fbb078463bcca4556cbe595a6345c2d4c4ee36266f6",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_nested"
+      },
+      "id": "archive_nested_tar_xml"
+    },
+    {
+      "archiveSha256": "sha256:a2b918743ba10076a57d42dc04bacb4489e1aee99752430644a034225d1ebc16",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_duplicate_key"
+    },
+    {
+      "archiveSha256": "sha256:d44fb3a40ca0473634ac1a64d5da4f5cc147bd006a0603d8606d5c5dfa650c34",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_noncanonical_whitespace"
+    },
+    {
+      "archiveSha256": "sha256:06cd0eb56afe640d76be9ff6c8f81fa11a72224f3af7be6f0f35d933c1cd432b",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_noncanonical_key_order"
+    },
+    {
+      "archiveSha256": "sha256:ad825d3b8ffc6095d2a53a24e6098e990c71b378d29f2dfe7961910735814f6e",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_non_ascii"
+    },
+    {
+      "archiveSha256": "sha256:5df54be7facdfcc6869e3eff3ab05c6dc2de4132ae9c95407982e662d612a22e",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_unknown_key"
+    },
+    {
+      "archiveSha256": "sha256:3df092b5848c8a85b299f45793004bf6f10da018a2aaa5fd263cb4795f240de3",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_url_document"
+    },
+    {
+      "archiveSha256": "sha256:6e3c57c47697325d7d9518fc989ccd1ec8ee0f7bd14296c6d2731e52e91ac313",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_invalid_accession"
+    },
+    {
+      "archiveSha256": "sha256:b91fcde9c0bf2cfbd70dd4382ee94803c74146a830c42062b42cc1630eac861e",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_invalid_timestamp"
+    },
+    {
+      "archiveSha256": "sha256:77b26e775b791059ba816d3eaab888a6b9c86a500e836c7eef9398ab64402999",
+      "expected": {
+        "status": "quarantined",
+        "code": "manifest_invalid"
+      },
+      "id": "manifest_available_before_accepted"
+    },
+    {
+      "archiveSha256": "sha256:90cd700ea5c015334b56ef50b4ec7d6170b0bddb0b67835941e8f52df3583ac0",
+      "expected": {
+        "status": "quarantined",
+        "code": "taxonomy_not_allowed"
+      },
+      "id": "manifest_taxonomy_not_allowed"
+    },
+    {
+      "archiveSha256": "sha256:73d56c7732c54ac045f285d516f178afe3ca6382b7593c220a57b50301bec185",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_limit_exceeded"
+      },
+      "id": "manifest_size_limit"
+    },
+    {
+      "archiveSha256": "sha256:e26758ecf0662fe4c53e1dd06f59034401c9fd69cd8dc1e8f4718f8f1737b9ee",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_forbidden_construct"
+      },
+      "id": "xml_doctype"
+    },
+    {
+      "archiveSha256": "sha256:1e1836ff0e0fd1d96b44ce26478a1426ce4042fe678ce6bb6457b5dd4722ba65",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_forbidden_construct"
+      },
+      "id": "xml_entity"
+    },
+    {
+      "archiveSha256": "sha256:7d6f31ffc0fc8b50698912e622a074a3dc0d8ab30dd9b3228a225b1d4029077c",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_forbidden_construct"
+      },
+      "id": "xml_xinclude"
+    },
+    {
+      "archiveSha256": "sha256:e88f63f0a5e0c65689dfe586fc4615d6e2789ffe60a6bb597cd03d56119be222",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_forbidden_construct"
+      },
+      "id": "xml_processing_instruction_url"
+    },
+    {
+      "archiveSha256": "sha256:e9b0942c315f610398aa12ffb719638f40a879629c50a1fe0a71049ee1bc14e2",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_forbidden_construct"
+      },
+      "id": "xml_comment"
+    },
+    {
+      "archiveSha256": "sha256:8ee18809ac1be0c05b5d71c7a305d63d88775745caf77d7d7cec643ebe67ec8d",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_forbidden_construct"
+      },
+      "id": "xml_cdata"
+    },
+    {
+      "archiveSha256": "sha256:94fc0831b93763c90797f51658b88a4871c7b4f6823fe3bc6a824a08760781c1",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_limit_exceeded"
+      },
+      "id": "xml_depth_limit"
+    },
+    {
+      "archiveSha256": "sha256:170a71e077eec4fe091ca67ad780cd6e833001950101af94c6baa32059076f02",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_limit_exceeded"
+      },
+      "id": "xml_node_limit"
+    },
+    {
+      "archiveSha256": "sha256:dd28f8475b51b7181cf68b3f32339f669ced3f0c43f21a3b990d6f5c55cbdb7f",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_limit_exceeded"
+      },
+      "id": "xml_attribute_limit"
+    },
+    {
+      "archiveSha256": "sha256:93da67a5511553f704cffdf2a9cffd5c3f4207088da515ab654dc52b83cb1dbd",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_limit_exceeded"
+      },
+      "id": "xml_text_codepoint_limit"
+    },
+    {
+      "archiveSha256": "sha256:74ca709b1a5c223bc447776a67e98eebc18b8bd74c02a5da565012ea370a12f8",
+      "expected": {
+        "status": "quarantined",
+        "code": "archive_limit_exceeded"
+      },
+      "id": "xml_declared_size_limit"
+    },
+    {
+      "archiveSha256": "sha256:3b4e5261ffc263b5548f89091daf66fc9e8309ac005305c2a3a2eca6317d193a",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_limit_exceeded"
+      },
+      "id": "xml_empty"
+    },
+    {
+      "archiveSha256": "sha256:fa5e6b93fb3fdef84dcd377a8fe12b7976d8f2b2bcce39bd489de4ce7ec3c6ad",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_invalid"
+      },
+      "id": "xml_invalid_utf8"
+    },
+    {
+      "archiveSha256": "sha256:d03d38b4fbad29c0768107b9b47137e1fc655a7f0e234a9f74d39cafec0f5e31",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_invalid"
+      },
+      "id": "xml_utf16_encoding"
+    },
+    {
+      "archiveSha256": "sha256:5254b2e2c543dcac35ed78336d2f35ec72a9d24b38b84cc0c6a06f712e5181dd",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_invalid"
+      },
+      "id": "xml_non_utf8_declaration"
+    },
+    {
+      "archiveSha256": "sha256:3cbafaf41dd81f934287784ba197fbf04afeee118f05173e4bad52b2d22e7b7e",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_invalid"
+      },
+      "id": "xml_extra_namespace_declaration"
+    },
+    {
+      "archiveSha256": "sha256:e18457a7ca3f6d6b02da003b7aa22b0833a1b9d575dd7d4f643fc7dd38361989",
+      "expected": {
+        "status": "quarantined",
+        "code": "xml_invalid"
+      },
+      "id": "xml_prefixed_namespace"
+    },
+    {
+      "archiveSha256": "sha256:b90ca021d9788c323acfb64e3222b44deb02c3cd6365a8e58ff34db070956eba",
+      "expected": {
+        "status": "quarantined",
+        "code": "taxonomy_not_allowed"
+      },
+      "id": "xml_namespace_not_allowed"
+    },
+    {
+      "archiveSha256": "sha256:0c369e4ded0eaa926c3b4d992f30797887ebf65bd5476ba265eea77d803e5352",
+      "expected": {
+        "status": "quarantined",
+        "code": "taxonomy_not_allowed"
+      },
+      "id": "xml_taxonomy_not_allowed"
+    },
+    {
+      "archiveSha256": "sha256:bf0bd7cb87317bd17c3c08e6d331bf79e350ca86090ba4c15f35a299f25b6424",
+      "expected": {
+        "status": "quarantined",
+        "code": "taxonomy_not_allowed"
+      },
+      "id": "xml_concept_not_allowed"
+    },
+    {
+      "archiveSha256": "sha256:651b762c148f86d829a1511c311b9f34da759ec81d6873693b6ed313f5c6ceb0",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_ambiguous"
+      },
+      "id": "xml_duplicate_concept"
+    },
+    {
+      "archiveSha256": "sha256:2e4ef43c0396e5280cb4abe9e782768151283e2b0709e65202f80271880429f4",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "xml_reversed_concept_order"
+    },
+    {
+      "archiveSha256": "sha256:90a3a4c0d186e4c1b37a6b6d95184dc1fb46a8040536633c9cf85dba413e1790",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_decimal_exponent"
+    },
+    {
+      "archiveSha256": "sha256:5cf520a7ffde42542b1f40f40fd3cc7cd12608a5f6224ea54dd2f9cf58b8fb21",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_decimal_plus_sign"
+    },
+    {
+      "archiveSha256": "sha256:98a5ba91ef2917813c4508de339829040c636b87c415c3e5fec031deb852c039",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_decimal_leading_zero"
+    },
+    {
+      "archiveSha256": "sha256:d515b26e10663ed897ea6ae4f58a174f495cff80f9958e08a34413b93dddf3d0",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_decimal_integer_precision"
+    },
+    {
+      "archiveSha256": "sha256:dcaf85673a41e53ebea59cd4c4dbb09742e0097acf602aaf7174617e5b38ef2d",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_decimal_scale"
+    },
+    {
+      "archiveSha256": "sha256:b40140eb1e656266fb09dccec90287da48d671be15a758e8d318c636c3bfc2e6",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_invalid_date"
+    },
+    {
+      "archiveSha256": "sha256:6e93faf6dfb7301e248ba53f7fde09ca2f85a852506f4eed73693ad645c7ad3e",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_period_reversed"
+    },
+    {
+      "archiveSha256": "sha256:a75d4eabccbcf78266ae34aa8a73d665af2bf38c8bf563589b3f498c0b8f3000",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_unit_not_allowed"
+    },
+    {
+      "archiveSha256": "sha256:e67d6af2ff3a447bda372a3bab5d1db0b30ed37c133e7cc7b00b4487e4439ff1",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_dimensions_not_empty"
+    },
+    {
+      "archiveSha256": "sha256:2f183cb3850adabe1b0fdf285b4141075c016e5c3c5e9deaee8104c553835efe",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_missing"
+    },
+    {
+      "archiveSha256": "sha256:14e152c32c3d4800c9f37adeb570b07eee490bf23a1ba7a55163faa93a91d937",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_extra"
+    },
+    {
+      "archiveSha256": "sha256:d4fd4600e24140ad78f945b802ffcb644a2c3472835f37d5ccadbddbce1c1c2c",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_child_element"
+    },
+    {
+      "archiveSha256": "sha256:f2bf1e7b1f39e599f7662b03baee1eae6ec4c8595135bd14d36d15881ab7530b",
+      "expected": {
+        "status": "quarantined",
+        "code": "fact_invalid"
+      },
+      "id": "fact_extra_attribute"
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "synthetic": true
+}

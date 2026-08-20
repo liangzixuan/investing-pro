@@ -1,0 +1,122 @@
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+import { buildParserSecurityCases } from "./test-archive-builder";
+
+const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const REPOSITORY_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const WORKER_PATH = fileURLToPath(
+  new URL("../worker/parser.py", import.meta.url),
+);
+const TAXONOMY_PATH = fileURLToPath(
+  new URL("../worker/taxonomy-v1.json", import.meta.url),
+);
+const CASES_PATH = fileURLToPath(
+  new URL(
+    "../../../fixtures/synthetic/filing-parser/v1/cases.json",
+    import.meta.url,
+  ),
+);
+
+const PYTHON_HARNESS = String.raw`
+import base64
+import importlib.util
+import json
+import sys
+
+spec = importlib.util.spec_from_file_location("filing_parser_worker", sys.argv[1])
+if spec is None or spec.loader is None:
+    raise RuntimeError("worker import failed")
+worker = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(worker)
+worker.TAXONOMY_PATH = sys.argv[2]
+
+observed = []
+for case in json.load(sys.stdin):
+    archive = base64.b64decode(case["archive"], validate=True)
+    result = worker.parse_archive_bytes(archive)
+    observed.append({
+        "caseId": case["caseId"],
+        "code": result.get("code"),
+        "factCount": len(result["facts"]),
+        "sourceSha256": result["sourceSha256"],
+        "status": result["status"],
+    })
+sys.stdout.write(json.dumps(observed, ensure_ascii=True, separators=(",", ":"), sort_keys=True))
+`;
+
+describe("Cycle 2a filing parser worker", () => {
+  it("classifies the complete deterministic adversarial corpus in one isolated invocation", () => {
+    const cases = buildParserSecurityCases();
+    const input = cases.map(({ archive, id }) => ({
+      archive: Buffer.from(archive).toString("base64"),
+      caseId: id,
+    }));
+
+    const run = spawnSync(
+      process.env.PYTHON ?? "python",
+      ["-I", "-B", "-c", PYTHON_HARNESS, WORKER_PATH, TAXONOMY_PATH],
+      {
+        encoding: "utf8",
+        input: JSON.stringify(input),
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: 30_000,
+        windowsHide: true,
+      },
+    );
+
+    expect(run.error).toBeUndefined();
+    expect(run.signal).toBeNull();
+    expect(run.status).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(JSON.parse(run.stdout) as unknown).toEqual(
+      cases.map(({ archive, expected, id }) => ({
+        caseId: id,
+        code: expected.status === "quarantined" ? expected.code : null,
+        factCount: expected.status === "accepted" ? 2 : 0,
+        sourceSha256: sha256(archive),
+        status: expected.status,
+      })),
+    );
+  });
+
+  it("binds the source-controlled case ledger to every generated archive byte", () => {
+    const ledger = JSON.parse(readFileSync(CASES_PATH, "utf8")) as unknown;
+    expect(ledger).toEqual({
+      cases: buildParserSecurityCases().map(({ archive, expected, id }) => ({
+        archiveSha256: sha256(archive),
+        expected,
+        id,
+      })),
+      schemaVersion: "1.0.0",
+      synthetic: true,
+    });
+  });
+
+  it("keeps the worker zero-install, non-listening, and pinned to its closed files", () => {
+    const dockerfile = readFileSync(
+      `${PACKAGE_ROOT}/worker/Dockerfile`,
+      "utf8",
+    );
+    expect(dockerfile).toContain(
+      "FROM docker.io/library/python:3.12.13-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2",
+    );
+    expect(dockerfile).toContain("WORKDIR /input\nWORKDIR /worker");
+    expect(dockerfile).toContain("USER 65532:65532");
+    expect(dockerfile).toContain(
+      'ENTRYPOINT ["python", "-I", "-B", "/worker/parser.py"]',
+    );
+    expect(dockerfile).not.toMatch(/^(?:ADD|CMD|EXPOSE|HEALTHCHECK|RUN)\b/mu);
+    expect(
+      readFileSync(`${REPOSITORY_ROOT}/pnpm-workspace.yaml`, "utf8"),
+    ).toContain("- packages/*");
+  });
+});
+
+function sha256(value: Uint8Array): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}

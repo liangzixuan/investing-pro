@@ -1,0 +1,7 @@
+{
+  "concepts": ["net_income", "revenue"],
+  "namespace": "urn:research-cockpit:synthetic:filing:v1",
+  "schemaVersion": "1.0.0",
+  "taxonomyVersion": "rc-synthetic-taxonomy-1.0.0",
+  "units": ["USD"]
+}

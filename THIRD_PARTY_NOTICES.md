@@ -19,3 +19,17 @@ Next.js browser-compatibility toolchain. Project attribution:
 [browserslist/caniuse-lite](https://github.com/browserslist/caniuse-lite).
 
 No third-party financial market data, competitor content, images, fonts, or model weights are included.
+
+## CI acceptance infrastructure
+
+Cycle 2a uses the Docker Official Image
+`python:3.12.13-slim-bookworm` only in its isolated synthetic parser acceptance
+job. The exact OCI index and `linux/amd64` child-manifest digests are recorded in
+`packages/filing-parser/acceptance/python-image.json`. CPython 3.12.13 uses the
+Python Software Foundation License Version 2:
+<https://docs.python.org/3.12/license.html>.
+
+This notice is not a complete license inventory for the Debian Bookworm
+packages contained in the image and is not production-image approval. Complete
+image package/license inventory, redistribution review, counsel/procurement
+approval, vulnerability admission, and production use remain pending.
