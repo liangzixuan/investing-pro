@@ -26,3 +26,17 @@ export {
   type FilingParserSigner,
   type SignedFilingParserResult,
 } from "./parser-boundary";
+
+export {
+  FILING_CORPUS_ADMISSION_CHECKS,
+  FILING_CORPUS_ADMISSION_CLAIM,
+  FILING_CORPUS_ADMISSION_COUNT,
+  FILING_CORPUS_ADMISSION_FAILURE_CODES,
+  FILING_CORPUS_ADMISSION_NOT_PROVEN,
+  FILING_CORPUS_ADMISSION_SCHEMA_VERSION,
+  FilingCorpusAdmissionError,
+  verifyFilingCorpusAdmission,
+  type FilingCorpusAdmissionFailureCode,
+  type FilingCorpusAdmissionInput,
+  type FilingCorpusAdmissionRecord,
+} from "./corpus-admission";

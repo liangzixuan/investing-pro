@@ -1,4 +1,4 @@
-# Sprint 0 through bounded live Cycle 1b-b14, Cycle 1c, and Cycle 2a threat model
+# Sprint 0 through Cycle 2a and Phase-A Cycle 2b threat model
 
 ## Current trust boundaries
 
@@ -40,6 +40,27 @@ network, secret, signing key, tenant, database, application, or arbitrary
 plugin context. Its exact dedicated Linux run and independent offline review
 passed for 103 synthetic cases; this does not establish a production container
 host, general parser, external input, or real-filing boundary.
+
+Cycle 2b Phase A adds only a pure metadata-admission verifier. It has no real
+configuration, external candidate inventory, approval, authority key, raw
+filing, fetch, parser execution, workflow, evidence artifact, or application
+composition. The exact 34-file/807-test local source gate passes; CI is pending.
+The future protocol accepts exact
+bytes and returns only a closed schema/claim/corpus/version/evaluation identity,
+aggregate input hashes, count, validity, and an admitted status; whole-input
+failures are value-free. All document bytes are syntactically untrusted. The
+authority/revocation registry and current-time `evaluatedAt` become trusted
+out-of-band inputs only after separate human review; Phase A proves neither
+clock authenticity nor revocation freshness. It is not a new running trust
+boundary, and Cycle 2b remains blocked on exact external metadata, distinct
+rights/steward signatures, and human key-authority review.
+
+Both signed approvals bind `authorityKeysSha256`, but an admitted result proves
+only internal consistency under the supplied registry. A human/host must match
+that exact digest to the reviewed out-of-band anchor; the verifier does not
+make an authority, counsel, or steward identity decision. It also verifies only
+signed timestamp/hash consistency. Absence of earlier parser or adjudication
+results is externally attested chronology, not a machine-proven property.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -538,10 +559,32 @@ load/SLOs, or real-data/production admission. The full ordered boundary is in
 anchors are in the
 [Cycle 2a evidence note](./FILING_PARSER_ISOLATION_EVIDENCE.md).
 
+Cycle 2b's source protocol does not establish its target claim. A future
+machine-valid approval would prove only that supplied bytes verify under a
+supplied key. It would not establish legal-opinion validity, authenticate
+counsel or SEC, prove revocation freshness, prove that declared payload bytes
+exist or match their hashes, or establish representativeness outside the exact
+approved selection plan. Phase A also proves no raw-payload custody/retention/
+deletion, EDGAR fetch/DNS/TLS/SSRF/rate control, malware safety, ten-fact parser
+correctness, adjudicated ground truth or 2,000 assertions, quality or zero
+silent failures, independent dual parsing, general XBRL/iXBRL, correction
+lineage, production keys/queues/load, database/API/web composition, B15/V15,
+real-data admission, or production readiness. The exact boundary is in
+[ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md) and
+the [Cycle 2b exit matrix](./CYCLE_2B_EXIT_MATRIX.md).
+
+The SEC's public reuse statement and automated-access rate notice are context,
+not approval or security controls. They do not replace repository-required
+counsel/procurement review, source authentication, external approvals, or
+fetch-control implementation.
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
-2. **Filing ingestion:** run one-shot non-root parser workers with no unnecessary egress, read-only filesystems, CPU/memory/time limits, archive/XML bomb defenses, allowlisted taxonomy/plugins, quarantine, replay, and signed provenance.
+2. **Filing ingestion:** retain Cycle 2a's one-shot isolation controls; before
+   any real corpus use, independently review the exact candidate metadata,
+   rights/steward approvals and authority keys, then prove raw-byte identity,
+   custody/retention, parser quality, conflict quarantine, and provenance.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

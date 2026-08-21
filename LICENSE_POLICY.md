@@ -35,3 +35,36 @@ remain pending. The image is permitted only as digest-pinned, synthetic,
 CI-acceptance infrastructure for the bounded Cycle 2a isolation gate. It is
 not added to the production dependency allowlist and creates no blanket license
 exception.
+
+## Cycle 2b Phase-A content-admission boundary
+
+Phase A implements only a verifier protocol for a future fixed public-filing
+candidate manifest. It adds no real filing metadata, raw payload, dataset,
+rights approval, steward approval, authority-key configuration, or content
+exception. The exact local source gate, including all 86 production-license
+checks, passes; CI is pending, and Cycle 2b remains blocked.
+
+Before any external candidate manifest can be admitted, this policy still
+requires the exact inventory and content hashes, approved use and retention
+class, recorded owner, renewal/review date, replacement plan, separate
+rights-authority and data-steward signatures, and human review of the signing
+authority. A machine-valid signature proves only binding to the supplied key;
+it does not authenticate counsel, establish legal validity, or prove revocation
+freshness.
+
+Both future approval payloads must bind the exact `authorityKeysSha256` of the
+supplied validity/revocation registry. A human/host must compare that digest to
+the separately reviewed out-of-band anchor. `status: "admitted"` is only an
+internal cryptographic/schema consistency result under that registry, never a
+substitute for an authority, counsel, or steward identity decision. Signed
+timestamp/hash consistency likewise cannot prove that no earlier parser or
+adjudication result existed; that chronology requires external attestation.
+
+The [SEC Webmaster FAQ](https://www.sec.gov/about/webmaster-frequently-asked-questions)
+states that public EDGAR filing content is generally free to access and reuse.
+The SEC also publishes a
+[ten-requests-per-second automated-access limit](https://www.sec.gov/filergroup/announcements-old/new-rate-control-limits).
+Those statements are useful context, but they do not satisfy this repository's
+required counsel/procurement approval, authenticate source bytes or declared
+digests, or implement EDGAR fetch, DNS, TLS, SSRF, rate-control, custody,
+retention, or deletion controls.

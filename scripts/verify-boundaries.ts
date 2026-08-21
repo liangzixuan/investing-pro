@@ -74,6 +74,27 @@ const forbiddenApiWriteDependencies = [
   "postgres",
 ];
 const filingParserModule = "@research-cockpit/filing-parser";
+const corpusAdmissionProductionPath =
+  "packages/filing-parser/src/corpus-admission.ts";
+const forbiddenCorpusAdmissionGlobals = new Set([
+  "Bun",
+  "Deno",
+  "EventSource",
+  "Function",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "process",
+  "require",
+]);
 const forbiddenWorkerPython = [
   /^\s*(?:from|import)\s+(?:ctypes|ftplib|http|importlib|os|requests|runpy|socket|subprocess|urllib)\b/m,
   /(?:^|[^\w.])(?:__import__|compile|eval|exec)\s*\(/m,
@@ -199,6 +220,57 @@ if (
   )
 )
   throw new Error("Filing-parser relative-import containment regressed");
+if (
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import { createHash, createPublicKey, verify as verifySignature, type KeyObject } from "node:crypto";',
+  ) !== null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import { createHash, generateKeyPairSync, verify as verifySignature, type KeyObject } from "node:crypto";',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import "node:fs";',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import "fs";',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'void import("node:" + "https");',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'const parser = require("./parser-boundary");',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import "./corpus-admission-io-helper";',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import { createHash, createPublicKey, verify as verifySignature, type KeyObject } from "node:crypto"; void fetch("");',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import { createHash, createPublicKey, verify as verifySignature, type KeyObject } from "node:crypto"; void process.env;',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import { createHash, createPublicKey, verify as verifySignature, type KeyObject } from "node:crypto"; void crypto.subtle;',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    corpusAdmissionProductionPath,
+    'import { createHash, createPublicKey, verify as verifySignature, type KeyObject } from "node:crypto"; const target = "node:fs"; void import(target);',
+  ) === null ||
+  corpusAdmissionImportViolation(
+    "packages/filing-parser/src/parser-boundary.ts",
+    'import "node:fs";',
+  ) !== null
+)
+  throw new Error("Filing-corpus metadata-only import classifier regressed");
 for (const source of [
   "import importlib",
   "from runpy import run_module",
@@ -409,6 +481,12 @@ function inspectCompositionBoundary(path: string, content: string): void {
     violations.push(
       `${path}: disconnected filing-parser must not be composed into application or database code`,
     );
+  const corpusAdmissionViolation = corpusAdmissionImportViolation(
+    path,
+    content,
+  );
+  if (corpusAdmissionViolation !== null)
+    violations.push(`${path}: ${corpusAdmissionViolation}`);
   if (path.startsWith("apps/web/")) {
     for (const moduleName of forbiddenWebModuleImports) {
       if (referencesModuleSpecifier(moduleSpecifiers, moduleName))
@@ -427,6 +505,90 @@ function inspectCompositionBoundary(path: string, content: string): void {
     if (/packages[\\/]db/i.test(content))
       violations.push(`${path}: API must not reference database source paths`);
   }
+}
+
+function corpusAdmissionImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (path !== corpusAdmissionProductionPath) return null;
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (moduleSpecifiers.length !== 1 || moduleSpecifiers[0] !== "node:crypto")
+    return "metadata-only corpus admission may have only its exact node:crypto verifier import";
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  if (imports.length !== 1 || !isExactCorpusAdmissionCryptoImport(imports[0]))
+    return "metadata-only corpus admission must retain exact verifier-only node:crypto bindings";
+  let forbiddenGlobal: string | null = null;
+  let hasRuntimeDynamicImport = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      hasRuntimeDynamicImport = true;
+      return;
+    }
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenCorpusAdmissionGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (hasRuntimeDynamicImport)
+    return "metadata-only corpus admission must not use runtime dynamic imports";
+  if (forbiddenGlobal !== null)
+    return "metadata-only corpus admission must not use file, network, process, logging, dynamic-code, or signing globals";
+  return null;
+}
+
+function isExactCorpusAdmissionCryptoImport(
+  declaration: ts.ImportDeclaration | undefined,
+): boolean {
+  if (
+    declaration === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "node:crypto"
+  )
+    return false;
+  const clause = declaration.importClause;
+  if (
+    clause === undefined ||
+    clause.isTypeOnly ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings)
+  )
+    return false;
+  const actual = clause.namedBindings.elements.map((specifier) => ({
+    imported: specifier.propertyName?.text ?? specifier.name.text,
+    isTypeOnly: specifier.isTypeOnly,
+    local: specifier.name.text,
+  }));
+  return (
+    JSON.stringify(actual) ===
+    JSON.stringify([
+      { imported: "createHash", isTypeOnly: false, local: "createHash" },
+      {
+        imported: "createPublicKey",
+        isTypeOnly: false,
+        local: "createPublicKey",
+      },
+      { imported: "verify", isTypeOnly: false, local: "verifySignature" },
+      { imported: "KeyObject", isTypeOnly: true, local: "KeyObject" },
+    ])
+  );
 }
 
 function inspectFilingParserWorker(path: string, content: string): void {

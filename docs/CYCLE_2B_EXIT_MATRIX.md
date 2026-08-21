@@ -1,0 +1,103 @@
+# Cycle 2b exit matrix
+
+Scope: a metadata-only, side-effect-free protocol for admitting one exact,
+immutable, content-addressed public-filing candidate manifest after separate
+rights-authority and data-steward approvals. The decision is recorded in
+[ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md).
+
+Current status: **Phase-A verifier protocol implemented; local verification
+Pass; CI Pending. Cycle 2b is Blocked.** There is no real configuration, external
+metadata inventory, approval, workflow, run, evidence schema, artifact, or
+evidence note. The target claim
+`fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
+has not been established.
+
+| Gate                     | Required result                                                                                                                                                         | Current status                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Exact external inventory | Exactly 100 unique accessions with exact content digests and closed CIK/form/time/taxonomy/amendment metadata                                                           | Blocked — no external candidate manifest exists                                 |
+| Frozen selection         | Signed timestamp/hash consistency places the supplied selection freeze before supplied parser/adjudication results; external attestation establishes no earlier results | Blocked — no externally reviewed plan or chronology attestation exists          |
+| Frozen adjudication      | The adjudication protocol is hash-bound before measurement                                                                                                              | Blocked — no externally reviewed protocol exists                                |
+| Rights approval          | A distinct Ed25519 `rights_authority` approval binds the exact manifest, plans, purpose, retention class, and `authorityKeysSha256`                                     | Blocked — no rights approval exists                                             |
+| Steward approval         | A distinct Ed25519 `data_steward` approval binds the same exact inputs and `authorityKeysSha256`                                                                        | Blocked — no steward approval exists                                            |
+| Key authority and time   | Human review authenticates the out-of-band authority/revocation registry; trusted out-of-band `evaluatedAt` supplies current time                                       | Blocked — no real authority configuration, clock review, or human review exists |
+| Verifier protocol        | Exact canonical parsing, closed schemas, atomic failure, signature/scope/expiry checks, replay, and mutation rejection exist in source                                  | Pass — locally verified                                                         |
+| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                                                 | Pass — 34 files / 807 tests; all builds and 86 production-license checks        |
+| Regression CI            | The same frozen source gate passes on the reviewed CI matrix                                                                                                            | Pending                                                                         |
+| Dedicated evidence       | A separately authorized success-only workflow and evidence domain bind the exact commit, inputs, source hashes, checks, and nonclaims                                   | Not created in Phase A                                                          |
+| Independent review       | Original external inputs, authenticated logs, retained artifact, and exact-commit offline review independently agree                                                    | Not performed                                                                   |
+| Full Cycle 2 quality     | Real payload bytes, ten normalized facts, dual validation, 2,000 adjudicated assertions, frozen quality thresholds, and zero silent critical failures pass              | Blocked; outside Cycle 2b                                                       |
+| Production admission     | External fetch/security, payload custody/retention, production keys/host/queues, composition, load, and real-data controls pass                                         | Blocked                                                                         |
+
+## Target claim and fixed checks
+
+The sole bounded target claim is
+`fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`.
+It is not a Phase-A result.
+
+The exact ordered checks for a future exit are:
+
+1. `exact_canonical_candidate_manifest_and_duplicate_key_rejection`
+2. `fixed_100_accession_content_hash_inventory`
+3. `unique_accession_content_identity_and_duplicate_weighting_rejection`
+4. `closed_form_cik_timestamp_taxonomy_and_amendment_metadata`
+5. `selection_plan_frozen_before_parser_or_adjudication_results`
+6. `frozen_strata_counts_and_exclusion_reason_accounting`
+7. `adjudication_protocol_hash_bound_before_measurement`
+8. `external_approval_binds_manifest_selection_protocol_purpose_and_retention_class`
+9. `out_of_band_authority_key_and_curator_approver_separation`
+10. `wrong_key_algorithm_scope_expiry_revocation_and_signature_tamper_rejection`
+11. `immutable_versioned_manifest_and_no_update_surface`
+12. `whole_manifest_atomic_accept_or_value_free_rejection`
+13. `no_raw_filing_approval_body_or_sensitive_metadata_in_logs_or_evidence`
+14. `no_network_fetch_parser_database_api_web_or_queue_execution`
+15. `deterministic_exact_byte_replay_and_mutation_conflict`
+16. `source_history_and_cycle2a_preservation`
+
+Check 10 proves rejection only against the exact supplied revocation snapshot;
+it does not establish that the snapshot is current. `evaluatedAt` is a trusted
+out-of-band input, never approval- or candidate-supplied; Phase A does not prove
+the clock's authenticity.
+
+Check 5 proves only signed timestamp/hash consistency. The absence of prior
+parser or adjudication results is externally attested chronology. Even
+`status: "admitted"` proves only internal schema/cryptographic consistency under
+the supplied authority registry. Future exit requires a human/host to compare
+its exact digest with the reviewed out-of-band anchor; admission is never
+itself an authority, counsel, or steward identity decision.
+
+## Exact nonclaims
+
+The exact ordered nonclaims are:
+
+1. `legal_opinion_validity_counsel_identity_authentication_or_revocation_freshness`
+2. `sec_source_authenticity_or_sec_attestation`
+3. `raw_payload_presence_byte_hash_validation_ingestion_custody_retention_crypto_erasure_or_backup_deletion`
+4. `external_fetch_edgar_dns_tls_ssrf_or_rate_limits`
+5. `malware_scanning_or_zero_day_safety`
+6. `ten_fact_normalization_or_parser_correctness`
+7. `independently_adjudicated_ground_truth_or_2000_assertions`
+8. `precision_recall_quality_or_zero_silent_critical_failures`
+9. `dual_parser_independence_or_conflict_quarantine`
+10. `general_xbrl_ixbrl_taxonomy_or_plugins`
+11. `correction_supersession_lineage_execution`
+12. `production_key_kms_hsm_custody_or_rotation`
+13. `queue_scheduler_retry_exactly_once_or_load_slo`
+14. `database_api_web_composition_or_b15_v15`
+15. `representativeness_beyond_exact_approved_selection_plan`
+16. `real_data_beyond_exact_approved_manifest_or_production_admission`
+
+## Exit rule
+
+Phase A cannot exit Cycle 2b. A later review may promote the bounded claim only
+after the exact external 100-entry metadata inventory, frozen selection
+and adjudication inputs, distinct rights/steward signatures, and human
+key-authority review exist; the frozen-byte local gate passes; and a separately
+authorized success-only workflow, retained canonical artifact, authenticated
+logs, and independent exact-commit offline review all agree.
+
+Failure, cancellation, missing external authority, or synthetic approval inputs
+must produce no candidate artifact and no status promotion. Even a future
+Cycle 2b exit would not prove raw payload existence or digest equality, full
+Cycle 2 quality, source authenticity, counsel identity or legal validity,
+revocation freshness, application composition, B15/V15, real-data admission,
+or production readiness.

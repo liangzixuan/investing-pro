@@ -556,6 +556,56 @@ source-chain, and custody anchors are in the
 result is not general or production isolation evidence, and production
 admission remains blocked.
 
+## Cycle 2b — fixed public-filing candidate-manifest admission
+
+Status: **Phase-A verifier protocol implemented; local verification Pass; CI
+Pending; Cycle 2b Blocked.** There is no real configuration, external filing metadata,
+rights/steward approval, key-authority review, workflow, run, evidence schema,
+artifact, or evidence note.
+
+The exact frozen-byte local `pnpm verify` gate passes format, lint, every
+guardrail including 86 production-license checks, all project typechecks, all
+builds, and 34 test files with 807 tests: DB 18/582, API 4/49, research-state
+1/48, contracts 1/5, research-core 2/62, web 2/3, and filing-parser 6/58. This
+does not supply the missing external authority or evidence.
+
+The side-effect-free `verifyFilingCorpusAdmission` protocol accepts exact bytes
+for a future authority-key set, candidate manifest, selection plan,
+adjudication protocol, rights approval, steward approval, and binding manifest.
+It performs no file, network, parser, database, API, web, queue, or key-service
+I/O. A successful future input must contain exactly 100 unique accessions with
+content digests and closed filing metadata, freeze selection and adjudication
+before results, and carry distinct Ed25519 `rights_authority` and
+`data_steward` signatures for purpose
+`offline_parser_quality_evaluation_only`. Success exposes only a closed record
+of schema/claim/corpus/version/evaluation identifiers, aggregate input hashes,
+count, and validity; failure is atomic and value-free.
+
+Each signed approval binds the exact `authorityKeysSha256` for the supplied
+validity/revocation registry. A future admitted result proves only internal
+schema/signature consistency under those supplied bytes. Human/host review must
+compare the registry digest with the reviewed out-of-band anchor; admission is
+not itself an authority, counsel, or steward identity decision. The verifier
+checks signed timestamp/hash ordering only. Whether parser or adjudication
+results existed earlier is externally attested chronology, not machine-proven.
+
+The target claim is
+`fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`.
+Phase A does not establish it. The exact external 100-entry inventory,
+rights/steward signatures, and human key-authority review are blocking inputs.
+After those exist, the full frozen-byte local gate and a separately authorized
+success-only live/offline evidence path must still pass before any bounded
+promotion. Exact checks, nonclaims, and status are recorded in
+[ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md) and
+the [Cycle 2b exit matrix](./CYCLE_2B_EXIT_MATRIX.md).
+
+Cycle 2b sees no raw filing bytes and cannot validate declared content digests
+against payloads. It does not establish counsel identity/legal validity,
+revocation freshness, SEC authenticity, representativeness outside the exact
+future approved plan, ten-fact normalization, ground truth, 2,000 assertions,
+quality, dual-parser independence, fetch security, retention, lineage,
+composition, B15/V15, real-data admission, or production readiness.
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -568,10 +618,11 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
-Cycle 2a does not satisfy this exit gate. Real public filings, corpus rights,
-ten-fact coverage, independently adjudicated precision/recall, general
-XBRL/iXBRL and taxonomy/plugin support, correction lineage, production
-operations, and real-data admission remain pending.
+Neither Cycle 2a nor Phase-A Cycle 2b satisfies this exit gate. Real payload
+bytes and digest validation, approved corpus inputs, ten-fact coverage,
+independently adjudicated precision/recall, general XBRL/iXBRL and
+taxonomy/plugin support, correction lineage, production operations, and
+real-data admission remain pending.
 
 ## Cycle 3 — product breadth
 

@@ -331,6 +331,44 @@ database, or real-data model. See
 [Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md), with exact anchors in the
 [Cycle 2a evidence note](./FILING_PARSER_ISOLATION_EVIDENCE.md).
 
+## Cycle 2b candidate-manifest admission boundary
+
+Cycle 2b Phase A adds no canonical filing, fact, evidence-passport, rights,
+tenant, research-state, or PostgreSQL entity. It implements only a
+side-effect-free verifier protocol over exact candidate-manifest, selection,
+adjudication, authority, and approval bytes. No real configuration or approval
+exists. The exact 34-file/807-test local source gate passes, CI is pending, and
+Cycle 2b remains blocked.
+
+The future manifest contract requires exactly 100 unique content-addressed
+filing accessions with closed CIK, form, accepted/available time, taxonomy, and
+amendment metadata. Selection strata and an adjudication protocol are frozen
+before results. Distinct `rights_authority` and `data_steward` signatures bind
+the exact inputs, evaluation purpose, and retention class. Success returns only
+a closed schema/claim/corpus/version/evaluation identity, aggregate input
+hashes, count, validity, and `status: "admitted"`; it does not project candidate
+entries or approval bodies into the canonical product model.
+
+Both approval signatures include the exact `authorityKeysSha256` for the
+supplied validity/revocation registry. `status: "admitted"` proves only internal
+schema and cryptographic consistency under that syntactically untrusted input;
+it does not identify or authenticate an authority, counsel, or steward. Future
+promotion requires a human/host to compare the registry digest to the reviewed
+out-of-band anchor. Signed timestamp/hash consistency does not prove the
+absence of earlier parser or adjudication results; that chronology is
+externally attested.
+
+The target claim
+`fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
+has not been established. An external inventory, both signatures, and human
+key-authority review are absent. The protocol does not observe raw payload
+bytes, validate declared digests against files, normalize facts, execute
+lineage, or establish source authenticity, legal validity, revocation
+freshness, quality, application/database composition, B15/V15, or production
+admission. See
+[ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md) and
+the [Cycle 2b exit matrix](./CYCLE_2B_EXIT_MATRIX.md).
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

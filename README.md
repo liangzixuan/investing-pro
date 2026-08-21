@@ -56,6 +56,34 @@ the [Cycle 2a exit matrix](./docs/CYCLE_2A_EXIT_MATRIX.md), with retained proof
 recorded in the
 [Cycle 2a evidence note](./docs/FILING_PARSER_ISOLATION_EVIDENCE.md).
 
+Cycle 2b Phase A now implements only the side-effect-free
+`verifyFilingCorpusAdmission` protocol for a future fixed, content-addressed
+public-filing candidate manifest. **Local verification passes; CI is Pending;
+Cycle 2b remains Blocked.** No real configuration, external metadata, rights or steward
+approval, workflow, run, evidence schema, artifact, raw filing, fetch, parser
+execution, or application/database composition has been added. The target
+claim
+`fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
+cannot be accepted until an exact external inventory of 100 filings,
+distinct rights/steward signatures, and human key-authority review exist and
+the later local/live/offline gates pass. This is not B15/V15 and does not close
+the wider Cycle 2 quality or production gates. See
+[ADR 0029](./docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md)
+and the [Cycle 2b exit matrix](./docs/CYCLE_2B_EXIT_MATRIX.md).
+
+The exact frozen-byte local `pnpm verify` gate passes format, lint, every
+guardrail including all 86 production-license checks, all project typechecks,
+all builds, and 34 test files with 807 tests: DB 18/582, API 4/49,
+research-state 1/48, contracts 1/5, research-core 2/62, web 2/3, and
+filing-parser 6/58. This is source-stage verification only.
+
+Even a future `status: "admitted"` would prove only internal schema and
+signature consistency under the supplied authority/revocation registry. A
+human/host must compare its exact digest with the reviewed out-of-band anchor;
+the result is not itself an authority, counsel, or steward identity decision.
+The verifier can compare signed timestamps and hashes, but absence of earlier
+parser or adjudication results remains externally attested chronology.
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -440,6 +468,11 @@ blocked.
   quality, general XBRL/iXBRL, production container host/key/queue/retention
   controls, malware safety, app/database composition, load/SLOs, source
   authenticity, or permission for real filings.
+- Cycle 2b Phase A implements only an unverified metadata-admission protocol.
+  It does not supply or approve a filing manifest, authenticate counsel or SEC,
+  verify raw payload presence or content digests, establish revocation
+  freshness, normalize facts, measure quality, compose an application, or
+  authorize real-data or production use.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -485,4 +518,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 2a exit matrix](./docs/CYCLE_2A_EXIT_MATRIX.md),
 [Cycle 2a evidence note](./docs/FILING_PARSER_ISOLATION_EVIDENCE.md),
 [ADR 0028](./docs/adr/0028-bounded-synthetic-filing-parser-isolation.md),
+[Cycle 2b exit matrix](./docs/CYCLE_2B_EXIT_MATRIX.md),
+[ADR 0029](./docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md),
 and [architecture decisions](./docs/adr/).
