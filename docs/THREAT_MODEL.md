@@ -1,4 +1,4 @@
-# Sprint 0 through locally verified Cycle 2e threat model
+# Sprint 0 through source-stage Cycle 2e threat model
 
 ## Current trust boundaries
 
@@ -145,9 +145,14 @@ domains. Both implementations run in one package/process and may share common
 assumptions or failures. Source implementation is complete. Local verification
 is Pass on exact frozen bytes: `corepack pnpm verify` passed all format, lint,
 guardrail, typecheck, test, and build stages with 43 test files, 911 passed plus
-2 skipped (913 total), all 11 workspace project checks, and 10 builds.
-Ubuntu/Windows CI remains Pending. Cycle 2e has no dedicated workflow, evidence
-schema, artifact, offline review, or evidence note, and
+2 skipped (913 total), all 11 workspace project checks, and 10 builds. The
+bounded source-stage claim, local gate, and two-OS CI are Pass only for exact
+source commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`; CI run `32518970387`
+passed in Ubuntu job `96886795980` and Windows job `96886796247`. Parser
+run/job `32518970423` / `96886796118`, custody run/job `32518970453` /
+`96886796256`, and PostgreSQL run/job `32518970454` / `96886796382` are
+unchanged regression health only, not Cycle 2e evidence. Cycle 2e has no
+dedicated workflow, evidence schema, artifact, offline review, or evidence note, and
 performs no network, raw parser, normalizer, custody, corpus, database, API,
 web, or queue operation. Cycle 2b and production remain Blocked; this is not
 B15/V15.

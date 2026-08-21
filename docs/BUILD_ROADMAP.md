@@ -710,12 +710,19 @@ adjudicated quality, 2,000 assertions, full Cycle 2 exit, or production use.
 
 ## Cycle 2e — bounded synthetic two-declared-validator fact comparison
 
-Status: **source implementation complete; local verification Pass; two-OS CI
-Pending; Cycle 2b and production admission Blocked.**
+Status: **bounded source-stage claim, local verification, and two-OS CI Pass
+only for exact source commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`;
+Cycle 2b and production admission Blocked.**
 
 The exact frozen bytes pass `corepack pnpm verify`: all format, lint, guardrail,
 typecheck, test, and build stages are green with 43 test files, 911 passed plus
 2 skipped (913 total), all 11 workspace project checks, and 10 builds.
+
+CI run `32518970387` passed in Ubuntu job `96886795980` and Windows job
+`96886796247`. Parser run/job `32518970423` / `96886796118`, custody run/job
+`32518970453` / `96886796256`, and PostgreSQL run/job `32518970454` /
+`96886796382` passed as unchanged regression health only; they are not Cycle 2e
+evidence.
 
 Cycle 2e isolates the next repository-controlled conflict-quarantine risk
 without pretending that two modules are two independent parsers. A separate

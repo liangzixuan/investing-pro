@@ -1,7 +1,8 @@
 # ADR 0032: bounded synthetic two-declared-validator fact comparison
 
-Status: source protocol implementation complete; local verification Pass;
-two-OS CI Pending; Cycle 2b and production admission Blocked.
+Status: bounded source-stage claim, local verification, and two-OS CI Pass only
+for exact source commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`; Cycle 2b
+and production admission Blocked.
 
 ## Context
 
@@ -79,8 +80,12 @@ evidence schema, evidence artifact, retained log package, offline review, or
 evidence note. Local verification is Pass on exact frozen bytes: `corepack pnpm
 verify` passed all format, lint, guardrail, typecheck, test, and build stages
 with 43 test files, 911 passed plus 2 skipped (913 total), all 11 workspace
-project checks, and 10 builds. CI remains Pending until the existing
-Ubuntu/Windows matrix passes those exact bytes.
+project checks, and 10 builds. CI run `32518970387` passed in Ubuntu job
+`96886795980` and Windows job `96886796247` on exact source commit
+`60b92aa527435904776144f5e2d5a1a3ab61e67e`. Parser run/job `32518970423` /
+`96886796118`, custody run/job `32518970453` / `96886796256`, and PostgreSQL
+run/job `32518970454` / `96886796382` are unchanged regression health only,
+not Cycle 2e evidence.
 
 The canonical Cycle 2a and Cycle 2c evidence records, schemas, checks,
 nonclaims, source sets, notes, and artifacts remain byte-exact. Their current

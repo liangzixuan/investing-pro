@@ -6,8 +6,10 @@ same-schema ten-fact normalization payloads and agree only on byte-exact full
 payload equality. The decision is recorded in
 [ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md).
 
-Current status: **source implementation complete; local verification Pass;
-two-OS CI Pending. Cycle 2b and production admission remain Blocked.**
+Current status: **bounded source-stage claim, local verification, and two-OS CI
+Pass only for exact source commit
+`60b92aa527435904776144f5e2d5a1a3ab61e67e`. Cycle 2b and production admission
+remain Blocked.**
 There is no real filing, external configuration, dedicated Cycle 2e workflow,
 evidence schema, artifact, offline evidence review, or evidence note.
 
@@ -19,7 +21,7 @@ evidence schema, artifact, offline evidence review, or evidence note.
 | Exact agreement      | Complete canonical normalized-payload bytes match exactly; digest/subset/cardinality equality is insufficient          | Implemented; Local Pass |
 | Conflict quarantine  | Invalid or differing input yields only empty, value-free aggregate quarantine with no preferred or repaired result     | Implemented; Local Pass |
 | Local integration    | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                | Pass                    |
-| Two-OS CI            | The same frozen source gate passes on Ubuntu and Windows                                                               | Pending                 |
+| Two-OS CI            | The same frozen source gate passes on Ubuntu and Windows                                                               | Pass                    |
 | Dedicated evidence   | Separate workflow/schema/artifact/offline review                                                                       | Not created             |
 | Real independence    | Different parser, codebase, process, host, operator, key, and failure domain are independently established             | Not proven; outside 2e  |
 | Cycle 2b authority   | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                     | Blocked; outside 2e     |
@@ -29,6 +31,12 @@ evidence schema, artifact, offline evidence review, or evidence note.
 The exact frozen bytes pass `corepack pnpm verify`: all format, lint, guardrail,
 typecheck, test, and build stages are green with 43 test files, 911 passed plus
 2 skipped (913 total), all 11 workspace project checks, and 10 builds.
+
+CI run `32518970387` passed in Ubuntu job `96886795980` and Windows job
+`96886796247`. Parser run/job `32518970423` / `96886796118`, custody run/job
+`32518970453` / `96886796256`, and PostgreSQL run/job `32518970454` /
+`96886796382` passed as unchanged regression health only; they are not Cycle 2e
+evidence.
 
 The fixed declarations are role A
 `declared-validator-a` / `synthetic-filing-fact-validator-a` / `1.0.0` /
@@ -99,10 +107,10 @@ verifiers accept Cycle 2e only as the exact atomic 28-path transition from
 `e0ee2e74eac6164487cc09d12b6efab5fd5f8cb5`; no Cycle 2e result enters either
 record.
 
-The exact frozen-byte local gate is Pass. Cycle 2e may be marked source-stage
-Pass only when Ubuntu/Windows CI agrees. Failure, cancellation, any
-omitted/extra or deleted transition path, a partial package tree,
-non-value-free quarantine, silent repair, or any real-data input prevents
-promotion. Such a future source-stage Pass would not prove true validator
-independence or authenticity, unblock Cycle 2b, establish full Cycle 2 quality,
-create B15/V15, or authorize production use.
+The exact frozen-byte local and two-OS CI gates are Pass only for source commit
+`60b92aa527435904776144f5e2d5a1a3ab61e67e`. Failure, cancellation, any
+omitted/extra or deleted transition path, a partial package tree, non-value-free
+quarantine, silent repair, or any real-data input prevents promotion. This
+source-stage Pass does not prove true validator independence or authenticity,
+unblock Cycle 2b, establish full Cycle 2 quality, create B15/V15, or authorize
+production use.

@@ -9,9 +9,8 @@ query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
 metadata verifier, reviewed bounded Cycle 2c synthetic payload custody,
-source-stage Cycle 2d synthetic ten-fact normalization/lineage, and locally
-verified Cycle 2e two-declared-validator fact comparison with CI pending;
-synthetic data only.
+source-stage Cycle 2d synthetic ten-fact normalization/lineage, and source-stage
+Cycle 2e two-declared-validator fact comparison; synthetic data only.
 
 ## Identity
 
@@ -483,10 +482,16 @@ parser, codebase, process, host, operator, key, or failure-domain independence,
 authenticity, or digest-to-executable correspondence. Local verification is
 Pass on exact frozen bytes: `corepack pnpm verify` passed all format, lint,
 guardrail, typecheck, test, and build stages with 43 test files, 911 passed plus
-2 skipped (913 total), all 11 workspace project checks, and 10 builds. Two-OS
-CI remains Pending. Cycle 2e has no dedicated workflow, evidence schema,
-artifact, offline review, or evidence note; leaves Cycle 2b and production
-Blocked; creates no B15/V15 composition; and admits no real data. See
+2 skipped (913 total), all 11 workspace project checks, and 10 builds. The
+bounded source-stage claim, local gate, and two-OS CI are Pass only for exact
+source commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`; CI run `32518970387`
+passed in Ubuntu job `96886795980` and Windows job `96886796247`. Parser
+run/job `32518970423` / `96886796118`, custody run/job `32518970453` /
+`96886796256`, and PostgreSQL run/job `32518970454` / `96886796382` are
+unchanged regression health only, not Cycle 2e evidence. Cycle 2e has no
+dedicated workflow, evidence schema, artifact, offline review, or evidence
+note; leaves Cycle 2b and production Blocked; creates no B15/V15 composition;
+and admits no real data. See
 [ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
 

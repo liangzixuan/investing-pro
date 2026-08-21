@@ -155,8 +155,14 @@ quarantine with no preferred report, merge, coercion, or silent repair.
 **Source implementation is complete. Local verification is Pass on the exact
 frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
 typecheck, test, and build stages with 43 test files, 911 passed plus 2 skipped
-(913 total), all 11 workspace project checks, and 10 builds. Two-OS CI remains
-Pending.** Distinct fixed roles, identifiers, versions, and implementation
+(913 total), all 11 workspace project checks, and 10 builds. The bounded
+source-stage claim, local gate, and two-OS CI are Pass only for exact source
+commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`; CI run `32518970387`
+passed in Ubuntu job `96886795980` and Windows job `96886796247`. Parser
+run/job `32518970423` / `96886796118`, custody run/job `32518970453` /
+`96886796256`, and PostgreSQL run/job `32518970454` / `96886796382` are
+unchanged regression health only, not Cycle 2e evidence.** Distinct fixed
+roles, identifiers, versions, and implementation
 digests are declarations only. They do not establish validator/parser/code,
 process, host, operator, key, or failure-domain independence or authenticity.
 Cycle 2e creates no dedicated workflow, evidence schema, artifact, offline
