@@ -15,10 +15,15 @@ offline review, and retained-artifact/log custody review. Cycle 2b remains
 Blocked on external metadata, approvals, chronology, and human key-authority
 review. Production admission remains Blocked.
 
-The frozen local `pnpm verify` gate passed format, lint, every guardrail
-including 86 production-license checks, all project typechecks and builds, and
-39 test files with 847 passed tests plus 2 POSIX-only Windows skips (849 total
-cases).
+The final successor-compatible local `pnpm verify` gate passed format, lint,
+every guardrail including 86 production-license checks, all project typechecks
+and builds, and 39 test files with 848 passed tests plus 2 POSIX-only Windows
+skips (850 total cases; filing-parser: 64 passed). The post-live custody
+reviewer accepts only the exact legacy 32-path or evidence-note successor
+33-path shape; the evidence schema, checks, nonclaims, and 29-source set stay
+unchanged. This later local compatibility result does not replace or widen the
+canonical live evidence at
+`ef22c7bc10596840b8ff686b9190730956fab0c4`.
 
 ## Remote anchors
 

@@ -35,6 +35,7 @@ const FIXTURE_TREE = [
   "fixtures/synthetic/filing-payload-custody/v1/cases.json",
   "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
 ] as const;
+const EVIDENCE_NOTE_PATH = "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md" as const;
 const DIFF_PATHS = [
   ...PACKAGE_TREE,
   ...FIXTURE_TREE,
@@ -44,6 +45,7 @@ const DIFF_PATHS = [
   "docs/BUILD_ROADMAP.md",
   "docs/CANONICAL_MODEL.md",
   "docs/CYCLE_2C_EXIT_MATRIX.md",
+  EVIDENCE_NOTE_PATH,
   "docs/THREAT_MODEL.md",
   "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
   "package.json",
@@ -64,7 +66,7 @@ afterEach(async () => {
 });
 
 describe("offline filing payload custody evidence review", () => {
-  it("permits only the exact A/M implementation and source-stage docs allowlist", () => {
+  it("permits only the exact A/M implementation and milestone docs allowlist", () => {
     for (const path of DIFF_PATHS) {
       expect(isCycle2cCommitDiffEntryAllowed("A", path)).toBe(true);
       expect(isCycle2cCommitDiffEntryAllowed("M", path)).toBe(true);
@@ -78,14 +80,28 @@ describe("offline filing payload custody evidence review", () => {
     );
   });
 
-  it("requires the complete 32-path cumulative milestone diff", () => {
+  it("accepts only the exact legacy 32-path or successor 33-path diff", () => {
     const complete = DIFF_PATHS.map((path) => ({ path, status: "A" }));
-    expect(complete).toHaveLength(32);
+    const legacy = complete.filter(
+      (entry) => entry.path !== EVIDENCE_NOTE_PATH,
+    );
+    expect(complete).toHaveLength(33);
+    expect(legacy).toHaveLength(32);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
-    for (const omitted of DIFF_PATHS) {
+    expect(isCycle2cCommitDiffSetAllowed(legacy)).toBe(true);
+    for (const omitted of DIFF_PATHS.filter(
+      (path) => path !== EVIDENCE_NOTE_PATH,
+    )) {
       expect(
         isCycle2cCommitDiffSetAllowed(
           complete.filter((entry) => entry.path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    for (const omitted of legacy) {
+      expect(
+        isCycle2cCommitDiffSetAllowed(
+          legacy.filter((entry) => entry.path !== omitted.path),
         ),
       ).toBe(false);
     }

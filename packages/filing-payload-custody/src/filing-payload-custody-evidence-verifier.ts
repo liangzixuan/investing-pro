@@ -17,6 +17,8 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/u;
 const RUN_ID = /^[1-9][0-9]{0,19}$/u;
+const CYCLE_2C_EVIDENCE_NOTE_PATH =
+  "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md" as const;
 
 const CYCLE_2C_DIFF_ALLOWLIST = new Set([
   ".github/workflows/filing-payload-custody-acceptance.yml",
@@ -25,6 +27,7 @@ const CYCLE_2C_DIFF_ALLOWLIST = new Set([
   "docs/BUILD_ROADMAP.md",
   "docs/CANONICAL_MODEL.md",
   "docs/CYCLE_2C_EXIT_MATRIX.md",
+  CYCLE_2C_EVIDENCE_NOTE_PATH,
   "docs/THREAT_MODEL.md",
   "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
   "fixtures/synthetic/filing-payload-custody/v1/cases.json",
@@ -53,6 +56,9 @@ const CYCLE_2C_DIFF_ALLOWLIST = new Set([
   "scripts/verify-filing-payload-custody-fixtures.ts",
 ]);
 const CYCLE_2C_DIFF_PATHS = Object.freeze([...CYCLE_2C_DIFF_ALLOWLIST].sort());
+const CYCLE_2C_LEGACY_DIFF_PATHS = Object.freeze(
+  CYCLE_2C_DIFF_PATHS.filter((path) => path !== CYCLE_2C_EVIDENCE_NOTE_PATH),
+);
 
 const EXPECTED_PACKAGE_TREE = [...CYCLE_2C_DIFF_ALLOWLIST]
   .filter((path) => path.startsWith("packages/filing-payload-custody/"))
@@ -238,12 +244,13 @@ export function isCycle2cCommitDiffSetAllowed(
     readonly status: string;
   }[],
 ): boolean {
+  const paths = entries.map((entry) => entry.path).sort();
   return (
-    entries.length === CYCLE_2C_DIFF_PATHS.length &&
     entries.every((entry) =>
       isCycle2cCommitDiffEntryAllowed(entry.status, entry.path),
     ) &&
-    exactList(entries.map((entry) => entry.path).sort(), CYCLE_2C_DIFF_PATHS)
+    (exactList(paths, CYCLE_2C_LEGACY_DIFF_PATHS) ||
+      exactList(paths, CYCLE_2C_DIFF_PATHS))
   );
 }
 

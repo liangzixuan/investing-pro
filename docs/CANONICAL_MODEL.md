@@ -400,13 +400,15 @@ view enters the product model. The terminal state is exactly
 `logical_key_unavailability`, not physical deletion or cryptographic erasure.
 
 The bounded synthetic claim is Pass on exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`. The exact frozen-byte local
-`pnpm verify` gate passed format, lint, every guardrail including 86
+`ef22c7bc10596840b8ff686b9190730956fab0c4`. The final successor-compatible
+local `pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test files
-with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases). Two-OS
+with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases). Two-OS
 CI run `32463955370`, dedicated Linux custody run `32463955421`, exact-commit
-offline review, and independent retained artifact/log review also passed. This
-does not alter Cycle 2b's blocked external approval/authority gate, compose with
+offline review, and independent retained artifact/log review passed on
+`ef22c7bc10596840b8ff686b9190730956fab0c4`. The later local compatibility
+result does not replace or widen that canonical live evidence. This does not
+alter Cycle 2b's blocked external approval/authority gate, compose with
 parser/API/web/database/queue paths, create B15/V15, admit real data, or
 establish production storage, KMS, retention, deletion, backup, or operational
 readiness. See

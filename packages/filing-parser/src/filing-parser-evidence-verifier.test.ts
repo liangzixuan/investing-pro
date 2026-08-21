@@ -11,6 +11,7 @@ import {
 import {
   isCycle2aDisconnectedCustodyTreeAllowed,
   isCycle2aCommitDiffEntryAllowed,
+  isCycle2aEvidenceNoteTreeAllowed,
   isCycle2aParserDomainTreeAllowed,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
@@ -22,6 +23,8 @@ const SUCCESSOR_SOURCE_PATHS = [
   "packages/filing-parser/src/corpus-admission.test.ts",
   "packages/filing-parser/src/corpus-admission.ts",
 ] as const;
+const PARSER_EVIDENCE_NOTE = "docs/FILING_PARSER_ISOLATION_EVIDENCE.md";
+const CUSTODY_EVIDENCE_NOTE = "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md";
 const CURRENT_PARSER_DOMAIN_TREE = [
   "fixtures/synthetic/filing-parser/v1/cases.json",
   "fixtures/synthetic/filing-parser/v1/manifest.json",
@@ -141,15 +144,44 @@ describe("offline filing parser evidence review", () => {
     ).toBe(false);
   });
 
+  it("accepts exact canonical, legacy, and current evidence-note trees", () => {
+    expect(isCycle2aEvidenceNoteTreeAllowed([])).toBe(true);
+    expect(isCycle2aEvidenceNoteTreeAllowed([PARSER_EVIDENCE_NOTE])).toBe(true);
+    expect(
+      isCycle2aEvidenceNoteTreeAllowed([
+        PARSER_EVIDENCE_NOTE,
+        CUSTODY_EVIDENCE_NOTE,
+      ]),
+    ).toBe(true);
+    expect(isCycle2aEvidenceNoteTreeAllowed([CUSTODY_EVIDENCE_NOTE])).toBe(
+      false,
+    );
+    expect(
+      isCycle2aEvidenceNoteTreeAllowed([
+        PARSER_EVIDENCE_NOTE,
+        PARSER_EVIDENCE_NOTE,
+        CUSTODY_EVIDENCE_NOTE,
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2aEvidenceNoteTreeAllowed([
+        PARSER_EVIDENCE_NOTE,
+        CUSTODY_EVIDENCE_NOTE,
+        "docs/unreviewed.md",
+      ]),
+    ).toBe(false);
+  });
+
   it("admits only reviewed Cycle 2c cumulative successor paths", () => {
-    const paths = [
+    const successorPaths = [
       ".github/workflows/filing-payload-custody-acceptance.yml",
       "docs/CYCLE_2C_EXIT_MATRIX.md",
+      CUSTODY_EVIDENCE_NOTE,
       "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
       "scripts/verify-filing-payload-custody-fixtures.ts",
       ...CYCLE_2C_SUCCESSOR_TREE,
     ];
-    for (const path of paths) {
+    for (const path of successorPaths) {
       expect(isCycle2aCommitDiffEntryAllowed("A", path)).toBe(true);
       expect(isCycle2aCommitDiffEntryAllowed("M", path)).toBe(true);
       expect(isCycle2aCommitDiffEntryAllowed("D", path)).toBe(false);
@@ -158,6 +190,12 @@ describe("offline filing parser evidence review", () => {
       isCycle2aCommitDiffEntryAllowed(
         "A",
         "packages/filing-payload-custody/src/unreviewed.ts",
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2aCommitDiffEntryAllowed(
+        "A",
+        `${CUSTODY_EVIDENCE_NOTE}.unreviewed`,
       ),
     ).toBe(false);
   });

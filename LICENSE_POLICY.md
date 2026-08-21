@@ -77,13 +77,15 @@ retention, or deletion controls.
 Cycle 2c adds one private workspace package with no runtime dependency and
 generates its sole 4,096-byte synthetic fixture in process. It adds no external
 content, real filing metadata or payload, corpus configuration, approval,
-vendor dataset, image, service, or license exception. The exact frozen-byte
-local `pnpm verify` gate passed all 86 production-license checks, along with
-format, lint, every guardrail, all project typechecks and builds, and 39 test
-files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
+vendor dataset, image, service, or license exception. The final
+successor-compatible local `pnpm verify` gate passed all 86 production-license
+checks, along with format, lint, every guardrail, all project typechecks and
+builds, and 39 test files with 848 passed tests plus 2 POSIX-only Windows skips
+(850 total cases).
 Two-OS CI run `32463955370`, dedicated Linux custody run `32463955421`,
 exact-commit offline review, and independent retained artifact/log review pass
-on exact commit `ef22c7bc10596840b8ff686b9190730956fab0c4`.
+on exact commit `ef22c7bc10596840b8ff686b9190730956fab0c4`. The later local
+compatibility result does not replace or widen that canonical live evidence.
 
 The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source
 validates only the returned byte shape and exact requested length, not

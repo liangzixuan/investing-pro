@@ -75,13 +75,15 @@ record is limited to observed Node `crypto.randomBytes` use and distinct
 DEK-fingerprint and nonce-hash samples in that run; it cannot establish OS
 entropy quality. No network, parser, corpus admission, database, API, web,
 queue, real configuration, external approval, or real payload enters the
-boundary. The exact frozen-byte local `pnpm verify` gate passed format, lint,
-every guardrail including 86 production-license checks, all project typechecks
-and builds, and 39 test files with 847 passed tests plus 2 POSIX-only Windows
-skips (849 total cases). Two-OS CI run `32463955370`, dedicated success-only
-Linux custody run `32463955421`, exact-commit offline review, and independent
-retained artifact/log review pass on exact commit
+boundary. The final successor-compatible local `pnpm verify` gate passed
+format, lint, every guardrail including 86 production-license checks, all
+project typechecks and builds, and 39 test files with 848 passed tests plus 2
+POSIX-only Windows skips (850 total cases). Two-OS CI run `32463955370`,
+dedicated success-only Linux custody run `32463955421`, exact-commit offline
+review, and independent retained artifact/log review pass on exact commit
 `ef22c7bc10596840b8ff686b9190730956fab0c4`.
+The later local compatibility result does not replace or widen that canonical
+live evidence.
 
 The trusted host clock is part of the TCB. At the half-open expiry boundary the
 implementation forgets the key, records terminal logical unavailability, and

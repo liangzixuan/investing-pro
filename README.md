@@ -101,13 +101,14 @@ length, not randomness or uniqueness. The dedicated Linux record is
 limited to observed Node `crypto.randomBytes` use and distinct DEK-fingerprint
 and nonce-hash samples in that run; it cannot establish OS entropy quality.
 **The bounded synthetic claim is Pass on exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`.** The exact frozen-byte local
-`pnpm verify` gate passed format, lint, every guardrail including 86
+`ef22c7bc10596840b8ff686b9190730956fab0c4`.** The final successor-compatible
+local `pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test
-files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
+files with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases).
 Two-OS CI run `32463955370`, dedicated Linux custody run `32463955421`,
 exact-commit offline review, and independent retained artifact/log review also
-passed.
+passed on `ef22c7bc10596840b8ff686b9190730956fab0c4`. The later local
+compatibility result does not replace or widen that canonical live evidence.
 It adds no real filing bytes, external configuration, network/fetch path,
 parser, corpus admission, database, API, web, queue, production KMS, or
 cryptographic-erasure claim. Cycle 2b and production admission remain Blocked;

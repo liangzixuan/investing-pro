@@ -79,12 +79,14 @@ payload fixture, external URL, fetch code, approval, key configuration, or
 ## Evidence and status rule
 
 The bounded claim is Pass only for exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`. The frozen-byte local `pnpm verify`
-gate passed format, lint, every guardrail including 86 production-license
-checks, all project typechecks and builds, and 39 test files with 847 passed
-tests plus 2 POSIX-only Windows skips (849 total cases). Two-OS CI run
-`32463955370`, dedicated Ubuntu 24.04 custody run `32463955421`, exact-commit
-offline review, and independent retained artifact/log review also passed. The
+`ef22c7bc10596840b8ff686b9190730956fab0c4`. The final successor-compatible
+local `pnpm verify` gate passed format, lint, every guardrail including 86
+production-license checks, all project typechecks and builds, and 39 test files
+with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases). This
+later local gate does not replace or widen the canonical live evidence. Two-OS
+CI run `32463955370`, dedicated Ubuntu 24.04 custody run `32463955421`,
+exact-commit offline review, and independent retained artifact/log review
+passed on `ef22c7bc10596840b8ff686b9190730956fab0c4`. The
 success-only workflow wrote one canonical filing-payload-custody evidence v1
 record, reviewed it against the exact commit and fixture chain, and uploaded
 artifact `9439965468` only after review success. Failure or cancellation retains

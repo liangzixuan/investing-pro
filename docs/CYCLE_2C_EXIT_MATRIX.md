@@ -13,6 +13,11 @@ separately Blocked on external metadata, approvals, and human key-authority
 review. No real payload, external configuration, fetch, or application
 composition exists.
 
+The final local aggregate is successor-compatibility health: 848 passed plus 2
+POSIX-only Windows skips, including 64 filing-parser passes. It does not replace
+or widen the canonical live evidence at
+`ef22c7bc10596840b8ff686b9190730956fab0c4`.
+
 The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source
 validates only the returned byte shape and exact requested length, not
 randomness or uniqueness. The dedicated Linux record is limited to
@@ -30,7 +35,7 @@ nonce-hash samples in that run; it cannot establish OS entropy quality.
 | Logical key unavailability | Expiry forgets the key, retains available/terminal audit history, then removes ciphertext; no resurrection, decrypt denial, and retry cleanup agree | Implemented; local verification Pass; never called cryptographic erasure                                |
 | Value-free boundary        | Public aggregate audit, errors, evidence, and log markers expose no payload, key ID/key, nonce, tag, internal path, or rejected value               | Implemented; local verification Pass                                                                    |
 | Isolation                  | No parser, corpus admission, fetch/network, database, API, web, queue, or real config composition is added                                          | Implemented; guardrail verification Pass                                                                |
-| Local integration          | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                             | Pass: 39 files; 847 passed + 2 POSIX-only Windows skips (849 total cases); 86 production-license checks |
+| Local integration          | Final successor-compatible format, lint, guardrails, all project typechecks/tests, and builds pass                                                  | Pass: 39 files; 848 passed + 2 POSIX-only Windows skips (850 total cases); parser 64; 86 license checks |
 | Regression CI              | The same frozen source gate passes on Ubuntu and Windows                                                                                            | Pass: run `32463955370`; jobs `96716506990` / `96716506716`                                             |
 | Dedicated Linux evidence   | One success-only canonical record binds the exact commit, fixture chain, source hashes, checks, nonclaims, and real Linux lifecycle                 | Pass: run `32463955421`; job `96716507074`; artifact `9439965468`                                       |
 | Independent review         | Original artifact/logs and an exact-commit offline review agree                                                                                     | Pass: `offline_consistent`, 29 source hashes, retained ZIP/JSON/log hashes exact                        |

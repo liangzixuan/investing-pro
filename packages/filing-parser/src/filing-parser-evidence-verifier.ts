@@ -44,6 +44,13 @@ const CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE = Object.freeze(
     "packages/filing-payload-custody/tsconfig.json",
   ].sort(),
 );
+const CYCLE_2A_LEGACY_EVIDENCE_NOTE_TREE = Object.freeze([
+  "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
+]);
+const CYCLE_2C_SUCCESSOR_EVIDENCE_NOTE_TREE = Object.freeze([
+  ...CYCLE_2A_LEGACY_EVIDENCE_NOTE_TREE,
+  "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md",
+]);
 
 const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   ".github/workflows/ci.yml",
@@ -58,6 +65,7 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "docs/CYCLE_2B_EXIT_MATRIX.md",
   "docs/CYCLE_2C_EXIT_MATRIX.md",
   "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
+  "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md",
   "docs/THREAT_MODEL.md",
   "docs/adr/0028-bounded-synthetic-filing-parser-isolation.md",
   "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
@@ -441,6 +449,23 @@ export async function verifyCycle2aCommitBoundary(
     if (!isCycle2aCommitDiffEntryAllowed(status, path)) invalidReview();
   }
 
+  const evidenceNoteTreeEntries = splitNul(
+    await git(repositoryPath, [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      revision,
+      "--",
+      ...CYCLE_2C_SUCCESSOR_EVIDENCE_NOTE_TREE,
+    ]),
+  );
+  const evidenceNotePaths = evidenceNoteTreeEntries.map((entry) => {
+    const match = /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entry);
+    return match?.[1] ?? invalidReview();
+  });
+  if (!isCycle2aEvidenceNoteTreeAllowed(evidenceNotePaths)) invalidReview();
+
   const treeEntries = splitNul(
     await git(repositoryPath, [
       "ls-tree",
@@ -487,6 +512,17 @@ export function isCycle2aCommitDiffEntryAllowed(
     (status === "A" || status === "M") &&
     path !== undefined &&
     CYCLE_2A_DIFF_ALLOWLIST.has(path)
+  );
+}
+
+/** @internal Exported only for exact historical-note regression tests. */
+export function isCycle2aEvidenceNoteTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return (
+    paths.length === 0 ||
+    exactPathList(paths, CYCLE_2A_LEGACY_EVIDENCE_NOTE_TREE) ||
+    exactPathList(paths, CYCLE_2C_SUCCESSOR_EVIDENCE_NOTE_TREE)
   );
 }
 
