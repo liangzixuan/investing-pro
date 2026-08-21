@@ -4,7 +4,10 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { filingParserEvidenceReviewStdout } from "./filing-parser-evidence-review";
+import {
+  filingParserEvidenceReviewOptionsFromArguments,
+  filingParserEvidenceReviewStdout,
+} from "./filing-parser-evidence-review";
 import { verifyFilingParserEvidenceOffline } from "./filing-parser-evidence-verifier";
 
 const temporaryDirectories: string[] = [];
@@ -19,6 +22,53 @@ afterEach(async () => {
 });
 
 describe("offline filing parser evidence review", () => {
+  it("accepts exactly one conventional CLI separator without weakening the closed argument set", () => {
+    const argumentsWithoutSeparator = [
+      "--evidence",
+      "evidence.json",
+      "--evidence-sha256",
+      HASH,
+      "--repo",
+      "repository",
+      "--repository",
+      "example/research-cockpit",
+      "--revision",
+      "b".repeat(40),
+      "--run-attempt",
+      "1",
+      "--run-id",
+      "123",
+    ];
+    const expected = {
+      evidencePath: "evidence.json",
+      expectedEvidenceSha256: HASH,
+      expectedRepository: "example/research-cockpit",
+      expectedRevision: "b".repeat(40),
+      expectedRunAttempt: 1,
+      expectedRunId: "123",
+      repositoryPath: "repository",
+    };
+
+    expect(
+      filingParserEvidenceReviewOptionsFromArguments([
+        "--",
+        ...argumentsWithoutSeparator,
+      ]),
+    ).toEqual(expected);
+    expect(
+      filingParserEvidenceReviewOptionsFromArguments(argumentsWithoutSeparator),
+    ).toEqual(expected);
+    for (const malformed of [
+      ["--", "--", ...argumentsWithoutSeparator],
+      [...argumentsWithoutSeparator, "--"],
+      ["--", ...argumentsWithoutSeparator, "--evidence", "other.json"],
+    ]) {
+      expect(() =>
+        filingParserEvidenceReviewOptionsFromArguments(malformed),
+      ).toThrow("Offline evidence review failed.");
+    }
+  });
+
   it("emits one value-free canonical success line", () => {
     expect(
       filingParserEvidenceReviewStdout({
