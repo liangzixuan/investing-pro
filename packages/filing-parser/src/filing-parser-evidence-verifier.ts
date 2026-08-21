@@ -23,10 +23,32 @@ const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission.test.ts",
   "packages/filing-parser/src/corpus-admission.ts",
 ]);
+const CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE = Object.freeze(
+  [
+    "fixtures/synthetic/filing-payload-custody/v1/cases.json",
+    "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+    "packages/filing-payload-custody/package.json",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-review.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-review.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence.ts",
+    "packages/filing-payload-custody/src/index.ts",
+    "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+    "packages/filing-payload-custody/src/payload-custody.test.ts",
+    "packages/filing-payload-custody/src/payload-custody.ts",
+    "packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
+    "packages/filing-payload-custody/src/run-filing-payload-custody-evidence-review.ts",
+    "packages/filing-payload-custody/src/test-payload-builder.ts",
+    "packages/filing-payload-custody/tsconfig.json",
+  ].sort(),
+);
 
 const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   ".github/workflows/ci.yml",
   ".github/workflows/filing-parser-acceptance.yml",
+  ".github/workflows/filing-payload-custody-acceptance.yml",
   "LICENSE_POLICY.md",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
@@ -34,10 +56,12 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "docs/CANONICAL_MODEL.md",
   "docs/CYCLE_2A_EXIT_MATRIX.md",
   "docs/CYCLE_2B_EXIT_MATRIX.md",
+  "docs/CYCLE_2C_EXIT_MATRIX.md",
   "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
   "docs/THREAT_MODEL.md",
   "docs/adr/0028-bounded-synthetic-filing-parser-isolation.md",
   "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+  "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
   "fixtures/synthetic/filing-parser/v1/cases.json",
   "fixtures/synthetic/filing-parser/v1/manifest.json",
   "package.json",
@@ -62,7 +86,9 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "pnpm-lock.yaml",
   "scripts/verify-boundaries.ts",
   "scripts/verify-filing-parser-fixtures.ts",
+  "scripts/verify-filing-payload-custody-fixtures.ts",
   ...CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS,
+  ...CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE,
 ]);
 
 const LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE = Object.freeze(
@@ -432,6 +458,24 @@ export async function verifyCycle2aCommitBoundary(
     return match?.[1] ?? invalidReview();
   });
   if (!isCycle2aParserDomainTreeAllowed(paths)) invalidReview();
+
+  const custodyTreeEntries = splitNul(
+    await git(repositoryPath, [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      revision,
+      "--",
+      "packages/filing-payload-custody",
+      "fixtures/synthetic/filing-payload-custody/v1",
+    ]),
+  );
+  const custodyPaths = custodyTreeEntries.map((entry) => {
+    const match = /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entry);
+    return match?.[1] ?? invalidReview();
+  });
+  if (!isCycle2aDisconnectedCustodyTreeAllowed(custodyPaths)) invalidReview();
 }
 
 /** @internal Exported only for exact commit-boundary regression tests. */
@@ -453,6 +497,16 @@ export function isCycle2aParserDomainTreeAllowed(
   return (
     exactPathList(paths, LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE) ||
     exactPathList(paths, SUCCESSOR_COMPATIBLE_CYCLE_2A_PARSER_DOMAIN_TREE)
+  );
+}
+
+/** @internal Exported only for exact disconnected-successor regression tests. */
+export function isCycle2aDisconnectedCustodyTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return (
+    paths.length === 0 ||
+    exactPathList(paths, CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE)
   );
 }
 

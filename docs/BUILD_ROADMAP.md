@@ -611,6 +611,50 @@ future approved plan, ten-fact normalization, ground truth, 2,000 assertions,
 quality, dual-parser independence, fetch security, retention, lineage,
 composition, B15/V15, real-data admission, or production readiness.
 
+## Cycle 2c — bounded synthetic filing-payload custody
+
+Status: **source protocol implemented and local integration Pass; two-OS CI,
+dedicated Linux evidence, artifact custody, and independent review Pending;
+Cycle 2b and production admission Blocked.** The exact frozen-byte local
+`pnpm verify` gate passed format, lint, every guardrail including 86
+production-license checks, all project typechecks and builds, and 39 test
+files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+No real filing bytes, external configuration, approval, fetch surface, Cycle
+2b workflow/evidence, or evidence note is added.
+
+Cycle 2c isolates one actionable technical risk without bypassing Cycle 2b. A
+zero-dependency package accepts exactly one generated 4,096-byte synthetic
+fixture under a 1 MiB protocol limit, takes an owned snapshot, recomputes the
+fixed SHA-256, requests a fresh AES-256-GCM key and nonce from an injected
+entropy provider, and separates the injected key store from ciphertext and the
+closed audit-file domain. The provider is an out-of-band trusted CSPRNG TCB;
+source validates only returned byte shape and exact requested length, not
+randomness or uniqueness. A future dedicated Linux record is limited to
+observed Node `crypto.randomBytes` use and distinct DEK-fingerprint and
+nonce-hash samples in that run; it cannot establish OS entropy quality. Only
+public aggregate audit/error/evidence/log surfaces are value-free. A trusted
+host clock applies the fixed 24-hour half-open retention boundary. Expiry
+forgets the key, retains the available/terminal audit history, then removes
+ciphertext; retry cleanup and repeated expiry remain idempotent. The terminal
+state is only `logical_key_unavailability`, never cryptographic erasure.
+
+The sole bounded target claim is
+`bounded_synthetic_filing_payload_integrity_custody_and_logical_key_unavailability`.
+The local source gate has passed, but the claim remains pending until the same
+frozen bytes pass the two-OS source gate, then a separate success-only Ubuntu
+24.04 run writes one canonical source/fixture-bound record, exact-commit
+offline review passes before upload, and independent artifact/log custody
+review agrees. Failure retains no candidate artifact.
+Exact checks, nonclaims, and status are in
+[ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
+[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md).
+
+Cycle 2c has no network, parser, corpus-admission, database, API, web, queue,
+production KMS, backup, real-data, or B15/V15 composition. It does not prove
+Cycle 2b approval, SEC/source authenticity, real payload presence, physical or
+cryptographic erasure, the 100-filing corpus, parser correctness, adjudicated
+quality, 2,000 assertions, or production readiness.
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -623,8 +667,9 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
-Neither Cycle 2a nor Phase-A Cycle 2b satisfies this exit gate. Real payload
-bytes and digest validation, approved corpus inputs, ten-fact coverage,
+Neither Cycle 2a, Phase-A Cycle 2b, nor source-stage Cycle 2c satisfies this
+exit gate. Real payload bytes and digest validation, approved corpus inputs,
+ten-fact coverage,
 independently adjudicated precision/recall, general XBRL/iXBRL and
 taxonomy/plugin support, correction lineage, production operations, and
 real-data admission remain pending.

@@ -7,7 +7,8 @@ policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
 projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
-contract and reviewed bounded Cycle 2a filing-parser envelope;
+contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
+metadata verifier, and source-stage Cycle 2c synthetic payload custody;
 synthetic data only.
 
 ## Identity
@@ -370,6 +371,45 @@ freshness, quality, application/database composition, B15/V15, or production
 admission. See
 [ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md) and
 the [Cycle 2b exit matrix](./CYCLE_2B_EXIT_MATRIX.md).
+
+## Cycle 2c synthetic payload-custody boundary
+
+Cycle 2c adds no canonical filing, fact, evidence-passport, corpus-admission,
+tenant, research-state, or PostgreSQL entity. It defines one isolated generated
+fixture lifecycle: a fixed 4,096-byte synthetic payload, its SHA-256 content
+identity, a separate source-binding digest, one opaque internal payload ID, a
+fixed 24-hour retention class, and a closed versioned receipt/audit shape.
+Plaintext, ciphertext, key IDs, keys, nonces, tags, filesystem paths, and
+rejected values never enter the canonical product model.
+
+The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source
+validates only the returned byte shape and exact requested length, not
+randomness or uniqueness. A future dedicated Linux record is limited to
+observed Node `crypto.randomBytes` use and distinct DEK-fingerprint and
+nonce-hash samples in that run; it cannot establish OS entropy quality. None of
+those observations creates a canonical entropy or production-key entity.
+
+The caller's content digest is only an integrity assertion. It is not SEC or
+source provenance and cannot prove any real payload exists. Canonical AAD binds
+the schema, claim, algorithm, fixture/content/source/payload/key identities,
+byte length, creation/expiry, retention class, and fixed key/nonce/tag sizes.
+Read revalidates the authenticated record, ciphertext, and resulting plaintext
+hash. Expiry forgets the injected key, retains the closed available/terminal
+audit-domain history, and then removes ciphertext. Only the public aggregate
+view enters the product model. The terminal state is exactly
+`logical_key_unavailability`, not physical deletion or cryptographic erasure.
+
+The source protocol is implemented and the exact frozen-byte local
+`pnpm verify` gate is Pass: format, lint, every guardrail including 86
+production-license checks, all project typechecks and builds, and 39 test
+files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+Two-OS CI, dedicated Linux evidence, artifact custody, and independent review
+remain pending. It does not alter Cycle 2b's blocked external
+approval/authority gate, compose with parser/API/web/database/queue paths,
+create B15/V15, admit real data, or establish production storage, KMS,
+retention, deletion, backup, or operational readiness. See
+[ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
+[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

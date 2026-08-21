@@ -1,0 +1,12 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "status": "passed"
+      },
+      "id": "single_generated_payload_lifecycle"
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "synthetic": true
+}

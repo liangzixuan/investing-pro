@@ -90,6 +90,28 @@ the result is not itself an authority, counsel, or steward identity decision.
 The verifier can compare signed timestamps and hashes, but absence of earlier
 parser or adjudication results remains externally attested chronology.
 
+Cycle 2c source now adds a separate, zero-dependency filing-payload custody
+protocol for exactly one generated 4,096-byte synthetic fixture. It snapshots
+and recomputes the fixed content hash, requests a fresh AES-256-GCM key and
+nonce from an injected entropy provider, keeps key and payload/audit domains
+separate, enforces a trusted-clock 24-hour boundary, and ends only in
+`logical_key_unavailability`. The injected provider is an out-of-band trusted
+CSPRNG TCB; source validates only the returned byte shape and exact requested
+length, not randomness or uniqueness. A future dedicated Linux record is
+limited to observed Node `crypto.randomBytes` use and distinct DEK-fingerprint
+and nonce-hash samples in that run; it cannot establish OS entropy quality.
+**The source protocol is implemented and local integration is Pass; two-OS CI,
+dedicated Linux evidence, and independent review remain Pending.** The exact frozen-byte local
+`pnpm verify` gate passed format, lint, every guardrail including 86
+production-license checks, all project typechecks and builds, and 39 test
+files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+It adds no real filing bytes, external configuration, network/fetch path,
+parser, corpus admission, database, API, web, queue, production KMS, or
+cryptographic-erasure claim. Cycle 2b and production admission remain Blocked;
+this is not B15/V15. See
+[ADR 0030](./docs/adr/0030-bounded-synthetic-filing-payload-custody.md) and the
+[Cycle 2c exit matrix](./docs/CYCLE_2C_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -479,6 +501,11 @@ blocked.
   verify raw payload presence or content digests, establish revocation
   freshness, normalize facts, measure quality, compose an application, or
   authorize real-data or production use.
+- Cycle 2c implements only one generated synthetic payload lifecycle. It does
+  not admit a Cycle 2b manifest, prove real payload presence or SEC provenance,
+  establish production key/storage/retention/deletion controls or
+  cryptographic erasure, compose the application, satisfy parser-quality
+  gates, or authorize real-data or production use.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -526,4 +553,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0028](./docs/adr/0028-bounded-synthetic-filing-parser-isolation.md),
 [Cycle 2b exit matrix](./docs/CYCLE_2B_EXIT_MATRIX.md),
 [ADR 0029](./docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md),
+[Cycle 2c exit matrix](./docs/CYCLE_2C_EXIT_MATRIX.md),
+[ADR 0030](./docs/adr/0030-bounded-synthetic-filing-payload-custody.md),
 and [architecture decisions](./docs/adr/).

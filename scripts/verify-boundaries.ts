@@ -74,6 +74,133 @@ const forbiddenApiWriteDependencies = [
   "postgres",
 ];
 const filingParserModule = "@research-cockpit/filing-parser";
+const filingPayloadCustodyModule = "@research-cockpit/filing-payload-custody";
+const filingPayloadCustodySourcePrefix = "packages/filing-payload-custody/src/";
+const filingPayloadCustodyIndexPath = `${filingPayloadCustodySourcePrefix}index.ts`;
+const filingPayloadCustodyProductionPath = `${filingPayloadCustodySourcePrefix}payload-custody.ts`;
+const filingPayloadCustodyFixtureGuardPath =
+  "scripts/verify-filing-payload-custody-fixtures.ts";
+const filingPayloadCustodyFixtureGuardModules = [
+  "node:crypto",
+  "node:fs",
+  "node:fs/promises",
+  "node:path",
+  "node:url",
+  "../packages/filing-payload-custody/src/payload-custody",
+  "../packages/filing-payload-custody/src/test-payload-builder",
+] as const;
+const filingPayloadCustodyPublicExports = [
+  ["FILING_PAYLOAD_CUSTODY_ALGORITHM", false],
+  ["FILING_PAYLOAD_CUSTODY_CLAIM", false],
+  ["FILING_PAYLOAD_CUSTODY_ERROR_CODES", false],
+  ["FILING_PAYLOAD_CUSTODY_FIXTURE", false],
+  ["FILING_PAYLOAD_CUSTODY_LIMITS", false],
+  ["FILING_PAYLOAD_CUSTODY_RETENTION_POLICY", false],
+  ["FILING_PAYLOAD_CUSTODY_SCHEMA_VERSION", false],
+  ["FilingPayloadCustodyError", false],
+  ["createFileSystemFilingPayloadCustodyBoundary", false],
+  ["createSyntheticFilingPayloadFixture", false],
+  ["createSyntheticInMemoryFilingPayloadKeyStore", false],
+  ["FilingPayloadAuditCommand", true],
+  ["FilingPayloadAuditRecord", true],
+  ["FilingPayloadCustodyBoundary", true],
+  ["FilingPayloadCustodyClock", true],
+  ["FilingPayloadCustodyEntropy", true],
+  ["FilingPayloadCustodyErrorCode", true],
+  ["FilingPayloadCustodyOptions", true],
+  ["FilingPayloadCustodyReceipt", true],
+  ["FilingPayloadCustodyState", true],
+  ["FilingPayloadExpireCommand", true],
+  ["FilingPayloadKeyStore", true],
+  ["FilingPayloadReadCommand", true],
+  ["FilingPayloadStageCommand", true],
+] as const;
+const filingPayloadCustodyToolPaths = new Set([
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-review.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence.ts`,
+  `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-acceptance.ts`,
+  `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-evidence-review.ts`,
+  `${filingPayloadCustodySourcePrefix}test-payload-builder.ts`,
+]);
+const filingPayloadCustodyToolModules = new Map<string, readonly string[]>([
+  [
+    `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-review.ts`,
+    ["./filing-payload-custody-evidence-verifier"],
+  ],
+  [
+    `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.ts`,
+    [
+      "node:crypto",
+      "node:child_process",
+      "node:fs",
+      "node:fs/promises",
+      "./filing-payload-custody-evidence",
+    ],
+  ],
+  [
+    `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence.ts`,
+    ["node:crypto", "./payload-custody"],
+  ],
+  [
+    `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-acceptance.ts`,
+    [
+      "node:crypto",
+      "node:child_process",
+      "node:fs/promises",
+      "node:os",
+      "node:path",
+      "./filing-payload-custody-evidence",
+      "./filing-payload-custody-evidence-verifier",
+      "./payload-custody",
+      "./test-payload-builder",
+    ],
+  ],
+  [
+    `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-evidence-review.ts`,
+    ["./filing-payload-custody-evidence-review"],
+  ],
+  [
+    `${filingPayloadCustodySourcePrefix}test-payload-builder.ts`,
+    ["./payload-custody"],
+  ],
+]);
+const filingPayloadCustodyTestModules = new Set([
+  "node:crypto",
+  "node:fs",
+  "node:fs/promises",
+  "node:os",
+  "node:path",
+  "vitest",
+  "./filing-payload-custody-evidence",
+  "./filing-payload-custody-evidence-review",
+  "./filing-payload-custody-evidence-verifier",
+  "./payload-custody",
+  "./test-payload-builder",
+]);
+const forbiddenFilingPayloadCustodyGlobals = new Set([
+  "Bun",
+  "Deno",
+  "EventSource",
+  "Function",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "process",
+  "require",
+]);
+const forbiddenFilingPayloadCustodyTestGlobals = new Set(
+  forbiddenFilingPayloadCustodyGlobals,
+);
+forbiddenFilingPayloadCustodyTestGlobals.delete("process");
 const corpusAdmissionProductionPath =
   "packages/filing-parser/src/corpus-admission.ts";
 const forbiddenCorpusAdmissionGlobals = new Set([
@@ -137,6 +264,7 @@ for (const sourceRoot of sourceRoots) {
   for (const file of await walk(join(root, sourceRoot)))
     filesToInspect.add(file);
 }
+filesToInspect.add(join(root, filingPayloadCustodyFixtureGuardPath));
 for (const entry of await readdir(root, { withFileTypes: true })) {
   if (entry.isFile() && isRootBoundaryFile(entry.name))
     filesToInspect.add(join(root, entry.name));
@@ -186,6 +314,338 @@ if (
   )
 )
   throw new Error("Filing-parser composition classifier regressed");
+if (
+  !referencesModule(
+    'import { createFileSystemFilingPayloadCustodyBoundary } from "@research-cockpit/filing-payload-custody";',
+    filingPayloadCustodyModule,
+  ) ||
+  !referencesFilingPayloadCustodyPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-payload-custody/src/index",
+  ) ||
+  !referencesFilingPayloadCustodyPath(
+    filingPayloadCustodyProductionPath,
+    "./payload-custody",
+  ) ||
+  !hasFilingPayloadCustodyDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-payload-custody": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  hasFilingPayloadCustodyDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  ) ||
+  !isAllowedFilingPayloadCustodyExternalImport(
+    filingPayloadCustodyFixtureGuardPath,
+    "../packages/filing-payload-custody/src/payload-custody",
+  ) ||
+  !isAllowedFilingPayloadCustodyExternalImport(
+    filingPayloadCustodyFixtureGuardPath,
+    "../packages/filing-payload-custody/src/test-payload-builder",
+  ) ||
+  isAllowedFilingPayloadCustodyExternalImport(
+    "scripts/other.ts",
+    "../packages/filing-payload-custody/src/payload-custody",
+  ) ||
+  isAllowedFilingPayloadCustodyExternalImport(
+    filingPayloadCustodyFixtureGuardPath,
+    "../packages/filing-payload-custody/src/run-filing-payload-custody-acceptance",
+  )
+)
+  throw new Error("Filing-payload-custody composition classifier regressed");
+const validFilingPayloadCustodyFixtureGuardSource = `import { createHash } from "node:crypto";
+import { constants } from "node:fs";
+import { open } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import "../packages/filing-payload-custody/src/payload-custody";
+import "../packages/filing-payload-custody/src/test-payload-builder";
+void createHash;
+void constants;
+void open;
+void join;
+void fileURLToPath;
+process.stdout.write("");
+`;
+if (
+  filingPayloadCustodyFixtureGuardViolation(
+    validFilingPayloadCustodyFixtureGuardSource,
+  ) !== null ||
+  filingPayloadCustodyFixtureGuardViolation(
+    validFilingPayloadCustodyFixtureGuardSource.replace(
+      'import { createHash } from "node:crypto";',
+      'import { request } from "node:https";',
+    ),
+  ) === null ||
+  filingPayloadCustodyFixtureGuardViolation(
+    `${validFilingPayloadCustodyFixtureGuardSource}\nvoid fetch("");`,
+  ) === null
+)
+  throw new Error("Filing-payload-custody fixture guard classifier regressed");
+const validFilingPayloadCustodyManifest = {
+  name: filingPayloadCustodyModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+};
+if (
+  filingPayloadCustodyManifestViolation(validFilingPayloadCustodyManifest) !==
+    null ||
+  filingPayloadCustodyManifestViolation({
+    ...validFilingPayloadCustodyManifest,
+    exports: {
+      ...validFilingPayloadCustodyManifest.exports,
+      "./test": "./src/payload-custody-security.test.ts",
+    },
+  }) === null ||
+  filingPayloadCustodyManifestViolation({
+    ...validFilingPayloadCustodyManifest,
+    scripts: {
+      ...validFilingPayloadCustodyManifest.scripts,
+      test: "curl https://example.invalid",
+    },
+  }) === null
+)
+  throw new Error("Filing-payload-custody manifest classifier regressed");
+const validFilingPayloadCustodySource = `import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+} from "node:crypto";
+import type { Stats } from "node:fs";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  unlink,
+} from "node:fs/promises";
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+void createCipheriv;
+void createDecipheriv;
+void createHash;
+let metadata: Stats | undefined;
+void metadata;
+void chmod;
+void lstat;
+void mkdir;
+void mkdtemp;
+void open;
+void readdir;
+void realpath;
+void rename;
+void rm;
+void unlink;
+void basename;
+void isAbsolute;
+void join;
+void relative;
+void resolve;
+void sep;
+`;
+const validFilingPayloadCustodyIndexSource = `export {
+  FILING_PAYLOAD_CUSTODY_ALGORITHM,
+  FILING_PAYLOAD_CUSTODY_CLAIM,
+  FILING_PAYLOAD_CUSTODY_ERROR_CODES,
+  FILING_PAYLOAD_CUSTODY_FIXTURE,
+  FILING_PAYLOAD_CUSTODY_LIMITS,
+  FILING_PAYLOAD_CUSTODY_RETENTION_POLICY,
+  FILING_PAYLOAD_CUSTODY_SCHEMA_VERSION,
+  FilingPayloadCustodyError,
+  createFileSystemFilingPayloadCustodyBoundary,
+  createSyntheticFilingPayloadFixture,
+  createSyntheticInMemoryFilingPayloadKeyStore,
+  type FilingPayloadAuditCommand,
+  type FilingPayloadAuditRecord,
+  type FilingPayloadCustodyBoundary,
+  type FilingPayloadCustodyClock,
+  type FilingPayloadCustodyEntropy,
+  type FilingPayloadCustodyErrorCode,
+  type FilingPayloadCustodyOptions,
+  type FilingPayloadCustodyReceipt,
+  type FilingPayloadCustodyState,
+  type FilingPayloadExpireCommand,
+  type FilingPayloadKeyStore,
+  type FilingPayloadReadCommand,
+  type FilingPayloadStageCommand,
+} from "./payload-custody";
+`;
+if (
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    validFilingPayloadCustodySource,
+  ) !== null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    `${validFilingPayloadCustodySource}\nvoid fetch("");`,
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    `${validFilingPayloadCustodySource}\nvoid process.env;`,
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    `${validFilingPayloadCustodySource}\nvoid crypto.subtle;`,
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    `${validFilingPayloadCustodySource}\nconst target = "node:fs"; void import(target);`,
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    `${validFilingPayloadCustodySource}\nimport "./payload-custody-io-helper";`,
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    validFilingPayloadCustodySource.replace(
+      "createHash,",
+      "createHash,\n  randomBytes,",
+    ),
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyIndexPath,
+    validFilingPayloadCustodyIndexSource,
+  ) !== null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyIndexPath,
+    `${validFilingPayloadCustodyIndexSource}\nexport { createFileSystemFilingPayloadCustodyTestHarness } from "./payload-custody";`,
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyIndexPath,
+    'export * from "./payload-custody";',
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    `${filingPayloadCustodySourcePrefix}payload-custody-io-helper.ts`,
+    'import "node:fs";',
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    "packages/filing-parser/src/parser-boundary.ts",
+    'import "node:fs";',
+  ) !== null
+)
+  throw new Error("Filing-payload-custody source classifier regressed");
+const validFilingPayloadCustodyTestSource = `import { createHash } from "node:crypto";
+import { describe } from "vitest";
+import "./payload-custody";
+if (process.platform === "win32") void createHash;
+void describe;
+`;
+if (
+  filingPayloadCustodyTestViolation(
+    `${filingPayloadCustodySourcePrefix}boundary.test.ts`,
+    validFilingPayloadCustodyTestSource,
+  ) !== null ||
+  filingPayloadCustodyTestViolation(
+    `${filingPayloadCustodySourcePrefix}boundary.test.ts`,
+    validFilingPayloadCustodyTestSource.replace("node:crypto", "node:https"),
+  ) === null ||
+  filingPayloadCustodyTestViolation(
+    `${filingPayloadCustodySourcePrefix}boundary.test.ts`,
+    `${validFilingPayloadCustodyTestSource}\nvoid fetch("");`,
+  ) === null ||
+  filingPayloadCustodyTestViolation(
+    `${filingPayloadCustodySourcePrefix}boundary.test.ts`,
+    `${validFilingPayloadCustodyTestSource}\nconst target = "node:net"; void import(target);`,
+  ) === null ||
+  filingPayloadCustodyTestViolation(
+    `${filingPayloadCustodySourcePrefix}boundary.test.ts`,
+    `${validFilingPayloadCustodyTestSource}\nvoid process.getBuiltinModule("node:net");`,
+  ) === null
+)
+  throw new Error("Filing-payload-custody test classifier regressed");
+const filingPayloadCustodyVerifierPath = `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.ts`;
+const validFilingPayloadCustodyVerifierProcessSource = `import { spawn } from "node:child_process";
+function git(cwd: string, args: readonly string[]) {
+  return spawn("git", args, {
+    cwd,
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+void git;
+`;
+if (
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyVerifierPath,
+    validFilingPayloadCustodyVerifierProcessSource,
+  ) !== null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyVerifierPath,
+    validFilingPayloadCustodyVerifierProcessSource.replace(
+      'spawn("git"',
+      'spawn("curl"',
+    ),
+  ) === null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyVerifierPath,
+    `${validFilingPayloadCustodyVerifierProcessSource}\nconst unsafeSpawn = spawn; void unsafeSpawn;`,
+  ) === null ||
+  filingPayloadCustodyToolGlobalViolation(
+    filingPayloadCustodyVerifierPath,
+    "void process.getBuiltinModule;",
+  ) === null
+)
+  throw new Error("Filing-payload-custody verifier process guard regressed");
+const filingPayloadCustodyAcceptancePath = `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-acceptance.ts`;
+const validFilingPayloadCustodyAcceptanceProcessSource = `import { spawn } from "node:child_process";
+void commandOutput("git", []);
+void commandOutput("pnpm", []);
+void commandOutput("git", []);
+function commandOutput(
+  command: string,
+  args: readonly string[],
+  cwd = ".",
+) {
+  return spawn(command, args, {
+    cwd,
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+`;
+if (
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyAcceptancePath,
+    validFilingPayloadCustodyAcceptanceProcessSource,
+  ) !== null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyAcceptancePath,
+    validFilingPayloadCustodyAcceptanceProcessSource.replace(
+      'commandOutput("pnpm"',
+      'commandOutput("curl"',
+    ),
+  ) === null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyAcceptancePath,
+    validFilingPayloadCustodyAcceptanceProcessSource.replace(
+      'void commandOutput("git", []);',
+      'const commandName = "git"; void commandOutput(commandName, []);',
+    ),
+  ) === null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyAcceptancePath,
+    validFilingPayloadCustodyAcceptanceProcessSource.replace(
+      "  return spawn(command, args, {",
+      '  command = "curl";\n  return spawn(command, args, {',
+    ),
+  ) === null
+)
+  throw new Error("Filing-payload-custody acceptance process guard regressed");
 if (
   !referencesFilingParserPath(
     "apps/api/src/index.ts",
@@ -444,6 +904,25 @@ function inspectDependencies(path: string, manifest: unknown): void {
     violations.push(
       `${path}: disconnected zero-dependency filing-parser must not add package dependencies`,
     );
+  if (
+    path === "packages/filing-payload-custody/package.json" &&
+    dependencyNames.length > 0
+  )
+    violations.push(
+      `${path}: isolated zero-dependency filing-payload custody must not add package dependencies`,
+    );
+  if (path === "packages/filing-payload-custody/package.json") {
+    const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith("packages/filing-payload-custody/") &&
+    hasFilingPayloadCustodyDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: synthetic filing-payload custody must not be composed into another package`,
+    );
   for (const dependency of dependencyNames) {
     if (forbiddenDependencies.includes(dependency)) {
       violations.push(`${path}: forbidden dependency ${dependency}`);
@@ -461,8 +940,36 @@ function inspectDependencies(path: string, manifest: unknown): void {
   }
 }
 
+function filingPayloadCustodyManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "custody package manifest must be an exact object";
+  const expected = {
+    name: filingPayloadCustodyModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "custody package must retain its exact private, zero-dependency, index-only script and export surface";
+}
+
 function inspectCompositionBoundary(path: string, content: string): void {
   const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path === filingPayloadCustodyFixtureGuardPath) {
+    const fixtureGuardViolation =
+      filingPayloadCustodyFixtureGuardViolation(content);
+    if (fixtureGuardViolation !== null)
+      violations.push(`${path}: ${fixtureGuardViolation}`);
+  }
   if (
     path.startsWith("packages/filing-parser/") &&
     moduleSpecifiers.some((specifier) =>
@@ -487,6 +994,23 @@ function inspectCompositionBoundary(path: string, content: string): void {
   );
   if (corpusAdmissionViolation !== null)
     violations.push(`${path}: ${corpusAdmissionViolation}`);
+  const filingPayloadCustodyViolation = filingPayloadCustodyImportViolation(
+    path,
+    content,
+  );
+  if (filingPayloadCustodyViolation !== null)
+    violations.push(`${path}: ${filingPayloadCustodyViolation}`);
+  if (
+    !path.startsWith("packages/filing-payload-custody/") &&
+    moduleSpecifiers.some(
+      (specifier) =>
+        referencesFilingPayloadCustodyPath(path, specifier) &&
+        !isAllowedFilingPayloadCustodyExternalImport(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: synthetic filing-payload custody must remain package-isolated`,
+    );
   if (path.startsWith("apps/web/")) {
     for (const moduleName of forbiddenWebModuleImports) {
       if (referencesModuleSpecifier(moduleSpecifiers, moduleName))
@@ -505,6 +1029,497 @@ function inspectCompositionBoundary(path: string, content: string): void {
     if (/packages[\\/]db/i.test(content))
       violations.push(`${path}: API must not reference database source paths`);
   }
+}
+
+function filingPayloadCustodyFixtureGuardViolation(
+  content: string,
+): string | null {
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(filingPayloadCustodyFixtureGuardModules)
+  )
+    return "custody fixture guard must retain its exact local verification imports";
+  if (hasRuntimeDynamicImport(content))
+    return "custody fixture guard must not use runtime dynamic imports";
+  return filingPayloadCustodyToolGlobalViolation(
+    filingPayloadCustodyFixtureGuardPath,
+    content,
+  );
+}
+
+function filingPayloadCustodyImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (!path.startsWith(filingPayloadCustodySourcePrefix)) return null;
+  if (path.endsWith(".test.ts"))
+    return filingPayloadCustodyTestViolation(path, content);
+  if (filingPayloadCustodyToolPaths.has(path)) {
+    const toolSpecifiers = collectModuleSpecifiers(content);
+    const expectedSpecifiers = filingPayloadCustodyToolModules.get(path);
+    if (
+      expectedSpecifiers === undefined ||
+      JSON.stringify(toolSpecifiers) !== JSON.stringify(expectedSpecifiers)
+    )
+      return "custody evidence tools may import only their exact Node and same-package surfaces";
+    if (hasRuntimeDynamicImport(content))
+      return "custody evidence tools must not use runtime dynamic imports";
+    const globalViolation = filingPayloadCustodyToolGlobalViolation(
+      path,
+      content,
+    );
+    if (globalViolation !== null) return globalViolation;
+    return filingPayloadCustodyChildProcessViolation(path, content);
+  }
+  if (
+    path !== filingPayloadCustodyProductionPath &&
+    path !== filingPayloadCustodyIndexPath
+  )
+    return "production source set must remain the exact reviewed boundary and index";
+
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path === filingPayloadCustodyIndexPath) {
+    return isExactFilingPayloadCustodyIndex(content)
+      ? null
+      : "public index must retain the exact isolated production export surface";
+  }
+  if (
+    JSON.stringify(moduleSpecifiers) !==
+    JSON.stringify(["node:crypto", "node:fs", "node:fs/promises", "node:path"])
+  )
+    return "payload custody may import only its exact reviewed Node crypto, filesystem, and path surfaces";
+
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  if (
+    imports.length !== 4 ||
+    !isExactFilingPayloadCustodyImport(imports[0], "node:crypto", [
+      ["createCipheriv", "createCipheriv"],
+      ["createDecipheriv", "createDecipheriv"],
+      ["createHash", "createHash"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(
+      imports[1],
+      "node:fs",
+      [["Stats", "Stats"]],
+      true,
+    ) ||
+    !isExactFilingPayloadCustodyImport(imports[2], "node:fs/promises", [
+      ["chmod", "chmod"],
+      ["lstat", "lstat"],
+      ["mkdir", "mkdir"],
+      ["mkdtemp", "mkdtemp"],
+      ["open", "open"],
+      ["readdir", "readdir"],
+      ["realpath", "realpath"],
+      ["rename", "rename"],
+      ["rm", "rm"],
+      ["unlink", "unlink"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(imports[3], "node:path", [
+      ["basename", "basename"],
+      ["isAbsolute", "isAbsolute"],
+      ["join", "join"],
+      ["relative", "relative"],
+      ["resolve", "resolve"],
+      ["sep", "sep"],
+    ])
+  )
+    return "payload custody must retain the exact encryption, bounded filesystem, and path import bindings";
+
+  let forbiddenGlobal: string | null = null;
+  let runtimeDynamicImportFound = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      runtimeDynamicImportFound = true;
+      return;
+    }
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingPayloadCustodyGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (runtimeDynamicImportFound)
+    return "payload custody must not use runtime dynamic imports";
+  if (forbiddenGlobal !== null)
+    return "payload custody must not use network, process, logging, dynamic-code, global-crypto, or worker surfaces";
+  return null;
+}
+
+function isExactFilingPayloadCustodyIndex(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingPayloadCustodyIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  const declaration = sourceFile.statements[0];
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "./payload-custody" ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = filingPayloadCustodyPublicExports.map(([name, typeOnly]) => [
+    name,
+    name,
+    typeOnly,
+  ]);
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function isExactFilingPayloadCustodyImport(
+  declaration: ts.ImportDeclaration | undefined,
+  moduleName: string,
+  expected: ReadonlyArray<readonly [string, string]>,
+  typeOnly = false,
+): boolean {
+  if (
+    declaration === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== moduleName
+  )
+    return false;
+  const clause = declaration.importClause;
+  if (
+    clause === undefined ||
+    clause.isTypeOnly !== typeOnly ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings)
+  )
+    return false;
+  const actual = clause.namedBindings.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+  ]);
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function hasRuntimeDynamicImport(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    "payload-custody-tool.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function filingPayloadCustodyTestViolation(
+  path: string,
+  content: string,
+): string | null {
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (
+    moduleSpecifiers.some(
+      (specifier) => !filingPayloadCustodyTestModules.has(specifier),
+    )
+  )
+    return "custody tests may import only exact local test, crypto, and filesystem surfaces";
+  if (hasRuntimeDynamicImport(content))
+    return "custody tests must not use runtime dynamic imports";
+
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  let invalidProcessUse = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingPayloadCustodyTestGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    if (ts.isIdentifier(node) && node.text === "process") {
+      const parent = node.parent;
+      if (
+        !ts.isPropertyAccessExpression(parent) ||
+        parent.expression !== node ||
+        parent.name.text !== "platform"
+      ) {
+        invalidProcessUse = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (forbiddenGlobal !== null || invalidProcessUse)
+    return "custody tests must not use network, child-process, dynamic-code, or non-platform process surfaces";
+  return null;
+}
+
+function filingPayloadCustodyToolGlobalViolation(
+  path: string,
+  content: string,
+): string | null {
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const allowedProcessProperties = new Set([
+    "arch",
+    "argv",
+    "cwd",
+    "env",
+    "exitCode",
+    "platform",
+    "stderr",
+    "stdout",
+    "version",
+  ]);
+  let forbiddenGlobal: string | null = null;
+  let invalidProcessUse = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingPayloadCustodyTestGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    if (ts.isIdentifier(node) && node.text === "process") {
+      const parent = node.parent;
+      if (
+        !ts.isPropertyAccessExpression(parent) ||
+        parent.expression !== node ||
+        !allowedProcessProperties.has(parent.name.text)
+      ) {
+        invalidProcessUse = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (forbiddenGlobal !== null || invalidProcessUse)
+    return "custody evidence tools must not use network, dynamic-code, global-crypto, or unreviewed process surfaces";
+  return null;
+}
+
+function filingPayloadCustodyChildProcessViolation(
+  path: string,
+  content: string,
+): string | null {
+  const verifierPath = `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.ts`;
+  const acceptancePath = `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-acceptance.ts`;
+  if (path !== verifierPath && path !== acceptancePath) return null;
+
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const childProcessImports = sourceFile.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "node:child_process",
+  );
+  if (
+    childProcessImports.length !== 1 ||
+    !isExactFilingPayloadCustodyImport(
+      childProcessImports[0],
+      "node:child_process",
+      [["spawn", "spawn"]],
+    )
+  )
+    return "custody process tools must retain the exact spawn-only child-process binding";
+
+  const spawnCalls: ts.CallExpression[] = [];
+  const spawnReferences: ts.Identifier[] = [];
+  const commandOutputCalls: ts.CallExpression[] = [];
+  const commandOutputReferences: ts.Identifier[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && node.text === "spawn") {
+      if (!isImportBindingIdentifier(node)) spawnReferences.push(node);
+    }
+    if (ts.isIdentifier(node) && node.text === "commandOutput") {
+      if (!isFunctionDeclarationName(node)) commandOutputReferences.push(node);
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      if (node.expression.text === "spawn") spawnCalls.push(node);
+      if (node.expression.text === "commandOutput")
+        commandOutputCalls.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (
+    spawnCalls.length !== 1 ||
+    spawnReferences.length !== spawnCalls.length ||
+    !isClosedCustodySpawnCall(
+      spawnCalls[0],
+      path === verifierPath ? "git" : "command",
+    )
+  )
+    return "custody process tools must retain one exact no-shell bounded spawn call";
+
+  if (path === verifierPath) {
+    if (commandOutputCalls.length !== 0 || commandOutputReferences.length !== 0)
+      return "custody verifier may spawn only its fixed git command";
+    return null;
+  }
+
+  const commands = commandOutputCalls.map((call) =>
+    staticStringValue(call.arguments[0]),
+  );
+  const commandOutputDeclarations = sourceFile.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "commandOutput",
+  );
+  const commandOutputDeclaration = commandOutputDeclarations[0];
+  const commandParameter = commandOutputDeclaration?.parameters[0]?.name;
+  const argsParameter = commandOutputDeclaration?.parameters[1]?.name;
+  const spawnCommand = spawnCalls[0]?.arguments[0];
+  const spawnArgs = spawnCalls[0]?.arguments[1];
+  const unexpectedCommandBridgeIdentifier =
+    commandOutputDeclaration === undefined
+      ? true
+      : findIdentifiers(
+          commandOutputDeclaration,
+          new Set(["command", "args"]),
+        ).some(
+          (identifier) =>
+            identifier !== commandParameter &&
+            identifier !== argsParameter &&
+            identifier !== spawnCommand &&
+            identifier !== spawnArgs,
+        );
+  if (
+    JSON.stringify(commands) !== JSON.stringify(["git", "pnpm", "git"]) ||
+    commandOutputReferences.length !== commandOutputCalls.length ||
+    commandOutputDeclarations.length !== 1 ||
+    commandParameter === undefined ||
+    !ts.isIdentifier(commandParameter) ||
+    commandParameter.text !== "command" ||
+    argsParameter === undefined ||
+    !ts.isIdentifier(argsParameter) ||
+    argsParameter.text !== "args" ||
+    unexpectedCommandBridgeIdentifier
+  )
+    return "custody acceptance may invoke only its exact git and pnpm command sites";
+  return null;
+}
+
+function findIdentifiers(
+  node: ts.Node,
+  names: ReadonlySet<string>,
+): ts.Identifier[] {
+  const identifiers: ts.Identifier[] = [];
+  const visit = (candidate: ts.Node): void => {
+    if (ts.isIdentifier(candidate) && names.has(candidate.text))
+      identifiers.push(candidate);
+    ts.forEachChild(candidate, visit);
+  };
+  visit(node);
+  return identifiers;
+}
+
+function isImportBindingIdentifier(node: ts.Identifier): boolean {
+  return ts.isImportSpecifier(node.parent) && node.parent.name === node;
+}
+
+function isFunctionDeclarationName(node: ts.Identifier): boolean {
+  return ts.isFunctionDeclaration(node.parent) && node.parent.name === node;
+}
+
+function isClosedCustodySpawnCall(
+  call: ts.CallExpression | undefined,
+  expectedCommand: "command" | "git",
+): boolean {
+  if (call === undefined || call.arguments.length !== 3) return false;
+  const [command, args, options] = call.arguments;
+  if (
+    command === undefined ||
+    (expectedCommand === "git"
+      ? staticStringValue(command) !== "git"
+      : !ts.isIdentifier(command) || command.text !== "command") ||
+    args === undefined ||
+    !ts.isIdentifier(args) ||
+    args.text !== "args" ||
+    options === undefined ||
+    !ts.isObjectLiteralExpression(options) ||
+    options.properties.length !== 3
+  )
+    return false;
+  const [cwd, shell, stdio] = options.properties;
+  return (
+    cwd !== undefined &&
+    ts.isShorthandPropertyAssignment(cwd) &&
+    cwd.name.text === "cwd" &&
+    shell !== undefined &&
+    ts.isPropertyAssignment(shell) &&
+    propertyNameText(shell.name) === "shell" &&
+    shell.initializer.kind === ts.SyntaxKind.FalseKeyword &&
+    stdio !== undefined &&
+    ts.isPropertyAssignment(stdio) &&
+    propertyNameText(stdio.name) === "stdio" &&
+    ts.isArrayLiteralExpression(stdio.initializer) &&
+    JSON.stringify(stdio.initializer.elements.map(staticStringValue)) ===
+      JSON.stringify(["ignore", "pipe", "pipe"])
+  );
+}
+
+function propertyNameText(name: ts.PropertyName): string | null {
+  return ts.isIdentifier(name) || ts.isStringLiteralLike(name)
+    ? name.text
+    : null;
 }
 
 function corpusAdmissionImportViolation(
@@ -703,6 +1718,69 @@ function hasFilingParserDependency(
       );
     });
   });
+}
+
+function hasFilingPayloadCustodyDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingPayloadCustodyModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingPayloadCustodyModule)) return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingPayloadCustodyPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
+function referencesFilingPayloadCustodyPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingPayloadCustodyModule ||
+    specifier.startsWith(`${filingPayloadCustodyModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-payload-custody" ||
+    resolved.startsWith("packages/filing-payload-custody/") ||
+    resolved.includes("/packages/filing-payload-custody/")
+  );
+}
+
+function isAllowedFilingPayloadCustodyExternalImport(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (sourcePath !== filingPayloadCustodyFixtureGuardPath) return false;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === filingPayloadCustodyProductionPath.replace(/\.ts$/u, "") ||
+    resolved === `${filingPayloadCustodySourcePrefix}test-payload-builder`
+  );
 }
 
 function referencesFilingParserPath(

@@ -71,3 +71,29 @@ Those statements are useful context, but they do not satisfy this repository's
 required counsel/procurement approval, authenticate source bytes or declared
 digests, or implement EDGAR fetch, DNS, TLS, SSRF, rate-control, custody,
 retention, or deletion controls.
+
+## Cycle 2c synthetic payload-custody boundary
+
+Cycle 2c adds one private workspace package with no runtime dependency and
+generates its sole 4,096-byte synthetic fixture in process. It adds no external
+content, real filing metadata or payload, corpus configuration, approval,
+vendor dataset, image, service, or license exception. The exact frozen-byte
+local `pnpm verify` gate passed all 86 production-license checks, along with
+format, lint, every guardrail, all project typechecks and builds, and 39 test
+files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+Two-OS CI and dedicated live evidence remain pending.
+
+The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source
+validates only the returned byte shape and exact requested length, not
+randomness or uniqueness. A future dedicated Linux record is limited to
+observed Node `crypto.randomBytes` use and distinct DEK-fingerprint and
+nonce-hash samples in that run; it cannot establish OS entropy quality or
+approve a production entropy source.
+
+This engineering-only source protocol is not a rights decision and does not
+alter Cycle 2b's external inventory, counsel/procurement, steward, or human
+key-authority prerequisites. It also does not approve a production KMS,
+storage provider, backup/deletion system, cryptographic-erasure claim, real
+data, or production use. See
+[ADR 0030](./docs/adr/0030-bounded-synthetic-filing-payload-custody.md) and the
+[Cycle 2c exit matrix](./docs/CYCLE_2C_EXIT_MATRIX.md).

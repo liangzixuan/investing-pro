@@ -1,0 +1,24 @@
+{
+  "caseCount": 1,
+  "casesSha256": "sha256:390dcb67ab32bdb7fbd11acadb5e0729949a36435b0e617909b7ef1985e0cf6d",
+  "files": [
+    {
+      "path": "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+      "sha256": "sha256:2de5ae1a2f655b9752c2e7d9200c3e63253107a24ae12918ae9c882174a61754"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/payload-custody.test.ts",
+      "sha256": "sha256:492dece776a04e503d7cd42649944c6549f474fe2be90948b630d3bd5cb98ecf"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/payload-custody.ts",
+      "sha256": "sha256:fa55360e70b4b9bc7859efa5f2c8daffa6ad6d28aed142ccdc0855b7a003573b"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/test-payload-builder.ts",
+      "sha256": "sha256:7e05e1ba609f5d899c7824a4e1fd692de26ffbcb15515b710c84e71df4e85c4c"
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "synthetic": true
+}

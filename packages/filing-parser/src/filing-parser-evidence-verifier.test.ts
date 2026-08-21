@@ -9,6 +9,7 @@ import {
   filingParserEvidenceReviewStdout,
 } from "./filing-parser-evidence-review";
 import {
+  isCycle2aDisconnectedCustodyTreeAllowed,
   isCycle2aCommitDiffEntryAllowed,
   isCycle2aParserDomainTreeAllowed,
   verifyFilingParserEvidenceOffline,
@@ -43,6 +44,25 @@ const CURRENT_PARSER_DOMAIN_TREE = [
   "packages/filing-parser/worker/Dockerfile",
   "packages/filing-parser/worker/parser.py",
   "packages/filing-parser/worker/taxonomy-v1.json",
+].sort();
+const CYCLE_2C_SUCCESSOR_TREE = [
+  "fixtures/synthetic/filing-payload-custody/v1/cases.json",
+  "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+  "packages/filing-payload-custody/package.json",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-review.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-review.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence.ts",
+  "packages/filing-payload-custody/src/index.ts",
+  "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+  "packages/filing-payload-custody/src/payload-custody.test.ts",
+  "packages/filing-payload-custody/src/payload-custody.ts",
+  "packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
+  "packages/filing-payload-custody/src/run-filing-payload-custody-evidence-review.ts",
+  "packages/filing-payload-custody/src/test-payload-builder.ts",
+  "packages/filing-payload-custody/tsconfig.json",
 ].sort();
 
 afterEach(async () => {
@@ -95,6 +115,49 @@ describe("offline filing parser evidence review", () => {
       isCycle2aCommitDiffEntryAllowed(
         "A",
         "packages/filing-parser/src/unreviewed.ts",
+      ),
+    ).toBe(false);
+  });
+
+  it("admits no custody successor or its exact atomic package and fixture tree", () => {
+    expect(isCycle2aDisconnectedCustodyTreeAllowed([])).toBe(true);
+    expect(
+      isCycle2aDisconnectedCustodyTreeAllowed(CYCLE_2C_SUCCESSOR_TREE),
+    ).toBe(true);
+    for (const omitted of CYCLE_2C_SUCCESSOR_TREE) {
+      expect(
+        isCycle2aDisconnectedCustodyTreeAllowed(
+          CYCLE_2C_SUCCESSOR_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2aDisconnectedCustodyTreeAllowed(
+        [
+          ...CYCLE_2C_SUCCESSOR_TREE,
+          "packages/filing-payload-custody/src/unreviewed.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+  });
+
+  it("admits only reviewed Cycle 2c cumulative successor paths", () => {
+    const paths = [
+      ".github/workflows/filing-payload-custody-acceptance.yml",
+      "docs/CYCLE_2C_EXIT_MATRIX.md",
+      "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+      "scripts/verify-filing-payload-custody-fixtures.ts",
+      ...CYCLE_2C_SUCCESSOR_TREE,
+    ];
+    for (const path of paths) {
+      expect(isCycle2aCommitDiffEntryAllowed("A", path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("M", path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", path)).toBe(false);
+    }
+    expect(
+      isCycle2aCommitDiffEntryAllowed(
+        "A",
+        "packages/filing-payload-custody/src/unreviewed.ts",
       ),
     ).toBe(false);
   });

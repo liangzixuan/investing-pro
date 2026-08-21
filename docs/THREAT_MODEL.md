@@ -1,4 +1,4 @@
-# Sprint 0 through Cycle 2a and Phase-A Cycle 2b threat model
+# Sprint 0 through source-stage Cycle 2c threat model
 
 ## Current trust boundaries
 
@@ -63,6 +63,31 @@ that exact digest to the reviewed out-of-band anchor; the verifier does not
 make an authority, counsel, or steward identity decision. It also verifies only
 signed timestamp/hash consistency. Absence of earlier parser or adjudication
 results is externally attested chronology, not a machine-proven property.
+
+Cycle 2c adds a disconnected local filesystem/crypto boundary for one generated
+4,096-byte synthetic payload only. It snapshots caller bytes, recomputes the
+fixed digest, requests a fresh AES-256-GCM key and nonce from an injected
+entropy provider, binds closed identity and retention metadata as AAD, and
+separates the injected key store from ciphertext/audit files. The provider is
+an out-of-band trusted CSPRNG TCB; source validates only returned byte shape and
+exact requested length, not randomness or uniqueness. A future dedicated Linux
+record is limited to observed Node `crypto.randomBytes` use and distinct
+DEK-fingerprint and nonce-hash samples in that run; it cannot establish OS
+entropy quality. No network, parser, corpus admission, database, API, web,
+queue, real configuration, external approval, or real payload enters the
+boundary. The exact frozen-byte local `pnpm verify` gate passed format, lint,
+every guardrail including 86 production-license checks, all project typechecks
+and builds, and 39 test files with 846 passed tests plus 2 POSIX-only Windows
+skips (848 total cases). Two-OS CI and the dedicated success-only Linux
+evidence/offline/custody gates remain pending.
+
+The trusted host clock is part of the TCB. At the half-open expiry boundary the
+implementation forgets the key, records terminal logical unavailability, and
+then removes ciphertext with retry cleanup. This proves neither clock
+authenticity nor physical-media overwrite, memory zeroization, cryptographic
+erasure, backup/replica/cache/log deletion, crash durability, production key
+custody, multi-host consistency, or real-data admission. Cycle 2b remains
+blocked, and Cycle 2c is not B15/V15.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -446,6 +471,15 @@ leave the server projection.
   seven-project typechecking, all builds, and 32 test files with 792 tests. The
   separate Linux run, retained artifact, and independent offline review passed
   only the exact bounded synthetic claim.
+- The source-stage Cycle 2c boundary owns the input snapshot, recomputes its
+  fixed SHA-256, requests a per-lifecycle AES-256-GCM key and nonce from the
+  trusted injected CSPRNG,
+  authenticates closed identity/retention metadata, avoids plaintext staging,
+  publishes one complete record atomically, reauthenticates reads, serializes
+  lifecycle operations, and retains the closed available/terminal audit-domain
+  history after logical key unavailability. Only the public aggregate audit,
+  errors, evidence, and log markers are value-free. Local verification is Pass;
+  two-OS CI and dedicated Linux live evidence remain pending.
 
 ## Non-production constraints
 
@@ -580,6 +614,19 @@ not approval or security controls. They do not replace repository-required
 counsel/procurement review, source authentication, external approvals, or
 fetch-control implementation.
 
+Cycle 2c's local source gate is Pass, but its source protocol does not establish
+the bounded target claim until the two-OS CI, dedicated Linux artifact,
+offline, and custody gates pass. Even a future pass would cover only one
+generated synthetic object in one process. It would not establish Cycle 2b
+approval or authority, real payload presence, source authenticity,
+EDGAR/fetch/malware controls, production KMS or key recovery, physical or
+cryptographic erasure, backup/replica/cache/log deletion, legal/DSAR/hold
+execution, multi-host or crash durability, parser correctness, adjudicated
+quality, application/database composition, B15/V15, real-data admission, or
+production readiness. The exact boundary is in
+[ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
+[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -587,6 +634,8 @@ fetch-control implementation.
    any real corpus use, independently review the exact candidate metadata,
    rights/steward approvals and authority keys, then prove raw-byte identity,
    custody/retention, parser quality, conflict quarantine, and provenance.
+   Cycle 2c's generated synthetic lifecycle is engineering preparation only
+   and does not satisfy any real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.
