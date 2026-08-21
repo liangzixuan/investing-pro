@@ -526,9 +526,10 @@ and real data remain separate gated work.
 
 ## Cycle 2a — bounded synthetic filing-parser isolation gate
 
-Status: source implementation and the exact frozen-byte local `pnpm verify`
-gate are complete; dedicated Linux live evidence and independent offline review
-pending; production admission blocked.
+Status: the exact frozen-byte local `pnpm verify` gate, dedicated Linux live
+acceptance, retained artifact, and independent offline review are complete for
+the bounded synthetic claim; broader Cycle 2 and production admission remain
+blocked.
 
 Cycle 2a implements only the parser threat-model precondition: one nonempty,
 host-size-eligible bounded synthetic ZIP containing an exact manifest and XML
@@ -545,12 +546,15 @@ dedicated Linux workflow, source/fixture/image hash chain, and offline verifier
 do not append PostgreSQL V1 through V14. No upload/API/web/database/queue or
 external fetch is added, no real filing is used, and this work is not B15/V15.
 
-The sole proposed bounded claim is
+The sole reviewed bounded claim is
 `bounded_synthetic_one_shot_filing_parser_isolation_quarantine_replay_and_provenance_binding`.
-Its exact fixed checks, nonclaims, and pending exit rule are recorded in
+Its exact fixed checks, nonclaims, and completed exit rule are recorded in
 [ADR 0028](./adr/0028-bounded-synthetic-filing-parser-isolation.md) and the
-[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md). Source-stage implementation
-alone is not live isolation evidence and production admission remains blocked.
+[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md). The retained run, artifact,
+source-chain, and custody anchors are in the
+[Cycle 2a evidence note](./FILING_PARSER_ISOLATION_EVIDENCE.md). This bounded
+result is not general or production isolation evidence, and production
+admission remains blocked.
 
 ## Cycle 2 — filing ingestion proof
 

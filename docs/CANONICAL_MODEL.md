@@ -7,7 +7,7 @@ policy-scoped backup/restore, b9 single-client projection-adapter, b10 bounded
 projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
-contract and disconnected source-stage Cycle 2a filing-parser envelope;
+contract and reviewed bounded Cycle 2a filing-parser envelope;
 synthetic data only.
 
 ## Identity
@@ -320,14 +320,16 @@ replay equality applies to the normalized candidate and domain-separated
 signing payload, not to application idempotency, delivery exactly-once, or
 correction/supersession lineage.
 
-The source and exact frozen-byte local `pnpm verify` gate are complete: format,
-lint, every guardrail, seven-project typechecking, all builds, and 32 test files
-with 789 tests pass. Dedicated Linux live evidence, artifact retention, and
-independent offline review remain pending. It is not B15/V15, changes no B1
-through B14 or Cycle 1c result, and cannot be composed into the API, web,
-database, or real-data model based on source-stage evidence. See
+The exact frozen-byte local `pnpm verify` gate passes format, lint, every
+guardrail, seven-project typechecking, all builds, and 32 test files with 792
+tests. Dedicated Linux run `32431896953` passed all 103 synthetic cases on
+commit `73e391e339bf42332d7082adaba00807facc233c`; its retained canonical
+artifact passed independent offline source review. It is not B15/V15, changes
+no B1 through B14 or Cycle 1c result, and is not composed into the API, web,
+database, or real-data model. See
 [ADR 0028](./adr/0028-bounded-synthetic-filing-parser-isolation.md) and the
-[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md).
+[Cycle 2a exit matrix](./CYCLE_2A_EXIT_MATRIX.md), with exact anchors in the
+[Cycle 2a evidence note](./FILING_PARSER_ISOLATION_EVIDENCE.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

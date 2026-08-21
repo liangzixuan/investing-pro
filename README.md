@@ -39,18 +39,22 @@ blocked. See
 [ADR 0027](./docs/adr/0027-loopback-synthetic-persona-research-state-api.md)
 and the [Cycle 1c exit matrix](./docs/CYCLE_1C_EXIT_MATRIX.md).
 
-Cycle 2a is the next bounded source stage: a disconnected, one-shot synthetic
+Cycle 2a is a reviewed bounded stage: a disconnected, one-shot synthetic
 ZIP/XML filing parser in a new locked-down Linux container per nonempty
 host-size-eligible worker call. It adds no
 upload route, external fetch, application/database composition, or real filing
-data. Its separate filing-parser evidence v1 and Linux acceptance workflow
-remain source-stage only. The exact frozen-byte local `pnpm verify` gate passes
-format, lint, every guardrail, seven-project typechecking, all builds, and 32
-test files with 789 tests. The dedicated Linux live artifact and independent
-offline review remain pending. This is not B15/V15 and does not complete the wider Cycle 2 corpus,
+data. Its separate filing-parser evidence v1 passed the exact dedicated Linux
+run and independent commit-bound offline review on commit
+`73e391e339bf42332d7082adaba00807facc233c`; retained artifact `9429394295`
+binds all 103 synthetic cases, 26 source hashes, 16 checks, and 16 nonclaims.
+The exact frozen-byte local `pnpm verify` gate passes format, lint, every
+guardrail, seven-project typechecking, all builds, and 32 test files with 792
+tests. This is not B15/V15 and does not complete the wider Cycle 2 corpus,
 rights, ten-fact, dual-validation, quality, or lineage gates. See
 [ADR 0028](./docs/adr/0028-bounded-synthetic-filing-parser-isolation.md) and
-the [Cycle 2a exit matrix](./docs/CYCLE_2A_EXIT_MATRIX.md).
+the [Cycle 2a exit matrix](./docs/CYCLE_2A_EXIT_MATRIX.md), with retained proof
+recorded in the
+[Cycle 2a evidence note](./docs/FILING_PARSER_ISOLATION_EVIDENCE.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -431,11 +435,11 @@ blocked.
   network safety, PostgreSQL/RLS or durable persistence, production writer
   integration, browser-state migration, load/operational readiness,
   privacy/legal controls, or permission for real data.
-- Cycle 2a remains a disconnected synthetic parser-envelope gate. Source-stage
-  files do not prove its pending Linux live execution, a representative or
-  counsel-approved corpus, ten-fact quality, general XBRL/iXBRL, production
-  container/key/queue/retention controls, malware safety, app/database
-  composition, load/SLOs, or permission for real filings.
+- Cycle 2a passed only its exact disconnected synthetic parser-envelope run.
+  It does not prove a representative or counsel-approved corpus, ten-fact
+  quality, general XBRL/iXBRL, production container host/key/queue/retention
+  controls, malware safety, app/database composition, load/SLOs, source
+  authenticity, or permission for real filings.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -479,5 +483,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 1c exit matrix](./docs/CYCLE_1C_EXIT_MATRIX.md),
 [ADR 0027](./docs/adr/0027-loopback-synthetic-persona-research-state-api.md),
 [Cycle 2a exit matrix](./docs/CYCLE_2A_EXIT_MATRIX.md),
+[Cycle 2a evidence note](./docs/FILING_PARSER_ISOLATION_EVIDENCE.md),
 [ADR 0028](./docs/adr/0028-bounded-synthetic-filing-parser-isolation.md),
 and [architecture decisions](./docs/adr/).

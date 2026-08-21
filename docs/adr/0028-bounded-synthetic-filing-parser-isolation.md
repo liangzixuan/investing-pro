@@ -1,7 +1,7 @@
 # ADR 0028: Bounded synthetic filing-parser isolation
 
-Status: source implementation and exact frozen-byte local `pnpm verify`
-complete; dedicated Linux live evidence pending; production admission blocked
+Status: accepted for the exact bounded synthetic live result; broader Cycle 2
+and production admission blocked
 
 ## Context
 
@@ -103,9 +103,13 @@ service, logs, supplied trust anchors, Git object authenticity, signatures, or
 remote branch reachability. The operator-controlled local Git object database
 and executable are part of its trusted computing base. The exact frozen-byte
 local `pnpm verify` gate passes format, lint, every guardrail, seven-project
-typechecking, all builds, and 32 test files with 789 tests. Live evidence and an
-evidence note remain pending until a successful workflow artifact and
-independent review exist.
+typechecking, all builds, and 32 test files with 792 tests. Dedicated Linux run
+`32431896953` on exact commit
+`73e391e339bf42332d7082adaba00807facc233c` passed all 103 synthetic cases,
+the commit-bound reviewer returned `offline_consistent`, and artifact
+`9429394295` was retained and independently audited. The exact proof and
+custody hashes are recorded in the
+[Cycle 2a evidence note](../FILING_PARSER_ISOLATION_EVIDENCE.md).
 
 ## Fixed checks
 
@@ -151,9 +155,9 @@ The exact ordered nonclaims are:
 
 ## Consequences
 
-Cycle 2a can close only the exact synthetic, one-shot parser-envelope claim
-after local verification, a successful pinned Linux workflow, retained
-success-only evidence, and independent offline review. It cannot be cited as
+Cycle 2a closes only the exact synthetic, one-shot parser-envelope claim after
+local verification, a successful pinned Linux workflow, retained success-only
+evidence, and independent offline review. It cannot be cited as
 the Cycle 2 quality/corpus exit, general filing support, a production container
 sandbox, malware safety, application composition, or permission to ingest real
 data. Production admission remains blocked.
@@ -161,6 +165,7 @@ data. Production admission remains blocked.
 ## References
 
 - [Cycle 2a exit matrix](../CYCLE_2A_EXIT_MATRIX.md)
+- [Cycle 2a evidence note](../FILING_PARSER_ISOLATION_EVIDENCE.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [License policy](../../LICENSE_POLICY.md)
