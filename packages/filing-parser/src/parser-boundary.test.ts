@@ -24,6 +24,9 @@ const CASES_PATH = fileURLToPath(
 const ACCEPTANCE_RUNNER_PATH = fileURLToPath(
   new URL("./run-filing-parser-acceptance.ts", import.meta.url),
 );
+const FIXTURE_GUARD_PATH = fileURLToPath(
+  new URL("../../../scripts/verify-filing-parser-fixtures.ts", import.meta.url),
+);
 
 const PYTHON_HARNESS = String.raw`
 import base64
@@ -172,6 +175,21 @@ describe("Cycle 2a filing parser worker", () => {
       'latchDockerFailure("container_inspection", "inspect_command")',
     );
     expect(runnerClass).toContain('latchDockerFailure("label_residue")');
+  });
+
+  it("keeps Cycle 2a execution disconnected from successor corpus admission", () => {
+    const runner = readFileSync(ACCEPTANCE_RUNNER_PATH, "utf8");
+    const fixtureGuard = readFileSync(FIXTURE_GUARD_PATH, "utf8");
+    expect(runner).toContain('} from "./parser-boundary";');
+    expect(runner).not.toContain('from "./index"');
+    expect(runner).not.toContain('from "./corpus-admission"');
+    expect(fixtureGuard).toContain(
+      '} from "../packages/filing-parser/src/parser-boundary";',
+    );
+    expect(fixtureGuard).not.toContain(
+      'from "../packages/filing-parser/src/index"',
+    );
+    expect(fixtureGuard).not.toContain("corpus-admission");
   });
 });
 

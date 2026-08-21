@@ -20,7 +20,7 @@ import {
   type FilingParserProcessRunner,
   type FilingParserSigner,
   type SignedFilingParserResult,
-} from "./index";
+} from "./parser-boundary";
 import {
   FILING_PARSER_EVIDENCE_CHECKS,
   FILING_PARSER_EVIDENCE_CLAIM,

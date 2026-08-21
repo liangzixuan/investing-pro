@@ -18,6 +18,11 @@ const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
 const RUN_ID = /^[1-9][0-9]{0,19}$/;
 const CYCLE_2A_BASELINE_REVISION =
   "6d42175beb7e7c3f58a4143bc2e9b1fd73977439" as const;
+const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
+  "packages/filing-parser/src/corpus-admission-security.test.ts",
+  "packages/filing-parser/src/corpus-admission.test.ts",
+  "packages/filing-parser/src/corpus-admission.ts",
+]);
 
 const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   ".github/workflows/ci.yml",
@@ -28,8 +33,11 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "docs/BUILD_ROADMAP.md",
   "docs/CANONICAL_MODEL.md",
   "docs/CYCLE_2A_EXIT_MATRIX.md",
+  "docs/CYCLE_2B_EXIT_MATRIX.md",
+  "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
   "docs/THREAT_MODEL.md",
   "docs/adr/0028-bounded-synthetic-filing-parser-isolation.md",
+  "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
   "fixtures/synthetic/filing-parser/v1/cases.json",
   "fixtures/synthetic/filing-parser/v1/manifest.json",
   "package.json",
@@ -54,16 +62,24 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "pnpm-lock.yaml",
   "scripts/verify-boundaries.ts",
   "scripts/verify-filing-parser-fixtures.ts",
+  ...CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS,
 ]);
 
-const EXACT_PARSER_DOMAIN_TREE = Object.freeze(
+const LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE = Object.freeze(
   [...CYCLE_2A_DIFF_ALLOWLIST]
     .filter(
       (path) =>
-        path.startsWith("packages/filing-parser/") ||
-        path.startsWith("fixtures/synthetic/filing-parser/v1/"),
+        (path.startsWith("packages/filing-parser/") ||
+          path.startsWith("fixtures/synthetic/filing-parser/v1/")) &&
+        !CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS.includes(path),
     )
     .sort(),
+);
+const SUCCESSOR_COMPATIBLE_CYCLE_2A_PARSER_DOMAIN_TREE = Object.freeze(
+  [
+    ...LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE,
+    ...CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS,
+  ].sort(),
 );
 
 const PYTHON_IMAGE = Object.freeze({
@@ -396,12 +412,7 @@ export async function verifyCycle2aCommitBoundary(
   for (let index = 0; index < diff.length; index += 2) {
     const status = diff[index];
     const path = diff[index + 1];
-    if (
-      (status !== "A" && status !== "M") ||
-      path === undefined ||
-      !CYCLE_2A_DIFF_ALLOWLIST.has(path)
-    )
-      invalidReview();
+    if (!isCycle2aCommitDiffEntryAllowed(status, path)) invalidReview();
   }
 
   const treeEntries = splitNul(
@@ -420,11 +431,39 @@ export async function verifyCycle2aCommitBoundary(
     const match = /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entry);
     return match?.[1] ?? invalidReview();
   });
-  if (
-    paths.length !== EXACT_PARSER_DOMAIN_TREE.length ||
-    paths.some((path, index) => path !== EXACT_PARSER_DOMAIN_TREE[index])
-  )
-    invalidReview();
+  if (!isCycle2aParserDomainTreeAllowed(paths)) invalidReview();
+}
+
+/** @internal Exported only for exact commit-boundary regression tests. */
+export function isCycle2aCommitDiffEntryAllowed(
+  status: string | undefined,
+  path: string | undefined,
+): boolean {
+  return (
+    (status === "A" || status === "M") &&
+    path !== undefined &&
+    CYCLE_2A_DIFF_ALLOWLIST.has(path)
+  );
+}
+
+/** @internal Exported only for exact commit-boundary regression tests. */
+export function isCycle2aParserDomainTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return (
+    exactPathList(paths, LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE) ||
+    exactPathList(paths, SUCCESSOR_COMPATIBLE_CYCLE_2A_PARSER_DOMAIN_TREE)
+  );
+}
+
+function exactPathList(
+  actual: readonly string[],
+  expected: readonly string[],
+): boolean {
+  return (
+    actual.length === expected.length &&
+    actual.every((path, index) => path === expected[index])
+  );
 }
 
 function validateOptions(options: FilingParserEvidenceReviewOptions): void {

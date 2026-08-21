@@ -8,10 +8,42 @@ import {
   filingParserEvidenceReviewOptionsFromArguments,
   filingParserEvidenceReviewStdout,
 } from "./filing-parser-evidence-review";
-import { verifyFilingParserEvidenceOffline } from "./filing-parser-evidence-verifier";
+import {
+  isCycle2aCommitDiffEntryAllowed,
+  isCycle2aParserDomainTreeAllowed,
+  verifyFilingParserEvidenceOffline,
+} from "./filing-parser-evidence-verifier";
 
 const temporaryDirectories: string[] = [];
 const HASH = `sha256:${"a".repeat(64)}` as const;
+const SUCCESSOR_SOURCE_PATHS = [
+  "packages/filing-parser/src/corpus-admission-security.test.ts",
+  "packages/filing-parser/src/corpus-admission.test.ts",
+  "packages/filing-parser/src/corpus-admission.ts",
+] as const;
+const CURRENT_PARSER_DOMAIN_TREE = [
+  "fixtures/synthetic/filing-parser/v1/cases.json",
+  "fixtures/synthetic/filing-parser/v1/manifest.json",
+  "packages/filing-parser/acceptance/python-image.json",
+  "packages/filing-parser/package.json",
+  ...SUCCESSOR_SOURCE_PATHS,
+  "packages/filing-parser/src/filing-parser-evidence-review.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-parser/src/filing-parser-evidence.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence.ts",
+  "packages/filing-parser/src/index.ts",
+  "packages/filing-parser/src/parser-boundary.test.ts",
+  "packages/filing-parser/src/parser-boundary.ts",
+  "packages/filing-parser/src/parser-security.test.ts",
+  "packages/filing-parser/src/run-filing-parser-acceptance.ts",
+  "packages/filing-parser/src/run-filing-parser-evidence-review.ts",
+  "packages/filing-parser/src/test-archive-builder.ts",
+  "packages/filing-parser/tsconfig.json",
+  "packages/filing-parser/worker/Dockerfile",
+  "packages/filing-parser/worker/parser.py",
+  "packages/filing-parser/worker/taxonomy-v1.json",
+].sort();
 
 afterEach(async () => {
   await Promise.all(
@@ -22,6 +54,51 @@ afterEach(async () => {
 });
 
 describe("offline filing parser evidence review", () => {
+  it("accepts only the legacy tree or its atomic disconnected successor trio", () => {
+    const legacy = CURRENT_PARSER_DOMAIN_TREE.filter(
+      (path) => !SUCCESSOR_SOURCE_PATHS.includes(path as never),
+    );
+    expect(isCycle2aParserDomainTreeAllowed(legacy)).toBe(true);
+    expect(isCycle2aParserDomainTreeAllowed(CURRENT_PARSER_DOMAIN_TREE)).toBe(
+      true,
+    );
+    for (const omitted of SUCCESSOR_SOURCE_PATHS) {
+      expect(
+        isCycle2aParserDomainTreeAllowed(
+          CURRENT_PARSER_DOMAIN_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2aParserDomainTreeAllowed(
+        [
+          ...CURRENT_PARSER_DOMAIN_TREE,
+          "packages/filing-parser/src/extra.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+  });
+
+  it("admits the six reviewed cumulative successor paths without allowing deletion or extras", () => {
+    const successorPaths = [
+      "docs/CYCLE_2B_EXIT_MATRIX.md",
+      "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
+      "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+      ...SUCCESSOR_SOURCE_PATHS,
+    ];
+    for (const path of successorPaths) {
+      expect(isCycle2aCommitDiffEntryAllowed("A", path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("M", path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", path)).toBe(false);
+    }
+    expect(
+      isCycle2aCommitDiffEntryAllowed(
+        "A",
+        "packages/filing-parser/src/unreviewed.ts",
+      ),
+    ).toBe(false);
+  });
+
   it("accepts exactly one conventional CLI separator without weakening the closed argument set", () => {
     const argumentsWithoutSeparator = [
       "--evidence",

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   FILING_PARSER_QUARANTINE_CODES,
   type FilingParserQuarantineCode,
-} from "../packages/filing-parser/src/index";
+} from "../packages/filing-parser/src/parser-boundary";
 import {
   TEST_FILING_MANIFEST_CANONICAL,
   TEST_FILING_XML_CANONICAL,
