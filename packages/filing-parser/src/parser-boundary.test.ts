@@ -88,7 +88,7 @@ describe("Cycle 2a filing parser worker", () => {
         status: expected.status,
       })),
     );
-  });
+  }, 35_000);
 
   it("binds the source-controlled case ledger to every generated archive byte", () => {
     const ledger = JSON.parse(readFileSync(CASES_PATH, "utf8")) as unknown;

@@ -32,6 +32,7 @@ const CYCLE_2C_DIFF_ALLOWLIST = new Set([
   "package.json",
   "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-parser/src/parser-boundary.test.ts",
   "packages/filing-payload-custody/package.json",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-review.test.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-review.ts",

@@ -49,6 +49,7 @@ const DIFF_PATHS = [
   "package.json",
   "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-parser/src/parser-boundary.test.ts",
   "pnpm-lock.yaml",
   "scripts/verify-boundaries.ts",
   "scripts/verify-filing-payload-custody-fixtures.ts",
@@ -77,9 +78,9 @@ describe("offline filing payload custody evidence review", () => {
     );
   });
 
-  it("requires the complete 31-path cumulative milestone diff", () => {
+  it("requires the complete 32-path cumulative milestone diff", () => {
     const complete = DIFF_PATHS.map((path) => ({ path, status: "A" }));
-    expect(complete).toHaveLength(31);
+    expect(complete).toHaveLength(32);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
     for (const omitted of DIFF_PATHS) {
       expect(
@@ -88,6 +89,14 @@ describe("offline filing payload custody evidence review", () => {
         ),
       ).toBe(false);
     }
+    expect(
+      isCycle2cCommitDiffSetAllowed(
+        complete.filter(
+          (entry) =>
+            entry.path !== "packages/filing-parser/src/parser-boundary.test.ts",
+        ),
+      ),
+    ).toBe(false);
     expect(
       isCycle2cCommitDiffSetAllowed([
         ...complete,
