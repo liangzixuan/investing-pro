@@ -558,16 +558,21 @@ admission remains blocked.
 
 ## Cycle 2b — fixed public-filing candidate-manifest admission
 
-Status: **Phase-A verifier protocol implemented; local verification Pass; CI
-Pending; Cycle 2b Blocked.** There is no real configuration, external filing metadata,
-rights/steward approval, key-authority review, workflow, run, evidence schema,
-artifact, or evidence note.
+Status: **Phase-A verifier protocol implemented; local and CI verification Pass;
+Cycle 2b Blocked.** There is no real configuration, external filing metadata,
+rights/steward approval, key-authority review, Cycle 2b workflow, run, evidence
+schema, artifact, or evidence note.
 
 The exact frozen-byte local `pnpm verify` gate passes format, lint, every
 guardrail including 86 production-license checks, all project typechecks, all
-builds, and 34 test files with 807 tests: DB 18/582, API 4/49, research-state
-1/48, contracts 1/5, research-core 2/62, web 2/3, and filing-parser 6/58. This
-does not supply the missing external authority or evidence.
+builds, and 34 test files with 810 tests: DB 18/582, API 4/49, research-state
+1/48, contracts 1/5, research-core 2/62, web 2/3, and filing-parser 6/61.
+[CI run 32447542432](https://github.com/liangzixuan/investing-pro/actions/runs/32447542432)
+passed that gate on Ubuntu and Windows for exact commit
+`b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`. The successful concurrent
+[Cycle 2a parser run 32447542455](https://github.com/liangzixuan/investing-pro/actions/runs/32447542455)
+is regression health only. Neither result supplies the missing external
+authority or Cycle 2b evidence.
 
 The side-effect-free `verifyFilingCorpusAdmission` protocol accepts exact bytes
 for a future authority-key set, candidate manifest, selection plan,

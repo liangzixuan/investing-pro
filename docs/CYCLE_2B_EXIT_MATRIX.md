@@ -5,28 +5,32 @@ immutable, content-addressed public-filing candidate manifest after separate
 rights-authority and data-steward approvals. The decision is recorded in
 [ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md).
 
-Current status: **Phase-A verifier protocol implemented; local verification
-Pass; CI Pending. Cycle 2b is Blocked.** There is no real configuration, external
-metadata inventory, approval, workflow, run, evidence schema, artifact, or
-evidence note. The target claim
+Current status: **Phase-A verifier protocol implemented; local and CI
+verification Pass. Cycle 2b is Blocked.** There is no real configuration,
+external metadata inventory, approval, Cycle 2b workflow, run, evidence schema,
+artifact, or evidence note. The target claim
 `fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
 has not been established.
 
-| Gate                     | Required result                                                                                                                                                         | Current status                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Exact external inventory | Exactly 100 unique accessions with exact content digests and closed CIK/form/time/taxonomy/amendment metadata                                                           | Blocked — no external candidate manifest exists                                 |
-| Frozen selection         | Signed timestamp/hash consistency places the supplied selection freeze before supplied parser/adjudication results; external attestation establishes no earlier results | Blocked — no externally reviewed plan or chronology attestation exists          |
-| Frozen adjudication      | The adjudication protocol is hash-bound before measurement                                                                                                              | Blocked — no externally reviewed protocol exists                                |
-| Rights approval          | A distinct Ed25519 `rights_authority` approval binds the exact manifest, plans, purpose, retention class, and `authorityKeysSha256`                                     | Blocked — no rights approval exists                                             |
-| Steward approval         | A distinct Ed25519 `data_steward` approval binds the same exact inputs and `authorityKeysSha256`                                                                        | Blocked — no steward approval exists                                            |
-| Key authority and time   | Human review authenticates the out-of-band authority/revocation registry; trusted out-of-band `evaluatedAt` supplies current time                                       | Blocked — no real authority configuration, clock review, or human review exists |
-| Verifier protocol        | Exact canonical parsing, closed schemas, atomic failure, signature/scope/expiry checks, replay, and mutation rejection exist in source                                  | Pass — locally verified                                                         |
-| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                                                 | Pass — 34 files / 807 tests; all builds and 86 production-license checks        |
-| Regression CI            | The same frozen source gate passes on the reviewed CI matrix                                                                                                            | Pending                                                                         |
-| Dedicated evidence       | A separately authorized success-only workflow and evidence domain bind the exact commit, inputs, source hashes, checks, and nonclaims                                   | Not created in Phase A                                                          |
-| Independent review       | Original external inputs, authenticated logs, retained artifact, and exact-commit offline review independently agree                                                    | Not performed                                                                   |
-| Full Cycle 2 quality     | Real payload bytes, ten normalized facts, dual validation, 2,000 adjudicated assertions, frozen quality thresholds, and zero silent critical failures pass              | Blocked; outside Cycle 2b                                                       |
-| Production admission     | External fetch/security, payload custody/retention, production keys/host/queues, composition, load, and real-data controls pass                                         | Blocked                                                                         |
+| Gate                     | Required result                                                                                                                                                         | Current status                                                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Exact external inventory | Exactly 100 unique accessions with exact content digests and closed CIK/form/time/taxonomy/amendment metadata                                                           | Blocked — no external candidate manifest exists                                                                                  |
+| Frozen selection         | Signed timestamp/hash consistency places the supplied selection freeze before supplied parser/adjudication results; external attestation establishes no earlier results | Blocked — no externally reviewed plan or chronology attestation exists                                                           |
+| Frozen adjudication      | The adjudication protocol is hash-bound before measurement                                                                                                              | Blocked — no externally reviewed protocol exists                                                                                 |
+| Rights approval          | A distinct Ed25519 `rights_authority` approval binds the exact manifest, plans, purpose, retention class, and `authorityKeysSha256`                                     | Blocked — no rights approval exists                                                                                              |
+| Steward approval         | A distinct Ed25519 `data_steward` approval binds the same exact inputs and `authorityKeysSha256`                                                                        | Blocked — no steward approval exists                                                                                             |
+| Key authority and time   | Human review authenticates the out-of-band authority/revocation registry; trusted out-of-band `evaluatedAt` supplies current time                                       | Blocked — no real authority configuration, clock review, or human review exists                                                  |
+| Verifier protocol        | Exact canonical parsing, closed schemas, atomic failure, signature/scope/expiry checks, replay, and mutation rejection exist in source                                  | Pass — locally verified                                                                                                          |
+| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                                                 | Pass — 34 files / 810 tests; all builds and 86 production-license checks                                                         |
+| Regression CI            | The same frozen source gate passes on the reviewed CI matrix                                                                                                            | Pass — commit `b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`; run `32447542432`; Ubuntu job `96669820813`; Windows job `96669820914` |
+| Dedicated evidence       | A separately authorized success-only workflow and evidence domain bind the exact commit, inputs, source hashes, checks, and nonclaims                                   | Not created in Phase A                                                                                                           |
+| Independent review       | Original external inputs, authenticated logs, retained artifact, and exact-commit offline review independently agree                                                    | Not performed                                                                                                                    |
+| Full Cycle 2 quality     | Real payload bytes, ten normalized facts, dual validation, 2,000 adjudicated assertions, frozen quality thresholds, and zero silent critical failures pass              | Blocked; outside Cycle 2b                                                                                                        |
+| Production admission     | External fetch/security, payload custody/retention, production keys/host/queues, composition, load, and real-data controls pass                                         | Blocked                                                                                                                          |
+
+The successful concurrent Cycle 2a parser run `32447542455` and artifact
+`9434590292` are regression health only. They are not Cycle 2b evidence and do
+not replace the canonical Cycle 2a result.
 
 ## Target claim and fixed checks
 

@@ -42,7 +42,10 @@ Phase A implements only a verifier protocol for a future fixed public-filing
 candidate manifest. It adds no real filing metadata, raw payload, dataset,
 rights approval, steward approval, authority-key configuration, or content
 exception. The exact local source gate, including all 86 production-license
-checks, passes; CI is pending, and Cycle 2b remains blocked.
+checks, passes. Exact commit
+`b9a9edf680b4c3a7373cd6d96210a24544ba0bbe` also passed
+[CI run 32447542432](https://github.com/liangzixuan/investing-pro/actions/runs/32447542432)
+on Ubuntu and Windows. Cycle 2b remains blocked.
 
 Before any external candidate manifest can be admitted, this policy still
 requires the exact inventory and content hashes, approved use and retention

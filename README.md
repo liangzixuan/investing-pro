@@ -58,10 +58,10 @@ recorded in the
 
 Cycle 2b Phase A now implements only the side-effect-free
 `verifyFilingCorpusAdmission` protocol for a future fixed, content-addressed
-public-filing candidate manifest. **Local verification passes; CI is Pending;
-Cycle 2b remains Blocked.** No real configuration, external metadata, rights or steward
-approval, workflow, run, evidence schema, artifact, raw filing, fetch, parser
-execution, or application/database composition has been added. The target
+public-filing candidate manifest. **Local and CI verification pass; Cycle 2b
+remains Blocked.** No real configuration, external metadata, rights or steward
+approval, Cycle 2b workflow, run, evidence schema, artifact, raw filing, fetch,
+parser execution, or application/database composition has been added. The target
 claim
 `fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
 cannot be accepted until an exact external inventory of 100 filings,
@@ -73,9 +73,15 @@ and the [Cycle 2b exit matrix](./docs/CYCLE_2B_EXIT_MATRIX.md).
 
 The exact frozen-byte local `pnpm verify` gate passes format, lint, every
 guardrail including all 86 production-license checks, all project typechecks,
-all builds, and 34 test files with 807 tests: DB 18/582, API 4/49,
+all builds, and 34 test files with 810 tests: DB 18/582, API 4/49,
 research-state 1/48, contracts 1/5, research-core 2/62, web 2/3, and
-filing-parser 6/58. This is source-stage verification only.
+filing-parser 6/61. [CI run 32447542432](https://github.com/liangzixuan/investing-pro/actions/runs/32447542432)
+passed the same gate on Ubuntu and Windows for exact commit
+`b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`. Concurrent
+[parser run 32447542455](https://github.com/liangzixuan/investing-pro/actions/runs/32447542455)
+and artifact `9434590292` are unchanged Cycle 2a regression health only, not a
+Cycle 2b workflow, evidence record, or replacement for the canonical Cycle 2a
+result.
 
 Even a future `status: "admitted"` would prove only internal schema and
 signature consistency under the supplied authority/revocation registry. A

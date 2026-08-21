@@ -44,7 +44,9 @@ host, general parser, external input, or real-filing boundary.
 Cycle 2b Phase A adds only a pure metadata-admission verifier. It has no real
 configuration, external candidate inventory, approval, authority key, raw
 filing, fetch, parser execution, workflow, evidence artifact, or application
-composition. The exact 34-file/807-test local source gate passes; CI is pending.
+composition. The exact 34-file/810-test local source gate and
+[CI run 32447542432](https://github.com/liangzixuan/investing-pro/actions/runs/32447542432)
+pass for exact commit `b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`.
 The future protocol accepts exact
 bytes and returns only a closed schema/claim/corpus/version/evaluation identity,
 aggregate input hashes, count, validity, and an admitted status; whole-input

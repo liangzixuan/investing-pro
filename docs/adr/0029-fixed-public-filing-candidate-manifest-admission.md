@@ -1,7 +1,7 @@
 # ADR 0029: Fixed public-filing candidate-manifest admission
 
-Status: Phase-A verifier protocol and local verification pass; CI pending;
-Cycle 2b blocked on external metadata, approvals, and key-authority review
+Status: Phase-A verifier protocol and local/CI verification pass; Cycle 2b
+blocked on external metadata, approvals, and key-authority review
 
 ## Context
 
@@ -93,10 +93,15 @@ the verifier protocol.
 
 The exact frozen-byte local `pnpm verify` gate passes format, lint, every
 guardrail including 86 production-license checks, all project typechecks, all
-builds, and 34 test files with 807 tests: DB 18/582, API 4/49, research-state
-1/48, contracts 1/5, research-core 2/62, web 2/3, and filing-parser 6/58. CI is
-pending. Cycle 2b remains **Blocked** until all of the following exist and pass
-separate review:
+builds, and 34 test files with 810 tests: DB 18/582, API 4/49, research-state
+1/48, contracts 1/5, research-core 2/62, web 2/3, and filing-parser 6/61.
+[CI run 32447542432](https://github.com/liangzixuan/investing-pro/actions/runs/32447542432)
+passed the same gate on Ubuntu job `96669820813` and Windows job `96669820914`
+for exact commit `b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`. The concurrent
+[Cycle 2a parser run 32447542455](https://github.com/liangzixuan/investing-pro/actions/runs/32447542455)
+and artifact `9434590292` are regression health only; they do not create Cycle
+2b evidence or replace the canonical Cycle 2a result. Cycle 2b remains
+**Blocked** until all of the following exist and pass separate review:
 
 1. the exact external metadata inventory for 100 filing accessions;
 2. the exact selection plan and adjudication protocol;

@@ -337,8 +337,10 @@ Cycle 2b Phase A adds no canonical filing, fact, evidence-passport, rights,
 tenant, research-state, or PostgreSQL entity. It implements only a
 side-effect-free verifier protocol over exact candidate-manifest, selection,
 adjudication, authority, and approval bytes. No real configuration or approval
-exists. The exact 34-file/807-test local source gate passes, CI is pending, and
-Cycle 2b remains blocked.
+exists. The exact 34-file/810-test local source gate and
+[CI run 32447542432](https://github.com/liangzixuan/investing-pro/actions/runs/32447542432)
+pass for commit `b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`; Cycle 2b
+remains blocked.
 
 The future manifest contract requires exactly 100 unique content-addressed
 filing accessions with closed CIK, form, accepted/available time, taxonomy, and
