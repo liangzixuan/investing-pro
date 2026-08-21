@@ -107,8 +107,14 @@ Pass on exact frozen bytes: format, lint, guardrails, all project typechecks and
 builds, 86 production-license checks, and 41 test files with 876 passed plus 2
 POSIX-only Windows skips (878 total cases: parser 65; custody 36 passed plus 2
 skipped; normalization 26; DB 582; API 49; state 48; contracts 5; core 62; web
-3). Ubuntu/Windows CI remains Pending; there is no dedicated workflow,
-evidence schema, artifact, offline evidence review, or evidence note.
+3). The bounded source-stage claim, local gate, and two-OS CI are Pass only for
+exact source commit `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`; CI run
+`32511008752` passed in Windows job `96861883906` and Ubuntu job `96861884146`.
+Parser run/job `32511008497` / `96861883641`, custody run/job `32511008447` /
+`96861883543`, and PostgreSQL run/job `32511008417` / `96861882949` are
+unchanged regression health on that commit, not Cycle 2d evidence. There is no
+dedicated workflow, evidence schema, artifact, offline evidence review, or
+evidence note.
 
 The test-generated metadata and values are synthetic inputs, not trusted SEC,
 parser, accounting, rights, or adjudication assertions. Cycle 2d does not

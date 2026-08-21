@@ -9,8 +9,10 @@ fresh owned snapshots before validation. Tests generate the canonical pair,
 but the boundary proves only conformance to the closed synthetic schema, not
 generator identity or provenance.
 
-Current status: **source implementation complete; local verification Pass;
-two-OS CI Pending. Cycle 2b and production admission remain Blocked.**
+Current status: **bounded source-stage claim, local verification, and two-OS CI
+Pass only for exact source commit
+`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Cycle 2b and production admission
+remain Blocked.**
 There is no real filing, external configuration, dedicated Cycle 2d workflow,
 evidence schema, artifact, offline evidence review, or evidence note.
 
@@ -22,7 +24,8 @@ evidence schema, artifact, offline evidence review, or evidence note.
 | Temporal lineage         | One acyclic predecessor, half-open known windows, and exact pre/post projections pass                                | Implemented; local verification Pass                                                                                                                                                                |
 | Atomic failure           | Invalid pair yields only an empty, value-free quarantine result                                                      | Implemented; local verification Pass                                                                                                                                                                |
 | Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                              | Pass: 41 files; 876 passed + 2 POSIX-only Windows skips (878 total); parser 65; custody 36 passed + 2 skipped; normalization 26; DB 582; API 49; state 48; contracts 5; core 62; web 3; 86 licenses |
-| Two-OS CI                | The same frozen source gate passes on Ubuntu and Windows                                                             | Pending                                                                                                                                                                                             |
+| Two-OS CI                | The same frozen source gate passes on Ubuntu and Windows                                                             | Pass: run `32511008752`; Windows job `96861883906`; Ubuntu job `96861884146`                                                                                                                        |
+| Regression health        | Historical parser, custody, and PostgreSQL domains remain healthy without becoming Cycle 2d evidence                 | Unchanged health only: parser `32511008497` / `96861883641`; custody `32511008447` / `96861883543`; PostgreSQL `32511008417` / `96861882949`                                                        |
 | Dedicated evidence       | Separate workflow/schema/artifact/offline review                                                                     | Not created; no new live boundary in Cycle 2d                                                                                                                                                       |
 | Cycle 2b authority       | Exact external 100-entry metadata, approvals, chronology, and human registry/key review pass before any real bytes   | Blocked; outside Cycle 2d                                                                                                                                                                           |
 | Full Cycle 2 quality     | Real bytes, independent validation, 2,000 adjudicated assertions, frozen thresholds, and zero silent critical errors | Blocked                                                                                                                                                                                             |
@@ -100,8 +103,10 @@ schema, canonical artifact, and evidence note remain unchanged. Their current
 offline verifiers accept Cycle 2d only as one exact atomic successor transition;
 no Cycle 2d result enters either record.
 
-Cycle 2d may be marked source-stage Pass only when the exact frozen-byte local
-gate and Ubuntu/Windows CI agree. Failure, cancellation, a partial/extra
-successor tree, a non-value-free quarantine, or any attempted real-data input
-means no promotion. Even a future Pass would not unblock Cycle 2b, establish
-full Cycle 2 quality, create B15/V15, or authorize production use.
+Cycle 2d's bounded source-stage claim is Pass only because the exact frozen-byte
+local gate and Ubuntu/Windows CI agree at commit
+`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Failure, cancellation, any source
+change, a partial/extra successor tree, a non-value-free quarantine, or any
+attempted real-data input means no successor promotion without fresh gates.
+This Pass does not unblock Cycle 2b, establish full Cycle 2 quality, create
+B15/V15, or authorize production use.

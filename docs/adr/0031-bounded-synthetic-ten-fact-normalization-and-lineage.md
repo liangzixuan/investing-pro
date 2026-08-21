@@ -1,7 +1,8 @@
 # ADR 0031: bounded synthetic ten-fact normalization and lineage
 
-Status: source protocol implementation complete; local verification Pass;
-two-OS CI Pending; Cycle 2b and production admission Blocked.
+Status: bounded source-stage claim, local verification, and two-OS CI Pass only
+for exact source commit `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`; Cycle 2b
+and production admission Blocked.
 
 ## Context
 
@@ -80,7 +81,12 @@ review, or evidence note. The exact frozen-byte local gate is Pass: format,
 lint, guardrails, every project typecheck and build, 86 production-license
 checks, and 41 test files with 876 passed plus 2 POSIX-only Windows skips (878
 total cases: parser 65; custody 36 passed plus 2 skipped; normalization 26; DB
-582; API 49; state 48; contracts 5; core 62; web 3). Two-OS CI remains Pending.
+582; API 49; state 48; contracts 5; core 62; web 3). CI run `32511008752`
+passed in Windows job `96861883906` and Ubuntu job `96861884146` on exact
+source commit `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Parser run/job
+`32511008497` / `96861883641`, custody run/job `32511008447` / `96861883543`,
+and PostgreSQL run/job `32511008417` / `96861882949` are unchanged regression
+health on that commit, not Cycle 2d evidence.
 
 The canonical Cycle 2a evidence contract remains 16 checks, 16 nonclaims, and
 26 source hashes. The canonical Cycle 2c evidence contract remains 16 checks,
@@ -139,9 +145,9 @@ The exact ordered nonclaims are:
 Cycle 2d can close only the exact closed-schema two-document normalization and
 lineage contract. It does not authenticate generator provenance, unblock Cycle 2b, authorize a real manifest or
 filing byte, establish parser or accounting correctness, satisfy the
-100-filing/2,000-assertion quality gate, or authorize production use. Before
-any real byte is used, Cycle 2b's external inputs, approvals, chronology, and
-human registry review remain mandatory.
+100-filing/2,000-assertion quality gate, create B15/V15, or authorize production
+use. Before any real byte is used, Cycle 2b's external inputs, approvals,
+chronology, and human registry review remain mandatory.
 
 ## References
 
