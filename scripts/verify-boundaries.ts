@@ -75,6 +75,83 @@ const forbiddenApiWriteDependencies = [
 ];
 const filingParserModule = "@research-cockpit/filing-parser";
 const filingPayloadCustodyModule = "@research-cockpit/filing-payload-custody";
+const filingFactNormalizationModule =
+  "@research-cockpit/filing-fact-normalization";
+const filingFactNormalizationSourcePrefix =
+  "packages/filing-fact-normalization/src/";
+const filingFactNormalizationIndexPath = `${filingFactNormalizationSourcePrefix}index.ts`;
+const filingFactNormalizationProductionPath = `${filingFactNormalizationSourcePrefix}filing-fact-normalization.ts`;
+const filingFactNormalizationBuilderPath = `${filingFactNormalizationSourcePrefix}test-filing-fact-builder.ts`;
+const filingFactNormalizationUnitTestPath = `${filingFactNormalizationSourcePrefix}filing-fact-normalization.test.ts`;
+const filingFactNormalizationSecurityTestPath = `${filingFactNormalizationSourcePrefix}filing-fact-normalization-security.test.ts`;
+const filingFactNormalizationPublicExports = [
+  ["FILING_FACT_CONTRACTS", false],
+  ["FILING_FACT_KEYS", false],
+  ["FILING_FACT_NORMALIZATION_CHECKS", false],
+  ["FILING_FACT_NORMALIZATION_CLAIM", false],
+  ["FILING_FACT_NORMALIZATION_LIMITS", false],
+  ["FILING_FACT_NORMALIZATION_NOT_PROVEN", false],
+  ["FILING_FACT_NORMALIZATION_QUARANTINE_CODES", false],
+  ["FILING_FACT_NORMALIZATION_SCHEMA_VERSION", false],
+  ["FILING_FACT_PARSER_VERSION", false],
+  ["FILING_FACT_TAXONOMY_FAMILY", false],
+  ["FILING_FACT_TAXONOMY_VERSION", false],
+  ["FilingFactProjectionError", false],
+  ["normalizeSyntheticFilingFactPair", false],
+  ["projectNormalizedFilingFactsAsKnown", false],
+  ["FilingFactContract", true],
+  ["FilingFactKey", true],
+  ["FilingFactNormalizationAudit", true],
+  ["FilingFactNormalizationQuarantineCode", true],
+  ["FilingFactNormalizationQuarantinedResult", true],
+  ["FilingFactNormalizationRecord", true],
+  ["FilingFactNormalizationResult", true],
+  ["FilingFactPeriodKind", true],
+  ["FilingFactSupersession", true],
+  ["FilingFactUnit", true],
+  ["NormalizedFilingFactVersion", true],
+] as const;
+const filingFactNormalizationSourcePaths = new Set([
+  filingFactNormalizationBuilderPath,
+  filingFactNormalizationIndexPath,
+  filingFactNormalizationProductionPath,
+  filingFactNormalizationSecurityTestPath,
+  filingFactNormalizationUnitTestPath,
+]);
+const filingFactNormalizationTestModules = new Map<string, readonly string[]>([
+  [
+    filingFactNormalizationUnitTestPath,
+    ["vitest", "./filing-fact-normalization", "./test-filing-fact-builder"],
+  ],
+  [
+    filingFactNormalizationSecurityTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-fact-normalization",
+      "./test-filing-fact-builder",
+    ],
+  ],
+]);
+const forbiddenFilingFactNormalizationGlobals = new Set([
+  "Bun",
+  "Deno",
+  "EventSource",
+  "Function",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "process",
+  "require",
+]);
 const filingPayloadCustodySourcePrefix = "packages/filing-payload-custody/src/";
 const filingPayloadCustodyIndexPath = `${filingPayloadCustodySourcePrefix}index.ts`;
 const filingPayloadCustodyProductionPath = `${filingPayloadCustodySourcePrefix}payload-custody.ts`;
@@ -314,6 +391,173 @@ if (
   )
 )
   throw new Error("Filing-parser composition classifier regressed");
+if (
+  !referencesModule(
+    'import { normalizeSyntheticFilingFactPair } from "@research-cockpit/filing-fact-normalization";',
+    filingFactNormalizationModule,
+  ) ||
+  !referencesFilingFactNormalizationPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-fact-normalization/src/index",
+  ) ||
+  !hasFilingFactNormalizationDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-fact-normalization": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  hasFilingFactNormalizationDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  )
+)
+  throw new Error("Filing-fact-normalization composition classifier regressed");
+const validFilingFactNormalizationManifest = {
+  name: filingFactNormalizationModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+};
+if (
+  filingFactNormalizationManifestViolation(
+    validFilingFactNormalizationManifest,
+  ) !== null ||
+  filingFactNormalizationManifestViolation({
+    ...validFilingFactNormalizationManifest,
+    exports: {
+      ...validFilingFactNormalizationManifest.exports,
+      "./test": "./src/test-filing-fact-builder.ts",
+    },
+  }) === null ||
+  filingFactNormalizationManifestViolation({
+    ...validFilingFactNormalizationManifest,
+    scripts: {
+      ...validFilingFactNormalizationManifest.scripts,
+      test: "curl https://example.invalid",
+    },
+  }) === null
+)
+  throw new Error("Filing-fact-normalization manifest classifier regressed");
+const validFilingFactNormalizationSource = `import { createHash } from "node:crypto";
+void createHash;
+`;
+const validFilingFactNormalizationIndexSource = `export {
+  FILING_FACT_CONTRACTS,
+  FILING_FACT_KEYS,
+  FILING_FACT_NORMALIZATION_CHECKS,
+  FILING_FACT_NORMALIZATION_CLAIM,
+  FILING_FACT_NORMALIZATION_LIMITS,
+  FILING_FACT_NORMALIZATION_NOT_PROVEN,
+  FILING_FACT_NORMALIZATION_QUARANTINE_CODES,
+  FILING_FACT_NORMALIZATION_SCHEMA_VERSION,
+  FILING_FACT_PARSER_VERSION,
+  FILING_FACT_TAXONOMY_FAMILY,
+  FILING_FACT_TAXONOMY_VERSION,
+  FilingFactProjectionError,
+  normalizeSyntheticFilingFactPair,
+  projectNormalizedFilingFactsAsKnown,
+  type FilingFactContract,
+  type FilingFactKey,
+  type FilingFactNormalizationAudit,
+  type FilingFactNormalizationQuarantineCode,
+  type FilingFactNormalizationQuarantinedResult,
+  type FilingFactNormalizationRecord,
+  type FilingFactNormalizationResult,
+  type FilingFactPeriodKind,
+  type FilingFactSupersession,
+  type FilingFactUnit,
+  type NormalizedFilingFactVersion,
+} from "./filing-fact-normalization";
+`;
+const validFilingFactNormalizationBuilderSource = `import { FILING_FACT_CONTRACTS } from "./filing-fact-normalization";
+void FILING_FACT_CONTRACTS;
+`;
+const validFilingFactNormalizationUnitTestSource = `import { describe } from "vitest";
+import { normalizeSyntheticFilingFactPair } from "./filing-fact-normalization";
+import { buildSyntheticFilingFactDocuments } from "./test-filing-fact-builder";
+void describe;
+void normalizeSyntheticFilingFactPair;
+void buildSyntheticFilingFactDocuments;
+`;
+const validFilingFactNormalizationSecurityTestSource = `import { createHash } from "node:crypto";
+import { describe } from "vitest";
+import { normalizeSyntheticFilingFactPair } from "./filing-fact-normalization";
+import { buildSyntheticFilingFactDocuments } from "./test-filing-fact-builder";
+void createHash;
+void describe;
+void normalizeSyntheticFilingFactPair;
+void buildSyntheticFilingFactDocuments;
+`;
+if (
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationProductionPath,
+    validFilingFactNormalizationSource,
+  ) !== null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationProductionPath,
+    validFilingFactNormalizationSource.replace("createHash", "randomBytes"),
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationProductionPath,
+    `${validFilingFactNormalizationSource}\nvoid fetch("");`,
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationProductionPath,
+    `${validFilingFactNormalizationSource}\nconst target = "node:fs"; void import(target);`,
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationProductionPath,
+    `${validFilingFactNormalizationSource}\nimport "./io-helper";`,
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationIndexPath,
+    validFilingFactNormalizationIndexSource,
+  ) !== null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationIndexPath,
+    `${validFilingFactNormalizationIndexSource}\nexport * from "./test-filing-fact-builder";`,
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationBuilderPath,
+    validFilingFactNormalizationBuilderSource,
+  ) !== null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationBuilderPath,
+    `${validFilingFactNormalizationBuilderSource}\nvoid process.env;`,
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationUnitTestPath,
+    validFilingFactNormalizationUnitTestSource,
+  ) !== null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationSecurityTestPath,
+    validFilingFactNormalizationSecurityTestSource,
+  ) !== null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationSecurityTestPath,
+    validFilingFactNormalizationSecurityTestSource.replace(
+      "node:crypto",
+      "node:https",
+    ),
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    filingFactNormalizationSecurityTestPath,
+    `${validFilingFactNormalizationSecurityTestSource}\nvoid process.getBuiltinModule("node:net");`,
+  ) === null ||
+  filingFactNormalizationImportViolation(
+    `${filingFactNormalizationSourcePrefix}io-helper.ts`,
+    'import "node:fs";',
+  ) === null
+)
+  throw new Error("Filing-fact-normalization source classifier regressed");
 if (
   !referencesModule(
     'import { createFileSystemFilingPayloadCustodyBoundary } from "@research-cockpit/filing-payload-custody";',
@@ -924,6 +1168,26 @@ function inspectDependencies(path: string, manifest: unknown): void {
     violations.push(
       `${path}: isolated zero-dependency filing-payload custody must not add package dependencies`,
     );
+  if (
+    path === "packages/filing-fact-normalization/package.json" &&
+    dependencyNames.length > 0
+  )
+    violations.push(
+      `${path}: isolated zero-dependency filing-fact normalization must not add package dependencies`,
+    );
+  if (path === "packages/filing-fact-normalization/package.json") {
+    const manifestViolation =
+      filingFactNormalizationManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith("packages/filing-fact-normalization/") &&
+    hasFilingFactNormalizationDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: synthetic filing-fact normalization must not be composed into another package`,
+    );
   if (path === "packages/filing-payload-custody/package.json") {
     const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
     if (manifestViolation !== null)
@@ -951,6 +1215,28 @@ function inspectDependencies(path: string, manifest: unknown): void {
     )
       violations.push(`${path}: API must not depend on ${dependency}`);
   }
+}
+
+function filingFactNormalizationManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-fact-normalization package manifest must be an exact object";
+  const expected = {
+    name: filingFactNormalizationModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-fact-normalization package must retain its exact private, zero-dependency, index-only script and export surface";
 }
 
 function filingPayloadCustodyManifestViolation(
@@ -1001,6 +1287,19 @@ function inspectCompositionBoundary(path: string, content: string): void {
     violations.push(
       `${path}: disconnected filing-parser must not be composed into application or database code`,
     );
+  const filingFactNormalizationViolation =
+    filingFactNormalizationImportViolation(path, content);
+  if (filingFactNormalizationViolation !== null)
+    violations.push(`${path}: ${filingFactNormalizationViolation}`);
+  if (
+    !path.startsWith("packages/filing-fact-normalization/") &&
+    moduleSpecifiers.some((specifier) =>
+      referencesFilingFactNormalizationPath(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: synthetic filing-fact normalization must remain package-isolated`,
+    );
   const corpusAdmissionViolation = corpusAdmissionImportViolation(
     path,
     content,
@@ -1042,6 +1341,144 @@ function inspectCompositionBoundary(path: string, content: string): void {
     if (/packages[\\/]db/i.test(content))
       violations.push(`${path}: API must not reference database source paths`);
   }
+}
+
+function filingFactNormalizationImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (!path.startsWith(filingFactNormalizationSourcePrefix)) return null;
+  if (!filingFactNormalizationSourcePaths.has(path))
+    return "source set must remain the exact reviewed core, index, builder, and two tests";
+
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path === filingFactNormalizationIndexPath) {
+    return isExactFilingFactNormalizationIndex(content)
+      ? null
+      : "public index must retain the exact isolated production export surface";
+  }
+  if (path === filingFactNormalizationProductionPath) {
+    if (JSON.stringify(moduleSpecifiers) !== JSON.stringify(["node:crypto"]))
+      return "normalization core may import only its exact node:crypto hashing surface";
+    const sourceFile = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+    if (
+      imports.length !== 1 ||
+      !isExactFilingPayloadCustodyImport(imports[0], "node:crypto", [
+        ["createHash", "createHash"],
+      ])
+    )
+      return "normalization core must retain its exact hash-only node:crypto binding";
+    return filingFactNormalizationGlobalViolation(path, content, "core");
+  }
+  if (path === filingFactNormalizationBuilderPath) {
+    if (
+      JSON.stringify(moduleSpecifiers) !==
+      JSON.stringify(["./filing-fact-normalization"])
+    )
+      return "synthetic builder may import only the direct normalization core";
+    return filingFactNormalizationGlobalViolation(path, content, "builder");
+  }
+
+  const expectedTestModules = filingFactNormalizationTestModules.get(path);
+  if (
+    expectedTestModules === undefined ||
+    JSON.stringify(moduleSpecifiers) !== JSON.stringify(expectedTestModules)
+  )
+    return "normalization tests may import only their exact Vitest, hash, core, and builder surfaces";
+  if (path === filingFactNormalizationSecurityTestPath) {
+    const sourceFile = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const cryptoImports = sourceFile.statements.filter(
+      (statement): statement is ts.ImportDeclaration =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text === "node:crypto",
+    );
+    if (
+      cryptoImports.length !== 1 ||
+      !isExactFilingPayloadCustodyImport(cryptoImports[0], "node:crypto", [
+        ["createHash", "createHash"],
+      ])
+    )
+      return "normalization security test must retain its exact hash-only crypto binding";
+  }
+  return filingFactNormalizationGlobalViolation(path, content, "test");
+}
+
+function filingFactNormalizationGlobalViolation(
+  path: string,
+  content: string,
+  surface: "builder" | "core" | "test",
+): string | null {
+  if (hasRuntimeDynamicImport(content))
+    return `normalization ${surface} must not use runtime dynamic imports`;
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingFactNormalizationGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbiddenGlobal === null
+    ? null
+    : `normalization ${surface} must not use network, process, logging, dynamic-code, global-crypto, or worker surfaces`;
+}
+
+function isExactFilingFactNormalizationIndex(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingFactNormalizationIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  const declaration = sourceFile.statements[0];
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "./filing-fact-normalization" ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = filingFactNormalizationPublicExports.map(
+    ([name, typeOnly]) => [name, name, typeOnly],
+  );
+  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 function filingPayloadCustodyFixtureGuardViolation(
@@ -1734,6 +2171,34 @@ function hasFilingParserDependency(
   });
 }
 
+function hasFilingFactNormalizationDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingFactNormalizationModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingFactNormalizationModule)) return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingFactNormalizationPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
 function hasFilingPayloadCustodyDependency(
   manifest: unknown,
   manifestPath: string,
@@ -1760,6 +2225,26 @@ function hasFilingPayloadCustodyDependency(
       );
     });
   });
+}
+
+function referencesFilingFactNormalizationPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingFactNormalizationModule ||
+    specifier.startsWith(`${filingFactNormalizationModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-fact-normalization" ||
+    resolved.startsWith("packages/filing-fact-normalization/") ||
+    resolved.includes("/packages/filing-fact-normalization/")
+  );
 }
 
 function referencesFilingPayloadCustodyPath(

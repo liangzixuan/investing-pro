@@ -8,8 +8,9 @@ projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
-metadata verifier, and reviewed bounded Cycle 2c synthetic payload custody;
-synthetic data only.
+metadata verifier, reviewed bounded Cycle 2c synthetic payload custody, and
+source-stage Cycle 2d synthetic ten-fact normalization/lineage; synthetic data
+only.
 
 ## Identity
 
@@ -415,6 +416,41 @@ readiness. See
 [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
 [Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md), with exact anchors in the
 [Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
+
+## Cycle 2d synthetic fact-normalization boundary
+
+Cycle 2d adds no canonical filing, evidence passport, rights policy, tenant,
+research-state, database, or production-ingestion entity. The caller supplies
+exactly two byte documents matching one closed synthetic original-10-K and
+10-K/A schema, and the boundary immediately takes fresh owned snapshots before
+validation. Each document has exactly the same frozen ten launch-fact keys.
+Tests generate the canonical pair, but the boundary does not authenticate its
+generator or provenance. The disconnected output is a
+closed normalization candidate and lineage proof, not an admitted product fact
+or persistence command.
+
+Each version binds its synthetic source accession and hash, accepted/available
+times, parser and taxonomy metadata, decimal value, permitted unit,
+instant/duration reporting period, and dimensions. Derived identifiers and the
+single predecessor are deterministic. The source-known interval is half open:
+the original is knowable from original availability until amendment
+availability, and the amendment is knowable from that instant onward. The
+normalizer does not invent `systemRecordedFrom` or `systemRecordedTo`; those
+remain persistence-controlled concepts. Unchanged and changed values both
+retain their distinct source version and predecessor lineage.
+
+Local verification is Pass on exact frozen bytes: format, lint, guardrails, all
+project typechecks and builds, 86 production-license checks, and 41 test files
+with 876 passed plus 2 POSIX-only Windows skips (878 total cases: parser 65;
+custody 36 passed plus 2 skipped; normalization 26; DB 582; API 49; state 48;
+contracts 5; core 62; web 3). Two-OS CI remains Pending. Cycle 2d has no
+dedicated workflow, evidence schema, artifact, offline evidence review, or evidence note.
+It does not alter Cycle 2b's blocked external approval/authority gate, compose
+with parser/custody/API/web/database/queue paths, create B15/V15, admit real
+data, or establish parser/accounting correctness, independently adjudicated
+quality, complete correction discovery, or production readiness. See
+[ADR 0031](./adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
+and the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

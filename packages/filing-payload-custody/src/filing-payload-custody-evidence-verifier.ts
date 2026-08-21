@@ -11,6 +11,8 @@ import {
 } from "./filing-payload-custody-evidence";
 
 const BASELINE_REVISION = "ba97f43c10f7472151d4cd073c93904f04b1fdcf" as const;
+const CYCLE_2D_BASELINE_REVISION =
+  "c0bbab34535cdfd7c590d774a1dad521de92fee9" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -19,6 +21,81 @@ const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/u;
 const RUN_ID = /^[1-9][0-9]{0,19}$/u;
 const CYCLE_2C_EVIDENCE_NOTE_PATH =
   "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md" as const;
+const CYCLE_2D_PACKAGE_TREE = Object.freeze(
+  [
+    "packages/filing-fact-normalization/package.json",
+    "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+    "packages/filing-fact-normalization/src/filing-fact-normalization.test.ts",
+    "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+    "packages/filing-fact-normalization/src/index.ts",
+    "packages/filing-fact-normalization/src/test-filing-fact-builder.ts",
+    "packages/filing-fact-normalization/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2D_TRANSITION = Object.freeze(
+  [
+    { path: "LICENSE_POLICY.md", status: "M" },
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+      status: "A",
+    },
+    { path: "packages/filing-fact-normalization/package.json", status: "A" },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+      status: "A",
+    },
+    { path: "packages/filing-fact-normalization/src/index.ts", status: "A" },
+    {
+      path: "packages/filing-fact-normalization/src/test-filing-fact-builder.ts",
+      status: "A",
+    },
+    { path: "packages/filing-fact-normalization/tsconfig.json", status: "A" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
+const CYCLE_2D_TRANSITION_PATHS = new Set(
+  CYCLE_2D_TRANSITION.map((entry) => entry.path),
+);
 
 const CYCLE_2C_DIFF_ALLOWLIST = new Set([
   ".github/workflows/filing-payload-custody-acceptance.yml",
@@ -58,6 +135,14 @@ const CYCLE_2C_DIFF_ALLOWLIST = new Set([
 const CYCLE_2C_DIFF_PATHS = Object.freeze([...CYCLE_2C_DIFF_ALLOWLIST].sort());
 const CYCLE_2C_LEGACY_DIFF_PATHS = Object.freeze(
   CYCLE_2C_DIFF_PATHS.filter((path) => path !== CYCLE_2C_EVIDENCE_NOTE_PATH),
+);
+const CYCLE_2D_CUMULATIVE_DIFF_PATHS = Object.freeze(
+  [
+    ...new Set([
+      ...CYCLE_2C_DIFF_PATHS,
+      ...CYCLE_2D_TRANSITION.map((entry) => entry.path),
+    ]),
+  ].sort(),
 );
 
 const EXPECTED_PACKAGE_TREE = [...CYCLE_2C_DIFF_ALLOWLIST]
@@ -218,11 +303,19 @@ export async function verifyCycle2cCommitBoundary(
     revision,
     "fixtures/synthetic/filing-payload-custody/v1",
   );
+  const normalizationTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-fact-normalization",
+  );
   if (
     !exactList(packageTree, EXPECTED_PACKAGE_TREE) ||
-    !exactList(fixtureTree, EXPECTED_FIXTURE_TREE)
+    !exactList(fixtureTree, EXPECTED_FIXTURE_TREE) ||
+    !isCycle2dNormalizationTreeAllowed(normalizationTree)
   )
     invalid();
+  if (normalizationTree.length > 0)
+    await verifyCycle2dTransition(repositoryPath, revision);
 }
 
 /** @internal Exact commit-boundary regression seam. */
@@ -233,7 +326,7 @@ export function isCycle2cCommitDiffEntryAllowed(
   return (
     (status === "A" || status === "M") &&
     path !== undefined &&
-    CYCLE_2C_DIFF_ALLOWLIST.has(path)
+    (CYCLE_2C_DIFF_ALLOWLIST.has(path) || CYCLE_2D_TRANSITION_PATHS.has(path))
   );
 }
 
@@ -250,7 +343,8 @@ export function isCycle2cCommitDiffSetAllowed(
       isCycle2cCommitDiffEntryAllowed(entry.status, entry.path),
     ) &&
     (exactList(paths, CYCLE_2C_LEGACY_DIFF_PATHS) ||
-      exactList(paths, CYCLE_2C_DIFF_PATHS))
+      exactList(paths, CYCLE_2C_DIFF_PATHS) ||
+      exactList(paths, CYCLE_2D_CUMULATIVE_DIFF_PATHS))
   );
 }
 
@@ -263,6 +357,71 @@ export function isCycle2cTreeAllowed(
     exactList(packagePaths, EXPECTED_PACKAGE_TREE) &&
     exactList(fixturePaths, EXPECTED_FIXTURE_TREE)
   );
+}
+
+/** @internal Exact disconnected-successor tree regression seam. */
+export function isCycle2dNormalizationTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return paths.length === 0 || exactList(paths, CYCLE_2D_PACKAGE_TREE);
+}
+
+/** @internal Exact successor-transition regression seam. */
+export function isCycle2dCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === CYCLE_2D_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = CYCLE_2D_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function verifyCycle2dTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2D_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  await git(
+    repositoryPath,
+    ["merge-base", "--is-ancestor", CYCLE_2D_BASELINE_REVISION, revision],
+    0,
+  );
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "-z",
+      CYCLE_2D_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2dCommitDiffSetAllowed(entries)) invalid();
 }
 
 /** @internal Strict NUL-framed Git output regression seam. */

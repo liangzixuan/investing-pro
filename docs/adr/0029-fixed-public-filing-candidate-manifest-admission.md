@@ -174,9 +174,15 @@ complete any Cycle 2 quality gate. Cycle 2b is not B15/V15, changes no
 PostgreSQL V1 through V14 or Cycle 2a evidence, and does not authorize real-data
 or production use.
 
+Cycle 2d is a successor-only closed synthetic normalization/lineage
+contract. It supplies no external inventory, approval, chronology, authority
+registry, or real payload and therefore does not change this Blocked status or
+establish the Cycle 2b target claim.
+
 ## References
 
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
+- [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [Canonical model](../CANONICAL_MODEL.md)

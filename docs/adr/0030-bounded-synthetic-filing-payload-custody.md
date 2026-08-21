@@ -146,10 +146,16 @@ declared digest, or satisfy the broader Cycle 2 corpus-quality exit. Before any
 real byte is used, the exact Cycle 2b metadata, approvals, chronology, and
 human-authenticated registry digest remain mandatory.
 
+Cycle 2d is a separate closed synthetic normalization/lineage successor. It
+does not consume Cycle 2c ciphertext, keys, receipts, or audit history and does
+not replace or widen the canonical Cycle 2c evidence. It adds no real payload,
+custody, deletion, or cryptographic-erasure claim.
+
 ## References
 
 - [Cycle 2c evidence note](../FILING_PAYLOAD_CUSTODY_EVIDENCE.md)
 - [Cycle 2c exit matrix](../CYCLE_2C_EXIT_MATRIX.md)
+- [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)

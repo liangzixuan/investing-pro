@@ -660,6 +660,49 @@ Cycle 2b approval, SEC/source authenticity, real payload presence, physical or
 cryptographic erasure, the 100-filing corpus, parser correctness, adjudicated
 quality, 2,000 assertions, or production readiness.
 
+## Cycle 2d — bounded synthetic ten-fact normalization and lineage
+
+Status: **source implementation complete; local verification Pass; two-OS CI
+Pending; Cycle 2b and production admission Blocked.**
+
+The exact frozen-byte local gate passed format, lint, every guardrail, all
+project typechecks and builds, 86 production-license checks, and 41 test files
+with 876 passed plus 2 POSIX-only Windows skips (878 total cases: parser 65;
+custody 36 passed plus 2 skipped; normalization 26; DB 582; API 49; state 48;
+contracts 5; core 62; web 3). This is local source/test verification only;
+Ubuntu/Windows CI remains Pending.
+
+Cycle 2d isolates the next actionable deterministic risk without using a real
+filing or bypassing Cycle 2b. The caller gives a separate zero-dependency
+package exactly two bounded canonical JSON byte documents matching the closed
+synthetic 10-K/10-K/A schema; the boundary immediately takes fresh owned
+snapshots before validation. Tests generate the canonical pair, but the
+boundary does not authenticate its generator or provenance. Each document carries exactly
+the frozen keys `assets`, `cash`, `debt`, `diluted_shares`,
+`free_cash_flow`, `gross_profit`, `net_income`, `operating_cash_flow`,
+`operating_income`, and `revenue` once.
+
+The closed source contract validates strict decimal strings and key-specific
+unit, instant/duration period, and dimension forms; binds accession, form,
+entity, source hash, parser, and taxonomy metadata; and derives one acyclic
+single-predecessor lineage. Original versions use a half-open known window that
+ends at amendment availability; amendment versions begin at that instant.
+Changed and unchanged facts remain distinct source versions. The complete pair
+normalizes atomically or yields only an empty, value-free quarantine result.
+
+Cycle 2d uses the existing frozen-byte local release suite and Ubuntu/Windows
+CI only. It adds no dedicated workflow, evidence schema, artifact, retained
+evidence log, offline evidence review, or evidence note. Exact checks,
+nonclaims, status, and the history-preservation rule are in
+[ADR 0031](./adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
+and the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
+
+This contract has no network, raw payload, XML/XBRL parser, custody,
+corpus-admission, database, API, web, queue, or B15/V15 composition. It does not
+prove Cycle 2b approval, real filing identity or SEC authenticity, general
+taxonomy/unit/dimension/fiscal coverage, independent dual validation,
+adjudicated quality, 2,000 assertions, full Cycle 2 exit, or production use.
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -672,9 +715,9 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
-Neither Cycle 2a, Phase-A Cycle 2b, nor the bounded Cycle 2c result satisfies this
-exit gate. Real payload bytes and digest validation, approved corpus inputs,
-ten-fact coverage,
+Neither Cycle 2a, Phase-A Cycle 2b, bounded Cycle 2c, nor source-stage Cycle 2d
+satisfies this exit gate. Real payload bytes and digest validation, approved
+corpus inputs, real ten-fact coverage,
 independently adjudicated precision/recall, general XBRL/iXBRL and
 taxonomy/plugin support, correction lineage, production operations, and
 real-data admission remain pending.

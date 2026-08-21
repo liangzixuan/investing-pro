@@ -105,3 +105,8 @@ Cycle 2b exit would not prove raw payload existence or digest equality, full
 Cycle 2 quality, source authenticity, counsel identity or legal validity,
 revocation freshness, application composition, B15/V15, real-data admission,
 or production readiness.
+
+Cycle 2d is a successor-only closed synthetic normalization/lineage
+contract. It provides none of the external inputs or human authority required
+above, creates no Cycle 2b workflow or evidence, and does not change this
+Blocked status. See the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).

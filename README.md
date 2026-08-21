@@ -118,6 +118,27 @@ this is not B15/V15. See
 custody anchors in the
 [Cycle 2c evidence note](./docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
 
+Cycle 2d adds a separate, zero-dependency synthetic fact-normalization
+protocol. The caller supplies exactly two bounded canonical JSON byte
+documents matching the closed synthetic 10-K/10-K/A schema, and the boundary
+immediately takes fresh owned snapshots before validation. Tests generate the
+canonical pair, but the boundary does not authenticate its generator or
+provenance. It requires the frozen ten launch-fact keys exactly once per
+document, strict decimal/unit/period/dimension metadata, one acyclic predecessor, and half-open
+pre/post-amendment known windows. The complete pair either normalizes
+atomically or produces only an empty, value-free quarantine result. **Local
+verification is Pass on the exact frozen bytes: format, lint, guardrails, all
+project typechecks and builds, 86 production-license checks, and 41 test files
+with 876 passed plus 2 POSIX-only Windows skips (878 total cases: parser 65;
+custody 36 passed plus 2 skipped; normalization 26; DB 582; API 49; state 48;
+contracts 5; core 62; web 3). Two-OS CI remains Pending.** Cycle 2d creates no dedicated
+workflow, evidence schema, artifact, offline evidence review, or evidence note;
+it has no real filing bytes, parser execution, corpus approval, custody,
+database, API, web, or queue composition. Cycle 2b and production admission
+remain Blocked, and this is not B15/V15. See
+[ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
+and the [Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -512,6 +533,12 @@ blocked.
   establish production key/storage/retention/deletion controls or
   cryptographic erasure, compose the application, satisfy parser-quality
   gates, or authorize real-data or production use.
+- Cycle 2d is limited to one closed synthetic original/amendment schema and
+  one exact ten-key normalization contract; tests generate the canonical pair,
+  while the boundary does not authenticate generator provenance. It does not approve Cycle 2b,
+  execute a parser, validate real filing bytes, establish independent
+  adjudication or quality, compose a database/application, or authorize
+  real-data or production use.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -562,4 +589,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [Cycle 2c exit matrix](./docs/CYCLE_2C_EXIT_MATRIX.md),
 [Cycle 2c evidence note](./docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md),
 [ADR 0030](./docs/adr/0030-bounded-synthetic-filing-payload-custody.md),
+[Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md),
+[ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md),
 and [architecture decisions](./docs/adr/).

@@ -18,6 +18,8 @@ const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
 const RUN_ID = /^[1-9][0-9]{0,19}$/;
 const CYCLE_2A_BASELINE_REVISION =
   "6d42175beb7e7c3f58a4143bc2e9b1fd73977439" as const;
+const CYCLE_2D_BASELINE_REVISION =
+  "c0bbab34535cdfd7c590d774a1dad521de92fee9" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -44,6 +46,83 @@ const CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE = Object.freeze(
     "packages/filing-payload-custody/tsconfig.json",
   ].sort(),
 );
+const CYCLE_2D_DISCONNECTED_SUCCESSOR_TREE = Object.freeze(
+  [
+    "packages/filing-fact-normalization/package.json",
+    "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+    "packages/filing-fact-normalization/src/filing-fact-normalization.test.ts",
+    "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+    "packages/filing-fact-normalization/src/index.ts",
+    "packages/filing-fact-normalization/src/test-filing-fact-builder.ts",
+    "packages/filing-fact-normalization/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2D_TRANSITION = Object.freeze(
+  [
+    { path: "LICENSE_POLICY.md", status: "M" },
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+      status: "A",
+    },
+    { path: "packages/filing-fact-normalization/package.json", status: "A" },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+      status: "A",
+    },
+    { path: "packages/filing-fact-normalization/src/index.ts", status: "A" },
+    {
+      path: "packages/filing-fact-normalization/src/test-filing-fact-builder.ts",
+      status: "A",
+    },
+    { path: "packages/filing-fact-normalization/tsconfig.json", status: "A" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
+const CYCLE_2D_MARKER_PATHS = new Set([
+  "docs/CYCLE_2D_EXIT_MATRIX.md",
+  "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+  ...CYCLE_2D_DISCONNECTED_SUCCESSOR_TREE,
+]);
 const CYCLE_2A_LEGACY_EVIDENCE_NOTE_TREE = Object.freeze([
   "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
 ]);
@@ -64,12 +143,14 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "docs/CYCLE_2A_EXIT_MATRIX.md",
   "docs/CYCLE_2B_EXIT_MATRIX.md",
   "docs/CYCLE_2C_EXIT_MATRIX.md",
+  "docs/CYCLE_2D_EXIT_MATRIX.md",
   "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
   "docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md",
   "docs/THREAT_MODEL.md",
   "docs/adr/0028-bounded-synthetic-filing-parser-isolation.md",
   "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
   "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+  "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
   "fixtures/synthetic/filing-parser/v1/cases.json",
   "fixtures/synthetic/filing-parser/v1/manifest.json",
   "package.json",
@@ -97,6 +178,7 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   "scripts/verify-filing-payload-custody-fixtures.ts",
   ...CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS,
   ...CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE,
+  ...CYCLE_2D_DISCONNECTED_SUCCESSOR_TREE,
 ]);
 
 const LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE = Object.freeze(
@@ -443,10 +525,16 @@ export async function verifyCycle2aCommitBoundary(
     ]),
   );
   if (diff.length % 2 !== 0) invalidReview();
+  const diffEntries: Array<{
+    readonly path: string;
+    readonly status: string;
+  }> = [];
   for (let index = 0; index < diff.length; index += 2) {
     const status = diff[index];
     const path = diff[index + 1];
     if (!isCycle2aCommitDiffEntryAllowed(status, path)) invalidReview();
+    if (status === undefined || path === undefined) invalidReview();
+    diffEntries.push(Object.freeze({ path, status }));
   }
 
   const evidenceNoteTreeEntries = splitNul(
@@ -501,6 +589,31 @@ export async function verifyCycle2aCommitBoundary(
     return match?.[1] ?? invalidReview();
   });
   if (!isCycle2aDisconnectedCustodyTreeAllowed(custodyPaths)) invalidReview();
+
+  const normalizationTreeEntries = splitNul(
+    await git(repositoryPath, [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      revision,
+      "--",
+      "packages/filing-fact-normalization",
+    ]),
+  );
+  const normalizationPaths = normalizationTreeEntries.map((entry) => {
+    const match = /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entry);
+    return match?.[1] ?? invalidReview();
+  });
+  if (!isCycle2dDisconnectedNormalizationTreeAllowed(normalizationPaths))
+    invalidReview();
+
+  if (
+    normalizationPaths.length > 0 ||
+    diffEntries.some((entry) => CYCLE_2D_MARKER_PATHS.has(entry.path))
+  ) {
+    await verifyCycle2dTransition(repositoryPath, revision);
+  }
 }
 
 /** @internal Exported only for exact commit-boundary regression tests. */
@@ -544,6 +657,74 @@ export function isCycle2aDisconnectedCustodyTreeAllowed(
     paths.length === 0 ||
     exactPathList(paths, CYCLE_2C_DISCONNECTED_SUCCESSOR_TREE)
   );
+}
+
+/** @internal Exported only for exact disconnected-successor regression tests. */
+export function isCycle2dDisconnectedNormalizationTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return (
+    paths.length === 0 ||
+    exactPathList(paths, CYCLE_2D_DISCONNECTED_SUCCESSOR_TREE)
+  );
+}
+
+/** @internal Exported only for exact successor-diff regression tests. */
+export function isCycle2dCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === CYCLE_2D_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = CYCLE_2D_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function verifyCycle2dTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2D_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  await git(
+    repositoryPath,
+    ["merge-base", "--is-ancestor", CYCLE_2D_BASELINE_REVISION, revision],
+    0,
+  );
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "-z",
+      CYCLE_2D_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2dCommitDiffSetAllowed(entries)) invalidReview();
 }
 
 function exactPathList(

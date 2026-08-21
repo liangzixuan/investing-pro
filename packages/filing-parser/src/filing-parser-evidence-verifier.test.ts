@@ -13,6 +13,8 @@ import {
   isCycle2aCommitDiffEntryAllowed,
   isCycle2aEvidenceNoteTreeAllowed,
   isCycle2aParserDomainTreeAllowed,
+  isCycle2dCommitDiffSetAllowed,
+  isCycle2dDisconnectedNormalizationTreeAllowed,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
 
@@ -67,6 +69,74 @@ const CYCLE_2C_SUCCESSOR_TREE = [
   "packages/filing-payload-custody/src/test-payload-builder.ts",
   "packages/filing-payload-custody/tsconfig.json",
 ].sort();
+const CYCLE_2D_SUCCESSOR_TREE = [
+  "packages/filing-fact-normalization/package.json",
+  "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+  "packages/filing-fact-normalization/src/filing-fact-normalization.test.ts",
+  "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+  "packages/filing-fact-normalization/src/index.ts",
+  "packages/filing-fact-normalization/src/test-filing-fact-builder.ts",
+  "packages/filing-fact-normalization/tsconfig.json",
+].sort();
+const CYCLE_2D_TRANSITION = [
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+    status: "A",
+  },
+  { path: "packages/filing-fact-normalization/package.json", status: "A" },
+  {
+    path: "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-fact-normalization/src/filing-fact-normalization.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+    status: "A",
+  },
+  { path: "packages/filing-fact-normalization/src/index.ts", status: "A" },
+  {
+    path: "packages/filing-fact-normalization/src/test-filing-fact-builder.ts",
+    status: "A",
+  },
+  { path: "packages/filing-fact-normalization/tsconfig.json", status: "A" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
 
 afterEach(async () => {
   await Promise.all(
@@ -196,6 +266,55 @@ describe("offline filing parser evidence review", () => {
       isCycle2aCommitDiffEntryAllowed(
         "A",
         `${CUSTODY_EVIDENCE_NOTE}.unreviewed`,
+      ),
+    ).toBe(false);
+  });
+
+  it("admits only the exact atomic Cycle 2d package tree and transition", () => {
+    expect(isCycle2dDisconnectedNormalizationTreeAllowed([])).toBe(true);
+    expect(
+      isCycle2dDisconnectedNormalizationTreeAllowed(CYCLE_2D_SUCCESSOR_TREE),
+    ).toBe(true);
+    for (const omitted of CYCLE_2D_SUCCESSOR_TREE) {
+      expect(
+        isCycle2dDisconnectedNormalizationTreeAllowed(
+          CYCLE_2D_SUCCESSOR_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2dDisconnectedNormalizationTreeAllowed(
+        [
+          ...CYCLE_2D_SUCCESSOR_TREE,
+          "packages/filing-fact-normalization/src/unreviewed.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+
+    expect(isCycle2dCommitDiffSetAllowed(CYCLE_2D_TRANSITION)).toBe(true);
+    expect(CYCLE_2D_TRANSITION).toHaveLength(24);
+    for (const omitted of CYCLE_2D_TRANSITION) {
+      expect(
+        isCycle2dCommitDiffSetAllowed(
+          CYCLE_2D_TRANSITION.filter((entry) => entry !== omitted),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2aCommitDiffEntryAllowed(omitted.status, omitted.path),
+      ).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+    }
+    expect(
+      isCycle2dCommitDiffSetAllowed([
+        ...CYCLE_2D_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2dCommitDiffSetAllowed(
+        CYCLE_2D_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "D" } : entry,
+        ),
       ),
     ).toBe(false);
   });

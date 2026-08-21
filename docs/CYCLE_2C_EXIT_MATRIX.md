@@ -102,5 +102,10 @@ not unblock Cycle 2b, authorize real filing bytes, prove
 cryptographic erasure, establish production custody, satisfy the 100-filing or
 2,000-assertion quality gates, create B15/V15, or authorize production use.
 
+Cycle 2d is a separate closed synthetic normalization/lineage successor. It
+does not consume or widen this custody result, and the Cycle 2c schema, checks,
+nonclaims, 29-source set, canonical artifact, and evidence note remain
+unchanged. See the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
+
 Exact remote, source, artifact, log, and custody anchors are recorded in the
 [Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).

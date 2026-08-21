@@ -103,3 +103,25 @@ data, or production use. See
 [Cycle 2c exit matrix](./docs/CYCLE_2C_EXIT_MATRIX.md), with exact run and
 custody anchors in the
 [Cycle 2c evidence note](./docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
+
+## Cycle 2d synthetic fact-normalization boundary
+
+Cycle 2d adds one private workspace package with no runtime dependency. Tests
+provide fresh deterministic canonical JSON bytes for one original/amendment
+pair. The source accepts only caller-supplied bytes matching that closed
+synthetic schema and does not authenticate their generator or provenance. It adds no external content,
+filing payload, candidate manifest, dataset, image, service, vendor package,
+license exception, or production dependency. Local verification is Pass on the
+exact frozen bytes: 86 production-license checks and all format, lint,
+guardrail, typecheck, test, and build gates passed; 41 test files contain 876
+passed plus 2 POSIX-only Windows skips (878 total cases: parser 65; custody 36
+passed plus 2 skipped; normalization 26; DB 582; API 49; state 48; contracts 5;
+core 62; web 3). Two-OS CI remains Pending.
+
+This source/test protocol is not a rights or corpus-admission decision. It does
+not change Cycle 2b's exact external inventory, counsel/procurement,
+rights-authority, data-steward, chronology, or human key-authority prerequisites.
+No real filing bytes or external metadata are permitted, and no dedicated
+Cycle 2d workflow, evidence artifact, or evidence note exists. See
+[ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
+and the [Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md).
