@@ -613,14 +613,15 @@ composition, B15/V15, real-data admission, or production readiness.
 
 ## Cycle 2c — bounded synthetic filing-payload custody
 
-Status: **source protocol implemented and local integration Pass; two-OS CI,
-dedicated Linux evidence, artifact custody, and independent review Pending;
-Cycle 2b and production admission Blocked.** The exact frozen-byte local
-`pnpm verify` gate passed format, lint, every guardrail including 86
-production-license checks, all project typechecks and builds, and 39 test
-files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
-No real filing bytes, external configuration, approval, fetch surface, Cycle
-2b workflow/evidence, or evidence note is added.
+Status: **the bounded synthetic claim is Pass on exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`; Cycle 2b and production admission
+remain Blocked.** The exact frozen-byte local `pnpm verify` gate passed format,
+lint, every guardrail including 86 production-license checks, all project
+typechecks and builds, and 39 test files with 847 passed tests plus 2 POSIX-only
+Windows skips (849 total cases). Two-OS CI run `32463955370`, dedicated Linux
+custody run `32463955421`, exact-commit offline review, and independent retained
+artifact/log review also passed. No real filing bytes, external configuration,
+approval, fetch surface, or Cycle 2b workflow/evidence is added.
 
 Cycle 2c isolates one actionable technical risk without bypassing Cycle 2b. A
 zero-dependency package accepts exactly one generated 4,096-byte synthetic
@@ -629,7 +630,7 @@ fixed SHA-256, requests a fresh AES-256-GCM key and nonce from an injected
 entropy provider, and separates the injected key store from ciphertext and the
 closed audit-file domain. The provider is an out-of-band trusted CSPRNG TCB;
 source validates only returned byte shape and exact requested length, not
-randomness or uniqueness. A future dedicated Linux record is limited to
+randomness or uniqueness. The dedicated Linux record is limited to
 observed Node `crypto.randomBytes` use and distinct DEK-fingerprint and
 nonce-hash samples in that run; it cannot establish OS entropy quality. Only
 public aggregate audit/error/evidence/log surfaces are value-free. A trusted
@@ -640,14 +641,15 @@ state is only `logical_key_unavailability`, never cryptographic erasure.
 
 The sole bounded target claim is
 `bounded_synthetic_filing_payload_integrity_custody_and_logical_key_unavailability`.
-The local source gate has passed, but the claim remains pending until the same
-frozen bytes pass the two-OS source gate, then a separate success-only Ubuntu
-24.04 run writes one canonical source/fixture-bound record, exact-commit
-offline review passes before upload, and independent artifact/log custody
-review agrees. Failure retains no candidate artifact.
+It passed only for the exact frozen local source, Ubuntu/Windows CI, one
+success-only Ubuntu 24.04 lifecycle, canonical source/fixture-bound record,
+exact-commit offline review, and retained artifact/log custody. The workflow
+retains no candidate artifact on failure.
 Exact checks, nonclaims, and status are in
 [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
-[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md).
+[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md); exact run, source, and
+custody anchors are in the
+[Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
 
 Cycle 2c has no network, parser, corpus-admission, database, API, web, queue,
 production KMS, backup, real-data, or B15/V15 composition. It does not prove
@@ -667,7 +669,7 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
-Neither Cycle 2a, Phase-A Cycle 2b, nor source-stage Cycle 2c satisfies this
+Neither Cycle 2a, Phase-A Cycle 2b, nor the bounded Cycle 2c result satisfies this
 exit gate. Real payload bytes and digest validation, approved corpus inputs,
 ten-fact coverage,
 independently adjudicated precision/recall, general XBRL/iXBRL and

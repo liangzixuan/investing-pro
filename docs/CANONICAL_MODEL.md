@@ -8,7 +8,7 @@ projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
-metadata verifier, and source-stage Cycle 2c synthetic payload custody;
+metadata verifier, and reviewed bounded Cycle 2c synthetic payload custody;
 synthetic data only.
 
 ## Identity
@@ -384,7 +384,7 @@ rejected values never enter the canonical product model.
 
 The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source
 validates only the returned byte shape and exact requested length, not
-randomness or uniqueness. A future dedicated Linux record is limited to
+randomness or uniqueness. The dedicated Linux record is limited to
 observed Node `crypto.randomBytes` use and distinct DEK-fingerprint and
 nonce-hash samples in that run; it cannot establish OS entropy quality. None of
 those observations creates a canonical entropy or production-key entity.
@@ -399,17 +399,20 @@ audit-domain history, and then removes ciphertext. Only the public aggregate
 view enters the product model. The terminal state is exactly
 `logical_key_unavailability`, not physical deletion or cryptographic erasure.
 
-The source protocol is implemented and the exact frozen-byte local
-`pnpm verify` gate is Pass: format, lint, every guardrail including 86
-production-license checks, all project typechecks and builds, and 39 test
-files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
-Two-OS CI, dedicated Linux evidence, artifact custody, and independent review
-remain pending. It does not alter Cycle 2b's blocked external
-approval/authority gate, compose with parser/API/web/database/queue paths,
-create B15/V15, admit real data, or establish production storage, KMS,
-retention, deletion, backup, or operational readiness. See
+The bounded synthetic claim is Pass on exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`. The exact frozen-byte local
+`pnpm verify` gate passed format, lint, every guardrail including 86
+production-license checks, all project typechecks and builds, and 39 test files
+with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases). Two-OS
+CI run `32463955370`, dedicated Linux custody run `32463955421`, exact-commit
+offline review, and independent retained artifact/log review also passed. This
+does not alter Cycle 2b's blocked external approval/authority gate, compose with
+parser/API/web/database/queue paths, create B15/V15, admit real data, or
+establish production storage, KMS, retention, deletion, backup, or operational
+readiness. See
 [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
-[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md).
+[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md), with exact anchors in the
+[Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

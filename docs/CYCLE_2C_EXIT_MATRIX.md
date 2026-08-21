@@ -5,15 +5,17 @@ envelope, AES-256-GCM encrypted local custody, fixed 24-hour retention, and
 terminal logical key unavailability in one process. The decision is recorded
 in [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md).
 
-Current status: **source protocol implemented and local integration Pass;
-two-OS CI, dedicated Linux evidence, and independent review Pending; production
-Blocked.** Cycle 2b remains separately Blocked on external metadata, approvals,
-and human key-authority review. No real payload, external configuration, fetch,
-application composition, live artifact, or evidence note exists.
+Current status: **the bounded synthetic claim is Pass on exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`; production remains Blocked.**
+Local integration, two-OS CI, dedicated Linux evidence, exact-commit offline
+review, and independent retained artifact/log review agree. Cycle 2b remains
+separately Blocked on external metadata, approvals, and human key-authority
+review. No real payload, external configuration, fetch, or application
+composition exists.
 
 The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source
 validates only the returned byte shape and exact requested length, not
-randomness or uniqueness. A future dedicated Linux record is limited to
+randomness or uniqueness. The dedicated Linux record is limited to
 observed Node `crypto.randomBytes` use and distinct DEK-fingerprint and
 nonce-hash samples in that run; it cannot establish OS entropy quality.
 
@@ -29,9 +31,9 @@ nonce-hash samples in that run; it cannot establish OS entropy quality.
 | Value-free boundary        | Public aggregate audit, errors, evidence, and log markers expose no payload, key ID/key, nonce, tag, internal path, or rejected value               | Implemented; local verification Pass                                                                    |
 | Isolation                  | No parser, corpus admission, fetch/network, database, API, web, queue, or real config composition is added                                          | Implemented; guardrail verification Pass                                                                |
 | Local integration          | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                             | Pass: 39 files; 847 passed + 2 POSIX-only Windows skips (849 total cases); 86 production-license checks |
-| Regression CI              | The same frozen source gate passes on Ubuntu and Windows                                                                                            | Pending                                                                                                 |
-| Dedicated Linux evidence   | One success-only canonical record binds the exact commit, fixture chain, source hashes, checks, nonclaims, and real Linux lifecycle                 | Pending; no run or artifact                                                                             |
-| Independent review         | Original artifact/logs and an exact-commit offline review agree                                                                                     | Pending                                                                                                 |
+| Regression CI              | The same frozen source gate passes on Ubuntu and Windows                                                                                            | Pass: run `32463955370`; jobs `96716506990` / `96716506716`                                             |
+| Dedicated Linux evidence   | One success-only canonical record binds the exact commit, fixture chain, source hashes, checks, nonclaims, and real Linux lifecycle                 | Pass: run `32463955421`; job `96716507074`; artifact `9439965468`                                       |
+| Independent review         | Original artifact/logs and an exact-commit offline review agree                                                                                     | Pass: `offline_consistent`, 29 source hashes, retained ZIP/JSON/log hashes exact                        |
 | Cycle 2b authority         | Exact external 100-entry metadata, rights/steward approvals, chronology, and human registry/key review pass before real bytes                       | Blocked; outside Cycle 2c                                                                               |
 | Production admission       | Real-byte acquisition, production KMS/storage/retention/deletion, parser quality, composition, operations, and privacy/legal gates pass             | Blocked                                                                                                 |
 
@@ -39,8 +41,8 @@ nonce-hash samples in that run; it cannot establish OS entropy quality.
 
 The sole bounded target claim is
 `bounded_synthetic_filing_payload_integrity_custody_and_logical_key_unavailability`.
-The local gate is Pass, but the claim remains pending until the two-OS CI, live
-artifact, and independent review gates above all pass.
+It is Pass only for exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4` and the gates above.
 
 The exact ordered checks are:
 
@@ -82,15 +84,18 @@ The exact ordered checks are:
 
 ## Exit rule
 
-Source or local tests alone cannot establish the claim. The frozen-byte local
-gate is Pass; promotion still requires the same source gate on both CI
-operating systems, then one successful dedicated Linux run, one canonical
-artifact uploaded only after exact-commit offline review, and independent
-custody review of the original artifact and authenticated logs. Failure,
-cancellation, missing source/history binding, or any retained failed candidate
-means no promotion.
+Source or local tests alone cannot establish the claim. For exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`, the frozen-byte local and two-OS CI
+gates, one successful dedicated Linux run, one canonical artifact uploaded only
+after exact-commit offline review, and independent custody review of the
+original artifact and authenticated log all passed. The workflow remains
+fail-closed: failure, cancellation, missing source/history binding, or any
+retained failed candidate means no promotion.
 
-Even a future Cycle 2c exit would prove only the exact bounded synthetic
-protocol. It would not unblock Cycle 2b, authorize real filing bytes, prove
+This Cycle 2c result proves only the exact bounded synthetic protocol. It does
+not unblock Cycle 2b, authorize real filing bytes, prove
 cryptographic erasure, establish production custody, satisfy the 100-filing or
 2,000-assertion quality gates, create B15/V15, or authorize production use.
+
+Exact remote, source, artifact, log, and custody anchors are recorded in the
+[Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).

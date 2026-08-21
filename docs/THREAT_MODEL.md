@@ -1,4 +1,4 @@
-# Sprint 0 through source-stage Cycle 2c threat model
+# Sprint 0 through reviewed bounded Cycle 2c threat model
 
 ## Current trust boundaries
 
@@ -70,7 +70,7 @@ fixed digest, requests a fresh AES-256-GCM key and nonce from an injected
 entropy provider, binds closed identity and retention metadata as AAD, and
 separates the injected key store from ciphertext/audit files. The provider is
 an out-of-band trusted CSPRNG TCB; source validates only returned byte shape and
-exact requested length, not randomness or uniqueness. A future dedicated Linux
+exact requested length, not randomness or uniqueness. The dedicated Linux
 record is limited to observed Node `crypto.randomBytes` use and distinct
 DEK-fingerprint and nonce-hash samples in that run; it cannot establish OS
 entropy quality. No network, parser, corpus admission, database, API, web,
@@ -78,8 +78,10 @@ queue, real configuration, external approval, or real payload enters the
 boundary. The exact frozen-byte local `pnpm verify` gate passed format, lint,
 every guardrail including 86 production-license checks, all project typechecks
 and builds, and 39 test files with 847 passed tests plus 2 POSIX-only Windows
-skips (849 total cases). Two-OS CI and the dedicated success-only Linux
-evidence/offline/custody gates remain pending.
+skips (849 total cases). Two-OS CI run `32463955370`, dedicated success-only
+Linux custody run `32463955421`, exact-commit offline review, and independent
+retained artifact/log review pass on exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`.
 
 The trusted host clock is part of the TCB. At the half-open expiry boundary the
 implementation forgets the key, records terminal logical unavailability, and
@@ -471,15 +473,17 @@ leave the server projection.
   seven-project typechecking, all builds, and 32 test files with 792 tests. The
   separate Linux run, retained artifact, and independent offline review passed
   only the exact bounded synthetic claim.
-- The source-stage Cycle 2c boundary owns the input snapshot, recomputes its
+- The reviewed bounded Cycle 2c boundary owns the input snapshot, recomputes its
   fixed SHA-256, requests a per-lifecycle AES-256-GCM key and nonce from the
   trusted injected CSPRNG,
   authenticates closed identity/retention metadata, avoids plaintext staging,
   publishes one complete record atomically, reauthenticates reads, serializes
   lifecycle operations, and retains the closed available/terminal audit-domain
   history after logical key unavailability. Only the public aggregate audit,
-  errors, evidence, and log markers are value-free. Local verification is Pass;
-  two-OS CI and dedicated Linux live evidence remain pending.
+  errors, evidence, and log markers are value-free. Exact frozen local,
+  Ubuntu/Windows CI, dedicated Linux evidence, offline review, and retained
+  custody gates are Pass only for commit
+  `ef22c7bc10596840b8ff686b9190730956fab0c4`.
 
 ## Non-production constraints
 
@@ -614,10 +618,10 @@ not approval or security controls. They do not replace repository-required
 counsel/procurement review, source authentication, external approvals, or
 fetch-control implementation.
 
-Cycle 2c's local source gate is Pass, but its source protocol does not establish
-the bounded target claim until the two-OS CI, dedicated Linux artifact,
-offline, and custody gates pass. Even a future pass would cover only one
-generated synthetic object in one process. It would not establish Cycle 2b
+Cycle 2c's bounded target claim passed only for exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`, one generated synthetic object,
+and one process after local, two-OS CI, dedicated Linux artifact, offline, and
+custody gates all agreed. It does not establish Cycle 2b
 approval or authority, real payload presence, source authenticity,
 EDGAR/fetch/malware controls, production KMS or key recovery, physical or
 cryptographic erasure, backup/replica/cache/log deletion, legal/DSAR/hold
@@ -625,7 +629,9 @@ execution, multi-host or crash durability, parser correctness, adjudicated
 quality, application/database composition, B15/V15, real-data admission, or
 production readiness. The exact boundary is in
 [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md) and the
-[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md).
+[Cycle 2c exit matrix](./CYCLE_2C_EXIT_MATRIX.md); exact remote and custody
+anchors are in the
+[Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
 
 ## Gates before adding new trust boundaries
 

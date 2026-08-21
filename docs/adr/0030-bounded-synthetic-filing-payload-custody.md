@@ -1,7 +1,8 @@
 # ADR 0030: Bounded synthetic filing-payload custody
 
-Status: source protocol implemented and local integration verified; two-OS CI
-and dedicated Linux evidence pending; Cycle 2b and production admission blocked
+Status: bounded synthetic claim verified on exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`; Cycle 2b and production admission
+blocked
 
 ## Context
 
@@ -16,8 +17,8 @@ metadata, expired under a trusted clock, and made logically unavailable by
 forgetting its data-encryption key.
 
 This decision does not bypass Cycle 2b, introduce a real candidate manifest,
-or authorize real bytes. It is a separate Cycle 2c source/test and future
-evidence domain, not B15/V15 and not an amendment to Cycle 2a evidence v1.
+or authorize real bytes. It is a separate Cycle 2c source/test and evidence
+domain, not B15/V15 and not an amendment to Cycle 2a evidence v1.
 
 ## Decision
 
@@ -34,7 +35,7 @@ integrity assertion, never source or authority provenance.
 Each new lifecycle requests a 256-bit AES-GCM data-encryption key and 96-bit
 nonce from an injected, out-of-band trusted CSPRNG TCB. Source validates only
 that each returned value has the required plain-byte shape and exact requested
-length; it cannot establish randomness or uniqueness. A future dedicated Linux
+length; it cannot establish randomness or uniqueness. The dedicated Linux
 record is limited to observed Node `crypto.randomBytes` use and distinct
 DEK-fingerprint and nonce-hash samples in that run; it cannot establish OS
 entropy quality. Canonical additional authenticated data binds schema, claim,
@@ -77,23 +78,24 @@ payload fixture, external URL, fetch code, approval, key configuration, or
 
 ## Evidence and status rule
 
-The exact frozen-byte local `pnpm verify` gate is Pass: format, lint, every
-guardrail including 86 production-license checks, all project typechecks and
-builds, and 39 test files with 847 passed tests plus 2 POSIX-only Windows skips
-(849 total cases). CI promotion still requires the same source gate on both
-operating systems. The bounded claim itself remains pending until a separate
-Ubuntu 24.04 success-only workflow executes the real filesystem/crypto
-lifecycle, writes one canonical filing-payload-custody evidence v1 record,
-reviews it offline against the exact commit and fixture chain, uploads only
-after review success, and its original artifact and authenticated logs receive
-independent custody review. Failure or cancellation retains no candidate
-artifact and causes no status promotion.
+The bounded claim is Pass only for exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`. The frozen-byte local `pnpm verify`
+gate passed format, lint, every guardrail including 86 production-license
+checks, all project typechecks and builds, and 39 test files with 847 passed
+tests plus 2 POSIX-only Windows skips (849 total cases). Two-OS CI run
+`32463955370`, dedicated Ubuntu 24.04 custody run `32463955421`, exact-commit
+offline review, and independent retained artifact/log review also passed. The
+success-only workflow wrote one canonical filing-payload-custody evidence v1
+record, reviewed it against the exact commit and fixture chain, and uploaded
+artifact `9439965468` only after review success. Failure or cancellation retains
+no candidate artifact and causes no status promotion.
 
-The future evidence record contains only hashes, fixed booleans, bounded
+The evidence record contains only hashes, fixed booleans, bounded
 timestamps/counts, tool versions, source hashes, and run anchors. It contains
 no plaintext, ciphertext, key, nonce, authentication tag, internal path,
-external filing metadata, approval body, or real-data identifier. No evidence
-note is created before a successful retained and independently reviewed run.
+external filing metadata, approval body, or real-data identifier. The evidence
+note was created only after the successful retained and independently reviewed
+run.
 
 ## Exact checks
 
@@ -144,6 +146,7 @@ human-authenticated registry digest remain mandatory.
 
 ## References
 
+- [Cycle 2c evidence note](../FILING_PAYLOAD_CUSTODY_EVIDENCE.md)
 - [Cycle 2c exit matrix](../CYCLE_2C_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
