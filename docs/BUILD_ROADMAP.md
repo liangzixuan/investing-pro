@@ -618,7 +618,7 @@ dedicated Linux evidence, artifact custody, and independent review Pending;
 Cycle 2b and production admission Blocked.** The exact frozen-byte local
 `pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test
-files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
 No real filing bytes, external configuration, approval, fetch surface, Cycle
 2b workflow/evidence, or evidence note is added.
 

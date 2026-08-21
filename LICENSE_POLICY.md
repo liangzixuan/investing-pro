@@ -80,7 +80,7 @@ content, real filing metadata or payload, corpus configuration, approval,
 vendor dataset, image, service, or license exception. The exact frozen-byte
 local `pnpm verify` gate passed all 86 production-license checks, along with
 format, lint, every guardrail, all project typechecks and builds, and 39 test
-files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
 Two-OS CI and dedicated live evidence remain pending.
 
 The injected entropy provider is an out-of-band trusted CSPRNG TCB. Source

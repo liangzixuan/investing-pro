@@ -1,6 +1,14 @@
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  symlink,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -157,6 +165,62 @@ describe("Cycle 2c synthetic filing payload custody", () => {
       ).toEqual(createSyntheticFilingPayloadFixture());
     } finally {
       await disposeContext(context);
+    }
+  });
+
+  it("canonicalizes a regular parent but rejects intermediate and leaf links", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "research-cockpit-custody-alias-test-"),
+    );
+    const targetRoot = join(root, "target");
+    const realParent = join(targetRoot, "parent");
+    const leafTarget = join(targetRoot, "leaf-target");
+    const ancestorAlias = join(root, "ancestor-alias");
+    const leafAlias = join(root, "leaf-alias");
+    let context: TestContext | undefined;
+    try {
+      await mkdir(realParent, { mode: 0o700, recursive: true });
+      await mkdir(leafTarget, { mode: 0o700 });
+      await symlink(
+        targetRoot,
+        ancestorAlias,
+        sep === "\\" ? "junction" : "dir",
+      );
+      await symlink(leafTarget, leafAlias, sep === "\\" ? "junction" : "dir");
+
+      await expectCustodyFailure(
+        createContextAt(leafAlias).then(({ harness }) =>
+          harness.boundary.close(),
+        ),
+        "io_failure",
+      );
+      await expectCustodyFailure(
+        createContextAt(join(ancestorAlias, "parent")).then(({ harness }) =>
+          harness.boundary.close(),
+        ),
+        "io_failure",
+      );
+      expect(await readdir(realParent)).toEqual([]);
+      expect(await readdir(leafTarget)).toEqual([]);
+
+      context = await createContextAt(realParent);
+      expect(dirname(context.harness.workspaceDirectory)).toBe(
+        await realpath(realParent),
+      );
+      const payload = createSyntheticFilingPayloadFixture();
+      const receipt = await context.harness.boundary.stage(
+        stageCommand(payload),
+      );
+      await expect(
+        context.harness.boundary.read({ payloadId: receipt.payloadId }),
+      ).resolves.toEqual(payload);
+      await context.harness.boundary.close();
+      context.closed = true;
+      expect(await readdir(realParent)).toEqual([]);
+    } finally {
+      if (context !== undefined && !context.closed)
+        await context.harness.boundary.close().catch(() => undefined);
+      await rm(root, { force: true, recursive: true });
     }
   });
 
@@ -322,6 +386,19 @@ async function createContext(
   const parentDirectory = await mkdtemp(
     join(tmpdir(), "research-cockpit-custody-test-"),
   );
+  try {
+    return await createContextAt(parentDirectory, afterPhase, milliseconds);
+  } catch (error) {
+    await rm(parentDirectory, { force: true, recursive: true });
+    throw error;
+  }
+}
+
+async function createContextAt(
+  parentDirectory: string,
+  afterPhase?: (phase: FilingPayloadCustodyFaultPhase) => void,
+  milliseconds = CREATED_AT,
+): Promise<TestContext> {
   const clock = { milliseconds };
   let entropyCounter = 1;
   const harness = await createFileSystemFilingPayloadCustodyTestHarness(

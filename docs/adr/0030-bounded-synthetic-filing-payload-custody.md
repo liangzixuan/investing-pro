@@ -79,8 +79,8 @@ payload fixture, external URL, fetch code, approval, key configuration, or
 
 The exact frozen-byte local `pnpm verify` gate is Pass: format, lint, every
 guardrail including 86 production-license checks, all project typechecks and
-builds, and 39 test files with 846 passed tests plus 2 POSIX-only Windows skips
-(848 total cases). CI promotion still requires the same source gate on both
+builds, and 39 test files with 847 passed tests plus 2 POSIX-only Windows skips
+(849 total cases). CI promotion still requires the same source gate on both
 operating systems. The bounded claim itself remains pending until a separate
 Ubuntu 24.04 success-only workflow executes the real filesystem/crypto
 lifecycle, writes one canonical filing-payload-custody evidence v1 record,

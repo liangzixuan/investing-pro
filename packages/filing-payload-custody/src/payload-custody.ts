@@ -12,7 +12,15 @@ import {
   rm,
   unlink,
 } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  isAbsolute,
+  join,
+  parse,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 
 export const FILING_PAYLOAD_CUSTODY_SCHEMA_VERSION = "1.0.0" as const;
 export const FILING_PAYLOAD_CUSTODY_CLAIM =
@@ -292,10 +300,10 @@ async function initialize(
 ): Promise<FilingPayloadCustodyTestHarness> {
   const normalizedOptions = normalizeOptions(options);
   const normalizedHooks = normalizeHooks(hooks);
-  const parent = normalizedOptions.workspaceParentDirectory;
+  let parent = normalizedOptions.workspaceParentDirectory;
   let workspaceDirectory: string | undefined;
   try {
-    await requireExactDirectory(parent, "invalid_input");
+    parent = await canonicalizeWorkspaceParentDirectory(parent);
     if ((await readdir(parent)).length !== 0) invalid("invalid_input");
     workspaceDirectory = await mkdtemp(join(parent, WORKSPACE_PREFIX));
     requireContained(parent, workspaceDirectory);
@@ -307,7 +315,10 @@ async function initialize(
       textEncoder.encode(`${resolve(workspaceDirectory)}\n`),
     );
     const boundary = new FileSystemFilingPayloadCustodyBoundary(
-      normalizedOptions,
+      Object.freeze({
+        ...normalizedOptions,
+        workspaceParentDirectory: parent,
+      }),
       workspaceDirectory,
       normalizedHooks,
     );
@@ -324,6 +335,44 @@ async function initialize(
     }
     invalid("io_failure");
   }
+}
+
+async function canonicalizeWorkspaceParentDirectory(
+  path: string,
+): Promise<string> {
+  try {
+    const metadata = await requireLexicalDirectoryChain(path);
+    const canonicalPath = resolve(await realpath(path));
+    await requireExactDirectory(canonicalPath, "invalid_input");
+    const canonicalMetadata = await lstat(canonicalPath);
+    if (
+      metadata.dev !== canonicalMetadata.dev ||
+      metadata.ino !== canonicalMetadata.ino
+    )
+      invalid("invalid_input");
+    return canonicalPath;
+  } catch (error) {
+    rethrowBoundary(error, "invalid_input");
+  }
+}
+
+async function requireLexicalDirectoryChain(path: string): Promise<Stats> {
+  const absolutePath = resolve(path);
+  const root = parse(absolutePath).root;
+  let currentPath = root;
+  let metadata = await lstat(currentPath);
+  if (!metadata.isDirectory() || metadata.isSymbolicLink())
+    invalid("invalid_input");
+  const remainder = relative(root, absolutePath);
+  for (const component of remainder === "" ? [] : remainder.split(sep)) {
+    currentPath = join(currentPath, component);
+    metadata = await lstat(currentPath);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink())
+      invalid("invalid_input");
+  }
+  if (sep === "/" && (metadata.mode & 0o777) !== 0o700)
+    invalid("invalid_input");
+  return metadata;
 }
 
 class FileSystemFilingPayloadCustodyBoundary implements FilingPayloadCustodyBoundary {

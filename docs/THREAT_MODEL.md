@@ -77,8 +77,8 @@ entropy quality. No network, parser, corpus admission, database, API, web,
 queue, real configuration, external approval, or real payload enters the
 boundary. The exact frozen-byte local `pnpm verify` gate passed format, lint,
 every guardrail including 86 production-license checks, all project typechecks
-and builds, and 39 test files with 846 passed tests plus 2 POSIX-only Windows
-skips (848 total cases). Two-OS CI and the dedicated success-only Linux
+and builds, and 39 test files with 847 passed tests plus 2 POSIX-only Windows
+skips (849 total cases). Two-OS CI and the dedicated success-only Linux
 evidence/offline/custody gates remain pending.
 
 The trusted host clock is part of the TCB. At the half-open expiry boundary the

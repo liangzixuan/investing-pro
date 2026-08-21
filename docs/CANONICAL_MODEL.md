@@ -402,7 +402,7 @@ view enters the product model. The terminal state is exactly
 The source protocol is implemented and the exact frozen-byte local
 `pnpm verify` gate is Pass: format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test
-files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
 Two-OS CI, dedicated Linux evidence, artifact custody, and independent review
 remain pending. It does not alter Cycle 2b's blocked external
 approval/authority gate, compose with parser/API/web/database/queue paths,

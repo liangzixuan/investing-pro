@@ -435,7 +435,15 @@ import {
   rm,
   unlink,
 } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  isAbsolute,
+  join,
+  parse,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 void createCipheriv;
 void createDecipheriv;
 void createHash;
@@ -454,6 +462,7 @@ void unlink;
 void basename;
 void isAbsolute;
 void join;
+void parse;
 void relative;
 void resolve;
 void sep;
@@ -516,6 +525,10 @@ if (
       "createHash,",
       "createHash,\n  randomBytes,",
     ),
+  ) === null ||
+  filingPayloadCustodyImportViolation(
+    filingPayloadCustodyProductionPath,
+    validFilingPayloadCustodySource.replace("  parse,\n", ""),
   ) === null ||
   filingPayloadCustodyImportViolation(
     filingPayloadCustodyIndexPath,
@@ -1126,6 +1139,7 @@ function filingPayloadCustodyImportViolation(
       ["basename", "basename"],
       ["isAbsolute", "isAbsolute"],
       ["join", "join"],
+      ["parse", "parse"],
       ["relative", "relative"],
       ["resolve", "resolve"],
       ["sep", "sep"],

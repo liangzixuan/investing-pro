@@ -104,7 +104,7 @@ and nonce-hash samples in that run; it cannot establish OS entropy quality.
 dedicated Linux evidence, and independent review remain Pending.** The exact frozen-byte local
 `pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test
-files with 846 passed tests plus 2 POSIX-only Windows skips (848 total cases).
+files with 847 passed tests plus 2 POSIX-only Windows skips (849 total cases).
 It adds no real filing bytes, external configuration, network/fetch path,
 parser, corpus admission, database, API, web, queue, production KMS, or
 cryptographic-erasure claim. Cycle 2b and production admission remain Blocked;
