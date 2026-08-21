@@ -179,10 +179,16 @@ contract. It supplies no external inventory, approval, chronology, authority
 registry, or real payload and therefore does not change this Blocked status or
 establish the Cycle 2b target claim.
 
+Cycle 2e is also a successor-only synthetic comparison contract. Its fixed
+validator declarations authenticate no counsel, steward, authority registry,
+source, filing, or parser and supply none of the external Phase-B inputs. It
+does not change Cycle 2b's Blocked status or establish its target claim.
+
 ## References
 
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
+- [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [Canonical model](../CANONICAL_MODEL.md)

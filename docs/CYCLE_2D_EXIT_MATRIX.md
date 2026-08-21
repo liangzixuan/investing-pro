@@ -110,3 +110,8 @@ change, a partial/extra successor tree, a non-value-free quarantine, or any
 attempted real-data input means no successor promotion without fresh gates.
 This Pass does not unblock Cycle 2b, establish full Cycle 2 quality, create
 B15/V15, or authorize production use.
+
+Cycle 2e is a separate successor-only synthetic comparison contract. It does
+not alter the exact Cycle 2d claim, checks, nonclaims, source bytes, test/CI
+anchors, or no-evidence status, and it does not establish Cycle 2d normalizer
+correctness. See the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).

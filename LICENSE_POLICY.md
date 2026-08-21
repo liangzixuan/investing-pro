@@ -133,3 +133,24 @@ evidence note exists. Cycle 2b and production admission remain Blocked; this is
 not B15/V15. See
 [ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
 and the [Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md).
+
+## Cycle 2e synthetic two-declared-validator comparison boundary
+
+Cycle 2e adds one private workspace package with no runtime dependency or
+external content. Tests construct two canonical same-schema synthetic
+validator envelopes in process. The package adds no real filing, candidate
+manifest, raw payload, dataset, service, image, vendor package, license
+exception, or production dependency. Source implementation is complete. Local
+verification is Pass on the exact frozen bytes: `corepack pnpm verify` passed
+all format, lint, guardrail, typecheck, test, and build stages with 43 test
+files, 911 passed plus 2 skipped (913 total), all 11 workspace project checks,
+and 10 builds. Two-OS CI remains Pending.
+
+The fixed validator roles, identifiers, versions, and implementation digests
+are unauthenticated declarations. They do not prove code correspondence,
+signatures, authority, or independent parsers, processes, hosts, operators,
+keys, or failure domains. Cycle 2e creates no dedicated workflow, evidence
+schema, artifact, offline review, or evidence note; changes no Cycle 2b
+external authority prerequisite; admits no real data; and is not B15/V15. See
+[ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
+and the [Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md).

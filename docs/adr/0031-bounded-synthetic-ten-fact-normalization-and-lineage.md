@@ -149,9 +149,17 @@ filing byte, establish parser or accounting correctness, satisfy the
 use. Before any real byte is used, Cycle 2b's external inputs, approvals,
 chronology, and human registry review remain mandatory.
 
+Cycle 2e is a separate successor-only comparison contract. It consumes only
+closed same-schema synthetic envelopes and does not alter Cycle 2d's exact
+claim, arrays, source bytes, test/CI anchors, or no-evidence status. Exact
+agreement between its two declared same-process validators does not establish
+Cycle 2d normalizer correctness, accounting truth, or true validator
+independence.
+
 ## References
 
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
+- [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Cycle 2c exit matrix](../CYCLE_2C_EXIT_MATRIX.md)
 - [ADR 0029](./0029-fixed-public-filing-candidate-manifest-admission.md)

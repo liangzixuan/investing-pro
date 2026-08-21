@@ -1,4 +1,4 @@
-# Sprint 0 through source-stage Cycle 2d threat model
+# Sprint 0 through locally verified Cycle 2e threat model
 
 ## Current trust boundaries
 
@@ -123,6 +123,34 @@ general taxonomy/unit/dimension/fiscal handling, execute correction discovery,
 or create database system intervals. Its aggregate quarantine errors and CI
 output must remain value-free and canary-free. Cycle 2b and production remain
 blocked, and Cycle 2d is not B15/V15.
+
+Cycle 2e adds a disconnected pure-TypeScript comparison boundary for exactly
+two canonical synthetic envelopes in fixed declared-validator A/B argument
+roles. The boundary owns snapshots before two separate strict modules validate
+the complete same-schema normalized payloads. Only after both validations pass
+does it compare full canonical payload bytes. Digest, subset, count, or
+selected-field agreement is insufficient.
+
+Any invalid report, upstream quarantine, identity/preimage/pointer/chronology
+failure, or byte difference yields empty value-free aggregate quarantine. No
+preferred report, merge, fallback, reordering, tolerance, coercion, silent
+repair, mismatch detail, hashes, validator metadata, or values cross that
+failure boundary. Success exposes only an immutable metadata receipt, not the
+normalized facts or lineage.
+
+The two fixed role/ID/version/digest tuples are declarations, not credentials,
+signatures, executable measurements, authorities, or proof of independent
+validators, parsers, codebases, processes, hosts, operators, keys, or failure
+domains. Both implementations run in one package/process and may share common
+assumptions or failures. Source implementation is complete. Local verification
+is Pass on exact frozen bytes: `corepack pnpm verify` passed all format, lint,
+guardrail, typecheck, test, and build stages with 43 test files, 911 passed plus
+2 skipped (913 total), all 11 workspace project checks, and 10 builds.
+Ubuntu/Windows CI remains Pending. Cycle 2e has no dedicated workflow, evidence
+schema, artifact, offline review, or evidence note, and
+performs no network, raw parser, normalizer, custody, corpus, database, API,
+web, or queue operation. Cycle 2b and production remain Blocked; this is not
+B15/V15.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -680,6 +708,18 @@ ordered boundary is in
 [ADR 0031](./adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
 and the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
 
+Cycle 2e's target is only
+`bounded_synthetic_two_declared_validator_exact_payload_agreement_conflict_quarantine_and_no_silent_repair`
+for two fixed same-schema synthetic declarations in one package/process. It
+cannot establish true validator/parser/implementation/failure-domain
+independence, declaration or digest authenticity, real filing or fact
+correctness, Cycle 2d normalizer correctness, external authority, adjudicated
+ground truth, quality thresholds, malicious-collusion resistance, repair or
+human adjudication, production composition, B15/V15, full Cycle 2 exit, or
+production readiness. The exact boundary is in
+[ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
+and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -687,9 +727,10 @@ and the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
    any real corpus use, independently review the exact candidate metadata,
    rights/steward approvals and authority keys, then prove raw-byte identity,
    custody/retention, parser quality, conflict quarantine, and provenance.
-   Cycle 2c's generated synthetic lifecycle and Cycle 2d's closed synthetic
-   normalization/lineage contract are engineering preparation only and do not
-   satisfy any real-corpus prerequisite.
+   Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
+   normalization/lineage contract, and Cycle 2e's same-process declared-role
+   comparison are engineering preparation only and do not satisfy any
+   real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

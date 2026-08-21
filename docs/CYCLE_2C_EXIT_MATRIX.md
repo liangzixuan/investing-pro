@@ -107,5 +107,11 @@ does not consume or widen this custody result, and the Cycle 2c schema, checks,
 nonclaims, 29-source set, canonical artifact, and evidence note remain
 unchanged. See the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
 
+Cycle 2e is another disconnected synthetic source successor. It does not
+consume or widen ciphertext, keys, receipts, audit history, or the canonical
+Cycle 2c evidence. The 16 checks, 16 nonclaims, 29-source set, artifact, and
+evidence note remain unchanged. See the
+[Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
+
 Exact remote, source, artifact, log, and custody anchors are recorded in the
 [Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).

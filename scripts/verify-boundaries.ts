@@ -152,6 +152,99 @@ const forbiddenFilingFactNormalizationGlobals = new Set([
   "process",
   "require",
 ]);
+const filingFactComparisonModule = "@research-cockpit/filing-fact-comparison";
+const filingFactComparisonPackagePrefix = "packages/filing-fact-comparison/";
+const filingFactComparisonSourcePrefix = `${filingFactComparisonPackagePrefix}src/`;
+const filingFactComparisonIndexPath = `${filingFactComparisonSourcePrefix}index.ts`;
+const filingFactComparisonProductionPath = `${filingFactComparisonSourcePrefix}filing-fact-comparison.ts`;
+const filingFactComparisonValidatorAPath = `${filingFactComparisonSourcePrefix}declared-validator-a.ts`;
+const filingFactComparisonValidatorBPath = `${filingFactComparisonSourcePrefix}declared-validator-b.ts`;
+const filingFactComparisonBuilderPath = `${filingFactComparisonSourcePrefix}test-filing-fact-comparison-builder.ts`;
+const filingFactComparisonUnitTestPath = `${filingFactComparisonSourcePrefix}filing-fact-comparison.test.ts`;
+const filingFactComparisonSecurityTestPath = `${filingFactComparisonSourcePrefix}filing-fact-comparison-security.test.ts`;
+const filingFactComparisonPublicExports = [
+  ["FILING_FACT_COMPARISON_SCHEMA_VERSION", false],
+  ["FILING_FACT_COMPARISON_CLAIM", false],
+  ["FILING_FACT_COMPARISON_FACT_KEYS", false],
+  ["FILING_FACT_COMPARISON_DECLARED_VALIDATOR_BINDINGS", false],
+  ["FILING_FACT_COMPARISON_CHECKS", false],
+  ["FILING_FACT_COMPARISON_NOT_PROVEN", false],
+  ["FILING_FACT_COMPARISON_LIMITS", false],
+  ["FILING_FACT_COMPARISON_QUARANTINE_CODES", false],
+  ["compareSyntheticFilingFactValidatorReports", false],
+  ["FilingFactComparisonDeclaredValidatorRole", true],
+  ["FilingFactComparisonDeclaredValidatorBinding", true],
+  ["FilingFactComparisonReceiptValidatorBinding", true],
+  ["FilingFactComparisonAudit", true],
+  ["FilingFactComparisonQuarantineCode", true],
+  ["FilingFactComparisonAgreementReceipt", true],
+  ["FilingFactComparisonQuarantinedResult", true],
+  ["FilingFactComparisonResult", true],
+] as const;
+const filingFactComparisonSourcePaths = new Set([
+  filingFactComparisonBuilderPath,
+  filingFactComparisonIndexPath,
+  filingFactComparisonProductionPath,
+  filingFactComparisonSecurityTestPath,
+  filingFactComparisonUnitTestPath,
+  filingFactComparisonValidatorAPath,
+  filingFactComparisonValidatorBPath,
+]);
+const filingFactComparisonPackagePaths = [
+  `${filingFactComparisonPackagePrefix}package.json`,
+  `${filingFactComparisonPackagePrefix}tsconfig.json`,
+  filingFactComparisonIndexPath,
+  filingFactComparisonProductionPath,
+  filingFactComparisonValidatorAPath,
+  filingFactComparisonValidatorBPath,
+  filingFactComparisonBuilderPath,
+  filingFactComparisonUnitTestPath,
+  filingFactComparisonSecurityTestPath,
+].sort();
+const filingFactComparisonTestModules = new Map<string, readonly string[]>([
+  [
+    filingFactComparisonUnitTestPath,
+    [
+      "vitest",
+      "./filing-fact-comparison",
+      "./test-filing-fact-comparison-builder",
+    ],
+  ],
+  [
+    filingFactComparisonSecurityTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-fact-comparison",
+      "./test-filing-fact-comparison-builder",
+    ],
+  ],
+]);
+const forbiddenFilingFactComparisonGlobals = new Set([
+  "BroadcastChannel",
+  "Bun",
+  "Deno",
+  "EventSource",
+  "Function",
+  "MessageChannel",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "navigator",
+  "process",
+  "require",
+  "setImmediate",
+  "setInterval",
+  "setTimeout",
+]);
 const filingPayloadCustodySourcePrefix = "packages/filing-payload-custody/src/";
 const filingPayloadCustodyIndexPath = `${filingPayloadCustodySourcePrefix}index.ts`;
 const filingPayloadCustodyProductionPath = `${filingPayloadCustodySourcePrefix}payload-custody.ts`;
@@ -346,6 +439,17 @@ for (const entry of await readdir(root, { withFileTypes: true })) {
   if (entry.isFile() && isRootBoundaryFile(entry.name))
     filesToInspect.add(join(root, entry.name));
 }
+
+const filingFactComparisonTreeViolation =
+  exactFilingFactComparisonTreeViolation(
+    [...filesToInspect]
+      .map((file) => relative(root, file).replaceAll("\\", "/"))
+      .filter((path) => path.startsWith(filingFactComparisonPackagePrefix)),
+  );
+if (filingFactComparisonTreeViolation !== null)
+  violations.push(
+    `${filingFactComparisonPackagePrefix}: ${filingFactComparisonTreeViolation}`,
+  );
 
 // Release-gate regression cases: these common root-level surfaces must remain
 // classified even when their files are not present in a given checkout.
@@ -558,6 +662,219 @@ if (
   ) === null
 )
   throw new Error("Filing-fact-normalization source classifier regressed");
+if (
+  !referencesModule(
+    'import { compareSyntheticFilingFactValidatorReports } from "@research-cockpit/filing-fact-comparison";',
+    filingFactComparisonModule,
+  ) ||
+  !referencesModule(
+    'void import("@research-cockpit/filing-fact-comparison");',
+    filingFactComparisonModule,
+  ) ||
+  !referencesFilingFactComparisonPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-fact-comparison/src/index",
+  ) ||
+  !hasFilingFactComparisonDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-fact-comparison": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  !hasFilingFactComparisonDependency(
+    {
+      devDependencies: {
+        comparison: "file:../packages/filing-fact-comparison",
+      },
+    },
+    "apps/package.json",
+  ) ||
+  hasFilingFactComparisonDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  )
+)
+  throw new Error("Filing-fact-comparison composition classifier regressed");
+const validFilingFactComparisonManifest = {
+  name: filingFactComparisonModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+};
+if (
+  filingFactComparisonManifestViolation(validFilingFactComparisonManifest) !==
+    null ||
+  filingFactComparisonManifestViolation({
+    ...validFilingFactComparisonManifest,
+    dependencies: { undici: "latest" },
+  }) === null ||
+  filingFactComparisonManifestViolation({
+    ...validFilingFactComparisonManifest,
+    exports: {
+      ...validFilingFactComparisonManifest.exports,
+      "./builder": "./src/test-filing-fact-comparison-builder.ts",
+    },
+  }) === null ||
+  filingFactComparisonManifestViolation({
+    ...validFilingFactComparisonManifest,
+    scripts: {
+      ...validFilingFactComparisonManifest.scripts,
+      test: "curl https://example.invalid",
+    },
+  }) === null
+)
+  throw new Error("Filing-fact-comparison manifest classifier regressed");
+if (
+  exactFilingFactComparisonTreeViolation(filingFactComparisonPackagePaths) !==
+    null ||
+  exactFilingFactComparisonTreeViolation(
+    filingFactComparisonPackagePaths.slice(1),
+  ) === null ||
+  exactFilingFactComparisonTreeViolation([
+    ...filingFactComparisonPackagePaths,
+    `${filingFactComparisonSourcePrefix}io-helper.ts`,
+  ]) === null
+)
+  throw new Error("Filing-fact-comparison package-tree classifier regressed");
+const validFilingFactComparisonCoreSource = `import { createHash } from "node:crypto";
+import { validateDeclaredValidatorAEnvelope } from "./declared-validator-a";
+import { validateDeclaredValidatorBEnvelope } from "./declared-validator-b";
+void createHash;
+void validateDeclaredValidatorAEnvelope;
+void validateDeclaredValidatorBEnvelope;
+`;
+const validFilingFactComparisonValidatorSource = `import { createHash } from "node:crypto";
+void createHash;
+`;
+const validFilingFactComparisonIndexSource = `export {
+  FILING_FACT_COMPARISON_SCHEMA_VERSION,
+  FILING_FACT_COMPARISON_CLAIM,
+  FILING_FACT_COMPARISON_FACT_KEYS,
+  FILING_FACT_COMPARISON_DECLARED_VALIDATOR_BINDINGS,
+  FILING_FACT_COMPARISON_CHECKS,
+  FILING_FACT_COMPARISON_NOT_PROVEN,
+  FILING_FACT_COMPARISON_LIMITS,
+  FILING_FACT_COMPARISON_QUARANTINE_CODES,
+  compareSyntheticFilingFactValidatorReports,
+  type FilingFactComparisonDeclaredValidatorRole,
+  type FilingFactComparisonDeclaredValidatorBinding,
+  type FilingFactComparisonReceiptValidatorBinding,
+  type FilingFactComparisonAudit,
+  type FilingFactComparisonQuarantineCode,
+  type FilingFactComparisonAgreementReceipt,
+  type FilingFactComparisonQuarantinedResult,
+  type FilingFactComparisonResult,
+} from "./filing-fact-comparison";
+`;
+const validFilingFactComparisonBuilderSource = `import { createHash } from "node:crypto";
+import { FILING_FACT_COMPARISON_FACT_KEYS } from "./filing-fact-comparison";
+void createHash;
+void FILING_FACT_COMPARISON_FACT_KEYS;
+`;
+const validFilingFactComparisonUnitTestSource = `import { describe } from "vitest";
+import { compareSyntheticFilingFactValidatorReports } from "./filing-fact-comparison";
+import { buildSyntheticFilingFactComparisonEnvelopes } from "./test-filing-fact-comparison-builder";
+void describe;
+void compareSyntheticFilingFactValidatorReports;
+void buildSyntheticFilingFactComparisonEnvelopes;
+`;
+const validFilingFactComparisonSecurityTestSource = `import { createHash } from "node:crypto";
+import { describe } from "vitest";
+import { compareSyntheticFilingFactValidatorReports } from "./filing-fact-comparison";
+import { buildSyntheticFilingFactComparisonEnvelopes } from "./test-filing-fact-comparison-builder";
+void createHash;
+void describe;
+void compareSyntheticFilingFactValidatorReports;
+void buildSyntheticFilingFactComparisonEnvelopes;
+`;
+if (
+  filingFactComparisonImportViolation(
+    filingFactComparisonProductionPath,
+    validFilingFactComparisonCoreSource,
+  ) !== null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonProductionPath,
+    validFilingFactComparisonCoreSource.replace("createHash", "randomBytes"),
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonProductionPath,
+    `${validFilingFactComparisonCoreSource}\nimport "node:fs";`,
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonProductionPath,
+    `${validFilingFactComparisonCoreSource}\nvoid fetch("");`,
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonProductionPath,
+    `${validFilingFactComparisonCoreSource}\nconst target = "node:fs"; void import(target);`,
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonValidatorAPath,
+    validFilingFactComparisonValidatorSource,
+  ) !== null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonValidatorAPath,
+    `${validFilingFactComparisonValidatorSource}\nimport "./shared";`,
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonValidatorBPath,
+    validFilingFactComparisonValidatorSource.replace(
+      "node:crypto",
+      "node:https",
+    ),
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonValidatorBPath,
+    `${validFilingFactComparisonValidatorSource}\nvoid process.env;`,
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonIndexPath,
+    validFilingFactComparisonIndexSource,
+  ) !== null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonIndexPath,
+    validFilingFactComparisonIndexSource.replace(
+      "FILING_FACT_COMPARISON_CLAIM,",
+      "FILING_FACT_COMPARISON_CLAIM as claim,",
+    ),
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonBuilderPath,
+    validFilingFactComparisonBuilderSource,
+  ) !== null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonBuilderPath,
+    `${validFilingFactComparisonBuilderSource}\nvoid globalThis.crypto;`,
+  ) === null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonUnitTestPath,
+    validFilingFactComparisonUnitTestSource,
+  ) !== null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonSecurityTestPath,
+    validFilingFactComparisonSecurityTestSource,
+  ) !== null ||
+  filingFactComparisonImportViolation(
+    filingFactComparisonSecurityTestPath,
+    validFilingFactComparisonSecurityTestSource.replace(
+      "node:crypto",
+      "node:https",
+    ),
+  ) === null ||
+  filingFactComparisonImportViolation(
+    `${filingFactComparisonSourcePrefix}io-helper.ts`,
+    'import "node:fs";',
+  ) === null
+)
+  throw new Error("Filing-fact-comparison source classifier regressed");
 if (
   !referencesModule(
     'import { createFileSystemFilingPayloadCustodyBoundary } from "@research-cockpit/filing-payload-custody";',
@@ -1136,6 +1453,16 @@ if (violations.length > 0) {
 }
 console.log("Clean-room source and dependency boundary verified.");
 
+function exactFilingFactComparisonTreeViolation(
+  packagePaths: readonly string[],
+): string | null {
+  const actual = [...packagePaths].sort();
+  return JSON.stringify(actual) ===
+    JSON.stringify(filingFactComparisonPackagePaths)
+    ? null
+    : "package tree must remain the exact reviewed manifest, tsconfig, core, two validators, index, builder, and two tests";
+}
+
 function inspectDependencies(path: string, manifest: unknown): void {
   if (!isRecord(manifest)) {
     violations.push(`${path}: package manifest must be an object`);
@@ -1175,6 +1502,13 @@ function inspectDependencies(path: string, manifest: unknown): void {
     violations.push(
       `${path}: isolated zero-dependency filing-fact normalization must not add package dependencies`,
     );
+  if (
+    path === `${filingFactComparisonPackagePrefix}package.json` &&
+    dependencyNames.length > 0
+  )
+    violations.push(
+      `${path}: isolated zero-dependency filing-fact comparison must not add package dependencies`,
+    );
   if (path === "packages/filing-fact-normalization/package.json") {
     const manifestViolation =
       filingFactNormalizationManifestViolation(manifest);
@@ -1187,6 +1521,18 @@ function inspectDependencies(path: string, manifest: unknown): void {
   )
     violations.push(
       `${path}: synthetic filing-fact normalization must not be composed into another package`,
+    );
+  if (path === `${filingFactComparisonPackagePrefix}package.json`) {
+    const manifestViolation = filingFactComparisonManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith(filingFactComparisonPackagePrefix) &&
+    hasFilingFactComparisonDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: synthetic filing-fact comparison must not be composed into another package`,
     );
   if (path === "packages/filing-payload-custody/package.json") {
     const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
@@ -1237,6 +1583,28 @@ function filingFactNormalizationManifestViolation(
   return JSON.stringify(manifest) === JSON.stringify(expected)
     ? null
     : "filing-fact-normalization package must retain its exact private, zero-dependency, index-only script and export surface";
+}
+
+function filingFactComparisonManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-fact-comparison package manifest must be an exact object";
+  const expected = {
+    name: filingFactComparisonModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-fact-comparison package must retain its exact private, zero-dependency, index-only script and export surface";
 }
 
 function filingPayloadCustodyManifestViolation(
@@ -1299,6 +1667,21 @@ function inspectCompositionBoundary(path: string, content: string): void {
   )
     violations.push(
       `${path}: synthetic filing-fact normalization must remain package-isolated`,
+    );
+  const filingFactComparisonViolation = filingFactComparisonImportViolation(
+    path,
+    content,
+  );
+  if (filingFactComparisonViolation !== null)
+    violations.push(`${path}: ${filingFactComparisonViolation}`);
+  if (
+    !path.startsWith(filingFactComparisonPackagePrefix) &&
+    moduleSpecifiers.some((specifier) =>
+      referencesFilingFactComparisonPath(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: synthetic filing-fact comparison must remain package-isolated`,
     );
   const corpusAdmissionViolation = corpusAdmissionImportViolation(
     path,
@@ -1415,6 +1798,182 @@ function filingFactNormalizationImportViolation(
       return "normalization security test must retain its exact hash-only crypto binding";
   }
   return filingFactNormalizationGlobalViolation(path, content, "test");
+}
+
+function filingFactComparisonImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (!path.startsWith(filingFactComparisonSourcePrefix)) return null;
+  if (!filingFactComparisonSourcePaths.has(path))
+    return "source set must remain the exact reviewed core, two validators, index, builder, and two tests";
+
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path === filingFactComparisonIndexPath) {
+    return isExactFilingFactComparisonIndex(content)
+      ? null
+      : "public index must retain the exact isolated production export surface";
+  }
+  if (path === filingFactComparisonProductionPath) {
+    const expectedModules = [
+      "node:crypto",
+      "./declared-validator-a",
+      "./declared-validator-b",
+    ];
+    if (JSON.stringify(moduleSpecifiers) !== JSON.stringify(expectedModules))
+      return "comparison core may import only its exact hash and two declared-validator surfaces";
+    const sourceFile = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+    if (
+      imports.length !== 3 ||
+      !isExactFilingPayloadCustodyImport(imports[0], "node:crypto", [
+        ["createHash", "createHash"],
+      ]) ||
+      !isExactFilingPayloadCustodyImport(imports[1], "./declared-validator-a", [
+        [
+          "validateDeclaredValidatorAEnvelope",
+          "validateDeclaredValidatorAEnvelope",
+        ],
+      ]) ||
+      !isExactFilingPayloadCustodyImport(imports[2], "./declared-validator-b", [
+        [
+          "validateDeclaredValidatorBEnvelope",
+          "validateDeclaredValidatorBEnvelope",
+        ],
+      ])
+    )
+      return "comparison core must retain its exact createHash and role-specific validator bindings";
+    return filingFactComparisonGlobalViolation(path, content, "core");
+  }
+  if (
+    path === filingFactComparisonValidatorAPath ||
+    path === filingFactComparisonValidatorBPath
+  ) {
+    if (JSON.stringify(moduleSpecifiers) !== JSON.stringify(["node:crypto"]))
+      return "declared validators may import only exact node:crypto createHash and no relative module";
+    const cryptoViolation = exactCreateHashImportViolation(path, content);
+    if (cryptoViolation !== null) return cryptoViolation;
+    return filingFactComparisonGlobalViolation(path, content, "validator");
+  }
+  if (path === filingFactComparisonBuilderPath) {
+    if (
+      JSON.stringify(moduleSpecifiers) !==
+      JSON.stringify(["node:crypto", "./filing-fact-comparison"])
+    )
+      return "comparison builder may import only exact node:crypto and the direct comparison core";
+    const cryptoViolation = exactCreateHashImportViolation(path, content);
+    if (cryptoViolation !== null) return cryptoViolation;
+    return filingFactComparisonGlobalViolation(path, content, "builder");
+  }
+
+  const expectedTestModules = filingFactComparisonTestModules.get(path);
+  if (
+    expectedTestModules === undefined ||
+    JSON.stringify(moduleSpecifiers) !== JSON.stringify(expectedTestModules)
+  )
+    return "comparison tests may import only their exact Vitest, hash, core, and builder surfaces";
+  if (path === filingFactComparisonSecurityTestPath) {
+    const cryptoViolation = exactCreateHashImportViolation(path, content);
+    if (cryptoViolation !== null) return cryptoViolation;
+  }
+  return filingFactComparisonGlobalViolation(path, content, "test");
+}
+
+function exactCreateHashImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const cryptoImports = sourceFile.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "node:crypto",
+  );
+  return cryptoImports.length === 1 &&
+    isExactFilingPayloadCustodyImport(cryptoImports[0], "node:crypto", [
+      ["createHash", "createHash"],
+    ])
+    ? null
+    : "comparison hash surface must retain its exact named node:crypto createHash binding";
+}
+
+function filingFactComparisonGlobalViolation(
+  path: string,
+  content: string,
+  surface: "builder" | "core" | "test" | "validator",
+): string | null {
+  if (hasRuntimeDynamicImport(content))
+    return `comparison ${surface} must not use runtime dynamic imports`;
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingFactComparisonGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbiddenGlobal === null
+    ? null
+    : `comparison ${surface} must not use network, filesystem, process, logging, timer, dynamic-code, global-crypto, or worker surfaces`;
+}
+
+function isExactFilingFactComparisonIndex(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingFactComparisonIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  const declaration = sourceFile.statements[0];
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "./filing-fact-comparison" ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = filingFactComparisonPublicExports.map(([name, typeOnly]) => [
+    name,
+    name,
+    typeOnly,
+  ]);
+  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 function filingFactNormalizationGlobalViolation(
@@ -2199,6 +2758,34 @@ function hasFilingFactNormalizationDependency(
   });
 }
 
+function hasFilingFactComparisonDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingFactComparisonModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingFactComparisonModule)) return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingFactComparisonPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
 function hasFilingPayloadCustodyDependency(
   manifest: unknown,
   manifestPath: string,
@@ -2244,6 +2831,26 @@ function referencesFilingFactNormalizationPath(
     resolved === "packages/filing-fact-normalization" ||
     resolved.startsWith("packages/filing-fact-normalization/") ||
     resolved.includes("/packages/filing-fact-normalization/")
+  );
+}
+
+function referencesFilingFactComparisonPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingFactComparisonModule ||
+    specifier.startsWith(`${filingFactComparisonModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-fact-comparison" ||
+    resolved.startsWith(filingFactComparisonPackagePrefix) ||
+    resolved.includes("/packages/filing-fact-comparison/")
   );
 }
 

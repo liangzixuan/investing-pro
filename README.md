@@ -145,6 +145,26 @@ remain Blocked, and this is not B15/V15. See
 [ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
 and the [Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md).
 
+Cycle 2e adds a separate, zero-dependency synthetic fact-comparison protocol.
+Exactly two bounded canonical envelopes occupy fixed declared-validator A/B
+roles. Two separate strict modules validate their complete same-schema
+ten-fact/twenty-version/ten-edge payloads before the boundary compares the full
+canonical payload bytes. Agreement returns only an immutable metadata receipt;
+any invalid input or byte conflict returns empty, value-free aggregate
+quarantine with no preferred report, merge, coercion, or silent repair.
+**Source implementation is complete. Local verification is Pass on the exact
+frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
+typecheck, test, and build stages with 43 test files, 911 passed plus 2 skipped
+(913 total), all 11 workspace project checks, and 10 builds. Two-OS CI remains
+Pending.** Distinct fixed roles, identifiers, versions, and implementation
+digests are declarations only. They do not establish validator/parser/code,
+process, host, operator, key, or failure-domain independence or authenticity.
+Cycle 2e creates no dedicated workflow, evidence schema, artifact, offline
+review, or evidence note; it admits no real data, leaves Cycle 2b and production
+Blocked, and is not B15/V15. See
+[ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
+and the [Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -545,6 +565,12 @@ blocked.
   execute a parser, validate real filing bytes, establish independent
   adjudication or quality, compose a database/application, or authorize
   real-data or production use.
+- Cycle 2e proves only exact byte agreement between two separately implemented,
+  distinctly declared synthetic validators after complete closed-schema
+  validation. It does not authenticate either declaration or digest, establish
+  true independence, execute a parser, validate a real filing or accounting
+  truth, provide adjudicated quality evidence, compose the application, or
+  authorize real-data or production use.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -597,4 +623,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0030](./docs/adr/0030-bounded-synthetic-filing-payload-custody.md),
 [Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md),
 [ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md),
+[Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md),
+[ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md),
 and [architecture decisions](./docs/adr/).

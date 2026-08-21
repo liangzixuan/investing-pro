@@ -8,9 +8,10 @@ projection-pool, b11 locked migration-ledger deployment, and b12 RLS
 query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
-metadata verifier, reviewed bounded Cycle 2c synthetic payload custody, and
-source-stage Cycle 2d synthetic ten-fact normalization/lineage; synthetic data
-only.
+metadata verifier, reviewed bounded Cycle 2c synthetic payload custody,
+source-stage Cycle 2d synthetic ten-fact normalization/lineage, and locally
+verified Cycle 2e two-declared-validator fact comparison with CI pending;
+synthetic data only.
 
 ## Identity
 
@@ -457,6 +458,37 @@ data, or establish parser/accounting correctness, independently adjudicated
 quality, complete correction discovery, or production readiness. See
 [ADR 0031](./adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
 and the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
+
+## Cycle 2e synthetic fact-comparison boundary
+
+Cycle 2e adds no canonical filing, admitted fact, evidence passport, rights
+policy, persistence command, or production entity. Two fixed argument roles
+carry complete canonical synthetic normalization envelopes. Separate strict
+validator modules each prove the closed twenty-version/ten-edge payload shape,
+source-preimage fact identities, lineage pointers, metadata, chronology, and
+known windows before the comparison boundary examines agreement.
+
+Agreement means byte equality of the complete canonical normalized payload,
+not digest, subset, count, or selected-field equality. Success returns only an
+immutable metadata receipt with source/report/agreement hashes, exact aggregate
+counts, and the two declared bindings. It does not expose normalized facts or
+lineage and is not an admission or persistence token. Any invalid input or byte
+conflict produces coarse, empty, value-free aggregate quarantine with no
+hashes, validator metadata, mismatch position, values, preferred output, merge,
+or repair.
+
+The A/B role, identifier, version, and implementation digest fields are fixed
+declarations. Two separate same-package modules do not establish validator,
+parser, codebase, process, host, operator, key, or failure-domain independence,
+authenticity, or digest-to-executable correspondence. Local verification is
+Pass on exact frozen bytes: `corepack pnpm verify` passed all format, lint,
+guardrail, typecheck, test, and build stages with 43 test files, 911 passed plus
+2 skipped (913 total), all 11 workspace project checks, and 10 builds. Two-OS
+CI remains Pending. Cycle 2e has no dedicated workflow, evidence schema,
+artifact, offline review, or evidence note; leaves Cycle 2b and production
+Blocked; creates no B15/V15 composition; and admits no real data. See
+[ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
+and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

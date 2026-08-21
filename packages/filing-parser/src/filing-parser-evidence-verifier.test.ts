@@ -15,6 +15,8 @@ import {
   isCycle2aParserDomainTreeAllowed,
   isCycle2dCommitDiffSetAllowed,
   isCycle2dDisconnectedNormalizationTreeAllowed,
+  isCycle2eCommitDiffSetAllowed,
+  isCycle2eDisconnectedComparisonTreeAllowed,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
 
@@ -118,6 +120,89 @@ const CYCLE_2D_TRANSITION = [
     status: "A",
   },
   { path: "packages/filing-fact-normalization/tsconfig.json", status: "A" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
+const CYCLE_2E_SUCCESSOR_TREE = [
+  "packages/filing-fact-comparison/package.json",
+  "packages/filing-fact-comparison/src/declared-validator-a.ts",
+  "packages/filing-fact-comparison/src/declared-validator-b.ts",
+  "packages/filing-fact-comparison/src/filing-fact-comparison-security.test.ts",
+  "packages/filing-fact-comparison/src/filing-fact-comparison.test.ts",
+  "packages/filing-fact-comparison/src/filing-fact-comparison.ts",
+  "packages/filing-fact-comparison/src/index.ts",
+  "packages/filing-fact-comparison/src/test-filing-fact-comparison-builder.ts",
+  "packages/filing-fact-comparison/tsconfig.json",
+].sort();
+const CYCLE_2E_TRANSITION = [
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2E_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md",
+    status: "A",
+  },
+  { path: "packages/filing-fact-comparison/package.json", status: "A" },
+  {
+    path: "packages/filing-fact-comparison/src/declared-validator-a.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-fact-comparison/src/declared-validator-b.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-fact-comparison/src/filing-fact-comparison-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-fact-comparison/src/filing-fact-comparison.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-fact-comparison/src/filing-fact-comparison.ts",
+    status: "A",
+  },
+  { path: "packages/filing-fact-comparison/src/index.ts", status: "A" },
+  {
+    path: "packages/filing-fact-comparison/src/test-filing-fact-comparison-builder.ts",
+    status: "A",
+  },
+  { path: "packages/filing-fact-comparison/tsconfig.json", status: "A" },
   {
     path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
     status: "M",
@@ -313,6 +398,55 @@ describe("offline filing parser evidence review", () => {
     expect(
       isCycle2dCommitDiffSetAllowed(
         CYCLE_2D_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "D" } : entry,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("admits only the exact atomic Cycle 2e package tree and transition", () => {
+    expect(isCycle2eDisconnectedComparisonTreeAllowed([])).toBe(true);
+    expect(
+      isCycle2eDisconnectedComparisonTreeAllowed(CYCLE_2E_SUCCESSOR_TREE),
+    ).toBe(true);
+    for (const omitted of CYCLE_2E_SUCCESSOR_TREE) {
+      expect(
+        isCycle2eDisconnectedComparisonTreeAllowed(
+          CYCLE_2E_SUCCESSOR_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2eDisconnectedComparisonTreeAllowed(
+        [
+          ...CYCLE_2E_SUCCESSOR_TREE,
+          "packages/filing-fact-comparison/src/unreviewed.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+
+    expect(CYCLE_2E_TRANSITION).toHaveLength(28);
+    expect(isCycle2eCommitDiffSetAllowed(CYCLE_2E_TRANSITION)).toBe(true);
+    for (const omitted of CYCLE_2E_TRANSITION) {
+      expect(
+        isCycle2eCommitDiffSetAllowed(
+          CYCLE_2E_TRANSITION.filter((entry) => entry !== omitted),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2aCommitDiffEntryAllowed(omitted.status, omitted.path),
+      ).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+    }
+    expect(
+      isCycle2eCommitDiffSetAllowed([
+        ...CYCLE_2E_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2eCommitDiffSetAllowed(
+        CYCLE_2E_TRANSITION.map((entry, index) =>
           index === 0 ? { ...entry, status: "D" } : entry,
         ),
       ),

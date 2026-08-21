@@ -110,3 +110,9 @@ Cycle 2d is a successor-only closed synthetic normalization/lineage
 contract. It provides none of the external inputs or human authority required
 above, creates no Cycle 2b workflow or evidence, and does not change this
 Blocked status. See the [Cycle 2d exit matrix](./CYCLE_2D_EXIT_MATRIX.md).
+
+Cycle 2e is a successor-only same-schema synthetic comparison contract. Its
+fixed validator declarations are not counsel, steward, key-authority, source,
+or parser identities and provide none of the external inputs or human review
+required above. It creates no Cycle 2b workflow or evidence and does not change
+this Blocked status. See the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).

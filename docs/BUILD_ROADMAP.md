@@ -708,6 +708,46 @@ prove Cycle 2b approval, real filing identity or SEC authenticity, general
 taxonomy/unit/dimension/fiscal coverage, independent dual validation,
 adjudicated quality, 2,000 assertions, full Cycle 2 exit, or production use.
 
+## Cycle 2e — bounded synthetic two-declared-validator fact comparison
+
+Status: **source implementation complete; local verification Pass; two-OS CI
+Pending; Cycle 2b and production admission Blocked.**
+
+The exact frozen bytes pass `corepack pnpm verify`: all format, lint, guardrail,
+typecheck, test, and build stages are green with 43 test files, 911 passed plus
+2 skipped (913 total), all 11 workspace project checks, and 10 builds.
+
+Cycle 2e isolates the next repository-controlled conflict-quarantine risk
+without pretending that two modules are two independent parsers. A separate
+zero-dependency package accepts exactly two bounded canonical envelopes in
+fixed declared-validator A/B argument roles. Each role binds one exact
+identifier, version, and implementation digest declaration. Separate strict
+modules validate complete same-schema normalized payloads before any comparison
+decision.
+
+Each validator independently enforces the exact ten keys, twenty fact versions,
+ten one-to-one lineage edges, complete source-preimage fact identities,
+metadata, pointer consistency, chronology, and half-open known windows. The
+comparison then requires byte-exact equality of the complete canonical
+normalized payload. It never substitutes digest or subset equality and never
+prefers, merges, reorders, coerces, tolerates, or repairs a report.
+
+Success is an immutable metadata-only agreement receipt. Any invalid upstream
+report, quarantine, or byte difference returns empty, value-free aggregate
+quarantine with no hashes, validator metadata, mismatch location, values, or
+preferred output. Cycle 2e uses only the existing frozen-byte local gate and
+Ubuntu/Windows CI; it adds no dedicated workflow, evidence schema, artifact,
+offline review, or evidence note.
+
+The two roles are only distinct declarations backed by separate source
+implementations in one package/process. Cycle 2e does not prove parser,
+implementation, process, host, operator, key, or failure-domain independence;
+authenticate identities/digests; validate real filings or accounting truth;
+unblock Cycle 2b; satisfy adjudicated quality thresholds; compose B15/V15; or
+authorize production use. Exact checks and nonclaims are in
+[ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
+and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -720,9 +760,10 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
-Neither Cycle 2a, Phase-A Cycle 2b, bounded Cycle 2c, nor source-stage Cycle 2d
-satisfies this exit gate. Real payload bytes and digest validation, approved
-corpus inputs, real ten-fact coverage,
+Neither Cycle 2a, Phase-A Cycle 2b, bounded Cycle 2c, source-stage Cycle 2d, nor
+source-stage Cycle 2e satisfies this exit gate. Real payload bytes and digest
+validation, approved corpus inputs, real ten-fact coverage, truly independent
+validation,
 independently adjudicated precision/recall, general XBRL/iXBRL and
 taxonomy/plugin support, correction lineage, production operations, and
 real-data admission remain pending.
