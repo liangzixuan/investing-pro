@@ -147,9 +147,17 @@ validator declaration or digest, validate a real filing, prove Cycle 2d or
 accounting correctness, unblock Cycle 2b, satisfy the 2,000-assertion quality
 gate, create B15/V15, or authorize production use.
 
+Cycle 2f is a separate successor-only declared-reference measurement contract.
+Its candidate is synthetic input, not an authenticated Cycle 2e receipt or
+validator result. Metric consistency cannot establish Cycle 2e validator
+independence, declaration authenticity, accounting truth, or resistance to
+common-mode failure, and Cycle 2f does not alter this ADR's exact claim, arrays,
+source bytes, CI anchors, or no-evidence status.
+
 ## References
 
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
+- [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [ADR 0031](./0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)

@@ -755,6 +755,56 @@ authorize production use. Exact checks and nonclaims are in
 [ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
 
+## Cycle 2f — bounded synthetic declared-reference quality measurement
+
+Status: **source implementation complete; local verification Pass; two-OS CI
+Pending. Cycle 2b, full Cycle 2 quality, and production admission Blocked.**
+
+The exact frozen bytes pass `corepack pnpm verify`: all format, lint, guardrail,
+typecheck, test, and build stages are green with 45 test files, 951 passed plus
+2 skipped (953 total), all 12 workspace project checks, and 11 builds.
+
+Cycle 2f isolates the next repository-controlled metric-accounting and
+threshold-evaluation risk without presenting a declared synthetic reference as
+independently adjudicated truth. A separate zero-dependency package accepts
+exactly three bounded canonical documents in fixed plan, candidate, and
+declared-reference roles and immediately owns their byte snapshots.
+
+The declared reference fixes exactly 100 unique documents and the ten launch
+fact coordinates for each document. The evaluator derives semantic
+value/presence and exact unit/period assertions for each of the 1,000 fact
+targets, accounts for all 2,000 critical assertions, and derives all counts,
+denominators, classifications, and metrics. The caller cannot submit metrics,
+weights, exclusions, or assertion outcomes.
+
+The candidate contains zero through 100 unique document rows. Its only explicit
+row statuses are `succeeded` and `quarantined`; a succeeded row may carry zero
+through ten sorted unique known-coordinate facts and is measured incomplete
+when facts are omitted, while absence is derived as missing. Each omitted fact
+contributes one false negative and two silent assertion failures. Explicit
+quarantine is not silent, but it still contributes false negatives, reduces
+document success and recall, and increases quarantine rate. A wrong fact
+contributes both one false positive and one false negative.
+
+The fixed synthetic-pilot policy requires document success at least `95/100`,
+precision and recall at least `99/100`, quarantine rate at most `5/100`, zero
+silent critical failures, exact canonical units, and zero-day period tolerance.
+Ratios use integer cross-multiplication only. Valid input produces an immutable
+aggregate `met` or `not_met` evaluation; malformed input produces only empty,
+value-free quarantine. Falling below a threshold is not input quarantine.
+
+The canonical met fixture uses 99 exact succeeded documents and one explicit
+quarantine. It records 990 true positives, ten false negatives, zero false
+positives, and 1,980 passed assertions while accounting for all 2,000. This is
+synthetic arithmetic only. Cycle 2f does not establish adjudicator identity or
+independence, blinding, label correctness, real parser quality, approved
+production thresholds, Cycle 2b authority, full Cycle 2 exit, B15/V15, or
+production use. It creates no dedicated workflow, evidence schema, artifact,
+offline review, or evidence note. Exact checks, nonclaims, status, and history
+rules are in
+[ADR 0033](./adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
+and the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -767,13 +817,12 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
-Neither Cycle 2a, Phase-A Cycle 2b, bounded Cycle 2c, source-stage Cycle 2d, nor
-source-stage Cycle 2e satisfies this exit gate. Real payload bytes and digest
-validation, approved corpus inputs, real ten-fact coverage, truly independent
-validation,
-independently adjudicated precision/recall, general XBRL/iXBRL and
-taxonomy/plugin support, correction lineage, production operations, and
-real-data admission remain pending.
+Neither Cycle 2a, Phase-A Cycle 2b, bounded Cycle 2c, source-stage Cycle 2d,
+source-stage Cycle 2e, nor source-stage Cycle 2f satisfies this exit gate.
+Real payload bytes and digest validation, approved corpus inputs, real ten-fact
+coverage, truly independent validation, independently adjudicated
+precision/recall, general XBRL/iXBRL and taxonomy/plugin support, correction
+lineage, production operations, and real-data admission remain pending.
 
 ## Cycle 3 — product breadth
 

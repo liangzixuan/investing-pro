@@ -116,3 +116,10 @@ fixed validator declarations are not counsel, steward, key-authority, source,
 or parser identities and provide none of the external inputs or human review
 required above. It creates no Cycle 2b workflow or evidence and does not change
 this Blocked status. See the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
+
+Cycle 2f is a successor-only fixed-population synthetic metric-accounting
+contract. Its declared reference is not an independently adjudicated corpus,
+and its synthetic roles and thresholds provide no external inventory,
+rights/steward approval, chronology authority, or human key review. It creates
+no Cycle 2b workflow or evidence and does not change this Blocked status. See
+the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).

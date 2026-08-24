@@ -115,3 +115,10 @@ Cycle 2e is a separate successor-only synthetic comparison contract. It does
 not alter the exact Cycle 2d claim, checks, nonclaims, source bytes, test/CI
 anchors, or no-evidence status, and it does not establish Cycle 2d normalizer
 correctness. See the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
+
+Cycle 2f is a separate successor-only synthetic measurement contract. Its
+declared-reference facts are test inputs, not a proof of Cycle 2d output,
+normalizer correctness, lineage correctness, accounting truth, or generator
+provenance. It does not alter Cycle 2d's exact claim, checks, nonclaims, source
+bytes, test/CI anchors, or no-evidence status. See the
+[Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).

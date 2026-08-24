@@ -245,6 +245,107 @@ const forbiddenFilingFactComparisonGlobals = new Set([
   "setInterval",
   "setTimeout",
 ]);
+const filingQualityMeasurementModule =
+  "@research-cockpit/filing-quality-measurement";
+const filingQualityMeasurementPackagePrefix =
+  "packages/filing-quality-measurement/";
+const filingQualityMeasurementSourcePrefix = `${filingQualityMeasurementPackagePrefix}src/`;
+const filingQualityMeasurementIndexPath = `${filingQualityMeasurementSourcePrefix}index.ts`;
+const filingQualityMeasurementProductionPath = `${filingQualityMeasurementSourcePrefix}filing-quality-measurement.ts`;
+const filingQualityMeasurementBuilderPath = `${filingQualityMeasurementSourcePrefix}test-filing-quality-measurement-builder.ts`;
+const filingQualityMeasurementUnitTestPath = `${filingQualityMeasurementSourcePrefix}filing-quality-measurement.test.ts`;
+const filingQualityMeasurementSecurityTestPath = `${filingQualityMeasurementSourcePrefix}filing-quality-measurement-security.test.ts`;
+const filingQualityMeasurementPublicExports = [
+  ["FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION", false],
+  ["FILING_QUALITY_MEASUREMENT_CLAIM", false],
+  ["FILING_QUALITY_MEASUREMENT_FACT_KEYS", false],
+  ["FILING_QUALITY_MEASUREMENT_ASSERTION_KINDS", false],
+  ["FILING_QUALITY_MEASUREMENT_METRICS", false],
+  ["FILING_QUALITY_MEASUREMENT_THRESHOLDS", false],
+  ["FILING_QUALITY_MEASUREMENT_LIMITS", false],
+  ["FILING_QUALITY_MEASUREMENT_DECLARATIONS", false],
+  ["FILING_QUALITY_MEASUREMENT_CANDIDATE_QUARANTINE_CODES", false],
+  ["FILING_QUALITY_MEASUREMENT_QUARANTINE_CODES", false],
+  ["FILING_QUALITY_MEASUREMENT_CHECKS", false],
+  ["FILING_QUALITY_MEASUREMENT_NOT_PROVEN", false],
+  ["measureSyntheticFilingQuality", false],
+  ["FilingQualityMeasurementDeclaration", true],
+  ["FilingQualityMeasurementQuarantineCode", true],
+  ["FilingQualityMeasurementFailedThreshold", true],
+  ["FilingQualityMeasurementRatioMetric", true],
+  ["FilingQualityMeasurementSilentMetric", true],
+  ["FilingQualityMeasurementCounts", true],
+  ["FilingQualityMeasurementMetrics", true],
+  ["FilingQualityMeasurementEvaluatedResult", true],
+  ["FilingQualityMeasurementQuarantinedResult", true],
+  ["FilingQualityMeasurementResult", true],
+] as const;
+const filingQualityMeasurementSourcePaths = new Set([
+  filingQualityMeasurementBuilderPath,
+  filingQualityMeasurementIndexPath,
+  filingQualityMeasurementProductionPath,
+  filingQualityMeasurementSecurityTestPath,
+  filingQualityMeasurementUnitTestPath,
+]);
+const filingQualityMeasurementPackagePaths = [
+  `${filingQualityMeasurementPackagePrefix}package.json`,
+  `${filingQualityMeasurementPackagePrefix}tsconfig.json`,
+  filingQualityMeasurementIndexPath,
+  filingQualityMeasurementProductionPath,
+  filingQualityMeasurementBuilderPath,
+  filingQualityMeasurementUnitTestPath,
+  filingQualityMeasurementSecurityTestPath,
+].sort();
+const filingQualityMeasurementTestModules = new Map<string, readonly string[]>([
+  [
+    filingQualityMeasurementUnitTestPath,
+    [
+      "vitest",
+      "./filing-quality-measurement",
+      "./test-filing-quality-measurement-builder",
+    ],
+  ],
+  [
+    filingQualityMeasurementSecurityTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-quality-measurement",
+      "./test-filing-quality-measurement-builder",
+    ],
+  ],
+]);
+const forbiddenFilingQualityMeasurementGlobals = new Set([
+  "Atomics",
+  "BroadcastChannel",
+  "Buffer",
+  "Bun",
+  "Date",
+  "Deno",
+  "EventSource",
+  "Function",
+  "MessageChannel",
+  "Math",
+  "SharedArrayBuffer",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "navigator",
+  "performance",
+  "process",
+  "require",
+  "setImmediate",
+  "setInterval",
+  "setTimeout",
+]);
 const filingPayloadCustodySourcePrefix = "packages/filing-payload-custody/src/";
 const filingPayloadCustodyIndexPath = `${filingPayloadCustodySourcePrefix}index.ts`;
 const filingPayloadCustodyProductionPath = `${filingPayloadCustodySourcePrefix}payload-custody.ts`;
@@ -449,6 +550,16 @@ const filingFactComparisonTreeViolation =
 if (filingFactComparisonTreeViolation !== null)
   violations.push(
     `${filingFactComparisonPackagePrefix}: ${filingFactComparisonTreeViolation}`,
+  );
+const filingQualityMeasurementTreeViolation =
+  exactFilingQualityMeasurementTreeViolation(
+    [...filesToInspect]
+      .map((file) => relative(root, file).replaceAll("\\", "/"))
+      .filter((path) => path.startsWith(filingQualityMeasurementPackagePrefix)),
+  );
+if (filingQualityMeasurementTreeViolation !== null)
+  violations.push(
+    `${filingQualityMeasurementPackagePrefix}: ${filingQualityMeasurementTreeViolation}`,
   );
 
 // Release-gate regression cases: these common root-level surfaces must remain
@@ -875,6 +986,236 @@ if (
   ) === null
 )
   throw new Error("Filing-fact-comparison source classifier regressed");
+if (
+  !referencesModule(
+    'import { measureSyntheticFilingQuality } from "@research-cockpit/filing-quality-measurement";',
+    filingQualityMeasurementModule,
+  ) ||
+  !referencesModule(
+    'void import("@research-cockpit/filing-quality-measurement");',
+    filingQualityMeasurementModule,
+  ) ||
+  !referencesFilingQualityMeasurementPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-quality-measurement/src/index",
+  ) ||
+  !hasFilingQualityMeasurementDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-quality-measurement": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  !hasFilingQualityMeasurementDependency(
+    {
+      devDependencies: {
+        quality: "file:../packages/filing-quality-measurement",
+      },
+    },
+    "apps/package.json",
+  ) ||
+  hasFilingQualityMeasurementDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  )
+)
+  throw new Error(
+    "Filing-quality-measurement composition classifier regressed",
+  );
+const validFilingQualityMeasurementManifest = {
+  name: filingQualityMeasurementModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+};
+if (
+  filingQualityMeasurementManifestViolation(
+    validFilingQualityMeasurementManifest,
+  ) !== null ||
+  filingQualityMeasurementManifestViolation({
+    ...validFilingQualityMeasurementManifest,
+    dependencies: { undici: "latest" },
+  }) === null ||
+  filingQualityMeasurementManifestViolation({
+    ...validFilingQualityMeasurementManifest,
+    exports: {
+      ...validFilingQualityMeasurementManifest.exports,
+      "./builder": "./src/test-filing-quality-measurement-builder.ts",
+    },
+  }) === null ||
+  filingQualityMeasurementManifestViolation({
+    ...validFilingQualityMeasurementManifest,
+    scripts: {
+      ...validFilingQualityMeasurementManifest.scripts,
+      test: "curl https://example.invalid",
+    },
+  }) === null
+)
+  throw new Error("Filing-quality-measurement manifest classifier regressed");
+if (
+  exactFilingQualityMeasurementTreeViolation(
+    filingQualityMeasurementPackagePaths,
+  ) !== null ||
+  exactFilingQualityMeasurementTreeViolation(
+    filingQualityMeasurementPackagePaths.slice(1),
+  ) === null ||
+  exactFilingQualityMeasurementTreeViolation([
+    ...filingQualityMeasurementPackagePaths,
+    `${filingQualityMeasurementSourcePrefix}io-helper.ts`,
+  ]) === null
+)
+  throw new Error(
+    "Filing-quality-measurement package-tree classifier regressed",
+  );
+const validFilingQualityMeasurementCoreSource = `import { createHash } from "node:crypto";
+void createHash;
+`;
+const validFilingQualityMeasurementIndexSource = `export {
+  FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION,
+  FILING_QUALITY_MEASUREMENT_CLAIM,
+  FILING_QUALITY_MEASUREMENT_FACT_KEYS,
+  FILING_QUALITY_MEASUREMENT_ASSERTION_KINDS,
+  FILING_QUALITY_MEASUREMENT_METRICS,
+  FILING_QUALITY_MEASUREMENT_THRESHOLDS,
+  FILING_QUALITY_MEASUREMENT_LIMITS,
+  FILING_QUALITY_MEASUREMENT_DECLARATIONS,
+  FILING_QUALITY_MEASUREMENT_CANDIDATE_QUARANTINE_CODES,
+  FILING_QUALITY_MEASUREMENT_QUARANTINE_CODES,
+  FILING_QUALITY_MEASUREMENT_CHECKS,
+  FILING_QUALITY_MEASUREMENT_NOT_PROVEN,
+  measureSyntheticFilingQuality,
+  type FilingQualityMeasurementDeclaration,
+  type FilingQualityMeasurementQuarantineCode,
+  type FilingQualityMeasurementFailedThreshold,
+  type FilingQualityMeasurementRatioMetric,
+  type FilingQualityMeasurementSilentMetric,
+  type FilingQualityMeasurementCounts,
+  type FilingQualityMeasurementMetrics,
+  type FilingQualityMeasurementEvaluatedResult,
+  type FilingQualityMeasurementQuarantinedResult,
+  type FilingQualityMeasurementResult,
+} from "./filing-quality-measurement";
+`;
+const validFilingQualityMeasurementBuilderSource = `import { createHash } from "node:crypto";
+import { FILING_QUALITY_MEASUREMENT_FACT_KEYS } from "./filing-quality-measurement";
+void createHash;
+void FILING_QUALITY_MEASUREMENT_FACT_KEYS;
+`;
+const validFilingQualityMeasurementUnitTestSource = `import { describe } from "vitest";
+import { measureSyntheticFilingQuality } from "./filing-quality-measurement";
+import { buildSyntheticFilingQualityMeasurementDocuments } from "./test-filing-quality-measurement-builder";
+void describe;
+void measureSyntheticFilingQuality;
+void buildSyntheticFilingQualityMeasurementDocuments;
+`;
+const validFilingQualityMeasurementSecurityTestSource = `import { createHash } from "node:crypto";
+import { describe } from "vitest";
+import { measureSyntheticFilingQuality } from "./filing-quality-measurement";
+import { buildSyntheticFilingQualityMeasurementDocuments } from "./test-filing-quality-measurement-builder";
+void createHash;
+void describe;
+void measureSyntheticFilingQuality;
+void buildSyntheticFilingQualityMeasurementDocuments;
+`;
+if (
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    validFilingQualityMeasurementCoreSource,
+  ) !== null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    validFilingQualityMeasurementCoreSource.replace(
+      "createHash",
+      "randomBytes",
+    ),
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    `${validFilingQualityMeasurementCoreSource}\nimport "node:fs";`,
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    `${validFilingQualityMeasurementCoreSource}\nvoid fetch("");`,
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    `${validFilingQualityMeasurementCoreSource}\nconst target = "node:fs"; void import(target);`,
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    `${validFilingQualityMeasurementCoreSource}\nvoid Date.now();`,
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementProductionPath,
+    `${validFilingQualityMeasurementCoreSource}\nvoid Math.random();`,
+  ) === null ||
+  filingQualityMeasurementArithmeticViolation(
+    filingQualityMeasurementProductionPath,
+    "const met = 989 / 999 >= 0.99; void met;",
+  ) === null ||
+  filingQualityMeasurementArithmeticViolation(
+    filingQualityMeasurementProductionPath,
+    "const met = parseFloat('0.99') > 0; void met;",
+  ) === null ||
+  filingQualityMeasurementArithmeticViolation(
+    filingQualityMeasurementProductionPath,
+    "const value = (0.989).toFixed(2); void value;",
+  ) === null ||
+  filingQualityMeasurementArithmeticViolation(
+    filingQualityMeasurementProductionPath,
+    "const met = 0.99 + Number.EPSILON > 0; void met;",
+  ) === null ||
+  filingQualityMeasurementArithmeticViolation(
+    filingQualityMeasurementProductionPath,
+    "const met = 99 >= 100 * 0.99; void met;",
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementIndexPath,
+    validFilingQualityMeasurementIndexSource,
+  ) !== null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementIndexPath,
+    validFilingQualityMeasurementIndexSource.replace(
+      "FILING_QUALITY_MEASUREMENT_CLAIM,",
+      "FILING_QUALITY_MEASUREMENT_CLAIM as claim,",
+    ),
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementBuilderPath,
+    validFilingQualityMeasurementBuilderSource,
+  ) !== null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementBuilderPath,
+    `${validFilingQualityMeasurementBuilderSource}\nvoid globalThis.crypto;`,
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementUnitTestPath,
+    validFilingQualityMeasurementUnitTestSource,
+  ) !== null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementSecurityTestPath,
+    validFilingQualityMeasurementSecurityTestSource,
+  ) !== null ||
+  filingQualityMeasurementImportViolation(
+    filingQualityMeasurementSecurityTestPath,
+    validFilingQualityMeasurementSecurityTestSource.replace(
+      "node:crypto",
+      "node:https",
+    ),
+  ) === null ||
+  filingQualityMeasurementImportViolation(
+    `${filingQualityMeasurementSourcePrefix}io-helper.ts`,
+    'import "node:fs";',
+  ) === null
+)
+  throw new Error("Filing-quality-measurement source classifier regressed");
 if (
   !referencesModule(
     'import { createFileSystemFilingPayloadCustodyBoundary } from "@research-cockpit/filing-payload-custody";',
@@ -1463,6 +1804,16 @@ function exactFilingFactComparisonTreeViolation(
     : "package tree must remain the exact reviewed manifest, tsconfig, core, two validators, index, builder, and two tests";
 }
 
+function exactFilingQualityMeasurementTreeViolation(
+  packagePaths: readonly string[],
+): string | null {
+  const actual = [...packagePaths].sort();
+  return JSON.stringify(actual) ===
+    JSON.stringify(filingQualityMeasurementPackagePaths)
+    ? null
+    : "package tree must remain the exact reviewed manifest, tsconfig, core, index, builder, and two tests";
+}
+
 function inspectDependencies(path: string, manifest: unknown): void {
   if (!isRecord(manifest)) {
     violations.push(`${path}: package manifest must be an object`);
@@ -1509,6 +1860,13 @@ function inspectDependencies(path: string, manifest: unknown): void {
     violations.push(
       `${path}: isolated zero-dependency filing-fact comparison must not add package dependencies`,
     );
+  if (
+    path === `${filingQualityMeasurementPackagePrefix}package.json` &&
+    dependencyNames.length > 0
+  )
+    violations.push(
+      `${path}: isolated zero-dependency filing-quality measurement must not add package dependencies`,
+    );
   if (path === "packages/filing-fact-normalization/package.json") {
     const manifestViolation =
       filingFactNormalizationManifestViolation(manifest);
@@ -1533,6 +1891,19 @@ function inspectDependencies(path: string, manifest: unknown): void {
   )
     violations.push(
       `${path}: synthetic filing-fact comparison must not be composed into another package`,
+    );
+  if (path === `${filingQualityMeasurementPackagePrefix}package.json`) {
+    const manifestViolation =
+      filingQualityMeasurementManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith(filingQualityMeasurementPackagePrefix) &&
+    hasFilingQualityMeasurementDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: synthetic filing-quality measurement must not be composed into another package`,
     );
   if (path === "packages/filing-payload-custody/package.json") {
     const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
@@ -1605,6 +1976,28 @@ function filingFactComparisonManifestViolation(
   return JSON.stringify(manifest) === JSON.stringify(expected)
     ? null
     : "filing-fact-comparison package must retain its exact private, zero-dependency, index-only script and export surface";
+}
+
+function filingQualityMeasurementManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-quality-measurement package manifest must be an exact object";
+  const expected = {
+    name: filingQualityMeasurementModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-quality-measurement package must retain its exact private, zero-dependency, index-only script and export surface";
 }
 
 function filingPayloadCustodyManifestViolation(
@@ -1682,6 +2075,19 @@ function inspectCompositionBoundary(path: string, content: string): void {
   )
     violations.push(
       `${path}: synthetic filing-fact comparison must remain package-isolated`,
+    );
+  const filingQualityMeasurementViolation =
+    filingQualityMeasurementImportViolation(path, content);
+  if (filingQualityMeasurementViolation !== null)
+    violations.push(`${path}: ${filingQualityMeasurementViolation}`);
+  if (
+    !path.startsWith(filingQualityMeasurementPackagePrefix) &&
+    moduleSpecifiers.some((specifier) =>
+      referencesFilingQualityMeasurementPath(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: synthetic filing-quality measurement must remain package-isolated`,
     );
   const corpusAdmissionViolation = corpusAdmissionImportViolation(
     path,
@@ -1973,6 +2379,211 @@ function isExactFilingFactComparisonIndex(content: string): boolean {
     name,
     typeOnly,
   ]);
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function filingQualityMeasurementImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (!path.startsWith(filingQualityMeasurementSourcePrefix)) return null;
+  if (!filingQualityMeasurementSourcePaths.has(path))
+    return "source set must remain the exact reviewed core, index, builder, and two tests";
+
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path === filingQualityMeasurementIndexPath) {
+    return isExactFilingQualityMeasurementIndex(content)
+      ? null
+      : "public index must retain the exact isolated production export surface";
+  }
+  if (path === filingQualityMeasurementProductionPath) {
+    if (JSON.stringify(moduleSpecifiers) !== JSON.stringify(["node:crypto"]))
+      return "quality core may import only its exact node:crypto hashing surface";
+    const cryptoViolation = exactFilingQualityMeasurementCreateHashViolation(
+      path,
+      content,
+    );
+    if (cryptoViolation !== null) return cryptoViolation;
+    const arithmeticViolation = filingQualityMeasurementArithmeticViolation(
+      path,
+      content,
+    );
+    if (arithmeticViolation !== null) return arithmeticViolation;
+    return filingQualityMeasurementGlobalViolation(path, content, "core");
+  }
+  if (path === filingQualityMeasurementBuilderPath) {
+    if (
+      JSON.stringify(moduleSpecifiers) !==
+      JSON.stringify(["node:crypto", "./filing-quality-measurement"])
+    )
+      return "quality builder may import only exact node:crypto and the direct quality core";
+    const cryptoViolation = exactFilingQualityMeasurementCreateHashViolation(
+      path,
+      content,
+    );
+    if (cryptoViolation !== null) return cryptoViolation;
+    return filingQualityMeasurementGlobalViolation(path, content, "builder");
+  }
+
+  const expectedTestModules = filingQualityMeasurementTestModules.get(path);
+  if (
+    expectedTestModules === undefined ||
+    JSON.stringify(moduleSpecifiers) !== JSON.stringify(expectedTestModules)
+  )
+    return "quality tests may import only their exact Vitest, hash, core, and builder surfaces";
+  if (path === filingQualityMeasurementSecurityTestPath) {
+    const cryptoViolation = exactFilingQualityMeasurementCreateHashViolation(
+      path,
+      content,
+    );
+    if (cryptoViolation !== null) return cryptoViolation;
+  }
+  return filingQualityMeasurementGlobalViolation(path, content, "test");
+}
+
+function exactFilingQualityMeasurementCreateHashViolation(
+  path: string,
+  content: string,
+): string | null {
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const cryptoImports = sourceFile.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "node:crypto",
+  );
+  return cryptoImports.length === 1 &&
+    isExactFilingPayloadCustodyImport(cryptoImports[0], "node:crypto", [
+      ["createHash", "createHash"],
+    ])
+    ? null
+    : "quality hash surface must retain its exact named node:crypto createHash binding";
+}
+
+function filingQualityMeasurementArithmeticViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (path !== filingQualityMeasurementProductionPath) return null;
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let violation: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (violation !== null) return;
+    if (ts.isNumericLiteral(node) && !Number.isSafeInteger(Number(node.text))) {
+      violation =
+        "quality core must not contain fractional numeric literals or floating-point thresholds";
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.SlashToken
+    ) {
+      violation = "quality thresholds must not use floating-point division";
+      return;
+    }
+    if (ts.isIdentifier(node) && ["parseFloat"].includes(node.text)) {
+      violation = "quality thresholds must not parse floating-point ratios";
+      return;
+    }
+    if (ts.isPropertyAccessExpression(node)) {
+      const member = node.name.text;
+      if (
+        ["toExponential", "toFixed", "toPrecision"].includes(member) ||
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "Math" &&
+          ["ceil", "floor", "round", "trunc"].includes(member)) ||
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "Number" &&
+          member === "EPSILON")
+      ) {
+        violation =
+          "quality thresholds must not round, format, truncate, or epsilon-adjust ratios";
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return violation;
+}
+
+function filingQualityMeasurementGlobalViolation(
+  path: string,
+  content: string,
+  surface: "builder" | "core" | "test",
+): string | null {
+  if (hasRuntimeDynamicImport(content))
+    return `quality ${surface} must not use runtime dynamic imports`;
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingQualityMeasurementGlobals.has(node.text) &&
+      !(
+        surface === "test" &&
+        ["Buffer", "SharedArrayBuffer"].includes(node.text)
+      )
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbiddenGlobal === null
+    ? null
+    : `quality ${surface} must not use network, filesystem, process, logging, timer, dynamic-code, global-crypto, or worker surfaces`;
+}
+
+function isExactFilingQualityMeasurementIndex(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingQualityMeasurementIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  const declaration = sourceFile.statements[0];
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "./filing-quality-measurement" ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = filingQualityMeasurementPublicExports.map(
+    ([name, typeOnly]) => [name, name, typeOnly],
+  );
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
@@ -2786,6 +3397,34 @@ function hasFilingFactComparisonDependency(
   });
 }
 
+function hasFilingQualityMeasurementDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingQualityMeasurementModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingQualityMeasurementModule)) return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingQualityMeasurementPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
 function hasFilingPayloadCustodyDependency(
   manifest: unknown,
   manifestPath: string,
@@ -2851,6 +3490,26 @@ function referencesFilingFactComparisonPath(
     resolved === "packages/filing-fact-comparison" ||
     resolved.startsWith(filingFactComparisonPackagePrefix) ||
     resolved.includes("/packages/filing-fact-comparison/")
+  );
+}
+
+function referencesFilingQualityMeasurementPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingQualityMeasurementModule ||
+    specifier.startsWith(`${filingQualityMeasurementModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-quality-measurement" ||
+    resolved.startsWith(filingQualityMeasurementPackagePrefix) ||
+    resolved.includes("/packages/filing-quality-measurement/")
   );
 }
 

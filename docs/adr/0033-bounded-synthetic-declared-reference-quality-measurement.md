@@ -1,0 +1,174 @@
+# ADR 0033: bounded synthetic declared-reference quality measurement
+
+Status: source implementation complete; local verification Pass; two-OS CI
+Pending. Cycle 2b, full Cycle 2 quality, and production admission Blocked.
+
+## Context
+
+Cycle 2e proves only byte-exact agreement between two distinctly declared
+same-process synthetic validator roles. It does not prove actual parser or
+validator independence, independently adjudicated reference labels, real
+filing correctness, or measured quality. Cycle 2b Phase B also remains blocked
+on the exact external 100-entry inventory, approvals, chronology, and human
+authority-registry review.
+
+Those external blockers prohibit a real-data quality claim. They do not prevent
+a smaller repository-controlled contract: deterministically accounting for one
+fixed synthetic population, deriving every metric from closed candidate and
+declared-reference documents, and applying one fixed synthetic-pilot threshold
+policy without floating-point tolerance or caller-supplied arithmetic.
+
+## Decision
+
+Add the private, zero-dependency `packages/filing-quality-measurement` package.
+The caller supplies exactly three bounded canonical UTF-8 JSON byte documents
+in fixed plan, candidate, and declared-reference roles. The boundary immediately
+takes fresh owned snapshots before parsing. Each document is label-separated,
+closed-schema, synthetic-only, chronologically declared, and hash-bound to its
+fixed role. Duplicate JSON keys, non-canonical bytes, unexpected fields,
+oversized input, broken chronology, wrong hashes, or declaration mismatches
+fail closed.
+
+The declared reference contains exactly 100 unique documents. Each document
+contains the exact ten launch fact coordinates, for 1,000 fact targets total.
+The evaluator derives exactly two critical assertions per target:
+`semantic_value_presence` and `exact_unit_period`. All 2,000 assertions must be
+accounted; they need not all pass for the input to be valid. Coordinates are
+sorted and unique and are recomputed from their closed fields. Duplicate,
+omitted, excluded, or reweighted targets are invalid.
+
+The candidate contains zero through 100 unique document rows. Its only explicit
+row statuses are `succeeded` and `quarantined`. A succeeded row may carry zero
+through ten sorted unique known-coordinate facts; fewer than ten remains valid
+measured incomplete, with one false negative and two silent assertion failures
+per omission and no caller partial flag. An explicit-quarantine row must be
+fact-empty and carry one closed coarse code. A missing candidate document is
+derived from absence, not a caller label. Succeeded/reference disagreement,
+missing succeeded facts, and missing documents are silent failures; explicit
+quarantine is not silent. Explicit quarantine nevertheless reduces document
+success and fact recall and increases quarantine rate. Each `documentSha256`
+is a domain-separated synthetic coordinate binding, not a real payload or
+content digest. The evaluator, never the caller, derives classification,
+counts, denominators, assertion outcomes, and metrics.
+
+Exact fact equality is a true positive. A wrong prediction contributes one
+false positive and one false negative. Missing expected facts contribute false
+negatives. Precision is `TP/(TP+FP)` and recall is `TP/(TP+FN)`; an undefined
+zero denominator fails closed. Thresholds are evaluated by integer
+cross-multiplication only. There is no float, `NaN`, rounding, epsilon,
+tolerance widening, weighting, exclusion, repair, or caller-supplied metric.
+
+The fixed synthetic-pilot policy is:
+
+- document success at least `95/100`;
+- fact precision at least `99/100`;
+- fact recall at least `99/100`;
+- quarantine rate at most `5/100`;
+- maximum silent critical failures `0`;
+- exact canonical unit policy `exact_canonical_unit.v1`; and
+- date tolerance `0` days.
+
+Valid inputs always return an immutable aggregate-only `status: "evaluated"`
+receipt. The receipt binds input and evaluation hashes, exact counts and
+metrics, failed thresholds, and a synthetic-pilot threshold outcome of `met` or
+`not_met`. Falling below a threshold is a valid `not_met` evaluation, not input
+quarantine. The receipt contains no filing accessions, coordinates, concepts,
+dimensions, units, periods, decimals, values, candidate facts, or reference
+facts.
+
+Malformed input returns only `status: "quarantined"`, one coarse closed code,
+zero audit counts, and an empty metric array. It exposes no input hash,
+declaration, mismatch position, count, coordinate, fact value, threshold
+detail, or canary.
+
+The canonical met fixture has 99 succeeded documents with ten exact facts each
+and one explicit-quarantine document. It accounts for 1,000 expected fact
+targets and all 2,000 critical assertions, records 990 true positives, ten false
+negatives, zero false positives, and 1,980 passed assertions, and meets the
+fixed synthetic-pilot policy. The remaining 20 assertions are accounted but
+not passed. This is fixture arithmetic only, not independently adjudicated
+quality, real-parser quality, or production threshold approval.
+
+## Evidence and status boundary
+
+Cycle 2f is a deterministic TypeScript source/test contract with no new live or
+platform trust boundary. Its gate is the frozen-byte local release suite and
+existing Ubuntu/Windows CI matrix. Local verification is Pass on the exact
+frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
+typecheck, test, and build stages with 45 test files, 951 passed plus 2 skipped
+(953 total), all 12 workspace project checks, and 11 builds. CI remains Pending
+until the existing Ubuntu/Windows matrix passes those exact bytes. It creates no
+dedicated workflow, evidence schema, evidence artifact, retained log package,
+offline evidence review, or evidence note.
+
+The canonical Cycle 2a and Cycle 2c evidence checks, nonclaims, schemas, source
+sets, artifacts, and notes remain byte-exact. Their offline verifiers may accept
+Cycle 2f only as one exact 28-path atomic successor transition from baseline
+`baa79baa466cf1c869f63a279f90a6dde61c97ac`; no Cycle 2f result enters either
+historical record.
+
+## Exact target claim and checks
+
+The sole bounded target claim is
+`bounded_synthetic_fixed_population_declared_reference_quality_metric_accounting_and_fail_closed_threshold_evaluation`.
+
+The exact ordered checks are:
+
+1. `exact_fixed_role_synthetic_plan_candidate_and_declared_reference_documents`
+2. `owned_bounded_utf8_canonical_json_snapshots_and_duplicate_key_rejection`
+3. `fixed_095_099_099_005_zero_silent_exact_unit_zero_date_policy_binding`
+4. `closed_label_separated_plan_candidate_and_reference_schemas`
+5. `declared_plan_candidate_reference_chronology_and_exact_hash_role_binding`
+6. `exact_100_unique_documents_ten_fixed_keys_and_2000_derived_critical_assertions`
+7. `sorted_unique_coordinate_recomputation_and_no_duplicate_omission_exclusion_or_reweighting`
+8. `strict_canonical_decimal_concept_dimension_unit_and_gregorian_period_validation`
+9. `succeeded_partial_fact_or_quarantined_empty_candidate_state_coherence`
+10. `evaluator_derived_counts_denominators_classification_and_no_caller_supplied_metrics`
+11. `exact_fact_true_positive_wrong_prediction_false_positive_plus_false_negative_and_zero_denominator_fail_closed`
+12. `integer_cross_multiplication_without_float_nan_rounding_epsilon_or_tolerance_widening`
+13. `fixed_document_success_precision_recall_unit_date_silent_failure_and_quarantine_semantics`
+14. `valid_below_threshold_evaluation_recorded_as_not_met_not_input_quarantine`
+15. `immutable_aggregate_only_evaluated_receipt_or_empty_value_free_quarantine_and_canary_absence`
+16. `domain_separated_determinism_mutation_safety_no_io_composition_or_historical_evidence_mutation`
+
+## Exact nonclaims
+
+The exact ordered nonclaims are:
+
+1. `actual_independent_adjudicator_identity_process_host_operator_key_or_failure_domain`
+2. `actual_blinding_label_leakage_absence_prediction_precommitment_or_chronology_authenticity`
+3. `declared_reference_accounting_correctness_or_human_resolution_quality`
+4. `candidate_report_parser_execution_identity_digest_authenticity_or_cycle2e_output`
+5. `cycle2b_external_inventory_rights_steward_key_authority_or_human_review`
+6. `real_filing_payload_digest_sec_source_authenticity_or_custody`
+7. `representative_100_real_filings_or_independently_adjudicated_2000_real_assertions`
+8. `real_parser_quality_precision_recall_document_success_quarantine_or_zero_silent_failures`
+9. `threshold_statistical_adequacy_confidence_calibration_or_production_acceptance`
+10. `strategic_quarantine_reason_authenticity_or_malicious_failure_masking_detection`
+11. `cycle2d_normalizer_lineage_correctness_or_cycle2e_independent_validator_composition`
+12. `adaptive_metric_oracle_privacy_differential_privacy_or_real_label_confidentiality`
+13. `general_xbrl_ixbrl_taxonomy_concept_unit_dimension_fiscal_or_amendment_correctness`
+14. `network_fetch_custody_retention_kms_backup_deletion_or_cryptographic_erasure`
+15. `database_api_web_queue_persistence_evidence_passport_b15_v15_or_slo`
+16. `production_identity_secrets_real_data_full_cycle2_exit_or_production_use`
+
+## Consequences
+
+Cycle 2f can close only exact fixed-population synthetic accounting, metric
+derivation, and fail-closed evaluation against the fixed synthetic-pilot
+policy. It cannot authenticate the declarations, establish independent
+adjudication or blinding, validate a real filing or parser, prove threshold
+adequacy, unblock Cycle 2b, satisfy the real 2,000-assertion quality gate,
+compose B15/V15, or authorize production use.
+
+## References
+
+- [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
+- [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
+- [ADR 0032](./0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
+- [ADR 0029](./0029-fixed-public-filing-candidate-manifest-admission.md)
+- [Build roadmap](../BUILD_ROADMAP.md)
+- [Threat model](../THREAT_MODEL.md)
+- [Canonical model](../CANONICAL_MODEL.md)
+- [License policy](../../LICENSE_POLICY.md)

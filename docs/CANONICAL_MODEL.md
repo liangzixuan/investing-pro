@@ -9,8 +9,9 @@ query-plan/load, b13 keyed privacy/retention, and b14 populated-cutover
 boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
 metadata verifier, reviewed bounded Cycle 2c synthetic payload custody,
-source-stage Cycle 2d synthetic ten-fact normalization/lineage, and source-stage
-Cycle 2e two-declared-validator fact comparison; synthetic data only.
+source-stage Cycle 2d synthetic ten-fact normalization/lineage, source-stage
+Cycle 2e two-declared-validator fact comparison, and locally verified Cycle 2f
+declared-reference quality measurement with CI pending; synthetic data only.
 
 ## Identity
 
@@ -494,6 +495,60 @@ note; leaves Cycle 2b and production Blocked; creates no B15/V15 composition;
 and admits no real data. See
 [ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
+
+## Cycle 2f synthetic quality-measurement boundary
+
+Cycle 2f adds no canonical filing, ground-truth entity, admitted fact, evidence
+passport, persistence command, rights policy, or production quality record.
+Exactly three bounded canonical byte documents occupy fixed plan, candidate,
+and declared-reference roles. The boundary takes fresh owned snapshots before
+closed-schema validation. Fixed role identifiers and declaration digests are
+synthetic declarations, not authenticated adjudicator, parser, or authority
+identities.
+
+The declared reference contains exactly 100 unique synthetic document labels
+and ten fixed fact coordinates per document. Those 1,000 fact targets are the
+complete denominator. The evaluator derives `semantic_value_presence` and
+`exact_unit_period` for every target, accounts for exactly 2,000 critical
+assertions, and rejects duplicate, omitted, excluded, or reweighted reference
+coordinates. It derives all counts, classifications, denominators, assertion
+outcomes, and metrics; none enters as caller-supplied canonical state.
+
+The only explicit candidate row statuses are `succeeded` and `quarantined`. A
+succeeded row may contain zero through ten sorted unique known-coordinate facts;
+fewer than ten is valid measured incomplete, with no caller partial flag, and
+absence is derived as missing. Exact facts are true positives. A wrong fact
+creates one false positive plus one false negative, and each omitted expected
+fact creates one false negative plus two silent assertion failures. Missing or
+mismatched succeeded output is silent; explicit quarantine is not silent but
+still reduces document success and recall and increases quarantine rate.
+Undefined precision or recall denominators fail closed.
+
+The fixed synthetic-pilot threshold policy is document success `>=95/100`, fact
+precision and recall `>=99/100`, quarantine rate `<=5/100`, zero silent critical
+failures, exact canonical units, and zero-day period tolerance. Ratios use
+integer cross-multiplication without float, rounding, epsilon, or caller
+tolerance. A valid below-threshold population remains `status: "evaluated"`
+with outcome `not_met`; it is not malformed-input quarantine.
+
+An evaluated result is immutable and aggregate-only: input/evaluation hashes,
+counts, metrics, failed thresholds, and synthetic-pilot outcome. It carries no
+labels, coordinates, concepts, dimensions, units, periods, decimals, or values.
+Malformed input yields one coarse code, zero audit counts, and an empty metric
+array, with no hashes, mismatch location, input detail, threshold detail, or
+canary.
+
+Source implementation is complete. Local verification is Pass on the exact
+frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
+typecheck, test, and build stages with 45 test files, 951 passed plus 2 skipped
+(953 total), all 12 workspace project checks, and 11 builds. Two-OS CI remains
+Pending. Cycle 2f creates no dedicated workflow, evidence schema, artifact,
+offline review, or evidence note. It does not establish independent
+adjudication, blinding, declared-reference correctness, real parser quality,
+threshold adequacy, Cycle 2b authority, full Cycle 2 exit, B15/V15, or
+production readiness. See
+[ADR 0033](./adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
+and the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

@@ -114,3 +114,10 @@ quarantine, silent repair, or any real-data input prevents promotion. This
 source-stage Pass does not prove true validator independence or authenticity,
 unblock Cycle 2b, establish full Cycle 2 quality, create B15/V15, or authorize
 production use.
+
+Cycle 2f is a separate successor-only declared-reference quality-measurement
+contract. Its candidate document is synthetic input and is not an authenticated
+Cycle 2e receipt or validator output. It does not alter Cycle 2e's exact claim,
+checks, nonclaims, source bytes, CI anchors, or no-evidence status, and its
+declared reference does not establish the validator independence or accounting
+truth excluded here. See the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).

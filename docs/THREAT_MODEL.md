@@ -1,4 +1,4 @@
-# Sprint 0 through source-stage Cycle 2e threat model
+# Sprint 0 through locally verified Cycle 2f threat model
 
 ## Current trust boundaries
 
@@ -156,6 +156,44 @@ dedicated workflow, evidence schema, artifact, offline review, or evidence note,
 performs no network, raw parser, normalizer, custody, corpus, database, API,
 web, or queue operation. Cycle 2b and production remain Blocked; this is not
 B15/V15.
+
+Cycle 2f adds a disconnected pure-TypeScript quality-measurement boundary for
+exactly three canonical synthetic documents in fixed plan, candidate, and
+declared-reference roles. It snapshots each input before closed parsing and
+accepts only the exact fixed population of 100 declared-reference documents,
+ten fact coordinates each, and 2,000 evaluator-derived critical assertions.
+Unexpected keys, duplicate JSON keys, non-canonical bytes, oversized documents,
+coordinate duplication/omission, invalid decimals or Gregorian periods,
+declaration/hash/chronology mismatch, or incoherent candidate state fail closed.
+
+The evaluator derives all counts, denominators, fact classifications, assertion
+outcomes, and metrics. Callers cannot submit weights, exclusions, metrics, or
+assertion results. A wrong fact creates one false positive and one false
+negative. Missing or mismatched succeeded output is silent; explicit
+quarantine is not silent, but it still creates false negatives, reduces
+document success and recall, and increases quarantine rate. Undefined ratio
+denominators fail closed.
+
+Threshold arithmetic is integer-only: document success `>=95/100`, precision
+and recall `>=99/100`, quarantine `<=5/100`, zero silent critical failures,
+exact canonical units, and zero-day period tolerance. There is no float,
+`NaN`, rounding, epsilon, caller tolerance, reweighting, repair, or fallback.
+Valid below-threshold input produces aggregate `not_met`; malformed input
+produces empty value-free quarantine. Neither result exposes fact values,
+coordinates, mismatch details, or canaries.
+
+The declared adjudicator/candidate roles and digests are unauthenticated
+synthetic declarations. The boundary cannot establish independent adjudicator
+identity or failure domains, blinding, prediction precommitment, chronology
+authenticity, reference-label correctness, strategic-quarantine detection, real
+parser quality, or threshold adequacy. Source implementation is complete. Local
+verification is Pass on the exact frozen bytes: `corepack pnpm verify` passed
+all format, lint, guardrail, typecheck, test, and build stages with 45 test
+files, 951 passed plus 2 skipped (953 total), all 12 workspace project checks,
+and 11 builds. Two-OS CI remains Pending. Cycle 2f has no dedicated workflow,
+evidence schema, artifact, offline review, or evidence note and performs no
+network, parser, custody, corpus, database, API, web, or queue operation. Cycle
+2b, full Cycle 2 quality, and production remain Blocked; this is not B15/V15.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -725,6 +763,17 @@ production readiness. The exact boundary is in
 [ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
 
+Cycle 2f's target is only
+`bounded_synthetic_fixed_population_declared_reference_quality_metric_accounting_and_fail_closed_threshold_evaluation`
+for one fixed 100-document synthetic declared reference. It cannot establish
+actual independent adjudication, blinding, label correctness, representative
+real filings, real parser quality, approved or statistically adequate
+thresholds, Cycle 2b authority, malicious failure masking detection, production
+composition, B15/V15, full Cycle 2 exit, or production readiness. The exact
+boundary is in
+[ADR 0033](./adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
+and the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -733,9 +782,10 @@ and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
    rights/steward approvals and authority keys, then prove raw-byte identity,
    custody/retention, parser quality, conflict quarantine, and provenance.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
-   normalization/lineage contract, and Cycle 2e's same-process declared-role
-   comparison are engineering preparation only and do not satisfy any
-   real-corpus prerequisite.
+   normalization/lineage contract, Cycle 2e's same-process declared-role
+   comparison, and Cycle 2f's declared-reference metric accounting are
+   engineering preparation only and do not satisfy any real-corpus
+   prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

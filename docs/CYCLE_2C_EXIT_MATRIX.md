@@ -113,5 +113,11 @@ Cycle 2c evidence. The 16 checks, 16 nonclaims, 29-source set, artifact, and
 evidence note remain unchanged. See the
 [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
 
+Cycle 2f is another disconnected synthetic source successor. It consumes no
+Cycle 2c payload, ciphertext, key, receipt, audit history, artifact, or evidence
+record. The canonical Cycle 2c 16 checks, 16 nonclaims, 29-source schema,
+artifact, and evidence note remain unchanged. See the
+[Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
 Exact remote, source, artifact, log, and custody anchors are recorded in the
 [Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).

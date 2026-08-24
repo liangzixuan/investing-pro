@@ -160,3 +160,31 @@ schema, artifact, offline review, or evidence note; changes no Cycle 2b
 external authority prerequisite; admits no real data; and is not B15/V15. See
 [ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md).
+
+## Cycle 2f synthetic declared-reference quality-measurement boundary
+
+Cycle 2f adds one private workspace package with no runtime dependency or
+external content. Tests generate three bounded canonical synthetic documents
+for a fixed plan, candidate, and declared reference. The 100 document labels,
+1,000 fact targets, 2,000 derived critical assertions, values, identifiers, and
+outcomes are repository-authored synthetic fixtures. The package adds no real
+filing, candidate manifest, raw payload, public dataset, vendor sample, service,
+image, font, model output, or third-party license obligation.
+
+The fixed declared-adjudicator and candidate roles, identifiers, versions, and
+declaration digests are unauthenticated declarations. They do not prove human
+identity, independent adjudication, blinding, label correctness, parser
+execution, or real filing quality. The fixed 0.95/0.99/0.99/0.05/zero-silent
+policy is a synthetic-pilot engineering threshold only, not counsel,
+procurement, data-steward, statistical, or production approval.
+
+Source implementation is complete. Local verification is Pass on the exact
+frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
+typecheck, test, and build stages with 45 test files, 951 passed plus 2 skipped
+(953 total), all 12 workspace project checks, and 11 builds. Two-OS CI remains
+Pending. Cycle 2f creates no dedicated workflow, evidence schema, artifact,
+offline review, or evidence note; changes no Cycle 2b external authority
+prerequisite; admits no real data; does not establish the real
+2,000-assertion quality gate; and is not B15/V15. See
+[ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
+and the [Cycle 2f exit matrix](./docs/CYCLE_2F_EXIT_MATRIX.md).

@@ -171,6 +171,35 @@ Blocked, and is not B15/V15. See
 [ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md).
 
+Cycle 2f adds a separate, zero-dependency synthetic quality-measurement
+protocol. Exactly three bounded canonical documents occupy fixed plan,
+candidate, and declared-reference roles. The declared reference fixes 100
+unique documents with the ten launch facts each; the evaluator derives two
+critical assertions per target and accounts for all 2,000 without accepting
+caller metrics, weights, exclusions, or assertion results. The only explicit
+candidate row statuses are `succeeded` and `quarantined`; a succeeded row may
+carry zero through ten sorted unique known-coordinate facts and is measured
+incomplete when facts are omitted, while absence is derived as missing.
+Explicit quarantine is not silent, but it still contributes false negatives,
+reduces document success, and increases quarantine rate.
+
+The fixed synthetic-pilot policy uses document success `>=95/100`, precision
+and recall `>=99/100`, quarantine rate `<=5/100`, zero silent critical
+failures, exact canonical units, and zero-day period tolerance. Thresholds use
+integer cross-multiplication only. Valid below-threshold input returns an
+aggregate `not_met` evaluation; malformed input alone returns empty value-free
+quarantine. **Source implementation is complete. Local verification is Pass on
+the exact frozen bytes: `corepack pnpm verify` passed all format, lint,
+guardrail, typecheck, test, and build stages with 45 test files, 951 passed plus
+2 skipped (953 total), all 12 workspace project checks, and 11 builds. Two-OS
+CI remains Pending.** The declared reference does not establish independent
+adjudication, blinding, real parser quality, or approved production thresholds.
+Cycle 2f creates no dedicated workflow, evidence schema, artifact, offline
+review, or evidence note; it admits no real data, leaves Cycle 2b, full Cycle 2
+quality, and production Blocked, and is not B15/V15. See
+[ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
+and the [Cycle 2f exit matrix](./docs/CYCLE_2F_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -577,6 +606,10 @@ blocked.
   true independence, execute a parser, validate a real filing or accounting
   truth, provide adjudicated quality evidence, compose the application, or
   authorize real-data or production use.
+- Cycle 2f accounts for one fixed 100-document synthetic declared reference and
+  evaluates fixed synthetic-pilot thresholds. It does not prove actual
+  adjudicator independence, blinding, label correctness, representative real
+  filings, real parser quality, threshold adequacy, or production acceptance.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -631,4 +664,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md),
 [Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md),
 [ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md),
+[Cycle 2f exit matrix](./docs/CYCLE_2F_EXIT_MATRIX.md),
+[ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md),
 and [architecture decisions](./docs/adr/).

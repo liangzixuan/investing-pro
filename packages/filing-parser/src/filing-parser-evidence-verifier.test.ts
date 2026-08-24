@@ -17,6 +17,9 @@ import {
   isCycle2dDisconnectedNormalizationTreeAllowed,
   isCycle2eCommitDiffSetAllowed,
   isCycle2eDisconnectedComparisonTreeAllowed,
+  isCycle2fCommitDiffSetAllowed,
+  isCycle2fDisconnectedQualityMeasurementTreeAllowed,
+  isCycle2fTransitionRoutingRequired,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
 
@@ -219,6 +222,84 @@ const CYCLE_2E_TRANSITION = [
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
     status: "M",
   },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
+const CYCLE_2F_SUCCESSOR_TREE = [
+  "packages/filing-quality-measurement/package.json",
+  "packages/filing-quality-measurement/src/filing-quality-measurement-security.test.ts",
+  "packages/filing-quality-measurement/src/filing-quality-measurement.test.ts",
+  "packages/filing-quality-measurement/src/filing-quality-measurement.ts",
+  "packages/filing-quality-measurement/src/index.ts",
+  "packages/filing-quality-measurement/src/test-filing-quality-measurement-builder.ts",
+  "packages/filing-quality-measurement/tsconfig.json",
+].sort();
+const CYCLE_2F_TRANSITION = [
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2E_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2F_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "packages/filing-quality-measurement/package.json", status: "A" },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement.ts",
+    status: "A",
+  },
+  { path: "packages/filing-quality-measurement/src/index.ts", status: "A" },
+  {
+    path: "packages/filing-quality-measurement/src/test-filing-quality-measurement-builder.ts",
+    status: "A",
+  },
+  { path: "packages/filing-quality-measurement/tsconfig.json", status: "A" },
   { path: "pnpm-lock.yaml", status: "M" },
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ] as const;
@@ -450,6 +531,82 @@ describe("offline filing parser evidence review", () => {
           index === 0 ? { ...entry, status: "D" } : entry,
         ),
       ),
+    ).toBe(false);
+  });
+
+  it("admits only the exact atomic Cycle 2f package tree and transition", () => {
+    expect(isCycle2fDisconnectedQualityMeasurementTreeAllowed([])).toBe(true);
+    expect(
+      isCycle2fDisconnectedQualityMeasurementTreeAllowed(
+        CYCLE_2F_SUCCESSOR_TREE,
+      ),
+    ).toBe(true);
+    for (const omitted of CYCLE_2F_SUCCESSOR_TREE) {
+      expect(
+        isCycle2fDisconnectedQualityMeasurementTreeAllowed(
+          CYCLE_2F_SUCCESSOR_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2fDisconnectedQualityMeasurementTreeAllowed(
+        [
+          ...CYCLE_2F_SUCCESSOR_TREE,
+          "packages/filing-quality-measurement/src/unreviewed.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+
+    expect(CYCLE_2F_TRANSITION).toHaveLength(28);
+    expect(isCycle2fCommitDiffSetAllowed(CYCLE_2F_TRANSITION)).toBe(true);
+    for (const omitted of CYCLE_2F_TRANSITION) {
+      expect(
+        isCycle2fCommitDiffSetAllowed(
+          CYCLE_2F_TRANSITION.filter((entry) => entry !== omitted),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2aCommitDiffEntryAllowed(omitted.status, omitted.path),
+      ).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+    }
+    expect(
+      isCycle2fCommitDiffSetAllowed([
+        ...CYCLE_2F_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2fCommitDiffSetAllowed(
+        CYCLE_2F_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "D" } : entry,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("routes a 19-modification marker-free Cycle 2f overlap to exact Cycle 2f enforcement", () => {
+    const overlapOnlyPartial = CYCLE_2F_TRANSITION.filter(
+      (entry) => entry.status === "M",
+    );
+    expect(overlapOnlyPartial).toHaveLength(19);
+    expect(
+      CYCLE_2F_TRANSITION.filter((entry) => entry.status === "A"),
+    ).toHaveLength(9);
+    expect(isCycle2eCommitDiffSetAllowed(CYCLE_2E_TRANSITION)).toBe(true);
+    expect(
+      isCycle2fTransitionRoutingRequired(
+        overlapOnlyPartial.map((entry) => entry.path),
+        [],
+        CYCLE_2E_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(isCycle2fCommitDiffSetAllowed(overlapOnlyPartial)).toBe(false);
+    expect(
+      isCycle2fTransitionRoutingRequired([], [], CYCLE_2E_TRANSITION),
+    ).toBe(false);
+    expect(
+      isCycle2fTransitionRoutingRequired(undefined, [], CYCLE_2E_TRANSITION),
     ).toBe(false);
   });
 
