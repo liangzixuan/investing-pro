@@ -154,10 +154,18 @@ independence, declaration authenticity, accounting truth, or resistance to
 common-mode failure, and Cycle 2f does not alter this ADR's exact claim, arrays,
 source bytes, CI anchors, or no-evidence status.
 
+Cycle 2g is a separate successor-only in-process precommitment contract. Its
+candidate observations are synthetic inputs, not an authenticated Cycle 2e
+receipt or validator result. Commit-before-reveal ordering cannot establish
+Cycle 2e validator independence, declaration authenticity, accounting truth,
+or resistance to common-mode failure, and Cycle 2g does not alter this ADR's
+exact claim, arrays, source bytes, CI anchors, or no-evidence status.
+
 ## References
 
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [ADR 0031](./0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)

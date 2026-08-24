@@ -6,39 +6,62 @@ ten fixed fact targets per document, and two evaluator-derived critical
 assertions per target. The decision is recorded in
 [ADR 0033](./adr/0033-bounded-synthetic-declared-reference-quality-measurement.md).
 
-Current status: **bounded source-stage claim, local verification, and two-OS CI
-Pass only for exact source commit
-`72e91f502b31f15deeaad761b82d9ed7b6377d39`. Cycle 2b, full Cycle 2 quality,
-and production admission remain Blocked.** There is no real filing, external
-configuration, independent adjudication, dedicated Cycle 2f workflow, evidence
-schema, artifact, offline evidence review, or evidence note.
+Current status: **the prior bounded source-stage security conclusion for exact
+source commit `72e91f502b31f15deeaad761b82d9ed7b6377d39` is Superseded. Its
+recorded local release run and Ubuntu/Windows CI jobs were green, but hostile
+plain `Uint8Array` carriers could spoof byte bounds and shared-buffer metadata
+or invoke caller `constructor` / `Symbol.species` hooks during snapshot
+allocation. Current hardened Cycle 2f restoration has an exact final
+pre-promotion Local Pass under the Cycle 2g gate; two-OS CI is Pending. Cycle
+2b, full Cycle 2 quality, and production admission remain Blocked.** There is
+no real filing, external configuration, independent adjudication, dedicated
+Cycle 2f workflow, evidence schema, artifact, offline evidence review, or
+evidence note.
 
-| Gate                     | Required result                                                                                                                                   | Current status          |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Exact input              | Exactly three bounded canonical documents occupy fixed plan, candidate, and declared-reference roles                                              | Implemented; Local Pass |
-| Fixed population         | The declared reference contains exactly 100 unique documents, ten fixed fact coordinates each, and 2,000 derived critical assertions              | Implemented; Local Pass |
-| Candidate state          | Rows are only `succeeded` or `quarantined`; succeeded rows carry zero through ten facts and omissions are measured incomplete; absence is missing | Implemented; Local Pass |
-| Metric accounting        | The evaluator derives every count and denominator; callers cannot supply metrics, weights, exclusions, or assertion outcomes                      | Implemented; Local Pass |
-| Fixed threshold policy   | Exact integer-rational 0.95/0.99/0.99/0.05/0 thresholds, exact units, and zero-day periods are applied without float tolerance                    | Implemented; Local Pass |
-| Outcome semantics        | Valid inputs yield `evaluated` plus `met` or `not_met`; malformed inputs alone yield empty value-free quarantine                                  | Implemented; Local Pass |
-| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                           | Pass                    |
-| Two-OS CI                | The same frozen source gate passes on Ubuntu and Windows                                                                                          | Pass                    |
-| Dedicated evidence       | Separate workflow/schema/artifact/offline review                                                                                                  | Not created             |
-| Independent adjudication | Real adjudicator identity, independence, blinding, chronology, and resolution quality are established                                             | Not proven; outside 2f  |
-| Cycle 2b authority       | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                | Blocked; outside 2f     |
-| Full Cycle 2 quality     | Representative real filings and 2,000 independently adjudicated real assertions meet approved thresholds with zero silent failures                | Blocked                 |
-| Production admission     | Real-data rights, authenticity, persistence, security, privacy, scale, and operational gates pass                                                 | Blocked                 |
+| Gate                     | Required result                                                                                                                                        | Current status                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| Exact input              | Exactly three bounded canonical documents occupy fixed plan, candidate, and declared-reference roles                                                   | Hardened; Local restoration Pass  |
+| Owned byte carrier       | Intrinsic buffer/length slots enforce bounds and ordinary `ArrayBuffer` backing; snapshot allocation never dispatches caller constructor/species hooks | Hardened; Local restoration Pass  |
+| Fixed population         | The declared reference contains exactly 100 unique documents, ten fixed fact coordinates each, and 2,000 derived critical assertions                   | Unchanged; Local restoration Pass |
+| Candidate state          | Rows are only `succeeded` or `quarantined`; succeeded rows carry zero through ten facts and omissions are measured incomplete; absence is missing      | Unchanged; Local restoration Pass |
+| Metric accounting        | The evaluator derives every count and denominator; callers cannot supply metrics, weights, exclusions, or assertion outcomes                           | Unchanged; Local restoration Pass |
+| Fixed threshold policy   | Exact integer-rational 0.95/0.99/0.99/0.05/0 thresholds, exact units, and zero-day periods are applied without float tolerance                         | Unchanged; Local restoration Pass |
+| Outcome semantics        | Valid inputs yield `evaluated` plus `met` or `not_met`; malformed inputs alone yield empty value-free quarantine                                       | Unchanged; Local restoration Pass |
+| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on current hardened frozen bytes                                               | Local restoration Pass            |
+| Two-OS CI                | The current hardened frozen source gate passes on Ubuntu and Windows                                                                                   | Pending                           |
+| Dedicated evidence       | Separate workflow/schema/artifact/offline review                                                                                                       | Not created                       |
+| Independent adjudication | Real adjudicator identity, independence, blinding, chronology, and resolution quality are established                                                  | Not proven; outside 2f            |
+| Cycle 2b authority       | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                     | Blocked; outside 2f               |
+| Full Cycle 2 quality     | Representative real filings and 2,000 independently adjudicated real assertions meet approved thresholds with zero silent failures                     | Blocked                           |
+| Production admission     | Real-data rights, authenticity, persistence, security, privacy, scale, and operational gates pass                                                      | Blocked                           |
 
-The exact frozen bytes pass `corepack pnpm verify`: all format, lint,
-guardrail, typecheck, test, and build stages are green with 45 test files, 951
-passed plus 2 skipped (953 total), all 12 workspace project checks, and 11
-builds.
+The historical frozen bytes at
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` completed `corepack pnpm verify`:
+all format, lint, guardrail, typecheck, test, and build stages were green with
+45 test files, 951 passed plus 2 skipped (953 total), all 12 workspace project
+checks, and 11 builds. Those green facts did not exercise the hostile carrier
+gap and no longer support a Cycle 2f source-stage security Pass conclusion.
 
 CI run `32681826143` passed in Ubuntu job `97299715600` and Windows job
 `97299715638`. Parser run/job `32681826015` / `97299715074`, custody run/job
 `32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
 `97299715107` passed as unchanged regression health only; they are not Cycle 2f
 evidence.
+
+Specifically, the historical implementation read shadowable instance `buffer`
+and `byteLength` properties and copied with typed-array `slice`. A hostile
+plain `Uint8Array` could disguise `SharedArrayBuffer` backing or an oversized
+carrier and could receive constructor/species allocation dispatch. This made
+the exact bounded owned-snapshot check false on those bytes and supersedes the
+sole bounded source-stage claim despite the green jobs.
+
+The current hardened bytes passed the exact final pre-promotion local source
+gate as part of Cycle 2g: formatting, full ESLint, all guardrails, 86 production
+license versions, every scripted typecheck/test/build across 12 of 13 workspace
+projects, and the boundary verifier were green. All 47 test files completed
+with 987 passed plus two skipped (989 total), including 39 Cycle 2f tests and 29
+Cycle 2g tests. This is a local restoration Pass only; two-OS restoration CI is
+Pending.
 
 The fixed synthetic-pilot policy uses document success at least `95/100`, fact
 precision at least `99/100`, fact recall at least `99/100`, quarantine rate at
@@ -110,11 +133,33 @@ verifiers may accept Cycle 2f only as the exact atomic 28-path transition from
 `baa79baa466cf1c869f63a279f90a6dde61c97ac`; no Cycle 2f result enters either
 record.
 
-The exact frozen-byte local and two-OS CI gates are Pass only for source commit
-`72e91f502b31f15deeaad761b82d9ed7b6377d39`. Failure, cancellation, an
-omitted, extra, or deleted transition path, a partial package tree, unaccounted
-reference target, caller-supplied metric, float tolerance, malformed-input
-metric leakage, or any real-data input prevents promotion. This source-stage
-Pass does not prove independent adjudication, real parser quality, Cycle 2b
-authority, approved production thresholds, full Cycle 2 exit, B15/V15, or
-production use.
+The prior source-stage security conclusion is Superseded, not Pass. The recorded
+local and two-OS CI outcomes remain historical green gate facts for exact source
+commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`, but they do not establish its
+bounded owned-snapshot claim. Current hardened bytes may restore the claim only
+when the exact Cycle 2g frozen-byte gates pass. The local restoration gate now
+passes; two-OS CI remains Pending. Failure, cancellation, an omitted, extra, or
+deleted transition path, a partial package tree, hostile carrier metadata or
+allocation dispatch, an unaccounted reference target, caller-supplied metric,
+float tolerance, malformed-input metric leakage, or any real-data input prevents
+restoration. Any restored source-stage result would not prove independent
+adjudication, real parser quality, Cycle 2b authority, approved production
+thresholds, full Cycle 2 exit, B15/V15, or production use.
+
+Cycle 2g is a separate successor-only in-process precommitment contract. It
+adds no historical Cycle 2f result and keeps Cycle 2f's exact claim, checks,
+nonclaims, and no-evidence status frozen. Its exact transition does change the
+current Cycle 2f implementation and security-test bytes to make owned snapshots
+use intrinsic typed-array buffer/length metadata and avoid caller
+`constructor` / `Symbol.species` allocation dispatch. The CI anchors above
+remain historical green gate facts for source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` only; they do not attest those
+current hardened bytes, which require the Cycle 2g frozen-byte local and two-OS
+CI gates or revive the superseded conclusion. The local restoration gate is now
+Pass; two-OS CI remains Pending.
+
+Cycle 2g's one-shot call sequence can bind candidate observations before the
+same instance accepts declared-reference bytes, but it cannot prove that a
+caller lacked the reference through another channel, that a digest hides
+predictable labels, or that Cycle 2f itself cannot be called directly. See the
+[Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).

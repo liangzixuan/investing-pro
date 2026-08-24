@@ -957,6 +957,101 @@ describe("Cycle 2f filing quality measurement security boundary", () => {
     }
   });
 
+  it("uses intrinsic buffer and length metadata for every byte role", () => {
+    const encoded = encodedHarness(mutableHarness());
+    for (const [role, maximum] of [
+      ["plan", FILING_QUALITY_MEASUREMENT_LIMITS.planBytes],
+      [
+        "declaredReference",
+        FILING_QUALITY_MEASUREMENT_LIMITS.declaredReferenceBytes,
+      ],
+      ["candidate", FILING_QUALITY_MEASUREMENT_LIMITS.candidateBytes],
+    ] as const) {
+      const original = encoded[role];
+      const shared = new Uint8Array(new SharedArrayBuffer(original.byteLength));
+      shared.set(original);
+      Object.defineProperties(shared, {
+        buffer: { value: new ArrayBuffer(original.byteLength) },
+        byteLength: { value: original.byteLength },
+      });
+      expectQuarantined(
+        measureEncoded({ ...encoded, [role]: shared }),
+        "input_invalid",
+      );
+
+      const oversized = new Uint8Array(maximum + 1);
+      oversized.set(original);
+      Object.defineProperties(oversized, {
+        buffer: { value: new ArrayBuffer(original.byteLength) },
+        byteLength: { value: original.byteLength },
+      });
+      expectQuarantined(
+        measureEncoded({ ...encoded, [role]: oversized }),
+        "input_invalid",
+      );
+    }
+  });
+
+  it("never invokes own constructor or species hooks while snapshotting any byte role", () => {
+    const encoded = encodedHarness(mutableHarness());
+    for (const role of ["plan", "declaredReference", "candidate"] as const) {
+      let constructorCalls = 0;
+      let constructorReentry: FilingQualityMeasurementResult | undefined;
+      const constructorCarrier = Uint8Array.from(encoded[role]);
+      Object.defineProperty(constructorCarrier, "constructor", {
+        get() {
+          constructorCalls += 1;
+          constructorReentry = measureEncoded(encoded);
+          return Uint8Array;
+        },
+      });
+      expectEvaluated(
+        measureEncoded({ ...encoded, [role]: constructorCarrier }),
+      );
+      expect(constructorCalls, role).toBe(0);
+      expect(constructorReentry, role).toBeUndefined();
+
+      let speciesCalls = 0;
+      let speciesReentry: FilingQualityMeasurementResult | undefined;
+      const speciesCarrier = Uint8Array.from(encoded[role]);
+      const constructor = {};
+      Object.defineProperty(constructor, Symbol.species, {
+        get() {
+          speciesCalls += 1;
+          speciesReentry = measureEncoded(encoded);
+          return Uint8Array;
+        },
+      });
+      Object.defineProperty(speciesCarrier, "constructor", {
+        value: constructor,
+      });
+      expectEvaluated(measureEncoded({ ...encoded, [role]: speciesCarrier }));
+      expect(speciesCalls, role).toBe(0);
+      expect(speciesReentry, role).toBeUndefined();
+    }
+  });
+
+  it("rejects proxies before invoking a getPrototypeOf reentry trap in every byte role", () => {
+    const encoded = encodedHarness(mutableHarness());
+    for (const role of ["plan", "declaredReference", "candidate"] as const) {
+      let trapCalls = 0;
+      let reentry: FilingQualityMeasurementResult | undefined;
+      const carrier = new Proxy(encoded[role], {
+        getPrototypeOf() {
+          trapCalls += 1;
+          reentry = measureEncoded(encoded);
+          throw new TypeError("Proxy prototype trap must not execute.");
+        },
+      });
+      expectQuarantined(
+        measureEncoded({ ...encoded, [role]: carrier }),
+        "input_invalid",
+      );
+      expect(trapCalls, role).toBe(0);
+      expect(reentry, role).toBeUndefined();
+    }
+  });
+
   it("rejects invalid UTF-8, BOM, whitespace, CRLF, missing LF, trailing bytes, and noncanonical key order in every role", () => {
     const encoded = encodedHarness(mutableHarness());
     for (const role of ["plan", "declaredReference", "candidate"] as const) {

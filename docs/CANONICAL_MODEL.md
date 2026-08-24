@@ -10,8 +10,10 @@ boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
 metadata verifier, reviewed bounded Cycle 2c synthetic payload custody,
 source-stage Cycle 2d synthetic ten-fact normalization/lineage, source-stage
-Cycle 2e two-declared-validator fact comparison, and source-stage Cycle 2f
-declared-reference quality measurement; synthetic data only.
+Cycle 2e two-declared-validator fact comparison, superseded Cycle 2f
+declared-reference quality measurement with Local restoration Pass and two-OS
+CI Pending, plus locally passed Cycle 2g in-process candidate-observation
+precommitment with two-OS CI Pending; synthetic data only.
 
 ## Identity
 
@@ -538,22 +540,79 @@ Malformed input yields one coarse code, zero audit counts, and an empty metric
 array, with no hashes, mismatch location, input detail, threshold detail, or
 canary.
 
-Source implementation is complete. Local verification is Pass on the exact
-frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
-typecheck, test, and build stages with 45 test files, 951 passed plus 2 skipped
-(953 total), all 12 workspace project checks, and 11 builds. The bounded
-source-stage claim, local gate, and two-OS CI are Pass only for exact source
-commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`; CI run `32681826143`
-passed in Ubuntu job `97299715600` and Windows job `97299715638`. Parser
-run/job `32681826015` / `97299715074`, custody run/job `32681826030` /
-`97299715006`, and PostgreSQL run/job `32681826040` / `97299715107` are
-unchanged regression health only, not Cycle 2f evidence. Cycle 2f creates no
+The prior bounded source-stage security conclusion for exact source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` is Superseded. Its recorded local
+release run and CI run `32681826143` in Ubuntu job `97299715600` and Windows job
+`97299715638` were green, but shadowable typed-array buffer/length metadata and
+constructor/species snapshot allocation made the bounded owned-snapshot check
+false on those bytes. Those runs are historical green gate facts only. Current
+hardened Cycle 2f bytes use intrinsic typed-array metadata and allocation. The
+exact final pre-promotion local restoration gate is Pass; two-OS CI is Pending.
+Parser run/job `32681826015` / `97299715074`, custody run/job
+`32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
+`97299715107` remain unchanged regression health only, not Cycle 2f evidence.
+Cycle 2f creates no
 dedicated workflow, evidence schema, artifact, offline review, or evidence
 note. It does not establish independent adjudication, blinding,
 declared-reference correctness, real parser quality, threshold adequacy, Cycle
 2b authority, full Cycle 2 exit, B15/V15, or production readiness. See
 [ADR 0033](./adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
 and the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
+## Cycle 2g synthetic declared-reference precommitment boundary
+
+Cycle 2g adds no canonical filing, admitted fact, persistent commitment,
+credential, authority, evidence passport, database command, rights policy, or
+production quality record. The package owns only transient in-process protocol
+state for one factory instance: `open`, `candidate_committed`, or `consumed`.
+There is no retry, reset, replacement, persistence, recovery, or serialization
+of state authority.
+
+The commit input is a bounded canonical plan plus one closed
+`candidate_observations_precommit` document. The candidate observation contains
+the exact declared-reference SHA-256 commitment and a synthetic candidate
+snapshot validated against the closed coordinate space, with omissions
+preserved for fail-closed evaluation, but no raw reference bytes/content,
+caller `producedAt`, metric, count, weight, exclusion, assertion outcome, or
+quality result. The boundary validates and owns the bytes before returning an
+aggregate receipt and one empty frozen identity-bound capability. The
+capability has no fields and cannot be serialized, cloned, or transferred to
+another instance.
+
+The Cycle 2g transition also hardens the byte carrier boundary shared with the
+public Cycle 2f evaluator. Both use intrinsic typed-array backing-buffer and
+byte-length getters, require an ordinary `ArrayBuffer`, allocate an ordinary
+`Uint8Array`, and copy with the intrinsic typed-array `set`. Caller-owned
+`buffer`, `byteLength`, `constructor`, or `Symbol.species` properties therefore
+cannot spoof the carrier metadata or redirect snapshot allocation.
+
+Every reveal consumes before capability, reference, or dependency validation.
+The reference byte digest must equal the committed digest. Only then does the
+protocol inject the fixed Cycle 2f candidate role and compatibility
+`producedAt`, derive the Cycle 2f candidate, and call the public Cycle 2f
+evaluator. The nested measurement is a fresh owned deep-frozen aggregate copy.
+A valid below-threshold measurement remains `evaluated` / `not_met`; failure
+returns only a coarse closed quarantine code, zero audit counts, and
+`measurement: null`, without hashes, capability, mismatch detail, observation,
+reference content, or canary.
+
+Source implementation and the exact final pre-promotion local gate are Pass;
+two-OS CI is Pending. The local gate passed formatting, full ESLint, all
+guardrails, 86 production license versions, every scripted
+typecheck/test/build across 12 of 13 workspace projects, 47 test files with 987
+passed plus two skipped (989 total), and the boundary verifier. Cycle 2g has no
+dedicated workflow, evidence schema, artifact, offline review, or evidence
+note. It cannot establish actual reference inaccessibility,
+label secrecy, authenticated or durable chronology, external capability
+security, independent adjudication, real parser quality, Cycle 2b authority,
+full Cycle 2 exit, B15/V15, or production readiness. Cycle 2f's prior CI
+anchors remain historical green gate facts for source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` only; the current hardened Cycle
+2f bytes have a Local restoration Pass, but the superseded conclusion remains
+unrestored until Cycle 2g two-OS CI passes. No Cycle 2g source commit or CI
+anchor exists yet. See
+[ADR 0034](./adr/0034-bounded-synthetic-declared-reference-precommitment.md)
+and the [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

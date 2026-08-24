@@ -122,3 +122,11 @@ normalizer correctness, lineage correctness, accounting truth, or generator
 provenance. It does not alter Cycle 2d's exact claim, checks, nonclaims, source
 bytes, test/CI anchors, or no-evidence status. See the
 [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
+Cycle 2g is a separate successor-only synthetic precommitment contract. Its
+candidate observations are caller-supplied test inputs, not authenticated Cycle
+2d output. In-process commit-before-reveal ordering does not establish Cycle 2d
+normalizer correctness, lineage correctness, accounting truth, or generator
+provenance and does not alter Cycle 2d's exact claim, checks, nonclaims, source
+bytes, test/CI anchors, or no-evidence status. See the
+[Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).

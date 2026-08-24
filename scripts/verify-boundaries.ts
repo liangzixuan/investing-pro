@@ -346,6 +346,104 @@ const forbiddenFilingQualityMeasurementGlobals = new Set([
   "setInterval",
   "setTimeout",
 ]);
+const filingQualityPrecommitmentModule =
+  "@research-cockpit/filing-quality-precommitment";
+const filingQualityPrecommitmentPackagePrefix =
+  "packages/filing-quality-precommitment/";
+const filingQualityPrecommitmentSourcePrefix = `${filingQualityPrecommitmentPackagePrefix}src/`;
+const filingQualityPrecommitmentIndexPath = `${filingQualityPrecommitmentSourcePrefix}index.ts`;
+const filingQualityPrecommitmentProductionPath = `${filingQualityPrecommitmentSourcePrefix}filing-quality-precommitment.ts`;
+const filingQualityPrecommitmentBuilderPath = `${filingQualityPrecommitmentSourcePrefix}test-filing-quality-precommitment-builder.ts`;
+const filingQualityPrecommitmentUnitTestPath = `${filingQualityPrecommitmentSourcePrefix}filing-quality-precommitment.test.ts`;
+const filingQualityPrecommitmentSecurityTestPath = `${filingQualityPrecommitmentSourcePrefix}filing-quality-precommitment-security.test.ts`;
+const filingQualityPrecommitmentPublicExports = [
+  ["FILING_QUALITY_PRECOMMITMENT_CHECKS", false],
+  ["FILING_QUALITY_PRECOMMITMENT_CLAIM", false],
+  ["FILING_QUALITY_PRECOMMITMENT_LIMITS", false],
+  ["FILING_QUALITY_PRECOMMITMENT_NOT_PROVEN", false],
+  ["FILING_QUALITY_PRECOMMITMENT_QUARANTINE_CODES", false],
+  ["FILING_QUALITY_PRECOMMITMENT_SCHEMA_VERSION", false],
+  ["createSyntheticFilingQualityPrecommitmentProtocol", false],
+  ["FilingQualityPrecommitmentAudit", true],
+  ["FilingQualityPrecommitmentCapability", true],
+  ["FilingQualityPrecommitmentCommitResult", true],
+  ["FilingQualityPrecommitmentCommittedResult", true],
+  ["FilingQualityPrecommitmentEvaluatedResult", true],
+  ["FilingQualityPrecommitmentProtocol", true],
+  ["FilingQualityPrecommitmentQuarantineCode", true],
+  ["FilingQualityPrecommitmentQuarantinedResult", true],
+  ["FilingQualityPrecommitmentRevealResult", true],
+] as const;
+const filingQualityPrecommitmentSourcePaths = new Set([
+  filingQualityPrecommitmentBuilderPath,
+  filingQualityPrecommitmentIndexPath,
+  filingQualityPrecommitmentProductionPath,
+  filingQualityPrecommitmentSecurityTestPath,
+  filingQualityPrecommitmentUnitTestPath,
+]);
+const filingQualityPrecommitmentPackagePaths = [
+  `${filingQualityPrecommitmentPackagePrefix}package.json`,
+  `${filingQualityPrecommitmentPackagePrefix}tsconfig.json`,
+  filingQualityPrecommitmentIndexPath,
+  filingQualityPrecommitmentProductionPath,
+  filingQualityPrecommitmentBuilderPath,
+  filingQualityPrecommitmentUnitTestPath,
+  filingQualityPrecommitmentSecurityTestPath,
+].sort();
+const filingQualityPrecommitmentTestModules = new Map<
+  string,
+  readonly string[]
+>([
+  [
+    filingQualityPrecommitmentUnitTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-quality-precommitment",
+      "./test-filing-quality-precommitment-builder",
+    ],
+  ],
+  [
+    filingQualityPrecommitmentSecurityTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-quality-precommitment",
+      "./test-filing-quality-precommitment-builder",
+    ],
+  ],
+]);
+const forbiddenFilingQualityPrecommitmentGlobals = new Set([
+  "Atomics",
+  "BroadcastChannel",
+  "Buffer",
+  "Bun",
+  "Date",
+  "Deno",
+  "EventSource",
+  "Function",
+  "MessageChannel",
+  "Math",
+  "SharedArrayBuffer",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "navigator",
+  "performance",
+  "process",
+  "require",
+  "setImmediate",
+  "setInterval",
+  "setTimeout",
+]);
 const filingPayloadCustodySourcePrefix = "packages/filing-payload-custody/src/";
 const filingPayloadCustodyIndexPath = `${filingPayloadCustodySourcePrefix}index.ts`;
 const filingPayloadCustodyProductionPath = `${filingPayloadCustodySourcePrefix}payload-custody.ts`;
@@ -560,6 +658,18 @@ const filingQualityMeasurementTreeViolation =
 if (filingQualityMeasurementTreeViolation !== null)
   violations.push(
     `${filingQualityMeasurementPackagePrefix}: ${filingQualityMeasurementTreeViolation}`,
+  );
+const filingQualityPrecommitmentTreeViolation =
+  exactFilingQualityPrecommitmentTreeViolation(
+    [...filesToInspect]
+      .map((file) => relative(root, file).replaceAll("\\", "/"))
+      .filter((path) =>
+        path.startsWith(filingQualityPrecommitmentPackagePrefix),
+      ),
+  );
+if (filingQualityPrecommitmentTreeViolation !== null)
+  violations.push(
+    `${filingQualityPrecommitmentPackagePrefix}: ${filingQualityPrecommitmentTreeViolation}`,
   );
 
 // Release-gate regression cases: these common root-level surfaces must remain
@@ -1018,6 +1128,18 @@ if (
   hasFilingQualityMeasurementDependency(
     { devDependencies: { typescript: "5.9.3" } },
     "apps/api/package.json",
+  ) ||
+  !isAllowedFilingQualityMeasurementExternalImport(
+    filingQualityPrecommitmentProductionPath,
+    filingQualityMeasurementModule,
+  ) ||
+  isAllowedFilingQualityMeasurementExternalImport(
+    "apps/api/src/index.ts",
+    filingQualityMeasurementModule,
+  ) ||
+  isAllowedFilingQualityMeasurementExternalImport(
+    filingQualityPrecommitmentProductionPath,
+    `${filingQualityMeasurementModule}/internal`,
   )
 )
   throw new Error(
@@ -1216,6 +1338,233 @@ if (
   ) === null
 )
   throw new Error("Filing-quality-measurement source classifier regressed");
+if (
+  !referencesModule(
+    'import { createSyntheticFilingQualityPrecommitmentProtocol } from "@research-cockpit/filing-quality-precommitment";',
+    filingQualityPrecommitmentModule,
+  ) ||
+  !referencesModule(
+    'void import("@research-cockpit/filing-quality-precommitment");',
+    filingQualityPrecommitmentModule,
+  ) ||
+  !referencesFilingQualityPrecommitmentPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-quality-precommitment/src/index",
+  ) ||
+  !hasFilingQualityPrecommitmentDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-quality-precommitment": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  !hasFilingQualityPrecommitmentDependency(
+    {
+      devDependencies: {
+        precommitment: "file:../packages/filing-quality-precommitment",
+      },
+    },
+    "apps/package.json",
+  ) ||
+  hasFilingQualityPrecommitmentDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  )
+)
+  throw new Error(
+    "Filing-quality-precommitment composition classifier regressed",
+  );
+const validFilingQualityPrecommitmentManifest = {
+  name: filingQualityPrecommitmentModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+  dependencies: {
+    [filingQualityMeasurementModule]: "workspace:*",
+  },
+};
+if (
+  filingQualityPrecommitmentManifestViolation(
+    validFilingQualityPrecommitmentManifest,
+  ) !== null ||
+  filingQualityPrecommitmentManifestViolation({
+    ...validFilingQualityPrecommitmentManifest,
+    dependencies: {
+      ...validFilingQualityPrecommitmentManifest.dependencies,
+      undici: "latest",
+    },
+  }) === null ||
+  filingQualityPrecommitmentManifestViolation({
+    ...validFilingQualityPrecommitmentManifest,
+    exports: {
+      ...validFilingQualityPrecommitmentManifest.exports,
+      "./builder": "./src/test-filing-quality-precommitment-builder.ts",
+    },
+  }) === null ||
+  filingQualityPrecommitmentManifestViolation({
+    ...validFilingQualityPrecommitmentManifest,
+    scripts: {
+      ...validFilingQualityPrecommitmentManifest.scripts,
+      test: "curl https://example.invalid",
+    },
+  }) === null
+)
+  throw new Error("Filing-quality-precommitment manifest classifier regressed");
+if (
+  exactFilingQualityPrecommitmentTreeViolation(
+    filingQualityPrecommitmentPackagePaths,
+  ) !== null ||
+  exactFilingQualityPrecommitmentTreeViolation(
+    filingQualityPrecommitmentPackagePaths.slice(1),
+  ) === null ||
+  exactFilingQualityPrecommitmentTreeViolation([
+    ...filingQualityPrecommitmentPackagePaths,
+    `${filingQualityPrecommitmentSourcePrefix}io-helper.ts`,
+  ]) === null
+)
+  throw new Error(
+    "Filing-quality-precommitment package-tree classifier regressed",
+  );
+const validFilingQualityPrecommitmentCoreSource = `import { createHash } from "node:crypto";
+import {
+  FILING_QUALITY_MEASUREMENT_ASSERTION_KINDS,
+  FILING_QUALITY_MEASUREMENT_CANDIDATE_QUARANTINE_CODES,
+  FILING_QUALITY_MEASUREMENT_CLAIM,
+  FILING_QUALITY_MEASUREMENT_DECLARATIONS,
+  FILING_QUALITY_MEASUREMENT_FACT_KEYS,
+  FILING_QUALITY_MEASUREMENT_LIMITS,
+  FILING_QUALITY_MEASUREMENT_METRICS,
+  FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION,
+  FILING_QUALITY_MEASUREMENT_THRESHOLDS,
+  measureSyntheticFilingQuality,
+  type FilingQualityMeasurementDeclaration,
+  type FilingQualityMeasurementEvaluatedResult,
+} from "@research-cockpit/filing-quality-measurement";
+void createHash;
+`;
+const validFilingQualityPrecommitmentIndexSource = `export {
+  FILING_QUALITY_PRECOMMITMENT_CHECKS,
+  FILING_QUALITY_PRECOMMITMENT_CLAIM,
+  FILING_QUALITY_PRECOMMITMENT_LIMITS,
+  FILING_QUALITY_PRECOMMITMENT_NOT_PROVEN,
+  FILING_QUALITY_PRECOMMITMENT_QUARANTINE_CODES,
+  FILING_QUALITY_PRECOMMITMENT_SCHEMA_VERSION,
+  createSyntheticFilingQualityPrecommitmentProtocol,
+  type FilingQualityPrecommitmentAudit,
+  type FilingQualityPrecommitmentCapability,
+  type FilingQualityPrecommitmentCommitResult,
+  type FilingQualityPrecommitmentCommittedResult,
+  type FilingQualityPrecommitmentEvaluatedResult,
+  type FilingQualityPrecommitmentProtocol,
+  type FilingQualityPrecommitmentQuarantineCode,
+  type FilingQualityPrecommitmentQuarantinedResult,
+  type FilingQualityPrecommitmentRevealResult,
+} from "./filing-quality-precommitment";
+`;
+const validFilingQualityPrecommitmentBuilderSource = `import { createHash } from "node:crypto";
+import { FILING_QUALITY_MEASUREMENT_FACT_KEYS } from "@research-cockpit/filing-quality-measurement";
+import { FILING_QUALITY_PRECOMMITMENT_SCHEMA_VERSION } from "./filing-quality-precommitment";
+void createHash;
+void FILING_QUALITY_MEASUREMENT_FACT_KEYS;
+void FILING_QUALITY_PRECOMMITMENT_SCHEMA_VERSION;
+`;
+const validFilingQualityPrecommitmentUnitTestSource = `import { createHash } from "node:crypto";
+import { describe } from "vitest";
+import { createSyntheticFilingQualityPrecommitmentProtocol } from "./filing-quality-precommitment";
+import { buildSyntheticFilingQualityPrecommitmentDocuments } from "./test-filing-quality-precommitment-builder";
+void createHash;
+void describe;
+void createSyntheticFilingQualityPrecommitmentProtocol;
+void buildSyntheticFilingQualityPrecommitmentDocuments;
+`;
+const validFilingQualityPrecommitmentSecurityTestSource =
+  validFilingQualityPrecommitmentUnitTestSource;
+if (
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    validFilingQualityPrecommitmentCoreSource,
+  ) !== null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    validFilingQualityPrecommitmentCoreSource.replace(
+      "createHash",
+      "randomBytes",
+    ),
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    `${validFilingQualityPrecommitmentCoreSource}\nimport "node:fs";`,
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    `${validFilingQualityPrecommitmentCoreSource}\nvoid fetch("");`,
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    `${validFilingQualityPrecommitmentCoreSource}\nconst target = "node:fs"; void import(target);`,
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    `${validFilingQualityPrecommitmentCoreSource}\nvoid Date.now();`,
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    `${validFilingQualityPrecommitmentCoreSource}\nvoid Math.random();`,
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentProductionPath,
+    `${validFilingQualityPrecommitmentCoreSource}\nvoid globalThis.crypto;`,
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentIndexPath,
+    validFilingQualityPrecommitmentIndexSource,
+  ) !== null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentIndexPath,
+    validFilingQualityPrecommitmentIndexSource.replace(
+      "FILING_QUALITY_PRECOMMITMENT_CLAIM,",
+      "FILING_QUALITY_PRECOMMITMENT_CLAIM as claim,",
+    ),
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentBuilderPath,
+    validFilingQualityPrecommitmentBuilderSource,
+  ) !== null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentBuilderPath,
+    validFilingQualityPrecommitmentBuilderSource.replace(
+      filingQualityMeasurementModule,
+      `${filingQualityMeasurementModule}/internal`,
+    ),
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentUnitTestPath,
+    validFilingQualityPrecommitmentUnitTestSource,
+  ) !== null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentSecurityTestPath,
+    validFilingQualityPrecommitmentSecurityTestSource,
+  ) !== null ||
+  filingQualityPrecommitmentImportViolation(
+    filingQualityPrecommitmentSecurityTestPath,
+    validFilingQualityPrecommitmentSecurityTestSource.replace(
+      "node:crypto",
+      "node:https",
+    ),
+  ) === null ||
+  filingQualityPrecommitmentImportViolation(
+    `${filingQualityPrecommitmentSourcePrefix}io-helper.ts`,
+    'import "node:fs";',
+  ) === null
+)
+  throw new Error("Filing-quality-precommitment source classifier regressed");
 if (
   !referencesModule(
     'import { createFileSystemFilingPayloadCustodyBoundary } from "@research-cockpit/filing-payload-custody";',
@@ -1814,6 +2163,16 @@ function exactFilingQualityMeasurementTreeViolation(
     : "package tree must remain the exact reviewed manifest, tsconfig, core, index, builder, and two tests";
 }
 
+function exactFilingQualityPrecommitmentTreeViolation(
+  packagePaths: readonly string[],
+): string | null {
+  const actual = [...packagePaths].sort();
+  return JSON.stringify(actual) ===
+    JSON.stringify(filingQualityPrecommitmentPackagePaths)
+    ? null
+    : "package tree must remain the exact reviewed manifest, tsconfig, core, index, builder, and two tests";
+}
+
 function inspectDependencies(path: string, manifest: unknown): void {
   if (!isRecord(manifest)) {
     violations.push(`${path}: package manifest must be an object`);
@@ -1900,10 +2259,24 @@ function inspectDependencies(path: string, manifest: unknown): void {
   }
   if (
     !path.startsWith(filingQualityMeasurementPackagePrefix) &&
+    path !== `${filingQualityPrecommitmentPackagePrefix}package.json` &&
     hasFilingQualityMeasurementDependency(manifest, path)
   )
     violations.push(
       `${path}: synthetic filing-quality measurement must not be composed into another package`,
+    );
+  if (path === `${filingQualityPrecommitmentPackagePrefix}package.json`) {
+    const manifestViolation =
+      filingQualityPrecommitmentManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith(filingQualityPrecommitmentPackagePrefix) &&
+    hasFilingQualityPrecommitmentDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: synthetic filing-quality precommitment must not be composed into another package`,
     );
   if (path === "packages/filing-payload-custody/package.json") {
     const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
@@ -2000,6 +2373,31 @@ function filingQualityMeasurementManifestViolation(
     : "filing-quality-measurement package must retain its exact private, zero-dependency, index-only script and export surface";
 }
 
+function filingQualityPrecommitmentManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-quality-precommitment package manifest must be an exact object";
+  const expected = {
+    name: filingQualityPrecommitmentModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      [filingQualityMeasurementModule]: "workspace:*",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-quality-precommitment package must retain its exact private, Cycle2f-only workspace dependency, index-only script and export surface";
+}
+
 function filingPayloadCustodyManifestViolation(
   manifest: unknown,
 ): string | null {
@@ -2082,12 +2480,27 @@ function inspectCompositionBoundary(path: string, content: string): void {
     violations.push(`${path}: ${filingQualityMeasurementViolation}`);
   if (
     !path.startsWith(filingQualityMeasurementPackagePrefix) &&
-    moduleSpecifiers.some((specifier) =>
-      referencesFilingQualityMeasurementPath(path, specifier),
+    moduleSpecifiers.some(
+      (specifier) =>
+        referencesFilingQualityMeasurementPath(path, specifier) &&
+        !isAllowedFilingQualityMeasurementExternalImport(path, specifier),
     )
   )
     violations.push(
       `${path}: synthetic filing-quality measurement must remain package-isolated`,
+    );
+  const filingQualityPrecommitmentViolation =
+    filingQualityPrecommitmentImportViolation(path, content);
+  if (filingQualityPrecommitmentViolation !== null)
+    violations.push(`${path}: ${filingQualityPrecommitmentViolation}`);
+  if (
+    !path.startsWith(filingQualityPrecommitmentPackagePrefix) &&
+    moduleSpecifiers.some((specifier) =>
+      referencesFilingQualityPrecommitmentPath(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: synthetic filing-quality precommitment must remain package-isolated`,
     );
   const corpusAdmissionViolation = corpusAdmissionImportViolation(
     path,
@@ -2582,6 +2995,262 @@ function isExactFilingQualityMeasurementIndex(content: string): boolean {
     specifier.isTypeOnly,
   ]);
   const expected = filingQualityMeasurementPublicExports.map(
+    ([name, typeOnly]) => [name, name, typeOnly],
+  );
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function filingQualityPrecommitmentImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (!path.startsWith(filingQualityPrecommitmentSourcePrefix)) return null;
+  if (!filingQualityPrecommitmentSourcePaths.has(path))
+    return "source set must remain the exact reviewed core, index, builder, and two tests";
+
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (path === filingQualityPrecommitmentIndexPath) {
+    return isExactFilingQualityPrecommitmentIndex(content)
+      ? null
+      : "public index must retain the exact isolated production export surface";
+  }
+  if (path === filingQualityPrecommitmentProductionPath) {
+    if (
+      JSON.stringify(moduleSpecifiers) !==
+      JSON.stringify(["node:crypto", filingQualityMeasurementModule])
+    )
+      return "precommitment core may import only exact node:crypto hashing and the public Cycle2f measurement surface";
+    const cryptoViolation = exactFilingQualityPrecommitmentCreateHashViolation(
+      path,
+      content,
+    );
+    if (cryptoViolation !== null) return cryptoViolation;
+    const measurementViolation =
+      exactFilingQualityPrecommitmentMeasurementImportViolation(path, content);
+    if (measurementViolation !== null) return measurementViolation;
+    return filingQualityPrecommitmentGlobalViolation(path, content, "core");
+  }
+  if (path === filingQualityPrecommitmentBuilderPath) {
+    if (
+      JSON.stringify(moduleSpecifiers) !==
+      JSON.stringify([
+        "node:crypto",
+        filingQualityMeasurementModule,
+        "./filing-quality-precommitment",
+      ])
+    )
+      return "precommitment builder may import only exact node:crypto, public Cycle2f fixture constants, and the direct precommitment core";
+    const cryptoViolation = exactFilingQualityPrecommitmentCreateHashViolation(
+      path,
+      content,
+    );
+    if (cryptoViolation !== null) return cryptoViolation;
+    return filingQualityPrecommitmentGlobalViolation(path, content, "builder");
+  }
+
+  const expectedTestModules = filingQualityPrecommitmentTestModules.get(path);
+  if (
+    expectedTestModules === undefined ||
+    JSON.stringify(moduleSpecifiers) !== JSON.stringify(expectedTestModules)
+  )
+    return "precommitment tests may import only their exact Vitest, hash, core, and builder surfaces";
+  if (
+    path === filingQualityPrecommitmentUnitTestPath ||
+    path === filingQualityPrecommitmentSecurityTestPath
+  ) {
+    const cryptoViolation = exactFilingQualityPrecommitmentCreateHashViolation(
+      path,
+      content,
+    );
+    if (cryptoViolation !== null) return cryptoViolation;
+  }
+  return filingQualityPrecommitmentGlobalViolation(path, content, "test");
+}
+
+function exactFilingQualityPrecommitmentCreateHashViolation(
+  path: string,
+  content: string,
+): string | null {
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const cryptoImports = sourceFile.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "node:crypto",
+  );
+  return cryptoImports.length === 1 &&
+    isExactFilingPayloadCustodyImport(cryptoImports[0], "node:crypto", [
+      ["createHash", "createHash"],
+    ])
+    ? null
+    : "precommitment hash surface must retain its exact named node:crypto createHash binding";
+}
+
+function exactFilingQualityPrecommitmentMeasurementImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === filingQualityMeasurementModule,
+  );
+  const declaration = imports[0];
+  const clause = declaration?.importClause;
+  if (
+    imports.length !== 1 ||
+    clause === undefined ||
+    clause.isTypeOnly ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings)
+  )
+    return "precommitment core must retain the exact named public Cycle2f bindings";
+  const actual = clause.namedBindings.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = [
+    [
+      "FILING_QUALITY_MEASUREMENT_ASSERTION_KINDS",
+      "FILING_QUALITY_MEASUREMENT_ASSERTION_KINDS",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_CANDIDATE_QUARANTINE_CODES",
+      "FILING_QUALITY_MEASUREMENT_CANDIDATE_QUARANTINE_CODES",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_CLAIM",
+      "FILING_QUALITY_MEASUREMENT_CLAIM",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_DECLARATIONS",
+      "FILING_QUALITY_MEASUREMENT_DECLARATIONS",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_FACT_KEYS",
+      "FILING_QUALITY_MEASUREMENT_FACT_KEYS",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_LIMITS",
+      "FILING_QUALITY_MEASUREMENT_LIMITS",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_METRICS",
+      "FILING_QUALITY_MEASUREMENT_METRICS",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION",
+      "FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION",
+      false,
+    ],
+    [
+      "FILING_QUALITY_MEASUREMENT_THRESHOLDS",
+      "FILING_QUALITY_MEASUREMENT_THRESHOLDS",
+      false,
+    ],
+    ["measureSyntheticFilingQuality", "measureSyntheticFilingQuality", false],
+    [
+      "FilingQualityMeasurementDeclaration",
+      "FilingQualityMeasurementDeclaration",
+      true,
+    ],
+    [
+      "FilingQualityMeasurementEvaluatedResult",
+      "FilingQualityMeasurementEvaluatedResult",
+      true,
+    ],
+  ];
+  return JSON.stringify(actual) === JSON.stringify(expected)
+    ? null
+    : "precommitment core must retain the exact named public Cycle2f bindings";
+}
+
+function filingQualityPrecommitmentGlobalViolation(
+  path: string,
+  content: string,
+  surface: "builder" | "core" | "test",
+): string | null {
+  if (hasRuntimeDynamicImport(content))
+    return `precommitment ${surface} must not use runtime dynamic imports`;
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingQualityPrecommitmentGlobals.has(node.text) &&
+      !(
+        surface === "test" &&
+        ["Buffer", "SharedArrayBuffer"].includes(node.text)
+      )
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbiddenGlobal === null
+    ? null
+    : `precommitment ${surface} must not use network, filesystem, process, logging, timer, entropy, dynamic-code, global-crypto, or worker surfaces`;
+}
+
+function isExactFilingQualityPrecommitmentIndex(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingQualityPrecommitmentIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  const declaration = sourceFile.statements[0];
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "./filing-quality-precommitment" ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = filingQualityPrecommitmentPublicExports.map(
     ([name, typeOnly]) => [name, name, typeOnly],
   );
   return JSON.stringify(actual) === JSON.stringify(expected);
@@ -3425,6 +4094,35 @@ function hasFilingQualityMeasurementDependency(
   });
 }
 
+function hasFilingQualityPrecommitmentDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingQualityPrecommitmentModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingQualityPrecommitmentModule))
+        return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingQualityPrecommitmentPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
 function hasFilingPayloadCustodyDependency(
   manifest: unknown,
   manifestPath: string,
@@ -3510,6 +4208,37 @@ function referencesFilingQualityMeasurementPath(
     resolved === "packages/filing-quality-measurement" ||
     resolved.startsWith(filingQualityMeasurementPackagePrefix) ||
     resolved.includes("/packages/filing-quality-measurement/")
+  );
+}
+
+function isAllowedFilingQualityMeasurementExternalImport(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  return (
+    (sourcePath === filingQualityPrecommitmentProductionPath ||
+      sourcePath === filingQualityPrecommitmentBuilderPath) &&
+    specifier === filingQualityMeasurementModule
+  );
+}
+
+function referencesFilingQualityPrecommitmentPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingQualityPrecommitmentModule ||
+    specifier.startsWith(`${filingQualityPrecommitmentModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-quality-precommitment" ||
+    resolved.startsWith(filingQualityPrecommitmentPackagePrefix) ||
+    resolved.includes("/packages/filing-quality-precommitment/")
   );
 }
 

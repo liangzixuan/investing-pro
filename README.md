@@ -188,16 +188,18 @@ and recall `>=99/100`, quarantine rate `<=5/100`, zero silent critical
 failures, exact canonical units, and zero-day period tolerance. Thresholds use
 integer cross-multiplication only. Valid below-threshold input returns an
 aggregate `not_met` evaluation; malformed input alone returns empty value-free
-quarantine. **Source implementation is complete. Local verification is Pass on
-the exact frozen bytes: `corepack pnpm verify` passed all format, lint,
-guardrail, typecheck, test, and build stages with 45 test files, 951 passed plus
-2 skipped (953 total), all 12 workspace project checks, and 11 builds. The
-bounded source-stage claim, local gate, and two-OS CI are Pass only for exact
-source commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`; CI run
-`32681826143` passed in Ubuntu job `97299715600` and Windows job
-`97299715638`. Parser run/job `32681826015` / `97299715074`, custody run/job
-`32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
-`97299715107` are unchanged regression health only, not Cycle 2f evidence.**
+quarantine. **The prior bounded source-stage security conclusion for source
+commit `72e91f502b31f15deeaad761b82d9ed7b6377d39` is Superseded. Its recorded
+`corepack pnpm verify` run and CI run `32681826143` in Ubuntu job `97299715600`
+and Windows job `97299715638` were green, but hostile plain `Uint8Array`
+carriers could spoof bounds/shared-buffer metadata or invoke caller
+`constructor` / `Symbol.species` hooks during snapshot allocation. Those green
+jobs are historical gate facts, not support for the bounded owned-snapshot
+claim. Current hardened Cycle 2f bytes have a Local restoration Pass from the
+exact final pre-promotion Cycle 2g gate; two-OS CI is Pending. Parser run/job `32681826015` /
+`97299715074`, custody run/job `32681826030` / `97299715006`, and PostgreSQL
+run/job `32681826040` / `97299715107` remain unchanged regression health only,
+not Cycle 2f evidence.**
 The declared reference does not establish independent adjudication, blinding,
 real parser quality, or approved production thresholds. Cycle 2f creates no
 dedicated workflow, evidence schema, artifact, offline review, or evidence
@@ -205,6 +207,57 @@ note; it admits no real data, leaves Cycle 2b, full Cycle 2 quality, and
 production Blocked, and is not B15/V15. See
 [ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
 and the [Cycle 2f exit matrix](./docs/CYCLE_2F_EXIT_MATRIX.md).
+
+Cycle 2g addresses the repository-controlled prediction-order gap and restores
+the upstream hostile-carrier boundary without claiming real-world blinding. A
+private package with one exact
+workspace dependency on Cycle 2f exposes a zero-argument factory for one
+synchronous in-process `commit` / `reveal` instance. Commit owns and validates
+the candidate snapshot against the closed 100-document coordinate space before
+any declared-reference bytes enter that instance, preserving omitted documents
+and facts for fail-closed evaluation. The candidate document binds the exact
+declared-reference SHA-256 commitment but contains no raw reference
+bytes/content, caller `producedAt`, metrics, weights, exclusions, assertion
+outcomes, or quality result.
+
+State advances only `open` to `candidate_committed` to `consumed`. A first bad
+commit, open-state reveal, second commit, or any reveal attempt consumes before
+validation, so there is no retry, replacement, or reset. A successful commit
+returns aggregate hashes/counts and one empty frozen identity-bound capability.
+Reveal recomputes the reference byte digest, requires the committed digest,
+injects only the fixed Cycle 2f compatibility role/time, and delegates the
+derived candidate and reference to Cycle 2f. Evaluated output is immutable and
+aggregate-only; failure is empty value-free quarantine with zero audit counts
+and `measurement: null`.
+
+The same atomic successor transition also hardens byte ownership in the public
+Cycle 2f evaluator. Both boundaries read the backing buffer and byte length
+through intrinsic typed-array getters, require an ordinary `ArrayBuffer`,
+allocate an ordinary `Uint8Array`, and copy with the intrinsic typed-array
+`set`. Caller-owned `buffer`, `byteLength`, `constructor`, or `Symbol.species`
+properties therefore cannot spoof carrier admission or redirect snapshot
+allocation into caller code.
+
+**Cycle 2g source implementation and the exact final pre-promotion local gate
+are Pass; two-OS CI is Pending.** The local gate passed formatting, full ESLint,
+all guardrails, the production-license check across 86 versions, every scripted
+typecheck/test/build across 12 of 13 workspace projects, and the boundary
+verifier. All 47 test files completed with 987 passed plus two skipped (989
+total), including 39 Cycle 2f tests, 29 Cycle 2g tests, 582 database tests, 70
+parser tests, and 41 passed plus two skipped custody tests. It creates no
+dedicated workflow, evidence schema, artifact, offline review, or evidence note
+and admits no real data. A caller may already know or infer the reference, use
+another instance, restart the process, or call Cycle 2f directly. Cycle 2g
+therefore does not prove actual blinding, label secrecy, external chronology,
+durable precommitment, independent adjudication, real parser quality, Cycle 2b
+authority, full Cycle 2 quality, B15/V15, or production use. Cycle 2f's existing
+CI anchors remain historical green gate facts for source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` only; they do not attest the
+current hardened Cycle 2f bytes or revive the superseded conclusion. The local
+restoration gate is Pass; two-OS CI remains Pending. No Cycle 2g source commit
+or CI anchor exists yet. See
+[ADR 0034](./docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md)
+and the [Cycle 2g exit matrix](./docs/CYCLE_2G_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -616,6 +669,11 @@ blocked.
   evaluates fixed synthetic-pilot thresholds. It does not prove actual
   adjudicator independence, blinding, label correctness, representative real
   filings, real parser quality, threshold adequacy, or production acceptance.
+- Cycle 2g is limited to one in-process one-shot candidate-observation commit
+  before declared-reference reveal. It does not prove that the caller lacked
+  reference content out of band, that the digest hides labels, that chronology
+  is authentic or durable across instances/restarts, or that Cycle 2f cannot be
+  called directly.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -672,4 +730,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md),
 [Cycle 2f exit matrix](./docs/CYCLE_2F_EXIT_MATRIX.md),
 [ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md),
+[Cycle 2g exit matrix](./docs/CYCLE_2G_EXIT_MATRIX.md),
+[ADR 0034](./docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md),
 and [architecture decisions](./docs/adr/).

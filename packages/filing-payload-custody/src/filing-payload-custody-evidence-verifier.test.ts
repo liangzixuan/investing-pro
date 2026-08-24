@@ -16,6 +16,9 @@ import {
   isCycle2fCommitDiffSetAllowed,
   isCycle2fQualityMeasurementTreeAllowed,
   isCycle2fTransitionRoutingRequired,
+  isCycle2gCommitDiffSetAllowed,
+  isCycle2gQualityPrecommitmentTreeAllowed,
+  isCycle2gTransitionRoutingRequired,
   verifyFilingPayloadCustodyEvidenceOffline,
 } from "./filing-payload-custody-evidence-verifier";
 
@@ -310,6 +313,103 @@ const CYCLE_2F_CUMULATIVE_DIFF_PATHS = [
     ...CYCLE_2F_TRANSITION.map((entry) => entry.path),
   ]),
 ].sort();
+const CYCLE_2G_PACKAGE_TREE = [
+  "packages/filing-quality-precommitment/package.json",
+  "packages/filing-quality-precommitment/src/filing-quality-precommitment-security.test.ts",
+  "packages/filing-quality-precommitment/src/filing-quality-precommitment.test.ts",
+  "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
+  "packages/filing-quality-precommitment/src/index.ts",
+  "packages/filing-quality-precommitment/src/test-filing-quality-precommitment-builder.ts",
+  "packages/filing-quality-precommitment/tsconfig.json",
+].sort();
+const CYCLE_2G_TRANSITION = [
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2E_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2F_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2G_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement.ts",
+    status: "M",
+  },
+  { path: "packages/filing-quality-precommitment/package.json", status: "A" },
+  {
+    path: "packages/filing-quality-precommitment/src/filing-quality-precommitment-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
+    status: "A",
+  },
+  { path: "packages/filing-quality-precommitment/src/index.ts", status: "A" },
+  {
+    path: "packages/filing-quality-precommitment/src/test-filing-quality-precommitment-builder.ts",
+    status: "A",
+  },
+  { path: "packages/filing-quality-precommitment/tsconfig.json", status: "A" },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
+const CYCLE_2G_CUMULATIVE_DIFF_PATHS = [
+  ...new Set([
+    ...CYCLE_2F_CUMULATIVE_DIFF_PATHS,
+    ...CYCLE_2G_TRANSITION.map((entry) => entry.path),
+  ]),
+].sort();
 
 afterEach(async () => {
   await Promise.all(
@@ -351,16 +451,22 @@ describe("offline filing payload custody evidence review", () => {
       path,
       status: "A",
     }));
+    const cycle2g = CYCLE_2G_CUMULATIVE_DIFF_PATHS.map((path) => ({
+      path,
+      status: "A",
+    }));
     expect(complete).toHaveLength(33);
     expect(legacy).toHaveLength(32);
     expect(cycle2d).toHaveLength(44);
     expect(cycle2e).toHaveLength(55);
     expect(cycle2f).toHaveLength(64);
+    expect(cycle2g).toHaveLength(73);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(legacy)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2d)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2e)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2f)).toBe(true);
+    expect(isCycle2cCommitDiffSetAllowed(cycle2g)).toBe(true);
     for (const omitted of DIFF_PATHS.filter(
       (path) => path !== EVIDENCE_NOTE_PATH,
     )) {
@@ -395,6 +501,13 @@ describe("offline filing payload custody evidence review", () => {
       expect(
         isCycle2cCommitDiffSetAllowed(
           cycle2f.filter((entry) => entry.path !== omitted.path),
+        ),
+      ).toBe(false);
+    }
+    for (const omitted of cycle2g) {
+      expect(
+        isCycle2cCommitDiffSetAllowed(
+          cycle2g.filter((entry) => entry.path !== omitted.path),
         ),
       ).toBe(false);
     }
@@ -615,6 +728,84 @@ describe("offline filing payload custody evidence review", () => {
     );
     expect(
       isCycle2fTransitionRoutingRequired(undefined, [], cycle2eCumulative),
+    ).toBe(false);
+  });
+
+  it("requires the exact Cycle 2g package tree and 32-path transition", () => {
+    expect(isCycle2gQualityPrecommitmentTreeAllowed([])).toBe(true);
+    expect(
+      isCycle2gQualityPrecommitmentTreeAllowed(CYCLE_2G_PACKAGE_TREE),
+    ).toBe(true);
+    for (const omitted of CYCLE_2G_PACKAGE_TREE) {
+      expect(
+        isCycle2gQualityPrecommitmentTreeAllowed(
+          CYCLE_2G_PACKAGE_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2gQualityPrecommitmentTreeAllowed(
+        [
+          ...CYCLE_2G_PACKAGE_TREE,
+          "packages/filing-quality-precommitment/src/unreviewed.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+
+    expect(CYCLE_2G_TRANSITION).toHaveLength(32);
+    expect(isCycle2gCommitDiffSetAllowed(CYCLE_2G_TRANSITION)).toBe(true);
+    for (const omitted of CYCLE_2G_TRANSITION) {
+      expect(
+        isCycle2gCommitDiffSetAllowed(
+          CYCLE_2G_TRANSITION.filter((entry) => entry !== omitted),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2cCommitDiffEntryAllowed(omitted.status, omitted.path),
+      ).toBe(true);
+      expect(isCycle2cCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+    }
+    expect(
+      isCycle2gCommitDiffSetAllowed([
+        ...CYCLE_2G_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2gCommitDiffSetAllowed(
+        CYCLE_2G_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "D" } : entry,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("routes a 23-modification marker-free Cycle 2g overlap before Cycle 2f", () => {
+    const overlapOnlyPartial = CYCLE_2G_TRANSITION.filter(
+      (entry) => entry.status === "M",
+    );
+    const cycle2fCumulative = CYCLE_2F_CUMULATIVE_DIFF_PATHS.map((path) => ({
+      path,
+      status: "A",
+    }));
+    expect(overlapOnlyPartial).toHaveLength(23);
+    expect(
+      CYCLE_2G_TRANSITION.filter((entry) => entry.status === "A"),
+    ).toHaveLength(9);
+    expect(isCycle2cCommitDiffSetAllowed(cycle2fCumulative)).toBe(true);
+    expect(
+      isCycle2gTransitionRoutingRequired(
+        overlapOnlyPartial.map((entry) => entry.path),
+        [],
+        cycle2fCumulative,
+      ),
+    ).toBe(true);
+    expect(isCycle2gCommitDiffSetAllowed(overlapOnlyPartial)).toBe(false);
+    expect(isCycle2gTransitionRoutingRequired([], [], cycle2fCumulative)).toBe(
+      false,
+    );
+    expect(
+      isCycle2gTransitionRoutingRequired(undefined, [], cycle2fCumulative),
     ).toBe(false);
   });
 

@@ -355,6 +355,17 @@ const EVALUATION_DOMAIN = new TextEncoder().encode(
 const DOCUMENT_DOMAIN = new TextEncoder().encode(
   "research-cockpit:synthetic-filing-quality-document:v1\u0000",
 );
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "buffer",
+);
+const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "byteLength",
+);
 
 const FACT_CONTRACTS: Readonly<Record<FactKey, FactContract>> = Object.freeze({
   assets: Object.freeze({
@@ -460,22 +471,26 @@ export function measureSyntheticFilingQuality(
 
 function snapshotBytes(value: unknown, maximumBytes: number): Uint8Array {
   try {
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      Object.getPrototypeOf(value) !== Uint8Array.prototype
-    ) {
+    if (typeof value !== "object" || value === null) {
       invalid("input_invalid");
     }
     const bytes = value as Uint8Array;
+    const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
+    const byteLength = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
     if (
-      Object.getPrototypeOf(bytes.buffer) !== ArrayBuffer.prototype ||
-      bytes.byteLength === 0 ||
-      bytes.byteLength > maximumBytes
+      typeof byteLength !== "number" ||
+      Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
+      Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype ||
+      byteLength === 0 ||
+      byteLength > maximumBytes
     ) {
       invalid("input_invalid");
     }
-    return Uint8Array.prototype.slice.call(bytes);
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
   } catch (error) {
     if (error instanceof MeasurementFailure) throw error;
     invalid("input_invalid");

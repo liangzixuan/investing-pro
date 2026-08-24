@@ -123,3 +123,10 @@ and its synthetic roles and thresholds provide no external inventory,
 rights/steward approval, chronology authority, or human key review. It creates
 no Cycle 2b workflow or evidence and does not change this Blocked status. See
 the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
+Cycle 2g is a successor-only in-process synthetic precommitment contract. Its
+candidate-observation digest, object-identity capability, and one-shot call
+order authenticate no counsel, steward, authority registry, external clock,
+adjudicator, corpus, filing, or parser and provide none of the external Phase-B
+inputs. It creates no Cycle 2b workflow or evidence and does not change this
+Blocked status. See the [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).

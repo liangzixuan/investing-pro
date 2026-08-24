@@ -121,3 +121,11 @@ Cycle 2e receipt or validator output. It does not alter Cycle 2e's exact claim,
 checks, nonclaims, source bytes, CI anchors, or no-evidence status, and its
 declared reference does not establish the validator independence or accounting
 truth excluded here. See the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
+
+Cycle 2g is a separate successor-only in-process precommitment contract. Its
+candidate observations are synthetic inputs, not an authenticated Cycle 2e
+receipt or validator output. Commit-before-reveal ordering cannot establish
+Cycle 2e validator independence, declaration authenticity, accounting truth,
+or resistance to common-mode failure and does not alter Cycle 2e's exact claim,
+checks, nonclaims, source bytes, CI anchors, or no-evidence status. See the
+[Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).

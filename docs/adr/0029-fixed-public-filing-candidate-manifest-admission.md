@@ -190,12 +190,19 @@ thresholds authenticate no real corpus, counsel, steward, authority registry,
 adjudicator, filing, or parser and provide none of the external Phase-B inputs.
 It does not change Cycle 2b's Blocked status or establish its target claim.
 
+Cycle 2g is also a successor-only synthetic in-process precommitment contract.
+Its object-identity capability, reference digest, and call order authenticate no
+real corpus, counsel, steward, authority registry, external clock, adjudicator,
+filing, or parser and provide none of the external Phase-B inputs. It does not
+change Cycle 2b's Blocked status or establish its target claim.
+
 ## References
 
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [Canonical model](../CANONICAL_MODEL.md)

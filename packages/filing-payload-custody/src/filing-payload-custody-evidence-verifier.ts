@@ -17,6 +17,8 @@ const CYCLE_2E_BASELINE_REVISION =
   "e0ee2e74eac6164487cc09d12b6efab5fd5f8cb5" as const;
 const CYCLE_2F_BASELINE_REVISION =
   "baa79baa466cf1c869f63a279f90a6dde61c97ac" as const;
+const CYCLE_2G_BASELINE_REVISION =
+  "033e59cc06a421f104ecd869ae77ac694fa8ff31" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -58,6 +60,17 @@ const CYCLE_2F_PACKAGE_TREE = Object.freeze(
     "packages/filing-quality-measurement/src/index.ts",
     "packages/filing-quality-measurement/src/test-filing-quality-measurement-builder.ts",
     "packages/filing-quality-measurement/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2G_PACKAGE_TREE = Object.freeze(
+  [
+    "packages/filing-quality-precommitment/package.json",
+    "packages/filing-quality-precommitment/src/filing-quality-precommitment-security.test.ts",
+    "packages/filing-quality-precommitment/src/filing-quality-precommitment.test.ts",
+    "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
+    "packages/filing-quality-precommitment/src/index.ts",
+    "packages/filing-quality-precommitment/src/test-filing-quality-precommitment-builder.ts",
+    "packages/filing-quality-precommitment/tsconfig.json",
   ].sort(),
 );
 const CYCLE_2D_TRANSITION = Object.freeze(
@@ -266,6 +279,93 @@ const CYCLE_2F_TRANSITION = Object.freeze(
     { path: "scripts/verify-boundaries.ts", status: "M" },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const CYCLE_2G_TRANSITION = Object.freeze(
+  [
+    { path: "LICENSE_POLICY.md", status: "M" },
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2E_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2F_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2G_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md",
+      status: "A",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-quality-measurement/src/filing-quality-measurement-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-quality-measurement/src/filing-quality-measurement.ts",
+      status: "M",
+    },
+    { path: "packages/filing-quality-precommitment/package.json", status: "A" },
+    {
+      path: "packages/filing-quality-precommitment/src/filing-quality-precommitment-security.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
+      status: "A",
+    },
+    { path: "packages/filing-quality-precommitment/src/index.ts", status: "A" },
+    {
+      path: "packages/filing-quality-precommitment/src/test-filing-quality-precommitment-builder.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-quality-precommitment/tsconfig.json",
+      status: "A",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2D_TRANSITION_PATHS = new Set(
   CYCLE_2D_TRANSITION.map((entry) => entry.path),
 );
@@ -275,10 +375,18 @@ const CYCLE_2E_TRANSITION_PATHS = new Set(
 const CYCLE_2F_TRANSITION_PATHS = new Set(
   CYCLE_2F_TRANSITION.map((entry) => entry.path),
 );
+const CYCLE_2G_TRANSITION_PATHS = new Set(
+  CYCLE_2G_TRANSITION.map((entry) => entry.path),
+);
 const CYCLE_2F_MARKER_PATHS = new Set([
   "docs/CYCLE_2F_EXIT_MATRIX.md",
   "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
   ...CYCLE_2F_PACKAGE_TREE,
+]);
+const CYCLE_2G_MARKER_PATHS = new Set([
+  "docs/CYCLE_2G_EXIT_MATRIX.md",
+  "docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md",
+  ...CYCLE_2G_PACKAGE_TREE,
 ]);
 
 const CYCLE_2C_DIFF_ALLOWLIST = new Set([
@@ -341,6 +449,14 @@ const CYCLE_2F_CUMULATIVE_DIFF_PATHS = Object.freeze(
     ...new Set([
       ...CYCLE_2E_CUMULATIVE_DIFF_PATHS,
       ...CYCLE_2F_TRANSITION.map((entry) => entry.path),
+    ]),
+  ].sort(),
+);
+const CYCLE_2G_CUMULATIVE_DIFF_PATHS = Object.freeze(
+  [
+    ...new Set([
+      ...CYCLE_2F_CUMULATIVE_DIFF_PATHS,
+      ...CYCLE_2G_TRANSITION.map((entry) => entry.path),
     ]),
   ].sort(),
 );
@@ -518,19 +634,37 @@ export async function verifyCycle2cCommitBoundary(
     revision,
     "packages/filing-quality-measurement",
   );
+  const qualityPrecommitmentTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-quality-precommitment",
+  );
   if (
     !exactList(packageTree, EXPECTED_PACKAGE_TREE) ||
     !exactList(fixtureTree, EXPECTED_FIXTURE_TREE) ||
     !isCycle2dNormalizationTreeAllowed(normalizationTree) ||
     !isCycle2eComparisonTreeAllowed(comparisonTree) ||
-    !isCycle2fQualityMeasurementTreeAllowed(qualityMeasurementTree)
+    !isCycle2fQualityMeasurementTreeAllowed(qualityMeasurementTree) ||
+    !isCycle2gQualityPrecommitmentTreeAllowed(qualityPrecommitmentTree)
   )
     invalid();
+  const cycle2gBaselineDiffPaths = await cycle2gTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
   const cycle2fBaselineDiffPaths = await cycle2fTransitionSurfaceDiffPaths(
     repositoryPath,
     revision,
   );
   if (
+    isCycle2gTransitionRoutingRequired(
+      cycle2gBaselineDiffPaths,
+      qualityPrecommitmentTree,
+      entries,
+    )
+  )
+    await verifyCycle2gTransition(repositoryPath, revision);
+  else if (
     isCycle2fTransitionRoutingRequired(
       cycle2fBaselineDiffPaths,
       qualityMeasurementTree,
@@ -555,7 +689,8 @@ export function isCycle2cCommitDiffEntryAllowed(
     (CYCLE_2C_DIFF_ALLOWLIST.has(path) ||
       CYCLE_2D_TRANSITION_PATHS.has(path) ||
       CYCLE_2E_TRANSITION_PATHS.has(path) ||
-      CYCLE_2F_TRANSITION_PATHS.has(path))
+      CYCLE_2F_TRANSITION_PATHS.has(path) ||
+      CYCLE_2G_TRANSITION_PATHS.has(path))
   );
 }
 
@@ -575,7 +710,8 @@ export function isCycle2cCommitDiffSetAllowed(
       exactList(paths, CYCLE_2C_DIFF_PATHS) ||
       exactList(paths, CYCLE_2D_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2E_CUMULATIVE_DIFF_PATHS) ||
-      exactList(paths, CYCLE_2F_CUMULATIVE_DIFF_PATHS))
+      exactList(paths, CYCLE_2F_CUMULATIVE_DIFF_PATHS) ||
+      exactList(paths, CYCLE_2G_CUMULATIVE_DIFF_PATHS))
   );
 }
 
@@ -609,6 +745,29 @@ export function isCycle2fQualityMeasurementTreeAllowed(
   paths: readonly string[],
 ): boolean {
   return paths.length === 0 || exactList(paths, CYCLE_2F_PACKAGE_TREE);
+}
+
+/** @internal Exact disconnected-successor tree regression seam. */
+export function isCycle2gQualityPrecommitmentTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return paths.length === 0 || exactList(paths, CYCLE_2G_PACKAGE_TREE);
+}
+
+/** @internal Exact successor-routing regression seam. */
+export function isCycle2gTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+  qualityPrecommitmentPaths: readonly string[],
+  cumulativeDiffEntries: readonly { readonly path: string }[],
+): boolean {
+  return (
+    qualityPrecommitmentPaths.length > 0 ||
+    cumulativeDiffEntries.some((entry) =>
+      CYCLE_2G_MARKER_PATHS.has(entry.path),
+    ) ||
+    baselineDiffPaths?.some((path) => CYCLE_2G_TRANSITION_PATHS.has(path)) ===
+      true
+  );
 }
 
 /** @internal Exact successor-routing regression seam. */
@@ -693,6 +852,55 @@ export function isCycle2fCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exact successor-transition regression seam. */
+export function isCycle2gCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === CYCLE_2G_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = CYCLE_2G_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function cycle2gTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      CYCLE_2G_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (mergeBase !== CYCLE_2G_BASELINE_REVISION) return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2G_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CYCLE_2G_TRANSITION.map((entry) => entry.path),
+    ]),
   );
 }
 
@@ -825,6 +1033,41 @@ async function verifyCycle2fTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCycle2fCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyCycle2gTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2G_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  await git(
+    repositoryPath,
+    ["merge-base", "--is-ancestor", CYCLE_2G_BASELINE_REVISION, revision],
+    0,
+  );
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "-z",
+      CYCLE_2G_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2gCommitDiffSetAllowed(entries)) invalid();
 }
 
 /** @internal Strict NUL-framed Git output regression seam. */

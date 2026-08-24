@@ -162,6 +162,12 @@ evidence record. Its declared-reference metric accounting adds no real payload,
 custody, retention, deletion, or cryptographic-erasure claim and does not widen
 the canonical Cycle 2c evidence.
 
+Cycle 2g is another disconnected synthetic source successor. Its in-process
+candidate-observation commitment consumes no Cycle 2c plaintext, ciphertext,
+key, receipt, audit history, artifact, or evidence record. It adds no real
+payload, custody, retention, deletion, or cryptographic-erasure claim and does
+not widen the canonical Cycle 2c evidence.
+
 ## References
 
 - [Cycle 2c evidence note](../FILING_PAYLOAD_CUSTODY_EVIDENCE.md)
@@ -169,6 +175,7 @@ the canonical Cycle 2c evidence.
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)

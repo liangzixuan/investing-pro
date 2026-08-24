@@ -163,11 +163,19 @@ lineage correctness, accounting truth, or generator provenance, and Cycle 2f
 does not alter this ADR's exact claim, arrays, source bytes, test/CI anchors, or
 no-evidence status.
 
+Cycle 2g is a separate successor-only in-process precommitment contract. Its
+candidate observations are caller-supplied synthetic inputs, not authenticated
+Cycle 2d output. Commit-before-reveal ordering does not establish Cycle 2d
+normalizer or lineage correctness, accounting truth, or generator provenance,
+and Cycle 2g does not alter this ADR's exact claim, arrays, source bytes,
+test/CI anchors, or no-evidence status.
+
 ## References
 
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Cycle 2c exit matrix](../CYCLE_2C_EXIT_MATRIX.md)
 - [ADR 0029](./0029-fixed-public-filing-candidate-manifest-admission.md)

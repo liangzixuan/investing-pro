@@ -1,8 +1,12 @@
 # ADR 0033: bounded synthetic declared-reference quality measurement
 
-Status: bounded source-stage claim, local verification, and two-OS CI Pass only
-for exact source commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`;
-Cycle 2b, full Cycle 2 quality, and production admission Blocked.
+Status: prior bounded source-stage security conclusion for exact source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` Superseded. Historical local and
+Ubuntu/Windows jobs were green, but hostile typed-array carriers falsified the
+bounded owned-snapshot check on those bytes. Current hardened Cycle 2f bytes
+have a Local restoration Pass from the exact final pre-promotion Cycle 2g gate;
+two-OS CI is Pending. Cycle 2b, full Cycle 2 quality, and production admission
+Blocked.
 
 ## Context
 
@@ -90,21 +94,47 @@ fixed synthetic-pilot policy. The remaining 20 assertions are accounted but
 not passed. This is fixture arithmetic only, not independently adjudicated
 quality, real-parser quality, or production threshold approval.
 
+### Superseded owned-snapshot conclusion
+
+The historical source intended to take bounded owned byte snapshots, but read
+shadowable instance `buffer` and `byteLength` properties and copied through
+typed-array `slice`. A hostile plain `Uint8Array` could therefore disguise
+`SharedArrayBuffer` backing or an oversized carrier and could dispatch caller
+`constructor` / `Symbol.species` code during snapshot allocation. Exact check
+2, `owned_bounded_utf8_canonical_json_snapshots_and_duplicate_key_rejection`,
+was false for those bytes, so the sole bounded security conclusion is
+Superseded despite its green local and CI jobs.
+
+The current restoration reads backing-buffer and byte-length metadata through
+intrinsic typed-array getters, requires ordinary `ArrayBuffer` backing,
+allocates an ordinary `Uint8Array` directly, and copies through the intrinsic
+typed-array `set`. Its new hostile-carrier security regressions and all prior
+checks must pass as part of the exact Cycle 2g frozen-byte local and two-OS CI
+gates before the source-stage conclusion can be restored. The exact local gate
+now passes; two-OS CI remains Pending.
+
 ## Evidence and status boundary
 
 Cycle 2f is a deterministic TypeScript source/test contract with no new live or
 platform trust boundary. Its gate is the frozen-byte local release suite and
-existing Ubuntu/Windows CI matrix. Local verification is Pass on the exact
-frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
-typecheck, test, and build stages with 45 test files, 951 passed plus 2 skipped
-(953 total), all 12 workspace project checks, and 11 builds. CI run
+existing Ubuntu/Windows CI matrix. On the historical frozen bytes,
+`corepack pnpm verify` completed all format, lint, guardrail, typecheck, test,
+and build stages with 45 test files, 951 passed plus 2 skipped (953 total), all
+12 workspace project checks, and 11 builds. CI run
 `32681826143` passed in Ubuntu job `97299715600` and Windows job `97299715638`
 on exact source commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`. Parser
 run/job `32681826015` / `97299715074`, custody run/job `32681826030` /
 `97299715006`, and PostgreSQL run/job `32681826040` / `97299715107` are
 unchanged regression health only, not Cycle 2f evidence. It creates no
 dedicated workflow, evidence schema, evidence artifact, retained log package,
-offline evidence review, or evidence note.
+offline evidence review, or evidence note. These are historical green gate
+facts only: the missing hostile-carrier coverage means they do not establish
+the bounded source-stage security claim. The current hardened bytes passed the
+exact final pre-promotion local restoration gate: formatting, full ESLint, all
+guardrails, 86 production license versions, every scripted
+typecheck/test/build across 12 of 13 workspace projects, 47 test files with 987
+passed plus two skipped (989 total), and the boundary verifier were green.
+Two-OS restoration CI remains Pending.
 
 The canonical Cycle 2a and Cycle 2c evidence checks, nonclaims, schemas, source
 sets, artifacts, and notes remain byte-exact. Their offline verifiers may accept
@@ -166,9 +196,26 @@ adjudication or blinding, validate a real filing or parser, prove threshold
 adequacy, unblock Cycle 2b, satisfy the real 2,000-assertion quality gate,
 compose B15/V15, or authorize production use.
 
+Cycle 2g is a separate successor-only in-process precommitment contract. It can
+bind one owned candidate-observation snapshot before the same instance accepts
+declared-reference bytes and delegate the digest-matched result back to Cycle
+2f. It adds no historical Cycle 2f result and keeps this ADR's exact claim,
+checks, nonclaims, and no-evidence status frozen. The atomic successor transition
+does change the current Cycle 2f implementation and security-test bytes so
+owned snapshots use intrinsic typed-array buffer/length metadata and avoid
+caller `constructor` / `Symbol.species` allocation dispatch. This ADR's CI
+anchors remain historical green gate facts for source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39` only and do not attest the current
+hardened bytes, which require the Cycle 2g frozen-byte local and two-OS CI
+gates before the superseded conclusion can be restored. The local restoration
+gate is Pass; two-OS CI remains Pending. Cycle 2g cannot prove that the caller
+lacked the reference through another channel, that the digest hides predictable
+labels, or that Cycle 2f cannot be called directly.
+
 ## References
 
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [ADR 0032](./0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
