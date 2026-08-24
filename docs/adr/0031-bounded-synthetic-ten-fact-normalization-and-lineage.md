@@ -1,10 +1,12 @@
 # ADR 0031: bounded synthetic ten-fact normalization and lineage
 
 Status: exact-source local and two-OS CI jobs remain historical green facts for
-`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`; prior bounded owned-byte security
-conclusion Superseded; Cycle 2h hardening final working-tree local gate Pass;
-source commit/CI/parser/custody live gates Pending; Cycle 2b and production
-admission Blocked.
+`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`, and their prior bounded owned-byte
+security conclusion remains Superseded. The Cycle 2h bounded owned-byte
+conclusion and its source-commit, local, two-OS CI, parser, and custody gates
+Pass only for exact hardened source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`; Cycle 2b and production admission
+remain Blocked.
 
 ## Context
 
@@ -179,9 +181,16 @@ element type/exact prototype and intrinsic `ArrayBuffer` brand/exact prototype,
 checks the actual maximum before allocation, and copies
 with an ordinary allocation plus intrinsic `set.call`. The historical source
 and CI gates did not cover metadata shadows or constructor/species/accessor
-allocation hooks, so their bounded owned-byte security conclusion is
-Superseded until the exact Cycle 2h gates pass. Cycle 2d's schema, fact keys,
-checks, nonclaims, historical anchors, and no-evidence status remain unchanged.
+allocation hooks, so their bounded owned-byte security conclusion remains
+Superseded for those historical bytes. At exact successor source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, the Cycle 2h source-commit,
+frozen-byte local, Ubuntu/Windows CI, parser live-acceptance, and custody
+live-acceptance gates are Pass, restoring this ADR's bounded owned-byte
+conclusion only for those exact hardened bytes. The exact remote anchors are
+recorded in the [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md); parser and
+custody remain regression and historical-boundary anchors, not a new Cycle 2h
+evidence domain. Cycle 2d's schema, fact keys, checks, nonclaims, historical
+anchors, and no-evidence status remain unchanged.
 
 ## References
 

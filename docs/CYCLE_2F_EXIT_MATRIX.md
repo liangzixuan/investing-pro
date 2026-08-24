@@ -18,28 +18,31 @@ intrinsically brand an `ArrayBuffer`, so a re-prototyped `SharedArrayBuffer`
 remained admissible, and exact prototype equality did not prove the intrinsic
 `Uint8Array` element type, so re-prototyped alternate typed arrays remained
 admissible. Cycle 2h implementation and focused coverage are present, and its
-exact final working-tree local gate is Pass. The source commit, two-OS CI,
-parser live acceptance, and custody live acceptance remain Pending. Cycle 2b, full Cycle 2 quality, and
-production admission remain Blocked.** There is no real filing, external
+bounded owned-byte conclusion is restored only on exact hardened successor
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, where the local, source,
+two-OS CI, parser live acceptance, and custody live acceptance gates are Pass.
+Those parser and custody runs are regression and historical-boundary anchors,
+not a new Cycle 2h or Cycle 2f evidence domain. Cycle 2b, full Cycle 2 quality,
+and production admission remain Blocked.** There is no real filing, external
 configuration, independent adjudication, dedicated Cycle 2f workflow, evidence
 schema, artifact, offline evidence review, or evidence note.
 
-| Gate                     | Required result                                                                                                                                                               | Current status                                                              |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Exact input              | Exactly three bounded canonical documents occupy fixed plan, candidate, and declared-reference roles                                                                          | Historical Pass; Cycle 2h Pending                                           |
-| Owned byte carrier       | Intrinsic `Uint8Array` element type plus exact prototype and intrinsic `ArrayBuffer` brand plus exact prototype enforce backing/bounds before hook-free owned allocation/copy | Cycle 2h implemented; final gates Pending                                   |
-| Fixed population         | The declared reference contains exactly 100 unique documents, ten fixed fact coordinates each, and 2,000 derived critical assertions                                          | Historical Pass; semantics unchanged                                        |
-| Candidate state          | Rows are only `succeeded` or `quarantined`; succeeded rows carry zero through ten facts and omissions are measured incomplete; absence is missing                             | Historical Pass; semantics unchanged                                        |
-| Metric accounting        | The evaluator derives every count and denominator; callers cannot supply metrics, weights, exclusions, or assertion outcomes                                                  | Historical Pass; semantics unchanged                                        |
-| Fixed threshold policy   | Exact integer-rational 0.95/0.99/0.99/0.05/0 thresholds, exact units, and zero-day periods are applied without float tolerance                                                | Historical Pass; semantics unchanged                                        |
-| Outcome semantics        | Valid inputs yield `evaluated` plus `met` or `not_met`; malformed inputs alone yield empty value-free quarantine                                                              | Historical Pass; semantics unchanged                                        |
-| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on current Cycle 2h frozen bytes                                                                      | Pass — expected inventory: 47 files; 1,017 passed + 2 skipped (1,019 total) |
-| Two-OS CI                | The current Cycle 2h frozen source gate passes on Ubuntu and Windows                                                                                                          | Pending                                                                     |
-| Dedicated evidence       | Separate workflow/schema/artifact/offline review                                                                                                                              | Not created                                                                 |
-| Independent adjudication | Real adjudicator identity, independence, blinding, chronology, and resolution quality are established                                                                         | Not proven; outside 2f                                                      |
-| Cycle 2b authority       | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                                            | Blocked; outside 2f                                                         |
-| Full Cycle 2 quality     | Representative real filings and 2,000 independently adjudicated real assertions meet approved thresholds with zero silent failures                                            | Blocked                                                                     |
-| Production admission     | Real-data rights, authenticity, persistence, security, privacy, scale, and operational gates pass                                                                             | Blocked                                                                     |
+| Gate                     | Required result                                                                                                                                                               | Current status                                                                                                            |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Exact input              | Exactly three bounded canonical documents occupy fixed plan, candidate, and declared-reference roles                                                                          | Historical Pass; semantics unchanged                                                                                      |
+| Owned byte carrier       | Intrinsic `Uint8Array` element type plus exact prototype and intrinsic `ArrayBuffer` brand plus exact prototype enforce backing/bounds before hook-free owned allocation/copy | Pass only at exact Cycle 2h successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`                                   |
+| Fixed population         | The declared reference contains exactly 100 unique documents, ten fixed fact coordinates each, and 2,000 derived critical assertions                                          | Historical Pass; semantics unchanged                                                                                      |
+| Candidate state          | Rows are only `succeeded` or `quarantined`; succeeded rows carry zero through ten facts and omissions are measured incomplete; absence is missing                             | Historical Pass; semantics unchanged                                                                                      |
+| Metric accounting        | The evaluator derives every count and denominator; callers cannot supply metrics, weights, exclusions, or assertion outcomes                                                  | Historical Pass; semantics unchanged                                                                                      |
+| Fixed threshold policy   | Exact integer-rational 0.95/0.99/0.99/0.05/0 thresholds, exact units, and zero-day periods are applied without float tolerance                                                | Historical Pass; semantics unchanged                                                                                      |
+| Outcome semantics        | Valid inputs yield `evaluated` plus `met` or `not_met`; malformed inputs alone yield empty value-free quarantine                                                              | Historical Pass; semantics unchanged                                                                                      |
+| Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on exact Cycle 2h source commit `61701307ded7fa77a555e27925ae86670f6b4dc0`                            | Pass — exact inventory: 47 files; 1,017 passed + 2 skipped (1,019 total)                                                  |
+| Two-OS CI                | The frozen source gate for exact Cycle 2h commit `61701307ded7fa77a555e27925ae86670f6b4dc0` passes on Ubuntu and Windows                                                      | Pass only at exact Cycle 2h successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`; exact anchors in Cycle 2h matrix |
+| Dedicated evidence       | Separate workflow/schema/artifact/offline review                                                                                                                              | Not created                                                                                                               |
+| Independent adjudication | Real adjudicator identity, independence, blinding, chronology, and resolution quality are established                                                                         | Not proven; outside 2f                                                                                                    |
+| Cycle 2b authority       | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                                            | Blocked; outside 2f                                                                                                       |
+| Full Cycle 2 quality     | Representative real filings and 2,000 independently adjudicated real assertions meet approved thresholds with zero silent failures                                            | Blocked                                                                                                                   |
+| Production admission     | Real-data rights, authenticity, persistence, security, privacy, scale, and operational gates pass                                                                             | Blocked                                                                                                                   |
 
 The historical frozen bytes at
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` completed `corepack pnpm verify`:
@@ -154,9 +157,10 @@ bounded owned-snapshot claim. The Cycle 2g transition could restore the claim
 only when its exact frozen-byte gates passed. Both the local restoration gate
 and Ubuntu/Windows CI passed on exact source commit
 `df1ddffdede9900302da34160ce6b9a62b9d1708`, historically restoring the hardened
-bounded claim for those bytes. That restoration is now also Superseded pending
-Cycle 2h intrinsic carrier/backing-brand hardening. Current Cycle 2h bytes may
-restore the conclusion only after every Cycle 2h promotion gate passes. Failure,
+bounded claim for those bytes. That historical restoration remains Superseded.
+Cycle 2h restores the bounded owned-byte conclusion only for exact hardened
+successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, because every
+Cycle 2h promotion gate passes on those bytes. Failure,
 cancellation, an omitted, extra, or deleted transition path, a partial package
 tree, hostile carrier metadata or allocation dispatch, an unaccounted reference
 target, caller-supplied metric, float tolerance, malformed-input metric leakage,
@@ -175,8 +179,10 @@ remain historical green gate facts for source commit
 Cycle 2g successor bytes. The Cycle 2g frozen-byte local and two-OS CI gates
 passed for exact source commit
 `df1ddffdede9900302da34160ce6b9a62b9d1708` as historical facts. Neither set of
-anchors attests the Cycle 2h bytes or revives the now-Superseded restoration
-conclusion.
+anchors attests the Cycle 2h bytes or revives either Superseded historical
+conclusion. The separate Cycle 2h gates attest the bounded owned-byte
+restoration only at exact successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`.
 
 Cycle 2g's one-shot call sequence can bind candidate observations before the
 same instance accepts declared-reference bytes, but it cannot prove that a
@@ -195,6 +201,9 @@ modified and two added) from
 existing historical local custody fixture manifest, not a new/dedicated/live
 evidence artifact. Its two changed custody source/test SHA-256 entries refresh,
 while fixture cases, schema, order, and payload identity/content remain
-unchanged. Its final working-tree local gate
-is Pass; source commit, CI, parser, and custody promotion gates remain Pending. See the
-[Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+unchanged. The local, source, two-OS CI, parser live acceptance, and custody
+live acceptance promotion gates all pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The parser and custody runs remain
+regression and historical-boundary anchors rather than a new evidence domain;
+the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md) records their exact remote
+anchors.

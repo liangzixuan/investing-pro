@@ -5,10 +5,12 @@ Status: exact-source local and two-OS CI jobs at
 the Cycle 2g bounded owned-byte security conclusion and Cycle 2f restoration
 are Superseded. Re-prototyped shared backing and alternate typed arrays bypassed
 prototype equality, and Cycle 2g checked a proxy-sensitive prototype before
-completing intrinsic brand validation. Cycle 2h implementation/focused coverage
-are present and its final working-tree local gate is Pass; source commit, two-OS
-CI, parser, and custody gates remain Pending. Cycle 2b, full Cycle 2 quality,
-and production admission Blocked.
+completing intrinsic brand validation. The Cycle 2h bounded owned-byte
+conclusion and its source-commit, local, two-OS CI, parser, and custody gates
+Pass only for exact hardened source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The historical Cycle 2f and Cycle
+2g conclusions remain Superseded; Cycle 2b, full Cycle 2 quality, and production
+admission remain Blocked.
 
 ## Context
 
@@ -240,8 +242,15 @@ failure semantics, historical anchors, and no-dedicated-evidence status. Cycle
 existing historical local custody fixture manifest,
 not a new/dedicated/live evidence artifact. Its two changed custody source/test
 SHA-256 entries refresh, while fixture cases, schema, order, and payload
-identity/content remain unchanged. The final working-tree local gate is Pass;
-source commit, CI, parser, and custody promotion gates remain Pending.
+identity/content remain unchanged. At exact successor source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, the Cycle 2h source-commit,
+frozen-byte local, Ubuntu/Windows CI, parser live-acceptance, and custody
+live-acceptance gates are Pass, restoring the Cycle 2f and Cycle 2g bounded
+owned-byte conclusions only for those exact hardened bytes. The historical
+`72e91f5` and `df1ddff` conclusions remain Superseded. The exact remote anchors
+are recorded in the [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md); parser
+and custody remain regression and historical-boundary anchors, not a new Cycle
+2h evidence domain.
 
 ## References
 

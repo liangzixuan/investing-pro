@@ -11,18 +11,22 @@ generator identity or provenance.
 
 Current status: **the local and two-OS CI jobs for exact source commit
 `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc` remain historical green facts, but
-the prior bounded owned-byte security conclusion is Superseded. Cycle 2b and
-production admission remain Blocked.** The two document snapshot paths could
+the prior bounded owned-byte security conclusion remains Superseded for those
+original bytes. Cycle 2b and production admission remain Blocked.** The two
+document snapshot paths could
 trust caller-controlled metadata or dispatch caller allocation hooks. Current
-intrinsic-backing, actual-length, and owned-copy hardening is implemented, and
-its exact final working-tree local gate is Pass. The source commit, two-OS CI,
-parser live acceptance, and custody live acceptance remain Pending under Cycle
-2h.
+Cycle 2h intrinsic-backing, actual-length, and owned-copy hardening restores the
+corresponding bounded owned-byte conclusion only on exact successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, where the local, source, two-OS CI,
+parser live acceptance, and custody live acceptance gates are Pass. Those
+parser and custody runs are regression and historical-boundary anchors, not a
+new Cycle 2h or Cycle 2d evidence domain.
 There is no real filing, external configuration, dedicated Cycle 2d workflow,
 evidence schema, artifact, offline evidence review, or evidence note.
 
-Every Pass entry below records the historical exact-source result. None attests
-the current hardened source bytes or revives the Superseded conclusion.
+Every Pass entry below records the historical exact-source result. Those
+entries do not revive the Superseded original-byte conclusion; the successor
+restoration is limited to the exact Cycle 2h commit above.
 
 | Gate                     | Required result                                                                                                      | Current status                                                                                                                                                                                      |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -114,7 +118,9 @@ no Cycle 2d result enters either record.
 Cycle 2d's bounded source-stage claim was historically accepted because the
 exact frozen-byte local gate and Ubuntu/Windows CI agreed at commit
 `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Those results remain green facts,
-but the bounded owned-byte security conclusion is Superseded pending Cycle 2h.
+but the original-commit bounded owned-byte security conclusion remains
+Superseded. The corresponding conclusion is restored only for exact hardened
+successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0` under Cycle 2h.
 Failure, cancellation, any source change, a partial/extra successor tree, a
 non-value-free quarantine, or any attempted real-data input prevents future
 successor promotion without fresh gates. The historical result does not
@@ -147,4 +153,8 @@ typed-array backing, length, and element-type reads; exact intrinsic
 validation; preallocation bounds; and an ordinary intrinsic copy. It does not alter Cycle
 2d's exact schema, fact keys, checks, nonclaims, historical anchors, or
 no-evidence status, and it adds no proof of normalizer or accounting
-correctness. See the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+correctness. All Cycle 2h promotion gates pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The parser and custody runs remain
+regression and historical-boundary anchors rather than a new evidence domain;
+the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md) records their exact remote
+anchors.

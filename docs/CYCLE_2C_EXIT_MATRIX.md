@@ -8,19 +8,24 @@ in [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md).
 Current status: **the local integration, two-OS CI, dedicated Linux evidence,
 exact-commit offline review, and independent retained artifact/log review at
 `ef22c7bc10596840b8ff686b9190730956fab0c4` remain historical green facts. The
-prior bounded owned-byte security conclusion is Superseded; production remains
-Blocked.** Payload, entropy, and key-store byte paths could consult
+prior bounded owned-byte security conclusion remains Superseded for those
+original bytes; production remains Blocked.** Payload, entropy, and key-store
+byte paths could consult
 caller-controlled metadata or instance hooks before ownership was established.
-Current intrinsic-backing, actual-length, and owned-copy hardening is
-implemented, and its exact final working-tree local gate is Pass. The source
-commit, two-OS CI, parser live acceptance, and custody live acceptance remain
-Pending under Cycle 2h. Cycle
+Cycle 2h restores the corresponding bounded owned-byte conclusion only on exact
+hardened successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, where
+the local, source, two-OS CI, parser live acceptance, and custody live
+acceptance gates are Pass. Those parser and custody runs are regression and
+historical-boundary anchors, not a new Cycle 2h or Cycle 2c evidence domain.
+Cycle
 2b remains separately Blocked on external metadata, approvals, and human
 key-authority review. No real payload, external configuration, fetch, or
 application composition exists.
 
-Every Pass entry below records the historical exact-source result. None attests
-the current hardened source bytes or revives the Superseded conclusion.
+Every Pass entry below records the historical exact-source result. Those
+entries do not revive the Superseded original-byte conclusion or rebind the
+canonical live evidence; the successor restoration is limited to the exact
+Cycle 2h commit above.
 
 The final local aggregate is successor-compatibility health: 848 passed plus 2
 POSIX-only Windows skips, including 64 filing-parser passes. It does not replace
@@ -57,8 +62,10 @@ The sole bounded target claim historically accepted was
 `bounded_synthetic_filing_payload_integrity_custody_and_logical_key_unavailability`.
 Its original live evidence is bound only to exact commit
 `ef22c7bc10596840b8ff686b9190730956fab0c4` and the gates above.
-The bounded owned-byte security conclusion is now Superseded pending Cycle 2h
-promotion.
+The original-commit bounded owned-byte security conclusion remains Superseded.
+The corresponding conclusion is restored only for exact hardened successor
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0` under Cycle 2h; that restoration
+does not rebind the original live evidence.
 
 The exact ordered checks are:
 
@@ -151,8 +158,12 @@ maintenance path. The existing historical
 SHA-256 entries for the changed custody source and security-test files. Fixture
 cases, schema, order, payload identity/content, and canonical live evidence
 schemas, artifacts, notes, checks, nonclaims, and source sets remain unchanged;
-the manifest is a local fixture-integrity anchor, not new or live evidence. See
-the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+the manifest is a local fixture-integrity anchor, not new or live evidence. All
+Cycle 2h promotion gates pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The parser and custody runs remain
+regression and historical-boundary anchors rather than a new evidence domain;
+the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md) records their exact remote
+anchors.
 
 Exact remote, source, artifact, log, and custody anchors are recorded in the
 [Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).

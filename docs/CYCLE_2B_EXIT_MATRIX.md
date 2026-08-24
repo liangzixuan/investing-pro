@@ -7,19 +7,23 @@ rights-authority and data-steward approvals. The decision is recorded in
 
 Current status: **Phase-A verifier protocol implemented; its recorded local and
 CI jobs remain historical green facts, but the prior bounded owned-byte
-security conclusion is Superseded. Cycle 2b is Blocked.** Caller document
+security conclusion remains Superseded for those original bytes. Cycle 2b is
+Blocked.** Caller document
 carriers could spoof backing/length metadata or dispatch allocation hooks.
-Current intrinsic-backing, actual-length, and owned-copy hardening is
-implemented, and its exact final working-tree local gate is Pass. The source
-commit, two-OS CI, parser live acceptance, and custody live acceptance remain
-Pending under Cycle 2h. There
+Cycle 2h restores the corresponding bounded owned-byte conclusion only on exact
+hardened successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, where
+the local, source, two-OS CI, parser live acceptance, and custody live
+acceptance gates are Pass. Those parser and custody runs are regression and
+historical-boundary anchors, not a Cycle 2b or new Cycle 2h evidence domain.
+There
 is no real configuration, external metadata inventory, approval, Cycle 2b
 workflow, run, evidence schema, artifact, or evidence note. The target claim
 `fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
 has not been established.
 
-Every Pass entry below records the historical exact-source result. None attests
-the current hardened source bytes or establishes the blocked Cycle 2b target.
+Every Pass entry below records the historical exact-source result. The
+successor owned-byte restoration is limited to the exact Cycle 2h commit above
+and does not establish the blocked Cycle 2b target.
 
 | Gate                     | Required result                                                                                                                                                         | Current status                                                                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -146,5 +150,9 @@ prototype checks, exact intrinsic `Uint8Array` element type/prototype and
 intrinsic `ArrayBuffer` brand/prototype validation, each document's actual
 maximum before allocation, and an ordinary intrinsic copy. It supplies
 no external inventory, approval, chronology, authority, workflow, artifact, or
-evidence and does not change Cycle 2b's Blocked status. See the
-[Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+evidence and does not change Cycle 2b's Blocked status. All Cycle 2h promotion
+gates pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The parser and custody runs remain
+regression and historical-boundary anchors rather than a new evidence domain;
+the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md) records their exact remote
+anchors.

@@ -1,10 +1,12 @@
 # ADR 0035: cross-boundary intrinsic byte-snapshot hardening
 
-Status: implementation and focused hostile-carrier coverage present; prior
-Cycle 2a through Cycle 2g bounded owned-byte security conclusions Superseded;
-exact final frozen-byte working-tree local gate Pass; source commit, two-OS CI,
-parser live acceptance, and custody live acceptance Pending. The sole target
-claim therefore remains Pending. Cycle 2b, full Cycle 2 quality, and production admission Blocked.
+Status: Pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The exact frozen-byte local gate,
+two-OS CI, parser live acceptance, and custody live acceptance passed. The
+historical Cycle 2a through Cycle 2g bounded owned-byte conclusions on their
+original bytes remain Superseded; their bounded owned-byte premises are
+restored only on this exact hardened successor. Cycle 2b, full Cycle 2 quality,
+and production admission remain Blocked.
 
 ## Context
 
@@ -100,8 +102,9 @@ Focused regression coverage applies metadata shadows, an own throwing
 hooks, instance methods, shared and oversized backing, re-prototyped
 `Int8Array`, `Uint8ClampedArray`, and `Uint16Array` carriers, subclasses,
 detached buffers, proxies, and post-call mutation across
-every affected role. The claim is limited to the unpoisoned intrinsics and
-ordinary same-realm carriers used by this source contract; it is not a
+every affected role. The claim is limited to unpoisoned intrinsics and carriers
+that satisfy the intrinsic types and exact local prototypes required by this
+source contract; it is not a
 caller-process isolation or primordial-hardening claim.
 
 ## Evidence and status boundary
@@ -112,19 +115,28 @@ trust boundary. The refreshed existing local synthetic custody fixture manifest
 is a fixture-integrity anchor, not new live evidence. Cycle 2h relies on
 the exact final frozen-byte local release gate, the existing Ubuntu/Windows CI
 matrix, and the existing dedicated parser and custody live-acceptance workflows.
-The parser and custody runs must each complete runtime acceptance and accept the
-exact successor history at `commit_boundary`; they remain regression and
+The passing parser and custody runs each completed runtime acceptance and
+accepted the exact successor history at `commit_boundary`; they remain regression and
 historical-boundary anchors, not a new Cycle 2h evidence domain.
 
-Focused working-tree suites currently pass with 84 parser tests; 48 custody
+Focused suites on the exact promoted source bytes pass with 84 parser tests; 48 custody
 tests plus two skipped; 29 normalization tests; 36 comparison tests; 40 quality
 measurement tests; and 31 quality precommitment tests: 268 passed plus two
 skipped across the affected suites. These focused results establish
-implementation coverage alongside the full local gate's expected inventory of
+implementation coverage alongside the full local gate's exact inventory of
 47 files, 1,017 passed plus two skipped (1,019 total). The exact
-final frozen-byte working-tree local gate is Pass.
+final frozen-byte local gate is Pass.
 
-The source commit and all remote/live anchors remain Pending. Baseline
+Exact source commit `61701307ded7fa77a555e27925ae86670f6b4dc0` passed CI run
+`32757171049` in Ubuntu job `97527284364` and Windows job `97527284624`.
+Parser live-acceptance run/job `32757171096` / `97527284903` passed runtime
+acceptance and commit-bound review and retained artifact `9531335028`. Custody
+live-acceptance run/job `32757171127` / `97527284597` passed runtime acceptance
+and commit-bound review and retained artifact `9531290999`. Every named run is
+attempt 1 and binds the exact source commit. Parser and custody remain required
+regression and historical-boundary anchors, not a new Cycle 2h evidence domain.
+
+Baseline
 CI run `32695006904` passed in Ubuntu job `97335364409` and Windows job
 `97335364324`, and PostgreSQL run/job `32695006890` / `97335364246` passed.
 Those are historical baseline health only. Parser run/job `32695006897` /
@@ -138,7 +150,7 @@ exactly 32 paths (23 modified and nine added) and exactly 73 cumulative unique
 Cycle 2c paths. The single later baseline-maintenance path
 `packages/db/tests/postgres-acceptance-evidence-review.test.ts` raises the
 pre-Cycle 2h cumulative set to 74 and is pinned history, not evidence. Cycle 2h
-must be exactly 40 paths (38 modified and two added) from
+is exactly 40 paths (38 modified and two added) from
 `14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`, producing exactly 82 cumulative
 unique Cycle 2c paths because the eight added Cycle 2f/Cycle 2g hardening paths
 already exist in cumulative history. The additional transition path
@@ -150,13 +162,15 @@ cases, schema, order, payload identity/content, and canonical live evidence
 schemas, artifacts, notes, checks, nonclaims, and source sets remain unchanged.
 
 Cycle 2f's original `72e91f5` conclusion remains Superseded. The restored Cycle
-2f bounded claim and Cycle 2g bounded claim at `df1ddff` are now also
-Superseded: their backing check accepted a re-prototyped `SharedArrayBuffer`,
+2f bounded claim and Cycle 2g bounded claim at `df1ddff` also remain
+Superseded historical conclusions: their backing check accepted a re-prototyped `SharedArrayBuffer`,
 and their carrier check accepted alternate typed-array element types
 re-prototyped to `Uint8Array.prototype`. Cycle 2g also checked a proxy-sensitive
 prototype before completing intrinsic brand validation. Cycle 2h hardens their six public byte roles while preserving
 all non-carrier schemas, checks, nonclaims, metric arithmetic, state,
 capability, delegation, historical anchors, and no-dedicated-evidence status.
+The bounded owned-byte premises are restored only on exact hardened successor
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0`.
 
 ## Exact target claim and checks
 
@@ -205,17 +219,19 @@ The exact ordered nonclaims are:
 
 ## Consequences
 
-Cycle 2h can close only the exact same-realm byte-carrier admission and owned
-copy claim above. It does not harden poisoned primordials, isolate caller code
+Cycle 2h closes only the intrinsic-brand/exact-local-prototype byte-carrier
+admission and owned-copy claim above. It does not harden poisoned primordials, isolate caller code
 in another process or realm, authenticate a filing or declared digest, supply
 Cycle 2b authority, establish independent parsing or adjudication, validate
 real quality, make Cycle 2g durable, secure external networking, provide
 production custody/KMS, compose any application, complete Cycle 2, or authorize
 real-data or production use.
 
-Until one exact source commit passes every final gate, the new target claim is
-Pending and the prior Cycle 2a through Cycle 2g bounded owned-byte security
-conclusions remain Superseded.
+The new target claim is Pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0` and its recorded gates. The prior
+Cycle 2a through Cycle 2g conclusions on their original bytes remain
+Superseded; their bounded owned-byte premises are restored only on that exact
+hardened successor.
 
 ## References
 

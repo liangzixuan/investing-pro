@@ -529,9 +529,9 @@ and real data remain separate gated work.
 Status: the exact frozen-byte local `pnpm verify` gate, dedicated Linux live
 acceptance, retained artifact, and independent offline review remain historical
 green facts. The prior bounded owned-byte security conclusion is Superseded;
-Cycle 2h's final working-tree local gate is Pass, while source commit,
-CI/parser/custody gates remain Pending. Broader Cycle 2 and
-production admission remain blocked.
+Cycle 2h restores its bounded owned-byte premise only on exact hardened
+successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`. Broader Cycle 2
+and production admission remain blocked.
 
 Cycle 2a implements only the parser threat-model precondition: one nonempty,
 host-size-eligible bounded synthetic ZIP containing an exact manifest and XML
@@ -562,8 +562,9 @@ admission remains blocked.
 
 Status: **Phase-A verifier protocol implemented; local and CI jobs remain
 historical green facts, but the prior bounded owned-byte security conclusion is
-Superseded. Cycle 2h's working-tree local gate is Pass; source commit,
-CI/parser/custody gates remain Pending; Cycle 2b Blocked.** There is no real configuration, external filing metadata,
+Superseded on those bytes. Cycle 2h restores the bounded owned-byte premise only
+on exact hardened successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`;
+Cycle 2b remains Blocked.** There is no real configuration, external filing metadata,
 rights/steward approval, key-authority review, Cycle 2b workflow, run, evidence
 schema, artifact, or evidence note.
 
@@ -620,8 +621,10 @@ composition, B15/V15, real-data admission, or production readiness.
 Status: **the exact-commit local, CI, live, artifact, and review anchors remain
 historical green facts at `ef22c7bc10596840b8ff686b9190730956fab0c4`, but the
 prior bounded owned-byte security conclusion is Superseded. Cycle 2h's
-working-tree local gate is Pass; source commit, CI/parser/custody gates remain
-Pending; Cycle 2b and production admission remain Blocked.** The final successor-compatible local `pnpm verify` gate
+gates passed only for exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, restoring the bounded owned-byte
+premise only on those bytes; Cycle 2b and production admission remain
+Blocked.** The final successor-compatible local `pnpm verify` gate
 passed format, lint, every guardrail including 86 production-license checks,
 all project typechecks and builds, and 39 test files with 848 passed tests plus
 2 POSIX-only Windows skips (850 total cases). Two-OS CI run `32463955370`,
@@ -670,9 +673,10 @@ quality, 2,000 assertions, or production readiness.
 
 Status: **local and two-OS CI jobs remain historical green facts for exact
 source commit `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`, but the prior bounded
-owned-byte security conclusion is Superseded. Cycle 2h's working-tree local gate
-is Pass; source commit, CI/parser/custody gates remain Pending; Cycle 2b and
-production admission Blocked.**
+owned-byte security conclusion is Superseded on those bytes. Cycle 2h restores
+the bounded owned-byte premise only on exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`; Cycle 2b and production admission
+remain Blocked.**
 
 The exact frozen-byte local gate passed format, lint, every guardrail, all
 project typechecks and builds, 86 production-license checks, and 41 test files
@@ -720,9 +724,10 @@ adjudicated quality, 2,000 assertions, full Cycle 2 exit, or production use.
 
 Status: **local and two-OS CI jobs remain historical green facts for exact
 source commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`, but the prior bounded
-owned-byte security conclusion is Superseded. Cycle 2h's working-tree local gate
-is Pass; source commit, CI/parser/custody gates remain Pending; Cycle 2b and
-production admission Blocked.**
+owned-byte security conclusion is Superseded on those bytes. Cycle 2h restores
+the bounded owned-byte premise only on exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`; Cycle 2b and production admission
+remain Blocked.**
 
 The exact frozen bytes pass `corepack pnpm verify`: all format, lint, guardrail,
 typecheck, test, and build stages are green with 43 test files, 911 passed plus
@@ -777,9 +782,10 @@ Superseded because a re-prototyped `SharedArrayBuffer` could pass backing
 prototype equality without intrinsic `ArrayBuffer` brand validation, and a
 re-prototyped alternate typed array could pass carrier prototype equality
 without intrinsic `Uint8Array` element-type validation. Cycle 2h
-working-tree local restoration gate is Pass; source commit, CI/parser/custody
-gates remain Pending. Cycle 2b, full Cycle 2 quality, and production
-admission Blocked.**
+restores the bounded owned-byte premise only on exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, whose local, CI, parser, and custody
+gates passed. Cycle 2b, full Cycle 2 quality, and production admission
+remain Blocked.**
 
 The historical frozen bytes completed `corepack pnpm verify`: all format, lint,
 guardrail, typecheck, test, and build stages were green with 45 test files, 951
@@ -801,8 +807,9 @@ backing/carrier prototype equality, direct ordinary `Uint8Array` allocation,
 and intrinsic
 `set`. The exact local restoration gate and Cycle 2g Ubuntu/Windows CI passed
 for `df1ddffdede9900302da34160ce6b9a62b9d1708` as historical green facts; that
-restored conclusion is now Superseded pending Cycle 2h's intrinsic element-type
-and backing-brand checks.
+restored conclusion remains Superseded as a historical claim. Cycle 2h restores
+the bounded owned-byte premise only on exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`.
 
 Cycle 2f isolates the next repository-controlled metric-accounting and
 threshold-evaluation risk without presenting a declared synthetic reference as
@@ -853,10 +860,11 @@ the Cycle 2g bounded owned-byte security conclusion and the Cycle 2f restoration
 are Superseded. A re-prototyped `SharedArrayBuffer` could pass backing prototype
 equality, a re-prototyped alternate typed array could pass carrier prototype
 equality, and Cycle 2g performed a proxy-sensitive prototype check before
-complete intrinsic brand validation. Cycle 2h's working-tree local restoration
-gate is Pass; source commit,
-CI/parser/custody gates remain Pending. Cycle 2b, full Cycle 2 quality, and
-production admission Blocked.**
+complete intrinsic brand validation. Cycle 2h restores the bounded owned-byte
+premise only on exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, whose local, CI, parser, and custody
+gates passed. Cycle 2b, full Cycle 2 quality, and production admission
+remain Blocked.**
 
 Cycle 2g closes only the next repository-controlled prediction-order gap. A
 private package with one exact workspace dependency on Cycle 2f creates one
@@ -922,11 +930,13 @@ and the [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
 
 ## Cycle 2h — cross-boundary intrinsic byte-snapshot hardening
 
-Status: **implementation and focused hostile-carrier coverage present. Prior
-Cycle 2a through Cycle 2g bounded owned-byte security conclusions Superseded.
-Exact final working-tree local gate Pass; source commit, Ubuntu/Windows CI,
-parser live acceptance, and custody live acceptance Pending. Cycle 2b, full Cycle 2 quality, and
-production admission Blocked.**
+Status: **Pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. Its exact frozen-byte local gate,
+Ubuntu/Windows CI, parser live acceptance, and custody live acceptance passed.
+The historical Cycle 2a through Cycle 2g bounded owned-byte conclusions on
+their original bytes remain Superseded; their bounded owned-byte premises are
+restored only on this exact hardened successor. Cycle 2b, full Cycle 2 quality,
+and production admission remain Blocked.**
 
 Cycle 2h closes one repeated repository-controlled carrier gap across every
 public or injected `Uint8Array` ingress owned by Cycle 2a through Cycle 2g: the
@@ -957,11 +967,14 @@ every affected role.
 
 The sole bounded target claim is
 `bounded_synthetic_cycle2_public_uint8array_ingress_intrinsic_backing_and_length_validation_owned_copy_and_no_caller_metadata_iterator_or_allocation_dispatch`.
-It remains Pending despite the passing exact final working-tree local gate,
-until an exact source commit passes the existing Ubuntu/Windows CI matrix and
-the existing dedicated parser and custody live workflows through commit-bound review. Parser and
-custody are regression/historical-boundary acceptance anchors only, not a new
-Cycle 2h evidence domain.
+It is Pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. CI run `32757171049` passed in
+Ubuntu job `97527284364` and Windows job `97527284624`; parser
+run/job/artifact `32757171096` / `97527284903` / `9531335028` and custody
+run/job/artifact `32757171127` / `97527284597` / `9531290999` passed runtime
+acceptance and exact-commit review. Every run was attempt 1. Parser and custody
+are regression/historical-boundary acceptance anchors only, not a new Cycle 2h
+evidence domain.
 
 The transition is exactly 40 paths (38 modified and two added) from
 `14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`, leaving exactly 82 cumulative
@@ -977,10 +990,12 @@ path raises pre-Cycle 2h cumulative history to 74; it is pinned history, not
 evidence. Canonical Cycle 2a/Cycle 2c schemas, artifacts, notes, checks,
 nonclaims, and source sets remain unchanged. Cycle 2f's original `72e91f5`
 conclusion remains Superseded; its restored bounded claim and Cycle 2g's claim
-at `df1ddff` are now also Superseded because prototype equality admitted
+at `df1ddff` remain Superseded historical claims because prototype equality admitted
 re-prototyped shared backing and alternate typed-array element types. Their non-carrier schemas,
 checks, nonclaims, arithmetic, state, capability, delegation, historical
 anchors, and no-evidence status remain unchanged.
+Their bounded owned-byte premises are restored only on exact hardened successor
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0`.
 
 Baseline CI run `32695006904` passed in Ubuntu job `97335364409` and Windows job
 `97335364324`; PostgreSQL run/job `32695006890` / `97335364246` also passed.
@@ -1015,8 +1030,9 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
-Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, nor pending
-source-stage Cycle 2h satisfies this exit gate. Real payload bytes and digest validation, approved corpus
+Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, nor bounded source-stage Cycle
+2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0` satisfies this
+exit gate. Real payload bytes and digest validation, approved corpus
 inputs, real ten-fact coverage, truly independent validation, independently adjudicated
 precision/recall, general XBRL/iXBRL and taxonomy/plugin support, correction
 lineage, production operations, and real-data admission remain pending.

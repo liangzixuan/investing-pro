@@ -1,9 +1,11 @@
 # ADR 0028: Bounded synthetic filing-parser isolation
 
 Status: exact bounded synthetic live run, artifact, and review remain historical
-green facts; prior bounded owned-byte security conclusion Superseded; Cycle 2h
-hardening final working-tree local gate Pass; source commit/CI/parser/custody
-live gates Pending; broader Cycle 2 and production admission blocked
+green facts, and their prior bounded owned-byte security conclusion remains
+Superseded. The Cycle 2h bounded owned-byte conclusion and its source-commit,
+local, two-OS CI, parser, and custody gates Pass only for exact hardened source
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0`; broader Cycle 2 and
+production admission remain blocked.
 
 ## Context
 
@@ -176,9 +178,16 @@ allocation plus intrinsic `set.call`. Oversized exact archive carriers are
 hashed synchronously without an owned copy so the existing signed
 `archive_limit_exceeded` quarantine remains intact. The prior
 iterator-dispatching snapshot made this ADR's bounded owned-byte security
-conclusion false against hostile carriers, so that conclusion is Superseded
-until the exact Cycle 2h local, CI, parser, and custody gates pass. The canonical
-Cycle 2a schema, artifact, note, checks, nonclaims, and source set are unchanged.
+conclusion false against hostile carriers, so that conclusion remains
+Superseded for the historical bytes. At exact successor source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, the Cycle 2h source-commit,
+frozen-byte local, Ubuntu/Windows CI, parser live-acceptance, and custody
+live-acceptance gates are Pass, restoring this ADR's bounded owned-byte
+conclusion only for those exact hardened bytes. The exact remote anchors are
+recorded in the [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md); parser and
+custody remain regression and historical-boundary anchors, not a new Cycle 2h
+evidence domain. The canonical Cycle 2a schema, artifact, note, checks,
+nonclaims, and source set are unchanged.
 
 ## References
 

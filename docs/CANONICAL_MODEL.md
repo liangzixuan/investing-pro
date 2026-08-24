@@ -11,12 +11,15 @@ contract, historically reviewed Cycle 2a filing-parser envelope, Phase-A Cycle
 2b metadata verifier, historically reviewed Cycle 2c synthetic payload custody,
 historical source-stage Cycle 2d synthetic ten-fact normalization/lineage,
 historical source-stage Cycle 2e two-declared-validator fact comparison, whose
-bounded owned-byte security conclusions are Superseded pending Cycle 2h;
+historical bounded owned-byte security conclusions remain Superseded on their
+original bytes;
 Cycle 2f declared-reference quality measurement with both its original and
 `df1ddff` restoration conclusions Superseded, plus historical source-stage
 Cycle 2g in-process candidate-observation precommitment at that same commit now
-also Superseded, and pending source-stage Cycle 2h cross-boundary intrinsic
-byte-snapshot hardening;
+also Superseded, and Cycle 2h cross-boundary intrinsic byte-snapshot hardening
+Pass only on exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, restoring the Cycle 2a–2g bounded
+owned-byte premises only on that hardened successor;
 synthetic data only.
 
 ## Identity
@@ -409,7 +412,9 @@ view enters the product model. The terminal state is exactly
 
 The bounded synthetic claim was historically accepted on exact commit
 `ef22c7bc10596840b8ff686b9190730956fab0c4`; its bounded owned-byte security
-conclusion is now Superseded. The final successor-compatible
+conclusion is now Superseded on those bytes. Exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0` restores only that bounded premise.
+The final successor-compatible
 local `pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test files
 with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases). Two-OS
@@ -557,8 +562,9 @@ exact final local restoration gate and Cycle 2g Ubuntu/Windows CI passed at
 Superseded because backing prototype equality did not intrinsically brand an
 `ArrayBuffer`, while carrier prototype equality did not prove the intrinsic
 `Uint8Array` element type; re-prototyped shared backing and alternate typed
-arrays remained admissible. Cycle 2h's working-tree local restoration gate is
-Pass; source commit, CI/parser/custody gates remain Pending. Parser run/job
+arrays remained admissible. Cycle 2h restores the bounded owned-byte premise
+only for exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. Parser run/job
 `32681826015` / `97299715074`, custody run/job
 `32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
 `97299715107` remain unchanged regression health only, not Cycle 2f evidence.
@@ -614,8 +620,9 @@ are Superseded. Backing prototype equality did not intrinsically brand an
 `ArrayBuffer`, carrier prototype equality did not prove the intrinsic
 `Uint8Array` element type, and re-prototyped shared backing and alternate typed
 arrays remained admissible. Cycle 2g also performed a proxy-sensitive prototype
-check before complete intrinsic brand validation. Cycle 2h's working-tree local
-restoration gate is Pass; source commit, CI/parser/custody gates remain Pending.
+check before complete intrinsic brand validation. Cycle 2h restores the bounded
+owned-byte premise only for exact hardened successor commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`.
 The local gate
 passed formatting, full ESLint, all guardrails, 86 production license versions,
 every scripted
@@ -674,14 +681,15 @@ hostile metadata, accessor, iterator, constructor/species, instance-method,
 backing, re-prototyped alternate typed-array, subclass, detached, proxy, and
 mutation behavior across the inventory.
 
-The prior Cycle 2a through Cycle 2g bounded owned-byte security conclusions are
-Superseded. Their exact local, CI, live, artifact, and review anchors remain
-historical facts only. Cycle 2h's sole target claim is
+The prior Cycle 2a through Cycle 2g bounded owned-byte security conclusions on
+their original bytes remain Superseded. Their exact local, CI, live, artifact,
+and review anchors remain historical facts only. Cycle 2h's sole target claim is
 `bounded_synthetic_cycle2_public_uint8array_ingress_intrinsic_backing_and_length_validation_owned_copy_and_no_caller_metadata_iterator_or_allocation_dispatch`.
-Implementation and focused coverage are present, and the exact final
-working-tree local gate is Pass. The source commit, Ubuntu/Windows CI, parser
-live acceptance, and custody live acceptance remain Pending, so the target
-claim remains Pending.
+It is Pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`; the frozen-byte local gate,
+Ubuntu/Windows CI, parser live acceptance, and custody live acceptance all
+passed. Those exact hardened bytes restore the Cycle 2a–2g bounded owned-byte
+premises without reviving their historical conclusions.
 
 Cycle 2h is the exact 40-path transition (38 modified, two added) from
 `14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`, with exactly 82 cumulative
@@ -694,11 +702,18 @@ fixture cases, schema, order, and payload identity/content remain unchanged. It 
 raises pre-Cycle 2h cumulative history to 74 and is not evidence. The canonical
 Cycle 2a/Cycle 2c schemas, artifacts, notes, checks, nonclaims, and source sets
 remain unchanged. Cycle 2f's original `72e91f5` conclusion remains Superseded;
-its restored claim and Cycle 2g's claim at `df1ddff` are now also Superseded
+its restored claim and Cycle 2g's claim at `df1ddff` remain Superseded
 because prototype equality admitted re-prototyped shared backing and alternate
 typed-array element types. Their non-carrier schemas, checks, nonclaims, arithmetic,
 state, capability, delegation, historical anchors, and no-evidence status
 remain unchanged.
+
+For exact source commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, CI run
+`32757171049` passed in Ubuntu job `97527284364` and Windows job `97527284624`.
+Parser run/job/artifact `32757171096` / `97527284903` / `9531335028` and custody
+run/job/artifact `32757171127` / `97527284597` / `9531290999` passed runtime
+acceptance and commit-bound review on attempt 1. Parser and custody remain
+regression and historical-boundary anchors, not a new Cycle 2h evidence domain.
 
 Baseline CI `32695006904` and PostgreSQL `32695006890` are historical health
 only. Parser `32695006897` and custody `32695006869` passed source/test stages

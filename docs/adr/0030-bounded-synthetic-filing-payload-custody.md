@@ -1,10 +1,12 @@
 # ADR 0030: Bounded synthetic filing-payload custody
 
 Status: exact-commit live run, artifact, and review remain historical green
-facts at `ef22c7bc10596840b8ff686b9190730956fab0c4`; prior bounded owned-byte
-security conclusion Superseded; Cycle 2h hardening final working-tree local
-gate Pass; source commit/CI/parser/custody live gates Pending; Cycle 2b and
-production admission blocked
+facts at `ef22c7bc10596840b8ff686b9190730956fab0c4`, and their prior bounded
+owned-byte security conclusion remains Superseded. The Cycle 2h bounded
+owned-byte conclusion and its source-commit, local, two-OS CI, parser, and
+custody gates Pass only for exact hardened source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`; Cycle 2b and production admission
+remain blocked.
 
 ## Context
 
@@ -82,8 +84,9 @@ payload fixture, external URL, fetch code, approval, key configuration, or
 
 The bounded claim was historically accepted for exact commit
 `ef22c7bc10596840b8ff686b9190730956fab0c4`; its bounded owned-byte security
-conclusion is Superseded pending Cycle 2h. The final successor-compatible local
-`pnpm verify` gate passed format, lint, every guardrail including 86
+conclusion remains Superseded for those historical bytes. The final
+successor-compatible local `pnpm verify` gate passed format, lint, every
+guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test files
 with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases). This
 later local gate does not replace or widen the canonical live evidence. Two-OS
@@ -179,9 +182,15 @@ and intrinsic `ArrayBuffer` brand/exact prototype, checks actual exact or bounde
 length before allocation, and copies with an ordinary allocation plus intrinsic
 `set.call`. The historical live result did not cover metadata shadows or
 caller accessor/instance/allocation hooks, so its bounded owned-byte security
-conclusion is Superseded until the exact Cycle 2h gates pass. The canonical
-Cycle 2c evidence schema, artifact, note, checks, nonclaims, and source set stay
-unchanged. The existing historical
+conclusion remains Superseded for those historical bytes. At exact successor
+source commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, the Cycle 2h
+source-commit, frozen-byte local, Ubuntu/Windows CI, parser live-acceptance, and
+custody live-acceptance gates are Pass, restoring this ADR's bounded owned-byte
+conclusion only for those exact hardened bytes. The exact remote anchors are
+recorded in the [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md); parser and
+custody remain regression and historical-boundary anchors, not a new Cycle 2h
+evidence domain. The canonical Cycle 2c evidence schema, artifact, note,
+checks, nonclaims, and source set stay unchanged. The existing historical
 `fixtures/synthetic/filing-payload-custody/v1/manifest.json` refreshes only the
 SHA-256 entries for `payload-custody.ts` and
 `payload-custody-security.test.ts`; fixture cases, schema, order, and payload

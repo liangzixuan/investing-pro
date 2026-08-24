@@ -1,10 +1,11 @@
 # ADR 0029: Fixed public-filing candidate-manifest admission
 
-Status: Phase-A verifier protocol implemented; historical local/CI jobs green;
-prior bounded owned-byte security conclusion Superseded; Cycle 2h hardening
-final working-tree local gate Pass; source commit/CI/parser/custody live gates
-Pending; Cycle 2b blocked on external metadata, approvals, and key-authority
-review
+Status: Phase-A verifier protocol implemented; historical local/CI jobs remain
+green facts, and their prior bounded owned-byte security conclusion remains
+Superseded. The Cycle 2h bounded owned-byte conclusion and its source-commit,
+local, two-OS CI, parser, and custody gates Pass only for exact hardened source
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0`; Cycle 2b remains Blocked on
+external metadata, approvals, and key-authority review.
 
 ## Context
 
@@ -207,9 +208,16 @@ validates the actual per-document maximum before
 allocation, and copies through an ordinary `Uint8Array` plus intrinsic
 `set.call`. The historical Phase-A jobs did not cover metadata shadows or
 iterator/constructor/species/accessor allocation hooks, so their bounded
-owned-byte security conclusion is Superseded until the exact Cycle 2h gates
-pass. This supplies no external metadata, rights/steward approval, chronology,
-key authority, workflow, artifact, or evidence and leaves Cycle 2b Blocked.
+owned-byte security conclusion remains Superseded for those historical bytes.
+At exact successor source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, the Cycle 2h source-commit,
+frozen-byte local, Ubuntu/Windows CI, parser live-acceptance, and custody
+live-acceptance gates are Pass, restoring the bounded owned-byte conclusion
+only for those exact hardened bytes. The exact remote anchors are recorded in
+the [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md); parser and custody remain
+regression and historical-boundary anchors, not a new Cycle 2h evidence domain.
+This supplies no external metadata, rights/steward approval, chronology, key
+authority, workflow, artifact, or evidence and leaves Cycle 2b Blocked.
 
 ## References
 

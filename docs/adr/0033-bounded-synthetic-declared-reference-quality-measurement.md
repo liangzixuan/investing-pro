@@ -9,10 +9,12 @@ restored hardened Cycle 2f at exact source commit
 Superseded: backing prototype equality did not intrinsically brand an
 `ArrayBuffer`, so a re-prototyped `SharedArrayBuffer` remained admissible, and
 carrier prototype equality did not prove the intrinsic `Uint8Array` element
-type, so re-prototyped alternate typed arrays remained admissible. Cycle 2h
-implementation/focused coverage are present and its final working-tree local
-gate is Pass; source commit, two-OS CI, parser, and custody gates remain
-Pending. Cycle 2b, full Cycle 2 quality, and production admission Blocked.
+type, so re-prototyped alternate typed arrays remained admissible. The Cycle 2h
+bounded owned-byte conclusion and its source-commit, local, two-OS CI, parser,
+and custody gates Pass only for exact hardened source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. The historical `72e91f5` and
+`df1ddff` conclusions remain Superseded; Cycle 2b, full Cycle 2 quality, and
+production admission remain Blocked.
 
 ## Context
 
@@ -245,8 +247,15 @@ modified and two added) from
 existing historical local custody fixture manifest, not a new/dedicated/live
 evidence artifact. Its two changed custody source/test SHA-256 entries refresh,
 while fixture cases, schema, order, and payload identity/content remain
-unchanged. Its final working-tree local gate
-is Pass; source commit, CI, parser, and custody promotion gates remain Pending.
+unchanged. At exact successor source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`, the Cycle 2h source-commit,
+frozen-byte local, Ubuntu/Windows CI, parser live-acceptance, and custody
+live-acceptance gates are Pass, restoring Cycle 2f's bounded owned-byte
+conclusion only for those exact hardened bytes. The historical `72e91f5` and
+`df1ddff` conclusions remain Superseded. The exact remote anchors are recorded
+in the [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md); parser and custody
+remain regression and historical-boundary anchors, not a new Cycle 2h evidence
+domain.
 
 ## References
 

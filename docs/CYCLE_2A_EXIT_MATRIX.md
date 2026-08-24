@@ -10,13 +10,15 @@ source-bound evidence domain. The design is recorded in
 Current status: **the exact frozen-byte local `pnpm verify` gate, dedicated
 Linux run, retained success-only artifact, authenticated log review, and
 independent offline review remain historical green facts. The prior bounded
-owned-byte security conclusion is Superseded.** Archive snapshotting and
+owned-byte security conclusion remains Superseded for those original bytes.** Archive snapshotting and
 injected signer/process-runner byte outputs used caller-observable metadata or
 allocation paths before Cycle 2h hostile-carrier coverage.
-Current intrinsic-backing, actual-length, and owned-copy hardening is
-implemented, and its exact final working-tree local gate is Pass. The source
-commit, two-OS CI, parser live acceptance, and custody live acceptance remain
-Pending. Broader Cycle 2 and
+Cycle 2h restores the corresponding bounded owned-byte conclusion only on exact
+hardened successor commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, where
+the local, source, two-OS CI, parser live acceptance, and custody live
+acceptance gates are Pass. The parser and custody runs are required regression
+and historical-boundary anchors, not a new Cycle 2h or Cycle 2a evidence
+domain. Broader Cycle 2 and
 production admission remain blocked. This work does not create B15/V15, alter
 PostgreSQL V1 through V14, compose the parser into an application, or admit real
 data. Immutable historical anchors remain in the
@@ -24,8 +26,9 @@ data. Immutable historical anchors remain in the
 status overlay is specified by the
 [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
 
-Every Pass entry below records the historical exact-source result. None attests
-the current hardened source bytes or revives the Superseded conclusion.
+Every Pass entry below records the historical exact-source result. Those
+entries do not revive the Superseded original-byte conclusion; the successor
+restoration is limited to the exact Cycle 2h commit above.
 
 | Gate                       | Evidence required                                                                                                                                                                                                         | Current status                                                                                                                        |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,8 +53,9 @@ the current hardened source bytes or revives the Superseded conclusion.
 
 The sole bounded claim historically accepted at exit was
 `bounded_synthetic_one_shot_filing_parser_isolation_quarantine_replay_and_provenance_binding`.
-Its bounded owned-byte security conclusion is now Superseded pending Cycle 2h
-promotion.
+Its original-commit bounded owned-byte security conclusion remains Superseded.
+The corresponding conclusion is restored only for exact hardened successor
+commit `61701307ded7fa77a555e27925ae86670f6b4dc0` under Cycle 2h.
 
 The exact ordered nonclaims are:
 
@@ -102,4 +106,8 @@ fit the requesting process limits before allocation. Oversized exact archive car
 synchronously without an owned copy so the existing signed
 `archive_limit_exceeded` quarantine is preserved. The canonical Cycle 2a
 schema, artifact, evidence note, 16 checks, 16 nonclaims, and 26-source set do
-not change. See the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+not change. All Cycle 2h promotion gates pass only for exact source commit
+`61701307ded7fa77a555e27925ae86670f6b4dc0`. Its parser and custody runs remain
+regression and historical-boundary anchors rather than a new evidence domain;
+the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md) records their exact remote
+anchors.
