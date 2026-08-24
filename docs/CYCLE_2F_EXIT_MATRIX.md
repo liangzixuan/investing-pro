@@ -6,11 +6,12 @@ ten fixed fact targets per document, and two evaluator-derived critical
 assertions per target. The decision is recorded in
 [ADR 0033](./adr/0033-bounded-synthetic-declared-reference-quality-measurement.md).
 
-Current status: **source implementation complete; local verification Pass;
-two-OS CI Pending. Cycle 2b, full Cycle 2 quality, and production admission
-remain Blocked.** There is no real filing, external configuration, independent
-adjudication, dedicated Cycle 2f workflow, evidence schema, artifact, offline
-evidence review, or evidence note.
+Current status: **bounded source-stage claim, local verification, and two-OS CI
+Pass only for exact source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39`. Cycle 2b, full Cycle 2 quality,
+and production admission remain Blocked.** There is no real filing, external
+configuration, independent adjudication, dedicated Cycle 2f workflow, evidence
+schema, artifact, offline evidence review, or evidence note.
 
 | Gate                     | Required result                                                                                                                                   | Current status          |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -21,7 +22,7 @@ evidence review, or evidence note.
 | Fixed threshold policy   | Exact integer-rational 0.95/0.99/0.99/0.05/0 thresholds, exact units, and zero-day periods are applied without float tolerance                    | Implemented; Local Pass |
 | Outcome semantics        | Valid inputs yield `evaluated` plus `met` or `not_met`; malformed inputs alone yield empty value-free quarantine                                  | Implemented; Local Pass |
 | Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                           | Pass                    |
-| Two-OS CI                | The same frozen source gate passes on Ubuntu and Windows                                                                                          | Pending                 |
+| Two-OS CI                | The same frozen source gate passes on Ubuntu and Windows                                                                                          | Pass                    |
 | Dedicated evidence       | Separate workflow/schema/artifact/offline review                                                                                                  | Not created             |
 | Independent adjudication | Real adjudicator identity, independence, blinding, chronology, and resolution quality are established                                             | Not proven; outside 2f  |
 | Cycle 2b authority       | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                | Blocked; outside 2f     |
@@ -32,6 +33,12 @@ The exact frozen bytes pass `corepack pnpm verify`: all format, lint,
 guardrail, typecheck, test, and build stages are green with 45 test files, 951
 passed plus 2 skipped (953 total), all 12 workspace project checks, and 11
 builds.
+
+CI run `32681826143` passed in Ubuntu job `97299715600` and Windows job
+`97299715638`. Parser run/job `32681826015` / `97299715074`, custody run/job
+`32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
+`97299715107` passed as unchanged regression health only; they are not Cycle 2f
+evidence.
 
 The fixed synthetic-pilot policy uses document success at least `95/100`, fact
 precision at least `99/100`, fact recall at least `99/100`, quarantine rate at
@@ -103,11 +110,11 @@ verifiers may accept Cycle 2f only as the exact atomic 28-path transition from
 `baa79baa466cf1c869f63a279f90a6dde61c97ac`; no Cycle 2f result enters either
 record.
 
-The exact frozen-byte local gate is Pass. Cycle 2f may be marked source-stage
-Pass only when Ubuntu/Windows CI agrees on one source commit. Failure,
-cancellation, an omitted, extra, or deleted transition path, a partial package
-tree, unaccounted reference target, caller-supplied metric, float tolerance,
-malformed-input metric leakage, or any real-data input prevents promotion. Such
-a future source-stage Pass would not prove independent adjudication, real
-parser quality, Cycle 2b authority, approved production thresholds, full Cycle
-2 exit, B15/V15, or production use.
+The exact frozen-byte local and two-OS CI gates are Pass only for source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39`. Failure, cancellation, an
+omitted, extra, or deleted transition path, a partial package tree, unaccounted
+reference target, caller-supplied metric, float tolerance, malformed-input
+metric leakage, or any real-data input prevents promotion. This source-stage
+Pass does not prove independent adjudication, real parser quality, Cycle 2b
+authority, approved production thresholds, full Cycle 2 exit, B15/V15, or
+production use.

@@ -181,10 +181,16 @@ procurement, data-steward, statistical, or production approval.
 Source implementation is complete. Local verification is Pass on the exact
 frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
 typecheck, test, and build stages with 45 test files, 951 passed plus 2 skipped
-(953 total), all 12 workspace project checks, and 11 builds. Two-OS CI remains
-Pending. Cycle 2f creates no dedicated workflow, evidence schema, artifact,
-offline review, or evidence note; changes no Cycle 2b external authority
-prerequisite; admits no real data; does not establish the real
-2,000-assertion quality gate; and is not B15/V15. See
+(953 total), all 12 workspace project checks, and 11 builds. The bounded
+source-stage claim, local gate, and two-OS CI are Pass only for exact source
+commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`; CI run `32681826143`
+passed in Ubuntu job `97299715600` and Windows job `97299715638`. Parser
+run/job `32681826015` / `97299715074`, custody run/job `32681826030` /
+`97299715006`, and PostgreSQL run/job `32681826040` / `97299715107` are
+unchanged regression health only, not Cycle 2f evidence. Cycle 2f creates no
+dedicated workflow, evidence schema, artifact, offline review, or evidence
+note; changes no Cycle 2b external authority prerequisite; admits no real data;
+does not establish the real 2,000-assertion quality gate; and is not B15/V15.
+See
 [ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md)
 and the [Cycle 2f exit matrix](./docs/CYCLE_2F_EXIT_MATRIX.md).

@@ -1,4 +1,4 @@
-# Sprint 0 through locally verified Cycle 2f threat model
+# Sprint 0 through source-stage Cycle 2f threat model
 
 ## Current trust boundaries
 
@@ -190,7 +190,13 @@ parser quality, or threshold adequacy. Source implementation is complete. Local
 verification is Pass on the exact frozen bytes: `corepack pnpm verify` passed
 all format, lint, guardrail, typecheck, test, and build stages with 45 test
 files, 951 passed plus 2 skipped (953 total), all 12 workspace project checks,
-and 11 builds. Two-OS CI remains Pending. Cycle 2f has no dedicated workflow,
+and 11 builds. The bounded source-stage claim, local gate, and two-OS CI are
+Pass only for exact source commit
+`72e91f502b31f15deeaad761b82d9ed7b6377d39`; CI run `32681826143` passed in
+Ubuntu job `97299715600` and Windows job `97299715638`. Parser run/job
+`32681826015` / `97299715074`, custody run/job `32681826030` / `97299715006`,
+and PostgreSQL run/job `32681826040` / `97299715107` are unchanged regression
+health only, not Cycle 2f evidence. Cycle 2f has no dedicated workflow,
 evidence schema, artifact, offline review, or evidence note and performs no
 network, parser, custody, corpus, database, API, web, or queue operation. Cycle
 2b, full Cycle 2 quality, and production remain Blocked; this is not B15/V15.

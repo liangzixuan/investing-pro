@@ -757,12 +757,19 @@ and the [Cycle 2e exit matrix](./CYCLE_2E_EXIT_MATRIX.md).
 
 ## Cycle 2f — bounded synthetic declared-reference quality measurement
 
-Status: **source implementation complete; local verification Pass; two-OS CI
-Pending. Cycle 2b, full Cycle 2 quality, and production admission Blocked.**
+Status: **bounded source-stage claim, local verification, and two-OS CI Pass
+only for exact source commit `72e91f502b31f15deeaad761b82d9ed7b6377d39`;
+Cycle 2b, full Cycle 2 quality, and production admission Blocked.**
 
 The exact frozen bytes pass `corepack pnpm verify`: all format, lint, guardrail,
 typecheck, test, and build stages are green with 45 test files, 951 passed plus
 2 skipped (953 total), all 12 workspace project checks, and 11 builds.
+
+CI run `32681826143` passed in Ubuntu job `97299715600` and Windows job
+`97299715638`. Parser run/job `32681826015` / `97299715074`, custody run/job
+`32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
+`97299715107` passed as unchanged regression health only; they are not Cycle 2f
+evidence.
 
 Cycle 2f isolates the next repository-controlled metric-accounting and
 threshold-evaluation risk without presenting a declared synthetic reference as
