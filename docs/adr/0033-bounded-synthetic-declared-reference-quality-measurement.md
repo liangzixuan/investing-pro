@@ -3,10 +3,16 @@
 Status: prior bounded source-stage security conclusion for exact source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` Superseded. Historical local and
 Ubuntu/Windows jobs were green, but hostile typed-array carriers falsified the
-bounded owned-snapshot check on those bytes. Current hardened Cycle 2f bytes
-have local and two-OS restoration Pass from the Cycle 2g gate only for exact
-source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. Cycle 2b, full Cycle
-2 quality, and production admission Blocked.
+bounded owned-snapshot check on those bytes. The Cycle 2g local/two-OS gate
+restored hardened Cycle 2f at exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, but that restoration is now also
+Superseded: backing prototype equality did not intrinsically brand an
+`ArrayBuffer`, so a re-prototyped `SharedArrayBuffer` remained admissible, and
+carrier prototype equality did not prove the intrinsic `Uint8Array` element
+type, so re-prototyped alternate typed arrays remained admissible. Cycle 2h
+implementation/focused coverage are present and its final working-tree local
+gate is Pass; source commit, two-OS CI, parser, and custody gates remain
+Pending. Cycle 2b, full Cycle 2 quality, and production admission Blocked.
 
 ## Context
 
@@ -105,15 +111,20 @@ typed-array `slice`. A hostile plain `Uint8Array` could therefore disguise
 was false for those bytes, so the sole bounded security conclusion is
 Superseded despite its green local and CI jobs.
 
-The current restoration reads backing-buffer and byte-length metadata through
-intrinsic typed-array getters, requires ordinary `ArrayBuffer` backing,
+The `df1ddff` restoration reads backing-buffer and byte-length metadata through
+intrinsic typed-array getters, requires the backing prototype to equal
+`ArrayBuffer.prototype`,
 allocates an ordinary `Uint8Array` directly, and copies through the intrinsic
-typed-array `set`. Its new hostile-carrier security regressions and all prior
-checks must pass as part of the exact Cycle 2g frozen-byte local and two-OS CI
-gates before the source-stage conclusion can be restored. The exact local gate
-and Cycle 2g Ubuntu/Windows CI now pass only for exact source commit
-`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened bounded
-claim only for those bytes.
+typed-array `set`. Its hostile-carrier security regressions and all prior checks
+passed as part of the exact Cycle 2g frozen-byte local and two-OS CI gates. The
+exact local gate and Cycle 2g Ubuntu/Windows CI passed at exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, historically restoring the
+hardened bounded claim for those bytes. That restoration is now Superseded:
+prototype equality alone accepts a `SharedArrayBuffer` whose prototype was
+changed to `ArrayBuffer.prototype` and an alternate typed array whose prototype
+was changed to `Uint8Array.prototype`. Cycle 2h adds intrinsic `Uint8Array`
+element-type and `ArrayBuffer` brand checks with safe prototype ordering across
+all three Cycle 2f roles.
 
 ## Evidence and status boundary
 
@@ -131,15 +142,16 @@ unchanged regression health only, not Cycle 2f evidence. It creates no
 dedicated workflow, evidence schema, evidence artifact, retained log package,
 offline evidence review, or evidence note. These are historical green gate
 facts only: the missing hostile-carrier coverage means they do not establish
-the bounded source-stage security claim. The current hardened bytes passed the
-exact final pre-promotion local restoration gate. Formatting, full ESLint, all
+the bounded source-stage security claim. The `df1ddff` hardened bytes passed
+the exact final pre-promotion local restoration gate. Formatting, full ESLint, all
 guardrails, the production-license check across 86 versions, every scripted
 typecheck/test/build across 12 of 13 workspace projects, 47 test files with 987
 passed plus two skipped (989 total), and the boundary verifier were green.
 CI run `32690685837` passed in Ubuntu job `97323672725` and Windows job
 `97323672813` on exact source commit
-`df1ddffdede9900302da34160ce6b9a62b9d1708`, completing the hardened Cycle 2f
-restoration gate. Parser run/job `32690685841` / `97323672800`, custody run/job
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, completing the historical Cycle 2f
+restoration gate. It does not attest current Cycle 2h bytes or revive the now-
+Superseded restoration conclusion. Parser run/job `32690685841` / `97323672800`, custody run/job
 `32690685846` / `97323672628`, and PostgreSQL run/job `32690685829` /
 `97323672631` passed as unchanged regression health only; they are not Cycle 2f
 restoration or Cycle 2g evidence.
@@ -215,16 +227,33 @@ caller `constructor` / `Symbol.species` allocation dispatch. This ADR's CI
 anchors remain historical green gate facts for source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only and do not attest the current
 hardened bytes. The replacement Cycle 2g frozen-byte local and two-OS CI gates
-passed only for exact source commit
-`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened claim only
-for those bytes. Cycle 2g cannot prove that the caller
+passed for exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708` as historical green facts. That
+Cycle 2f restoration and the Cycle 2g conclusion are now Superseded. Cycle 2g cannot prove that the caller
 lacked the reference through another channel, that the digest hides predictable
 labels, or that Cycle 2f cannot be called directly.
+
+Cycle 2h hardens the Cycle 2f plan, candidate, and declared-reference roles
+with intrinsic `Uint8Array` element-type and `ArrayBuffer` brand validation,
+exact prototypes, safe check ordering, preallocation actual-length limits,
+ordinary allocation, and intrinsic copying.
+It preserves this ADR's non-carrier schema, exact checks, exact nonclaims,
+metric arithmetic, failure/result semantics, historical anchors, and
+no-dedicated-evidence status. Cycle 2h is the exact 40-path transition (38
+modified and two added) from
+`14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`; the additional path is the
+existing historical local custody fixture manifest, not a new/dedicated/live
+evidence artifact. Its two changed custody source/test SHA-256 entries refresh,
+while fixture cases, schema, order, and payload identity/content remain
+unchanged. Its final working-tree local gate
+is Pass; source commit, CI, parser, and custody promotion gates remain Pending.
 
 ## References
 
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [ADR 0032](./0032-bounded-synthetic-two-declared-validator-fact-comparison.md)

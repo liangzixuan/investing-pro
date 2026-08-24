@@ -188,6 +188,25 @@ const METRICS = [
 const APPROVAL_DOMAIN = new TextEncoder().encode(
   "research-cockpit:filing-corpus-approval:v1\u0000",
 );
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "buffer",
+);
+const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "byteLength",
+);
+const TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+);
+const ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+);
 const DOCUMENT_LIMITS = Object.freeze({
   adjudicationProtocol: 65_536,
   authorityKeys: 16_384,
@@ -337,30 +356,81 @@ function snapshotAdmissionInput(value: unknown): AdmissionInputSnapshot {
   const evaluatedAt = record.evaluatedAt;
   if (typeof evaluatedAt !== "string") fail("FILING_CORPUS_INVALID_INPUT");
   return Object.freeze({
-    adjudicationProtocol: byteSnapshot(record.adjudicationProtocol),
-    authorityKeys: byteSnapshot(record.authorityKeys),
-    candidateManifest: byteSnapshot(record.candidateManifest),
+    adjudicationProtocol: byteSnapshot(
+      record.adjudicationProtocol,
+      DOCUMENT_LIMITS.adjudicationProtocol,
+      "FILING_CORPUS_DOCUMENT_INVALID",
+    ),
+    authorityKeys: byteSnapshot(
+      record.authorityKeys,
+      DOCUMENT_LIMITS.authorityKeys,
+      "FILING_CORPUS_AUTHORITY_INVALID",
+    ),
+    candidateManifest: byteSnapshot(
+      record.candidateManifest,
+      DOCUMENT_LIMITS.candidateManifest,
+      "FILING_CORPUS_DOCUMENT_INVALID",
+    ),
     evaluatedAt,
-    manifest: byteSnapshot(record.manifest),
-    rightsApproval: byteSnapshot(record.rightsApproval),
-    selectionPlan: byteSnapshot(record.selectionPlan),
-    stewardApproval: byteSnapshot(record.stewardApproval),
+    manifest: byteSnapshot(
+      record.manifest,
+      DOCUMENT_LIMITS.manifest,
+      "FILING_CORPUS_DOCUMENT_INVALID",
+    ),
+    rightsApproval: byteSnapshot(
+      record.rightsApproval,
+      DOCUMENT_LIMITS.rightsApproval,
+      "FILING_CORPUS_APPROVAL_INVALID",
+    ),
+    selectionPlan: byteSnapshot(
+      record.selectionPlan,
+      DOCUMENT_LIMITS.selectionPlan,
+      "FILING_CORPUS_DOCUMENT_INVALID",
+    ),
+    stewardApproval: byteSnapshot(
+      record.stewardApproval,
+      DOCUMENT_LIMITS.stewardApproval,
+      "FILING_CORPUS_APPROVAL_INVALID",
+    ),
   });
 }
 
-function byteSnapshot(value: unknown): Uint8Array {
-  if (
-    !(value instanceof Uint8Array) ||
-    !ArrayBuffer.isView(value) ||
-    Object.getPrototypeOf(value) !== Uint8Array.prototype
-  ) {
-    fail("FILING_CORPUS_INVALID_INPUT");
-  }
+function byteSnapshot(
+  value: unknown,
+  maximumBytes: number,
+  oversizeCode: FilingCorpusAdmissionFailureCode,
+): Uint8Array {
   try {
-    if (!(value.buffer instanceof ArrayBuffer))
+    if (typeof value !== "object" || value === null)
       fail("FILING_CORPUS_INVALID_INPUT");
-    return Uint8Array.prototype.slice.call(value);
-  } catch {
+    const bytes = value as Uint8Array;
+    const tag = TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
+    const byteLength = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const backingByteLength = ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      buffer,
+    ) as unknown;
+    if (
+      tag !== "Uint8Array" ||
+      typeof byteLength !== "number" ||
+      typeof backingByteLength !== "number" ||
+      Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
+      Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype
+    ) {
+      fail("FILING_CORPUS_INVALID_INPUT");
+    }
+    if (byteLength > maximumBytes) {
+      fail(oversizeCode);
+    }
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
+  } catch (error) {
+    if (error instanceof FilingCorpusAdmissionError) throw error;
     fail("FILING_CORPUS_INVALID_INPUT");
   }
 }

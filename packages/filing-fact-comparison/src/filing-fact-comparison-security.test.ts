@@ -254,6 +254,93 @@ describe("Cycle 2e filing fact comparison security boundary", () => {
     }
   });
 
+  it("uses intrinsic backing-store metadata for both validator report byte roles", () => {
+    const reports = buildSyntheticFilingFactComparisonEnvelopes();
+    for (const position of ["a", "b"] as const) {
+      const source = reportAt(reports, position);
+      const shared = new Uint8Array(new SharedArrayBuffer(source.byteLength));
+      Uint8Array.prototype.set.call(shared, source);
+      shadowByteMetadata(shared, source.byteLength);
+      expectQuarantine(
+        compareAt(reports, position, shared),
+        "report_invalid",
+        `${position} shared metadata shadow`,
+      );
+
+      expectQuarantine(
+        compareAt(reports, position, rePrototypedSharedCopy(source)),
+        "report_invalid",
+        `${position} re-prototyped shared backing`,
+      );
+
+      for (const carrier of rePrototypedNonUint8Copies(source)) {
+        expectQuarantine(
+          compareAt(reports, position, carrier),
+          "report_invalid",
+          `${position} re-prototyped non-Uint8 typed array`,
+        );
+      }
+
+      const oversized = new Uint8Array(
+        FILING_FACT_COMPARISON_LIMITS.reportBytes + 1,
+      );
+      Uint8Array.prototype.set.call(oversized, source);
+      shadowByteMetadata(oversized, source.byteLength);
+      expectQuarantine(
+        compareAt(reports, position, oversized),
+        "report_invalid",
+        `${position} oversized metadata shadow`,
+      );
+    }
+  });
+
+  it("does not dispatch metadata, iterator, allocation, or instance hooks for either validator report byte role", () => {
+    const reports = buildSyntheticFilingFactComparisonEnvelopes();
+    for (const position of ["a", "b"] as const) {
+      for (const hook of [
+        "buffer",
+        "byteLength",
+        "toStringTag",
+        "constructor",
+        "species",
+        "iterator",
+        "set",
+      ] as const) {
+        let calls = 0;
+        const carrier = withTypedArrayAllocationHook(
+          reportAt(reports, position),
+          hook,
+          () => {
+            calls += 1;
+          },
+        );
+        expect(compareAt(reports, position, carrier).status, position).toBe(
+          "agreed",
+        );
+        expect(calls, `${position}:${hook}`).toBe(0);
+      }
+    }
+  });
+
+  it("rejects proxies before a getPrototypeOf trap can run in either validator report byte role", () => {
+    const reports = buildSyntheticFilingFactComparisonEnvelopes();
+    for (const position of ["a", "b"] as const) {
+      let trapCalls = 0;
+      const carrier = new Proxy(reportAt(reports, position).slice(), {
+        getPrototypeOf() {
+          trapCalls += 1;
+          throw new Error("Proxy prototype trap must not execute.");
+        },
+      });
+      expectQuarantine(
+        compareAt(reports, position, carrier),
+        "report_invalid",
+        `${position} proxy carrier`,
+      );
+      expect(trapCalls, position).toBe(0);
+    }
+  });
+
   it("rejects invalid UTF-8, BOM, line endings, trailing bytes, and noncanonical key order in either role", () => {
     const reports = buildSyntheticFilingFactComparisonEnvelopes();
     for (const position of ["a", "b"] as const) {
@@ -828,6 +915,72 @@ function compareAt(
         reports.declaredValidatorAEnvelope,
         replacement,
       );
+}
+
+function shadowByteMetadata(bytes: Uint8Array, byteLength: number): void {
+  Object.defineProperties(bytes, {
+    buffer: { value: new ArrayBuffer(byteLength) },
+    byteLength: { value: byteLength },
+  });
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(source: Uint8Array): readonly Uint8Array[] {
+  const paddedByteLength =
+    Math.ceil(source.byteLength / Uint16Array.BYTES_PER_ELEMENT) *
+    Uint16Array.BYTES_PER_ELEMENT;
+  const views = [
+    new Int8Array(source.byteLength),
+    new Uint8ClampedArray(source.byteLength),
+    new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT),
+  ];
+  return views.map((view) => {
+    Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+    Object.setPrototypeOf(view, Uint8Array.prototype);
+    return view as unknown as Uint8Array;
+  });
+}
+
+function withTypedArrayAllocationHook(
+  source: Uint8Array,
+  hook:
+    | "buffer"
+    | "byteLength"
+    | "toStringTag"
+    | "constructor"
+    | "species"
+    | "iterator"
+    | "set",
+  onAccess: () => void,
+): Uint8Array {
+  const bytes = new Uint8Array(source);
+  const failOnAccess = (): never => {
+    onAccess();
+    throw new Error("Caller-controlled allocation hook was accessed.");
+  };
+  if (hook === "species") {
+    const constructor = {};
+    Object.defineProperty(constructor, Symbol.species, { get: failOnAccess });
+    Object.defineProperty(bytes, "constructor", { value: constructor });
+  } else {
+    Object.defineProperty(
+      bytes,
+      hook === "iterator"
+        ? Symbol.iterator
+        : hook === "toStringTag"
+          ? Symbol.toStringTag
+          : hook,
+      { get: failOnAccess },
+    );
+  }
+  return bytes;
 }
 
 function payloadOf(envelope: MutableRecord): MutableRecord {

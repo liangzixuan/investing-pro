@@ -5,13 +5,22 @@ envelope, AES-256-GCM encrypted local custody, fixed 24-hour retention, and
 terminal logical key unavailability in one process. The decision is recorded
 in [ADR 0030](./adr/0030-bounded-synthetic-filing-payload-custody.md).
 
-Current status: **the bounded synthetic claim is Pass on exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`; production remains Blocked.**
-Local integration, two-OS CI, dedicated Linux evidence, exact-commit offline
-review, and independent retained artifact/log review agree. Cycle 2b remains
-separately Blocked on external metadata, approvals, and human key-authority
-review. No real payload, external configuration, fetch, or application
-composition exists.
+Current status: **the local integration, two-OS CI, dedicated Linux evidence,
+exact-commit offline review, and independent retained artifact/log review at
+`ef22c7bc10596840b8ff686b9190730956fab0c4` remain historical green facts. The
+prior bounded owned-byte security conclusion is Superseded; production remains
+Blocked.** Payload, entropy, and key-store byte paths could consult
+caller-controlled metadata or instance hooks before ownership was established.
+Current intrinsic-backing, actual-length, and owned-copy hardening is
+implemented, and its exact final working-tree local gate is Pass. The source
+commit, two-OS CI, parser live acceptance, and custody live acceptance remain
+Pending under Cycle 2h. Cycle
+2b remains separately Blocked on external metadata, approvals, and human
+key-authority review. No real payload, external configuration, fetch, or
+application composition exists.
+
+Every Pass entry below records the historical exact-source result. None attests
+the current hardened source bytes or revives the Superseded conclusion.
 
 The final local aggregate is successor-compatibility health: 848 passed plus 2
 POSIX-only Windows skips, including 64 filing-parser passes. It does not replace
@@ -44,10 +53,12 @@ nonce-hash samples in that run; it cannot establish OS entropy quality.
 
 ## Target claim and exact checks
 
-The sole bounded target claim is
+The sole bounded target claim historically accepted was
 `bounded_synthetic_filing_payload_integrity_custody_and_logical_key_unavailability`.
-It is Pass only for exact commit
+Its original live evidence is bound only to exact commit
 `ef22c7bc10596840b8ff686b9190730956fab0c4` and the gates above.
+The bounded owned-byte security conclusion is now Superseded pending Cycle 2h
+promotion.
 
 The exact ordered checks are:
 
@@ -124,6 +135,24 @@ candidate-observation commitment consumes no Cycle 2c plaintext, ciphertext,
 key, receipt, audit history, artifact, or evidence record. The canonical Cycle
 2c 16 checks, 16 nonclaims, 29-source schema, artifact, and evidence note remain
 unchanged. See the [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
+
+Cycle 2h hardens the public staging payload; injected entropy results for the
+payload ID, key ID, AES key, nonce, and staging record name; and key-store
+write/read byte roles. It requires the intrinsic `Uint8Array` element type and
+exact prototype plus intrinsic `ArrayBuffer` brand and exact prototype before
+role limits and owned copy, without consuming or widening any historical ciphertext, key, receipt,
+audit history, artifact, or evidence record. The canonical Cycle 2c schema,
+artifact, evidence note, 16 checks, 16 nonclaims, and 29-source set remain
+unchanged. Its verifier accepts Cycle 2h only as the exact 40-path transition
+from `14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`; cumulative custody history is
+exactly 82 unique paths after including one pinned pre-Cycle 2h database
+maintenance path. The existing historical
+`fixtures/synthetic/filing-payload-custody/v1/manifest.json` refreshes only the
+SHA-256 entries for the changed custody source and security-test files. Fixture
+cases, schema, order, payload identity/content, and canonical live evidence
+schemas, artifacts, notes, checks, nonclaims, and source sets remain unchanged;
+the manifest is a local fixture-integrity anchor, not new or live evidence. See
+the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
 
 Exact remote, source, artifact, log, and custody anchors are recorded in the
 [Cycle 2c evidence note](./FILING_PAYLOAD_CUSTODY_EVIDENCE.md).

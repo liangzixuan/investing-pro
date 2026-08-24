@@ -1,8 +1,10 @@
 # ADR 0030: Bounded synthetic filing-payload custody
 
-Status: bounded synthetic claim verified on exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`; Cycle 2b and production admission
-blocked
+Status: exact-commit live run, artifact, and review remain historical green
+facts at `ef22c7bc10596840b8ff686b9190730956fab0c4`; prior bounded owned-byte
+security conclusion Superseded; Cycle 2h hardening final working-tree local
+gate Pass; source commit/CI/parser/custody live gates Pending; Cycle 2b and
+production admission blocked
 
 ## Context
 
@@ -78,9 +80,10 @@ payload fixture, external URL, fetch code, approval, key configuration, or
 
 ## Evidence and status rule
 
-The bounded claim is Pass only for exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`. The final successor-compatible
-local `pnpm verify` gate passed format, lint, every guardrail including 86
+The bounded claim was historically accepted for exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`; its bounded owned-byte security
+conclusion is Superseded pending Cycle 2h. The final successor-compatible local
+`pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test files
 with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases). This
 later local gate does not replace or widen the canonical live evidence. Two-OS
@@ -168,6 +171,24 @@ key, receipt, audit history, artifact, or evidence record. It adds no real
 payload, custody, retention, deletion, or cryptographic-erasure claim and does
 not widen the canonical Cycle 2c evidence.
 
+Cycle 2h changes only the public staging payload; five injected entropy-result
+roles; and key-store write/read byte carriers. The implementation now recovers
+intrinsic typed-array backing, length, and element type before proxy-sensitive
+prototype checks, requires intrinsic `Uint8Array` element type/exact prototype
+and intrinsic `ArrayBuffer` brand/exact prototype, checks actual exact or bounded
+length before allocation, and copies with an ordinary allocation plus intrinsic
+`set.call`. The historical live result did not cover metadata shadows or
+caller accessor/instance/allocation hooks, so its bounded owned-byte security
+conclusion is Superseded until the exact Cycle 2h gates pass. The canonical
+Cycle 2c evidence schema, artifact, note, checks, nonclaims, and source set stay
+unchanged. The existing historical
+`fixtures/synthetic/filing-payload-custody/v1/manifest.json` refreshes only the
+SHA-256 entries for `payload-custody.ts` and
+`payload-custody-security.test.ts`; fixture cases, schema, order, and payload
+identity/content remain unchanged. That local fixture-integrity anchor is not a
+new/dedicated/live evidence artifact. Cycle 2h adds no custody, KMS, retention,
+deletion, or real-data claim.
+
 ## References
 
 - [Cycle 2c evidence note](../FILING_PAYLOAD_CUSTODY_EVIDENCE.md)
@@ -176,6 +197,8 @@ not widen the canonical Cycle 2c evidence.
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)

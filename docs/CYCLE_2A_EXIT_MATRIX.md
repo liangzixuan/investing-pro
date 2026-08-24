@@ -7,13 +7,25 @@ replay, outside-worker ephemeral Ed25519 provenance, and a separate
 source-bound evidence domain. The design is recorded in
 [ADR 0028](./adr/0028-bounded-synthetic-filing-parser-isolation.md).
 
-Current status: **The exact frozen-byte local `pnpm verify` gate, dedicated
+Current status: **the exact frozen-byte local `pnpm verify` gate, dedicated
 Linux run, retained success-only artifact, authenticated log review, and
-independent offline review pass for the bounded synthetic Cycle 2a claim.**
-Broader Cycle 2 and production admission remain blocked. This work does not
-create B15/V15, alter PostgreSQL V1 through V14, compose the parser into an
-application, or admit real data. Exact anchors are in the
-[Cycle 2a evidence note](./FILING_PARSER_ISOLATION_EVIDENCE.md).
+independent offline review remain historical green facts. The prior bounded
+owned-byte security conclusion is Superseded.** Archive snapshotting and
+injected signer/process-runner byte outputs used caller-observable metadata or
+allocation paths before Cycle 2h hostile-carrier coverage.
+Current intrinsic-backing, actual-length, and owned-copy hardening is
+implemented, and its exact final working-tree local gate is Pass. The source
+commit, two-OS CI, parser live acceptance, and custody live acceptance remain
+Pending. Broader Cycle 2 and
+production admission remain blocked. This work does not create B15/V15, alter
+PostgreSQL V1 through V14, compose the parser into an application, or admit real
+data. Immutable historical anchors remain in the
+[Cycle 2a evidence note](./FILING_PARSER_ISOLATION_EVIDENCE.md); the current
+status overlay is specified by the
+[Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+
+Every Pass entry below records the historical exact-source result. None attests
+the current hardened source bytes or revives the Superseded conclusion.
 
 | Gate                       | Evidence required                                                                                                                                                                                                         | Current status                                                                                                                        |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -36,8 +48,10 @@ application, or admit real data. Exact anchors are in the
 
 ## Bounded claim and nonclaims
 
-The sole bounded claim accepted at exit is
+The sole bounded claim historically accepted at exit was
 `bounded_synthetic_one_shot_filing_parser_isolation_quarantine_replay_and_provenance_binding`.
+Its bounded owned-byte security conclusion is now Superseded pending Cycle 2h
+promotion.
 
 The exact ordered nonclaims are:
 
@@ -76,3 +90,16 @@ counsel-approved or representative filing corpus, ten facts, quality metrics,
 general XBRL/iXBRL, production isolation/keys/operations, application or
 database composition, malware safety, external fetching, or real-data
 admission. It remains separate from B15/V15 and production remains blocked.
+
+Cycle 2h is a source-only successor that hardens the parser archive, injected
+signer signature output, and stdout/stderr from every injected process-runner
+result. It uses intrinsic typed-array backing, length, and element-type reads,
+requires the intrinsic `Uint8Array` element type and exact prototype, applies
+intrinsic `ArrayBuffer` brand plus exact-prototype validation, and enforces preallocation role
+limits, ordinary allocation, and intrinsic `set.call`. Signatures must have
+exactly 64 actual bytes and the create/start/remove/residue runner streams must
+fit the requesting process limits before allocation. Oversized exact archive carriers are hashed
+synchronously without an owned copy so the existing signed
+`archive_limit_exceeded` quarantine is preserved. The canonical Cycle 2a
+schema, artifact, evidence note, 16 checks, 16 nonclaims, and 26-source set do
+not change. See the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).

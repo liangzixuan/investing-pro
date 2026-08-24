@@ -5,12 +5,21 @@ immutable, content-addressed public-filing candidate manifest after separate
 rights-authority and data-steward approvals. The decision is recorded in
 [ADR 0029](./adr/0029-fixed-public-filing-candidate-manifest-admission.md).
 
-Current status: **Phase-A verifier protocol implemented; local and CI
-verification Pass. Cycle 2b is Blocked.** There is no real configuration,
-external metadata inventory, approval, Cycle 2b workflow, run, evidence schema,
-artifact, or evidence note. The target claim
+Current status: **Phase-A verifier protocol implemented; its recorded local and
+CI jobs remain historical green facts, but the prior bounded owned-byte
+security conclusion is Superseded. Cycle 2b is Blocked.** Caller document
+carriers could spoof backing/length metadata or dispatch allocation hooks.
+Current intrinsic-backing, actual-length, and owned-copy hardening is
+implemented, and its exact final working-tree local gate is Pass. The source
+commit, two-OS CI, parser live acceptance, and custody live acceptance remain
+Pending under Cycle 2h. There
+is no real configuration, external metadata inventory, approval, Cycle 2b
+workflow, run, evidence schema, artifact, or evidence note. The target claim
 `fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
 has not been established.
+
+Every Pass entry below records the historical exact-source result. None attests
+the current hardened source bytes or establishes the blocked Cycle 2b target.
 
 | Gate                     | Required result                                                                                                                                                         | Current status                                                                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -130,3 +139,12 @@ order authenticate no counsel, steward, authority registry, external clock,
 adjudicator, corpus, filing, or parser and provide none of the external Phase-B
 inputs. It creates no Cycle 2b workflow or evidence and does not change this
 Blocked status. See the [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
+
+Cycle 2h hardens the seven Phase-A byte-document roles with intrinsic
+typed-array backing, length, and element-type reads before proxy-sensitive
+prototype checks, exact intrinsic `Uint8Array` element type/prototype and
+intrinsic `ArrayBuffer` brand/prototype validation, each document's actual
+maximum before allocation, and an ordinary intrinsic copy. It supplies
+no external inventory, approval, chronology, authority, workflow, artifact, or
+evidence and does not change Cycle 2b's Blocked status. See the
+[Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).

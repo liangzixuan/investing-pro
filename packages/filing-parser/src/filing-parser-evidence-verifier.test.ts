@@ -23,6 +23,9 @@ import {
   isCycle2gCommitDiffSetAllowed,
   isCycle2gDisconnectedQualityPrecommitmentTreeAllowed,
   isCycle2gTransitionRoutingRequired,
+  isCycle2hBaselineMergeBaseAllowed,
+  isCycle2hCommitDiffSetAllowed,
+  isCycle2hTransitionRoutingRequired,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
 
@@ -396,6 +399,124 @@ const CYCLE_2G_TRANSITION = [
   { path: "packages/filing-quality-precommitment/tsconfig.json", status: "A" },
   { path: "pnpm-lock.yaml", status: "M" },
   { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
+const CYCLE_2H_BASELINE_REVISION =
+  "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
+const CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH =
+  "packages/db/tests/postgres-acceptance-evidence-review.test.ts" as const;
+const CYCLE_2H_TRANSITION = [
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2E_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2F_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2G_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2H_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0028-bounded-synthetic-filing-parser-isolation.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+    status: "M",
+  },
+  {
+    path: "packages/filing-fact-comparison/src/filing-fact-comparison-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-fact-comparison/src/filing-fact-comparison.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/corpus-admission-security.test.ts",
+    status: "M",
+  },
+  { path: "packages/filing-parser/src/corpus-admission.ts", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "packages/filing-parser/src/parser-boundary.ts", status: "M" },
+  { path: "packages/filing-parser/src/parser-security.test.ts", status: "M" },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/payload-custody.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-quality-measurement/src/filing-quality-measurement.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-quality-precommitment/src/filing-quality-precommitment-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
+    status: "M",
+  },
 ] as const;
 
 afterEach(async () => {
@@ -778,6 +899,110 @@ describe("offline filing parser evidence review", () => {
     expect(
       isCycle2gTransitionRoutingRequired(undefined, [], CYCLE_2F_TRANSITION),
     ).toBe(false);
+  });
+
+  it("admits only the exact 38-modification and two-addition Cycle 2h transition", () => {
+    expect(CYCLE_2H_TRANSITION).toHaveLength(40);
+    expect(
+      CYCLE_2H_TRANSITION.filter((entry) => entry.status === "M"),
+    ).toHaveLength(38);
+    expect(
+      CYCLE_2H_TRANSITION.filter((entry) => entry.status === "A"),
+    ).toHaveLength(2);
+    expect(isCycle2hCommitDiffSetAllowed(CYCLE_2H_TRANSITION)).toBe(true);
+    expect(isCycle2gCommitDiffSetAllowed(CYCLE_2G_TRANSITION)).toBe(true);
+
+    for (const omitted of CYCLE_2H_TRANSITION) {
+      expect(
+        isCycle2hCommitDiffSetAllowed(
+          CYCLE_2H_TRANSITION.filter((entry) => entry !== omitted),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2aCommitDiffEntryAllowed(omitted.status, omitted.path),
+      ).toBe(true);
+    }
+    expect(
+      isCycle2hCommitDiffSetAllowed([
+        ...CYCLE_2H_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2hCommitDiffSetAllowed(
+        CYCLE_2H_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "D" } : entry,
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2hCommitDiffSetAllowed(
+        CYCLE_2H_TRANSITION.map((entry) =>
+          entry.path ===
+          "fixtures/synthetic/filing-payload-custody/v1/manifest.json"
+            ? { ...entry, status: "A" }
+            : entry,
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2hCommitDiffSetAllowed(
+        CYCLE_2H_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "R100" } : entry,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("routes Cycle 2h before the immutable Cycle 2g shape and pins its merge base", () => {
+    const markerFreeModifications = CYCLE_2H_TRANSITION.filter(
+      (entry) => entry.status === "M",
+    );
+    const baselineWithMaintenance = [
+      ...CYCLE_2G_TRANSITION,
+      { path: CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH, status: "M" },
+    ];
+
+    expect(isCycle2hBaselineMergeBaseAllowed(CYCLE_2H_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2hBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
+    expect(isCycle2hBaselineMergeBaseAllowed(undefined)).toBe(false);
+    expect(markerFreeModifications).toHaveLength(38);
+    expect(
+      isCycle2hTransitionRoutingRequired(
+        markerFreeModifications.map((entry) => entry.path),
+        CYCLE_2G_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isCycle2hTransitionRoutingRequired(undefined, CYCLE_2H_TRANSITION),
+    ).toBe(true);
+    expect(isCycle2hTransitionRoutingRequired([], CYCLE_2G_TRANSITION)).toBe(
+      false,
+    );
+    expect(
+      isCycle2hTransitionRoutingRequired(undefined, [
+        { path: CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH },
+      ]),
+    ).toBe(true);
+
+    expect(isCycle2gCommitDiffSetAllowed(baselineWithMaintenance)).toBe(false);
+    expect(isCycle2hCommitDiffSetAllowed(CYCLE_2H_TRANSITION)).toBe(true);
+    expect(
+      isCycle2hCommitDiffSetAllowed([
+        ...CYCLE_2H_TRANSITION,
+        { path: CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH, status: "M" },
+      ]),
+    ).toBe(false);
+    for (const status of ["A", "M", "R100"]) {
+      expect(
+        isCycle2aCommitDiffEntryAllowed(
+          status,
+          CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH,
+        ),
+      ).toBe(false);
+    }
   });
 
   it("accepts exactly one conventional CLI separator without weakening the closed argument set", () => {

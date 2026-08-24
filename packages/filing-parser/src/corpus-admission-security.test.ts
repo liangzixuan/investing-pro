@@ -51,6 +51,20 @@ interface HarnessOptions {
   readonly stewardRevokedAt?: string | null;
 }
 
+const DOCUMENT_BYTE_ROLES = [
+  ["adjudicationProtocol", 65_536, "FILING_CORPUS_DOCUMENT_INVALID"],
+  ["authorityKeys", 16_384, "FILING_CORPUS_AUTHORITY_INVALID"],
+  ["candidateManifest", 524_288, "FILING_CORPUS_DOCUMENT_INVALID"],
+  ["manifest", 65_536, "FILING_CORPUS_DOCUMENT_INVALID"],
+  ["rightsApproval", 16_384, "FILING_CORPUS_APPROVAL_INVALID"],
+  ["selectionPlan", 65_536, "FILING_CORPUS_DOCUMENT_INVALID"],
+  ["stewardApproval", 16_384, "FILING_CORPUS_APPROVAL_INVALID"],
+] as const satisfies readonly (readonly [
+  DocumentName,
+  number,
+  FilingCorpusAdmissionFailureCode,
+])[];
+
 describe("Cycle 2b filing corpus admission security boundary", () => {
   it("admits only aggregate metadata and replays deterministically", () => {
     const harness = buildHarness();
@@ -149,6 +163,202 @@ describe("Cycle 2b filing corpus admission security boundary", () => {
     }
     expect(accessor).not.toHaveBeenCalled();
     expect(iterator).not.toHaveBeenCalled();
+  });
+
+  it("uses intrinsic metadata and preserves exact per-role oversize codes", () => {
+    const harness = buildHarness();
+
+    for (const [role, maximumBytes, oversizeCode] of DOCUMENT_BYTE_ROLES) {
+      const original = harness.input[role];
+      const shared = new Uint8Array(new SharedArrayBuffer(original.byteLength));
+      shared.set(original);
+      Object.defineProperties(shared, {
+        buffer: { value: new ArrayBuffer(original.byteLength) },
+        byteLength: { value: original.byteLength },
+      });
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: shared,
+          }),
+        "FILING_CORPUS_INVALID_INPUT",
+      );
+
+      for (const [, carrier] of rePrototypedNonUint8Copies(original)) {
+        expectAdmissionFailure(
+          () =>
+            verifyFilingCorpusAdmission({
+              ...harness.input,
+              [role]: carrier,
+            }),
+          "FILING_CORPUS_INVALID_INPUT",
+        );
+      }
+
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: rePrototypedSharedCopy(original),
+          }),
+        "FILING_CORPUS_INVALID_INPUT",
+      );
+
+      const oversized = new Uint8Array(maximumBytes + 1);
+      oversized.set(original);
+      Object.defineProperties(oversized, {
+        buffer: { value: new ArrayBuffer(original.byteLength) },
+        byteLength: { value: original.byteLength },
+      });
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: oversized,
+          }),
+        oversizeCode,
+      );
+    }
+  });
+
+  it("does not invoke caller metadata, iterator, allocation, or instance hooks for any document role", () => {
+    const harness = buildHarness();
+
+    for (const [role] of DOCUMENT_BYTE_ROLES) {
+      for (const hook of [
+        "buffer",
+        "byteLength",
+        "toStringTag",
+        "constructor",
+        "species",
+        "iterator",
+        "set",
+      ] as const) {
+        let calls = 0;
+        const carrier = Uint8Array.from(harness.input[role]);
+        if (hook === "constructor") {
+          Object.defineProperty(carrier, "constructor", {
+            get() {
+              calls += 1;
+              throw new Error(JSON_CANARY);
+            },
+          });
+        } else if (hook === "species") {
+          const constructor = {};
+          Object.defineProperty(constructor, Symbol.species, {
+            get() {
+              calls += 1;
+              throw new Error(JSON_CANARY);
+            },
+          });
+          Object.defineProperty(carrier, "constructor", {
+            value: constructor,
+          });
+        } else {
+          Object.defineProperty(
+            carrier,
+            hook === "iterator"
+              ? Symbol.iterator
+              : hook === "toStringTag"
+                ? Symbol.toStringTag
+                : hook,
+            {
+              get() {
+                calls += 1;
+                throw new Error(JSON_CANARY);
+              },
+            },
+          );
+        }
+
+        expect(
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: carrier,
+          }),
+        ).toMatchObject({ status: "admitted" });
+        expect(calls, `${role}:${hook}`).toBe(0);
+      }
+    }
+  });
+
+  it("owns all seven retained document sources after admission returns", () => {
+    const harness = buildHarness();
+    const retained = Object.fromEntries(
+      DOCUMENT_BYTE_ROLES.map(([role]) => [
+        role,
+        Uint8Array.from(harness.input[role]),
+      ]),
+    ) as Record<DocumentName, Uint8Array>;
+    const admitted = verifyFilingCorpusAdmission({
+      ...harness.input,
+      ...retained,
+    });
+    const expected = structuredClone(admitted);
+    const originals = Object.fromEntries(
+      DOCUMENT_BYTE_ROLES.map(([role]) => [
+        role,
+        Uint8Array.from(retained[role]),
+      ]),
+    ) as Record<DocumentName, Uint8Array>;
+
+    for (const [role] of DOCUMENT_BYTE_ROLES) {
+      retained[role].fill(0xa5);
+      expect(retained[role], role).not.toEqual(originals[role]);
+    }
+
+    expect(admitted).toStrictEqual(expected);
+    expect(admitted.status).toBe("admitted");
+    expect(Object.isFrozen(admitted)).toBe(true);
+  });
+
+  it("rejects proxies, subclasses, and detached carriers in every document role", () => {
+    const harness = buildHarness();
+    class DocumentSubclass extends Uint8Array {}
+
+    for (const [role] of DOCUMENT_BYTE_ROLES) {
+      let prototypeTrapCalls = 0;
+      const proxy = new Proxy(harness.input[role], {
+        getPrototypeOf() {
+          prototypeTrapCalls += 1;
+          throw new Error(JSON_CANARY);
+        },
+      });
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: proxy,
+          }),
+        "FILING_CORPUS_INVALID_INPUT",
+      );
+      expect(prototypeTrapCalls, role).toBe(0);
+
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: new DocumentSubclass(harness.input[role]),
+          }),
+        "FILING_CORPUS_INVALID_INPUT",
+      );
+
+      const detached = harness.input[role].slice();
+      structuredClone(detached.buffer, { transfer: [detached.buffer] });
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            [role]: detached,
+          }),
+        "FILING_CORPUS_INVALID_INPUT",
+      );
+    }
+
+    expect(verifyFilingCorpusAdmission(harness.input)).toMatchObject({
+      status: "admitted",
+    });
   });
 
   it("rejects noncanonical, duplicate-key, malformed UTF-8, and oversized documents", () => {
@@ -1024,6 +1234,35 @@ function concatBytes(first: Uint8Array, second: Uint8Array): Uint8Array {
   output.set(first, 0);
   output.set(second, first.byteLength);
   return output;
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(
+  source: Uint8Array,
+): ReadonlyArray<readonly [string, Uint8Array]> {
+  const paddedByteLength =
+    Math.ceil(source.byteLength / Uint16Array.BYTES_PER_ELEMENT) *
+    Uint16Array.BYTES_PER_ELEMENT;
+  const views = [
+    ["int8", new Int8Array(source.byteLength)],
+    ["uint8_clamped", new Uint8ClampedArray(source.byteLength)],
+    [
+      "wider",
+      new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT),
+    ],
+  ] as const;
+  return views.map(([kind, view]) => {
+    Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+    Object.setPrototypeOf(view, Uint8Array.prototype);
+    return [kind, view as unknown as Uint8Array] as const;
+  });
 }
 
 function cloneJson<T>(value: T): T {

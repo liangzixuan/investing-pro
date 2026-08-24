@@ -9,12 +9,20 @@ fresh owned snapshots before validation. Tests generate the canonical pair,
 but the boundary proves only conformance to the closed synthetic schema, not
 generator identity or provenance.
 
-Current status: **bounded source-stage claim, local verification, and two-OS CI
-Pass only for exact source commit
-`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Cycle 2b and production admission
-remain Blocked.**
+Current status: **the local and two-OS CI jobs for exact source commit
+`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc` remain historical green facts, but
+the prior bounded owned-byte security conclusion is Superseded. Cycle 2b and
+production admission remain Blocked.** The two document snapshot paths could
+trust caller-controlled metadata or dispatch caller allocation hooks. Current
+intrinsic-backing, actual-length, and owned-copy hardening is implemented, and
+its exact final working-tree local gate is Pass. The source commit, two-OS CI,
+parser live acceptance, and custody live acceptance remain Pending under Cycle
+2h.
 There is no real filing, external configuration, dedicated Cycle 2d workflow,
 evidence schema, artifact, offline evidence review, or evidence note.
+
+Every Pass entry below records the historical exact-source result. None attests
+the current hardened source bytes or revives the Superseded conclusion.
 
 | Gate                     | Required result                                                                                                      | Current status                                                                                                                                                                                      |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -103,13 +111,15 @@ schema, canonical artifact, and evidence note remain unchanged. Their current
 offline verifiers accept Cycle 2d only as one exact atomic successor transition;
 no Cycle 2d result enters either record.
 
-Cycle 2d's bounded source-stage claim is Pass only because the exact frozen-byte
-local gate and Ubuntu/Windows CI agree at commit
-`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Failure, cancellation, any source
-change, a partial/extra successor tree, a non-value-free quarantine, or any
-attempted real-data input means no successor promotion without fresh gates.
-This Pass does not unblock Cycle 2b, establish full Cycle 2 quality, create
-B15/V15, or authorize production use.
+Cycle 2d's bounded source-stage claim was historically accepted because the
+exact frozen-byte local gate and Ubuntu/Windows CI agreed at commit
+`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`. Those results remain green facts,
+but the bounded owned-byte security conclusion is Superseded pending Cycle 2h.
+Failure, cancellation, any source change, a partial/extra successor tree, a
+non-value-free quarantine, or any attempted real-data input prevents future
+successor promotion without fresh gates. The historical result does not
+unblock Cycle 2b, establish full Cycle 2 quality, create B15/V15, or authorize
+production use.
 
 Cycle 2e is a separate successor-only synthetic comparison contract. It does
 not alter the exact Cycle 2d claim, checks, nonclaims, source bytes, test/CI
@@ -130,3 +140,11 @@ normalizer correctness, lineage correctness, accounting truth, or generator
 provenance and does not alter Cycle 2d's exact claim, checks, nonclaims, source
 bytes, test/CI anchors, or no-evidence status. See the
 [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
+
+Cycle 2h hardens both original/amendment document roles with intrinsic
+typed-array backing, length, and element-type reads; exact intrinsic
+`Uint8Array` element type/prototype and `ArrayBuffer` brand/prototype
+validation; preallocation bounds; and an ordinary intrinsic copy. It does not alter Cycle
+2d's exact schema, fact keys, checks, nonclaims, historical anchors, or
+no-evidence status, and it adds no proof of normalizer or accounting
+correctness. See the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).

@@ -959,6 +959,7 @@ describe("Cycle 2f filing quality measurement security boundary", () => {
 
   it("uses intrinsic buffer and length metadata for every byte role", () => {
     const encoded = encodedHarness(mutableHarness());
+    class ByteSubclass extends Uint8Array {}
     for (const [role, maximum] of [
       ["plan", FILING_QUALITY_MEASUREMENT_LIMITS.planBytes],
       [
@@ -976,6 +977,36 @@ describe("Cycle 2f filing quality measurement security boundary", () => {
       });
       expectQuarantined(
         measureEncoded({ ...encoded, [role]: shared }),
+        "input_invalid",
+      );
+
+      expectQuarantined(
+        measureEncoded({
+          ...encoded,
+          [role]: rePrototypedSharedCopy(original),
+        }),
+        "input_invalid",
+      );
+
+      for (const carrier of rePrototypedNonUint8Copies(original)) {
+        expectQuarantined(
+          measureEncoded({ ...encoded, [role]: carrier }),
+          "input_invalid",
+        );
+      }
+
+      expectQuarantined(
+        measureEncoded({
+          ...encoded,
+          [role]: new ByteSubclass(original),
+        }),
+        "input_invalid",
+      );
+
+      const detached = original.slice();
+      structuredClone(detached.buffer, { transfer: [detached.buffer] });
+      expectQuarantined(
+        measureEncoded({ ...encoded, [role]: detached }),
         "input_invalid",
       );
 
@@ -1028,6 +1059,38 @@ describe("Cycle 2f filing quality measurement security boundary", () => {
       expectEvaluated(measureEncoded({ ...encoded, [role]: speciesCarrier }));
       expect(speciesCalls, role).toBe(0);
       expect(speciesReentry, role).toBeUndefined();
+    }
+  });
+
+  it("never invokes own metadata, iterator, or instance hooks while snapshotting any byte role", () => {
+    const encoded = encodedHarness(mutableHarness());
+    for (const role of ["plan", "declaredReference", "candidate"] as const) {
+      for (const hook of [
+        "buffer",
+        "byteLength",
+        "toStringTag",
+        "iterator",
+        "set",
+      ] as const) {
+        let hookCalls = 0;
+        const carrier = new Uint8Array(encoded[role]);
+        Object.defineProperty(
+          carrier,
+          hook === "iterator"
+            ? Symbol.iterator
+            : hook === "toStringTag"
+              ? Symbol.toStringTag
+              : hook,
+          {
+            get() {
+              hookCalls += 1;
+              throw new TypeError("Caller byte hook must not execute.");
+            },
+          },
+        );
+        expectEvaluated(measureEncoded({ ...encoded, [role]: carrier }));
+        expect(hookCalls, `${role}:${hook}`).toBe(0);
+      }
     }
   });
 
@@ -1292,6 +1355,33 @@ function encodedHarness(harness: MutableHarness): EncodedHarness {
     ),
     plan: canonicalSyntheticFilingQualityMeasurementDocument(harness.plan),
   };
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(source: Uint8Array): readonly Uint8Array[] {
+  const elementBytes = Uint16Array.BYTES_PER_ELEMENT;
+  const remainder = source.byteLength % elementBytes;
+  const paddedByteLength =
+    remainder === 0
+      ? source.byteLength
+      : source.byteLength + elementBytes - remainder;
+  const views = [
+    new Int8Array(source.byteLength),
+    new Uint8ClampedArray(source.byteLength),
+    new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT),
+  ];
+  return views.map((view) => {
+    Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+    Object.setPrototypeOf(view, Uint8Array.prototype);
+    return view as unknown as Uint8Array;
+  });
 }
 
 function measureMutable(

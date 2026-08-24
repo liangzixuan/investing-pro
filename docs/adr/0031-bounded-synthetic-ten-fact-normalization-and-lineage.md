@@ -1,8 +1,10 @@
 # ADR 0031: bounded synthetic ten-fact normalization and lineage
 
-Status: bounded source-stage claim, local verification, and two-OS CI Pass only
-for exact source commit `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`; Cycle 2b
-and production admission Blocked.
+Status: exact-source local and two-OS CI jobs remain historical green facts for
+`f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`; prior bounded owned-byte security
+conclusion Superseded; Cycle 2h hardening final working-tree local gate Pass;
+source commit/CI/parser/custody live gates Pending; Cycle 2b and production
+admission Blocked.
 
 ## Context
 
@@ -170,12 +172,25 @@ normalizer or lineage correctness, accounting truth, or generator provenance,
 and Cycle 2g does not alter this ADR's exact claim, arrays, source bytes,
 test/CI anchors, or no-evidence status.
 
+Cycle 2h changes only the original/amendment document carrier boundary. The
+implementation now recovers intrinsic typed-array backing, length, and element
+type before proxy-sensitive prototype checks, requires intrinsic `Uint8Array`
+element type/exact prototype and intrinsic `ArrayBuffer` brand/exact prototype,
+checks the actual maximum before allocation, and copies
+with an ordinary allocation plus intrinsic `set.call`. The historical source
+and CI gates did not cover metadata shadows or constructor/species/accessor
+allocation hooks, so their bounded owned-byte security conclusion is
+Superseded until the exact Cycle 2h gates pass. Cycle 2d's schema, fact keys,
+checks, nonclaims, historical anchors, and no-evidence status remain unchanged.
+
 ## References
 
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [Cycle 2c exit matrix](../CYCLE_2C_EXIT_MATRIX.md)
 - [ADR 0029](./0029-fixed-public-filing-candidate-manifest-admission.md)

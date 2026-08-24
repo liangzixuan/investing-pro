@@ -224,6 +224,25 @@ const textDecoder = new TextDecoder("utf-8", {
   fatal: true,
   ignoreBOM: true,
 });
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "buffer",
+);
+const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "byteLength",
+);
+const TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+);
+const ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+);
 
 export function createSyntheticFilingPayloadFixture(): Uint8Array {
   const prefix = textEncoder.encode(
@@ -1558,31 +1577,35 @@ function snapshotBytes(
   exactLength = true,
 ): Uint8Array {
   try {
+    if (typeof value !== "object" || value === null) invalid("invalid_input");
+    const bytes = value;
+    const tag = TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
+    const length = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const backingByteLength = ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      buffer,
+    ) as unknown;
     if (
-      typeof value !== "object" ||
-      value === null ||
-      Object.getPrototypeOf(value) !== Uint8Array.prototype ||
-      Object.getPrototypeOf(value.buffer) !== ArrayBuffer.prototype
-    )
+      tag !== "Uint8Array" ||
+      typeof length !== "number" ||
+      typeof backingByteLength !== "number" ||
+      Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
+      Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype ||
+      length <= 0 ||
+      (exactLength ? length !== limit : length > limit)
+    ) {
       invalid("invalid_input");
+    }
+    const snapshot = new Uint8Array(length);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
   } catch (error) {
     rethrowBoundary(error, "invalid_input");
   }
-  let length: number;
-  try {
-    length = value.byteLength;
-  } catch {
-    invalid("invalid_input");
-  }
-  if (length <= 0 || (exactLength ? length !== limit : length > limit))
-    invalid("invalid_input");
-  const snapshot = new Uint8Array(length);
-  try {
-    snapshot.set(value);
-  } catch {
-    invalid("invalid_input");
-  }
-  return snapshot;
 }
 
 function copyBytes(value: Uint8Array): Uint8Array {

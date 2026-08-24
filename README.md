@@ -56,6 +56,11 @@ the [Cycle 2a exit matrix](./docs/CYCLE_2A_EXIT_MATRIX.md), with retained proof
 recorded in the
 [Cycle 2a evidence note](./docs/FILING_PARSER_ISOLATION_EVIDENCE.md).
 
+Those exact live and review anchors remain historical green facts, but the
+bounded owned-byte security conclusion is Superseded by the Cycle 2h
+hostile-carrier finding. The Cycle 2h working-tree local gate is Pass; source
+commit, CI, parser, and custody anchors remain Pending.
+
 Cycle 2b Phase A now implements only the side-effect-free
 `verifyFilingCorpusAdmission` protocol for a future fixed, content-addressed
 public-filing candidate manifest. **Local and CI verification pass; Cycle 2b
@@ -70,6 +75,12 @@ the later local/live/offline gates pass. This is not B15/V15 and does not close
 the wider Cycle 2 quality or production gates. See
 [ADR 0029](./docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md)
 and the [Cycle 2b exit matrix](./docs/CYCLE_2B_EXIT_MATRIX.md).
+
+The exact Phase-A local/CI jobs remain historical green facts, but their
+bounded owned-byte security conclusion is Superseded by the Cycle 2h
+hostile-carrier finding. The Cycle 2h working-tree local gate is Pass; source
+commit, CI, parser, and custody anchors remain Pending. Cycle 2b remains
+Blocked on the same external inputs.
 
 The exact frozen-byte local `pnpm verify` gate passes format, lint, every
 guardrail including all 86 production-license checks, all project typechecks,
@@ -100,8 +111,9 @@ CSPRNG TCB; source validates only the returned byte shape and exact requested
 length, not randomness or uniqueness. The dedicated Linux record is
 limited to observed Node `crypto.randomBytes` use and distinct DEK-fingerprint
 and nonce-hash samples in that run; it cannot establish OS entropy quality.
-**The bounded synthetic claim is Pass on exact commit
-`ef22c7bc10596840b8ff686b9190730956fab0c4`.** The final successor-compatible
+**The bounded synthetic claim was historically accepted on exact commit
+`ef22c7bc10596840b8ff686b9190730956fab0c4`; its bounded owned-byte security
+conclusion is now Superseded.** The final successor-compatible
 local `pnpm verify` gate passed format, lint, every guardrail including 86
 production-license checks, all project typechecks and builds, and 39 test
 files with 848 passed tests plus 2 POSIX-only Windows skips (850 total cases).
@@ -118,6 +130,12 @@ this is not B15/V15. See
 custody anchors in the
 [Cycle 2c evidence note](./docs/FILING_PAYLOAD_CUSTODY_EVIDENCE.md).
 
+Those canonical live and review anchors remain historical green facts, but the
+bounded owned-byte security conclusion is Superseded by the Cycle 2h
+hostile-carrier finding. Canonical evidence bytes remain unchanged. The Cycle
+2h working-tree local gate is Pass; source commit, CI, parser, and custody
+anchors remain Pending.
+
 Cycle 2d adds a separate, zero-dependency synthetic fact-normalization
 protocol. The caller supplies exactly two bounded canonical JSON byte
 documents matching the closed synthetic 10-K/10-K/A schema, and the boundary
@@ -132,7 +150,7 @@ project typechecks and builds, 86 production-license checks, and 41 test files
 with 876 passed plus 2 POSIX-only Windows skips (878 total cases: parser 65;
 custody 36 passed plus 2 skipped; normalization 26; DB 582; API 49; state 48;
 contracts 5; core 62; web 3). The bounded source-stage claim, local gate, and
-two-OS CI are Pass only for exact source commit
+two-OS CI historically passed for exact source commit
 `f0dcd8056955722681a4ed3d6b296d15a9c3fbbc`; CI run `32511008752` passed in
 Windows job `96861883906` and Ubuntu job `96861884146`.** Parser run/job
 `32511008497` / `96861883641`, custody run/job `32511008447` / `96861883543`,
@@ -145,6 +163,11 @@ remain Blocked, and this is not B15/V15. See
 [ADR 0031](./docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)
 and the [Cycle 2d exit matrix](./docs/CYCLE_2D_EXIT_MATRIX.md).
 
+The exact Cycle 2d local/CI jobs remain historical green facts, but their
+bounded owned-byte security conclusion is Superseded by the Cycle 2h
+hostile-carrier finding. The Cycle 2h working-tree local gate is Pass; source
+commit, CI, parser, and custody anchors remain Pending.
+
 Cycle 2e adds a separate, zero-dependency synthetic fact-comparison protocol.
 Exactly two bounded canonical envelopes occupy fixed declared-validator A/B
 roles. Two separate strict modules validate their complete same-schema
@@ -156,7 +179,7 @@ quarantine with no preferred report, merge, coercion, or silent repair.
 frozen bytes: `corepack pnpm verify` passed all format, lint, guardrail,
 typecheck, test, and build stages with 43 test files, 911 passed plus 2 skipped
 (913 total), all 11 workspace project checks, and 10 builds. The bounded
-source-stage claim, local gate, and two-OS CI are Pass only for exact source
+source-stage claim, local gate, and two-OS CI historically passed for exact source
 commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`; CI run `32518970387`
 passed in Ubuntu job `96886795980` and Windows job `96886796247`. Parser
 run/job `32518970423` / `96886796118`, custody run/job `32518970453` /
@@ -170,6 +193,11 @@ review, or evidence note; it admits no real data, leaves Cycle 2b and production
 Blocked, and is not B15/V15. See
 [ADR 0032](./docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md)
 and the [Cycle 2e exit matrix](./docs/CYCLE_2E_EXIT_MATRIX.md).
+
+The exact Cycle 2e local/CI jobs remain historical green facts, but their
+bounded owned-byte security conclusion is Superseded by the Cycle 2h
+hostile-carrier finding. The Cycle 2h working-tree local gate is Pass; source
+commit, CI, parser, and custody anchors remain Pending.
 
 Cycle 2f adds a separate, zero-dependency synthetic quality-measurement
 protocol. Exactly three bounded canonical documents occupy fixed plan,
@@ -195,9 +223,14 @@ and Windows job `97299715638` were green, but hostile plain `Uint8Array`
 carriers could spoof bounds/shared-buffer metadata or invoke caller
 `constructor` / `Symbol.species` hooks during snapshot allocation. Those green
 jobs are historical gate facts, not support for the bounded owned-snapshot
-claim. The hardened Cycle 2f bounded claim is restored only for exact source
-commit `df1ddffdede9900302da34160ce6b9a62b9d1708`, where the final local gate and
-Cycle 2g Ubuntu/Windows CI passed. Parser run/job `32681826015` / `97299715074`,
+claim. The hardened Cycle 2f bounded claim was restored for exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, where the final local gate and
+Cycle 2g Ubuntu/Windows CI passed, but that restoration is now also Superseded:
+prototype equality did not intrinsically brand the backing as `ArrayBuffer`, so
+a re-prototyped `SharedArrayBuffer` remained admissible; carrier prototype
+equality likewise admitted re-prototyped alternate typed arrays. Cycle 2h
+working-tree local restoration gate is Pass; source commit, CI, parser, and
+custody anchors remain Pending. Parser run/job `32681826015` / `97299715074`,
 custody run/job `32681826030` / `97299715006`, and PostgreSQL run/job
 `32681826040` / `97299715107` remain historical regression health only, not
 Cycle 2f evidence.**
@@ -239,8 +272,13 @@ allocate an ordinary `Uint8Array`, and copy with the intrinsic typed-array
 properties therefore cannot spoof carrier admission or redirect snapshot
 allocation into caller code.
 
-**Cycle 2g's bounded source-stage claim, local gate, and two-OS CI are Pass only
-for exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`.** The
+**Cycle 2g's local gate and two-OS CI at exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708` remain historical green facts, but
+its bounded owned-byte security conclusion is Superseded pending Cycle 2h.**
+Prototype equality did not intrinsically brand the backing as `ArrayBuffer`,
+did not prove the intrinsic `Uint8Array` element type, and admitted
+re-prototyped shared backing and alternate typed arrays. A proxy-sensitive
+prototype check also preceded complete intrinsic brand validation. The
 local gate passed formatting, full ESLint, all guardrails, the
 production-license check across 86 versions, every scripted
 typecheck/test/build across 12 of 13 workspace projects, and the boundary
@@ -261,11 +299,71 @@ authority, full Cycle 2 quality, B15/V15, or production use. Cycle 2f's existing
 CI anchors remain historical green gate facts for source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only; they do not attest the
 current hardened Cycle 2f bytes or revive the superseded conclusion. The local
-and Cycle 2g two-OS gates restore the hardened bounded claim only for
-`df1ddffdede9900302da34160ce6b9a62b9d1708`; the original `72e91f5`
+and Cycle 2g two-OS gates historically restored the hardened bounded claim at
+`df1ddffdede9900302da34160ce6b9a62b9d1708`; both that restoration and the
+Cycle 2g conclusion are now Superseded, while the original `72e91f5`
 conclusion remains Superseded. See
 [ADR 0034](./docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md)
 and the [Cycle 2g exit matrix](./docs/CYCLE_2G_EXIT_MATRIX.md).
+
+Cycle 2h closes the repeated public-byte-carrier gap across Cycle 2a through
+Cycle 2g. The affected roles are the parser archive, injected signer signature
+output, and create/start/remove/residue process-runner stdout/stderr; seven Cycle 2b
+admission documents; the Cycle 2c staging payload, five semantic entropy
+results, and key-store reads/writes; both Cycle
+2d documents; both Cycle 2e validator reports; the Cycle 2f plan, candidate,
+and declared reference; and the Cycle 2g plan, candidate observation, and
+declared reference. Each path now calls intrinsic typed-array backing-buffer,
+byte-length, and `%TypedArray%.prototype[Symbol.toStringTag]` getters before
+proxy-sensitive prototype checks, requires intrinsic element type `Uint8Array`
+plus exact `Uint8Array.prototype`, brand-checks actual `ArrayBuffer` internal
+slots plus exact `ArrayBuffer.prototype`, and checks the
+actual role limit before snapshot allocation—including exact 64-byte
+signatures and per-request process stream limits—then
+allocates an ordinary `Uint8Array` and copies with intrinsic `set.call`.
+Caller-owned `buffer`, `byteLength`, iterator, constructor, species, accessor,
+or instance-method hooks do not supply metadata or receive allocation/copy
+dispatch. Cycle 2a hashes an exact oversized carrier synchronously without an
+owned archive copy and preserves its signed `archive_limit_exceeded`
+quarantine. Existing coarse failures and value-free results remain unchanged.
+
+**The prior Cycle 2a through Cycle 2g bounded owned-byte security conclusions
+are Superseded. Implementation and focused hostile-carrier coverage are
+present, and the exact final frozen-byte working-tree local gate is Pass. The
+Cycle 2h target claim remains Pending until one exact source commit passes the
+existing Ubuntu/Windows CI, parser live acceptance, and custody live
+acceptance.** Cycle 2f's original
+`72e91f5` conclusion remains Superseded; its restored claim and Cycle 2g's claim
+at `df1ddff` are now also Superseded because prototype equality did not
+intrinsically brand the backing as `ArrayBuffer` or the element type as
+`Uint8Array`, and Cycle 2g did not complete intrinsic brand validation before a
+proxy-sensitive prototype check.
+
+Cycle 2h is exactly 40 paths (38 modified and two added) from baseline
+`14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`, leaving 82 cumulative unique
+Cycle 2c paths because the eight additional Cycle 2f/Cycle 2g hardening paths
+already exist in cumulative history. The existing historical custody fixture
+manifest is the additional transition path and adds no new union path; it
+refreshes only the two changed custody source/test SHA-256 entries, while
+fixture cases, schema, order, and payload identity/content remain unchanged.
+The exact historical Cycle 2g transition remains 32 paths and 73 cumulative
+unique paths. One intervening pinned database-test maintenance path raises the
+pre-Cycle 2h cumulative history to 74 and is history, not evidence. Cycle 2h
+adds no package, dependency, workflow, new evidence schema,
+new/dedicated/live evidence artifact, evidence note, or application
+composition. The refreshed existing local manifest is a fixture-integrity
+anchor, not new live evidence.
+
+Baseline CI `32695006904` and PostgreSQL `32695006890` are historical health
+only. Baseline parser `32695006897` and custody `32695006869` passed source/test
+stages but failed at `commit_boundary` on that already-pinned unrelated
+database path, so no runtime acceptance occurred. Cycle 2h does not establish
+primordial hardening, process isolation, source authenticity, Cycle 2b
+authority, independent parsing/adjudication, real quality, durable
+precommitment, network safety, production custody/KMS, composition, full Cycle
+2 exit, real-data admission, or production readiness. See
+[ADR 0035](./docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
+and the [Cycle 2h exit matrix](./docs/CYCLE_2H_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -646,42 +744,58 @@ blocked.
   network safety, PostgreSQL/RLS or durable persistence, production writer
   integration, browser-state migration, load/operational readiness,
   privacy/legal controls, or permission for real data.
-- Cycle 2a passed only its exact disconnected synthetic parser-envelope run.
+- Cycle 2a's exact disconnected synthetic parser-envelope run remains a
+  historical green fact; its bounded owned-byte security conclusion is
+  Superseded pending Cycle 2h promotion.
   It does not prove a representative or counsel-approved corpus, ten-fact
   quality, general XBRL/iXBRL, production container host/key/queue/retention
   controls, malware safety, app/database composition, load/SLOs, source
   authenticity, or permission for real filings.
 - Cycle 2b Phase A implements only an unverified metadata-admission protocol.
+  Its historical local/CI jobs do not establish the Superseded owned-byte
+  security conclusion or the blocked target claim.
   It does not supply or approve a filing manifest, authenticate counsel or SEC,
   verify raw payload presence or content digests, establish revocation
   freshness, normalize facts, measure quality, compose an application, or
   authorize real-data or production use.
 - Cycle 2c implements only one generated synthetic payload lifecycle. It does
+  not currently support its Superseded bounded owned-byte security conclusion;
+  its canonical jobs/artifacts remain historical facts pending Cycle 2h.
   not admit a Cycle 2b manifest, prove real payload presence or SEC provenance,
   establish production key/storage/retention/deletion controls or
   cryptographic erasure, compose the application, satisfy parser-quality
   gates, or authorize real-data or production use.
 - Cycle 2d is limited to one closed synthetic original/amendment schema and
   one exact ten-key normalization contract; tests generate the canonical pair,
-  while the boundary does not authenticate generator provenance. It does not approve Cycle 2b,
+  while the boundary does not authenticate generator provenance. Its prior
+  bounded owned-byte security conclusion is Superseded pending Cycle 2h. It
+  does not approve Cycle 2b,
   execute a parser, validate real filing bytes, establish independent
   adjudication or quality, compose a database/application, or authorize
   real-data or production use.
 - Cycle 2e proves only exact byte agreement between two separately implemented,
   distinctly declared synthetic validators after complete closed-schema
-  validation. It does not authenticate either declaration or digest, establish
+  validation. Its prior bounded owned-byte security conclusion is Superseded
+  pending Cycle 2h. It does not authenticate either declaration or digest, establish
   true independence, execute a parser, validate a real filing or accounting
   truth, provide adjudicated quality evidence, compose the application, or
   authorize real-data or production use.
 - Cycle 2f accounts for one fixed 100-document synthetic declared reference and
-  evaluates fixed synthetic-pilot thresholds. It does not prove actual
+  evaluates fixed synthetic-pilot thresholds. Its original and restored
+  bounded owned-byte security conclusions are Superseded pending Cycle 2h. It does not prove actual
   adjudicator independence, blinding, label correctness, representative real
   filings, real parser quality, threshold adequacy, or production acceptance.
 - Cycle 2g is limited to one in-process one-shot candidate-observation commit
-  before declared-reference reveal. It does not prove that the caller lacked
+  before declared-reference reveal. Its bounded owned-byte security conclusion
+  is Superseded pending Cycle 2h. It does not prove that the caller lacked
   reference content out of band, that the digest hides labels, that chronology
   is authentic or durable across instances/restarts, or that Cycle 2f cannot be
   called directly.
+- Cycle 2h targets only exact same-realm intrinsic typed-array carrier/backing/
+  length validation and hook-free owned copying across the Cycle 2a–2g public
+  ingress inventory. The final working-tree local gate is Pass; source commit,
+  two-OS CI, parser, and custody promotion gates remain Pending. It does not harden poisoned primordials, isolate caller code,
+  authenticate real sources, or close any wider Cycle 2 or production gate.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -740,4 +854,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0033](./docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md),
 [Cycle 2g exit matrix](./docs/CYCLE_2G_EXIT_MATRIX.md),
 [ADR 0034](./docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md),
+[Cycle 2h exit matrix](./docs/CYCLE_2H_EXIT_MATRIX.md),
+[ADR 0035](./docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md),
 and [architecture decisions](./docs/adr/).

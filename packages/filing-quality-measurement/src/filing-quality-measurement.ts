@@ -366,6 +366,14 @@ const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
   TYPED_ARRAY_PROTOTYPE,
   "byteLength",
 );
+const TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+);
+const ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+);
 
 const FACT_CONTRACTS: Readonly<Record<FactKey, FactContract>> = Object.freeze({
   assets: Object.freeze({
@@ -475,12 +483,20 @@ function snapshotBytes(value: unknown, maximumBytes: number): Uint8Array {
       invalid("input_invalid");
     }
     const bytes = value as Uint8Array;
+    const tag = TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
     const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
     const byteLength = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
       bytes,
     ) as unknown;
+    const backingByteLength = ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      buffer,
+    ) as unknown;
     if (
+      tag !== "Uint8Array" ||
       typeof byteLength !== "number" ||
+      typeof backingByteLength !== "number" ||
       Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
       Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype ||
       byteLength === 0 ||

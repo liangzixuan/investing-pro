@@ -8,33 +8,39 @@ roles to the Cycle 2f quality evaluator. The decision is recorded in
 The same atomic transition hardens public Cycle 2f byte snapshotting against
 hostile typed-array metadata, constructor, and species hooks.
 
-Current status: **bounded source-stage claim, local integration, and two-OS CI
-Pass only for exact source commit
-`df1ddffdede9900302da34160ce6b9a62b9d1708`. The hardened Cycle 2f bounded
-claim is restored only for that same exact source commit. Cycle 2b, full Cycle
-2 quality, and production admission remain Blocked.** There is no real filing,
+Current status: **local integration and two-OS CI at exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708` remain historical green facts, but
+the Cycle 2g bounded owned-byte security conclusion and Cycle 2f restoration
+are Superseded. A re-prototyped `SharedArrayBuffer` could pass backing prototype
+equality, re-prototyped alternate typed arrays could pass carrier prototype
+equality, and Cycle 2g performed a proxy-sensitive prototype check before
+complete intrinsic brand validation. Cycle 2h implementation and focused
+coverage are present, and its exact final working-tree local gate is Pass. The
+source commit, two-OS CI, parser live acceptance, and custody live acceptance
+remain Pending. Cycle 2b, full
+Cycle 2 quality, and production admission remain Blocked.** There is no real filing,
 external configuration, authenticated chronology, independent adjudication,
 dedicated Cycle 2g workflow, evidence schema, artifact, offline evidence review,
 or evidence note.
 
-| Gate                             | Required result                                                                                                                                                                                            | Current status          |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Exact protocol                   | A zero-argument factory creates one synchronous in-process `commit` / `reveal` protocol instance                                                                                                           | Implemented; Local Pass |
-| One-shot state                   | State advances only `open` to `candidate_committed` to `consumed`; every first invalid or conflicting attempt consumes without retry or reset                                                              | Implemented; Local Pass |
-| Reference-content-free commit    | The committed candidate observations bind the exact declared-reference SHA-256 but contain no declared-reference bytes/content or caller `producedAt`                                                      | Implemented; Local Pass |
-| Owned candidate snapshot         | The candidate snapshot is validated against the closed 100-document coordinate space, with omissions preserved for fail-closed evaluation                                                                  | Implemented; Local Pass |
-| Capability                       | Commit returns one empty, frozen, identity-bound, same-instance, single-use capability that cannot be serialized into authority                                                                            | Implemented; Local Pass |
-| Digest-bound reveal              | Reveal consumes first, recomputes the declared-reference byte digest, requires the committed digest, and injects only fixed Cycle 2f compatibility data                                                    | Implemented; Local Pass |
-| Exact Cycle 2f evaluation        | The derived candidate and revealed reference delegate to the public Cycle 2f evaluator without changing its fixed population, metrics, or thresholds                                                       | Implemented; Local Pass |
-| Intrinsic byte snapshots         | Both boundaries use intrinsic typed-array buffer/length metadata, ordinary `ArrayBuffer` backing, direct ordinary `Uint8Array` allocation, and intrinsic `set` without caller constructor/species dispatch | Implemented; Local Pass |
-| Aggregate-only result            | Successful receipts are immutable and aggregate-only; quarantine is empty and value-free with zero audit counts and `measurement: null`                                                                    | Implemented; Local Pass |
-| Local integration                | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                                                                                    | Pass                    |
-| Two-OS CI                        | The same frozen source gate passes on Ubuntu and Windows                                                                                                                                                   | Pass                    |
-| Dedicated evidence               | Separate workflow/schema/artifact/offline review                                                                                                                                                           | Not created             |
-| External blinding and chronology | Actual prior reference inaccessibility, label-leakage absence, and authenticated cross-process chronology are established                                                                                  | Not proven; outside 2g  |
-| Cycle 2b authority               | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                                                                         | Blocked; outside 2g     |
-| Full Cycle 2 quality             | Representative real filings and 2,000 independently adjudicated real assertions meet approved thresholds with zero silent failures                                                                         | Blocked                 |
-| Production admission             | Real-data rights, authenticity, persistence, security, privacy, scale, and operational gates pass                                                                                                          | Blocked                 |
+| Gate                             | Required result                                                                                                                                                                                                             | Current status                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Exact protocol                   | A zero-argument factory creates one synchronous in-process `commit` / `reveal` protocol instance                                                                                                                            | Historical Pass; semantics unchanged                                        |
+| One-shot state                   | State advances only `open` to `candidate_committed` to `consumed`; every first invalid or conflicting attempt consumes without retry or reset                                                                               | Historical Pass; semantics unchanged                                        |
+| Reference-content-free commit    | The committed candidate observations bind the exact declared-reference SHA-256 but contain no declared-reference bytes/content or caller `producedAt`                                                                       | Historical Pass; semantics unchanged                                        |
+| Owned candidate snapshot         | The candidate snapshot is validated against the closed 100-document coordinate space, with omissions preserved for fail-closed evaluation                                                                                   | Historical Pass; semantics unchanged                                        |
+| Capability                       | Commit returns one empty, frozen, identity-bound, same-instance, single-use capability that cannot be serialized into authority                                                                                             | Historical Pass; semantics unchanged                                        |
+| Digest-bound reveal              | Reveal consumes first, recomputes the declared-reference byte digest, requires the committed digest, and injects only fixed Cycle 2f compatibility data                                                                     | Historical Pass; semantics unchanged                                        |
+| Exact Cycle 2f evaluation        | The derived candidate and revealed reference delegate to the public Cycle 2f evaluator without changing its fixed population, metrics, or thresholds                                                                        | Historical Pass; semantics unchanged                                        |
+| Intrinsic byte snapshots         | Both boundaries require the intrinsic `Uint8Array` element type and exact prototype, intrinsic `ArrayBuffer` brand and exact prototype, safe check ordering, preallocation limits, ordinary allocation, and intrinsic `set` | Cycle 2h implemented; final gates Pending                                   |
+| Aggregate-only result            | Successful receipts are immutable and aggregate-only; quarantine is empty and value-free with zero audit counts and `measurement: null`                                                                                     | Historical Pass; semantics unchanged                                        |
+| Local integration                | Format, lint, guardrails, all project typechecks/tests, and builds pass on current Cycle 2h frozen bytes                                                                                                                    | Pass — expected inventory: 47 files; 1,017 passed + 2 skipped (1,019 total) |
+| Two-OS CI                        | The current Cycle 2h frozen source gate passes on Ubuntu and Windows                                                                                                                                                        | Pending                                                                     |
+| Dedicated evidence               | Separate workflow/schema/artifact/offline review                                                                                                                                                                            | Not created                                                                 |
+| External blinding and chronology | Actual prior reference inaccessibility, label-leakage absence, and authenticated cross-process chronology are established                                                                                                   | Not proven; outside 2g                                                      |
+| Cycle 2b authority               | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                                                                                          | Blocked; outside 2g                                                         |
+| Full Cycle 2 quality             | Representative real filings and 2,000 independently adjudicated real assertions meet approved thresholds with zero silent failures                                                                                          | Blocked                                                                     |
+| Production admission             | Real-data rights, authenticity, persistence, security, privacy, scale, and operational gates pass                                                                                                                           | Blocked                                                                     |
 
 The exact final pre-promotion local source gate passed formatting, full ESLint,
 all guardrails, the production-license check across 86 versions, and every
@@ -48,6 +54,9 @@ Ubuntu job `97323672725` and Windows job `97323672813`. Parser run/job
 `32690685841` / `97323672800`, custody run/job `32690685846` / `97323672628`,
 and PostgreSQL run/job `32690685829` / `97323672631` passed as unchanged
 regression health only; they are not Cycle 2g or Cycle 2f restoration evidence.
+Those gates remain historical green facts, but the missing intrinsic backing
+brand and safe prototype ordering mean they no longer support either bounded
+owned-byte conclusion.
 
 The canonical synthetic met fixture commits observations for all 100 fixed
 documents: 99 succeeded, one explicitly quarantined, and 990 emitted facts.
@@ -122,12 +131,13 @@ Cycle 2f source-stage security conclusion is Superseded. The anchors do not
 attest the current hardened Cycle 2f implementation or security-test bytes;
 those bytes are part of the exact Cycle 2g transition. Their local restoration
 gate and Cycle 2g Ubuntu/Windows CI passed on exact source commit
-`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened Cycle 2f
-bounded claim only for those bytes. The original `72e91f5` conclusion remains
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, historically restoring the
+hardened Cycle 2f bounded claim for those bytes. That restoration and the Cycle
+2g conclusion are now Superseded; the original `72e91f5` conclusion remains
 Superseded.
 
-Cycle 2g's bounded source-stage claim is Pass only because the exact
-frozen-byte local gate and Ubuntu/Windows CI agree on source commit
+Cycle 2g's bounded source-stage security conclusion is Superseded despite the
+exact frozen-byte local gate and Ubuntu/Windows CI agreement on source commit
 `df1ddffdede9900302da34160ce6b9a62b9d1708`. Failure, cancellation, an omitted,
 extra, renamed, or deleted transition path, a partial package tree,
 reference content in the commit document, an unbound reference digest, a
@@ -138,3 +148,20 @@ does not prove actual external blinding, label
 secrecy, authenticated chronology, independent adjudication, real parser
 quality, Cycle 2b authority, approved production thresholds, full Cycle 2 exit,
 B15/V15, or production use.
+
+Cycle 2h hardens the plan, candidate-observation, and declared-reference roles
+in this package plus all three delegated Cycle 2f roles. Intrinsic `Uint8Array`
+element-type and `ArrayBuffer` brand validation occur with exact prototypes and
+safe ordering before role limits, ordinary allocation, and intrinsic copy. All non-carrier schemas,
+exact checks, exact nonclaims, metric arithmetic, one-shot state, capability,
+delegation, failure/result semantics, historical anchors, exact historical
+32-path/73-unique transition, and no-dedicated-evidence status remain
+unchanged. Cycle 2h is the exact 40-path transition (38 modified and two added)
+from `14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`. The additional path is the
+existing historical local custody fixture manifest,
+not a new/dedicated/live evidence artifact. Its two changed custody source/test
+SHA-256 entries refresh, while fixture cases, schema, order, and payload
+identity/content remain unchanged. The final working-tree local gate is Pass;
+source commit, CI, parser, and custody promotion gates remain
+Pending. See the
+[Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).

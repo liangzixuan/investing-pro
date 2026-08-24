@@ -1,9 +1,14 @@
 # ADR 0034: bounded synthetic declared-reference precommitment
 
-Status: bounded source-stage claim, local integration, and two-OS CI Pass only
-for exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. The
-hardened Cycle 2f bounded claim is restored only for that same exact source
-commit. Cycle 2b, full Cycle 2 quality, and production admission Blocked.
+Status: exact-source local and two-OS CI jobs at
+`df1ddffdede9900302da34160ce6b9a62b9d1708` remain historical green facts, but
+the Cycle 2g bounded owned-byte security conclusion and Cycle 2f restoration
+are Superseded. Re-prototyped shared backing and alternate typed arrays bypassed
+prototype equality, and Cycle 2g checked a proxy-sensitive prototype before
+completing intrinsic brand validation. Cycle 2h implementation/focused coverage
+are present and its final working-tree local gate is Pass; source commit, two-OS
+CI, parser, and custody gates remain Pending. Cycle 2b, full Cycle 2 quality,
+and production admission Blocked.
 
 ## Context
 
@@ -101,15 +106,21 @@ candidate observations, or reference content.
 
 ### Byte-carrier hardening
 
-The new protocol and the public Cycle 2f evaluator both recover the actual
+The `df1ddff` protocol and public Cycle 2f evaluator both recover the actual
 backing buffer and byte length through intrinsic typed-array getters, require
 the backing object to have exactly `ArrayBuffer.prototype`, allocate an
 ordinary `Uint8Array` directly, and copy with the intrinsic typed-array `set`.
 They never dispatch snapshot allocation through a caller-owned `constructor`
-or `Symbol.species`. Own `buffer` or `byteLength` properties cannot disguise a
-shared or oversized carrier, and constructor/species hooks cannot observe
+or `Symbol.species`. Own `buffer` or `byteLength` properties cannot disguise an
+ordinary oversized carrier, and constructor/species hooks cannot observe
 snapshot bytes or reenter the boundary during allocation. Security regressions
-exercise every byte role in both packages.
+exercise every byte role in both packages. That implementation still lacked
+intrinsic `Uint8Array` element-type and `ArrayBuffer` brand checks, so a
+`SharedArrayBuffer` re-prototyped to `ArrayBuffer.prototype` and an alternate
+typed array re-prototyped to `Uint8Array.prototype` passed; Cycle 2g also
+performed a proxy-sensitive prototype check before completing intrinsic brand
+validation. Cycle 2h moves intrinsic slot/type/brand checks ahead of prototype
+checks and covers all six roles.
 
 The canonical synthetic met fixture commits observations for 100 documents:
 99 succeeded, one explicitly quarantined, and 990 emitted facts. The
@@ -123,8 +134,9 @@ ordering only.
 
 Cycle 2g is a deterministic TypeScript source/test contract with no new live or
 platform trust boundary. Its gate is the frozen-byte local release suite and
-existing Ubuntu/Windows CI matrix. Source implementation and the exact final
-pre-promotion local gate are Pass. The local gate passed
+existing Ubuntu/Windows CI matrix. The `df1ddff` source implementation and
+pre-promotion local gate passed as historical facts but do not establish the
+current owned-byte conclusion. The local gate passed
 formatting, full ESLint, all guardrails, the production-license check across 86
 versions, every scripted typecheck/test/build across 12 of 13 workspace
 projects, and the boundary verifier. All 47 test files completed with 987
@@ -155,9 +167,10 @@ false, so the prior Cycle 2f source-stage security conclusion is Superseded.
 The anchors do not attest the current hardened Cycle 2f implementation and
 security-test bytes. Those two modified paths are part of the exact Cycle 2g
 transition. Their local restoration gate and Cycle 2g Ubuntu/Windows CI passed
-on exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring
-the hardened Cycle 2f bounded claim only for those bytes. The original
-`72e91f5` conclusion remains Superseded.
+on exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`, historically
+restoring the hardened Cycle 2f bounded claim for those bytes. That restoration
+and Cycle 2g's conclusion are now Superseded; the original `72e91f5` conclusion
+remains Superseded.
 
 ## Exact target claim and checks
 
@@ -216,10 +229,26 @@ blinding, label secrecy, authenticated chronology, durable precommitment,
 independent adjudication, real quality, Cycle 2b authority, full Cycle 2 exit,
 B15/V15, or production use.
 
+Cycle 2h hardens the Cycle 2g plan, candidate-observation, and
+declared-reference roles with intrinsic `Uint8Array` element-type and
+`ArrayBuffer` brand validation, exact prototypes, safe check ordering,
+preallocation actual-length limits, ordinary allocation, and intrinsic copying. It preserves this ADR's non-carrier schemas, exact
+checks, exact nonclaims, state machine, capabilities, delegation, result and
+failure semantics, historical anchors, and no-dedicated-evidence status. Cycle
+2h is the exact 40-path transition (38 modified and two added) from
+`14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98`. The additional path is the
+existing historical local custody fixture manifest,
+not a new/dedicated/live evidence artifact. Its two changed custody source/test
+SHA-256 entries refresh, while fixture cases, schema, order, and payload
+identity/content remain unchanged. The final working-tree local gate is Pass;
+source commit, CI, parser, and custody promotion gates remain Pending.
+
 ## References
 
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [ADR 0033](./0033-bounded-synthetic-declared-reference-quality-measurement.md)
 - [ADR 0029](./0029-fixed-public-filing-candidate-manifest-admission.md)

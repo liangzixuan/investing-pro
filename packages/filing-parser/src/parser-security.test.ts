@@ -152,6 +152,116 @@ describe("Cycle 2a filing parser security boundary", () => {
     expect(runner.calls).toBe(0);
   });
 
+  it("uses intrinsic archive slots and rejects nonordinary carriers before prototype traps", async () => {
+    const signing = signingHarness();
+    const runner = new NeverRunner();
+    const boundary = createDockerFilingParserBoundary({
+      imageId: IMAGE_ID,
+      signer: signing.signer,
+      processRunner: runner,
+    });
+    class ArchiveSubclass extends Uint8Array {}
+    const shared = new Uint8Array(new SharedArrayBuffer(4));
+    shared.set([1, 2, 3, 4]);
+    Object.defineProperties(shared, {
+      buffer: { value: new ArrayBuffer(4) },
+      byteLength: { value: 4 },
+    });
+    const reprotoShared = rePrototypedSharedCopy(Uint8Array.from([1, 2, 3, 4]));
+    const reprotoNonUint8 = rePrototypedNonUint8Copies(
+      Uint8Array.from([1, 2, 3, 4]),
+    );
+    let prototypeTrapCalls = 0;
+    const proxy = new Proxy(Uint8Array.from([1, 2, 3, 4]), {
+      getPrototypeOf() {
+        prototypeTrapCalls += 1;
+        throw new Error(ARCHIVE_CANARY);
+      },
+    });
+
+    for (const archive of [
+      new ArchiveSubclass([1, 2, 3, 4]),
+      shared,
+      reprotoShared,
+      ...reprotoNonUint8,
+      proxy,
+    ]) {
+      await expect(boundary.parse(archive)).rejects.toEqual(
+        new FilingParserBoundaryError("FILING_PARSER_INVALID_INPUT"),
+      );
+    }
+    expect(prototypeTrapCalls).toBe(0);
+    expect(runner.calls).toBe(0);
+  });
+
+  it("uses intrinsic oversize metadata without allocating an owned archive copy", async () => {
+    const signing = signingHarness();
+    const runner = new NeverRunner();
+    const boundary = createDockerFilingParserBoundary({
+      imageId: IMAGE_ID,
+      signer: signing.signer,
+      processRunner: runner,
+    });
+    const oversized = new Uint8Array(FILING_PARSER_LIMITS.archiveBytes + 1);
+    oversized[0] = 17;
+    oversized[oversized.length - 1] = 19;
+    Object.defineProperties(oversized, {
+      buffer: { value: new ArrayBuffer(1) },
+      byteLength: { value: 1 },
+    });
+    let iteratorCalls = 0;
+    Object.defineProperty(oversized, Symbol.iterator, {
+      get() {
+        iteratorCalls += 1;
+        throw new Error(ARCHIVE_CANARY);
+      },
+    });
+
+    const signed = await boundary.parse(oversized);
+
+    expect(signed.result).toMatchObject({
+      code: "archive_limit_exceeded",
+      sourceSha256: sha256(oversized),
+      status: "quarantined",
+    });
+    expect(verifyFilingParserProvenance(signed, signing.publicKey)).toBe(true);
+    expect(iteratorCalls).toBe(0);
+    expect(runner.calls).toBe(0);
+  });
+
+  it("does not invoke caller metadata, iterator, allocation, or instance hooks while snapshotting", async () => {
+    for (const hook of [
+      "buffer",
+      "byteLength",
+      "toStringTag",
+      "constructor",
+      "species",
+      "iterator",
+      "set",
+    ] as const) {
+      let hookCalls = 0;
+      const source = Uint8Array.from([13, 14, 15, 16]);
+      const archive = withByteHook(source, hook, () => {
+        hookCalls += 1;
+      });
+      const signing = signingHarness();
+      const runner = new SuccessfulRunner((snapshot) =>
+        acceptedOutput(snapshot),
+      );
+      const boundary = createDockerFilingParserBoundary({
+        imageId: IMAGE_ID,
+        signer: signing.signer,
+        processRunner: runner,
+      });
+
+      await expect(boundary.parse(archive)).resolves.toMatchObject({
+        result: { sourceSha256: sha256(source), status: "accepted" },
+      });
+      expect(runner.archive).toEqual(Buffer.from(source));
+      expect(hookCalls, hook).toBe(0);
+    }
+  });
+
   it("uses an exact resource-bounded Docker request and removes all staged residue", async () => {
     const signing = signingHarness();
     const runner = new SuccessfulRunner((archive) => acceptedOutput(archive));
@@ -160,10 +270,12 @@ describe("Cycle 2a filing parser security boundary", () => {
       signer: signing.signer,
       processRunner: runner,
     });
-    const archive = buildTestZip([
-      { name: "filing-manifest.json", content: "{}" },
-      { name: "filing.xml", content: ARCHIVE_CANARY },
-    ]);
+    const archive = Uint8Array.from(
+      buildTestZip([
+        { name: "filing-manifest.json", content: "{}" },
+        { name: "filing.xml", content: ARCHIVE_CANARY },
+      ]),
+    );
 
     const signed = await boundary.parse(archive);
 
@@ -181,7 +293,7 @@ describe("Cycle 2a filing parser security boundary", () => {
       imageId: IMAGE_ID,
       keyId: SIGNING_KEY_ID,
     });
-    expect(runner.archive).toEqual(archive);
+    expect(Uint8Array.from(runner.archive ?? [])).toEqual(archive);
     expect(runner.requests).toHaveLength(4);
 
     const create = runner.requests[0];
@@ -598,6 +710,95 @@ describe("Cycle 2a filing parser security boundary", () => {
     }
   });
 
+  it("hardens every stdout and stderr carrier kind at every injected process stage", async () => {
+    const signing = signingHarness();
+    const archive = Uint8Array.from([31, 32, 33, 34]);
+    for (const stage of ["create", "start", "remove", "residue"] as const) {
+      for (const role of ["stdout", "stderr"] as const) {
+        for (const kind of [
+          "metadata_shared",
+          "metadata_oversized",
+          "reproto_shared",
+          "reproto_int8",
+          "reproto_uint8_clamped",
+          "reproto_wider",
+          "proxy",
+          "subclass",
+          "detached",
+        ] as const) {
+          const hostile = hostileByteCarrier(
+            processByteSource(stage, role, archive),
+            processByteLimit(stage, role),
+            kind,
+          );
+          const runner = new SuccessfulRunner(
+            (snapshot) => acceptedOutput(snapshot),
+            processOverride(stage, role, hostile.bytes, archive),
+          );
+          const boundary = createDockerFilingParserBoundary({
+            imageId: IMAGE_ID,
+            signer: signing.signer,
+            processRunner: runner,
+          });
+          const parse = boundary.parse(archive);
+
+          if (stage === "create" || stage === "start") {
+            await expect(parse).resolves.toMatchObject({
+              result: { code: "worker_failure", status: "quarantined" },
+            });
+          } else {
+            await expect(parse).rejects.toEqual(
+              new FilingParserBoundaryError("FILING_PARSER_FAILURE"),
+            );
+          }
+          expect(hostile.trapCalls(), `${stage}:${role}:${kind}`).toBe(0);
+        }
+      }
+    }
+  });
+
+  it("does not dispatch injected stdout or stderr metadata, iterator, allocation, or instance hooks", async () => {
+    const signing = signingHarness();
+    const archive = Uint8Array.from([39, 40, 41, 42]);
+    for (const stage of ["create", "start", "remove", "residue"] as const) {
+      for (const role of ["stdout", "stderr"] as const) {
+        for (const hook of [
+          "buffer",
+          "byteLength",
+          "toStringTag",
+          "constructor",
+          "species",
+          "iterator",
+          "set",
+        ] as const) {
+          let hookCalls = 0;
+          const carrier = withByteHook(
+            processByteSource(stage, role, archive),
+            hook,
+            () => {
+              hookCalls += 1;
+            },
+          );
+          const runner = new SuccessfulRunner(
+            (snapshot) => acceptedOutput(snapshot),
+            processOverride(stage, role, carrier, archive),
+          );
+          const boundary = createDockerFilingParserBoundary({
+            imageId: IMAGE_ID,
+            signer: signing.signer,
+            processRunner: runner,
+          });
+
+          const signed = await boundary.parse(archive);
+          expect(signed.result.status, `${stage}:${role}:${hook}`).toBe(
+            "accepted",
+          );
+          expect(hookCalls, `${stage}:${role}:${hook}`).toBe(0);
+        }
+      }
+    }
+  });
+
   it.each([
     ["remove rejection", { removeExitCode: 2 }],
     ["residual container", { residueStdout: `${CONTAINER_ID}\n` }],
@@ -651,6 +852,146 @@ describe("Cycle 2a filing parser security boundary", () => {
         },
       );
     }
+  });
+
+  it("hardens hostile injected signer byte results before allocation", async () => {
+    const signing = signingHarness();
+    for (const kind of [
+      "metadata_shared",
+      "metadata_oversized",
+      "reproto_shared",
+      "reproto_int8",
+      "reproto_uint8_clamped",
+      "reproto_wider",
+      "proxy",
+      "subclass",
+      "detached",
+    ] as const) {
+      let hostile: ReturnType<typeof hostileByteCarrier> | undefined;
+      const signer = signerWithTransform(signing.signer, (signature) => {
+        hostile = hostileByteCarrier(signature, 64, kind);
+        return hostile.bytes;
+      });
+      const boundary = createDockerFilingParserBoundary({
+        imageId: IMAGE_ID,
+        signer,
+        processRunner: new NeverRunner(),
+      });
+
+      await expect(boundary.parse(new Uint8Array())).rejects.toEqual(
+        new FilingParserBoundaryError("FILING_PARSER_FAILURE"),
+      );
+      expect(hostile?.trapCalls(), kind).toBe(0);
+    }
+  });
+
+  it("does not dispatch injected signer metadata, iterator, allocation, or instance hooks", async () => {
+    const signing = signingHarness();
+    for (const hook of [
+      "buffer",
+      "byteLength",
+      "toStringTag",
+      "constructor",
+      "species",
+      "iterator",
+      "set",
+    ] as const) {
+      let hookCalls = 0;
+      const signer = signerWithTransform(signing.signer, (signature) =>
+        withByteHook(signature, hook, () => {
+          hookCalls += 1;
+        }),
+      );
+      const boundary = createDockerFilingParserBoundary({
+        imageId: IMAGE_ID,
+        signer,
+        processRunner: new NeverRunner(),
+      });
+
+      const signed = await boundary.parse(new Uint8Array());
+      expect(signed.result).toMatchObject({
+        code: "archive_invalid",
+        status: "quarantined",
+      });
+      expect(verifyFilingParserProvenance(signed, signing.publicKey)).toBe(
+        true,
+      );
+      expect(hookCalls, hook).toBe(0);
+    }
+  });
+
+  it("owns retained signer and every process-result byte source after parse returns", async () => {
+    const signing = signingHarness();
+    const archive = Uint8Array.from([43, 44, 45, 46]);
+    const retainedEmpty = (): Uint8Array =>
+      new Uint8Array(new ArrayBuffer(1), 0, 0);
+    const outputs = {
+      create: {
+        exitCode: 0,
+        stderr: retainedEmpty(),
+        stdout: utf8(`${CONTAINER_ID}\n`),
+      },
+      start: {
+        exitCode: 0,
+        stderr: retainedEmpty(),
+        stdout: acceptedOutput(archive),
+      },
+      remove: {
+        exitCode: 0,
+        stderr: retainedEmpty(),
+        stdout: retainedEmpty(),
+      },
+      residue: {
+        exitCode: 0,
+        stderr: retainedEmpty(),
+        stdout: retainedEmpty(),
+      },
+    } satisfies Required<SuccessfulRunnerOverrides>;
+    const processSources = [
+      outputs.create.stdout,
+      outputs.create.stderr,
+      outputs.start.stdout,
+      outputs.start.stderr,
+      outputs.remove.stdout,
+      outputs.remove.stderr,
+      outputs.residue.stdout,
+      outputs.residue.stderr,
+    ];
+    let retainedSignature: Uint8Array | undefined;
+    const signer = signerWithTransform(signing.signer, (signature) => {
+      retainedSignature = signature;
+      return signature;
+    });
+    const boundary = createDockerFilingParserBoundary({
+      imageId: IMAGE_ID,
+      signer,
+      processRunner: new SuccessfulRunner(
+        (snapshot) => acceptedOutput(snapshot),
+        outputs,
+      ),
+    });
+
+    const signed = await boundary.parse(archive);
+    const expected = structuredClone(signed);
+    if (retainedSignature === undefined) throw new Error();
+    const retainedSources = [retainedSignature, ...processSources];
+    const originalBackings = retainedSources.map((source) =>
+      Uint8Array.from(new Uint8Array(source.buffer)),
+    );
+
+    for (const source of retainedSources) {
+      new Uint8Array(source.buffer).fill(0xa5);
+    }
+
+    expect(retainedSources).toHaveLength(9);
+    retainedSources.forEach((source, index) => {
+      expect(new Uint8Array(source.buffer), String(index)).not.toEqual(
+        originalBackings[index],
+      );
+    });
+    expect(signed).toStrictEqual(expected);
+    expect(signed.result.status).toBe("accepted");
+    expect(verifyFilingParserProvenance(signed, signing.publicKey)).toBe(true);
   });
 
   it("binds exact replay bytes and detects archive, result, provenance, and key tampering", async () => {
@@ -841,6 +1182,17 @@ function signingHarness(): SigningHarness {
   };
 }
 
+function signerWithTransform(
+  signer: FilingParserSigner,
+  transform: (signature: Uint8Array) => Uint8Array,
+): FilingParserSigner {
+  return {
+    algorithm: "ed25519",
+    keyId: signer.keyId,
+    sign: async (payload) => transform(await signer.sign(payload)),
+  };
+}
+
 function deferredSigner(): {
   readonly signer: FilingParserSigner;
   readonly started: Promise<void>;
@@ -877,6 +1229,13 @@ class NeverRunner implements FilingParserProcessRunner {
   }
 }
 
+interface SuccessfulRunnerOverrides {
+  readonly create?: FilingParserProcessResult;
+  readonly start?: FilingParserProcessResult;
+  readonly remove?: FilingParserProcessResult;
+  readonly residue?: FilingParserProcessResult;
+}
+
 class SuccessfulRunner implements FilingParserProcessRunner {
   public readonly requests: FilingParserProcessRequest[] = [];
   public archive: Buffer | null = null;
@@ -884,12 +1243,7 @@ class SuccessfulRunner implements FilingParserProcessRunner {
 
   public constructor(
     private readonly output: (archive: Uint8Array) => Uint8Array,
-    private readonly overrides: {
-      readonly create?: FilingParserProcessResult;
-      readonly start?: FilingParserProcessResult;
-      readonly remove?: FilingParserProcessResult;
-      readonly residue?: FilingParserProcessResult;
-    } = {},
+    private readonly overrides: SuccessfulRunnerOverrides = {},
   ) {}
 
   public async run(
@@ -1084,6 +1438,195 @@ function processResult(
   stdout: string,
 ): FilingParserProcessResult {
   return { exitCode, stdout: utf8(stdout), stderr: new Uint8Array() };
+}
+
+type ProcessStage = "create" | "start" | "remove" | "residue";
+type ProcessByteRole = "stdout" | "stderr";
+type ByteHook =
+  | "buffer"
+  | "byteLength"
+  | "toStringTag"
+  | "constructor"
+  | "species"
+  | "iterator"
+  | "set";
+type HostileCarrierKind =
+  | "metadata_shared"
+  | "metadata_oversized"
+  | "reproto_shared"
+  | "reproto_int8"
+  | "reproto_uint8_clamped"
+  | "reproto_wider"
+  | "proxy"
+  | "subclass"
+  | "detached";
+
+function processByteSource(
+  stage: ProcessStage,
+  role: ProcessByteRole,
+  archive: Uint8Array,
+): Uint8Array {
+  if (role === "stderr") return new Uint8Array();
+  if (stage === "create") return utf8(`${CONTAINER_ID}\n`);
+  if (stage === "start") return acceptedOutput(archive);
+  return new Uint8Array();
+}
+
+function processByteLimit(stage: ProcessStage, role: ProcessByteRole): number {
+  if (role === "stderr") return FILING_PARSER_LIMITS.stderrBytes;
+  return stage === "start" ? FILING_PARSER_LIMITS.stdoutBytes : 256;
+}
+
+function processOverride(
+  stage: ProcessStage,
+  role: ProcessByteRole,
+  bytes: Uint8Array,
+  archive: Uint8Array,
+): SuccessfulRunnerOverrides {
+  const result: FilingParserProcessResult = {
+    exitCode: 0,
+    stderr: processByteSource(stage, "stderr", archive),
+    stdout: processByteSource(stage, "stdout", archive),
+    [role]: bytes,
+  };
+  return { [stage]: result };
+}
+
+function hostileByteCarrier(
+  source: Uint8Array,
+  maximumBytes: number,
+  kind: HostileCarrierKind,
+): { readonly bytes: Uint8Array; readonly trapCalls: () => number } {
+  let trapCalls = 0;
+  if (kind === "metadata_shared") {
+    const bytes = sharedCopy(source);
+    shadowByteMetadata(bytes, source.byteLength);
+    return { bytes, trapCalls: () => trapCalls };
+  }
+  if (kind === "metadata_oversized") {
+    const bytes = new Uint8Array(maximumBytes + 1);
+    Uint8Array.prototype.set.call(bytes, source);
+    shadowByteMetadata(bytes, source.byteLength);
+    Object.defineProperty(bytes, Symbol.iterator, {
+      get() {
+        trapCalls += 1;
+        throw new Error(ARCHIVE_CANARY);
+      },
+    });
+    return { bytes, trapCalls: () => trapCalls };
+  }
+  if (kind === "reproto_shared") {
+    return {
+      bytes: rePrototypedSharedCopy(source),
+      trapCalls: () => trapCalls,
+    };
+  }
+  if (
+    kind === "reproto_int8" ||
+    kind === "reproto_uint8_clamped" ||
+    kind === "reproto_wider"
+  ) {
+    return {
+      bytes: rePrototypedNonUint8Copy(source, kind),
+      trapCalls: () => trapCalls,
+    };
+  }
+  if (kind === "proxy") {
+    return {
+      bytes: new Proxy(new Uint8Array(source), {
+        getPrototypeOf() {
+          trapCalls += 1;
+          throw new Error(ARCHIVE_CANARY);
+        },
+      }),
+      trapCalls: () => trapCalls,
+    };
+  }
+  if (kind === "subclass") {
+    class ByteSubclass extends Uint8Array {}
+    return {
+      bytes: new ByteSubclass(source),
+      trapCalls: () => trapCalls,
+    };
+  }
+  const bytes = new Uint8Array(source);
+  structuredClone(bytes.buffer, { transfer: [bytes.buffer] });
+  return { bytes, trapCalls: () => trapCalls };
+}
+
+function sharedCopy(source: Uint8Array): Uint8Array {
+  const bytes = new Uint8Array(new SharedArrayBuffer(source.byteLength));
+  Uint8Array.prototype.set.call(bytes, source);
+  return bytes;
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(source: Uint8Array): readonly Uint8Array[] {
+  return [
+    rePrototypedNonUint8Copy(source, "reproto_int8"),
+    rePrototypedNonUint8Copy(source, "reproto_uint8_clamped"),
+    rePrototypedNonUint8Copy(source, "reproto_wider"),
+  ];
+}
+
+function rePrototypedNonUint8Copy(
+  source: Uint8Array,
+  kind: "reproto_int8" | "reproto_uint8_clamped" | "reproto_wider",
+): Uint8Array {
+  const paddedByteLength =
+    Math.ceil(source.byteLength / Uint16Array.BYTES_PER_ELEMENT) *
+    Uint16Array.BYTES_PER_ELEMENT;
+  const view =
+    kind === "reproto_int8"
+      ? new Int8Array(source.byteLength)
+      : kind === "reproto_uint8_clamped"
+        ? new Uint8ClampedArray(source.byteLength)
+        : new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT);
+  Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+  Object.setPrototypeOf(view, Uint8Array.prototype);
+  return view as unknown as Uint8Array;
+}
+
+function shadowByteMetadata(bytes: Uint8Array, byteLength: number): void {
+  Object.defineProperties(bytes, {
+    buffer: { value: new ArrayBuffer(byteLength) },
+    byteLength: { value: byteLength },
+  });
+}
+
+function withByteHook(
+  source: Uint8Array,
+  hook: ByteHook,
+  onAccess: () => void,
+): Uint8Array {
+  const bytes = new Uint8Array(source);
+  const failOnAccess = (): never => {
+    onAccess();
+    throw new Error(ARCHIVE_CANARY);
+  };
+  if (hook === "species") {
+    const constructor = {};
+    Object.defineProperty(constructor, Symbol.species, { get: failOnAccess });
+    Object.defineProperty(bytes, "constructor", { value: constructor });
+  } else {
+    Object.defineProperty(
+      bytes,
+      hook === "iterator"
+        ? Symbol.iterator
+        : hook === "toStringTag"
+          ? Symbol.toStringTag
+          : hook,
+      { get: failOnAccess },
+    );
+  }
+  return bytes;
 }
 
 function acceptedOutput(archive: Uint8Array): Uint8Array {

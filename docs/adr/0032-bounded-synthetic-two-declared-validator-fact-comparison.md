@@ -1,8 +1,10 @@
 # ADR 0032: bounded synthetic two-declared-validator fact comparison
 
-Status: bounded source-stage claim, local verification, and two-OS CI Pass only
-for exact source commit `60b92aa527435904776144f5e2d5a1a3ab61e67e`; Cycle 2b
-and production admission Blocked.
+Status: exact-source local and two-OS CI jobs remain historical green facts for
+`60b92aa527435904776144f5e2d5a1a3ab61e67e`; prior bounded owned-byte security
+conclusion Superseded; Cycle 2h hardening final working-tree local gate Pass;
+source commit/CI/parser/custody live gates Pending; Cycle 2b and production
+admission Blocked.
 
 ## Context
 
@@ -77,7 +79,7 @@ Cycle 2e is a deterministic TypeScript source/test contract with no new live or
 platform trust boundary. Its gate is the frozen-byte local release suite and
 the existing Ubuntu/Windows CI matrix. It creates no dedicated workflow,
 evidence schema, evidence artifact, retained log package, offline review, or
-evidence note. Local verification is Pass on exact frozen bytes: `corepack pnpm
+evidence note. Local verification historically passed on exact frozen bytes: `corepack pnpm
 verify` passed all format, lint, guardrail, typecheck, test, and build stages
 with 43 test files, 911 passed plus 2 skipped (913 total), all 11 workspace
 project checks, and 10 builds. CI run `32518970387` passed in Ubuntu job
@@ -161,11 +163,24 @@ Cycle 2e validator independence, declaration authenticity, accounting truth,
 or resistance to common-mode failure, and Cycle 2g does not alter this ADR's
 exact claim, arrays, source bytes, CI anchors, or no-evidence status.
 
+Cycle 2h changes only the two declared-validator report carrier paths. The
+implementation now recovers intrinsic typed-array backing, length, and element
+type before proxy-sensitive prototype checks, requires intrinsic `Uint8Array`
+element type/exact prototype and intrinsic `ArrayBuffer` brand/exact prototype,
+checks the actual maximum before allocation, and copies
+with an ordinary allocation plus intrinsic `set.call`. The historical source
+and CI gates did not cover metadata shadows or constructor/species/accessor
+allocation hooks, so their bounded owned-byte security conclusion is
+Superseded until the exact Cycle 2h gates pass. Cycle 2e's schema, declarations,
+checks, nonclaims, historical anchors, and no-evidence status remain unchanged.
+
 ## References
 
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Cycle 2d exit matrix](../CYCLE_2D_EXIT_MATRIX.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
 - [ADR 0031](./0031-bounded-synthetic-ten-fact-normalization-and-lineage.md)

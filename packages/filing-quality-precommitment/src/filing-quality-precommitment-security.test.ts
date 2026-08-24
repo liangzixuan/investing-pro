@@ -304,13 +304,15 @@ describe("Cycle 2g filing quality precommitment security boundary", () => {
     );
   });
 
-  it("reserves state before hostile byte-carrier traps can reenter commit or reveal", () => {
+  it("reserves state while rejecting hostile byte carriers before proxy traps", () => {
     const documents = buildSyntheticFilingQualityPrecommitmentDocuments();
 
     const commitProtocol = createSyntheticFilingQualityPrecommitmentProtocol();
+    let commitTrapCalls = 0;
     let nestedCommit: unknown;
     const hostilePlan = new Proxy(documents.plan, {
       getPrototypeOf() {
+        commitTrapCalls += 1;
         nestedCommit = commitProtocol.commit(
           documents.plan,
           documents.candidateObservations,
@@ -322,15 +324,22 @@ describe("Cycle 2g filing quality precommitment security boundary", () => {
       commitProtocol.commit(hostilePlan, documents.candidateObservations),
       "protocol_quarantined",
     );
-    expectQuarantined(nestedCommit, "protocol_quarantined");
+    expect(commitTrapCalls).toBe(0);
+    expect(nestedCommit).toBeUndefined();
+    expectQuarantined(
+      commitProtocol.commit(documents.plan, documents.candidateObservations),
+      "protocol_quarantined",
+    );
 
     const revealProtocol = createSyntheticFilingQualityPrecommitmentProtocol();
     const committed = expectCommitted(
       revealProtocol.commit(documents.plan, documents.candidateObservations),
     );
+    let revealTrapCalls = 0;
     let nestedReveal: unknown;
     const hostileReference = new Proxy(documents.declaredReference, {
       getPrototypeOf() {
+        revealTrapCalls += 1;
         nestedReveal = revealProtocol.reveal(
           committed.capability,
           documents.declaredReference,
@@ -342,7 +351,12 @@ describe("Cycle 2g filing quality precommitment security boundary", () => {
       revealProtocol.reveal(committed.capability, hostileReference),
       "protocol_quarantined",
     );
-    expectQuarantined(nestedReveal, "protocol_quarantined");
+    expect(revealTrapCalls).toBe(0);
+    expect(nestedReveal).toBeUndefined();
+    expectQuarantined(
+      revealProtocol.reveal(committed.capability, documents.declaredReference),
+      "protocol_quarantined",
+    );
   });
 
   it("rejects wrong, foreign, cloned, proxied, serialized, receipt-shaped, and replayed capabilities", () => {
@@ -601,7 +615,111 @@ describe("Cycle 2g filing quality precommitment security boundary", () => {
     }
   });
 
-  it("cannot disguise shared or oversized typed-array backing stores with own short ordinary-buffer metadata", () => {
+  it("does not invoke caller metadata, iterator, or instance hooks in any phase byte role", () => {
+    for (const phase of ["plan", "candidate"] as const) {
+      for (const hook of [
+        "buffer",
+        "byteLength",
+        "toStringTag",
+        "iterator",
+        "set",
+      ] as const) {
+        const documents = buildSyntheticFilingQualityPrecommitmentDocuments();
+        const protocol = createSyntheticFilingQualityPrecommitmentProtocol();
+        let hookCalls = 0;
+        const source =
+          phase === "plan" ? documents.plan : documents.candidateObservations;
+        const carrier = withTypedArrayHook(source, hook, () => {
+          hookCalls += 1;
+        });
+        const committed = expectCommitted(
+          protocol.commit(
+            phase === "plan" ? carrier : documents.plan,
+            phase === "candidate" ? carrier : documents.candidateObservations,
+          ),
+        );
+        expect(hookCalls, `${phase}:${hook}`).toBe(0);
+        expectEvaluated(
+          protocol.reveal(committed.capability, documents.declaredReference),
+        );
+      }
+    }
+
+    for (const hook of [
+      "buffer",
+      "byteLength",
+      "toStringTag",
+      "iterator",
+      "set",
+    ] as const) {
+      const documents = buildSyntheticFilingQualityPrecommitmentDocuments();
+      const protocol = createSyntheticFilingQualityPrecommitmentProtocol();
+      const committed = expectCommitted(
+        protocol.commit(documents.plan, documents.candidateObservations),
+      );
+      let hookCalls = 0;
+      const reference = withTypedArrayHook(
+        documents.declaredReference,
+        hook,
+        () => {
+          hookCalls += 1;
+        },
+      );
+      expectEvaluated(protocol.reveal(committed.capability, reference));
+      expect(hookCalls, `reference:${hook}`).toBe(0);
+    }
+  });
+
+  it("rejects proxies, subclasses, and detached carriers in every phase byte role", () => {
+    for (const phase of ["plan", "candidate", "reference"] as const) {
+      for (const kind of ["proxy", "subclass", "detached"] as const) {
+        const documents = buildSyntheticFilingQualityPrecommitmentDocuments();
+        const protocol = createSyntheticFilingQualityPrecommitmentProtocol();
+        let trapCalls = 0;
+        const source =
+          phase === "plan"
+            ? documents.plan
+            : phase === "candidate"
+              ? documents.candidateObservations
+              : documents.declaredReference;
+        let carrier: Uint8Array;
+        if (kind === "proxy") {
+          carrier = new Proxy(source, {
+            getPrototypeOf() {
+              trapCalls += 1;
+              throw new Error("Proxy prototype trap must not execute.");
+            },
+          });
+        } else if (kind === "subclass") {
+          class ByteSubclass extends Uint8Array {}
+          carrier = new ByteSubclass(source);
+        } else {
+          carrier = source.slice();
+          structuredClone(carrier.buffer, { transfer: [carrier.buffer] });
+        }
+        if (phase === "reference") {
+          const committed = expectCommitted(
+            protocol.commit(documents.plan, documents.candidateObservations),
+          );
+          expectQuarantined(
+            protocol.reveal(committed.capability, carrier),
+            "protocol_quarantined",
+          );
+        } else {
+          expectQuarantined(
+            protocol.commit(
+              phase === "plan" ? carrier : documents.plan,
+              phase === "candidate" ? carrier : documents.candidateObservations,
+            ),
+            "protocol_quarantined",
+          );
+        }
+        expect(trapCalls, `${phase}:${kind}`).toBe(0);
+      }
+    }
+  });
+
+  it("cannot disguise shared, non-Uint8, or oversized typed-array carriers", () => {
     const documents = buildSyntheticFilingQualityPrecommitmentDocuments();
     const sharedPlan = withTypedArrayDataShadows(sharedCopy(documents.plan));
     const sharedCandidate = withTypedArrayDataShadows(
@@ -618,6 +736,35 @@ describe("Cycle 2g filing quality precommitment security boundary", () => {
       createSyntheticFilingQualityPrecommitmentProtocol().commit(
         documents.plan,
         sharedCandidate,
+      ),
+      "protocol_quarantined",
+    );
+
+    for (const phase of ["plan", "candidate"] as const) {
+      const source =
+        phase === "plan" ? documents.plan : documents.candidateObservations;
+      for (const carrier of rePrototypedNonUint8Copies(source)) {
+        expectQuarantined(
+          createSyntheticFilingQualityPrecommitmentProtocol().commit(
+            phase === "plan" ? carrier : documents.plan,
+            phase === "candidate" ? carrier : documents.candidateObservations,
+          ),
+          "protocol_quarantined",
+        );
+      }
+    }
+
+    expectQuarantined(
+      createSyntheticFilingQualityPrecommitmentProtocol().commit(
+        rePrototypedSharedCopy(documents.plan),
+        documents.candidateObservations,
+      ),
+      "protocol_quarantined",
+    );
+    expectQuarantined(
+      createSyntheticFilingQualityPrecommitmentProtocol().commit(
+        documents.plan,
+        rePrototypedSharedCopy(documents.candidateObservations),
       ),
       "protocol_quarantined",
     );
@@ -647,6 +794,8 @@ describe("Cycle 2g filing quality precommitment security boundary", () => {
 
     for (const reference of [
       withTypedArrayDataShadows(sharedCopy(documents.declaredReference)),
+      rePrototypedSharedCopy(documents.declaredReference),
+      ...rePrototypedNonUint8Copies(documents.declaredReference),
       withTypedArrayDataShadows(
         new Uint8Array(FILING_QUALITY_PRECOMMITMENT_LIMITS.referenceBytes + 1),
       ),
@@ -992,10 +1141,60 @@ function withTypedArrayConstructorTrap(
   return bytes;
 }
 
+function withTypedArrayHook(
+  source: Uint8Array,
+  hook: "buffer" | "byteLength" | "toStringTag" | "iterator" | "set",
+  onAccess: () => void,
+): Uint8Array {
+  const bytes = new Uint8Array(source);
+  Object.defineProperty(
+    bytes,
+    hook === "iterator"
+      ? Symbol.iterator
+      : hook === "toStringTag"
+        ? Symbol.toStringTag
+        : hook,
+    {
+      get() {
+        onAccess();
+        throw new Error("Caller-controlled typed-array hook was accessed.");
+      },
+    },
+  );
+  return bytes;
+}
+
 function sharedCopy(source: Uint8Array): Uint8Array {
   const bytes = new Uint8Array(new SharedArrayBuffer(source.byteLength));
   bytes.set(source);
   return bytes;
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(source: Uint8Array): readonly Uint8Array[] {
+  const elementBytes = Uint16Array.BYTES_PER_ELEMENT;
+  const remainder = source.byteLength % elementBytes;
+  const paddedByteLength =
+    remainder === 0
+      ? source.byteLength
+      : source.byteLength + elementBytes - remainder;
+  const views = [
+    new Int8Array(source.byteLength),
+    new Uint8ClampedArray(source.byteLength),
+    new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT),
+  ];
+  return views.map((view) => {
+    Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+    Object.setPrototypeOf(view, Uint8Array.prototype);
+    return view as unknown as Uint8Array;
+  });
 }
 
 function jsonClone(value: MutableRecord): MutableRecord {

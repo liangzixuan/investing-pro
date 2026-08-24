@@ -301,6 +301,25 @@ const DECIMAL = /^-?(?:0|[1-9][0-9]{0,25})(?:\.[0-9]{0,11}[1-9])?$/u;
 const FACT_ID_DOMAIN = new TextEncoder().encode(
   "research-cockpit:synthetic-normalized-filing-fact:v1\u0000",
 );
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "buffer",
+);
+const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "byteLength",
+);
+const TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+);
+const ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+);
 
 export function normalizeSyntheticFilingFactPair(
   originalDocument: unknown,
@@ -352,22 +371,33 @@ export function projectNormalizedFilingFactsAsKnown(
 
 function snapshotDocumentBytes(value: unknown): Uint8Array {
   try {
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      Object.getPrototypeOf(value) !== Uint8Array.prototype
-    ) {
+    if (typeof value !== "object" || value === null)
       quarantine("document_invalid");
-    }
     const bytes = value as Uint8Array;
+    const tag = TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
+    const byteLength = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const backingByteLength = ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      buffer,
+    ) as unknown;
     if (
-      Object.getPrototypeOf(bytes.buffer) !== ArrayBuffer.prototype ||
-      bytes.byteLength === 0 ||
-      bytes.byteLength > FILING_FACT_NORMALIZATION_LIMITS.documentBytes
+      tag !== "Uint8Array" ||
+      typeof byteLength !== "number" ||
+      typeof backingByteLength !== "number" ||
+      Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
+      Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype ||
+      byteLength === 0 ||
+      byteLength > FILING_FACT_NORMALIZATION_LIMITS.documentBytes
     ) {
       quarantine("document_invalid");
     }
-    return Uint8Array.prototype.slice.call(bytes);
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
   } catch (error) {
     if (error instanceof QuarantineSignal) throw error;
     quarantine("document_invalid");

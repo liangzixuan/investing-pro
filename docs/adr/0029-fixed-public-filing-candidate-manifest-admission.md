@@ -1,7 +1,10 @@
 # ADR 0029: Fixed public-filing candidate-manifest admission
 
-Status: Phase-A verifier protocol and local/CI verification pass; Cycle 2b
-blocked on external metadata, approvals, and key-authority review
+Status: Phase-A verifier protocol implemented; historical local/CI jobs green;
+prior bounded owned-byte security conclusion Superseded; Cycle 2h hardening
+final working-tree local gate Pass; source commit/CI/parser/custody live gates
+Pending; Cycle 2b blocked on external metadata, approvals, and key-authority
+review
 
 ## Context
 
@@ -196,6 +199,18 @@ real corpus, counsel, steward, authority registry, external clock, adjudicator,
 filing, or parser and provide none of the external Phase-B inputs. It does not
 change Cycle 2b's Blocked status or establish its target claim.
 
+Cycle 2h changes only the seven byte-document carrier paths. The implementation
+now recovers intrinsic typed-array backing, length, and element type before
+proxy-sensitive prototype checks, requires intrinsic `Uint8Array` element type
+plus exact prototype and intrinsic `ArrayBuffer` brand plus exact prototype,
+validates the actual per-document maximum before
+allocation, and copies through an ordinary `Uint8Array` plus intrinsic
+`set.call`. The historical Phase-A jobs did not cover metadata shadows or
+iterator/constructor/species/accessor allocation hooks, so their bounded
+owned-byte security conclusion is Superseded until the exact Cycle 2h gates
+pass. This supplies no external metadata, rights/steward approval, chronology,
+key authority, workflow, artifact, or evidence and leaves Cycle 2b Blocked.
+
 ## References
 
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
@@ -203,6 +218,8 @@ change Cycle 2b's Blocked status or establish its target claim.
 - [Cycle 2e exit matrix](../CYCLE_2E_EXIT_MATRIX.md)
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [Canonical model](../CANONICAL_MODEL.md)

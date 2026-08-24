@@ -1,7 +1,9 @@
 # ADR 0028: Bounded synthetic filing-parser isolation
 
-Status: accepted for the exact bounded synthetic live result; broader Cycle 2
-and production admission blocked
+Status: exact bounded synthetic live run, artifact, and review remain historical
+green facts; prior bounded owned-byte security conclusion Superseded; Cycle 2h
+hardening final working-tree local gate Pass; source commit/CI/parser/custody
+live gates Pending; broader Cycle 2 and production admission blocked
 
 ## Context
 
@@ -162,10 +164,28 @@ the Cycle 2 quality/corpus exit, general filing support, a production container
 sandbox, malware safety, application composition, or permission to ingest real
 data. Production admission remains blocked.
 
+Cycle 2h changes only byte-carrier handling for the public archive, injected
+signer signature output, and stdout/stderr from every injected process-runner
+result. The implementation now reads intrinsic typed-array backing, length,
+and element type before proxy-sensitive prototype checks, requires intrinsic
+`Uint8Array` element type plus exact prototype, and brand-checks an actual
+`ArrayBuffer` internal slot plus exact backing
+prototype, validates the archive maximum, exact 64-byte signature, or
+per-request create/start/remove/residue stream limit before allocating, and copies with an ordinary
+allocation plus intrinsic `set.call`. Oversized exact archive carriers are
+hashed synchronously without an owned copy so the existing signed
+`archive_limit_exceeded` quarantine remains intact. The prior
+iterator-dispatching snapshot made this ADR's bounded owned-byte security
+conclusion false against hostile carriers, so that conclusion is Superseded
+until the exact Cycle 2h local, CI, parser, and custody gates pass. The canonical
+Cycle 2a schema, artifact, note, checks, nonclaims, and source set are unchanged.
+
 ## References
 
 - [Cycle 2a exit matrix](../CYCLE_2A_EXIT_MATRIX.md)
 - [Cycle 2a evidence note](../FILING_PARSER_ISOLATION_EVIDENCE.md)
+- [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [License policy](../../LICENSE_POLICY.md)

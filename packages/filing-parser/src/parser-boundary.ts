@@ -187,14 +187,39 @@ const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DECIMAL = /^-?(?:0|[1-9][0-9]{0,25})(?:\.[0-9]{1,12})?$/;
 const BASE64URL_SIGNATURE = /^[A-Za-z0-9_-]{86}$/;
+const SIGNATURE_BYTES = 64;
 const SIGNING_DOMAIN = new TextEncoder().encode(
   "research-cockpit:filing-parser-result:v1\u0000",
 );
 const INPUT_PATH = "/input/filing.zip";
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "buffer",
+);
+const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "byteLength",
+);
+const TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+);
+const ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+);
 
 interface SignerSnapshot {
   readonly keyId: string;
   readonly sign: (payload: Uint8Array) => Promise<Uint8Array>;
+}
+
+interface ArchiveSnapshot {
+  readonly archive: Uint8Array | null;
+  readonly sourceSha256: `sha256:${string}`;
 }
 
 export function createDockerFilingParserBoundary(
@@ -256,13 +281,13 @@ class DockerFilingParserBoundary implements FilingParserBoundary {
     try {
       const signal = parseSignal(options);
       failIfAborted(signal);
-      const archive = archiveSnapshot(archiveValue);
-      const sourceSha256 = sha256(archive);
+      const snapshot = archiveSnapshot(archiveValue);
+      const { archive, sourceSha256 } = snapshot;
       let result: FilingParserResult;
-      if (archive.byteLength === 0) {
-        result = quarantined(sourceSha256, "archive_invalid");
-      } else if (archive.byteLength > FILING_PARSER_LIMITS.archiveBytes) {
+      if (archive === null) {
         result = quarantined(sourceSha256, "archive_limit_exceeded");
+      } else if (archive.byteLength === 0) {
+        result = quarantined(sourceSha256, "archive_invalid");
       } else {
         result = await this.runWorker(archive, sourceSha256, signal);
       }
@@ -418,10 +443,16 @@ class DockerFilingParserBoundary implements FilingParserBoundary {
     return result;
   }
 
-  private runProcess(
+  private async runProcess(
     request: Omit<FilingParserProcessRequest, "command">,
   ): Promise<FilingParserProcessResult> {
-    return this.processRunner.run({ command: "docker", ...request });
+    const stdoutLimitBytes = request.stdoutLimitBytes;
+    const stderrLimitBytes = request.stderrLimitBytes;
+    const result = await this.processRunner.run({
+      command: "docker",
+      ...request,
+    });
+    return processResultSnapshot(result, stdoutLimitBytes, stderrLimitBytes);
   }
 }
 
@@ -595,11 +626,8 @@ async function signResult(
   const payload = signingPayload(result, signer.keyId, imageId);
   let signature: Uint8Array;
   try {
-    signature = Uint8Array.from(await signer.sign(Uint8Array.from(payload)));
+    signature = signatureSnapshot(await signer.sign(Uint8Array.from(payload)));
   } catch {
-    throw new FilingParserBoundaryError("FILING_PARSER_FAILURE");
-  }
-  if (signature.byteLength !== 64) {
     throw new FilingParserBoundaryError("FILING_PARSER_FAILURE");
   }
   return deepFreeze({
@@ -612,6 +640,77 @@ async function signResult(
       signature: Buffer.from(signature).toString("base64url"),
     },
   });
+}
+
+function signatureSnapshot(value: unknown): Uint8Array {
+  try {
+    const { byteLength, bytes } = intrinsicByteCarrier(value);
+    if (byteLength !== SIGNATURE_BYTES) {
+      throw new FilingParserBoundaryError("FILING_PARSER_FAILURE");
+    }
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
+  } catch {
+    throw new FilingParserBoundaryError("FILING_PARSER_FAILURE");
+  }
+}
+
+function processResultSnapshot(
+  value: unknown,
+  stdoutLimitBytes: number,
+  stderrLimitBytes: number,
+): FilingParserProcessResult {
+  const result = exactDataSnapshot(value, ["exitCode", "stderr", "stdout"]);
+  if (result === null || !Number.isInteger(result.exitCode)) {
+    throw new FilingParserProcessError("FILING_PARSER_PROCESS_FAILURE");
+  }
+  return Object.freeze({
+    exitCode: result.exitCode as number,
+    stderr: processByteSnapshot(result.stderr, stderrLimitBytes),
+    stdout: processByteSnapshot(result.stdout, stdoutLimitBytes),
+  });
+}
+
+function processByteSnapshot(value: unknown, maximumBytes: number): Uint8Array {
+  try {
+    const { byteLength, bytes } = intrinsicByteCarrier(value);
+    if (byteLength > maximumBytes) {
+      throw new FilingParserProcessError("FILING_PARSER_PROCESS_OUTPUT_LIMIT");
+    }
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
+  } catch (error) {
+    if (error instanceof FilingParserProcessError) throw error;
+    throw new FilingParserProcessError("FILING_PARSER_PROCESS_FAILURE");
+  }
+}
+
+function intrinsicByteCarrier(value: unknown): {
+  readonly byteLength: number;
+  readonly bytes: Uint8Array;
+} {
+  if (typeof value !== "object" || value === null) throw new TypeError();
+  const bytes = value as Uint8Array;
+  const tag = TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR?.get?.call(bytes) as unknown;
+  const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
+  const byteLength = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+    bytes,
+  ) as unknown;
+  const backingByteLength = ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+    buffer,
+  ) as unknown;
+  if (
+    tag !== "Uint8Array" ||
+    typeof byteLength !== "number" ||
+    typeof backingByteLength !== "number" ||
+    Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
+    Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype
+  ) {
+    throw new TypeError();
+  }
+  return { byteLength, bytes };
 }
 
 export function verifyFilingParserProvenance(
@@ -854,10 +953,21 @@ function signerSnapshot(signer: unknown): SignerSnapshot {
   });
 }
 
-function archiveSnapshot(value: Uint8Array): Uint8Array {
+function archiveSnapshot(value: Uint8Array): ArchiveSnapshot {
   try {
-    if (!(value instanceof Uint8Array)) invalidInput();
-    return Uint8Array.from(value);
+    const { byteLength, bytes } = intrinsicByteCarrier(value);
+    if (byteLength > FILING_PARSER_LIMITS.archiveBytes) {
+      return Object.freeze({
+        archive: null,
+        sourceSha256: sha256(bytes),
+      });
+    }
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return Object.freeze({
+      archive: snapshot,
+      sourceSha256: sha256(snapshot),
+    });
   } catch {
     invalidInput();
   }

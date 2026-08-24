@@ -156,6 +156,25 @@ export type FilingFactComparisonResult =
 const AGREEMENT_DOMAIN = new TextEncoder().encode(
   "research-cockpit:synthetic-filing-fact-comparison-agreement:v1\u0000",
 );
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "buffer",
+);
+const TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  "byteLength",
+);
+const TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+);
+const ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+);
 
 export function compareSyntheticFilingFactValidatorReports(
   declaredValidatorAEnvelope: unknown,
@@ -233,22 +252,32 @@ export function compareSyntheticFilingFactValidatorReports(
 
 function snapshotReportBytes(value: unknown): Uint8Array | null {
   try {
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      Object.getPrototypeOf(value) !== Uint8Array.prototype
-    ) {
-      return null;
-    }
+    if (typeof value !== "object" || value === null) return null;
     const bytes = value as Uint8Array;
+    const tag = TYPED_ARRAY_TO_STRING_TAG_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const buffer = TYPED_ARRAY_BUFFER_DESCRIPTOR?.get?.call(bytes) as unknown;
+    const byteLength = TYPED_ARRAY_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      bytes,
+    ) as unknown;
+    const backingByteLength = ARRAY_BUFFER_BYTE_LENGTH_DESCRIPTOR?.get?.call(
+      buffer,
+    ) as unknown;
     if (
-      Object.getPrototypeOf(bytes.buffer) !== ArrayBuffer.prototype ||
-      bytes.byteLength === 0 ||
-      bytes.byteLength > FILING_FACT_COMPARISON_LIMITS.reportBytes
+      tag !== "Uint8Array" ||
+      typeof byteLength !== "number" ||
+      typeof backingByteLength !== "number" ||
+      Object.getPrototypeOf(bytes) !== Uint8Array.prototype ||
+      Object.getPrototypeOf(buffer) !== ArrayBuffer.prototype ||
+      byteLength === 0 ||
+      byteLength > FILING_FACT_COMPARISON_LIMITS.reportBytes
     ) {
       return null;
     }
-    return Uint8Array.prototype.slice.call(bytes);
+    const snapshot = new Uint8Array(byteLength);
+    Uint8Array.prototype.set.call(snapshot, bytes);
+    return snapshot;
   } catch {
     return null;
   }

@@ -6,12 +6,20 @@ same-schema ten-fact normalization payloads and agree only on byte-exact full
 payload equality. The decision is recorded in
 [ADR 0032](./adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md).
 
-Current status: **bounded source-stage claim, local verification, and two-OS CI
-Pass only for exact source commit
-`60b92aa527435904776144f5e2d5a1a3ab61e67e`. Cycle 2b and production admission
-remain Blocked.**
+Current status: **the local and two-OS CI jobs for exact source commit
+`60b92aa527435904776144f5e2d5a1a3ab61e67e` remain historical green facts, but
+the prior bounded owned-byte security conclusion is Superseded. Cycle 2b and
+production admission remain Blocked.** The two validator-report snapshot paths
+could trust caller-controlled metadata or dispatch caller allocation hooks.
+Current intrinsic-backing, actual-length, and owned-copy hardening is
+implemented, and its exact final working-tree local gate is Pass. The source
+commit, two-OS CI, parser live acceptance, and custody live acceptance remain
+Pending under Cycle 2h.
 There is no real filing, external configuration, dedicated Cycle 2e workflow,
 evidence schema, artifact, offline evidence review, or evidence note.
+
+Every Pass entry below records the historical exact-source result. None attests
+the current hardened source bytes or revives the Superseded conclusion.
 
 | Gate                 | Required result                                                                                                        | Current status          |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -107,13 +115,14 @@ verifiers accept Cycle 2e only as the exact atomic 28-path transition from
 `e0ee2e74eac6164487cc09d12b6efab5fd5f8cb5`; no Cycle 2e result enters either
 record.
 
-The exact frozen-byte local and two-OS CI gates are Pass only for source commit
-`60b92aa527435904776144f5e2d5a1a3ab61e67e`. Failure, cancellation, any
-omitted/extra or deleted transition path, a partial package tree, non-value-free
-quarantine, silent repair, or any real-data input prevents promotion. This
-source-stage Pass does not prove true validator independence or authenticity,
-unblock Cycle 2b, establish full Cycle 2 quality, create B15/V15, or authorize
-production use.
+The exact frozen-byte local and two-OS CI gates passed for source commit
+`60b92aa527435904776144f5e2d5a1a3ab61e67e` and remain historical green facts.
+The bounded owned-byte security conclusion is Superseded pending Cycle 2h.
+Failure, cancellation, any omitted/extra or deleted transition path, a partial
+package tree, non-value-free quarantine, silent repair, or any real-data input
+prevents future promotion. The historical source-stage result does not prove
+true validator independence or authenticity, unblock Cycle 2b, establish full
+Cycle 2 quality, create B15/V15, or authorize production use.
 
 Cycle 2f is a separate successor-only declared-reference quality-measurement
 contract. Its candidate document is synthetic input and is not an authenticated
@@ -129,3 +138,11 @@ Cycle 2e validator independence, declaration authenticity, accounting truth,
 or resistance to common-mode failure and does not alter Cycle 2e's exact claim,
 checks, nonclaims, source bytes, CI anchors, or no-evidence status. See the
 [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
+
+Cycle 2h hardens both declared-validator report roles with intrinsic typed-array
+backing, length, and element-type reads; exact intrinsic `Uint8Array`
+element type/prototype and `ArrayBuffer` brand/prototype validation;
+preallocation bounds; and an ordinary intrinsic copy. It does not alter Cycle 2e's exact
+schema, declarations, checks, nonclaims, historical anchors, or no-evidence
+status, and it adds no proof of validator independence, authenticity, or
+accounting truth. See the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).

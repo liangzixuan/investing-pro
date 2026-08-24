@@ -247,6 +247,102 @@ describe("Cycle 2d filing fact normalization security boundary", () => {
     }
   });
 
+  it("uses intrinsic backing-store metadata for both document byte roles", () => {
+    const documents = buildSyntheticFilingFactDocuments();
+    class DocumentSubclass extends Uint8Array {}
+    for (const role of ["original", "amendment"] as const) {
+      const source = documentAt(documents, role);
+      const shared = new Uint8Array(new SharedArrayBuffer(source.byteLength));
+      Uint8Array.prototype.set.call(shared, source);
+      shadowByteMetadata(shared, source.byteLength);
+      expectQuarantined(
+        normalizeAt(documents, role, shared),
+        "document_invalid",
+      );
+
+      expectQuarantined(
+        normalizeAt(documents, role, rePrototypedSharedCopy(source)),
+        "document_invalid",
+      );
+
+      for (const carrier of rePrototypedNonUint8Copies(source)) {
+        expectQuarantined(
+          normalizeAt(documents, role, carrier),
+          "document_invalid",
+        );
+      }
+
+      expectQuarantined(
+        normalizeAt(documents, role, new DocumentSubclass(source)),
+        "document_invalid",
+      );
+
+      const detached = source.slice();
+      structuredClone(detached.buffer, { transfer: [detached.buffer] });
+      expectQuarantined(
+        normalizeAt(documents, role, detached),
+        "document_invalid",
+      );
+
+      const oversized = new Uint8Array(
+        FILING_FACT_NORMALIZATION_LIMITS.documentBytes + 1,
+      );
+      Uint8Array.prototype.set.call(oversized, source);
+      shadowByteMetadata(oversized, source.byteLength);
+      expectQuarantined(
+        normalizeAt(documents, role, oversized),
+        "document_invalid",
+      );
+    }
+  });
+
+  it("does not dispatch metadata, iterator, allocation, or instance hooks for either document byte role", () => {
+    const documents = buildSyntheticFilingFactDocuments();
+    for (const role of ["original", "amendment"] as const) {
+      for (const hook of [
+        "buffer",
+        "byteLength",
+        "toStringTag",
+        "constructor",
+        "species",
+        "iterator",
+        "set",
+      ] as const) {
+        let calls = 0;
+        const carrier = withTypedArrayAllocationHook(
+          documentAt(documents, role),
+          hook,
+          () => {
+            calls += 1;
+          },
+        );
+        expect(normalizeAt(documents, role, carrier).status, role).toBe(
+          "normalized",
+        );
+        expect(calls, `${role}:${hook}`).toBe(0);
+      }
+    }
+  });
+
+  it("rejects proxies before a getPrototypeOf trap can run in either document byte role", () => {
+    const documents = buildSyntheticFilingFactDocuments();
+    for (const role of ["original", "amendment"] as const) {
+      let trapCalls = 0;
+      const carrier = new Proxy(documentAt(documents, role).slice(), {
+        getPrototypeOf() {
+          trapCalls += 1;
+          throw new Error("PROXY_INPUT_CANARY");
+        },
+      });
+      expectQuarantined(
+        normalizeAt(documents, role, carrier),
+        "document_invalid",
+        ["PROXY_INPUT_CANARY"],
+      );
+      expect(trapCalls, role).toBe(0);
+    }
+  });
+
   it("rejects noncanonical JSON, duplicate keys, BOM, invalid UTF-8, and trailing bytes", () => {
     const documents = buildSyntheticFilingFactDocuments();
     const text = new TextDecoder().decode(documents.originalDocument);
@@ -720,6 +816,91 @@ describe("Cycle 2d filing fact normalization security boundary", () => {
 interface MutableDocuments {
   readonly amendment: JsonRecord;
   readonly original: JsonRecord;
+}
+
+function documentAt(
+  documents: ReturnType<typeof buildSyntheticFilingFactDocuments>,
+  role: "original" | "amendment",
+): Uint8Array {
+  return role === "original"
+    ? documents.originalDocument
+    : documents.amendmentDocument;
+}
+
+function normalizeAt(
+  documents: ReturnType<typeof buildSyntheticFilingFactDocuments>,
+  role: "original" | "amendment",
+  bytes: Uint8Array,
+): FilingFactNormalizationResult {
+  return role === "original"
+    ? normalizeSyntheticFilingFactPair(bytes, documents.amendmentDocument)
+    : normalizeSyntheticFilingFactPair(documents.originalDocument, bytes);
+}
+
+function shadowByteMetadata(bytes: Uint8Array, byteLength: number): void {
+  Object.defineProperties(bytes, {
+    buffer: { value: new ArrayBuffer(byteLength) },
+    byteLength: { value: byteLength },
+  });
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(source: Uint8Array): readonly Uint8Array[] {
+  const paddedByteLength =
+    Math.ceil(source.byteLength / Uint16Array.BYTES_PER_ELEMENT) *
+    Uint16Array.BYTES_PER_ELEMENT;
+  const views = [
+    new Int8Array(source.byteLength),
+    new Uint8ClampedArray(source.byteLength),
+    new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT),
+  ];
+  return views.map((view) => {
+    Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+    Object.setPrototypeOf(view, Uint8Array.prototype);
+    return view as unknown as Uint8Array;
+  });
+}
+
+function withTypedArrayAllocationHook(
+  source: Uint8Array,
+  hook:
+    | "buffer"
+    | "byteLength"
+    | "toStringTag"
+    | "constructor"
+    | "species"
+    | "iterator"
+    | "set",
+  onAccess: () => void,
+): Uint8Array {
+  const bytes = new Uint8Array(source);
+  const failOnAccess = (): never => {
+    onAccess();
+    throw new Error("Caller-controlled allocation hook was accessed.");
+  };
+  if (hook === "species") {
+    const constructor = {};
+    Object.defineProperty(constructor, Symbol.species, { get: failOnAccess });
+    Object.defineProperty(bytes, "constructor", { value: constructor });
+  } else {
+    Object.defineProperty(
+      bytes,
+      hook === "iterator"
+        ? Symbol.iterator
+        : hook === "toStringTag"
+          ? Symbol.toStringTag
+          : hook,
+      { get: failOnAccess },
+    );
+  }
+  return bytes;
 }
 
 function mutableDocuments(): MutableDocuments {

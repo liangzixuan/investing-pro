@@ -85,6 +85,15 @@ const EXPECTED_NONCLAIMS = Object.freeze([
 ] as const);
 
 type Sha256 = `sha256:${string}`;
+const BYTE_HOOKS = [
+  "buffer",
+  "byteLength",
+  "toStringTag",
+  "constructor",
+  "species",
+  "iterator",
+  "set",
+] as const;
 
 interface ClockHarness {
   readonly clock: FilingPayloadCustodyClock;
@@ -327,6 +336,73 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
     });
   });
 
+  it("uses intrinsic metadata and allocation for the public stage payload byte role", async () => {
+    await withEmptyParent(async (parent) => {
+      const harness = await createBoundaryHarness(parent);
+      const payload = createSyntheticFilingPayloadFixture();
+
+      const shared = new Uint8Array(new SharedArrayBuffer(payload.byteLength));
+      Uint8Array.prototype.set.call(shared, payload);
+      shadowByteMetadata(shared, payload.byteLength);
+      await expectCustodyFailure(
+        () => harness.boundary.stage(stageCommand(shared)),
+        "invalid_input",
+      );
+
+      await expectCustodyFailure(
+        () =>
+          harness.boundary.stage(stageCommand(rePrototypedSharedCopy(payload))),
+        "invalid_input",
+      );
+
+      for (const carrier of rePrototypedNonUint8Copies(payload)) {
+        await expectCustodyFailure(
+          () => harness.boundary.stage(stageCommand(carrier)),
+          "invalid_input",
+        );
+      }
+
+      const oversized = new Uint8Array(
+        FILING_PAYLOAD_CUSTODY_LIMITS.payloadBytes + 1,
+      );
+      Uint8Array.prototype.set.call(oversized, payload);
+      shadowByteMetadata(oversized, payload.byteLength);
+      await expectCustodyFailure(
+        () => harness.boundary.stage(stageCommand(oversized)),
+        "invalid_input",
+      );
+
+      let prototypeTrapCalls = 0;
+      const proxy = new Proxy(payload.slice(), {
+        getPrototypeOf() {
+          prototypeTrapCalls += 1;
+          throw new Error(ERROR_CANARY);
+        },
+      });
+      await expectCustodyFailure(
+        () => harness.boundary.stage(stageCommand(proxy)),
+        "invalid_input",
+      );
+      expect(prototypeTrapCalls).toBe(0);
+
+      for (const hook of BYTE_HOOKS) {
+        let hookCalls = 0;
+        const carrier = withTypedArrayAllocationHook(payload, hook, () => {
+          hookCalls += 1;
+        });
+        await expect(
+          harness.boundary.stage(stageCommand(carrier)),
+        ).resolves.toMatchObject({ state: "available" });
+        expect(hookCalls, hook).toBe(0);
+      }
+      const ordinary = await harness.boundary.stage(stageCommand(payload));
+      expect(
+        await harness.boundary.read({ payloadId: ordinary.payloadId }),
+      ).toEqual(payload);
+      await harness.boundary.close();
+    });
+  });
+
   it("snapshots nested adapter method references at initialization", async () => {
     await withEmptyParent(async (parent) => {
       const clock = clockHarness();
@@ -366,6 +442,167 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
         await initialized.boundary.read({ payloadId: receipt.payloadId }),
       ).toEqual(createSyntheticFilingPayloadFixture());
       await initialized.boundary.close();
+    });
+  });
+
+  it("hardens every entropy byte result before using caller-controlled metadata", async () => {
+    for (const carrierKind of [
+      "shared",
+      "oversized",
+      "reproto_shared",
+      "reproto_int8",
+      "reproto_uint8_clamped",
+      "reproto_wider",
+      "proxy",
+      "subclass",
+      "detached",
+    ] as const) {
+      for (let targetCall = 0; targetCall < 5; targetCall += 1) {
+        await withEmptyParent(async (parent) => {
+          let prototypeTrapCalls = 0;
+          const entropy = entropyCarrierHarness((source, call) =>
+            call === targetCall
+              ? hostileDependencyCarrier(source, carrierKind, () => {
+                  prototypeTrapCalls += 1;
+                })
+              : source,
+          );
+          const harness = await createBoundaryHarness(parent, { entropy });
+          await expectCustodyFailure(
+            () =>
+              harness.boundary.stage(
+                stageCommand(createSyntheticFilingPayloadFixture()),
+              ),
+            "invalid_input",
+          );
+          expect(
+            prototypeTrapCalls,
+            `${carrierKind}:${String(targetCall)}`,
+          ).toBe(0);
+          expect(entropy.calls()).toHaveLength(targetCall + 1);
+          await harness.boundary.close();
+        });
+      }
+    }
+
+    for (const hook of BYTE_HOOKS) {
+      await withEmptyParent(async (parent) => {
+        let hookCalls = 0;
+        const entropy = entropyCarrierHarness((source) =>
+          withTypedArrayAllocationHook(source, hook, () => {
+            hookCalls += 1;
+          }),
+        );
+        const harness = await createBoundaryHarness(parent, { entropy });
+        const receipt = await harness.boundary.stage(
+          stageCommand(createSyntheticFilingPayloadFixture()),
+        );
+        expect(
+          await harness.boundary.read({ payloadId: receipt.payloadId }),
+        ).toEqual(createSyntheticFilingPayloadFixture());
+        expect(entropy.calls()).toHaveLength(5);
+        expect(hookCalls, hook).toBe(0);
+        await harness.boundary.close();
+      });
+    }
+  });
+
+  it("hardens every key-store read byte result before decryption", async () => {
+    for (const carrierKind of [
+      "shared",
+      "oversized",
+      "reproto_shared",
+      "reproto_int8",
+      "reproto_uint8_clamped",
+      "reproto_wider",
+      "proxy",
+      "subclass",
+      "detached",
+    ] as const) {
+      await withEmptyParent(async (parent) => {
+        let prototypeTrapCalls = 0;
+        const keyStore = keyStoreReadCarrierHarness((source) =>
+          hostileDependencyCarrier(source, carrierKind, () => {
+            prototypeTrapCalls += 1;
+          }),
+        );
+        const harness = await createBoundaryHarness(parent, { keyStore });
+        const receipt = await harness.boundary.stage(
+          stageCommand(createSyntheticFilingPayloadFixture()),
+        );
+        await expectCustodyFailure(
+          () => harness.boundary.read({ payloadId: receipt.payloadId }),
+          "key_store_failure",
+        );
+        expect(prototypeTrapCalls).toBe(0);
+        await harness.boundary.close();
+      });
+    }
+
+    for (const hook of BYTE_HOOKS) {
+      await withEmptyParent(async (parent) => {
+        let hookCalls = 0;
+        const keyStore = keyStoreReadCarrierHarness((source) =>
+          withTypedArrayAllocationHook(source, hook, () => {
+            hookCalls += 1;
+          }),
+        );
+        const harness = await createBoundaryHarness(parent, { keyStore });
+        const payload = createSyntheticFilingPayloadFixture();
+        const receipt = await harness.boundary.stage(stageCommand(payload));
+        expect(
+          await harness.boundary.read({ payloadId: receipt.payloadId }),
+        ).toEqual(payload);
+        expect(hookCalls, hook).toBe(0);
+        await harness.boundary.close();
+      });
+    }
+  });
+
+  it("owns all retained entropy and external key-read results after each API returns", async () => {
+    await withEmptyParent(async (parent) => {
+      const retainedEntropy: Uint8Array[] = [];
+      const entropy = entropyCarrierHarness((source) => {
+        retainedEntropy.push(source);
+        return source;
+      });
+      const retainedKeyReads: Uint8Array[] = [];
+      const keyStore = keyStoreReadCarrierHarness((source) => {
+        retainedKeyReads.push(source);
+        return source;
+      });
+      const harness = await createBoundaryHarness(parent, {
+        entropy,
+        keyStore,
+      });
+      const payload = createSyntheticFilingPayloadFixture();
+
+      const receipt = await harness.boundary.stage(stageCommand(payload));
+      const expectedReceipt = structuredClone(receipt);
+      const originalEntropy = retainedEntropy.map((source) =>
+        Uint8Array.from(source),
+      );
+      expect(retainedEntropy).toHaveLength(5);
+      retainedEntropy.forEach((source, index) => {
+        source.fill(0xa5);
+        expect(source, String(index)).not.toEqual(originalEntropy[index]);
+      });
+
+      const retrieved = await harness.boundary.read({
+        payloadId: receipt.payloadId,
+      });
+      const expectedRetrieved = Uint8Array.from(retrieved);
+      expect(retrieved).toEqual(payload);
+      expect(retainedKeyReads).toHaveLength(1);
+      const retainedKeyRead = retainedKeyReads[0];
+      if (retainedKeyRead === undefined) throw new Error();
+      const originalKeyRead = Uint8Array.from(retainedKeyRead);
+      retainedKeyRead.fill(0xa5);
+
+      expect(retainedKeyRead).not.toEqual(originalKeyRead);
+      expect(receipt).toStrictEqual(expectedReceipt);
+      expect(retrieved).toEqual(expectedRetrieved);
+      await harness.boundary.close();
     });
   });
 
@@ -419,6 +656,82 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
     expect(await store.forget(keyId)).toBe("forgotten");
     expect(await store.forget(keyId)).toBe("missing");
     expect(await store.read(keyId)).toBeUndefined();
+  });
+
+  it("hardens the exported key-store key byte role with intrinsic metadata and allocation", async () => {
+    const store = createSyntheticInMemoryFilingPayloadKeyStore();
+    const key = new Uint8Array(FILING_PAYLOAD_CUSTODY_ALGORITHM.keyBytes).fill(
+      0x5a,
+    );
+
+    const shared = new Uint8Array(new SharedArrayBuffer(key.byteLength));
+    Uint8Array.prototype.set.call(shared, key);
+    shadowByteMetadata(shared, key.byteLength);
+    await expectCustodyFailure(
+      () => store.putIfAbsent(`key_${"d".repeat(32)}`, shared),
+      "key_store_failure",
+    );
+
+    await expectCustodyFailure(
+      () =>
+        store.putIfAbsent(`key_${"c".repeat(32)}`, rePrototypedSharedCopy(key)),
+      "key_store_failure",
+    );
+
+    for (const carrier of rePrototypedNonUint8Copies(key)) {
+      await expectCustodyFailure(
+        () => store.putIfAbsent(`key_${"c".repeat(32)}`, carrier),
+        "key_store_failure",
+      );
+    }
+
+    for (const kind of ["subclass", "detached"] as const) {
+      let trapCalls = 0;
+      const carrier = hostileDependencyCarrier(key, kind, () => {
+        trapCalls += 1;
+      });
+      await expectCustodyFailure(
+        () => store.putIfAbsent(`key_${"c".repeat(32)}`, carrier),
+        "key_store_failure",
+      );
+      expect(trapCalls, kind).toBe(0);
+    }
+
+    const oversized = new Uint8Array(key.byteLength + 1);
+    Uint8Array.prototype.set.call(oversized, key);
+    shadowByteMetadata(oversized, key.byteLength);
+    await expectCustodyFailure(
+      () => store.putIfAbsent(`key_${"e".repeat(32)}`, oversized),
+      "key_store_failure",
+    );
+
+    let prototypeTrapCalls = 0;
+    const proxy = new Proxy(key.slice(), {
+      getPrototypeOf() {
+        prototypeTrapCalls += 1;
+        throw new Error(ERROR_CANARY);
+      },
+    });
+    await expectCustodyFailure(
+      () => store.putIfAbsent(`key_${"f".repeat(32)}`, proxy),
+      "key_store_failure",
+    );
+    expect(prototypeTrapCalls).toBe(0);
+
+    for (const [index, hook] of BYTE_HOOKS.entries()) {
+      let hookCalls = 0;
+      const carrier = withTypedArrayAllocationHook(key, hook, () => {
+        hookCalls += 1;
+      });
+      const keyId = `key_${String(index + 1).repeat(32)}`;
+      expect(await store.putIfAbsent(keyId, carrier)).toBe(true);
+      expect(await store.read(keyId)).toEqual(key);
+      expect(hookCalls, hook).toBe(0);
+    }
+
+    const ordinaryKeyId = `key_${"8".repeat(32)}`;
+    expect(await store.putIfAbsent(ordinaryKeyId, key)).toBe(true);
+    expect(await store.read(ordinaryKeyId)).toEqual(key);
   });
 
   it("stages AES-GCM ciphertext into distinct payload, key, and audit domains without plaintext or key leakage", async () => {
@@ -1284,6 +1597,74 @@ function entropyHarness(seed: string): EntropyHarness {
   };
 }
 
+function entropyCarrierHarness(
+  transform: (source: Uint8Array, call: number) => Uint8Array,
+): EntropyHarness {
+  const base = entropyHarness("hostile-carrier");
+  let call = 0;
+  return {
+    calls: base.calls,
+    entropy: {
+      bytes: (length: number): Uint8Array => {
+        const result = transform(base.entropy.bytes(length), call);
+        call += 1;
+        return result;
+      },
+    },
+  };
+}
+
+function hostileDependencyCarrier(
+  source: Uint8Array,
+  kind:
+    | "shared"
+    | "oversized"
+    | "reproto_shared"
+    | "reproto_int8"
+    | "reproto_uint8_clamped"
+    | "reproto_wider"
+    | "proxy"
+    | "subclass"
+    | "detached",
+  onProxyTrap: () => void,
+): Uint8Array {
+  if (kind === "shared") {
+    const shared = new Uint8Array(new SharedArrayBuffer(source.byteLength));
+    Uint8Array.prototype.set.call(shared, source);
+    shadowByteMetadata(shared, source.byteLength);
+    return shared;
+  }
+  if (kind === "oversized") {
+    const oversized = new Uint8Array(source.byteLength + 1);
+    Uint8Array.prototype.set.call(oversized, source);
+    shadowByteMetadata(oversized, source.byteLength);
+    return oversized;
+  }
+  if (kind === "reproto_shared") return rePrototypedSharedCopy(source);
+  if (
+    kind === "reproto_int8" ||
+    kind === "reproto_uint8_clamped" ||
+    kind === "reproto_wider"
+  ) {
+    return rePrototypedNonUint8Copy(source, kind);
+  }
+  if (kind === "subclass") {
+    class ByteSubclass extends Uint8Array {}
+    return new ByteSubclass(source);
+  }
+  if (kind === "detached") {
+    const detached = new Uint8Array(source);
+    structuredClone(detached.buffer, { transfer: [detached.buffer] });
+    return detached;
+  }
+  return new Proxy(source, {
+    getPrototypeOf() {
+      onProxyTrap();
+      throw new Error(ERROR_CANARY);
+    },
+  });
+}
+
 function keyStoreHarness(): KeyStoreHarness {
   const keys = new Map<string, Uint8Array>();
   let forgetFailures = 0;
@@ -1327,6 +1708,95 @@ function keyStoreHarness(): KeyStoreHarness {
       return value === undefined ? undefined : Uint8Array.from(value);
     },
   };
+}
+
+function keyStoreReadCarrierHarness(
+  transform: (source: Uint8Array) => Uint8Array,
+): KeyStoreHarness {
+  const base = keyStoreHarness();
+  return {
+    failForget: base.failForget,
+    keyIds: base.keyIds,
+    keyStore: {
+      forget: base.keyStore.forget,
+      putIfAbsent: base.keyStore.putIfAbsent,
+      read: (keyId: string): Uint8Array | undefined => {
+        const value = base.readKey(keyId);
+        return value === undefined ? undefined : transform(value);
+      },
+    },
+    putSideEffectThenThrow: base.putSideEffectThenThrow,
+    readKey: base.readKey,
+  };
+}
+
+function shadowByteMetadata(bytes: Uint8Array, byteLength: number): void {
+  Object.defineProperties(bytes, {
+    buffer: { value: new ArrayBuffer(byteLength) },
+    byteLength: { value: byteLength },
+  });
+}
+
+function withTypedArrayAllocationHook(
+  source: Uint8Array,
+  hook: (typeof BYTE_HOOKS)[number],
+  onAccess: () => void,
+): Uint8Array {
+  const bytes = new Uint8Array(source);
+  const failOnAccess = (): never => {
+    onAccess();
+    throw new Error("Caller-controlled allocation hook was accessed.");
+  };
+  if (hook === "species") {
+    const constructor = {};
+    Object.defineProperty(constructor, Symbol.species, { get: failOnAccess });
+    Object.defineProperty(bytes, "constructor", { value: constructor });
+  } else {
+    Object.defineProperty(
+      bytes,
+      hook === "iterator"
+        ? Symbol.iterator
+        : hook === "toStringTag"
+          ? Symbol.toStringTag
+          : hook,
+      { get: failOnAccess },
+    );
+  }
+  return bytes;
+}
+
+function rePrototypedSharedCopy(source: Uint8Array): Uint8Array {
+  const backing = new SharedArrayBuffer(source.byteLength);
+  const bytes = new Uint8Array(backing);
+  Uint8Array.prototype.set.call(bytes, source);
+  Object.setPrototypeOf(backing, ArrayBuffer.prototype);
+  return bytes;
+}
+
+function rePrototypedNonUint8Copies(source: Uint8Array): readonly Uint8Array[] {
+  return [
+    rePrototypedNonUint8Copy(source, "reproto_int8"),
+    rePrototypedNonUint8Copy(source, "reproto_uint8_clamped"),
+    rePrototypedNonUint8Copy(source, "reproto_wider"),
+  ];
+}
+
+function rePrototypedNonUint8Copy(
+  source: Uint8Array,
+  kind: "reproto_int8" | "reproto_uint8_clamped" | "reproto_wider",
+): Uint8Array {
+  const paddedByteLength =
+    Math.ceil(source.byteLength / Uint16Array.BYTES_PER_ELEMENT) *
+    Uint16Array.BYTES_PER_ELEMENT;
+  const view =
+    kind === "reproto_int8"
+      ? new Int8Array(source.byteLength)
+      : kind === "reproto_uint8_clamped"
+        ? new Uint8ClampedArray(source.byteLength)
+        : new Uint16Array(paddedByteLength / Uint16Array.BYTES_PER_ELEMENT);
+  Uint8Array.prototype.set.call(new Uint8Array(view.buffer), source);
+  Object.setPrototypeOf(view, Uint8Array.prototype);
+  return view as unknown as Uint8Array;
 }
 
 function recordPaths(

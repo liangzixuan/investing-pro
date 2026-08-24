@@ -26,6 +26,8 @@ const CYCLE_2F_BASELINE_REVISION =
   "baa79baa466cf1c869f63a279f90a6dde61c97ac" as const;
 const CYCLE_2G_BASELINE_REVISION =
   "033e59cc06a421f104ecd869ae77ac694fa8ff31" as const;
+const CYCLE_2H_BASELINE_REVISION =
+  "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -391,11 +393,136 @@ const CYCLE_2G_TRANSITION = Object.freeze(
     { path: "scripts/verify-boundaries.ts", status: "M" },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const CYCLE_2H_TRANSITION = Object.freeze(
+  [
+    { path: "LICENSE_POLICY.md", status: "M" },
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2A_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2B_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2C_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2D_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2E_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2F_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2G_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2H_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0028-bounded-synthetic-filing-parser-isolation.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0029-fixed-public-filing-candidate-manifest-admission.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0030-bounded-synthetic-filing-payload-custody.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0032-bounded-synthetic-two-declared-validator-fact-comparison.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md",
+      status: "A",
+    },
+    {
+      path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+      status: "M",
+    },
+    {
+      path: "packages/filing-fact-comparison/src/filing-fact-comparison-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-fact-comparison/src/filing-fact-comparison.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-fact-normalization/src/filing-fact-normalization.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/corpus-admission-security.test.ts",
+      status: "M",
+    },
+    { path: "packages/filing-parser/src/corpus-admission.ts", status: "M" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "packages/filing-parser/src/parser-boundary.ts", status: "M" },
+    {
+      path: "packages/filing-parser/src/parser-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/payload-custody.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-quality-measurement/src/filing-quality-measurement-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-quality-measurement/src/filing-quality-measurement.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-quality-precommitment/src/filing-quality-precommitment-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
+      status: "M",
+    },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
+const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = new Set([
+  "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
+]);
 const CYCLE_2F_TRANSITION_PATHS = new Set(
   CYCLE_2F_TRANSITION.map((entry) => entry.path),
 );
 const CYCLE_2G_TRANSITION_PATHS = new Set(
   CYCLE_2G_TRANSITION.map((entry) => entry.path),
+);
+const CYCLE_2H_TRANSITION_PATHS = new Set(
+  CYCLE_2H_TRANSITION.map((entry) => entry.path),
 );
 const CYCLE_2D_MARKER_PATHS = new Set([
   "docs/CYCLE_2D_EXIT_MATRIX.md",
@@ -416,6 +543,11 @@ const CYCLE_2G_MARKER_PATHS = new Set([
   "docs/CYCLE_2G_EXIT_MATRIX.md",
   "docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md",
   ...CYCLE_2G_DISCONNECTED_SUCCESSOR_TREE,
+]);
+const CYCLE_2H_MARKER_PATHS = new Set([
+  "docs/CYCLE_2H_EXIT_MATRIX.md",
+  "docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md",
+  ...CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS,
 ]);
 const CYCLE_2A_LEGACY_EVIDENCE_NOTE_TREE = Object.freeze([
   "docs/FILING_PARSER_ISOLATION_EVIDENCE.md",
@@ -835,7 +967,11 @@ export async function verifyCycle2aCommitBoundary(
   for (let index = 0; index < diff.length; index += 2) {
     const status = diff[index];
     const path = diff[index + 1];
-    if (!isCycle2aCommitDiffEntryAllowed(status, path)) invalidReview();
+    if (
+      !isCycle2aCommitDiffEntryAllowed(status, path) &&
+      !isCycle2hPreBaselineCumulativeDiffEntry(status, path)
+    )
+      invalidReview();
     if (status === undefined || path === undefined) invalidReview();
     diffEntries.push(Object.freeze({ path, status }));
   }
@@ -973,6 +1109,10 @@ export async function verifyCycle2aCommitBoundary(
   )
     invalidReview();
 
+  const cycle2hBaselineDiffPaths = await cycle2hTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
   const cycle2gBaselineDiffPaths = await cycle2gTransitionSurfaceDiffPaths(
     repositoryPath,
     revision,
@@ -982,6 +1122,10 @@ export async function verifyCycle2aCommitBoundary(
     revision,
   );
   if (
+    isCycle2hTransitionRoutingRequired(cycle2hBaselineDiffPaths, diffEntries)
+  ) {
+    await verifyCycle2hTransition(repositoryPath, revision);
+  } else if (
     isCycle2gTransitionRoutingRequired(
       cycle2gBaselineDiffPaths,
       qualityPrecommitmentPaths,
@@ -1018,7 +1162,18 @@ export function isCycle2aCommitDiffEntryAllowed(
   return (
     (status === "A" || status === "M") &&
     path !== undefined &&
-    CYCLE_2A_DIFF_ALLOWLIST.has(path)
+    (CYCLE_2A_DIFF_ALLOWLIST.has(path) || CYCLE_2H_TRANSITION_PATHS.has(path))
+  );
+}
+
+function isCycle2hPreBaselineCumulativeDiffEntry(
+  status: string | undefined,
+  path: string | undefined,
+): boolean {
+  return (
+    status === "M" &&
+    path !== undefined &&
+    CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS.has(path)
   );
 }
 
@@ -1090,6 +1245,27 @@ export function isCycle2gDisconnectedQualityPrecommitmentTreeAllowed(
   return (
     paths.length === 0 ||
     exactPathList(paths, CYCLE_2G_DISCONNECTED_SUCCESSOR_TREE)
+  );
+}
+
+/** @internal Exported only for exact successor-routing regression tests. */
+export function isCycle2hBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CYCLE_2H_BASELINE_REVISION;
+}
+
+/** @internal Exported only for successor-routing regression tests. */
+export function isCycle2hTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+  cumulativeDiffEntries: readonly { readonly path: string }[],
+): boolean {
+  return (
+    cumulativeDiffEntries.some((entry) =>
+      CYCLE_2H_MARKER_PATHS.has(entry.path),
+    ) ||
+    baselineDiffPaths?.some((path) => CYCLE_2H_TRANSITION_PATHS.has(path)) ===
+      true
   );
 }
 
@@ -1214,6 +1390,55 @@ export function isCycle2gCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exported only for exact successor-diff regression tests. */
+export function isCycle2hCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === CYCLE_2H_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = CYCLE_2H_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function cycle2hTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2H_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2hBaselineMergeBaseAllowed(mergeBase)) return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2H_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CYCLE_2H_TRANSITION.map((entry) => entry.path),
+    ]),
   );
 }
 
@@ -1407,6 +1632,45 @@ async function verifyCycle2gTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCycle2gCommitDiffSetAllowed(entries)) invalidReview();
+}
+
+async function verifyCycle2hTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2H_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2H_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2hBaselineMergeBaseAllowed(mergeBase)) invalidReview();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CYCLE_2H_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2hCommitDiffSetAllowed(entries)) invalidReview();
 }
 
 function exactPathList(
