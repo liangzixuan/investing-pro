@@ -1,4 +1,4 @@
-# Sprint 0 through locally restored Cycle 2f and locally passed Cycle 2g threat model
+# Sprint 0 through restored Cycle 2f and source-stage Cycle 2g threat model
 
 ## Current trust boundaries
 
@@ -187,8 +187,9 @@ synthetic declarations. The boundary cannot establish independent adjudicator
 identity or failure domains, blinding, prediction precommitment, chronology
 authenticity, reference-label correctness, strategic-quarantine detection, real
 parser quality, or threshold adequacy. Current hardened source implementation
-and the exact final pre-promotion local restoration gate are Pass; two-OS CI is
-Pending. The prior bounded source-stage conclusion for exact source commit
+and the exact final local/two-OS restoration gate are Pass only for source
+commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. The prior bounded source-stage
+conclusion for exact source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` is Superseded: shadowable
 typed-array `buffer` / `byteLength` properties could disguise shared or
 oversized backing, and typed-array `slice` could dispatch caller `constructor`
@@ -196,8 +197,9 @@ oversized backing, and typed-array `slice` could dispatch caller `constructor`
 run and CI run `32681826143` in Ubuntu job `97299715600` and Windows job
 `97299715638` were green, but remain historical gate facts only and do not
 establish the bounded owned-snapshot check. The current local restoration gate
-is Pass; the superseded conclusion remains unrestored until Cycle 2g two-OS CI
-passes. Parser run/job `32681826015` /
+and Cycle 2g Ubuntu/Windows CI pass only at
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened bounded
+claim only for those bytes. Parser run/job `32681826015` /
 `97299715074`, custody run/job `32681826030` / `97299715006`, and PostgreSQL
 run/job `32681826040` / `97299715107` remain unchanged regression health only,
 not Cycle 2f evidence. Cycle 2f has no dedicated workflow,
@@ -240,21 +242,26 @@ what the caller learned elsewhere. A caller can know or brute-force reference
 content, create another instance, restart the process, or call Cycle 2f
 directly. No clock, signature, external identity, cross-process state, durable
 receipt, transparency log, or independent adjudicator is added. Source
-implementation and the exact final pre-promotion local gate are Pass; two-OS CI
-is Pending. The local gate passed formatting, full ESLint, all guardrails, 86
+implementation, the exact final local gate, and two-OS CI are Pass only for
+source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. The local gate passed
+formatting, full ESLint, all guardrails, 86
 production license versions, every scripted typecheck/test/build across 12 of
 13 workspace projects, 47 test files with 987 passed plus two skipped (989
 total), and the boundary verifier. Cycle 2g has no dedicated workflow, evidence
-schema, artifact, offline review, or evidence note and performs no network,
-parser, custody, corpus, normalizer,
+schema, artifact, offline review, or evidence note. CI run `32690685837` passed
+in Ubuntu job `97323672725` and Windows job `97323672813`. Parser run/job
+`32690685841` / `97323672800`, custody run/job `32690685846` / `97323672628`,
+and PostgreSQL run/job `32690685829` / `97323672631` passed as unchanged
+regression health only; they are not Cycle 2g or Cycle 2f restoration evidence.
+Cycle 2g performs no network, parser, custody, corpus, normalizer,
 comparison, database, API, web, or queue operation. Cycle 2b, full Cycle 2
 quality, and production remain Blocked; this is not B15/V15. The existing Cycle
 2f CI anchors remain historical green gate facts for source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only. They do not attest the
 current hardened Cycle 2f bytes, which require the Cycle 2g frozen-byte local
-and two-OS CI gates before the superseded conclusion can be restored. The local
-restoration gate is Pass; two-OS CI remains Pending. No Cycle 2g source commit
-or CI anchor exists yet.
+and two-OS CI gates before the hardened claim can be restored. Both gates passed
+only for exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`; the
+original `72e91f5` conclusion remains Superseded.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not

@@ -8,13 +8,14 @@ roles to the Cycle 2f quality evaluator. The decision is recorded in
 The same atomic transition hardens public Cycle 2f byte snapshotting against
 hostile typed-array metadata, constructor, and species hooks.
 
-Current status: **source implementation and exact final pre-promotion local
-integration Pass; two-OS CI Pending. Current hardened Cycle 2f restoration is
-Local Pass and two-OS CI Pending under the same exact source gate. Cycle 2b,
-full Cycle 2 quality, and production admission remain Blocked.** There is no
-real filing, external configuration, authenticated chronology, independent
-adjudication, dedicated Cycle 2g workflow, evidence schema, artifact, offline
-evidence review, or evidence note.
+Current status: **bounded source-stage claim, local integration, and two-OS CI
+Pass only for exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`. The hardened Cycle 2f bounded
+claim is restored only for that same exact source commit. Cycle 2b, full Cycle
+2 quality, and production admission remain Blocked.** There is no real filing,
+external configuration, authenticated chronology, independent adjudication,
+dedicated Cycle 2g workflow, evidence schema, artifact, offline evidence review,
+or evidence note.
 
 | Gate                             | Required result                                                                                                                                                                                            | Current status          |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -28,7 +29,7 @@ evidence review, or evidence note.
 | Intrinsic byte snapshots         | Both boundaries use intrinsic typed-array buffer/length metadata, ordinary `ArrayBuffer` backing, direct ordinary `Uint8Array` allocation, and intrinsic `set` without caller constructor/species dispatch | Implemented; Local Pass |
 | Aggregate-only result            | Successful receipts are immutable and aggregate-only; quarantine is empty and value-free with zero audit counts and `measurement: null`                                                                    | Implemented; Local Pass |
 | Local integration                | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                                                                                    | Pass                    |
-| Two-OS CI                        | The same frozen source gate passes on Ubuntu and Windows                                                                                                                                                   | Pending                 |
+| Two-OS CI                        | The same frozen source gate passes on Ubuntu and Windows                                                                                                                                                   | Pass                    |
 | Dedicated evidence               | Separate workflow/schema/artifact/offline review                                                                                                                                                           | Not created             |
 | External blinding and chronology | Actual prior reference inaccessibility, label-leakage absence, and authenticated cross-process chronology are established                                                                                  | Not proven; outside 2g  |
 | Cycle 2b authority               | Exact external inventory, approvals, chronology, and human authority review pass before real bytes                                                                                                         | Blocked; outside 2g     |
@@ -41,7 +42,12 @@ scripted typecheck, test, and build across 12 of 13 workspace projects. All 47
 test files completed with 987 passed plus two skipped (989 total), including 39
 Cycle 2f tests, 29 Cycle 2g tests, 582 database tests, 70 parser tests, and 41
 passed plus two skipped custody tests. The boundary verifier is green. No
-source commit or two-OS Cycle 2g CI anchor exists yet.
+source bytes changed between that local gate and exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`. CI run `32690685837` passed in
+Ubuntu job `97323672725` and Windows job `97323672813`. Parser run/job
+`32690685841` / `97323672800`, custody run/job `32690685846` / `97323672628`,
+and PostgreSQL run/job `32690685829` / `97323672631` passed as unchanged
+regression health only; they are not Cycle 2g or Cycle 2f restoration evidence.
 
 The canonical synthetic met fixture commits observations for all 100 fixed
 documents: 99 succeeded, one explicitly quarantined, and 990 emitted facts.
@@ -115,17 +121,20 @@ carrier coverage made its bounded owned-snapshot check false, so the prior
 Cycle 2f source-stage security conclusion is Superseded. The anchors do not
 attest the current hardened Cycle 2f implementation or security-test bytes;
 those bytes are part of the exact Cycle 2g transition. Their local restoration
-gate is Pass, but the superseded Cycle 2f conclusion remains unrestored until a
-new Cycle 2g two-OS CI result passes on the promoted source commit.
+gate and Cycle 2g Ubuntu/Windows CI passed on exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened Cycle 2f
+bounded claim only for those bytes. The original `72e91f5` conclusion remains
+Superseded.
 
-Cycle 2g may be marked source-stage Pass only when the exact frozen-byte local
-gate and Ubuntu/Windows CI agree on one source commit. Failure, cancellation,
-an omitted, extra, renamed, or deleted transition path, a partial package tree,
+Cycle 2g's bounded source-stage claim is Pass only because the exact
+frozen-byte local gate and Ubuntu/Windows CI agree on source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`. Failure, cancellation, an omitted,
+extra, renamed, or deleted transition path, a partial package tree,
 reference content in the commit document, an unbound reference digest, a
 retry/reset path, reusable or cross-instance capability, mutation leakage,
 caller-controlled typed-array metadata or allocation dispatch, non-value-free
-quarantine, or any real-data input prevents promotion. Such a future
-source-stage Pass would not prove actual external blinding, label
+quarantine, or any real-data input prevents promotion. This source-stage Pass
+does not prove actual external blinding, label
 secrecy, authenticated chronology, independent adjudication, real parser
 quality, Cycle 2b authority, approved production thresholds, full Cycle 2 exit,
 B15/V15, or production use.

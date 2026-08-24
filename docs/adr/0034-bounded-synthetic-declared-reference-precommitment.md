@@ -1,9 +1,9 @@
 # ADR 0034: bounded synthetic declared-reference precommitment
 
-Status: source implementation and exact final pre-promotion local integration
-Pass; two-OS CI Pending. Current hardened Cycle 2f restoration is Local Pass
-and two-OS CI Pending under the same exact source gate. Cycle 2b, full Cycle 2
-quality, and production admission Blocked.
+Status: bounded source-stage claim, local integration, and two-OS CI Pass only
+for exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. The
+hardened Cycle 2f bounded claim is restored only for that same exact source
+commit. Cycle 2b, full Cycle 2 quality, and production admission Blocked.
 
 ## Context
 
@@ -124,15 +124,20 @@ ordering only.
 Cycle 2g is a deterministic TypeScript source/test contract with no new live or
 platform trust boundary. Its gate is the frozen-byte local release suite and
 existing Ubuntu/Windows CI matrix. Source implementation and the exact final
-pre-promotion local gate are Pass; two-OS CI is Pending. The local gate passed
+pre-promotion local gate are Pass. The local gate passed
 formatting, full ESLint, all guardrails, the production-license check across 86
 versions, every scripted typecheck/test/build across 12 of 13 workspace
 projects, and the boundary verifier. All 47 test files completed with 987
 passed plus two skipped (989 total): Cycle 2f had 39 passed, Cycle 2g had 29,
 database had 582, parser had 70, and custody had 41 passed plus two skipped.
 Cycle 2g creates no dedicated workflow, evidence schema, evidence artifact,
-retained log package, offline evidence review, or evidence note. No source
-commit or Cycle 2g CI anchor exists yet.
+retained log package, offline evidence review, or evidence note. CI run
+`32690685837` passed in Ubuntu job `97323672725` and Windows job
+`97323672813` on exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`. Parser run/job `32690685841` /
+`97323672800`, custody run/job `32690685846` / `97323672628`, and PostgreSQL
+run/job `32690685829` / `97323672631` passed as unchanged regression health
+only; they are not Cycle 2g or Cycle 2f restoration evidence.
 
 The canonical Cycle 2a and Cycle 2c evidence checks, nonclaims, schemas, source
 sets, artifacts, and notes remain byte-exact. Their offline verifiers may accept
@@ -149,9 +154,10 @@ only. Missing hostile-carrier coverage made the bounded owned-snapshot check
 false, so the prior Cycle 2f source-stage security conclusion is Superseded.
 The anchors do not attest the current hardened Cycle 2f implementation and
 security-test bytes. Those two modified paths are part of the exact Cycle 2g
-transition. Their local restoration gate is Pass, but the superseded Cycle 2f
-conclusion remains unrestored until the Cycle 2g two-OS CI gate passes on the
-promoted source commit.
+transition. Their local restoration gate and Cycle 2g Ubuntu/Windows CI passed
+on exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring
+the hardened Cycle 2f bounded claim only for those bytes. The original
+`72e91f5` conclusion remains Superseded.
 
 ## Exact target claim and checks
 

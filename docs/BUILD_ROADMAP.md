@@ -761,9 +761,9 @@ Status: **the prior bounded source-stage security conclusion for exact source
 commit `72e91f502b31f15deeaad761b82d9ed7b6377d39` is Superseded. Historical local
 and Ubuntu/Windows jobs were green, but hostile typed-array carriers falsified
 the bounded owned-snapshot check. Current hardened Cycle 2f bytes are
-Local restoration Pass from the exact final pre-promotion Cycle 2g gate;
-two-OS CI is Pending. Cycle 2b, full Cycle 2 quality, and production admission
-Blocked.**
+restored local and two-OS Pass under the Cycle 2g gate only for exact source
+commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. Cycle 2b, full Cycle 2
+quality, and production admission Blocked.**
 
 The historical frozen bytes completed `corepack pnpm verify`: all format, lint,
 guardrail, typecheck, test, and build stages were green with 45 test files, 951
@@ -782,7 +782,8 @@ disguise shared or oversized backing, and typed-array `slice` could dispatch a
 caller `constructor` / `Symbol.species` hook during snapshot allocation. The
 current restoration uses intrinsic typed-array metadata, ordinary
 `ArrayBuffer` backing, direct ordinary `Uint8Array` allocation, and intrinsic
-`set`. The exact local restoration gate is Pass; two-OS CI is Pending.
+`set`. The exact local restoration gate and Cycle 2g Ubuntu/Windows CI passed
+only for `df1ddffdede9900302da34160ce6b9a62b9d1708`.
 
 Cycle 2f isolates the next repository-controlled metric-accounting and
 threshold-evaluation risk without presenting a declared synthetic reference as
@@ -827,10 +828,10 @@ and the [Cycle 2f exit matrix](./CYCLE_2F_EXIT_MATRIX.md).
 
 ## Cycle 2g — bounded synthetic declared-reference precommitment
 
-Status: **source implementation and exact final pre-promotion local integration
-Pass; two-OS CI Pending. Current hardened Cycle 2f restoration is Local Pass
-and two-OS CI Pending under the same source gate. Cycle 2b, full Cycle 2
-quality, and production admission Blocked.**
+Status: **bounded source-stage claim, local integration, and two-OS CI Pass only
+for exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. The
+hardened Cycle 2f bounded claim is restored only for that same source commit.
+Cycle 2b, full Cycle 2 quality, and production admission Blocked.**
 
 Cycle 2g closes only the next repository-controlled prediction-order gap. A
 private package with one exact workspace dependency on Cycle 2f creates one
@@ -866,15 +867,20 @@ intrinsic typed-array `set`; caller `buffer`, `byteLength`, `constructor`, and
 The original Cycle 2f CI anchors remain historical green gate facts for
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only. They do not attest the
 current hardened Cycle 2f bytes. The local restoration gate is Pass; the
-superseded conclusion remains unrestored until two-OS CI passes.
+Cycle 2g two-OS CI gate is also Pass at
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened claim only
+for those bytes. The original `72e91f5` conclusion remains Superseded.
 
 The exact final pre-promotion local source gate passed formatting, full ESLint,
 all guardrails, the production-license check across 86 versions, every scripted
 typecheck/test/build across 12 of 13 workspace projects, and the boundary
 verifier. All 47 test files completed with 987 passed plus two skipped (989
 total): Cycle 2f had 39 passed, Cycle 2g had 29, database had 582, parser had 70,
-and custody had 41 passed plus two skipped. No Cycle 2g source commit or CI
-anchor exists yet.
+and custody had 41 passed plus two skipped. CI run `32690685837` passed in
+Ubuntu job `97323672725` and Windows job `97323672813`. Parser run/job
+`32690685841` / `97323672800`, custody run/job `32690685846` / `97323672628`,
+and PostgreSQL run/job `32690685829` / `97323672631` passed as unchanged
+regression health only; they are not Cycle 2g or Cycle 2f restoration evidence.
 
 This can prove only owned candidate bytes, exact reference-digest
 non-substitution, one-shot instance ordering, instance-bound capability use,
@@ -901,7 +907,7 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
 Neither Cycle 2a, Phase-A Cycle 2b, bounded Cycle 2c, source-stage Cycle 2d,
-source-stage Cycle 2e, superseded Cycle 2f, nor pending Cycle 2g satisfies
+source-stage Cycle 2e, restored bounded Cycle 2f, nor source-stage Cycle 2g satisfies
 this exit gate. Real payload bytes and digest validation, approved corpus
 inputs, real ten-fact coverage, truly independent validation, independently adjudicated
 precision/recall, general XBRL/iXBRL and taxonomy/plugin support, correction

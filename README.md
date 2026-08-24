@@ -195,11 +195,12 @@ and Windows job `97299715638` were green, but hostile plain `Uint8Array`
 carriers could spoof bounds/shared-buffer metadata or invoke caller
 `constructor` / `Symbol.species` hooks during snapshot allocation. Those green
 jobs are historical gate facts, not support for the bounded owned-snapshot
-claim. Current hardened Cycle 2f bytes have a Local restoration Pass from the
-exact final pre-promotion Cycle 2g gate; two-OS CI is Pending. Parser run/job `32681826015` /
-`97299715074`, custody run/job `32681826030` / `97299715006`, and PostgreSQL
-run/job `32681826040` / `97299715107` remain unchanged regression health only,
-not Cycle 2f evidence.**
+claim. The hardened Cycle 2f bounded claim is restored only for exact source
+commit `df1ddffdede9900302da34160ce6b9a62b9d1708`, where the final local gate and
+Cycle 2g Ubuntu/Windows CI passed. Parser run/job `32681826015` / `97299715074`,
+custody run/job `32681826030` / `97299715006`, and PostgreSQL run/job
+`32681826040` / `97299715107` remain historical regression health only, not
+Cycle 2f evidence.**
 The declared reference does not establish independent adjudication, blinding,
 real parser quality, or approved production thresholds. Cycle 2f creates no
 dedicated workflow, evidence schema, artifact, offline review, or evidence
@@ -238,13 +239,19 @@ allocate an ordinary `Uint8Array`, and copy with the intrinsic typed-array
 properties therefore cannot spoof carrier admission or redirect snapshot
 allocation into caller code.
 
-**Cycle 2g source implementation and the exact final pre-promotion local gate
-are Pass; two-OS CI is Pending.** The local gate passed formatting, full ESLint,
-all guardrails, the production-license check across 86 versions, every scripted
+**Cycle 2g's bounded source-stage claim, local gate, and two-OS CI are Pass only
+for exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`.** The
+local gate passed formatting, full ESLint, all guardrails, the
+production-license check across 86 versions, every scripted
 typecheck/test/build across 12 of 13 workspace projects, and the boundary
 verifier. All 47 test files completed with 987 passed plus two skipped (989
 total), including 39 Cycle 2f tests, 29 Cycle 2g tests, 582 database tests, 70
-parser tests, and 41 passed plus two skipped custody tests. It creates no
+parser tests, and 41 passed plus two skipped custody tests. CI run `32690685837`
+passed in Ubuntu job `97323672725` and Windows job `97323672813`. Parser run/job
+`32690685841` / `97323672800`, custody run/job `32690685846` / `97323672628`,
+and PostgreSQL run/job `32690685829` / `97323672631` passed as unchanged
+regression health only; they are not Cycle 2g or Cycle 2f restoration evidence.
+Cycle 2g creates no
 dedicated workflow, evidence schema, artifact, offline review, or evidence note
 and admits no real data. A caller may already know or infer the reference, use
 another instance, restart the process, or call Cycle 2f directly. Cycle 2g
@@ -254,8 +261,9 @@ authority, full Cycle 2 quality, B15/V15, or production use. Cycle 2f's existing
 CI anchors remain historical green gate facts for source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only; they do not attest the
 current hardened Cycle 2f bytes or revive the superseded conclusion. The local
-restoration gate is Pass; two-OS CI remains Pending. No Cycle 2g source commit
-or CI anchor exists yet. See
+and Cycle 2g two-OS gates restore the hardened bounded claim only for
+`df1ddffdede9900302da34160ce6b9a62b9d1708`; the original `72e91f5`
+conclusion remains Superseded. See
 [ADR 0034](./docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md)
 and the [Cycle 2g exit matrix](./docs/CYCLE_2G_EXIT_MATRIX.md).
 

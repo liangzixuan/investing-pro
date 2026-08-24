@@ -10,10 +10,11 @@ boundaries, plus the source-stage Cycle 1c loopback research-state write
 contract, reviewed bounded Cycle 2a filing-parser envelope, Phase-A Cycle 2b
 metadata verifier, reviewed bounded Cycle 2c synthetic payload custody,
 source-stage Cycle 2d synthetic ten-fact normalization/lineage, source-stage
-Cycle 2e two-declared-validator fact comparison, superseded Cycle 2f
-declared-reference quality measurement with Local restoration Pass and two-OS
-CI Pending, plus locally passed Cycle 2g in-process candidate-observation
-precommitment with two-OS CI Pending; synthetic data only.
+Cycle 2e two-declared-validator fact comparison, Cycle 2f declared-reference
+quality measurement with its original conclusion superseded and hardened claim restored only at
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, plus source-stage Cycle 2g
+in-process candidate-observation precommitment at that same commit; synthetic
+data only.
 
 ## Identity
 
@@ -547,8 +548,9 @@ release run and CI run `32681826143` in Ubuntu job `97299715600` and Windows job
 constructor/species snapshot allocation made the bounded owned-snapshot check
 false on those bytes. Those runs are historical green gate facts only. Current
 hardened Cycle 2f bytes use intrinsic typed-array metadata and allocation. The
-exact final pre-promotion local restoration gate is Pass; two-OS CI is Pending.
-Parser run/job `32681826015` / `97299715074`, custody run/job
+exact final local restoration gate and Cycle 2g Ubuntu/Windows CI passed only
+for `df1ddffdede9900302da34160ce6b9a62b9d1708`. Parser run/job
+`32681826015` / `97299715074`, custody run/job
 `32681826030` / `97299715006`, and PostgreSQL run/job `32681826040` /
 `97299715107` remain unchanged regression health only, not Cycle 2f evidence.
 Cycle 2f creates no
@@ -596,21 +598,26 @@ returns only a coarse closed quarantine code, zero audit counts, and
 `measurement: null`, without hashes, capability, mismatch detail, observation,
 reference content, or canary.
 
-Source implementation and the exact final pre-promotion local gate are Pass;
-two-OS CI is Pending. The local gate passed formatting, full ESLint, all
-guardrails, 86 production license versions, every scripted
+The bounded source-stage claim, local gate, and two-OS CI are Pass only for
+exact source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. The local gate
+passed formatting, full ESLint, all guardrails, 86 production license versions,
+every scripted
 typecheck/test/build across 12 of 13 workspace projects, 47 test files with 987
 passed plus two skipped (989 total), and the boundary verifier. Cycle 2g has no
-dedicated workflow, evidence schema, artifact, offline review, or evidence
-note. It cannot establish actual reference inaccessibility,
+dedicated workflow, evidence schema, artifact, offline review, or evidence note.
+CI run `32690685837` passed in Ubuntu job `97323672725` and Windows job
+`97323672813`. Parser run/job `32690685841` / `97323672800`, custody run/job
+`32690685846` / `97323672628`, and PostgreSQL run/job `32690685829` /
+`97323672631` passed as unchanged regression health only; they are not Cycle 2g
+or Cycle 2f restoration evidence. Cycle 2g cannot establish actual reference inaccessibility,
 label secrecy, authenticated or durable chronology, external capability
 security, independent adjudication, real parser quality, Cycle 2b authority,
 full Cycle 2 exit, B15/V15, or production readiness. Cycle 2f's prior CI
 anchors remain historical green gate facts for source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only; the current hardened Cycle
-2f bytes have a Local restoration Pass, but the superseded conclusion remains
-unrestored until Cycle 2g two-OS CI passes. No Cycle 2g source commit or CI
-anchor exists yet. See
+2f bounded claim is restored only at
+`df1ddffdede9900302da34160ce6b9a62b9d1708`; the original `72e91f5`
+conclusion remains Superseded. See
 [ADR 0034](./adr/0034-bounded-synthetic-declared-reference-precommitment.md)
 and the [Cycle 2g exit matrix](./CYCLE_2G_EXIT_MATRIX.md).
 

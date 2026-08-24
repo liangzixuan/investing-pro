@@ -4,9 +4,9 @@ Status: prior bounded source-stage security conclusion for exact source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` Superseded. Historical local and
 Ubuntu/Windows jobs were green, but hostile typed-array carriers falsified the
 bounded owned-snapshot check on those bytes. Current hardened Cycle 2f bytes
-have a Local restoration Pass from the exact final pre-promotion Cycle 2g gate;
-two-OS CI is Pending. Cycle 2b, full Cycle 2 quality, and production admission
-Blocked.
+have local and two-OS restoration Pass from the Cycle 2g gate only for exact
+source commit `df1ddffdede9900302da34160ce6b9a62b9d1708`. Cycle 2b, full Cycle
+2 quality, and production admission Blocked.
 
 ## Context
 
@@ -111,7 +111,9 @@ allocates an ordinary `Uint8Array` directly, and copies through the intrinsic
 typed-array `set`. Its new hostile-carrier security regressions and all prior
 checks must pass as part of the exact Cycle 2g frozen-byte local and two-OS CI
 gates before the source-stage conclusion can be restored. The exact local gate
-now passes; two-OS CI remains Pending.
+and Cycle 2g Ubuntu/Windows CI now pass only for exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened bounded
+claim only for those bytes.
 
 ## Evidence and status boundary
 
@@ -130,11 +132,17 @@ dedicated workflow, evidence schema, evidence artifact, retained log package,
 offline evidence review, or evidence note. These are historical green gate
 facts only: the missing hostile-carrier coverage means they do not establish
 the bounded source-stage security claim. The current hardened bytes passed the
-exact final pre-promotion local restoration gate: formatting, full ESLint, all
-guardrails, 86 production license versions, every scripted
+exact final pre-promotion local restoration gate. Formatting, full ESLint, all
+guardrails, the production-license check across 86 versions, every scripted
 typecheck/test/build across 12 of 13 workspace projects, 47 test files with 987
 passed plus two skipped (989 total), and the boundary verifier were green.
-Two-OS restoration CI remains Pending.
+CI run `32690685837` passed in Ubuntu job `97323672725` and Windows job
+`97323672813` on exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, completing the hardened Cycle 2f
+restoration gate. Parser run/job `32690685841` / `97323672800`, custody run/job
+`32690685846` / `97323672628`, and PostgreSQL run/job `32690685829` /
+`97323672631` passed as unchanged regression health only; they are not Cycle 2f
+restoration or Cycle 2g evidence.
 
 The canonical Cycle 2a and Cycle 2c evidence checks, nonclaims, schemas, source
 sets, artifacts, and notes remain byte-exact. Their offline verifiers may accept
@@ -206,9 +214,10 @@ owned snapshots use intrinsic typed-array buffer/length metadata and avoid
 caller `constructor` / `Symbol.species` allocation dispatch. This ADR's CI
 anchors remain historical green gate facts for source commit
 `72e91f502b31f15deeaad761b82d9ed7b6377d39` only and do not attest the current
-hardened bytes, which require the Cycle 2g frozen-byte local and two-OS CI
-gates before the superseded conclusion can be restored. The local restoration
-gate is Pass; two-OS CI remains Pending. Cycle 2g cannot prove that the caller
+hardened bytes. The replacement Cycle 2g frozen-byte local and two-OS CI gates
+passed only for exact source commit
+`df1ddffdede9900302da34160ce6b9a62b9d1708`, restoring the hardened claim only
+for those bytes. Cycle 2g cannot prove that the caller
 lacked the reference through another channel, that the digest hides predictable
 labels, or that Cycle 2f cannot be called directly.
 
