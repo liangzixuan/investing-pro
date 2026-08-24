@@ -449,7 +449,15 @@ class FileSystemFilingPayloadCustodyBoundary implements FilingPayloadCustodyBoun
           invalid("state_conflict");
         if (existing.state === "logical_key_unavailability")
           invalid("resurrection_blocked");
-        return receipt(existing);
+        let authenticated: Uint8Array | undefined;
+        try {
+          authenticated = await this.#authenticateAvailablePayload(existing);
+          if (!equalBytes(authenticated, input.payload))
+            invalid("state_conflict");
+          return receipt(existing);
+        } finally {
+          authenticated?.fill(0);
+        }
       }
 
       if ((await readdir(this.#recordsDirectory)).length !== 0)

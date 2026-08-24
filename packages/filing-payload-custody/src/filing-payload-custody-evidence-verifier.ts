@@ -27,6 +27,8 @@ const CI_TEST_SERIALIZATION_BASELINE_REVISION =
   "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
 const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
   "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
+const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
+  "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -558,6 +560,38 @@ const OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION = Object.freeze(
+  [
+    {
+      path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/payload-custody.ts",
+      status: "M",
+    },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -585,6 +619,9 @@ const FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS = new Set([
 const OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS = new Set(
   OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map((entry) => entry.path),
 );
+const AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATHS = new Set([
+  "packages/filing-payload-custody/src/payload-custody.ts",
+]);
 const CI_TEST_SERIALIZATION_SURFACE_PATHS = new Set(["package.json"]);
 const CYCLE_2F_MARKER_PATHS = new Set([
   "docs/CYCLE_2F_EXIT_MATRIX.md",
@@ -897,6 +934,11 @@ export async function verifyCycle2cCommitBoundary(
     repositoryPath,
     revision,
   );
+  const authenticatedReplayMaintenanceSurfaceDiffPaths =
+    await authenticatedReplayMaintenanceTransitionSurfaceDiffPaths(
+      repositoryPath,
+      revision,
+    );
   const offlineEvidenceInputCustodySurfaceDiffPaths =
     await offlineEvidenceInputCustodyTransitionSurfaceDiffPaths(
       repositoryPath,
@@ -908,6 +950,15 @@ export async function verifyCycle2cCommitBoundary(
       revision,
     );
   if (
+    isAuthenticatedReplayMaintenanceSurfaceRoutingRequired(
+      authenticatedReplayMaintenanceSurfaceDiffPaths,
+    )
+  )
+    await verifyAuthenticatedReplayMaintenanceTransition(
+      repositoryPath,
+      revision,
+    );
+  else if (
     isOfflineEvidenceInputCustodySurfaceRoutingRequired(
       offlineEvidenceInputCustodySurfaceDiffPaths,
     )
@@ -1081,6 +1132,26 @@ export function isFastify5121MaintenanceTransitionRoutingRequired(
 ): boolean {
   return cumulativeDiffEntries.some((entry) =>
     FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
+}
+
+/** @internal Exact authenticated-replay maintenance successor routing seam. */
+export function isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact authenticated-replay maintenance successor routing seam. */
+export function isAuthenticatedReplayMaintenanceSurfaceRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    exactList(
+      baselineDiffPaths,
+      [...AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATHS].sort(),
+    )
   );
 }
 
@@ -1332,6 +1403,56 @@ export function isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exact authenticated-replay maintenance successor regression seam. */
+export function isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function authenticatedReplayMaintenanceTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed(mergeBase))
+    return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+      ...AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -1726,6 +1847,50 @@ async function verifyCiTestSerializationTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyAuthenticatedReplayMaintenanceTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed(mergeBase))
+    invalid();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(entries)) invalid();
 }
 
 async function verifyOfflineEvidenceInputCustodyTransition(

@@ -4,7 +4,7 @@
   "files": [
     {
       "path": "packages/filing-payload-custody/src/payload-custody-security.test.ts",
-      "sha256": "sha256:8ac7cafee1375828638b87fc04510eb2e5882df93c98473437f2669ca3903d6e"
+      "sha256": "sha256:668f39d5573da7f5c63efda7e6006bfc399f88d5d8005c708611297664791c35"
     },
     {
       "path": "packages/filing-payload-custody/src/payload-custody.test.ts",
@@ -12,7 +12,7 @@
     },
     {
       "path": "packages/filing-payload-custody/src/payload-custody.ts",
-      "sha256": "sha256:1993a58082b8b6e723ca766e651aff8bdec6e48802f35d1362413eaa672c927f"
+      "sha256": "sha256:871f80dd3069e98612aa5aad6082f6b019680fb530177224dc89235e6dcc95d5"
     },
     {
       "path": "packages/filing-payload-custody/src/test-payload-builder.ts",

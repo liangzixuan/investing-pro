@@ -859,6 +859,86 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
     });
   });
 
+  it("authenticates an exact replay before acknowledging the existing available record", async () => {
+    await withEmptyParent(async (parent) => {
+      const harness = await createBoundaryHarness(parent, {
+        entropy: entropyHarness("replay-ciphertext-mutation"),
+      });
+      const command = stageCommand(createSyntheticFilingPayloadFixture());
+      const receipt = await harness.boundary.stage(command);
+      const paths = recordPaths(harness.workspaceDirectory, receipt.payloadId);
+      const ciphertext = await readFile(paths.ciphertext);
+      ciphertext[0] = (ciphertext[0] ?? 0) ^ 0xff;
+      await writeFile(paths.ciphertext, ciphertext);
+
+      await expectCustodyFailure(
+        () =>
+          harness.boundary.stage(
+            stageCommand(createSyntheticFilingPayloadFixture()),
+          ),
+        "record_invalid",
+      );
+      await expectCustodyFailure(
+        () => harness.boundary.read({ payloadId: receipt.payloadId }),
+        "record_invalid",
+      );
+      await expectOnlyPublishedRecord(harness, receipt);
+      await harness.boundary.close();
+    });
+
+    await withEmptyParent(async (parent) => {
+      const harness = await createBoundaryHarness(parent, {
+        entropy: entropyHarness("replay-missing-key"),
+      });
+      const receipt = await harness.boundary.stage(
+        stageCommand(createSyntheticFilingPayloadFixture()),
+      );
+      const keyId = harness.keyStore.keyIds()[0];
+      if (keyId === undefined) throw new Error("Missing synthetic key ID.");
+      expect(await harness.keyStore.keyStore.forget(keyId)).toBe("forgotten");
+
+      await expectCustodyFailure(
+        () =>
+          harness.boundary.stage(
+            stageCommand(createSyntheticFilingPayloadFixture()),
+          ),
+        "payload_unavailable",
+      );
+      await expectOnlyPublishedRecord(harness, receipt);
+      await harness.boundary.close();
+    });
+
+    await withEmptyParent(async (parent) => {
+      const keyStore = keyStoreHarness();
+      const harness = await createBoundaryHarness(parent, {
+        entropy: entropyHarness("replay-wrong-key"),
+        keyStore,
+      });
+      const receipt = await harness.boundary.stage(
+        stageCommand(createSyntheticFilingPayloadFixture()),
+      );
+      const keyId = keyStore.keyIds()[0];
+      if (keyId === undefined) throw new Error("Missing synthetic key ID.");
+      expect(await keyStore.keyStore.forget(keyId)).toBe("forgotten");
+      expect(
+        await keyStore.keyStore.putIfAbsent(
+          keyId,
+          new Uint8Array(FILING_PAYLOAD_CUSTODY_ALGORITHM.keyBytes).fill(0xa5),
+        ),
+      ).toBe(true);
+
+      await expectCustodyFailure(
+        () =>
+          harness.boundary.stage(
+            stageCommand(createSyntheticFilingPayloadFixture()),
+          ),
+        "record_invalid",
+      );
+      await expectOnlyPublishedRecord(harness, receipt);
+      await harness.boundary.close();
+    });
+  });
+
   it("enforces the half-open retention boundary, monotonic trusted time, logical key unavailability, and idempotent cleanup", async () => {
     await withEmptyParent(async (parent) => {
       const harness = await createBoundaryHarness(parent);
@@ -1819,6 +1899,18 @@ function recordPaths(
     ),
     record,
   };
+}
+
+async function expectOnlyPublishedRecord(
+  harness: BoundaryHarness,
+  receipt: FilingPayloadCustodyReceipt,
+): Promise<void> {
+  expect(await readdir(join(harness.workspaceDirectory, "records"))).toEqual([
+    receipt.payloadId,
+  ]);
+  expect(await readdir(join(harness.workspaceDirectory, ".staging"))).toEqual(
+    [],
+  );
 }
 
 async function expectCustodyFailure(

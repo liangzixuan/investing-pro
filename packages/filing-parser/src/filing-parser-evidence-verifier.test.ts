@@ -9,6 +9,9 @@ import {
   filingParserEvidenceReviewStdout,
 } from "./filing-parser-evidence-review";
 import {
+  isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed,
+  isAuthenticatedReplayMaintenanceCommitDiffSetAllowed,
+  isAuthenticatedReplayMaintenanceSurfaceRoutingRequired,
   isCiTestSerializationBaselineMergeBaseAllowed,
   isCiTestSerializationCommitDiffSetAllowed,
   isCiTestSerializationSurfaceRoutingRequired,
@@ -419,6 +422,8 @@ const CI_TEST_SERIALIZATION_BASELINE_REVISION =
   "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
 const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
   "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
+const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
+  "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
 const CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH =
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts" as const;
 const CYCLE_2H_TRANSITION = [
@@ -591,6 +596,36 @@ const OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION = [
   },
   {
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+] as const;
+const AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION = [
+  {
+    path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/payload-custody.ts",
     status: "M",
   },
 ] as const;
@@ -1178,6 +1213,132 @@ describe("offline filing parser evidence review", () => {
       isFastify5121MaintenanceCommitDiffSetAllowed([
         ...CYCLE_2H_TRANSITION,
         ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ]),
+    ).toBe(false);
+  });
+
+  it("admits and routes only the exact seven-modification authenticated-replay maintenance successor", () => {
+    const surfacePath =
+      "packages/filing-payload-custody/src/payload-custody.ts";
+    expect(AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION).toHaveLength(7);
+    expect(
+      AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION.every(
+        (entry) => entry.status === "M",
+      ),
+    ).toBe(true);
+    expect(
+      isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+        AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+        [...AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION].reverse(),
+      ),
+    ).toBe(true);
+
+    for (const entry of AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION) {
+      expect(
+        isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+          AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION.filter(
+            (candidate) => candidate !== entry,
+          ),
+        ),
+      ).toBe(false);
+      expect(
+        isAuthenticatedReplayMaintenanceCommitDiffSetAllowed([
+          ...AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+          entry,
+        ]),
+      ).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("A", entry.path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("M", entry.path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", entry.path)).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("R100", entry.path)).toBe(false);
+
+      for (const status of ["A", "D", "R100"]) {
+        expect(
+          isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+            AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION.map((candidate) =>
+              candidate === entry ? { ...candidate, status } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+
+    for (const status of ["A", "M", "D", "R100"]) {
+      expect(
+        isAuthenticatedReplayMaintenanceCommitDiffSetAllowed([
+          ...AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+          { path: "packages/filing-payload-custody/src/unreviewed.ts", status },
+        ]),
+      ).toBe(false);
+    }
+
+    expect(
+      isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed(
+        AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed("0".repeat(40)),
+    ).toBe(false);
+    expect(
+      isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed(undefined),
+    ).toBe(false);
+
+    expect(
+      isAuthenticatedReplayMaintenanceSurfaceRoutingRequired([surfacePath]),
+    ).toBe(true);
+    expect(
+      isAuthenticatedReplayMaintenanceSurfaceRoutingRequired([
+        surfacePath,
+        surfacePath,
+      ]),
+    ).toBe(false);
+    expect(
+      isAuthenticatedReplayMaintenanceSurfaceRoutingRequired([
+        "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+      ]),
+    ).toBe(false);
+    expect(
+      isAuthenticatedReplayMaintenanceSurfaceRoutingRequired([
+        surfacePath,
+        "packages/filing-payload-custody/src/renamed.ts",
+      ]),
+    ).toBe(false);
+    expect(isAuthenticatedReplayMaintenanceSurfaceRoutingRequired([])).toBe(
+      false,
+    );
+    expect(
+      isAuthenticatedReplayMaintenanceSurfaceRoutingRequired(undefined),
+    ).toBe(false);
+
+    const offlineOverlap = AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION.filter(
+      (entry) =>
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.some(
+          (offlineEntry) => offlineEntry.path === entry.path,
+        ),
+    ).map((entry) => entry.path);
+    expect(offlineOverlap).toHaveLength(4);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired(offlineOverlap),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+        AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isAuthenticatedReplayMaintenanceCommitDiffSetAllowed([
+        ...AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+        ...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
       ]),
     ).toBe(false);
   });
