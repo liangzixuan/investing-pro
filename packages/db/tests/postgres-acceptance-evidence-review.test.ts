@@ -95,6 +95,7 @@ const RUN_ID = "9876543210";
 const RUN_ATTEMPT = 2;
 const GIT_INTEGRATION_TEST_TIMEOUT_MILLISECONDS = 30_000;
 const V13_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
+const TRUST_ANCHOR_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const TEMP_DIRECTORIES: string[] = [];
 
 interface ReviewFixture {
@@ -1132,28 +1133,32 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("requires every independent trust anchor", async () => {
-    const fixture = await createFixture();
-    const changes: Partial<PostgresAcceptanceEvidenceReviewInput>[] = [
-      { expectedEvidenceSha256: "f".repeat(64) },
-      { expectedRepository: "example/different" },
-      { expectedRepositoryId: "999" },
-      { expectedCommit: "a".repeat(40) },
-      { expectedRunId: "999" },
-      { expectedRunAttempt: 3 },
-    ];
-    for (const change of changes) {
-      await expect(
-        reviewPostgresAcceptanceEvidence({ ...fixture.input, ...change }),
-      ).rejects.toEqual(
-        expect.objectContaining({
-          name: "PostgresAcceptanceEvidenceReviewError",
-          code: "POSTGRES_ACCEPTANCE_EVIDENCE_REVIEW_FAILED",
-          message: "PostgreSQL acceptance evidence review failed.",
-        }),
-      );
-    }
-  });
+  it(
+    "requires every independent trust anchor",
+    { timeout: TRUST_ANCHOR_MATRIX_TIMEOUT_MILLISECONDS },
+    async () => {
+      const fixture = await createFixture();
+      const changes: Partial<PostgresAcceptanceEvidenceReviewInput>[] = [
+        { expectedEvidenceSha256: "f".repeat(64) },
+        { expectedRepository: "example/different" },
+        { expectedRepositoryId: "999" },
+        { expectedCommit: "a".repeat(40) },
+        { expectedRunId: "999" },
+        { expectedRunAttempt: 3 },
+      ];
+      for (const change of changes) {
+        await expect(
+          reviewPostgresAcceptanceEvidence({ ...fixture.input, ...change }),
+        ).rejects.toEqual(
+          expect.objectContaining({
+            name: "PostgresAcceptanceEvidenceReviewError",
+            code: "POSTGRES_ACCEPTANCE_EVIDENCE_REVIEW_FAILED",
+            message: "PostgreSQL acceptance evidence review failed.",
+          }),
+        );
+      }
+    },
+  );
 
   it("rejects a directory, oversized file, and symbolic-link evidence path", async () => {
     const fixture = await createFixture();
