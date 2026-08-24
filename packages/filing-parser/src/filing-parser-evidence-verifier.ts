@@ -28,6 +28,8 @@ const CYCLE_2G_BASELINE_REVISION =
   "033e59cc06a421f104ecd869ae77ac694fa8ff31" as const;
 const CYCLE_2H_BASELINE_REVISION =
   "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
+const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
+  "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -512,6 +514,30 @@ const CYCLE_2H_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = Object.freeze(
+  [
+    { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+    { path: "apps/api/package.json", status: "M" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-licenses.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = new Set([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -524,6 +550,12 @@ const CYCLE_2G_TRANSITION_PATHS = new Set(
 const CYCLE_2H_TRANSITION_PATHS = new Set(
   CYCLE_2H_TRANSITION.map((entry) => entry.path),
 );
+const FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS = new Set(
+  FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+);
+const FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS = new Set([
+  "apps/api/package.json",
+]);
 const CYCLE_2D_MARKER_PATHS = new Set([
   "docs/CYCLE_2D_EXIT_MATRIX.md",
   "docs/adr/0031-bounded-synthetic-ten-fact-normalization-and-lineage.md",
@@ -614,6 +646,7 @@ const CYCLE_2A_DIFF_ALLOWLIST = new Set([
   ...CYCLE_2E_DISCONNECTED_SUCCESSOR_TREE,
   ...CYCLE_2F_DISCONNECTED_SUCCESSOR_TREE,
   ...CYCLE_2G_DISCONNECTED_SUCCESSOR_TREE,
+  ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS,
 ]);
 
 const LEGACY_CYCLE_2A_PARSER_DOMAIN_TREE = Object.freeze(
@@ -1121,7 +1154,9 @@ export async function verifyCycle2aCommitBoundary(
     repositoryPath,
     revision,
   );
-  if (
+  if (isFastify5121MaintenanceTransitionRoutingRequired(diffEntries)) {
+    await verifyFastify5121MaintenanceTransition(repositoryPath, revision);
+  } else if (
     isCycle2hTransitionRoutingRequired(cycle2hBaselineDiffPaths, diffEntries)
   ) {
     await verifyCycle2hTransition(repositoryPath, revision);
@@ -1253,6 +1288,22 @@ export function isCycle2hBaselineMergeBaseAllowed(
   mergeBase: string | undefined,
 ): boolean {
   return mergeBase === CYCLE_2H_BASELINE_REVISION;
+}
+
+/** @internal Exact maintenance-successor routing regression seam. */
+export function isFastify5121MaintenanceBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact maintenance-successor routing regression seam. */
+export function isFastify5121MaintenanceTransitionRoutingRequired(
+  cumulativeDiffEntries: readonly { readonly path: string }[],
+): boolean {
+  return cumulativeDiffEntries.some((entry) =>
+    FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
 }
 
 /** @internal Exported only for successor-routing regression tests. */
@@ -1407,6 +1458,29 @@ export function isCycle2hCommitDiffSetAllowed(
     sorted.length === CYCLE_2H_TRANSITION.length &&
     sorted.every((entry, index) => {
       const expected = CYCLE_2H_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+/** @internal Exact maintenance-successor regression seam. */
+export function isFastify5121MaintenanceCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === FASTIFY_5_12_1_MAINTENANCE_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = FASTIFY_5_12_1_MAINTENANCE_TRANSITION[index];
       return (
         expected !== undefined &&
         entry.path === expected.path &&
@@ -1671,6 +1745,50 @@ async function verifyCycle2hTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCycle2hCommitDiffSetAllowed(entries)) invalidReview();
+}
+
+async function verifyFastify5121MaintenanceTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isFastify5121MaintenanceBaselineMergeBaseAllowed(mergeBase))
+    invalidReview();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isFastify5121MaintenanceCommitDiffSetAllowed(entries)) invalidReview();
 }
 
 function exactPathList(

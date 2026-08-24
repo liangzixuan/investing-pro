@@ -7,7 +7,7 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 | Next.js           |  16.3.1 | MIT        | Web framework                      |
 | React / React DOM |  19.2.8 | MIT        | UI runtime                         |
 | Apache ECharts    |   6.1.0 | Apache-2.0 | Analytical chart rendering         |
-| Fastify           |  5.12.0 | MIT        | Demo REST API                      |
+| Fastify           |  5.12.1 | MIT        | Demo REST API                      |
 | @fastify/cors     |  11.3.0 | MIT        | Local web/API boundary             |
 | @fastify/helmet   |  13.1.0 | MIT        | HTTP security headers              |
 | decimal.js        |  10.6.0 | MIT        | Deterministic decimal calculations |

@@ -26,6 +26,9 @@ import {
   isCycle2hBaselineMergeBaseAllowed,
   isCycle2hCommitDiffSetAllowed,
   isCycle2hTransitionRoutingRequired,
+  isFastify5121MaintenanceBaselineMergeBaseAllowed,
+  isFastify5121MaintenanceCommitDiffSetAllowed,
+  isFastify5121MaintenanceTransitionRoutingRequired,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
 
@@ -402,6 +405,8 @@ const CYCLE_2G_TRANSITION = [
 ] as const;
 const CYCLE_2H_BASELINE_REVISION =
   "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
+const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
+  "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
 const CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH =
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts" as const;
 const CYCLE_2H_TRANSITION = [
@@ -517,6 +522,28 @@ const CYCLE_2H_TRANSITION = [
     path: "packages/filing-quality-precommitment/src/filing-quality-precommitment.ts",
     status: "M",
   },
+] as const;
+const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = [
+  { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+  { path: "apps/api/package.json", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-licenses.ts", status: "M" },
 ] as const;
 
 afterEach(async () => {
@@ -1003,6 +1030,107 @@ describe("offline filing parser evidence review", () => {
         ),
       ).toBe(false);
     }
+  });
+
+  it("admits and routes only the exact eight-modification Fastify 5.12.1 maintenance successor", () => {
+    expect(FASTIFY_5_12_1_MAINTENANCE_TRANSITION).toHaveLength(8);
+    expect(
+      FASTIFY_5_12_1_MAINTENANCE_TRANSITION.filter(
+        (entry) => entry.status === "M",
+      ),
+    ).toHaveLength(8);
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed(
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+
+    for (const omitted of FASTIFY_5_12_1_MAINTENANCE_TRANSITION) {
+      expect(
+        isFastify5121MaintenanceCommitDiffSetAllowed(
+          FASTIFY_5_12_1_MAINTENANCE_TRANSITION.filter(
+            (entry) => entry !== omitted,
+          ),
+        ),
+      ).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("A", omitted.path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("M", omitted.path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("R100", omitted.path)).toBe(false);
+    }
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed([
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+        { path: "apps/api/src/unreviewed.ts", status: "M" },
+      ]),
+    ).toBe(false);
+    for (const status of ["A", "D", "R100"]) {
+      expect(
+        isFastify5121MaintenanceCommitDiffSetAllowed(
+          FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry, index) =>
+            index === 0 ? { ...entry, status } : entry,
+          ),
+        ),
+      ).toBe(false);
+    }
+
+    expect(
+      isFastify5121MaintenanceBaselineMergeBaseAllowed(
+        FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isFastify5121MaintenanceBaselineMergeBaseAllowed("0".repeat(40)),
+    ).toBe(false);
+    expect(isFastify5121MaintenanceBaselineMergeBaseAllowed(undefined)).toBe(
+      false,
+    );
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired(
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired([
+        { path: "apps/api/package.json" },
+      ]),
+    ).toBe(true);
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired(
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION.filter(
+          (entry) => entry.path !== "apps/api/package.json",
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired(CYCLE_2H_TRANSITION),
+    ).toBe(false);
+
+    const cycle2hOverlap = FASTIFY_5_12_1_MAINTENANCE_TRANSITION.filter(
+      (entry) =>
+        entry.path ===
+          "packages/filing-parser/src/filing-parser-evidence-verifier.ts" ||
+        entry.path ===
+          "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    ).map((entry) => entry.path);
+    expect(
+      isCycle2hTransitionRoutingRequired(
+        cycle2hOverlap,
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isCycle2hCommitDiffSetAllowed([
+        ...CYCLE_2H_TRANSITION,
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ]),
+    ).toBe(false);
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed([
+        ...CYCLE_2H_TRANSITION,
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ]),
+    ).toBe(false);
   });
 
   it("accepts exactly one conventional CLI separator without weakening the closed argument set", () => {

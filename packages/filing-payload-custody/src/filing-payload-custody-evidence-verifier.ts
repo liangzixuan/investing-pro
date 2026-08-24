@@ -21,6 +21,8 @@ const CYCLE_2G_BASELINE_REVISION =
   "033e59cc06a421f104ecd869ae77ac694fa8ff31" as const;
 const CYCLE_2H_BASELINE_REVISION =
   "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
+const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
+  "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -487,6 +489,30 @@ const CYCLE_2H_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = Object.freeze(
+  [
+    { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+    { path: "apps/api/package.json", status: "M" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-licenses.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -505,6 +531,12 @@ const CYCLE_2G_TRANSITION_PATHS = new Set(
 const CYCLE_2H_TRANSITION_PATHS = new Set(
   CYCLE_2H_TRANSITION.map((entry) => entry.path),
 );
+const FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS = new Set(
+  FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+);
+const FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS = new Set([
+  "apps/api/package.json",
+]);
 const CYCLE_2F_MARKER_PATHS = new Set([
   "docs/CYCLE_2F_EXIT_MATRIX.md",
   "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
@@ -605,6 +637,14 @@ const CYCLE_2H_CUMULATIVE_DIFF_PATHS = Object.freeze(
     ...new Set([
       ...CYCLE_2H_BASELINE_CUMULATIVE_DIFF_PATHS,
       ...CYCLE_2H_TRANSITION.map((entry) => entry.path),
+    ]),
+  ].sort(),
+);
+const FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS = Object.freeze(
+  [
+    ...new Set([
+      ...CYCLE_2H_CUMULATIVE_DIFF_PATHS,
+      ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry) => entry.path),
     ]),
   ].sort(),
 );
@@ -808,7 +848,11 @@ export async function verifyCycle2cCommitBoundary(
     repositoryPath,
     revision,
   );
-  if (isCycle2hTransitionRoutingRequired(cycle2hBaselineDiffPaths, entries))
+  if (isFastify5121MaintenanceTransitionRoutingRequired(entries))
+    await verifyFastify5121MaintenanceTransition(repositoryPath, revision);
+  else if (
+    isCycle2hTransitionRoutingRequired(cycle2hBaselineDiffPaths, entries)
+  )
     await verifyCycle2hTransition(repositoryPath, revision);
   else if (
     isCycle2gTransitionRoutingRequired(
@@ -845,7 +889,8 @@ export function isCycle2cCommitDiffEntryAllowed(
       CYCLE_2E_TRANSITION_PATHS.has(path) ||
       CYCLE_2F_TRANSITION_PATHS.has(path) ||
       CYCLE_2G_TRANSITION_PATHS.has(path) ||
-      CYCLE_2H_TRANSITION_PATHS.has(path))
+      CYCLE_2H_TRANSITION_PATHS.has(path) ||
+      FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS.has(path))
   );
 }
 
@@ -870,7 +915,8 @@ export function isCycle2cCommitDiffSetAllowed(
       exactList(paths, CYCLE_2F_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2G_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2H_BASELINE_CUMULATIVE_DIFF_PATHS) ||
-      exactList(paths, CYCLE_2H_CUMULATIVE_DIFF_PATHS))
+      exactList(paths, CYCLE_2H_CUMULATIVE_DIFF_PATHS) ||
+      exactList(paths, FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS))
   );
 }
 
@@ -929,6 +975,22 @@ export function isCycle2hBaselineMergeBaseAllowed(
   mergeBase: string | undefined,
 ): boolean {
   return mergeBase === CYCLE_2H_BASELINE_REVISION;
+}
+
+/** @internal Exact maintenance-successor routing regression seam. */
+export function isFastify5121MaintenanceBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact maintenance-successor routing regression seam. */
+export function isFastify5121MaintenanceTransitionRoutingRequired(
+  cumulativeDiffEntries: readonly { readonly path: string }[],
+): boolean {
+  return cumulativeDiffEntries.some((entry) =>
+    FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
 }
 
 /** @internal Exact successor-routing regression seam. */
@@ -1083,6 +1145,29 @@ export function isCycle2hCommitDiffSetAllowed(
     sorted.length === CYCLE_2H_TRANSITION.length &&
     sorted.every((entry, index) => {
       const expected = CYCLE_2H_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+/** @internal Exact maintenance-successor regression seam. */
+export function isFastify5121MaintenanceCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === FASTIFY_5_12_1_MAINTENANCE_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = FASTIFY_5_12_1_MAINTENANCE_TRANSITION[index];
       return (
         expected !== undefined &&
         entry.path === expected.path &&
@@ -1347,6 +1432,49 @@ async function verifyCycle2hTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCycle2hCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyFastify5121MaintenanceTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isFastify5121MaintenanceBaselineMergeBaseAllowed(mergeBase)) invalid();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isFastify5121MaintenanceCommitDiffSetAllowed(entries)) invalid();
 }
 
 /** @internal Strict NUL-framed Git output regression seam. */

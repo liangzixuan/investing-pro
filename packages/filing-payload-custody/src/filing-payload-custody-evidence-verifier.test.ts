@@ -22,6 +22,9 @@ import {
   isCycle2hBaselineMergeBaseAllowed,
   isCycle2hCommitDiffSetAllowed,
   isCycle2hTransitionRoutingRequired,
+  isFastify5121MaintenanceBaselineMergeBaseAllowed,
+  isFastify5121MaintenanceCommitDiffSetAllowed,
+  isFastify5121MaintenanceTransitionRoutingRequired,
   verifyFilingPayloadCustodyEvidenceOffline,
 } from "./filing-payload-custody-evidence-verifier";
 
@@ -543,6 +546,36 @@ const CYCLE_2H_CUMULATIVE_DIFF_PATHS = [
     ...CYCLE_2H_TRANSITION.map((entry) => entry.path),
   ]),
 ].sort();
+const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
+  "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
+const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = [
+  { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+  { path: "apps/api/package.json", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-licenses.ts", status: "M" },
+] as const;
+const FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS = [
+  ...new Set([
+    ...CYCLE_2H_CUMULATIVE_DIFF_PATHS,
+    ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+  ]),
+].sort();
 
 afterEach(async () => {
   await Promise.all(
@@ -598,6 +631,11 @@ describe("offline filing payload custody evidence review", () => {
       path,
       status: path === CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH ? "M" : "A",
     }));
+    const fastifyMaintenance =
+      FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS.map((path) => ({
+        path,
+        status: path === CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH ? "M" : "A",
+      }));
     expect(complete).toHaveLength(33);
     expect(legacy).toHaveLength(32);
     expect(cycle2d).toHaveLength(44);
@@ -606,6 +644,7 @@ describe("offline filing payload custody evidence review", () => {
     expect(cycle2g).toHaveLength(73);
     expect(cycle2hBaseline).toHaveLength(74);
     expect(cycle2h).toHaveLength(82);
+    expect(fastifyMaintenance).toHaveLength(85);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(legacy)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2d)).toBe(true);
@@ -614,6 +653,7 @@ describe("offline filing payload custody evidence review", () => {
     expect(isCycle2cCommitDiffSetAllowed(cycle2g)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2hBaseline)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2h)).toBe(true);
+    expect(isCycle2cCommitDiffSetAllowed(fastifyMaintenance)).toBe(true);
     expect(
       isCycle2cCommitDiffSetAllowed(
         cycle2hBaseline.map((entry) =>
@@ -683,6 +723,13 @@ describe("offline filing payload custody evidence review", () => {
         ),
       ).toBe(false);
     }
+    for (const omitted of fastifyMaintenance) {
+      expect(
+        isCycle2cCommitDiffSetAllowed(
+          fastifyMaintenance.filter((entry) => entry.path !== omitted.path),
+        ),
+      ).toBe(false);
+    }
     expect(
       isCycle2cCommitDiffSetAllowed(
         complete.filter(
@@ -695,6 +742,12 @@ describe("offline filing payload custody evidence review", () => {
       isCycle2cCommitDiffSetAllowed([
         ...complete,
         { path: "apps/api/src/unreviewed.ts", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2cCommitDiffSetAllowed([
+        ...fastifyMaintenance,
+        { path: "apps/api/src/app.ts", status: "M" },
       ]),
     ).toBe(false);
     expect(
@@ -1087,6 +1140,82 @@ describe("offline filing payload custody evidence review", () => {
         ),
       ).toBe(false);
     }
+  });
+
+  it("admits only the exact post-Cycle-2h Fastify maintenance successor", () => {
+    expect(FASTIFY_5_12_1_MAINTENANCE_TRANSITION).toHaveLength(8);
+    expect(
+      FASTIFY_5_12_1_MAINTENANCE_TRANSITION.every(
+        (entry) => entry.status === "M",
+      ),
+    ).toBe(true);
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed(
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+
+    for (const omitted of FASTIFY_5_12_1_MAINTENANCE_TRANSITION) {
+      expect(
+        isFastify5121MaintenanceCommitDiffSetAllowed(
+          FASTIFY_5_12_1_MAINTENANCE_TRANSITION.filter(
+            (entry) => entry !== omitted,
+          ),
+        ),
+      ).toBe(false);
+      expect(isCycle2cCommitDiffEntryAllowed("A", omitted.path)).toBe(true);
+      expect(isCycle2cCommitDiffEntryAllowed("M", omitted.path)).toBe(true);
+      expect(isCycle2cCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+      expect(isCycle2cCommitDiffEntryAllowed("R100", omitted.path)).toBe(false);
+    }
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed([
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+        { path: "apps/api/src/app.ts", status: "M" },
+      ]),
+    ).toBe(false);
+    for (const status of ["A", "D", "R100"]) {
+      expect(
+        isFastify5121MaintenanceCommitDiffSetAllowed(
+          FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry, index) =>
+            index === 0 ? { ...entry, status } : entry,
+          ),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2hCommitDiffSetAllowed([
+        ...CYCLE_2H_TRANSITION,
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ]),
+    ).toBe(false);
+
+    expect(
+      isFastify5121MaintenanceBaselineMergeBaseAllowed(
+        FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isFastify5121MaintenanceBaselineMergeBaseAllowed("0".repeat(40)),
+    ).toBe(false);
+    expect(isFastify5121MaintenanceBaselineMergeBaseAllowed(undefined)).toBe(
+      false,
+    );
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired([
+        { path: "apps/api/package.json" },
+      ]),
+    ).toBe(true);
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired([
+        { path: "THIRD_PARTY_NOTICES.md" },
+        { path: "pnpm-lock.yaml" },
+        { path: "scripts/verify-licenses.ts" },
+      ]),
+    ).toBe(false);
+    expect(
+      isFastify5121MaintenanceTransitionRoutingRequired(CYCLE_2H_TRANSITION),
+    ).toBe(false);
   });
 
   it("requires exact trailing-NUL framing with no empty or BOM-prefixed fields", () => {
