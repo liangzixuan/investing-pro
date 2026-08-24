@@ -26,7 +26,7 @@
     "filing-parser:evidence-review": "tsx packages/filing-parser/src/run-filing-parser-evidence-review.ts",
     "filing-payload-custody:acceptance": "tsx packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
     "filing-payload-custody:evidence-review": "tsx packages/filing-payload-custody/src/run-filing-payload-custody-evidence-review.ts",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --workspace-concurrency=1 --if-present test",
     "verify": "pnpm format:check && pnpm lint && pnpm guardrails && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

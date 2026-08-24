@@ -23,6 +23,8 @@ const CYCLE_2H_BASELINE_REVISION =
   "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
 const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
   "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
+const CI_TEST_SERIALIZATION_BASELINE_REVISION =
+  "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -513,6 +515,27 @@ const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = Object.freeze(
     { path: "scripts/verify-licenses.ts", status: "M" },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const CI_TEST_SERIALIZATION_TRANSITION = Object.freeze(
+  [
+    { path: "package.json", status: "M" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -537,6 +560,7 @@ const FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS = new Set(
 const FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS = new Set([
   "apps/api/package.json",
 ]);
+const CI_TEST_SERIALIZATION_SURFACE_PATHS = new Set(["package.json"]);
 const CYCLE_2F_MARKER_PATHS = new Set([
   "docs/CYCLE_2F_EXIT_MATRIX.md",
   "docs/adr/0033-bounded-synthetic-declared-reference-quality-measurement.md",
@@ -848,7 +872,18 @@ export async function verifyCycle2cCommitBoundary(
     repositoryPath,
     revision,
   );
-  if (isFastify5121MaintenanceTransitionRoutingRequired(entries))
+  const ciTestSerializationSurfaceDiffPaths =
+    await ciTestSerializationTransitionSurfaceDiffPaths(
+      repositoryPath,
+      revision,
+    );
+  if (
+    isCiTestSerializationSurfaceRoutingRequired(
+      ciTestSerializationSurfaceDiffPaths,
+    )
+  )
+    await verifyCiTestSerializationTransition(repositoryPath, revision);
+  else if (isFastify5121MaintenanceTransitionRoutingRequired(entries))
     await verifyFastify5121MaintenanceTransition(repositoryPath, revision);
   else if (
     isCycle2hTransitionRoutingRequired(cycle2hBaselineDiffPaths, entries)
@@ -982,6 +1017,26 @@ export function isFastify5121MaintenanceBaselineMergeBaseAllowed(
   mergeBase: string | undefined,
 ): boolean {
   return mergeBase === FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact CI-test-serialization successor routing regression seam. */
+export function isCiTestSerializationBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CI_TEST_SERIALIZATION_BASELINE_REVISION;
+}
+
+/** @internal Exact CI-test-serialization successor routing regression seam. */
+export function isCiTestSerializationSurfaceRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    exactList(
+      baselineDiffPaths,
+      [...CI_TEST_SERIALIZATION_SURFACE_PATHS].sort(),
+    )
+  );
 }
 
 /** @internal Exact maintenance-successor routing regression seam. */
@@ -1174,6 +1229,56 @@ export function isFastify5121MaintenanceCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exact CI-test-serialization successor regression seam. */
+export function isCiTestSerializationCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === CI_TEST_SERIALIZATION_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = CI_TEST_SERIALIZATION_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function ciTestSerializationTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      CI_TEST_SERIALIZATION_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isCiTestSerializationBaselineMergeBaseAllowed(mergeBase))
+    return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CI_TEST_SERIALIZATION_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CI_TEST_SERIALIZATION_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -1475,6 +1580,45 @@ async function verifyFastify5121MaintenanceTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isFastify5121MaintenanceCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyCiTestSerializationTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CI_TEST_SERIALIZATION_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      CI_TEST_SERIALIZATION_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isCiTestSerializationBaselineMergeBaseAllowed(mergeBase)) invalid();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CI_TEST_SERIALIZATION_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalid();
 }
 
 /** @internal Strict NUL-framed Git output regression seam. */

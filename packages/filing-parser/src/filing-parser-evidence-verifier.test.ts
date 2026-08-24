@@ -9,6 +9,9 @@ import {
   filingParserEvidenceReviewStdout,
 } from "./filing-parser-evidence-review";
 import {
+  isCiTestSerializationBaselineMergeBaseAllowed,
+  isCiTestSerializationCommitDiffSetAllowed,
+  isCiTestSerializationSurfaceRoutingRequired,
   isCycle2aDisconnectedCustodyTreeAllowed,
   isCycle2aCommitDiffEntryAllowed,
   isCycle2aEvidenceNoteTreeAllowed,
@@ -407,6 +410,8 @@ const CYCLE_2H_BASELINE_REVISION =
   "14f76bbd29fb51c37d7ba0c8c8d6c9b06cedac98" as const;
 const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
   "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
+const CI_TEST_SERIALIZATION_BASELINE_REVISION =
+  "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
 const CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH =
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts" as const;
 const CYCLE_2H_TRANSITION = [
@@ -544,6 +549,25 @@ const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = [
   },
   { path: "pnpm-lock.yaml", status: "M" },
   { path: "scripts/verify-licenses.ts", status: "M" },
+] as const;
+const CI_TEST_SERIALIZATION_TRANSITION = [
+  { path: "package.json", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
 ] as const;
 
 afterEach(async () => {
@@ -1129,6 +1153,108 @@ describe("offline filing parser evidence review", () => {
       isFastify5121MaintenanceCommitDiffSetAllowed([
         ...CYCLE_2H_TRANSITION,
         ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ]),
+    ).toBe(false);
+  });
+
+  it("admits and routes only the exact five-modification CI test-serialization successor", () => {
+    expect(CI_TEST_SERIALIZATION_TRANSITION).toHaveLength(5);
+    expect(
+      CI_TEST_SERIALIZATION_TRANSITION.filter((entry) => entry.status === "M"),
+    ).toHaveLength(5);
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed(
+        CI_TEST_SERIALIZATION_TRANSITION,
+      ),
+    ).toBe(true);
+
+    for (const omitted of CI_TEST_SERIALIZATION_TRANSITION) {
+      expect(
+        isCiTestSerializationCommitDiffSetAllowed(
+          CI_TEST_SERIALIZATION_TRANSITION.filter((entry) => entry !== omitted),
+        ),
+      ).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("A", omitted.path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("M", omitted.path)).toBe(true);
+      expect(isCycle2aCommitDiffEntryAllowed("D", omitted.path)).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("R100", omitted.path)).toBe(false);
+
+      for (const status of ["A", "D", "R100"]) {
+        expect(
+          isCiTestSerializationCommitDiffSetAllowed(
+            CI_TEST_SERIALIZATION_TRANSITION.map((entry) =>
+              entry === omitted ? { ...entry, status } : entry,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed([
+        ...CI_TEST_SERIALIZATION_TRANSITION,
+        { path: "packages/filing-parser/src/unreviewed.ts", status: "M" },
+      ]),
+    ).toBe(false);
+
+    expect(
+      isCiTestSerializationBaselineMergeBaseAllowed(
+        CI_TEST_SERIALIZATION_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(isCiTestSerializationBaselineMergeBaseAllowed("0".repeat(40))).toBe(
+      false,
+    );
+    expect(isCiTestSerializationBaselineMergeBaseAllowed(undefined)).toBe(
+      false,
+    );
+    expect(isCiTestSerializationSurfaceRoutingRequired(["package.json"])).toBe(
+      true,
+    );
+    expect(
+      isCiTestSerializationSurfaceRoutingRequired([
+        "package.json",
+        "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      ]),
+    ).toBe(false);
+    expect(
+      isCiTestSerializationSurfaceRoutingRequired([
+        "package.json",
+        "package.json",
+      ]),
+    ).toBe(false);
+    expect(
+      isCiTestSerializationSurfaceRoutingRequired([
+        "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      ]),
+    ).toBe(false);
+    expect(isCiTestSerializationSurfaceRoutingRequired([])).toBe(false);
+    expect(isCiTestSerializationSurfaceRoutingRequired(undefined)).toBe(false);
+
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed(
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed(
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed(
+        CI_TEST_SERIALIZATION_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed([
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+        ...CI_TEST_SERIALIZATION_TRANSITION,
+      ]),
+    ).toBe(false);
+    expect(
+      isFastify5121MaintenanceCommitDiffSetAllowed([
+        ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+        ...CI_TEST_SERIALIZATION_TRANSITION,
       ]),
     ).toBe(false);
   });
