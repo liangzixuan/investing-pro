@@ -34,6 +34,10 @@ import {
   isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed,
   isOfflineEvidenceInputCustodyCommitDiffSetAllowed,
   isOfflineEvidenceInputCustodySurfaceRoutingRequired,
+  isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed,
+  isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed,
+  isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired,
+  isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired,
   readSmallRegularFile,
   readSmallRegularFileWithOperations,
   type SmallRegularFileOperations,
@@ -595,6 +599,8 @@ const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
   "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
   "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION =
+  "c1f27f4dfe946d999dad9473176e0285b01a48bc" as const;
 const AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATH =
   "packages/filing-payload-custody/src/payload-custody.ts" as const;
 const CI_TEST_SERIALIZATION_TRANSITION = [
@@ -664,6 +670,44 @@ const AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION = [
     status: "M",
   },
 ] as const;
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS = [
+  ".gitignore",
+  ".npmrc",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "scripts/verify-boundaries.ts",
+] as const;
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION = [
+  { path: ".gitignore", status: "M" },
+  { path: ".npmrc", status: "D" },
+  { path: "package.json", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "pnpm-workspace.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS = [
+  ...new Set([
+    ...FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS,
+    ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+  ]),
+].sort();
 
 interface SmallFileStatOverrides {
   readonly ctimeMs?: number;
@@ -831,6 +875,16 @@ describe("offline filing payload custody evidence review", () => {
         path,
         status: path === CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH ? "M" : "A",
       }));
+    const pnpmDependencyPolicyMaintenance =
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS.map((path) => ({
+        path,
+        status:
+          path === ".npmrc"
+            ? "D"
+            : path === CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH
+              ? "M"
+              : "A",
+      }));
     expect(complete).toHaveLength(33);
     expect(legacy).toHaveLength(32);
     expect(cycle2d).toHaveLength(44);
@@ -840,6 +894,7 @@ describe("offline filing payload custody evidence review", () => {
     expect(cycle2hBaseline).toHaveLength(74);
     expect(cycle2h).toHaveLength(82);
     expect(fastifyMaintenance).toHaveLength(85);
+    expect(pnpmDependencyPolicyMaintenance).toHaveLength(88);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(legacy)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2d)).toBe(true);
@@ -849,6 +904,9 @@ describe("offline filing payload custody evidence review", () => {
     expect(isCycle2cCommitDiffSetAllowed(cycle2hBaseline)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2h)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(fastifyMaintenance)).toBe(true);
+    expect(isCycle2cCommitDiffSetAllowed(pnpmDependencyPolicyMaintenance)).toBe(
+      true,
+    );
     expect(
       isCycle2cCommitDiffSetAllowed(
         cycle2hBaseline.map((entry) =>
@@ -925,6 +983,22 @@ describe("offline filing payload custody evidence review", () => {
         ),
       ).toBe(false);
     }
+    for (const omitted of pnpmDependencyPolicyMaintenance) {
+      expect(
+        isCycle2cCommitDiffSetAllowed(
+          pnpmDependencyPolicyMaintenance.filter(
+            (entry) => entry.path !== omitted.path,
+          ),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2cCommitDiffSetAllowed(
+        pnpmDependencyPolicyMaintenance.map((entry) =>
+          entry.path === ".npmrc" ? { ...entry, status: "M" } : entry,
+        ),
+      ),
+    ).toBe(false);
     expect(
       isCycle2cCommitDiffSetAllowed(
         complete.filter(
@@ -1410,6 +1484,216 @@ describe("offline filing payload custody evidence review", () => {
     ).toBe(false);
     expect(
       isFastify5121MaintenanceTransitionRoutingRequired(CYCLE_2H_TRANSITION),
+    ).toBe(false);
+  });
+
+  it("admits and routes only the exact pnpm dependency-policy maintenance successor before authenticated replay", () => {
+    expect(PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION).toHaveLength(10);
+    expect(
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.filter(
+        (entry) => entry.status === "D",
+      ),
+    ).toEqual([{ path: ".npmrc", status: "D" }]);
+    expect(
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.filter(
+        (entry) => entry.status === "M",
+      ),
+    ).toHaveLength(9);
+    expect(
+      isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+        [...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION].reverse(),
+      ),
+    ).toBe(true);
+
+    for (const entry of PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION) {
+      expect(
+        isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+          PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.filter(
+            (candidate) => candidate !== entry,
+          ),
+        ),
+      ).toBe(false);
+      expect(
+        isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed([
+          ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION,
+          entry,
+        ]),
+      ).toBe(false);
+
+      if (entry.path === ".npmrc") {
+        expect(isCycle2cCommitDiffEntryAllowed("D", entry.path)).toBe(true);
+        for (const status of ["A", "M", "R100"]) {
+          expect(isCycle2cCommitDiffEntryAllowed(status, entry.path)).toBe(
+            false,
+          );
+        }
+      } else {
+        expect(isCycle2cCommitDiffEntryAllowed("A", entry.path)).toBe(true);
+        expect(isCycle2cCommitDiffEntryAllowed("M", entry.path)).toBe(true);
+        expect(isCycle2cCommitDiffEntryAllowed("D", entry.path)).toBe(false);
+        expect(isCycle2cCommitDiffEntryAllowed("R100", entry.path)).toBe(false);
+      }
+
+      for (const status of ["A", "M", "D", "R100"]) {
+        if (status === entry.status) continue;
+        expect(
+          isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+            PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map((candidate) =>
+              candidate === entry ? { ...candidate, status } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+
+    for (const status of ["A", "M", "D", "R100"]) {
+      expect(
+        isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed([
+          ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION,
+          { path: "scripts/unreviewed-dependency-policy.ts", status },
+        ]),
+      ).toBe(false);
+    }
+    expect(isCycle2cCommitDiffEntryAllowed("D", ".gitignore")).toBe(false);
+    expect(isCycle2cCommitDiffEntryAllowed("D", "unreviewed.npmrc")).toBe(
+      false,
+    );
+
+    expect(
+      isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed("0".repeat(40)),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(undefined),
+    ).toBe(false);
+
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS,
+      ),
+    ).toBe(true);
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(
+        [...PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS].reverse(),
+      ),
+    ).toBe(true);
+    for (const path of PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS) {
+      expect(
+        isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired([path]),
+      ).toBe(true);
+    }
+    expect(isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired([])).toBe(
+      false,
+    );
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(undefined),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired([
+        ".npmrc",
+        ".npmrc",
+      ]),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired([
+        "scripts/unreviewed-dependency-policy.ts",
+      ]),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired([
+        ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS,
+        "scripts/unreviewed-dependency-policy.ts",
+      ]),
+    ).toBe(false);
+
+    expect(
+      isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS,
+        [],
+      ),
+    ).toBe(true);
+    expect(
+      isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+        undefined,
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS.map(
+          (path) => ({ path }),
+        ),
+      ),
+    ).toBe(true);
+    for (const path of [".gitignore", ".npmrc", "pnpm-workspace.yaml"]) {
+      expect(
+        isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(undefined, [
+          { path },
+        ]),
+      ).toBe(true);
+    }
+    expect(
+      isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+        undefined,
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.filter(
+          (entry) =>
+            ![".gitignore", ".npmrc", "pnpm-workspace.yaml"].includes(
+              entry.path,
+            ),
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+        undefined,
+        FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(undefined, [
+        { path: "scripts/unreviewed-dependency-policy.ts" },
+      ]),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(undefined, []),
+    ).toBe(false);
+
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(["package.json"]),
+    ).toBe(true);
+    expect(isCiTestSerializationSurfaceRoutingRequired(["package.json"])).toBe(
+      true,
+    );
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed(
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(false);
+
+    expect(
+      isAuthenticatedReplayMaintenanceSurfaceRoutingRequired([
+        AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATH,
+      ]),
+    ).toBe(true);
+    expect(
+      isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+        AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed([
+        ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION,
+        ...AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION,
+      ]),
     ).toBe(false);
   });
 

@@ -39,6 +39,8 @@ const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
   "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
   "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION =
+  "c1f27f4dfe946d999dad9473176e0285b01a48bc" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -620,6 +622,48 @@ const AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION = Object.freeze(
+  [
+    { path: ".gitignore", status: "M" },
+    { path: ".npmrc", status: "D" },
+    { path: "package.json", status: "M" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "pnpm-workspace.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS = new Set(
+  PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+);
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS = new Set([
+  ".gitignore",
+  ".npmrc",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "scripts/verify-boundaries.ts",
+]);
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_MARKER_PATHS = new Set([
+  ".gitignore",
+  ".npmrc",
+  "pnpm-workspace.yaml",
+]);
 const AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATHS = new Set([
   "packages/filing-payload-custody/src/payload-custody.ts",
 ]);
@@ -1078,6 +1122,7 @@ export async function verifyCycle2aCommitBoundary(
     await git(repositoryPath, [
       "diff",
       "--name-status",
+      "--no-renames",
       "-z",
       CYCLE_2A_BASELINE_REVISION,
       revision,
@@ -1094,6 +1139,10 @@ export async function verifyCycle2aCommitBoundary(
     const path = diff[index + 1];
     if (
       !isCycle2aCommitDiffEntryAllowed(status, path) &&
+      !isPnpmDependencyPolicyMaintenanceNpmrcDeletionDiffEntryAllowed(
+        status,
+        path,
+      ) &&
       !isCycle2hPreBaselineCumulativeDiffEntry(status, path)
     )
       invalidReview();
@@ -1234,6 +1283,11 @@ export async function verifyCycle2aCommitBoundary(
   )
     invalidReview();
 
+  const pnpmDependencyPolicyMaintenanceSurfaceDiffPaths =
+    await pnpmDependencyPolicyMaintenanceTransitionSurfaceDiffPaths(
+      repositoryPath,
+      revision,
+    );
   const authenticatedReplayMaintenanceSurfaceDiffPaths =
     await authenticatedReplayMaintenanceTransitionSurfaceDiffPaths(
       repositoryPath,
@@ -1262,6 +1316,16 @@ export async function verifyCycle2aCommitBoundary(
     revision,
   );
   if (
+    isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+      pnpmDependencyPolicyMaintenanceSurfaceDiffPaths,
+      diffEntries,
+    )
+  ) {
+    await verifyPnpmDependencyPolicyMaintenanceTransition(
+      repositoryPath,
+      revision,
+    );
+  } else if (
     isAuthenticatedReplayMaintenanceSurfaceRoutingRequired(
       authenticatedReplayMaintenanceSurfaceDiffPaths,
     )
@@ -1325,8 +1389,19 @@ export function isCycle2aCommitDiffEntryAllowed(
   return (
     (status === "A" || status === "M") &&
     path !== undefined &&
-    (CYCLE_2A_DIFF_ALLOWLIST.has(path) || CYCLE_2H_TRANSITION_PATHS.has(path))
+    (CYCLE_2A_DIFF_ALLOWLIST.has(path) ||
+      CYCLE_2H_TRANSITION_PATHS.has(path) ||
+      (path !== ".npmrc" &&
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS.has(path)))
   );
+}
+
+/** @internal Exact pnpm dependency-policy deletion regression seam. */
+export function isPnpmDependencyPolicyMaintenanceNpmrcDeletionDiffEntryAllowed(
+  status: string | undefined,
+  path: string | undefined,
+): boolean {
+  return status === "D" && path === ".npmrc";
 }
 
 function isCycle2hPreBaselineCumulativeDiffEntry(
@@ -1431,6 +1506,45 @@ export function isFastify5121MaintenanceTransitionRoutingRequired(
 ): boolean {
   return cumulativeDiffEntries.some((entry) =>
     FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
+}
+
+/** @internal Exact pnpm dependency-policy maintenance successor regression seam. */
+export function isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact pnpm dependency-policy maintenance routing regression seam. */
+export function isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.length > 0 &&
+    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
+    baselineDiffPaths.every((path) =>
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS.has(path),
+    )
+  );
+}
+
+/** @internal Exact pnpm dependency-policy maintenance routing regression seam. */
+export function isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+  cumulativeDiffEntries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return (
+    cumulativeDiffEntries.some((entry) =>
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_MARKER_PATHS.has(
+        entry.path,
+      ),
+    ) ||
+    isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(baselineDiffPaths)
   );
 }
 
@@ -1702,6 +1816,29 @@ export function isCiTestSerializationCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact pnpm dependency-policy maintenance successor regression seam. */
+export function isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
 /** @internal Exact authenticated-replay maintenance successor regression seam. */
 export function isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
   entries: readonly {
@@ -1745,6 +1882,37 @@ export function isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+async function pnpmDependencyPolicyMaintenanceTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      [
+        "merge-base",
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+        revision,
+      ],
+      64,
+    ),
+  );
+  if (!isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(mergeBase))
+    return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+      ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -2176,6 +2344,55 @@ async function verifyCiTestSerializationTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalidReview();
+}
+
+async function verifyPnpmDependencyPolicyMaintenanceTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      [
+        "merge-base",
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+        revision,
+      ],
+      64,
+    ),
+  );
+  if (!isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(mergeBase))
+    invalidReview();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(entries))
+    invalidReview();
 }
 
 async function verifyAuthenticatedReplayMaintenanceTransition(

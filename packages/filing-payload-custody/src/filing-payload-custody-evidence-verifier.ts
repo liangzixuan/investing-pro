@@ -29,6 +29,8 @@ const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
   "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
   "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION =
+  "c1f27f4dfe946d999dad9473176e0285b01a48bc" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -592,6 +594,32 @@ const AUTHENTICATED_REPLAY_MAINTENANCE_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION = Object.freeze(
+  [
+    { path: ".gitignore", status: "M" },
+    { path: ".npmrc", status: "D" },
+    { path: "package.json", status: "M" },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "pnpm-workspace.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -613,6 +641,9 @@ const CYCLE_2H_TRANSITION_PATHS = new Set(
 const FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS = new Set(
   FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry) => entry.path),
 );
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS = new Set(
+  PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+);
 const FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS = new Set([
   "apps/api/package.json",
 ]);
@@ -621,6 +652,19 @@ const OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS = new Set(
 );
 const AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATHS = new Set([
   "packages/filing-payload-custody/src/payload-custody.ts",
+]);
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS = new Set([
+  ".gitignore",
+  ".npmrc",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "scripts/verify-boundaries.ts",
+]);
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_MARKER_PATHS = new Set([
+  ".gitignore",
+  ".npmrc",
+  "pnpm-workspace.yaml",
 ]);
 const CI_TEST_SERIALIZATION_SURFACE_PATHS = new Set(["package.json"]);
 const CYCLE_2F_MARKER_PATHS = new Set([
@@ -731,6 +775,16 @@ const FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS = Object.freeze(
     ...new Set([
       ...CYCLE_2H_CUMULATIVE_DIFF_PATHS,
       ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+    ]),
+  ].sort(),
+);
+const PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS = Object.freeze(
+  [
+    ...new Set([
+      ...FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS,
+      ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map(
+        (entry) => entry.path,
+      ),
     ]),
   ].sort(),
 );
@@ -934,6 +988,11 @@ export async function verifyCycle2cCommitBoundary(
     repositoryPath,
     revision,
   );
+  const pnpmDependencyPolicyMaintenanceSurfaceDiffPaths =
+    await pnpmDependencyPolicyMaintenanceTransitionSurfaceDiffPaths(
+      repositoryPath,
+      revision,
+    );
   const authenticatedReplayMaintenanceSurfaceDiffPaths =
     await authenticatedReplayMaintenanceTransitionSurfaceDiffPaths(
       repositoryPath,
@@ -950,6 +1009,16 @@ export async function verifyCycle2cCommitBoundary(
       revision,
     );
   if (
+    isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+      pnpmDependencyPolicyMaintenanceSurfaceDiffPaths,
+      entries,
+    )
+  )
+    await verifyPnpmDependencyPolicyMaintenanceTransition(
+      repositoryPath,
+      revision,
+    );
+  else if (
     isAuthenticatedReplayMaintenanceSurfaceRoutingRequired(
       authenticatedReplayMaintenanceSurfaceDiffPaths,
     )
@@ -1003,6 +1072,7 @@ export function isCycle2cCommitDiffEntryAllowed(
   status: string | undefined,
   path: string | undefined,
 ): boolean {
+  if (path === ".npmrc") return status === "D";
   return (
     (status === "A" || status === "M") &&
     path !== undefined &&
@@ -1012,7 +1082,8 @@ export function isCycle2cCommitDiffEntryAllowed(
       CYCLE_2F_TRANSITION_PATHS.has(path) ||
       CYCLE_2G_TRANSITION_PATHS.has(path) ||
       CYCLE_2H_TRANSITION_PATHS.has(path) ||
-      FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS.has(path))
+      FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS.has(path) ||
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS.has(path))
   );
 }
 
@@ -1038,7 +1109,11 @@ export function isCycle2cCommitDiffSetAllowed(
       exactList(paths, CYCLE_2G_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2H_BASELINE_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2H_CUMULATIVE_DIFF_PATHS) ||
-      exactList(paths, FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS))
+      exactList(paths, FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS) ||
+      exactList(
+        paths,
+        PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS,
+      ))
   );
 }
 
@@ -1132,6 +1207,44 @@ export function isFastify5121MaintenanceTransitionRoutingRequired(
 ): boolean {
   return cumulativeDiffEntries.some((entry) =>
     FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
+}
+
+/** @internal Exact pnpm-dependency-policy maintenance successor routing seam. */
+export function isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact pnpm-dependency-policy maintenance successor routing seam. */
+export function isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.length > 0 &&
+    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
+    baselineDiffPaths.every((path) =>
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS.has(path),
+    )
+  );
+}
+
+/** @internal Exact pnpm-dependency-policy maintenance successor routing seam. */
+export function isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+  cumulativeDiffEntries: readonly { readonly path: string }[],
+): boolean {
+  return (
+    isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(
+      baselineDiffPaths,
+    ) ||
+    cumulativeDiffEntries.some((entry) =>
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_MARKER_PATHS.has(
+        entry.path,
+      ),
+    )
   );
 }
 
@@ -1406,6 +1519,29 @@ export function isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact pnpm-dependency-policy maintenance successor regression seam. */
+export function isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
 /** @internal Exact authenticated-replay maintenance successor regression seam. */
 export function isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
   entries: readonly {
@@ -1426,6 +1562,33 @@ export function isAuthenticatedReplayMaintenanceCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+async function pnpmDependencyPolicyMaintenanceTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(mergeBase))
+    return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+      ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -1847,6 +2010,51 @@ async function verifyCiTestSerializationTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyPnpmDependencyPolicyMaintenanceTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(mergeBase))
+    invalid();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isPnpmDependencyPolicyMaintenanceCommitDiffSetAllowed(entries))
+    invalid();
 }
 
 async function verifyAuthenticatedReplayMaintenanceTransition(

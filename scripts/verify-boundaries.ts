@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 import {
@@ -626,6 +627,34 @@ const ignoredDirectories = new Set([
   "dist",
   "node_modules",
 ]);
+const dependencySections = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+] as const;
+const exactDependencySections = new Set<DependencySection>([
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+]);
+const plainExactSemver =
+  /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:(?:0|[1-9][0-9]*)|(?:[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(?:\.(?:(?:0|[1-9][0-9]*)|(?:[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+const expectedPnpmSettings = Object.freeze({
+  autoInstallPeers: false,
+  saveExact: true,
+  sharedWorkspaceLockfile: true,
+  strictPeerDependencies: true,
+});
+const expectedPnpmVersion = "11.19.0" as const;
+const expectedPackageManager = `pnpm@${expectedPnpmVersion}` as const;
+const legacyNpmrcPolicyKeys = new Map([
+  ["autoinstallpeers", "autoInstallPeers"],
+  ["saveexact", "saveExact"],
+  ["sharedworkspacelockfile", "sharedWorkspaceLockfile"],
+  ["strictpeerdependencies", "strictPeerDependencies"],
+]);
+const MAX_PNPM_CONFIG_BYTES = 65_536;
 const violations: string[] = [];
 const filesToInspect = new Set<string>();
 
@@ -638,6 +667,8 @@ for (const entry of await readdir(root, { withFileTypes: true })) {
   if (entry.isFile() && isRootBoundaryFile(entry.name))
     filesToInspect.add(join(root, entry.name));
 }
+const workspacePackageNames =
+  await collectWorkspacePackageNames(filesToInspect);
 
 const filingFactComparisonTreeViolation =
   exactFilingFactComparisonTreeViolation(
@@ -687,6 +718,31 @@ for (const expected of [
   if (!isRootBoundaryFile(expected))
     throw new Error(`Boundary root-surface classifier missed ${expected}`);
 }
+verifyDependencyPolicyClassifiers();
+const gitignoreViolation = npmrcGitignoreViolation(
+  await readFile(join(root, ".gitignore"), "utf8"),
+);
+if (gitignoreViolation !== null)
+  violations.push(`.gitignore: ${gitignoreViolation}`);
+if (gitPathDisposition("check-ignore", ".npmrc") !== true)
+  violations.push(".gitignore: .npmrc must be effectively ignored by git");
+const localNpmrc = await readOptionalLocalNpmrc();
+if (localNpmrc !== null) {
+  if (gitPathDisposition("ls-files", ".npmrc") !== false)
+    violations.push(".npmrc: a local auth file must remain untracked");
+  const npmrcViolation = legacyNpmrcPolicyViolation(localNpmrc);
+  if (npmrcViolation !== null) violations.push(`.npmrc: ${npmrcViolation}`);
+}
+const lockfileViolation = pnpmLockfileHeaderViolation(
+  await readFile(join(root, "pnpm-lock.yaml"), "utf8"),
+);
+if (lockfileViolation !== null)
+  violations.push(`pnpm-lock.yaml: ${lockfileViolation}`);
+const effectivePnpmViolation = effectivePnpmSettingsViolation(
+  readEffectivePnpmConfig(),
+);
+if (effectivePnpmViolation !== null)
+  violations.push(`pnpm configuration: ${effectivePnpmViolation}`);
 if (
   !referencesModule(
     'import { ResearchStateService } from "@research-cockpit/research-state";',
@@ -2178,6 +2234,18 @@ function inspectDependencies(path: string, manifest: unknown): void {
     violations.push(`${path}: package manifest must be an object`);
     return;
   }
+  for (const violation of dependencyPolicyViolations(
+    manifest,
+    workspacePackageNames,
+  ))
+    violations.push(`${path}: ${violation}`);
+  if (
+    path === "package.json" &&
+    manifest.packageManager !== expectedPackageManager
+  )
+    violations.push(
+      `${path}: packageManager must remain exactly ${expectedPackageManager}`,
+    );
   const dependencyNames = [
     ...recordKeys(manifest.dependencies),
     ...recordKeys(manifest.devDependencies),
@@ -2305,6 +2373,563 @@ function inspectDependencies(path: string, manifest: unknown): void {
     )
       violations.push(`${path}: API must not depend on ${dependency}`);
   }
+}
+
+type DependencySection = (typeof dependencySections)[number];
+
+function dependencyPolicyViolations(
+  manifest: Record<string, unknown>,
+  workspaceNames: ReadonlySet<string>,
+): string[] {
+  const policyViolations: string[] = [];
+  const seen = new Map<string, DependencySection>();
+  for (const section of dependencySections) {
+    const value = manifest[section];
+    if (value === undefined) continue;
+    if (!isRecord(value)) {
+      policyViolations.push(`${section} must be an object`);
+      continue;
+    }
+    for (const [name, specifier] of Object.entries(value).sort(
+      ([left], [right]) => left.localeCompare(right),
+    )) {
+      const previous = seen.get(name);
+      if (previous === undefined) seen.set(name, section);
+      else
+        policyViolations.push(
+          `dependency ${JSON.stringify(name)} is duplicated in ${previous} and ${section}`,
+        );
+      if (name.length === 0) {
+        policyViolations.push(`${section} contains an empty dependency name`);
+        continue;
+      }
+      if (typeof specifier !== "string") {
+        policyViolations.push(
+          `${section} dependency ${JSON.stringify(name)} must have a string specifier`,
+        );
+        continue;
+      }
+      if (workspaceNames.has(name)) {
+        if (specifier !== "workspace:*")
+          policyViolations.push(
+            `workspace dependency ${JSON.stringify(name)} in ${section} must use workspace:*`,
+          );
+        continue;
+      }
+      if (name.startsWith("@research-cockpit/")) {
+        policyViolations.push(
+          `${section} dependency ${JSON.stringify(name)} uses the reserved internal scope without a matching workspace package`,
+        );
+        continue;
+      }
+      if (specifier.startsWith("workspace:")) {
+        policyViolations.push(
+          `${section} dependency ${JSON.stringify(name)} references an unknown workspace package`,
+        );
+        continue;
+      }
+      if (
+        exactDependencySections.has(section) &&
+        !plainExactSemver.test(specifier)
+      )
+        policyViolations.push(
+          `external dependency ${JSON.stringify(name)} in ${section} must use one plain exact semantic version`,
+        );
+      else if (section === "peerDependencies" && specifier.length === 0)
+        policyViolations.push(
+          `peer dependency ${JSON.stringify(name)} must have a non-empty specifier`,
+        );
+    }
+  }
+  return policyViolations;
+}
+
+async function collectWorkspacePackageNames(
+  files: ReadonlySet<string>,
+): Promise<ReadonlySet<string>> {
+  const names = new Map<string, string>();
+  for (const file of [...files].sort()) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    if (!isWorkspacePackageManifestPath(path)) continue;
+    const manifest = JSON.parse(await readFile(file, "utf8")) as unknown;
+    if (
+      !isRecord(manifest) ||
+      typeof manifest.name !== "string" ||
+      manifest.name.length === 0 ||
+      manifest.name.trim() !== manifest.name
+    ) {
+      violations.push(`${path}: workspace package needs one non-empty name`);
+      continue;
+    }
+    const previous = names.get(manifest.name);
+    if (previous !== undefined)
+      violations.push(
+        `${path}: workspace package name duplicates the manifest at ${previous}`,
+      );
+    else names.set(manifest.name, path);
+  }
+  return new Set(names.keys());
+}
+
+function isWorkspacePackageManifestPath(path: string): boolean {
+  return (
+    path === "package.json" ||
+    /^(?:apps|modules|packages)\/[^/]+\/package\.json$/u.test(path)
+  );
+}
+
+function legacyNpmrcPolicyViolation(content: string): string | null {
+  for (const rawLine of content.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (line.length === 0 || line.startsWith("#") || line.startsWith(";"))
+      continue;
+    const equalsIndex = line.indexOf("=");
+    const key = (equalsIndex === -1 ? line : line.slice(0, equalsIndex)).trim();
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
+    const policyKey = legacyNpmrcPolicyKeys.get(normalizedKey);
+    if (policyKey !== undefined)
+      return `legacy non-auth setting ${policyKey} is forbidden; configure it in pnpm-workspace.yaml`;
+  }
+  return null;
+}
+
+function npmrcGitignoreViolation(content: string): string | null {
+  const rules = content
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
+  if (rules.filter((line) => line === ".npmrc").length !== 1)
+    return ".npmrc must have exactly one explicit ignore rule";
+  if (rules.some((line) => line === "!.npmrc" || line === "!/.npmrc"))
+    return ".npmrc must not be re-included after it is ignored";
+  return null;
+}
+
+function gitPathDisposition(
+  operation: "check-ignore" | "ls-files",
+  path: string,
+): boolean | null {
+  const arguments_ = [
+    "-c",
+    `safe.directory=${root.replaceAll("\\", "/")}`,
+    operation,
+    ...(operation === "check-ignore"
+      ? ["--no-index", "--quiet"]
+      : ["--error-unmatch"]),
+    "--",
+    path,
+  ];
+  const result = spawnSync("git", arguments_, {
+    cwd: root,
+    shell: false,
+    stdio: "ignore",
+    timeout: 5_000,
+    windowsHide: true,
+  });
+  if (result.error !== undefined || result.signal !== null) return null;
+  if (result.status === 0) return true;
+  if (result.status === 1) return false;
+  return null;
+}
+
+async function readOptionalLocalNpmrc(): Promise<string | null> {
+  try {
+    return await readFile(join(root, ".npmrc"), "utf8");
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return null;
+    throw error;
+  }
+}
+
+function pnpmLockfileHeaderViolation(content: string): string | null {
+  const lines = content.split(/\r?\n/u);
+  const meaningful = lines.filter((line) => {
+    const trimmed = line.trim();
+    return trimmed.length > 0 && !trimmed.startsWith("#");
+  });
+  if (meaningful[0] !== "lockfileVersion: '9.0'")
+    return "lockfileVersion must remain the pinned canonical 9.0 header";
+  const canonicalTopLevelLines = [
+    "lockfileVersion: '9.0'",
+    "settings:",
+    "importers:",
+    "packages:",
+    "ignoredOptionalDependencies:",
+    "snapshots:",
+  ] as const;
+  const requiredTopLevelLines = new Set<
+    (typeof canonicalTopLevelLines)[number]
+  >(["lockfileVersion: '9.0'", "settings:"]);
+  const topLevelCounts = new Map<
+    (typeof canonicalTopLevelLines)[number],
+    number
+  >(canonicalTopLevelLines.map((line) => [line, 0] as const));
+  const settingsLines: string[] = [];
+  let insideSettings = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || trimmed.startsWith("#")) continue;
+    if (!/^\s/u.test(line)) {
+      insideSettings = line === "settings:";
+      const canonicalLine = line as (typeof canonicalTopLevelLines)[number];
+      const count = topLevelCounts.get(canonicalLine);
+      if (count === undefined)
+        return "top-level mappings must use only the canonical generated keys";
+      topLevelCounts.set(canonicalLine, count + 1);
+      continue;
+    }
+    if (insideSettings) settingsLines.push(line);
+  }
+  for (const [line, count] of topLevelCounts) {
+    if (
+      (requiredTopLevelLines.has(line) && count !== 1) ||
+      (!requiredTopLevelLines.has(line) && count > 1)
+    )
+      return "required top-level keys must occur once and optional keys at most once";
+  }
+  if (
+    JSON.stringify(settingsLines) !==
+    JSON.stringify([
+      "  autoInstallPeers: false",
+      "  excludeLinksFromLockfile: false",
+    ] as const)
+  )
+    return "settings must contain only the exact canonical generated values";
+  return null;
+}
+
+function readEffectivePnpmConfig(): unknown {
+  const pnpmCli = process.env.npm_execpath;
+  if (typeof pnpmCli !== "string" || pnpmCli.length === 0) return null;
+  const result = spawnSync(
+    process.execPath,
+    [pnpmCli, "config", "list", "--json"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: MAX_PNPM_CONFIG_BYTES,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 5_000,
+      windowsHide: true,
+    },
+  );
+  if (
+    result.error !== undefined ||
+    result.status !== 0 ||
+    result.signal !== null ||
+    typeof result.stdout !== "string" ||
+    Buffer.byteLength(result.stdout, "utf8") > MAX_PNPM_CONFIG_BYTES
+  )
+    return null;
+  try {
+    return JSON.parse(result.stdout) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function effectivePnpmSettingsViolation(config: unknown): string | null {
+  if (!isRecord(config))
+    return "effective settings must be available as bounded JSON from the active pnpm CLI";
+  for (const [key, expected] of Object.entries(expectedPnpmSettings)) {
+    if (config[key] !== expected)
+      return `effective ${key} must be ${String(expected)}`;
+  }
+  if (
+    typeof config.userAgent !== "string" ||
+    !config.userAgent.startsWith(`pnpm/${expectedPnpmVersion} `)
+  )
+    return `active pnpm must remain exactly ${expectedPnpmVersion}`;
+  return null;
+}
+
+function verifyDependencyPolicyClassifiers(): void {
+  const internalName = "@research-cockpit/dependency-policy-fixture";
+  const workspaceNames = new Set([internalName]);
+  const validManifest = {
+    dependencies: {
+      [internalName]: "workspace:*",
+      runtime: "1.2.3",
+    },
+    devDependencies: { tool: "0.0.0-alpha.1+build.7" },
+    optionalDependencies: { optional: "10.20.30" },
+    peerDependencies: { peer: "^19.0.0" },
+  };
+  if (dependencyPolicyViolations(validManifest, workspaceNames).length !== 0)
+    throw new Error("Dependency pin policy rejected its closed valid fixture");
+
+  for (const valid of [
+    "0.0.0",
+    "1.2.3",
+    "1.2.3-alpha.1",
+    "1.2.3-alpha+build.7",
+    "1.2.3+001",
+  ]) {
+    if (
+      dependencyPolicyViolations(
+        { dependencies: { external: valid } },
+        workspaceNames,
+      ).length !== 0
+    )
+      throw new Error(
+        "Dependency pin policy rejected an exact semantic version",
+      );
+  }
+  for (const invalid of [
+    "^1.2.3",
+    "~1.2.3",
+    ">=1.2.3",
+    "1.2",
+    "01.2.3",
+    "1.02.3",
+    "1.2.03",
+    "1.2.3-01",
+    "1.2.3-alpha..1",
+    "1.2.3+",
+    "v1.2.3",
+    "=1.2.3",
+    "latest",
+    "npm:other@1.2.3",
+    "https://example.invalid/package.tgz",
+    "git+https://example.invalid/repository.git",
+    "file:../package",
+    "link:../package",
+    "workspace:*",
+    " 1.2.3",
+    "1.2.3 ",
+  ]) {
+    for (const section of exactDependencySections) {
+      if (
+        dependencyPolicyViolations(
+          { [section]: { external: invalid } },
+          workspaceNames,
+        ).length === 0
+      )
+        throw new Error("Dependency pin policy admitted a non-exact specifier");
+    }
+  }
+  for (const section of dependencySections) {
+    if (
+      dependencyPolicyViolations({ [section]: [] }, workspaceNames).length ===
+        0 ||
+      dependencyPolicyViolations(
+        { [section]: { external: null } },
+        workspaceNames,
+      ).length === 0
+    )
+      throw new Error("Dependency pin policy admitted a malformed section");
+    for (const invalid of [
+      "1.2.3",
+      "workspace:^",
+      "workspace:~",
+      "workspace:1.2.3",
+      "link:../package",
+    ]) {
+      if (
+        dependencyPolicyViolations(
+          { [section]: { [internalName]: invalid } },
+          workspaceNames,
+        ).length === 0
+      )
+        throw new Error(
+          "Dependency pin policy admitted a non-exact workspace specifier",
+        );
+    }
+  }
+  if (
+    dependencyPolicyViolations(
+      { peerDependencies: { unknown: "workspace:*" } },
+      workspaceNames,
+    ).length === 0 ||
+    dependencyPolicyViolations(
+      {
+        dependencies: { duplicate: "1.2.3" },
+        devDependencies: { duplicate: "1.2.3" },
+      },
+      workspaceNames,
+    ).length === 0
+  )
+    throw new Error(
+      "Dependency pin policy admitted an unknown or duplicate link",
+    );
+  for (const specifier of ["1.2.3", "workspace:*"]) {
+    if (
+      dependencyPolicyViolations(
+        {
+          dependencies: {
+            "@research-cockpit/not-a-workspace-package": specifier,
+          },
+        },
+        workspaceNames,
+      ).length === 0
+    )
+      throw new Error(
+        "Dependency pin policy admitted an unknown reserved-scope package",
+      );
+  }
+  for (let left = 0; left < dependencySections.length; left += 1) {
+    for (let right = left + 1; right < dependencySections.length; right += 1) {
+      const leftSection = dependencySections[left];
+      const rightSection = dependencySections[right];
+      if (leftSection === undefined || rightSection === undefined)
+        throw new Error("Dependency section fixture is incomplete");
+      const manifest = {
+        [leftSection]: {
+          duplicate: leftSection === "peerDependencies" ? "^1.0.0" : "1.0.0",
+        },
+        [rightSection]: {
+          duplicate: rightSection === "peerDependencies" ? "^1.0.0" : "1.0.0",
+        },
+      };
+      if (dependencyPolicyViolations(manifest, workspaceNames).length === 0)
+        throw new Error(
+          "Dependency pin policy admitted a duplicate declaration",
+        );
+    }
+  }
+
+  const secretCanary = "dependency-policy-secret-canary";
+  if (
+    legacyNpmrcPolicyViolation(
+      `registry=https://registry.npmjs.org/\n@scope:registry=https://registry.example.invalid/\n//registry.example.invalid/:_authToken=${secretCanary}\n//registry.example.invalid/:_password=save-exact=true\n`,
+    ) !== null
+  )
+    throw new Error(
+      "Npmrc policy rejected registry or authentication settings",
+    );
+  for (const key of [
+    "auto-install-peers",
+    "AUTO_INSTALL_PEERS",
+    "autoInstallPeers",
+    "save-exact",
+    "SAVE_EXACT",
+    "saveExact",
+    "shared-workspace-lockfile",
+    "SHARED_WORKSPACE_LOCKFILE",
+    "sharedWorkspaceLockfile",
+    "strict-peer-dependencies",
+    "STRICT_PEER_DEPENDENCIES",
+    "strictPeerDependencies",
+  ]) {
+    const violation = legacyNpmrcPolicyViolation(`${key}=${secretCanary}`);
+    if (violation === null || violation.includes(secretCanary))
+      throw new Error("Npmrc policy admitted or disclosed a legacy setting");
+  }
+  const validGitignore = "node_modules/\n.npmrc\n*.log\n";
+  if (npmrcGitignoreViolation(validGitignore) !== null)
+    throw new Error("Npmrc ignore policy rejected its exact rule");
+  for (const invalid of [
+    "node_modules/\n",
+    ".npmrc\n.npmrc\n",
+    ".npmrc\n!.npmrc\n",
+    ".npmrc\n!/.npmrc\n",
+  ]) {
+    if (npmrcGitignoreViolation(invalid) === null)
+      throw new Error("Npmrc ignore policy admitted an unsafe rule set");
+  }
+
+  const validLockfile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+`;
+  if (pnpmLockfileHeaderViolation(validLockfile) !== null)
+    throw new Error("Lockfile policy rejected its canonical header");
+  const invalidLockfiles = [
+    validLockfile.replace("autoInstallPeers: false", "autoInstallPeers: true"),
+    validLockfile.replace("  autoInstallPeers: false\n", ""),
+    validLockfile.replace(
+      "  autoInstallPeers: false",
+      "  autoInstallPeers: false\n  autoInstallPeers: false",
+    ),
+    validLockfile.replace("settings:", "settings:\nsettings:"),
+    validLockfile.replace("  autoInstallPeers", "    autoInstallPeers"),
+    validLockfile.replace("lockfileVersion: '9.0'", "lockfileVersion: '8.0'"),
+    validLockfile.replace(
+      "lockfileVersion: '9.0'",
+      "lockfileVersion: '9.0'\nlockfileVersion: '9.0'",
+    ),
+    validLockfile.replace("importers:", "importers:\nimporters:"),
+    validLockfile.replace(
+      "  excludeLinksFromLockfile: false",
+      "  excludeLinksFromLockfile: true",
+    ),
+    validLockfile.replace(
+      "settings:\n  autoInstallPeers: false",
+      "settings: {autoInstallPeers: false}",
+    ),
+  ];
+  for (const alternateSettings of [
+    "settings: {autoInstallPeers: true}",
+    "settings : {autoInstallPeers: true}",
+    "'settings': {autoInstallPeers: true}",
+    '"settings": {autoInstallPeers: true}',
+    "? settings\n: {autoInstallPeers: true}",
+    "!!str settings: {autoInstallPeers: true}",
+    '"set\\x74ings": {autoInstallPeers: true}',
+    "<<: {settings: {autoInstallPeers: true}}",
+  ]) {
+    invalidLockfiles.push(
+      validLockfile.replace(
+        "\nimporters:",
+        `\n${alternateSettings}\n\nimporters:`,
+      ),
+    );
+  }
+  for (const alternateAutoInstallPeers of [
+    "  autoInstallPeers : true",
+    "  'autoInstallPeers': true",
+    '  "autoInstallPeers": true',
+    "  ? autoInstallPeers\n  : true",
+    "  !!str autoInstallPeers: true",
+    '  "autoInstall\\x50eers": true',
+    "  <<: {autoInstallPeers: true}",
+  ]) {
+    invalidLockfiles.push(
+      validLockfile.replace(
+        "  excludeLinksFromLockfile: false",
+        `${alternateAutoInstallPeers}\n  excludeLinksFromLockfile: false`,
+      ),
+    );
+  }
+  for (const invalid of invalidLockfiles) {
+    if (pnpmLockfileHeaderViolation(invalid) === null)
+      throw new Error("Lockfile policy admitted a non-canonical header");
+  }
+
+  const validEffectivePnpmSettings = {
+    ...expectedPnpmSettings,
+    userAgent: `pnpm/${expectedPnpmVersion} npm/? node/v24.18.0 test x64`,
+  };
+  if (effectivePnpmSettingsViolation(validEffectivePnpmSettings) !== null)
+    throw new Error("Pnpm settings policy rejected its exact settings");
+  for (const key of Object.keys(expectedPnpmSettings)) {
+    const missing = { ...validEffectivePnpmSettings } as Record<
+      string,
+      unknown
+    >;
+    delete missing[key];
+    const wrong = { ...validEffectivePnpmSettings, [key]: "wrong-type" };
+    if (
+      effectivePnpmSettingsViolation(missing) === null ||
+      effectivePnpmSettingsViolation(wrong) === null
+    )
+      throw new Error("Pnpm settings policy admitted a missing or wrong value");
+  }
+  if (
+    effectivePnpmSettingsViolation(null) === null ||
+    effectivePnpmSettingsViolation([]) === null ||
+    effectivePnpmSettingsViolation({
+      ...validEffectivePnpmSettings,
+      userAgent: "pnpm/11.19.1 npm/? node/v24.18.0 test x64",
+    }) === null
+  )
+    throw new Error("Pnpm settings policy admitted a malformed carrier");
 }
 
 function filingFactNormalizationManifestViolation(
