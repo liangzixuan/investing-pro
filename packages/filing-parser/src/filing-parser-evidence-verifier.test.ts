@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -32,6 +32,11 @@ import {
   isFastify5121MaintenanceBaselineMergeBaseAllowed,
   isFastify5121MaintenanceCommitDiffSetAllowed,
   isFastify5121MaintenanceTransitionRoutingRequired,
+  isFilingParserEvidenceFileReadSnapshotAllowed,
+  isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed,
+  isOfflineEvidenceInputCustodyCommitDiffSetAllowed,
+  isOfflineEvidenceInputCustodySurfaceRoutingRequired,
+  normalizeFilingParserEvidenceReviewOptions,
   verifyFilingParserEvidenceOffline,
 } from "./filing-parser-evidence-verifier";
 
@@ -412,6 +417,8 @@ const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
   "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
 const CI_TEST_SERIALIZATION_BASELINE_REVISION =
   "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
+  "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH =
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts" as const;
 const CYCLE_2H_TRANSITION = [
@@ -552,6 +559,24 @@ const FASTIFY_5_12_1_MAINTENANCE_TRANSITION = [
 ] as const;
 const CI_TEST_SERIALIZATION_TRANSITION = [
   { path: "package.json", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+] as const;
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION = [
   {
     path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
     status: "M",
@@ -1157,6 +1182,111 @@ describe("offline filing parser evidence review", () => {
     ).toBe(false);
   });
 
+  it("admits and routes only the exact four-modification offline-evidence input-custody successor", () => {
+    const transitionPaths = OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map(
+      (entry) => entry.path,
+    );
+    expect(OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION).toHaveLength(4);
+    expect(
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.every(
+        (entry) => entry.status === "M",
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+        [...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION].reverse(),
+      ),
+    ).toBe(true);
+
+    for (const entry of OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION) {
+      expect(
+        isOfflineEvidenceInputCustodySurfaceRoutingRequired([entry.path]),
+      ).toBe(true);
+      expect(
+        isOfflineEvidenceInputCustodySurfaceRoutingRequired([
+          entry.path,
+          entry.path,
+        ]),
+      ).toBe(false);
+      expect(
+        isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+          OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.filter(
+            (candidate) => candidate !== entry,
+          ),
+        ),
+      ).toBe(false);
+      expect(
+        isOfflineEvidenceInputCustodyCommitDiffSetAllowed([
+          ...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+          entry,
+        ]),
+      ).toBe(false);
+      for (const status of ["A", "D", "R100"]) {
+        expect(
+          isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+            OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map((candidate) =>
+              candidate === entry ? { ...candidate, status } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+
+    for (const status of ["A", "M", "D", "R100"]) {
+      expect(
+        isOfflineEvidenceInputCustodyCommitDiffSetAllowed([
+          ...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+          { path: "packages/filing-parser/src/unreviewed.ts", status },
+        ]),
+      ).toBe(false);
+    }
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired(transitionPaths),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired(
+        [...transitionPaths].reverse(),
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired([
+        ...transitionPaths,
+        "packages/filing-parser/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired([
+        "packages/filing-parser/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+    expect(isOfflineEvidenceInputCustodySurfaceRoutingRequired([])).toBe(false);
+    expect(isOfflineEvidenceInputCustodySurfaceRoutingRequired(undefined)).toBe(
+      false,
+    );
+
+    expect(
+      isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed("0".repeat(40)),
+    ).toBe(false);
+    expect(
+      isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(undefined),
+    ).toBe(false);
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+      ),
+    ).toBe(false);
+  });
+
   it("admits and routes only the exact five-modification CI test-serialization successor", () => {
     expect(CI_TEST_SERIALIZATION_TRANSITION).toHaveLength(5);
     expect(
@@ -1323,6 +1453,230 @@ describe("offline filing parser evidence review", () => {
       `{"evidenceSha256":"${HASH}","repository":"example/research-cockpit","revision":"${"b".repeat(40)}","runAttempt":1,"runId":"123","sourceHashCount":26,"verdict":"offline_consistent"}\n`,
     );
   });
+
+  it("takes one exact own-data snapshot of every independent review anchor", () => {
+    const original = {
+      evidencePath: "evidence.json",
+      expectedEvidenceSha256: HASH,
+      expectedRepository: "example/research-cockpit",
+      expectedRevision: "b".repeat(40),
+      expectedRunAttempt: 1,
+      expectedRunId: "123",
+      repositoryPath: "repository",
+    };
+    const expected = { ...original };
+    const snapshot = normalizeFilingParserEvidenceReviewOptions(original);
+    expect(snapshot).toStrictEqual(expected);
+    expect(Object.isFrozen(snapshot)).toBe(true);
+
+    original.evidencePath = "changed.json";
+    original.expectedEvidenceSha256 = `sha256:${"c".repeat(64)}`;
+    original.expectedRepository = "changed/repository";
+    original.expectedRevision = "c".repeat(40);
+    original.expectedRunAttempt = 2;
+    original.expectedRunId = "456";
+    original.repositoryPath = "changed-repository";
+    expect(snapshot).toStrictEqual(expected);
+
+    for (const omitted of Object.keys(expected)) {
+      const candidate = { ...expected } as Record<string, unknown>;
+      delete candidate[omitted];
+      expect(() =>
+        normalizeFilingParserEvidenceReviewOptions(candidate as never),
+      ).toThrow("Offline evidence review failed.");
+    }
+    expect(() =>
+      normalizeFilingParserEvidenceReviewOptions({
+        ...expected,
+        unexpected: true,
+      } as never),
+    ).toThrow("Offline evidence review failed.");
+
+    const symbolKeyed = { ...expected } as Record<PropertyKey, unknown>;
+    symbolKeyed[Symbol("unexpected")] = true;
+    expect(() =>
+      normalizeFilingParserEvidenceReviewOptions(symbolKeyed as never),
+    ).toThrow("Offline evidence review failed.");
+
+    const inherited = Object.assign(
+      Object.create({ inherited: true }) as Record<string, unknown>,
+      expected,
+    );
+    expect(() =>
+      normalizeFilingParserEvidenceReviewOptions(inherited as never),
+    ).toThrow("Offline evidence review failed.");
+
+    let accessorCalls = 0;
+    const accessor = { ...expected } as Record<string, unknown>;
+    Object.defineProperty(accessor, "expectedRevision", {
+      enumerable: true,
+      get: () => {
+        accessorCalls += 1;
+        return expected.expectedRevision;
+      },
+    });
+    expect(() =>
+      normalizeFilingParserEvidenceReviewOptions(accessor as never),
+    ).toThrow("Offline evidence review failed.");
+    expect(accessorCalls).toBe(0);
+
+    const nonenumerable = { ...expected } as Record<string, unknown>;
+    Object.defineProperty(nonenumerable, "expectedRevision", {
+      enumerable: false,
+      value: expected.expectedRevision,
+    });
+    expect(() =>
+      normalizeFilingParserEvidenceReviewOptions(nonenumerable as never),
+    ).toThrow("Offline evidence review failed.");
+
+    let propertyGetCalls = 0;
+    const dataProxy = new Proxy(expected, {
+      get: () => {
+        propertyGetCalls += 1;
+        throw new Error("property Get must not execute");
+      },
+    });
+    expect(() => normalizeFilingParserEvidenceReviewOptions(dataProxy)).toThrow(
+      "Offline evidence review failed.",
+    );
+    expect(propertyGetCalls).toBe(0);
+
+    for (const trap of [
+      "getPrototypeOf",
+      "ownKeys",
+      "getOwnPropertyDescriptor",
+    ] as const) {
+      const hostile = new Proxy(expected, {
+        getOwnPropertyDescriptor: (target, key) => {
+          if (trap === "getOwnPropertyDescriptor") throw new Error("canary");
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+        getPrototypeOf: (target) => {
+          if (trap === "getPrototypeOf") throw new Error("canary");
+          return Reflect.getPrototypeOf(target);
+        },
+        ownKeys: (target) => {
+          if (trap === "ownKeys") throw new Error("canary");
+          return Reflect.ownKeys(target);
+        },
+      });
+      expect(() => normalizeFilingParserEvidenceReviewOptions(hostile)).toThrow(
+        "Offline evidence review failed.",
+      );
+    }
+  });
+
+  it("admits only matching stable pathname and descriptor snapshots", () => {
+    const maximumBytes = 1_048_576;
+    const descriptor = {
+      ctimeMs: 100,
+      dev: 1,
+      ino: 2,
+      isFile: () => true,
+      mtimeMs: 200,
+      size: 3,
+    };
+    const pathSnapshot = {
+      ...descriptor,
+      isSymbolicLink: () => false,
+    };
+    const allowed = (
+      overrides: {
+        bytesRead?: number;
+        descriptorAfter?: typeof descriptor;
+        descriptorBefore?: typeof descriptor;
+        maximumBytes?: number;
+        pathAfter?: typeof pathSnapshot;
+        pathBefore?: typeof pathSnapshot;
+      } = {},
+    ) =>
+      isFilingParserEvidenceFileReadSnapshotAllowed(
+        overrides.pathBefore ?? pathSnapshot,
+        overrides.descriptorBefore ?? descriptor,
+        overrides.descriptorAfter ?? descriptor,
+        overrides.pathAfter ?? pathSnapshot,
+        overrides.bytesRead ?? descriptor.size,
+        overrides.maximumBytes ?? maximumBytes,
+      );
+    expect(allowed()).toBe(true);
+
+    for (const pathBefore of [
+      { ...pathSnapshot, isFile: () => false },
+      { ...pathSnapshot, isSymbolicLink: () => true },
+      { ...pathSnapshot, size: 1 },
+      { ...pathSnapshot, size: maximumBytes + 1 },
+      { ...pathSnapshot, size: Number.NaN },
+    ])
+      expect(allowed({ pathBefore })).toBe(false);
+
+    for (const pathAfter of [
+      { ...pathSnapshot, isFile: () => false },
+      { ...pathSnapshot, isSymbolicLink: () => true },
+    ])
+      expect(allowed({ pathAfter })).toBe(false);
+
+    const mismatches = [
+      { size: descriptor.size + 1 },
+      { size: descriptor.size - 1 },
+      { dev: descriptor.dev + 1 },
+      { ino: descriptor.ino + 1 },
+      { mtimeMs: descriptor.mtimeMs + 1 },
+      { ctimeMs: descriptor.ctimeMs + 1 },
+    ];
+    for (const mismatch of mismatches) {
+      expect(allowed({ pathBefore: { ...pathSnapshot, ...mismatch } })).toBe(
+        false,
+      );
+      expect(
+        allowed({ descriptorBefore: { ...descriptor, ...mismatch } }),
+      ).toBe(false);
+      expect(allowed({ descriptorAfter: { ...descriptor, ...mismatch } })).toBe(
+        false,
+      );
+      expect(allowed({ pathAfter: { ...pathSnapshot, ...mismatch } })).toBe(
+        false,
+      );
+    }
+
+    expect(
+      allowed({ descriptorBefore: { ...descriptor, isFile: () => false } }),
+    ).toBe(false);
+    expect(
+      allowed({ descriptorAfter: { ...descriptor, isFile: () => false } }),
+    ).toBe(false);
+    expect(allowed({ bytesRead: descriptor.size + 1 })).toBe(false);
+    expect(allowed({ bytesRead: descriptor.size - 1 })).toBe(false);
+    for (const invalidMaximum of [
+      1,
+      descriptor.size - 1,
+      2.5,
+      Number.NaN,
+      Number.MAX_SAFE_INTEGER + 1,
+    ])
+      expect(allowed({ maximumBytes: invalidMaximum })).toBe(false);
+  });
+
+  it.runIf(process.platform !== "win32")(
+    "rejects a final-component symbolic link",
+    async () => {
+      const directory = await mkdtemp(join(tmpdir(), "filing-evidence-test-"));
+      temporaryDirectories.push(directory);
+      const evidencePath = join(directory, "evidence.json");
+      await symlink("missing.json", evidencePath, "file");
+
+      await expect(
+        verifyFilingParserEvidenceOffline({
+          evidencePath,
+          expectedEvidenceSha256: HASH,
+          expectedRepository: "example/research-cockpit",
+          expectedRevision: "b".repeat(40),
+          expectedRunAttempt: 1,
+          expectedRunId: "123",
+          repositoryPath: directory,
+        }),
+      ).rejects.toThrow("Offline evidence review failed.");
+    },
+  );
 
   it("fails closed before Git for a noncanonical candidate", async () => {
     const directory = await mkdtemp(join(tmpdir(), "filing-evidence-test-"));

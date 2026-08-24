@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { constants, type Stats } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { types as utilTypes } from "node:util";
 
 import {
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
@@ -12,6 +14,7 @@ import { FILING_PARSER_QUARANTINE_CODES } from "./parser-boundary";
 
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BLOB_BYTES = 4_194_304;
+const isProxy = utilTypes.isProxy;
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
@@ -32,6 +35,8 @@ const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
   "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
 const CI_TEST_SERIALIZATION_BASELINE_REVISION =
   "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
+  "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -561,6 +566,29 @@ const CI_TEST_SERIALIZATION_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION = Object.freeze(
+  [
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS = new Set(
+  OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map((entry) => entry.path),
+);
 const CI_TEST_SERIALIZATION_SURFACE_PATHS = new Set(["package.json"]);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = new Set([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
@@ -774,32 +802,35 @@ export async function verifyFilingParserEvidenceOffline(
 async function verifyFilingParserEvidenceOfflineInternal(
   options: FilingParserEvidenceReviewOptions,
 ): Promise<FilingParserEvidenceReview> {
-  validateOptions(options);
+  const normalizedOptions = normalizeFilingParserEvidenceReviewOptions(options);
   const evidenceBytes = await readSmallRegularFile(
-    options.evidencePath,
+    normalizedOptions.evidencePath,
     MAX_EVIDENCE_BYTES,
   );
   const evidence = parseCanonicalFilingParserEvidence(evidenceBytes);
   const evidenceSha256 = filingParserEvidenceSha256(evidence);
   if (
-    evidenceSha256 !== options.expectedEvidenceSha256 ||
-    evidence.repository !== options.expectedRepository ||
-    evidence.revision !== options.expectedRevision ||
-    evidence.workflow.runId !== options.expectedRunId ||
-    evidence.workflow.runAttempt !== options.expectedRunAttempt
+    evidenceSha256 !== normalizedOptions.expectedEvidenceSha256 ||
+    evidence.repository !== normalizedOptions.expectedRepository ||
+    evidence.revision !== normalizedOptions.expectedRevision ||
+    evidence.workflow.runId !== normalizedOptions.expectedRunId ||
+    evidence.workflow.runAttempt !== normalizedOptions.expectedRunAttempt
   )
     invalidReview();
 
-  const repositoryPath = await realpath(options.repositoryPath);
+  const repositoryPath = await realpath(normalizedOptions.repositoryPath);
   const repositoryStat = await lstat(repositoryPath);
   if (!repositoryStat.isDirectory() || repositoryStat.isSymbolicLink())
     invalidReview();
   await git(
     repositoryPath,
-    ["cat-file", "-e", `${options.expectedRevision}^{commit}`],
+    ["cat-file", "-e", `${normalizedOptions.expectedRevision}^{commit}`],
     0,
   );
-  await verifyCycle2aCommitBoundary(repositoryPath, options.expectedRevision);
+  await verifyCycle2aCommitBoundary(
+    repositoryPath,
+    normalizedOptions.expectedRevision,
+  );
 
   const committedSources = new Map<string, Uint8Array>();
   for (
@@ -813,7 +844,7 @@ async function verifyFilingParserEvidenceOfflineInternal(
       invalidReview();
     const bytes = await git(repositoryPath, [
       "show",
-      `${options.expectedRevision}:${path}`,
+      `${normalizedOptions.expectedRevision}:${path}`,
     ]);
     committedSources.set(path, bytes);
     if (sha256(bytes) !== recorded.sha256) invalidReview();
@@ -853,7 +884,7 @@ async function verifyFilingParserEvidenceOfflineInternal(
   for (const historical of FROZEN_POSTGRES_V14_SOURCE_HASHES) {
     const bytes = await git(repositoryPath, [
       "show",
-      `${options.expectedRevision}:${historical.path}`,
+      `${normalizedOptions.expectedRevision}:${historical.path}`,
     ]);
     if (sha256(bytes) !== historical.sha256) invalidReview();
   }
@@ -1166,6 +1197,11 @@ export async function verifyCycle2aCommitBoundary(
   )
     invalidReview();
 
+  const offlineEvidenceInputCustodySurfaceDiffPaths =
+    await offlineEvidenceInputCustodyTransitionSurfaceDiffPaths(
+      repositoryPath,
+      revision,
+    );
   const ciTestSerializationSurfaceDiffPaths =
     await ciTestSerializationTransitionSurfaceDiffPaths(
       repositoryPath,
@@ -1184,6 +1220,12 @@ export async function verifyCycle2aCommitBoundary(
     revision,
   );
   if (
+    isOfflineEvidenceInputCustodySurfaceRoutingRequired(
+      offlineEvidenceInputCustodySurfaceDiffPaths,
+    )
+  ) {
+    await verifyOfflineEvidenceInputCustodyTransition(repositoryPath, revision);
+  } else if (
     isCiTestSerializationSurfaceRoutingRequired(
       ciTestSerializationSurfaceDiffPaths,
     )
@@ -1338,6 +1380,27 @@ export function isFastify5121MaintenanceTransitionRoutingRequired(
 ): boolean {
   return cumulativeDiffEntries.some((entry) =>
     FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
+}
+
+/** @internal Exact offline-evidence input-custody successor regression seam. */
+export function isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION;
+}
+
+/** @internal Exact offline-evidence input-custody successor routing seam. */
+export function isOfflineEvidenceInputCustodySurfaceRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.length > 0 &&
+    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
+    baselineDiffPaths.every((path) =>
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS.has(path),
+    )
   );
 }
 
@@ -1565,6 +1628,60 @@ export function isCiTestSerializationCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exact offline-evidence input-custody successor regression seam. */
+export function isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function offlineEvidenceInputCustodyTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      [
+        "merge-base",
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+        revision,
+      ],
+      64,
+    ),
+  );
+  if (!isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(mergeBase))
+    return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      revision,
+      "--",
+      ...OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -1936,6 +2053,55 @@ async function verifyCiTestSerializationTransition(
   if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalidReview();
 }
 
+async function verifyOfflineEvidenceInputCustodyTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      [
+        "merge-base",
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+        revision,
+      ],
+      64,
+    ),
+  );
+  if (!isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(mergeBase))
+    invalidReview();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isOfflineEvidenceInputCustodyCommitDiffSetAllowed(entries))
+    invalidReview();
+}
+
 function exactPathList(
   actual: readonly string[],
   expected: readonly string[],
@@ -1946,37 +2112,182 @@ function exactPathList(
   );
 }
 
-function validateOptions(options: FilingParserEvidenceReviewOptions): void {
-  if (
-    typeof options !== "object" ||
-    options === null ||
-    typeof options.evidencePath !== "string" ||
-    options.evidencePath.length === 0 ||
-    typeof options.repositoryPath !== "string" ||
-    options.repositoryPath.length === 0 ||
-    !SHA256.test(options.expectedEvidenceSha256) ||
-    !REPOSITORY.test(options.expectedRepository) ||
-    !COMMIT_SHA.test(options.expectedRevision) ||
-    !RUN_ID.test(options.expectedRunId) ||
-    !Number.isSafeInteger(options.expectedRunAttempt) ||
-    options.expectedRunAttempt < 1
-  )
-    invalidReview();
+/** @internal Exported only for immutable-anchor regression tests. */
+export function normalizeFilingParserEvidenceReviewOptions(
+  options: FilingParserEvidenceReviewOptions,
+): FilingParserEvidenceReviewOptions {
+  try {
+    const keys = [
+      "evidencePath",
+      "expectedEvidenceSha256",
+      "expectedRepository",
+      "expectedRevision",
+      "expectedRunAttempt",
+      "expectedRunId",
+      "repositoryPath",
+    ] as const;
+    if (
+      typeof options !== "object" ||
+      options === null ||
+      isProxy(options) ||
+      Object.getPrototypeOf(options) !== Object.prototype
+    )
+      invalidReview();
+    const ownKeys = Reflect.ownKeys(options);
+    if (
+      ownKeys.some((key) => typeof key !== "string") ||
+      !exactPathList((ownKeys as string[]).sort(), [...keys].sort())
+    )
+      invalidReview();
+    const descriptors = Object.getOwnPropertyDescriptors(options);
+    if (
+      keys.some((key) => {
+        const descriptor = descriptors[key];
+        return (
+          descriptor === undefined ||
+          !("value" in descriptor) ||
+          descriptor.enumerable !== true
+        );
+      })
+    )
+      invalidReview();
+    const values = Object.fromEntries(
+      keys.map((key) => [key, descriptors[key]?.value]),
+    ) as Record<(typeof keys)[number], unknown>;
+    if (
+      typeof values.evidencePath !== "string" ||
+      values.evidencePath.length === 0 ||
+      typeof values.repositoryPath !== "string" ||
+      values.repositoryPath.length === 0 ||
+      typeof values.expectedEvidenceSha256 !== "string" ||
+      !SHA256.test(values.expectedEvidenceSha256) ||
+      typeof values.expectedRepository !== "string" ||
+      !REPOSITORY.test(values.expectedRepository) ||
+      typeof values.expectedRevision !== "string" ||
+      !COMMIT_SHA.test(values.expectedRevision) ||
+      typeof values.expectedRunId !== "string" ||
+      !RUN_ID.test(values.expectedRunId) ||
+      !Number.isSafeInteger(values.expectedRunAttempt) ||
+      (values.expectedRunAttempt as number) < 1
+    )
+      invalidReview();
+    return Object.freeze({
+      evidencePath: values.evidencePath,
+      expectedEvidenceSha256:
+        values.expectedEvidenceSha256 as `sha256:${string}`,
+      expectedRepository: values.expectedRepository,
+      expectedRevision: values.expectedRevision,
+      expectedRunAttempt: values.expectedRunAttempt as number,
+      expectedRunId: values.expectedRunId,
+      repositoryPath: values.repositoryPath,
+    });
+  } catch {
+    return invalidReview();
+  }
+}
+
+type EvidenceFileStat = Pick<
+  Stats,
+  "ctimeMs" | "dev" | "ino" | "isFile" | "mtimeMs" | "size"
+>;
+type EvidencePathStat = EvidenceFileStat & Pick<Stats, "isSymbolicLink">;
+
+/** @internal Exported only for bounded-file TOCTOU regression tests. */
+export function isFilingParserEvidenceFileReadSnapshotAllowed(
+  pathBefore: EvidencePathStat,
+  descriptorBefore: EvidenceFileStat,
+  descriptorAfter: EvidenceFileStat,
+  pathAfter: EvidencePathStat,
+  bytesRead: number,
+  maximumBytes: number,
+): boolean {
+  const snapshots = [descriptorBefore, descriptorAfter, pathAfter];
+  return (
+    Number.isSafeInteger(maximumBytes) &&
+    maximumBytes >= 2 &&
+    pathBefore.isFile() &&
+    !pathBefore.isSymbolicLink() &&
+    !pathAfter.isSymbolicLink() &&
+    Number.isSafeInteger(pathBefore.size) &&
+    pathBefore.size >= 2 &&
+    pathBefore.size <= maximumBytes &&
+    bytesRead === pathBefore.size &&
+    snapshots.every(
+      (snapshot) =>
+        snapshot.isFile() &&
+        snapshot.size === pathBefore.size &&
+        snapshot.dev === pathBefore.dev &&
+        snapshot.ino === pathBefore.ino &&
+        snapshot.mtimeMs === pathBefore.mtimeMs &&
+        snapshot.ctimeMs === pathBefore.ctimeMs,
+    )
+  );
 }
 
 async function readSmallRegularFile(
   path: string,
   maximumBytes: number,
 ): Promise<Uint8Array> {
-  const stat = await lstat(path);
+  const pathBefore = await lstat(path);
   if (
-    !stat.isFile() ||
-    stat.isSymbolicLink() ||
-    stat.size < 2 ||
-    stat.size > maximumBytes
+    !isFilingParserEvidenceFileReadSnapshotAllowed(
+      pathBefore,
+      pathBefore,
+      pathBefore,
+      pathBefore,
+      pathBefore.size,
+      maximumBytes,
+    )
   )
     invalidReview();
-  return Uint8Array.from(await readFile(path));
+  const noFollow = constants.O_NOFOLLOW;
+  const flags =
+    typeof noFollow === "number"
+      ? constants.O_RDONLY | noFollow
+      : constants.O_RDONLY;
+  const handle = await open(path, flags);
+  try {
+    const descriptorBefore = await handle.stat();
+    if (
+      !isFilingParserEvidenceFileReadSnapshotAllowed(
+        pathBefore,
+        descriptorBefore,
+        descriptorBefore,
+        pathBefore,
+        descriptorBefore.size,
+        maximumBytes,
+      )
+    )
+      invalidReview();
+    const bounded = Buffer.alloc(descriptorBefore.size + 1);
+    let offset = 0;
+    while (offset < bounded.byteLength) {
+      const { bytesRead } = await handle.read(
+        bounded,
+        offset,
+        bounded.byteLength - offset,
+        offset,
+      );
+      if (bytesRead === 0) break;
+      offset += bytesRead;
+    }
+    const descriptorAfter = await handle.stat();
+    const pathAfter = await lstat(path);
+    if (
+      !isFilingParserEvidenceFileReadSnapshotAllowed(
+        pathBefore,
+        descriptorBefore,
+        descriptorAfter,
+        pathAfter,
+        offset,
+        maximumBytes,
+      )
+    )
+      invalidReview();
+    return new Uint8Array(bounded.subarray(0, offset));
+  } finally {
+    await handle.close();
+  }
 }
 
 function requiredSource(

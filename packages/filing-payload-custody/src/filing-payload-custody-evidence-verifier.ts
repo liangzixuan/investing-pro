@@ -25,6 +25,8 @@ const FASTIFY_5_12_1_MAINTENANCE_BASELINE_REVISION =
   "0521bc8a1b0c3ba15d5ffc16fc74e45252bd9efd" as const;
 const CI_TEST_SERIALIZATION_BASELINE_REVISION =
   "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
+  "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -536,6 +538,26 @@ const CI_TEST_SERIALIZATION_TRANSITION = Object.freeze(
     },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION = Object.freeze(
+  [
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -560,6 +582,9 @@ const FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS = new Set(
 const FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS = new Set([
   "apps/api/package.json",
 ]);
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS = new Set(
+  OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map((entry) => entry.path),
+);
 const CI_TEST_SERIALIZATION_SURFACE_PATHS = new Set(["package.json"]);
 const CYCLE_2F_MARKER_PATHS = new Set([
   "docs/CYCLE_2F_EXIT_MATRIX.md",
@@ -872,12 +897,23 @@ export async function verifyCycle2cCommitBoundary(
     repositoryPath,
     revision,
   );
+  const offlineEvidenceInputCustodySurfaceDiffPaths =
+    await offlineEvidenceInputCustodyTransitionSurfaceDiffPaths(
+      repositoryPath,
+      revision,
+    );
   const ciTestSerializationSurfaceDiffPaths =
     await ciTestSerializationTransitionSurfaceDiffPaths(
       repositoryPath,
       revision,
     );
   if (
+    isOfflineEvidenceInputCustodySurfaceRoutingRequired(
+      offlineEvidenceInputCustodySurfaceDiffPaths,
+    )
+  )
+    await verifyOfflineEvidenceInputCustodyTransition(repositoryPath, revision);
+  else if (
     isCiTestSerializationSurfaceRoutingRequired(
       ciTestSerializationSurfaceDiffPaths,
     )
@@ -1045,6 +1081,27 @@ export function isFastify5121MaintenanceTransitionRoutingRequired(
 ): boolean {
   return cumulativeDiffEntries.some((entry) =>
     FASTIFY_5_12_1_MAINTENANCE_MARKER_PATHS.has(entry.path),
+  );
+}
+
+/** @internal Exact offline-evidence input-custody successor regression seam. */
+export function isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION;
+}
+
+/** @internal Exact offline-evidence input-custody successor routing seam. */
+export function isOfflineEvidenceInputCustodySurfaceRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.length > 0 &&
+    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
+    baselineDiffPaths.every((path) =>
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS.has(path),
+    )
   );
 }
 
@@ -1252,6 +1309,56 @@ export function isCiTestSerializationCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exact offline-evidence input-custody successor regression seam. */
+export function isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  const sorted = [...entries].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
+  return (
+    sorted.length === OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.length &&
+    sorted.every((entry, index) => {
+      const expected = OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function offlineEvidenceInputCustodyTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(mergeBase))
+    return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      revision,
+      "--",
+      ...OFFLINE_EVIDENCE_INPUT_CUSTODY_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -1621,6 +1728,50 @@ async function verifyCiTestSerializationTransition(
   if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalid();
 }
 
+async function verifyOfflineEvidenceInputCustodyTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    [
+      "cat-file",
+      "-e",
+      `${OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION}^{commit}`,
+    ],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(repositoryPath, [
+      "merge-base",
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      revision,
+    ]),
+  );
+  if (!isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(mergeBase))
+    invalid();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isOfflineEvidenceInputCustodyCommitDiffSetAllowed(entries)) invalid();
+}
+
 /** @internal Strict NUL-framed Git output regression seam. */
 export function decodeCycle2cGitNulList(bytes: Uint8Array): readonly string[] {
   return Object.freeze(splitNul(bytes));
@@ -1770,15 +1921,81 @@ async function tree(
   );
 }
 
-async function readSmallRegularFile(
+export interface SmallRegularFileStat {
+  readonly ctimeMs: number;
+  readonly dev: number;
+  readonly ino: number;
+  readonly mtimeMs: number;
+  readonly size: number;
+  isFile(): boolean;
+  isSymbolicLink(): boolean;
+}
+
+export interface SmallRegularFileHandle {
+  close(): Promise<void>;
+  read(
+    buffer: Uint8Array,
+    offset: number,
+    length: number,
+    position: number,
+  ): Promise<{ readonly bytesRead: number }>;
+  stat(): Promise<SmallRegularFileStat>;
+}
+
+export interface SmallRegularFileOperations {
+  lstat(path: string): Promise<SmallRegularFileStat>;
+  readonly noFollowFlag: number | undefined;
+  open(path: string, flags: number): Promise<SmallRegularFileHandle>;
+  readonly readOnlyFlag: number;
+}
+
+const SMALL_REGULAR_FILE_OPERATIONS: SmallRegularFileOperations = Object.freeze(
+  {
+    lstat: async (path: string) => lstat(path),
+    noFollowFlag:
+      typeof constants.O_NOFOLLOW === "number"
+        ? constants.O_NOFOLLOW
+        : undefined,
+    open: async (path: string, flags: number) => open(path, flags),
+    readOnlyFlag: constants.O_RDONLY,
+  },
+);
+
+/** @internal Exported only for real-filesystem custody regression tests. */
+export async function readSmallRegularFile(
   path: string,
   limit: number,
 ): Promise<Uint8Array> {
-  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  return readSmallRegularFileWithOperations(
+    path,
+    limit,
+    SMALL_REGULAR_FILE_OPERATIONS,
+  );
+}
+
+/** @internal Exported only for deterministic file-custody regression tests. */
+export async function readSmallRegularFileWithOperations(
+  path: string,
+  limit: number,
+  operations: SmallRegularFileOperations,
+): Promise<Uint8Array> {
+  const pathBefore = await operations.lstat(path);
+  if (!isSmallRegularFileStatAllowed(pathBefore, limit)) invalid();
+  const handle = await operations.open(
+    path,
+    operations.readOnlyFlag |
+      (typeof operations.noFollowFlag === "number"
+        ? operations.noFollowFlag
+        : 0),
+  );
   try {
-    const before = await handle.stat();
-    if (!before.isFile() || before.size < 1 || before.size > limit) invalid();
-    const bounded = Buffer.alloc(before.size + 1);
+    const descriptorBefore = await handle.stat();
+    if (
+      !isSmallRegularFileStatAllowed(descriptorBefore, limit) ||
+      !isSameSmallRegularFileState(pathBefore, descriptorBefore)
+    )
+      invalid();
+    const bounded = Buffer.alloc(descriptorBefore.size + 1);
     let offset = 0;
     while (offset < bounded.byteLength) {
       const { bytesRead } = await handle.read(
@@ -1787,23 +2004,57 @@ async function readSmallRegularFile(
         bounded.byteLength - offset,
         offset,
       );
+      if (
+        !Number.isSafeInteger(bytesRead) ||
+        bytesRead < 0 ||
+        bytesRead > bounded.byteLength - offset
+      )
+        invalid();
       if (bytesRead === 0) break;
       offset += bytesRead;
     }
-    const after = await handle.stat();
+    const descriptorAfter = await handle.stat();
+    const pathAfter = await operations.lstat(path);
     if (
-      offset !== before.size ||
-      after.size !== before.size ||
-      after.dev !== before.dev ||
-      after.ino !== before.ino ||
-      after.mtimeMs !== before.mtimeMs ||
-      after.ctimeMs !== before.ctimeMs
+      offset !== descriptorBefore.size ||
+      !isSmallRegularFileStatAllowed(descriptorAfter, limit) ||
+      !isSmallRegularFileStatAllowed(pathAfter, limit) ||
+      !isSameSmallRegularFileState(descriptorBefore, descriptorAfter) ||
+      !isSameSmallRegularFileState(descriptorAfter, pathAfter)
     )
       invalid();
     return new Uint8Array(bounded.subarray(0, offset));
   } finally {
     await handle.close();
   }
+}
+
+function isSmallRegularFileStatAllowed(
+  stat: SmallRegularFileStat,
+  limit: number,
+): boolean {
+  return (
+    stat.isFile() &&
+    !stat.isSymbolicLink() &&
+    Number.isSafeInteger(stat.size) &&
+    stat.size >= 1 &&
+    stat.size <= limit &&
+    Number.isFinite(stat.mtimeMs) &&
+    Number.isFinite(stat.ctimeMs)
+  );
+}
+
+function isSameSmallRegularFileState(
+  left: SmallRegularFileStat,
+  right: SmallRegularFileStat,
+): boolean {
+  return (
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.size === right.size &&
+    left.mtimeMs === right.mtimeMs &&
+    left.ctimeMs === right.ctimeMs
+  );
 }
 
 async function git(

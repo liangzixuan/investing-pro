@@ -28,6 +28,13 @@ import {
   isFastify5121MaintenanceBaselineMergeBaseAllowed,
   isFastify5121MaintenanceCommitDiffSetAllowed,
   isFastify5121MaintenanceTransitionRoutingRequired,
+  isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed,
+  isOfflineEvidenceInputCustodyCommitDiffSetAllowed,
+  isOfflineEvidenceInputCustodySurfaceRoutingRequired,
+  readSmallRegularFile,
+  readSmallRegularFileWithOperations,
+  type SmallRegularFileOperations,
+  type SmallRegularFileStat,
   verifyFilingPayloadCustodyEvidenceOffline,
 } from "./filing-payload-custody-evidence-verifier";
 
@@ -581,6 +588,8 @@ const FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS = [
 ].sort();
 const CI_TEST_SERIALIZATION_BASELINE_REVISION =
   "c7c427d304cd1df0037a96b53202c1c191d06a3a" as const;
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION =
+  "5e0a6eb0313107e4bd9fe4e358adbab16fa88311" as const;
 const CI_TEST_SERIALIZATION_TRANSITION = [
   { path: "package.json", status: "M" },
   {
@@ -600,6 +609,131 @@ const CI_TEST_SERIALIZATION_TRANSITION = [
     status: "M",
   },
 ] as const;
+const OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION = [
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+] as const;
+
+interface SmallFileStatOverrides {
+  readonly ctimeMs?: number;
+  readonly dev?: number;
+  readonly file?: boolean;
+  readonly ino?: number;
+  readonly mtimeMs?: number;
+  readonly size?: number;
+  readonly symbolicLink?: boolean;
+}
+
+interface SmallFileHarnessOptions {
+  readonly bytes?: Uint8Array;
+  readonly descriptorStats?: readonly SmallRegularFileStat[];
+  readonly noFollowFlag?: number | undefined;
+  readonly pathStats?: readonly SmallRegularFileStat[];
+  readonly readSteps?: readonly (number | "throw")[];
+}
+
+function smallFileStat(
+  overrides: SmallFileStatOverrides = {},
+): SmallRegularFileStat {
+  const file = overrides.file ?? true;
+  const symbolicLink = overrides.symbolicLink ?? false;
+  return Object.freeze({
+    ctimeMs: overrides.ctimeMs ?? 4,
+    dev: overrides.dev ?? 1,
+    ino: overrides.ino ?? 2,
+    isFile: () => file,
+    isSymbolicLink: () => symbolicLink,
+    mtimeMs: overrides.mtimeMs ?? 3,
+    size: overrides.size ?? 3,
+  });
+}
+
+function smallFileHarness(options: SmallFileHarnessOptions = {}): {
+  readonly observations: {
+    closeCalls: number;
+    lstatCalls: number;
+    openFlags: number[];
+    readCalls: number;
+    statCalls: number;
+  };
+  readonly operations: SmallRegularFileOperations;
+} {
+  const bytes = options.bytes ?? new TextEncoder().encode("{}\n");
+  const defaultStat = smallFileStat({ size: bytes.byteLength });
+  const pathStats = options.pathStats ?? [defaultStat, defaultStat];
+  const descriptorStats = options.descriptorStats ?? [defaultStat, defaultStat];
+  const readSteps = options.readSteps ?? [];
+  const observations = {
+    closeCalls: 0,
+    lstatCalls: 0,
+    openFlags: [] as number[],
+    readCalls: 0,
+    statCalls: 0,
+  };
+  const nextStat = (
+    values: readonly SmallRegularFileStat[],
+    index: number,
+  ): SmallRegularFileStat =>
+    values[Math.min(index, values.length - 1)] ??
+    (() => {
+      throw new Error("missing deterministic stat");
+    })();
+  const operations: SmallRegularFileOperations = Object.freeze({
+    lstat: () => {
+      const result = nextStat(pathStats, observations.lstatCalls);
+      observations.lstatCalls += 1;
+      return Promise.resolve(result);
+    },
+    noFollowFlag: options.noFollowFlag,
+    open: (_path: string, flags: number) => {
+      observations.openFlags.push(flags);
+      return Promise.resolve({
+        close: () => {
+          observations.closeCalls += 1;
+          return Promise.resolve();
+        },
+        read: (
+          buffer: Uint8Array,
+          offset: number,
+          length: number,
+          position: number,
+        ) => {
+          const step = readSteps[observations.readCalls];
+          observations.readCalls += 1;
+          if (step === "throw")
+            return Promise.reject(new Error("deterministic read failure"));
+          const available = Math.max(0, bytes.byteLength - position);
+          const bytesRead = step ?? Math.min(length, available);
+          const copied = Math.min(bytesRead, length, available);
+          if (copied > 0)
+            buffer.set(bytes.subarray(position, position + copied), offset);
+          return Promise.resolve({ bytesRead });
+        },
+        stat: () => {
+          const result = nextStat(descriptorStats, observations.statCalls);
+          observations.statCalls += 1;
+          return Promise.resolve(result);
+        },
+      });
+    },
+    readOnlyFlag: 0x10,
+  });
+  return { observations, operations };
+}
 
 afterEach(async () => {
   await Promise.all(
@@ -1242,6 +1376,114 @@ describe("offline filing payload custody evidence review", () => {
     ).toBe(false);
   });
 
+  it("admits and routes only the exact offline-evidence input-custody successor", () => {
+    const transitionPaths = OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map(
+      (entry) => entry.path,
+    );
+    expect(OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION).toHaveLength(4);
+    expect(
+      OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.every(
+        (entry) => entry.status === "M",
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+        [...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION].reverse(),
+      ),
+    ).toBe(true);
+
+    for (const entry of OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION) {
+      expect(
+        isOfflineEvidenceInputCustodySurfaceRoutingRequired([entry.path]),
+      ).toBe(true);
+      expect(
+        isOfflineEvidenceInputCustodySurfaceRoutingRequired([
+          entry.path,
+          entry.path,
+        ]),
+      ).toBe(false);
+      expect(
+        isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+          OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.filter(
+            (candidate) => candidate !== entry,
+          ),
+        ),
+      ).toBe(false);
+      expect(
+        isOfflineEvidenceInputCustodyCommitDiffSetAllowed([
+          ...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+          entry,
+        ]),
+      ).toBe(false);
+      for (const status of ["A", "D", "R100"]) {
+        expect(
+          isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
+            OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION.map((candidate) =>
+              candidate === entry ? { ...candidate, status } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+
+    for (const status of ["A", "M", "D", "R100"]) {
+      expect(
+        isOfflineEvidenceInputCustodyCommitDiffSetAllowed([
+          ...OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+          {
+            path: "packages/filing-payload-custody/src/unreviewed.ts",
+            status,
+          },
+        ]),
+      ).toBe(false);
+    }
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired(transitionPaths),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired(
+        [...transitionPaths].reverse(),
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired([
+        ...transitionPaths,
+        "packages/filing-payload-custody/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+    expect(
+      isOfflineEvidenceInputCustodySurfaceRoutingRequired([
+        "packages/filing-payload-custody/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+    expect(isOfflineEvidenceInputCustodySurfaceRoutingRequired([])).toBe(false);
+    expect(isOfflineEvidenceInputCustodySurfaceRoutingRequired(undefined)).toBe(
+      false,
+    );
+
+    expect(
+      isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed("0".repeat(40)),
+    ).toBe(false);
+    expect(
+      isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed(undefined),
+    ).toBe(false);
+    expect(
+      isCiTestSerializationCommitDiffSetAllowed(
+        OFFLINE_EVIDENCE_INPUT_CUSTODY_TRANSITION,
+      ),
+    ).toBe(false);
+  });
+
   it("admits and routes only the exact post-Fastify CI test serialization successor", () => {
     expect(CI_TEST_SERIALIZATION_TRANSITION).toHaveLength(5);
     expect(
@@ -1348,6 +1590,181 @@ describe("offline filing payload custody evidence review", () => {
       expect(() =>
         decodeCycle2cGitNulList(new TextEncoder().encode(malformed)),
       ).toThrow("Offline filing payload custody evidence review failed.");
+    }
+  });
+
+  it("reads one stable bounded descriptor and uses no-follow only when available", async () => {
+    for (const [noFollowFlag, expectedFlags] of [
+      [undefined, 0x10],
+      [0x20, 0x30],
+    ] as const) {
+      const { observations, operations } = smallFileHarness({ noFollowFlag });
+      await expect(
+        readSmallRegularFileWithOperations("evidence.json", 10, operations),
+      ).resolves.toEqual(new TextEncoder().encode("{}\n"));
+      expect(observations).toEqual({
+        closeCalls: 1,
+        lstatCalls: 2,
+        openFlags: [expectedFlags],
+        readCalls: 2,
+        statCalls: 2,
+      });
+    }
+  });
+
+  it("reads an actual stable small regular file through the production operations", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "custody-file-read-test-"));
+    temporaryDirectories.push(directory);
+    const evidencePath = join(directory, "evidence.json");
+    const bytes = new TextEncoder().encode("{}\n");
+    await writeFile(evidencePath, bytes, { flag: "wx", mode: 0o600 });
+
+    await expect(readSmallRegularFile(evidencePath, 10)).resolves.toEqual(
+      bytes,
+    );
+  });
+
+  it("rejects final-component links without relying on a platform no-follow flag", async () => {
+    const link = smallFileStat({ file: false, symbolicLink: true });
+    const initialLink = smallFileHarness({
+      noFollowFlag: undefined,
+      pathStats: [link],
+    });
+    await expect(
+      readSmallRegularFileWithOperations(
+        "evidence.json",
+        10,
+        initialLink.operations,
+      ),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    expect(initialLink.observations.openFlags).toEqual([]);
+    expect(initialLink.observations.closeCalls).toBe(0);
+
+    const regular = smallFileStat();
+    const swappedToLink = smallFileHarness({
+      descriptorStats: [regular, regular],
+      noFollowFlag: undefined,
+      pathStats: [regular, link],
+    });
+    await expect(
+      readSmallRegularFileWithOperations(
+        "evidence.json",
+        10,
+        swappedToLink.operations,
+      ),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    expect(swappedToLink.observations.closeCalls).toBe(1);
+  });
+
+  it("rejects path/descriptor substitution and closes every opened handle", async () => {
+    const pathStat = smallFileStat();
+    const descriptorStat = smallFileStat({ ino: 99 });
+    const substituted = smallFileHarness({
+      descriptorStats: [descriptorStat],
+      pathStats: [pathStat],
+    });
+    await expect(
+      readSmallRegularFileWithOperations(
+        "evidence.json",
+        10,
+        substituted.operations,
+      ),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    expect(substituted.observations.readCalls).toBe(0);
+    expect(substituted.observations.closeCalls).toBe(1);
+
+    const readFailure = smallFileHarness({ readSteps: ["throw"] });
+    await expect(
+      readSmallRegularFileWithOperations(
+        "evidence.json",
+        10,
+        readFailure.operations,
+      ),
+    ).rejects.toThrow("deterministic read failure");
+    expect(readFailure.observations.closeCalls).toBe(1);
+  });
+
+  it("rejects pre-open and descriptor-only oversized files", async () => {
+    const oversized = smallFileStat({ size: 11 });
+    const preOpen = smallFileHarness({ pathStats: [oversized] });
+    await expect(
+      readSmallRegularFileWithOperations(
+        "evidence.json",
+        10,
+        preOpen.operations,
+      ),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    expect(preOpen.observations.openFlags).toEqual([]);
+
+    const descriptorOnly = smallFileHarness({
+      descriptorStats: [oversized],
+      pathStats: [smallFileStat()],
+    });
+    await expect(
+      readSmallRegularFileWithOperations(
+        "evidence.json",
+        10,
+        descriptorOnly.operations,
+      ),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    expect(descriptorOnly.observations.closeCalls).toBe(1);
+  });
+
+  it("rejects growth, truncation, and a stable-stat short read", async () => {
+    const regular = smallFileStat();
+    const cases = [
+      smallFileHarness({
+        bytes: new TextEncoder().encode("{}\n!"),
+        descriptorStats: [regular, regular],
+        pathStats: [regular, regular],
+        readSteps: [4],
+      }),
+      smallFileHarness({ readSteps: [2, 0] }),
+      smallFileHarness({
+        descriptorStats: [regular, smallFileStat({ size: 2 })],
+        pathStats: [regular, smallFileStat({ size: 2 })],
+        readSteps: [2, 0],
+      }),
+    ];
+    for (const testCase of cases) {
+      await expect(
+        readSmallRegularFileWithOperations(
+          "evidence.json",
+          10,
+          testCase.operations,
+        ),
+      ).rejects.toThrow(
+        "Offline filing payload custody evidence review failed.",
+      );
+      expect(testCase.observations.closeCalls).toBe(1);
+    }
+  });
+
+  it("rejects descriptor identity, size, or timestamp changes after reading", async () => {
+    const regular = smallFileStat();
+    for (const changed of [
+      smallFileStat({ dev: 9 }),
+      smallFileStat({ ino: 9 }),
+      smallFileStat({ size: 4 }),
+      smallFileStat({ mtimeMs: 9 }),
+      smallFileStat({ ctimeMs: 9 }),
+      smallFileStat({ file: false }),
+      smallFileStat({ symbolicLink: true }),
+    ]) {
+      const testCase = smallFileHarness({
+        descriptorStats: [regular, changed],
+        pathStats: [regular, regular],
+      });
+      await expect(
+        readSmallRegularFileWithOperations(
+          "evidence.json",
+          10,
+          testCase.operations,
+        ),
+      ).rejects.toThrow(
+        "Offline filing payload custody evidence review failed.",
+      );
+      expect(testCase.observations.closeCalls).toBe(1);
     }
   });
 
