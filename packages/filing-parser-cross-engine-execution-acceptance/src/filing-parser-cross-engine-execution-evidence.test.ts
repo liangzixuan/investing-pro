@@ -64,6 +64,8 @@ describe("filing parser cross-engine execution evidence", () => {
       (root: Record<string, unknown>) => mutateImplementationProjection(root),
       (root: Record<string, unknown>) => (root.fixtureManifestSha256 = HASH_Z),
       (root: Record<string, unknown>) =>
+        (root.failedPrecursorRevision = "0".repeat(40)),
+      (root: Record<string, unknown>) =>
         (workflow(root).artifactName = "wrong"),
       (root: Record<string, unknown>) =>
         (runtime(root).auditedContainerCount = 14),

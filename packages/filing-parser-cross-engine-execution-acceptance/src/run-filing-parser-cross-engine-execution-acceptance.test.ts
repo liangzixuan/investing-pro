@@ -7,15 +7,18 @@ import { FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL } from "@research
 
 import {
   ACCEPTANCE_PHASES,
+  NODE_IMAGE_INSPECTION_PROFILE,
+  PYTHON_IMAGE_INSPECTION_PROFILE,
   exactCreateArguments,
   filingParserCrossEngineExecutionAcceptanceCleanupShouldReplacePhase,
   filingParserCrossEngineExecutionAcceptanceFailureDiagnostic,
   imageIdValue,
+  validateBuiltImageInspection,
   validateContainerInspection,
   validateRequestLimits,
 } from "./run-filing-parser-cross-engine-execution-acceptance";
 
-const IMAGE = `sha256:${"1".repeat(64)}`;
+const IMAGE: `sha256:${string}` = `sha256:${"1".repeat(64)}`;
 const CONTAINER_ID = "2".repeat(64);
 const CONTAINER_NAME =
   "research-cockpit-filing-normalization-00000000-0000-4000-8000-000000000000";
@@ -136,7 +139,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
-  it("requires the baseline's single direct child on both ancestry views", () => {
+  it("requires the exact linear two-commit corrective chain on both ancestry views", () => {
     expect(runnerSource).toContain('["merge-base", base, revision]');
     expect(runnerSource).toContain('["rev-list", "--count", revisionRange]');
     expect(runnerSource).toContain(
@@ -145,9 +148,17 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     expect(runnerSource).toContain(
       '["rev-list", "--parents", "--max-count=1", revision]',
     );
-    expect(runnerSource).toContain('successorCount !== "1"');
-    expect(runnerSource).toContain('firstParentCount !== "1"');
-    expect(runnerSource).toContain("parentLine !== `${revision} ${base}`");
+    expect(runnerSource).toContain(
+      '["rev-list", "--parents", "--max-count=1", failedPrecursor]',
+    );
+    expect(runnerSource).toContain('successorCount !== "2"');
+    expect(runnerSource).toContain('firstParentCount !== "2"');
+    expect(runnerSource).toContain(
+      "parentLine !== `${revision} ${failedPrecursor}`",
+    );
+    expect(runnerSource).toContain(
+      "failedPrecursorParentLine !== `${failedPrecursor} ${base}`",
+    );
   });
 
   it("keeps evidence writing success-only, atomic, and after image removal", () => {
@@ -254,17 +265,109 @@ describe("filing parser cross-engine execution live Docker audit", () => {
   });
 
   it("accepts exact Python and Node created-container snapshots", () => {
-    for (const entrypoint of [PYTHON_ENTRYPOINT, NODE_ENTRYPOINT])
+    for (const profile of [
+      PYTHON_IMAGE_INSPECTION_PROFILE,
+      NODE_IMAGE_INSPECTION_PROFILE,
+    ])
       expect(() =>
         validateContainerInspection(
-          inspection(entrypoint),
+          inspection(profile.entrypoint, profile.workingDirectory),
           CONTAINER_ID,
           CONTAINER_NAME,
           IMAGE,
           ARCHIVE_PATH,
-          entrypoint,
+          profile,
         ),
       ).not.toThrow();
+  });
+
+  it("accepts only each engine's exact built-image inspection profile", () => {
+    expect(() =>
+      validateBuiltImageInspection(
+        [imageInspection(PYTHON_ENTRYPOINT, "/worker")],
+        IMAGE,
+        PYTHON_IMAGE_INSPECTION_PROFILE,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateBuiltImageInspection(
+        [imageInspection(NODE_ENTRYPOINT, "/input")],
+        IMAGE,
+        NODE_IMAGE_INSPECTION_PROFILE,
+      ),
+    ).not.toThrow();
+
+    for (const [value, profile] of [
+      [
+        imageInspection(PYTHON_ENTRYPOINT, "/worker"),
+        NODE_IMAGE_INSPECTION_PROFILE,
+      ],
+      [
+        imageInspection(NODE_ENTRYPOINT, "/input"),
+        PYTHON_IMAGE_INSPECTION_PROFILE,
+      ],
+      [
+        imageInspection(PYTHON_ENTRYPOINT, "/input"),
+        PYTHON_IMAGE_INSPECTION_PROFILE,
+      ],
+    ] as const)
+      expect(() =>
+        validateBuiltImageInspection([value], IMAGE, profile),
+      ).toThrow();
+
+    const criticalMutations: Array<
+      (value: ReturnType<typeof imageInspection>) => void
+    > = [
+      (value) => {
+        value.Id = `sha256:${"3".repeat(64)}`;
+      },
+      (value) => {
+        value.Os = "windows";
+      },
+      (value) => {
+        value.Architecture = "arm64";
+      },
+      (value) => {
+        value.Config.User = "0:0";
+      },
+      (value) => {
+        value.Config.Cmd = ["sh"];
+      },
+      (value) => {
+        value.Config.ExposedPorts = { "80/tcp": {} };
+      },
+      (value) => {
+        value.Config.Env = ["TOKEN=value"];
+      },
+    ];
+    for (const mutate of criticalMutations) {
+      const value = imageInspection(PYTHON_ENTRYPOINT, "/worker");
+      mutate(value);
+      expect(() =>
+        validateBuiltImageInspection(
+          [value],
+          IMAGE,
+          PYTHON_IMAGE_INSPECTION_PROFILE,
+        ),
+      ).toThrow();
+    }
+  });
+
+  it("freezes the role-specific image profile call sites", () => {
+    expect(Object.isFrozen(PYTHON_IMAGE_INSPECTION_PROFILE)).toBe(true);
+    expect(Object.isFrozen(PYTHON_IMAGE_INSPECTION_PROFILE.entrypoint)).toBe(
+      true,
+    );
+    expect(Object.isFrozen(NODE_IMAGE_INSPECTION_PROFILE)).toBe(true);
+    expect(Object.isFrozen(NODE_IMAGE_INSPECTION_PROFILE.entrypoint)).toBe(
+      true,
+    );
+    expect(runnerSource).toContain(
+      "verifyBuiltImage(pythonImageId, PYTHON_IMAGE_INSPECTION_PROFILE)",
+    );
+    expect(runnerSource).toContain(
+      "verifyBuiltImage(nodeImageId, NODE_IMAGE_INSPECTION_PROFILE)",
+    );
   });
 
   it("rejects every material container-isolation substitution", () => {
@@ -315,7 +418,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       },
     ];
     for (const mutate of mutations) {
-      const value = inspection(PYTHON_ENTRYPOINT);
+      const value = inspection(PYTHON_ENTRYPOINT, "/worker");
       mutate(value);
       expect(() =>
         validateContainerInspection(
@@ -324,7 +427,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
           CONTAINER_NAME,
           IMAGE,
           ARCHIVE_PATH,
-          PYTHON_ENTRYPOINT,
+          PYTHON_IMAGE_INSPECTION_PROFILE,
         ),
       ).toThrow();
     }
@@ -393,7 +496,10 @@ function createArguments(): string[] {
   ];
 }
 
-function inspection(entrypoint: readonly string[]): {
+function inspection(
+  entrypoint: readonly string[],
+  workingDirectory: string,
+): {
   Config: Record<string, unknown>;
   HostConfig: Record<string, unknown>;
   Id: string;
@@ -411,6 +517,7 @@ function inspection(entrypoint: readonly string[]): {
       ExposedPorts: null,
       Image: IMAGE,
       User: "65532:65532",
+      WorkingDir: workingDirectory,
     },
     HostConfig: {
       CapAdd: null,
@@ -450,5 +557,29 @@ function inspection(entrypoint: readonly string[]): {
     Name: `/${CONTAINER_NAME}`,
     NetworkSettings: { Ports: {} },
     State: { Status: "created" },
+  };
+}
+
+function imageInspection(
+  entrypoint: readonly string[],
+  workingDirectory: string,
+): {
+  Architecture: string;
+  Config: Record<string, unknown>;
+  Id: string;
+  Os: string;
+} {
+  return {
+    Architecture: "amd64",
+    Config: {
+      Cmd: null,
+      Entrypoint: [...entrypoint],
+      Env: ["PATH=/usr/local/bin:/usr/bin:/bin"],
+      ExposedPorts: null,
+      User: "65532:65532",
+      WorkingDir: workingDirectory,
+    },
+    Id: IMAGE,
+    Os: "linux",
   };
 }

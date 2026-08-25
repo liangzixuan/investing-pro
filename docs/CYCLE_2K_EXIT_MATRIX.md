@@ -10,10 +10,14 @@ Cycle 2d normalization record. Any disagreement or failure returns one atomic,
 empty, value-free quarantine. The proposed decision is recorded in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md).
 
-Current status: **Pending from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. No successor source commit,
-frozen transition, local result, CI result, dedicated live run, retained
-artifact, or offline-review verdict exists. This proposal does not promote the
+Current status: **Pending exact recovery from baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Source precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76` is its exact direct child, but
+dedicated run `32910394736` attempt 1 failed closed at `image_inspection`
+because the Python image's final `/worker` directory was compared with the
+Node image's `/input` expectation. The run retained no artifact and has no
+offline-review verdict. One exact corrective child, its full green gates, and
+successful evidence anchors are still required. This proposal promotes no
 claim. Cycle 2b, full Cycle 2 quality, real-data admission, and production
 admission remain Blocked.**
 
@@ -29,7 +33,7 @@ admission remain Blocked.**
 | Exact normalization agreement   | Each engine's complete pair reaches the unchanged normalization boundary without repair or remapping, and the two complete canonical normalization-record byte strings are exactly equal                              | Pending                   |
 | Atomic result                   | One immutable agreement result with bounded aggregate provenance succeeds, or one empty value-free quarantine returns                                                                                                 | Pending                   |
 | Replay and adversarial coverage | Live exact replay agrees and live mismatch, tamper, and role swap quarantine; exact-source security suites cover substitution, partial/extra/duplicate output, mutation, timeout, abort, process, and cleanup failure | Pending                   |
-| Frozen source transition        | One exact successor transition from the baseline is frozen by path, status, and content expectation with no unreviewed widening                                                                                       | Pending                   |
+| Frozen source transition        | One exact linear two-commit recovery chain from the baseline through the failed precursor is frozen by ancestry, path, status, and content expectation with no unreviewed widening                                    | Pending                   |
 | Local integration               | Format, lint, guardrails, dependency policy, typechecks, all tests, both worker tests, and all builds pass on frozen bytes                                                                                            | Pending                   |
 | Exact-source CI and regressions | Ubuntu/Windows CI plus the required historical parser, custody, PostgreSQL, and Cycle 2j live regressions pass on the same successor commit                                                                           | Pending                   |
 | Dedicated live evidence         | A separately authorized Ubuntu real-Docker run retains a success-only canonical artifact binding both images, both source inventories, cases, checks, and nonclaims                                                   | Pending                   |
@@ -42,9 +46,11 @@ admission remain Blocked.**
 
 The sole proposed bounded target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It may be accepted only for one future exact successor of baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc` and the complete evidence anchors
-required below.
+It may be accepted only for one exact corrective child of failed precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`, with that precursor itself the
+exact single-parent direct child of baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`,
+and the complete evidence anchors required below.
 
 The proposed exact ordered checks are:
 
@@ -62,7 +68,7 @@ The proposed exact ordered checks are:
 12. `atomic_cross_engine_agreement_or_single_empty_value_free_quarantine`
 13. `engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine`
 14. `swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage`
-15. `success_only_exact_commit_transition_two_image_case_source_artifact_and_offline_review`
+15. `success_only_exact_two_commit_recovery_transition_two_image_case_source_artifact_and_offline_review`
 16. `historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data`
 
 ## Exact nonclaims
@@ -88,12 +94,16 @@ The proposed exact ordered nonclaims are:
 
 ## Required evidence and promotion rule
 
-Before promotion, one exact successor transition from baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc` must be frozen by complete path and
-status inventory. The full local gate, separate Python and Node worker tests,
+Before promotion, one exact linear two-commit recovery chain from baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, through failed precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`, to one exact corrective child must
+be frozen by exact parent lines plus the complete cumulative path and status
+inventory. The full local gate, separate Python and Node worker tests,
 exact-source Ubuntu and Windows CI, and required parser, custody, PostgreSQL,
-and Cycle 2j live regression workflows must pass on that same successor. Those
-regression runs are health checks only and are not Cycle 2k execution evidence.
+and Cycle 2j live regression workflows must pass on the corrective child.
+Those regression runs are health checks only and are not Cycle 2k execution
+evidence. Failed run `32910394736` attempt 1 is explicitly non-evidence and its
+missing artifact cannot be substituted for the required successful artifact.
 
 A separately authorized dedicated Ubuntu real-Docker workflow must execute the
 success and exact replay paths plus normalization-mismatch, original-archive-
@@ -109,8 +119,9 @@ engine, an unpinned or equal image identity, any stdout or normalization
 disagreement, noncanonical output, container residue, or non-value-free
 quarantine must retain no candidate artifact and must prevent promotion.
 
-The versioned canonical evidence must bind the exact repository, baseline and
-successor commits, transition inventory, workflow/run/job/attempt, artifact
+The versioned canonical evidence must bind the exact repository, baseline,
+failed precursor, and corrective revision, cumulative transition inventory,
+workflow/run/job/attempt, artifact
 identity and digest, both built image digests, both exact worker source
 inventories and hashes, fixture manifest and archive hashes, tool versions,
 container counts, canonical case outcomes, exact checks, exact nonclaims, and

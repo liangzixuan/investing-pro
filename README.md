@@ -446,15 +446,18 @@ admission, or production. See
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k is a proposal-only cross-engine successor and is **Pending** from exact
-baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Its sole proposed claim is
+Cycle 2k is a proposal-only cross-engine successor and is **Pending exact
+recovery** from baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through
+failed precursor `14b4ecf41806dca7759a06bebf7ef8da96374f76`. Its sole proposed claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`:
 the existing Cycle 2j Python worker and a distinct zero-install pinned Node
 worker must produce byte-exact equal complete stdout documents and complete
 normalization records for the same owned synthetic original/amendment pair, or
-return one atomic value-free quarantine. No successor commit, frozen
-transition, local/CI result, dedicated live artifact, or `offline_consistent`
-review exists. The proposal does not establish true organizational, operator,
+return one atomic value-free quarantine. Dedicated run `32910394736` attempt 1
+failed closed at image inspection and retained no artifact; one exact
+corrective child, its frozen cumulative transition, green local/CI/regression
+gates, successful live artifact, and `offline_consistent` review are still
+required. The proposal does not establish true organizational, operator,
 key, host, or failure-domain independence; general parser or accounting
 correctness; real SEC/source authority; Cycle 2b approval; independently
 adjudicated real quality; real-data admission; or production. Cycle 2b remains
@@ -917,9 +920,11 @@ blocked.
   artifact, and offline review passed. External authority, independent real
   quality, full Cycle 2 exit, and production remain Blocked.
 - Cycle 2k is a proposal-only cross-engine agreement milestone and is Pending
-  from exact baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. No successor
-  source, frozen transition, local/CI/live evidence, artifact, or offline verdict
-  exists. It cannot establish true independence, correctness, real source
+  an exact corrective child of failed precursor
+  `14b4ecf41806dca7759a06bebf7ef8da96374f76`, itself an exact single-parent direct child of baseline
+  `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Failed run `32910394736` attempt
+  1 retained no artifact; no passing live evidence or offline verdict exists.
+  It cannot establish true independence, correctness, real source
   authority, Cycle 2b approval, adjudicated real quality, real data, or
   production.
 

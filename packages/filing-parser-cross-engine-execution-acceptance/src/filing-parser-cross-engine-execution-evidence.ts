@@ -5,6 +5,8 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION =
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VERSION = 1 as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE =
   "962a00f65835fc6126e4da98e0e0d5998e8d59cc" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION =
+  "14b4ecf41806dca7759a06bebf7ef8da96374f76" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM =
   "bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW =
@@ -26,7 +28,7 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS =
     "atomic_cross_engine_agreement_or_single_empty_value_free_quarantine",
     "engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine",
     "swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage",
-    "success_only_exact_commit_transition_two_image_case_source_artifact_and_offline_review",
+    "success_only_exact_two_commit_recovery_transition_two_image_case_source_artifact_and_offline_review",
     "historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data",
   ] as const);
 
@@ -189,6 +191,7 @@ export interface FilingParserCrossEngineExecutionEvidence {
     FilingParserCrossEngineExecutionEvidenceEngine,
   ];
   readonly evidenceVersion: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VERSION;
+  readonly failedPrecursorRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   readonly fixtureManifestSha256: `sha256:${string}`;
   readonly notProven: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN;
   readonly repository: string;
@@ -430,6 +433,7 @@ function normalizeEvidence(
     "completedAt",
     "engines",
     "evidenceVersion",
+    "failedPrecursorRevision",
     "fixtureManifestSha256",
     "notProven",
     "repository",
@@ -449,6 +453,8 @@ function normalizeEvidence(
     root.baseline !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE ||
     root.claim !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM ||
     root.evidenceVersion !== 1 ||
+    root.failedPrecursorRevision !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION ||
     root.schemaVersion !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION ||
     root.status !== "passed" ||

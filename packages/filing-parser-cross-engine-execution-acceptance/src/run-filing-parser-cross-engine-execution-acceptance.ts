@@ -35,6 +35,7 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS,
@@ -68,6 +69,22 @@ const EVIDENCE_FILE =
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const MAX_COMMAND_BYTES = 4_194_304;
+export interface FilingParserCrossEngineImageInspectionProfile {
+  readonly entrypoint: readonly string[];
+  readonly workingDirectory: "/input" | "/worker";
+}
+export const PYTHON_IMAGE_INSPECTION_PROFILE = Object.freeze({
+  entrypoint: Object.freeze(["python", "-I", "-B", "/worker/parser.py"]),
+  workingDirectory: "/worker" as const,
+});
+export const NODE_IMAGE_INSPECTION_PROFILE = Object.freeze({
+  entrypoint: Object.freeze([
+    "node",
+    "--disable-proto=throw",
+    "/worker/parser.mjs",
+  ]),
+  workingDirectory: "/input" as const,
+});
 export const ACCEPTANCE_PHASES = Object.freeze([
   "environment",
   "repository_anchor",
@@ -185,7 +202,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     sourceHashes,
     "fixtures/synthetic/filing-parser-cross-engine-execution/v1/manifest.json",
   );
-  const transition = await directSuccessorTransition(revision);
+  const transition = await exactCorrectiveChainTransition(revision);
   const pythonSources = implementationSources(
     sourceHashes,
     FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS.python,
@@ -223,17 +240,8 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       nodeImageIdFile,
     );
     markPhase("image_inspection");
-    await verifyBuiltImage(pythonImageId, [
-      "python",
-      "-I",
-      "-B",
-      "/worker/parser.py",
-    ]);
-    await verifyBuiltImage(nodeImageId, [
-      "node",
-      "--disable-proto=throw",
-      "/worker/parser.mjs",
-    ]);
+    await verifyBuiltImage(pythonImageId, PYTHON_IMAGE_INSPECTION_PROFILE);
+    await verifyBuiltImage(nodeImageId, NODE_IMAGE_INSPECTION_PROFILE);
 
     markPhase("audited_setup");
     const fixture = buildSyntheticFilingParserNormalizationExecutionFixture();
@@ -251,11 +259,11 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     });
     const pythonRecorder = new RecordingDockerProcessRunner(
       [0, 0, 0, 0, 0, 0, 2, 0, 0],
-      ["python", "-I", "-B", "/worker/parser.py"],
+      PYTHON_IMAGE_INSPECTION_PROFILE,
     );
     const nodeRecorder = new RecordingDockerProcessRunner(
       [0, 0, 0, 0, 0, 0],
-      ["node", "--disable-proto=throw", "/worker/parser.mjs"],
+      NODE_IMAGE_INSPECTION_PROFILE,
     );
     const pythonBoundary = createFilingParserNormalizationExecutionBoundary({
       imageSha256: pythonImageId,
@@ -481,6 +489,8 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
       completedAt,
       evidenceVersion: 1,
+      failedPrecursorRevision:
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
       fixtureManifestSha256,
       engines: Object.freeze([
         Object.freeze({
@@ -702,10 +712,12 @@ function implementationSources(
   );
 }
 
-async function directSuccessorTransition(
+async function exactCorrectiveChainTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
   const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE;
+  const failedPrecursor =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
   );
@@ -732,11 +744,21 @@ async function directSuccessorTransition(
       )
     ).stdout,
   );
+  const failedPrecursorParentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", failedPrecursor],
+        5_000,
+      )
+    ).stdout,
+  );
   if (
     mergeBase !== base ||
-    successorCount !== "1" ||
-    firstParentCount !== "1" ||
-    parentLine !== `${revision} ${base}`
+    successorCount !== "2" ||
+    firstParentCount !== "2" ||
+    parentLine !== `${revision} ${failedPrecursor}` ||
+    failedPrecursorParentLine !== `${failedPrecursor} ${base}`
   )
     fail();
   const output = (
@@ -777,7 +799,7 @@ class RecordingDockerProcessRunner {
 
   public constructor(
     private readonly expectedExitCodes: readonly number[],
-    private readonly expectedEntrypoint: readonly string[],
+    private readonly expectedImageProfile: FilingParserCrossEngineImageInspectionProfile,
   ) {}
 
   public async run(
@@ -945,7 +967,7 @@ class RecordingDockerProcessRunner {
       containerName,
       this.#imageId,
       archivePath,
-      this.expectedEntrypoint,
+      this.expectedImageProfile,
     );
   }
 }
@@ -1031,13 +1053,9 @@ export function validateContainerInspection(
   containerName: string,
   imageId: string,
   archivePath: string,
-  expectedEntrypoint: readonly string[] = [
-    "python",
-    "-I",
-    "-B",
-    "/worker/parser.py",
-  ],
+  expectedProfile: FilingParserCrossEngineImageInspectionProfile = PYTHON_IMAGE_INSPECTION_PROFILE,
 ): void {
+  validateImageProfile(expectedProfile);
   const container = recordAtLeast(value, [
     "Config",
     "HostConfig",
@@ -1054,6 +1072,7 @@ export function validateContainerInspection(
     "Env",
     "Image",
     "User",
+    "WorkingDir",
   ]);
   const host = recordAtLeast(container.HostConfig, [
     "CapAdd",
@@ -1083,7 +1102,9 @@ export function validateContainerInspection(
     config.User !== "65532:65532" ||
     !absentNullOrEmptyArray(config.Cmd) ||
     !absentNullOrEmptyRecord(config.ExposedPorts) ||
-    JSON.stringify(config.Entrypoint) !== JSON.stringify(expectedEntrypoint) ||
+    JSON.stringify(config.Entrypoint) !==
+      JSON.stringify(expectedProfile.entrypoint) ||
+    config.WorkingDir !== expectedProfile.workingDirectory ||
     !safeImageEnvironment(config.Env) ||
     host.NetworkMode !== "none" ||
     host.ReadonlyRootfs !== true ||
@@ -1384,7 +1405,7 @@ async function readPinnedImageMetadata(engine: "node" | "python"): Promise<{
 
 async function verifyBuiltImage(
   imageId: `sha256:${string}`,
-  expectedEntrypoint: readonly string[],
+  expectedProfile: FilingParserCrossEngineImageInspectionProfile,
 ): Promise<void> {
   const inspected = await checkedCommand(
     "docker",
@@ -1393,9 +1414,20 @@ async function verifyBuiltImage(
     1_048_576,
     65_536,
   );
-  const values = JSON.parse(
+  const value = JSON.parse(
     new TextDecoder().decode(inspected.stdout),
   ) as unknown;
+  validateBuiltImageInspection(value, imageId, expectedProfile);
+}
+
+/** @internal Exported for fail-closed Docker image inspection tests. */
+export function validateBuiltImageInspection(
+  value: unknown,
+  imageId: `sha256:${string}`,
+  expectedProfile: FilingParserCrossEngineImageInspectionProfile,
+): void {
+  validateImageProfile(expectedProfile);
+  const values = value;
   if (!Array.isArray(values) || values.length !== 1) fail();
   const image = recordAtLeast(values[0], [
     "Architecture",
@@ -1414,11 +1446,23 @@ async function verifyBuiltImage(
     image.Os !== "linux" ||
     image.Architecture !== "amd64" ||
     config.User !== "65532:65532" ||
-    config.WorkingDir !== "/input" ||
+    config.WorkingDir !== expectedProfile.workingDirectory ||
     !absentNullOrEmptyArray(config.Cmd) ||
     !absentNullOrEmptyRecord(config.ExposedPorts) ||
-    JSON.stringify(config.Entrypoint) !== JSON.stringify(expectedEntrypoint) ||
+    JSON.stringify(config.Entrypoint) !==
+      JSON.stringify(expectedProfile.entrypoint) ||
     !safeImageEnvironment(config.Env)
+  )
+    fail();
+}
+
+function validateImageProfile(
+  profile: FilingParserCrossEngineImageInspectionProfile,
+): void {
+  const canonical = JSON.stringify(profile);
+  if (
+    canonical !== JSON.stringify(PYTHON_IMAGE_INSPECTION_PROFILE) &&
+    canonical !== JSON.stringify(NODE_IMAGE_INSPECTION_PROFILE)
   )
     fail();
 }

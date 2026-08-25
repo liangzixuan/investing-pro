@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   cleanFilingParserCrossEngineExecutionGitEnvironment,
-  filingParserCrossEngineExecutionDirectSuccessorAllowed,
+  filingParserCrossEngineExecutionCorrectiveChainAllowed,
   filingParserCrossEngineExecutionFileSizeAllowed,
   filingParserCrossEngineExecutionGitArguments,
   repositoryRelativePathIsContained,
@@ -56,58 +56,80 @@ describe("offline cross-engine evidence verifier hardening", () => {
       expect(repositoryRelativePathIsContained(value)).toBe(false);
     expect(repositoryRelativePathIsContained("packages/x.ts")).toBe(true);
   });
-  it("requires the exact direct successor and rejects unrelated or extra commits", () => {
+  it("requires the exact two-commit corrective chain and rejects ancestry drift", () => {
     const baseline = "962a00f65835fc6126e4da98e0e0d5998e8d59cc";
+    const failedPrecursor = "14b4ecf41806dca7759a06bebf7ef8da96374f76";
     const revision = "b".repeat(40);
     expect(
-      filingParserCrossEngineExecutionDirectSuccessorAllowed(
+      filingParserCrossEngineExecutionCorrectiveChainAllowed(
         baseline,
-        "1",
-        "1",
+        "2",
+        "2",
         revision,
-        `${revision} ${baseline}`,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(true);
     expect(
-      filingParserCrossEngineExecutionDirectSuccessorAllowed(
+      filingParserCrossEngineExecutionCorrectiveChainAllowed(
         "a".repeat(40),
-        "1",
-        "1",
-        revision,
-        `${revision} ${baseline}`,
-      ),
-    ).toBe(false);
-    expect(
-      filingParserCrossEngineExecutionDirectSuccessorAllowed(
-        baseline,
         "2",
-        "1",
+        "2",
         revision,
-        `${revision} ${baseline}`,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(false);
     expect(
-      filingParserCrossEngineExecutionDirectSuccessorAllowed(
+      filingParserCrossEngineExecutionCorrectiveChainAllowed(
         baseline,
         "1",
         "2",
         revision,
-        `${revision} ${baseline}`,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
+      ),
+    ).toBe(false);
+    expect(
+      filingParserCrossEngineExecutionCorrectiveChainAllowed(
+        baseline,
+        "2",
+        "1",
+        revision,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(false);
     for (const parentLine of [
       `${revision} ${"a".repeat(40)}`,
-      `${revision} ${"a".repeat(40)} ${baseline}`,
-      `${revision} ${baseline} ${"a".repeat(40)}`,
-      `${revision} ${baseline} `,
+      `${revision} ${"a".repeat(40)} ${failedPrecursor}`,
+      `${revision} ${failedPrecursor} ${"a".repeat(40)}`,
+      `${revision} ${failedPrecursor} `,
     ])
       expect(
-        filingParserCrossEngineExecutionDirectSuccessorAllowed(
+        filingParserCrossEngineExecutionCorrectiveChainAllowed(
           baseline,
-          "1",
-          "1",
+          "2",
+          "2",
           revision,
           parentLine,
+          `${failedPrecursor} ${baseline}`,
+        ),
+      ).toBe(false);
+    for (const failedPrecursorParentLine of [
+      `${failedPrecursor} ${"a".repeat(40)}`,
+      `${failedPrecursor} ${baseline} ${"a".repeat(40)}`,
+      `${failedPrecursor} ${"a".repeat(40)} ${baseline}`,
+      `${failedPrecursor} ${baseline} `,
+    ])
+      expect(
+        filingParserCrossEngineExecutionCorrectiveChainAllowed(
+          baseline,
+          "2",
+          "2",
+          revision,
+          `${revision} ${failedPrecursor}`,
+          failedPrecursorParentLine,
         ),
       ).toBe(false);
   });

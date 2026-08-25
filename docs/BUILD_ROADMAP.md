@@ -1113,11 +1113,13 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
 ## Cycle 2k — bounded synthetic cross-engine parser execution agreement
 
-Status: **proposal-only and Pending from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. No successor source commit,
-frozen transition, local result, CI result, dedicated live run, retained
-artifact, or offline-review verdict exists. Cycle 2b, full Cycle 2 quality,
-real-data admission, and production remain Blocked.**
+Status: **proposal-only and Pending exact recovery from baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`. Dedicated run `32910394736`
+attempt 1 failed closed at image inspection and retained no artifact. One exact
+corrective child, its green gates, retained evidence, and offline-review verdict
+remain required. Cycle 2b, full Cycle 2 quality, real-data admission, and
+production remain Blocked.**
 
 Cycle 2k proposes one narrow repository-controlled successor. The existing
 Cycle 2j Python worker and one distinct zero-install pinned Node worker execute
@@ -1128,11 +1130,13 @@ unchanged normalization path. Any disagreement or failure returns one atomic,
 empty, value-free quarantine. The sole proposed claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-Promotion requires one frozen exact successor transition from the baseline; a
-full local gate; exact-source Ubuntu/Windows CI and required parser, custody,
+Promotion requires one frozen exact linear two-commit recovery chain from the
+baseline through the failed precursor to one corrective child; a full local
+gate; exact-source Ubuntu/Windows CI and required parser, custody,
 PostgreSQL, and Cycle 2j regression gates; and a separately authorized Ubuntu
 real-Docker success-only artifact. The versioned evidence and independently
-anchored `offline_consistent` review must bind both image digests, both exact
+anchored `offline_consistent` review must bind the baseline, failed precursor,
+corrective revision, both image digests, both exact
 worker source inventories and hashes, fixtures, cases, checks, nonclaims, and
 every Cycle 2k source hash. Historical evidence, schemas, checks, nonclaims,
 source sets, artifacts, and run anchors remain immutable; regressions cannot be

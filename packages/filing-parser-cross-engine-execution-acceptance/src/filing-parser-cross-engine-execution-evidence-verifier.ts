@@ -7,6 +7,7 @@ import { types as utilTypes } from "node:util";
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   filingParserCrossEngineExecutionEvidenceSha256,
   parseCanonicalFilingParserCrossEngineExecutionEvidence,
   type FilingParserCrossEngineExecutionEvidenceTransitionEntry,
@@ -27,6 +28,7 @@ export interface FilingParserCrossEngineExecutionEvidenceReview {
   readonly artifactName: string;
   readonly baseline: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE;
   readonly evidenceSha256: `sha256:${string}`;
+  readonly failedPrecursorRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   readonly repository: string;
   readonly revision: string;
   readonly runAttempt: number;
@@ -87,7 +89,10 @@ async function verifyOffline(
     evidence.workflow.runId !== options.expectedRunId ||
     evidence.workflow.runAttempt !== options.expectedRunAttempt ||
     evidence.workflow.artifactName !== options.expectedArtifactName ||
-    evidence.baseline !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE
+    evidence.baseline !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE ||
+    evidence.failedPrecursorRevision !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION
   )
     return invalid();
 
@@ -108,6 +113,11 @@ async function verifyOffline(
     "cat-file",
     "-e",
     `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE}^{commit}`,
+  ]);
+  await checkedCommand(repositoryPath, "git", [
+    "cat-file",
+    "-e",
+    `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION}^{commit}`,
   ]);
   const mergeBase = exactLine(
     (
@@ -147,13 +157,24 @@ async function verifyOffline(
       ])
     ).stdout,
   );
+  const failedPrecursorParentLine = exactLine(
+    (
+      await checkedCommand(repositoryPath, "git", [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
+      ])
+    ).stdout,
+  );
   if (
-    !filingParserCrossEngineExecutionDirectSuccessorAllowed(
+    !filingParserCrossEngineExecutionCorrectiveChainAllowed(
       mergeBase,
       successorCount,
       firstParentCount,
       options.expectedRevision,
       parentLine,
+      failedPrecursorParentLine,
     )
   )
     return invalid();
@@ -213,6 +234,7 @@ async function verifyOffline(
     artifactName: evidence.workflow.artifactName,
     baseline: evidence.baseline,
     evidenceSha256: options.expectedEvidenceSha256,
+    failedPrecursorRevision: evidence.failedPrecursorRevision,
     repository: evidence.repository,
     revision: evidence.revision,
     runAttempt: evidence.workflow.runAttempt,
@@ -384,21 +406,24 @@ export function filingParserCrossEngineExecutionFileSizeAllowed(
   );
 }
 
-/** @internal Direct-successor regression seam. */
-export function filingParserCrossEngineExecutionDirectSuccessorAllowed(
+/** @internal Exact two-commit corrective-chain regression seam. */
+export function filingParserCrossEngineExecutionCorrectiveChainAllowed(
   mergeBase: string,
   successorCount: string,
   firstParentCount: string,
   revision: string,
   parentLine: string,
+  failedPrecursorParentLine: string,
 ): boolean {
   return (
     mergeBase === FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE &&
-    successorCount === "1" &&
-    firstParentCount === "1" &&
+    successorCount === "2" &&
+    firstParentCount === "2" &&
     COMMIT.test(revision) &&
     parentLine ===
-      `${revision} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE}`
+      `${revision} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION}` &&
+    failedPrecursorParentLine ===
+      `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE}`
   );
 }
 

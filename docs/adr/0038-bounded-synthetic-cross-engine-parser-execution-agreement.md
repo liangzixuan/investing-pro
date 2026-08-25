@@ -1,10 +1,14 @@
 # ADR 0038: bounded synthetic cross-engine parser execution agreement
 
-Status: proposed and Pending from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. No successor source commit,
-frozen transition, local or CI result, dedicated live run, retained artifact,
-or offline-review verdict exists. This ADR records no promoted claim. Cycle 2b,
-full Cycle 2 quality, real-data admission, and production admission remain
+Status: proposed and Pending exact recovery from baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Source precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76` is its exact single-parent direct child, but
+dedicated run `32910394736` attempt 1 failed closed at `image_inspection`: the
+inherited Python image ends in `/worker`, while the shared inspector applied
+the Node image's `/input` expectation to both roles. The run retained no
+artifact and has no offline-review verdict. One exact corrective child and all
+successful gates remain required. This ADR records no promoted claim. Cycle
+2b, full Cycle 2 quality, real-data admission, and production admission remain
 Blocked.
 
 ## Context
@@ -68,8 +72,9 @@ provenance, mismatch details, or canary content.
 
 The sole proposed target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It may be accepted only for one future exact successor of baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc` and the complete evidence anchors
+It may be accepted only for one exact corrective child of failed precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`, whose sole parent is baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, and the complete evidence anchors
 defined below.
 
 ## Required checks
@@ -90,7 +95,7 @@ The proposed exact ordered checks are:
 12. `atomic_cross_engine_agreement_or_single_empty_value_free_quarantine`
 13. `engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine`
 14. `swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage`
-15. `success_only_exact_commit_transition_two_image_case_source_artifact_and_offline_review`
+15. `success_only_exact_two_commit_recovery_transition_two_image_case_source_artifact_and_offline_review`
 16. `historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data`
 
 ## Exact nonclaims
@@ -117,14 +122,16 @@ The proposed exact ordered nonclaims are:
 ## Evidence and promotion boundary
 
 The proposal begins from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Before any promotion, the complete
-successor transition must be frozen by path and status inventory and accepted
-only for one exact successor commit. No transition count or successor commit is
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, continues through failed precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`, and may end only at one exact
+corrective child. Before any promotion, both exact single-parent lines, the
+exact two-commit and first-parent counts, and the cumulative baseline-to-
+corrective path/status inventory must be frozen. No corrective revision is
 claimed while this ADR is Pending.
 
-The frozen successor must pass formatting, lint, every guardrail, dependency
+The frozen corrective revision must pass formatting, lint, every guardrail, dependency
 and peer policy, all project typechecks and tests, both worker-specific test
-suites, and all builds. The same exact source commit must pass Ubuntu and
+suites, and all builds. The same exact corrective source commit must pass Ubuntu and
 Windows CI and the required historical parser, custody, PostgreSQL, and Cycle
 2j live regression workflows. Those runs remain regression health only; none is
 Cycle 2k execution evidence.
@@ -142,8 +149,9 @@ run, source drift, missing or equal engine identity, unpinned image, output
 disagreement, partial success, cleanup ambiguity, residue, or non-value-free
 quarantine must retain no candidate artifact and must prevent promotion.
 
-The versioned evidence record must bind the exact repository, baseline and
-successor commits, transition inventory, workflow/run/job/attempt, artifact
+The versioned evidence record must bind the exact repository, baseline, failed
+precursor, corrective revision, cumulative transition inventory,
+workflow/run/job/attempt, artifact
 identity and digest, both built image digests, both exact worker source
 inventories and hashes, fixture manifest and archive hashes, tool versions,
 container counts, canonical cases and outcomes, exact checks, exact nonclaims,

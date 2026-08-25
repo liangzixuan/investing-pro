@@ -430,8 +430,9 @@ or production. Its exact promoted boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k is a proposal-only successor and is Pending from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. It proposes to execute the same
+Cycle 2k is a proposal-only successor and is Pending exact recovery from
+baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`. It proposes to execute the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Each fixed role's live
 canonical stdout document and both engines' complete normalization records must
@@ -439,8 +440,9 @@ agree byte for byte; any disagreement or failure returns one atomic empty
 value-free quarantine. The sole proposed claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-No successor source, frozen transition, local/CI result, dedicated real-Docker
-artifact, or `offline_consistent` verdict exists. Distinct language, source,
+Dedicated run `32910394736` attempt 1 failed closed at image inspection and
+retained no artifact. One exact corrective child and its green local, CI,
+regression, live-evidence, and offline-review gates remain required. Distinct language, source,
 image, and process identities cannot establish true organizational, operator,
 key, host, or failure-domain independence. The proposal also cannot establish
 general parser/accounting correctness, real SEC/source authority, Cycle 2b
@@ -1115,8 +1117,9 @@ boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k's successor target remains only a Pending proposal from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc` for the sole claim
+Cycle 2k's successor target remains only a Pending exact corrective child of
+failed precursor `14b4ecf41806dca7759a06bebf7ef8da96374f76`, itself an exact single-parent direct child of
+baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, for the sole claim
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 No source or evidence result is promoted. Exact gates and nonclaims are in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
