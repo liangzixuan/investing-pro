@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   decodeCycle2cGitNulList,
+  hasNonEmptyStderr,
   isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed,
   isAuthenticatedReplayMaintenanceCommitDiffSetAllowed,
   isAuthenticatedReplayMaintenanceSurfaceRoutingRequired,
@@ -35,6 +36,7 @@ import {
   isFastify5121MaintenanceBaselineMergeBaseAllowed,
   isFastify5121MaintenanceCommitDiffSetAllowed,
   isFastify5121MaintenanceTransitionRoutingRequired,
+  isGitProcessResultAllowed,
   isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed,
   isOfflineEvidenceInputCustodyCommitDiffSetAllowed,
   isOfflineEvidenceInputCustodySurfaceRoutingRequired,
@@ -668,6 +670,10 @@ const CYCLE_2I_TRANSITION = [
   },
   {
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
     status: "M",
   },
   { path: "pnpm-lock.yaml", status: "M" },
@@ -1614,13 +1620,13 @@ describe("offline filing payload custody evidence review", () => {
     expect(isCycle2iBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
     expect(isCycle2iBaselineMergeBaseAllowed(undefined)).toBe(false);
 
-    expect(CYCLE_2I_TRANSITION).toHaveLength(19);
+    expect(CYCLE_2I_TRANSITION).toHaveLength(20);
     expect(
       CYCLE_2I_TRANSITION.filter((entry) => entry.status === "A"),
     ).toHaveLength(9);
     expect(
       CYCLE_2I_TRANSITION.filter((entry) => entry.status === "M"),
-    ).toHaveLength(10);
+    ).toHaveLength(11);
     expect(isCycle2iCommitDiffSetAllowed(CYCLE_2I_TRANSITION)).toBe(true);
     expect(
       isCycle2iCommitDiffSetAllowed([...CYCLE_2I_TRANSITION].reverse()),
@@ -2245,6 +2251,23 @@ describe("offline filing payload custody evidence review", () => {
         "package.json",
       ]),
     ).toBe(false);
+  });
+
+  it("ignores zero-length stderr events but rejects actual stderr bytes", () => {
+    expect(hasNonEmptyStderr([])).toBe(false);
+    expect(hasNonEmptyStderr([new Uint8Array()])).toBe(false);
+    expect(hasNonEmptyStderr([new Uint8Array(), new Uint8Array([0])])).toBe(
+      true,
+    );
+  });
+
+  it("treats the third git argument as an output bound, not an exit code", () => {
+    expect(isGitProcessResultAllowed(0, 41, 64, [new Uint8Array()])).toBe(true);
+    expect(isGitProcessResultAllowed(0, 41, 40, [])).toBe(false);
+    expect(isGitProcessResultAllowed(64, 41, 64, [])).toBe(false);
+    expect(isGitProcessResultAllowed(0, 41, 64, [new Uint8Array([1])])).toBe(
+      false,
+    );
   });
 
   it("requires exact trailing-NUL framing with no empty or BOM-prefixed fields", () => {

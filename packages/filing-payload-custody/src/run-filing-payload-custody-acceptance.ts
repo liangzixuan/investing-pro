@@ -23,7 +23,10 @@ import {
   serializeCanonicalFilingPayloadCustodyEvidence,
   type FilingPayloadCustodyEvidenceSourceHash,
 } from "./filing-payload-custody-evidence";
-import { verifyCycle2cCommitBoundary } from "./filing-payload-custody-evidence-verifier";
+import {
+  hasNonEmptyStderr,
+  verifyCycle2cCommitBoundary,
+} from "./filing-payload-custody-evidence-verifier";
 import {
   FILING_PAYLOAD_CUSTODY_ALGORITHM,
   FILING_PAYLOAD_CUSTODY_CLAIM,
@@ -497,7 +500,7 @@ async function commandOutput(
     child.stderr.on("data", collect(stderr));
     child.once("error", reject);
     child.once("close", (code) => {
-      if (code !== 0 || total > MAX_COMMAND_BYTES || stderr.length > 0)
+      if (code !== 0 || total > MAX_COMMAND_BYTES || hasNonEmptyStderr(stderr))
         reject(new Error("command failed"));
       else resolve(new Uint8Array(Buffer.concat(stdout)));
     });

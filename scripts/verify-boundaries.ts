@@ -1015,7 +1015,19 @@ if (
   hasFilingParserNormalizationHandoffDependency(
     { devDependencies: { typescript: "5.9.3" } },
     "apps/api/package.json",
-  )
+  ) ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void import("node:fs");',
+  ) !== null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const target = "../../../packages/filing-parser-normalization-handoff/src/index"; void import(target);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const target = "../../../packages/filing-parser-normalization-handoff/src/index"; void require(target);',
+  ) === null
 )
   throw new Error(
     "Filing-parser-normalization-handoff composition classifier regressed",
@@ -3351,14 +3363,11 @@ function inspectCompositionBoundary(path: string, content: string): void {
     filingParserNormalizationHandoffImportViolation(path, content);
   if (filingParserNormalizationHandoffViolation !== null)
     violations.push(`${path}: ${filingParserNormalizationHandoffViolation}`);
-  if (
-    !path.startsWith(filingParserNormalizationHandoffPackagePrefix) &&
-    moduleSpecifiers.some((specifier) =>
-      referencesFilingParserNormalizationHandoffPath(path, specifier),
-    )
-  )
+  const filingParserNormalizationHandoffExternalViolation =
+    filingParserNormalizationHandoffExternalCompositionViolation(path, content);
+  if (filingParserNormalizationHandoffExternalViolation !== null)
     violations.push(
-      `${path}: Cycle 2i parser-normalization handoff must remain package-isolated`,
+      `${path}: ${filingParserNormalizationHandoffExternalViolation}`,
     );
   const filingFactComparisonViolation = filingFactComparisonImportViolation(
     path,
@@ -5504,6 +5513,48 @@ function referencesModuleSpecifier(
     (specifier) =>
       specifier === moduleName || specifier.startsWith(`${moduleName}/`),
   );
+}
+
+function filingParserNormalizationHandoffExternalCompositionViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (path.startsWith(filingParserNormalizationHandoffPackagePrefix))
+    return null;
+  if (
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    collectModuleSpecifiers(content).some((specifier) =>
+      referencesFilingParserNormalizationHandoffPath(path, specifier),
+    )
+  )
+    return "Cycle 2i parser-normalization handoff must remain package-isolated";
+  return null;
+}
+
+function hasUnresolvedRuntimeModuleLoad(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    "boundary-source.tsx",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "require")) &&
+      staticStringValue(node.arguments[0]) === null
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
 }
 
 function collectModuleSpecifiers(content: string): string[] {

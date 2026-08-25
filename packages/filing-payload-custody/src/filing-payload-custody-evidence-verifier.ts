@@ -687,6 +687,10 @@ const CYCLE_2I_TRANSITION = Object.freeze([
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
     status: "M",
   },
+  {
+    path: "packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
+    status: "M",
+  },
   { path: "pnpm-lock.yaml", status: "M" },
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ]);
@@ -1709,6 +1713,25 @@ export function isCycle2iCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact process-output regression seam. */
+export function hasNonEmptyStderr(chunks: readonly Uint8Array[]): boolean {
+  return chunks.some((chunk) => chunk.byteLength !== 0);
+}
+
+/** @internal Exact git-process regression seam. */
+export function isGitProcessResultAllowed(
+  code: number | null,
+  outputBytes: number,
+  maximumOutputBytes: number,
+  stderr: readonly Uint8Array[],
+): boolean {
+  return (
+    code === 0 &&
+    outputBytes <= maximumOutputBytes &&
+    !hasNonEmptyStderr(stderr)
+  );
+}
+
 async function cycle2iTransitionSurfaceDiffPaths(
   repositoryPath: string,
   revision: string,
@@ -2642,7 +2665,7 @@ function isSameSmallRegularFileState(
 async function git(
   cwd: string,
   args: readonly string[],
-  expectedExit = 0,
+  maximumOutputBytes = MAX_GIT_BYTES,
 ): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const child = spawn("git", args, {
@@ -2655,14 +2678,14 @@ async function git(
     let bytes = 0;
     const collect = (target: Buffer[]) => (chunk: Buffer) => {
       bytes += chunk.byteLength;
-      if (bytes > MAX_GIT_BYTES) child.kill();
+      if (bytes > maximumOutputBytes) child.kill();
       else target.push(chunk);
     };
     child.stdout.on("data", collect(stdout));
     child.stderr.on("data", collect(stderr));
     child.once("error", reject);
     child.once("close", (code) => {
-      if (code !== expectedExit || bytes > MAX_GIT_BYTES || stderr.length > 0)
+      if (!isGitProcessResultAllowed(code, bytes, maximumOutputBytes, stderr))
         reject(new Error("git failed"));
       else resolve(new Uint8Array(Buffer.concat(stdout)));
     });

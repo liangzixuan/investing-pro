@@ -715,6 +715,10 @@ const CYCLE_2I_TRANSITION = Object.freeze([
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
     status: "M",
   },
+  {
+    path: "packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
+    status: "M",
+  },
   { path: "pnpm-lock.yaml", status: "M" },
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ]);

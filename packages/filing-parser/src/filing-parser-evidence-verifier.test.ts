@@ -500,6 +500,10 @@ const CYCLE_2I_TRANSITION = [
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
     status: "M",
   },
+  {
+    path: "packages/filing-payload-custody/src/run-filing-payload-custody-acceptance.ts",
+    status: "M",
+  },
   { path: "pnpm-lock.yaml", status: "M" },
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ] as const;
@@ -1359,13 +1363,13 @@ describe("offline filing parser evidence review", () => {
     expect(isCycle2iBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
     expect(isCycle2iBaselineMergeBaseAllowed(undefined)).toBe(false);
 
-    expect(CYCLE_2I_TRANSITION).toHaveLength(19);
+    expect(CYCLE_2I_TRANSITION).toHaveLength(20);
     expect(
       CYCLE_2I_TRANSITION.filter((entry) => entry.status === "A"),
     ).toHaveLength(9);
     expect(
       CYCLE_2I_TRANSITION.filter((entry) => entry.status === "M"),
-    ).toHaveLength(10);
+    ).toHaveLength(11);
     expect(isCycle2iCommitDiffSetAllowed(CYCLE_2I_TRANSITION)).toBe(true);
     expect(
       isCycle2iCommitDiffSetAllowed([...CYCLE_2I_TRANSITION].reverse()),
