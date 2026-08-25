@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { constants, type Stats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { isAbsolute } from "node:path";
 import { types as utilTypes } from "node:util";
 
 import {
@@ -14,6 +15,8 @@ import { FILING_PARSER_QUARANTINE_CODES } from "./parser-boundary";
 
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BLOB_BYTES = 4_194_304;
+const MAX_GIT_PATH_BYTES = 32_768;
+const GIT_TIMEOUT_MILLISECONDS = 30_000;
 const isProxy = utilTypes.isProxy;
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
@@ -671,6 +674,7 @@ const CYCLE_2I_TRANSITION = Object.freeze([
     path: "docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md",
     status: "A",
   },
+  { path: "packages/db/tests/projection-normalization.test.ts", status: "M" },
   {
     path: "packages/filing-parser-normalization-handoff/package.json",
     status: "A",
@@ -1185,6 +1189,7 @@ export async function verifyCycle2aCommitBoundary(
   repositoryPath: string,
   revision: string,
 ): Promise<void> {
+  await verifyNoEffectiveFilingParserGitGrafts(repositoryPath);
   await git(
     repositoryPath,
     ["cat-file", "-e", `${CYCLE_2A_BASELINE_REVISION}^{commit}`],
@@ -2984,26 +2989,231 @@ function decodeGitRevisionLine(value: Uint8Array): string {
   return text.slice(0, -1);
 }
 
+/** @internal Exact replacement-ref hardening regression seam. */
+export function filingParserGitArgumentsWithoutReplacementObjects(
+  repositoryPath: string,
+  args: readonly string[],
+): readonly string[] {
+  return Object.freeze([
+    "--no-replace-objects",
+    "--no-lazy-fetch",
+    "-c",
+    "advice.graftFileDeprecated=false",
+    "-C",
+    repositoryPath,
+    ...args,
+  ]);
+}
+
+/** @internal Exact graft-environment hardening regression seam. */
+export function filingParserGitEnvironmentWithoutGrafts(
+  environment: Readonly<NodeJS.ProcessEnv>,
+  platform: NodeJS.Platform = process.platform,
+): Readonly<NodeJS.ProcessEnv> {
+  const sanitized = Object.fromEntries(
+    Object.entries(environment).filter(
+      ([key]) => key.toUpperCase() !== "GIT_GRAFT_FILE",
+    ),
+  );
+  sanitized.GIT_GRAFT_FILE = platform === "win32" ? "NUL" : "/dev/null";
+  return Object.freeze(sanitized);
+}
+
+/** @internal Exact git-process regression seam. */
+export function isFilingParserGitProcessResultAllowed(
+  code: number | null,
+  stdoutBytes: number,
+  maximumOutputBytes: number,
+  stderrBytes: number,
+  timedOut: boolean,
+): boolean {
+  return (
+    !timedOut &&
+    code === 0 &&
+    stdoutBytes <= maximumOutputBytes &&
+    stderrBytes === 0
+  );
+}
+
+/** @internal Exact effective-grafts-path regression seam. */
+export function decodeFilingParserAbsoluteGitPath(bytes: Uint8Array): string {
+  let value: string;
+  try {
+    value = new TextDecoder("utf-8", {
+      fatal: true,
+      ignoreBOM: true,
+    }).decode(bytes);
+  } catch {
+    return invalidReview();
+  }
+  const path = value.slice(0, -1);
+  if (
+    value.includes("\ufeff") ||
+    !value.endsWith("\n") ||
+    path.length === 0 ||
+    /[\0\r\n]/u.test(path) ||
+    !isAbsolute(path)
+  )
+    invalidReview();
+  return path;
+}
+
+/** @internal Exact empty-grafts TOCTOU regression seam. */
+export function isFilingParserEmptyGitGraftsSnapshotAllowed(
+  pathBefore: EvidencePathStat,
+  descriptorBefore: EvidencePathStat,
+  descriptorAfter: EvidencePathStat,
+  pathAfter: EvidencePathStat,
+  bytesRead: number,
+): boolean {
+  const snapshots = [pathBefore, descriptorBefore, descriptorAfter, pathAfter];
+  return (
+    bytesRead === 0 &&
+    snapshots.every(
+      (snapshot) =>
+        snapshot.isFile() &&
+        !snapshot.isSymbolicLink() &&
+        snapshot.size === 0 &&
+        Number.isFinite(snapshot.mtimeMs) &&
+        Number.isFinite(snapshot.ctimeMs) &&
+        snapshot.dev === pathBefore.dev &&
+        snapshot.ino === pathBefore.ino &&
+        snapshot.mtimeMs === pathBefore.mtimeMs &&
+        snapshot.ctimeMs === pathBefore.ctimeMs,
+    )
+  );
+}
+
+/** @internal Exported only for effective-worktree graft regressions. */
+export async function verifyNoEffectiveFilingParserGitGrafts(
+  repositoryPath: string,
+  environment: Readonly<NodeJS.ProcessEnv> = process.env,
+): Promise<void> {
+  const graftsPath = decodeFilingParserAbsoluteGitPath(
+    await gitWithAmbientGrafts(
+      repositoryPath,
+      ["rev-parse", "--path-format=absolute", "--git-path", "info/grafts"],
+      MAX_GIT_PATH_BYTES,
+      environment,
+    ),
+  );
+  let pathBefore: EvidencePathStat;
+  try {
+    pathBefore = await lstat(graftsPath);
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") return;
+    return invalidReview();
+  }
+  if (
+    !isFilingParserEmptyGitGraftsSnapshotAllowed(
+      pathBefore,
+      pathBefore,
+      pathBefore,
+      pathBefore,
+      0,
+    )
+  )
+    invalidReview();
+  const noFollow = constants.O_NOFOLLOW;
+  const nonBlock = constants.O_NONBLOCK;
+  const flags =
+    constants.O_RDONLY |
+    (typeof noFollow === "number" ? noFollow : 0) |
+    (typeof nonBlock === "number" ? nonBlock : 0);
+  try {
+    const handle = await open(graftsPath, flags);
+    try {
+      const descriptorBefore = await handle.stat();
+      const probe = Buffer.alloc(1);
+      const { bytesRead } = await handle.read(probe, 0, probe.byteLength, 0);
+      const descriptorAfter = await handle.stat();
+      const pathAfter = await lstat(graftsPath);
+      if (
+        !isFilingParserEmptyGitGraftsSnapshotAllowed(
+          pathBefore,
+          descriptorBefore,
+          descriptorAfter,
+          pathAfter,
+          bytesRead,
+        )
+      )
+        invalidReview();
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return invalidReview();
+  }
+}
+
 function git(
   repositoryPath: string,
   args: readonly string[],
   maximumOutputBytes = MAX_GIT_BLOB_BYTES,
 ): Promise<Uint8Array> {
+  return spawnGit(
+    repositoryPath,
+    args,
+    maximumOutputBytes,
+    filingParserGitEnvironmentWithoutGrafts(process.env),
+  );
+}
+
+function gitWithAmbientGrafts(
+  repositoryPath: string,
+  args: readonly string[],
+  maximumOutputBytes: number,
+  environment: Readonly<NodeJS.ProcessEnv>,
+): Promise<Uint8Array> {
+  return spawnGit(repositoryPath, args, maximumOutputBytes, environment);
+}
+
+function spawnGit(
+  repositoryPath: string,
+  args: readonly string[],
+  maximumOutputBytes: number,
+  environment: Readonly<NodeJS.ProcessEnv>,
+): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
-    const child = spawn("git", ["-C", repositoryPath, ...args], {
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
-    });
+    const child = spawn(
+      "git",
+      filingParserGitArgumentsWithoutReplacementObjects(repositoryPath, args),
+      {
+        env: environment,
+        shell: false,
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      },
+    );
     const stdout: Buffer[] = [];
     let stdoutBytes = 0;
     let stderrBytes = 0;
     let failed = false;
+    let settled = false;
+    let timedOut = false;
+    const finish = (
+      outcome: "resolve" | "reject",
+      value?: Uint8Array,
+    ): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (outcome === "resolve" && value !== undefined) resolve(value);
+      else reject(new Error("Offline evidence review failed."));
+    };
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      failed = true;
+      child.kill("SIGKILL");
+      finish("reject");
+    }, GIT_TIMEOUT_MILLISECONDS);
+    timeout.unref();
     child.stdout.on("data", (chunk: Buffer) => {
       stdoutBytes += chunk.byteLength;
       if (stdoutBytes > maximumOutputBytes) {
         failed = true;
         child.kill("SIGKILL");
+        finish("reject");
         return;
       }
       stdout.push(Buffer.from(chunk));
@@ -3013,19 +3223,31 @@ function git(
       if (stderrBytes > 16_384) {
         failed = true;
         child.kill("SIGKILL");
+        finish("reject");
       }
     });
-    child.on("error", () =>
-      reject(new Error("Offline evidence review failed.")),
-    );
+    child.on("error", () => finish("reject"));
     child.on("close", (code) => {
-      if (failed || code !== 0 || stderrBytes !== 0) {
-        reject(new Error("Offline evidence review failed."));
+      if (
+        failed ||
+        !isFilingParserGitProcessResultAllowed(
+          code,
+          stdoutBytes,
+          maximumOutputBytes,
+          stderrBytes,
+          timedOut,
+        )
+      ) {
+        finish("reject");
         return;
       }
-      resolve(Uint8Array.from(Buffer.concat(stdout)));
+      finish("resolve", Uint8Array.from(Buffer.concat(stdout)));
     });
   });
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
 }
 
 function invalidReview(): never {

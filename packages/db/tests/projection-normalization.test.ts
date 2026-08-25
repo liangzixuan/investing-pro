@@ -13,11 +13,6 @@ const OBJECT_PROTOTYPE_TO_STRING: unknown = Reflect.get(
   Object.prototype,
   "toString",
 );
-const OBJECT_PROTOTYPE_CONSTRUCTOR: unknown = Reflect.get(
-  Object.prototype,
-  "constructor",
-);
-
 const BASE_QUERY = {
   scope: {
     instrumentId: INSTRUMENT_ID,
@@ -239,7 +234,7 @@ describe("PostgreSQL financial-fact projection normalization", () => {
     ["USD", "USD"],
     ["usd_millions", "USD"],
     ["toString", OBJECT_PROTOTYPE_TO_STRING],
-    ["constructor", OBJECT_PROTOTYPE_CONSTRUCTOR],
+    ["constructor", Object],
     ["__proto__", Object.prototype],
   ])("rejects an unreviewed unit/currency pair %s + %s", (unit, currency) => {
     captureNormalizationError(() =>

@@ -1,6 +1,15 @@
 import { spawnSync } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
-import { basename, extname, join, relative } from "node:path";
+import { open, readFile, readdir, realpath, stat } from "node:fs/promises";
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve as resolvePath,
+  sep,
+} from "node:path";
 import {
   dirname as posixDirname,
   normalize as posixNormalize,
@@ -21,10 +30,15 @@ const sourceRoots = [
   "infra",
 ];
 const textExtensions = new Set([
+  ".cjs",
   ".css",
+  ".cts",
   ".json",
+  ".js",
+  ".jsx",
   ".md",
   ".mjs",
+  ".mts",
   ".conf",
   ".sql",
   ".ps1",
@@ -34,6 +48,24 @@ const textExtensions = new Set([
   ".ts",
   ".tsx",
   ".xml",
+  ".yaml",
+  ".yml",
+]);
+const executableSourceExtensions = new Set([
+  ".cjs",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".mts",
+  ".ts",
+  ".tsx",
+]);
+const commandSurfaceExtensions = new Set([
+  ".bat",
+  ".cmd",
+  ".ps1",
+  ".sh",
   ".yaml",
   ".yml",
 ]);
@@ -164,6 +196,27 @@ const filingParserNormalizationHandoffSourcePaths = new Set([
   filingParserNormalizationHandoffSecurityTestPath,
   filingParserNormalizationHandoffUnitTestPath,
 ]);
+const filingParserNormalizationHandoffMetadataLiteralPaths = new Set([
+  "scripts/verify-boundaries.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+]);
+const boundaryChildProcessExecutionSinkNames = new Set([
+  "exec",
+  "execFile",
+  "execFileSync",
+  "execSync",
+  "fork",
+  "spawn",
+  "spawnSync",
+]);
+const boundaryChildProcessModuleNames = new Set([
+  "child_process",
+  "node:child_process",
+]);
+const boundaryTsxExecutionSinkNames = new Set(["tsImport"]);
 const filingParserNormalizationHandoffPackagePaths = [
   `${filingParserNormalizationHandoffPackagePrefix}package.json`,
   `${filingParserNormalizationHandoffPackagePrefix}tsconfig.json`,
@@ -540,6 +593,7 @@ const filingPayloadCustodyToolModules = new Map<string, readonly string[]>([
       "node:child_process",
       "node:fs",
       "node:fs/promises",
+      "node:path",
       "./filing-payload-custody-evidence",
     ],
   ],
@@ -571,6 +625,7 @@ const filingPayloadCustodyToolModules = new Map<string, readonly string[]>([
   ],
 ]);
 const filingPayloadCustodyTestModules = new Set([
+  "node:child_process",
   "node:crypto",
   "node:fs",
   "node:fs/promises",
@@ -657,7 +712,10 @@ const copiedAssetExtensions = new Set([
   ".webp",
 ]);
 const ignoredDirectories = new Set([
+  ".git",
+  ".hg",
   ".next",
+  ".svn",
   "coverage",
   "dist",
   "node_modules",
@@ -690,18 +748,72 @@ const legacyNpmrcPolicyKeys = new Map([
   ["strictpeerdependencies", "strictPeerDependencies"],
 ]);
 const MAX_PNPM_CONFIG_BYTES = 65_536;
+const MAX_TYPESCRIPT_CONFIG_BYTES = 1_048_576;
+const MAX_TYPESCRIPT_CONFIG_CHAIN_DEPTH = 32;
+const MAX_TYPESCRIPT_CONFIG_FILES = 128;
 const violations: string[] = [];
 const filesToInspect = new Set<string>();
+const externalCompositionFilesToInspect = new Set<string>();
+const explicitTypeScriptConfigSelectorFiles = new Set<string>();
 
 for (const sourceRoot of sourceRoots) {
   for (const file of await walk(join(root, sourceRoot)))
     filesToInspect.add(file);
 }
 filesToInspect.add(join(root, filingPayloadCustodyFixtureGuardPath));
-for (const entry of await readdir(root, { withFileTypes: true })) {
-  if (entry.isFile() && isRootBoundaryFile(entry.name))
-    filesToInspect.add(join(root, entry.name));
+for (const file of await walk(root)) {
+  const fileName = basename(file).toLowerCase();
+  const extension = extname(fileName);
+  if (fileName === "package.json") {
+    filesToInspect.add(file);
+    explicitTypeScriptConfigSelectorFiles.add(file);
+  }
+  if (isTypeScriptConfigFileName(fileName)) filesToInspect.add(file);
+  if (
+    commandSurfaceExtensions.has(extension) &&
+    (![".yaml", ".yml"].includes(extension) ||
+      file.startsWith(join(root, ".github") + sep))
+  )
+    explicitTypeScriptConfigSelectorFiles.add(file);
+  if (
+    executableSourceExtensions.has(extension) ||
+    (commandSurfaceExtensions.has(extension) &&
+      (![".yaml", ".yml"].includes(extension) ||
+        file.startsWith(join(root, ".github") + sep))) ||
+    (extension === "" && !isDockerfileName(fileName))
+  )
+    externalCompositionFilesToInspect.add(file);
 }
+for (const entry of await readdir(root, { withFileTypes: true })) {
+  if (!entry.isFile()) continue;
+  const path = join(root, entry.name);
+  if (isRootBoundaryFile(entry.name)) filesToInspect.add(path);
+  if (executableSourceExtensions.has(extname(entry.name).toLowerCase()))
+    externalCompositionFilesToInspect.add(path);
+}
+for (const file of filesToInspect) {
+  if (executableSourceExtensions.has(extname(file).toLowerCase()))
+    externalCompositionFilesToInspect.add(file);
+}
+for (const file of await walk(join(root, "scripts"))) {
+  if (executableSourceExtensions.has(extname(file).toLowerCase()))
+    externalCompositionFilesToInspect.add(file);
+}
+const explicitlySelectedTypeScriptConfigs =
+  await discoverExplicitTypeScriptConfigFiles(
+    explicitTypeScriptConfigSelectorFiles,
+  );
+violations.push(...explicitlySelectedTypeScriptConfigs.violations);
+const typeScriptConfigDiscovery = await discoverTypeScriptConfigFiles([
+  ...[...filesToInspect].filter((file) =>
+    isTypeScriptConfigFileName(basename(file)),
+  ),
+  ...explicitlySelectedTypeScriptConfigs.files,
+]);
+for (const file of typeScriptConfigDiscovery.files) filesToInspect.add(file);
+violations.push(...typeScriptConfigDiscovery.violations);
+const typeScriptConfigFilesToInspect = typeScriptConfigDiscovery.files;
+const typeScriptConfigContents = typeScriptConfigDiscovery.contents;
 const workspacePackageNames =
   await collectWorkspacePackageNames(filesToInspect);
 
@@ -761,10 +873,259 @@ for (const expected of [
   "postgresql.conf",
   "bootstrap.sql",
   "package.json",
+  "tsconfig.json",
+  "tsconfig.base.json",
 ]) {
   if (!isRootBoundaryFile(expected))
     throw new Error(`Boundary root-surface classifier missed ${expected}`);
 }
+for (const expected of [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts"]) {
+  if (
+    !textExtensions.has(expected) ||
+    !executableSourceExtensions.has(expected)
+  )
+    throw new Error(`Boundary executable-source classifier missed ${expected}`);
+}
+if (
+  !isNodeSourceExecutable("tools/consume", "#!/usr/bin/env node\n") ||
+  isNodeSourceExecutable("tools/readme", "plain text\n") ||
+  !isCommandSurfaceExecutable("tools/run", "#!/bin/sh\n") ||
+  isCommandSurfaceExecutable("tools/readme", "plain text\n")
+)
+  throw new Error("Boundary extensionless executable classifier regressed");
+if (
+  !externalCompositionFilesToInspect.has(
+    join(root, "scripts", "verify-boundaries.ts"),
+  )
+)
+  throw new Error("Boundary composition classifier missed scripts");
+if (
+  JSON.stringify(
+    typeScriptConfigExtendsSpecifiers({
+      extends: ["../../shared.json", "../../tsconfig.base.json"],
+    }),
+  ) !== JSON.stringify(["../../shared.json", "../../tsconfig.base.json"]) ||
+  JSON.stringify(
+    typeScriptConfigReferenceSpecifiers({
+      references: [{ path: "../../packages/worker" }],
+    }),
+  ) !== JSON.stringify(["../../packages/worker"]) ||
+  !localTypeScriptConfigExtendsCandidates(
+    join(root, "apps", "api", "tsconfig.json"),
+    "../../shared.json",
+  ).includes(join(root, "shared.json")) ||
+  JSON.stringify(
+    localTypeScriptProjectReferenceCandidates(
+      join(root, "apps", "api", "tsconfig.json"),
+      "../../packages/worker",
+    ),
+  ) !== JSON.stringify([join(root, "packages", "worker", "tsconfig.json")]) ||
+  !typeScriptConfigFilesToInspect.has(join(root, "tsconfig.base.json"))
+)
+  throw new Error(
+    "Boundary TypeScript config inheritance classifier regressed",
+  );
+const explicitConfigSelectionRegression = explicitTypeScriptConfigSelection(
+  "tsx --tsconfig custom.json src/index.ts && tsc -p configs/build.json; TSX_TSCONFIG_PATH='config/tsx.json' tsx src/worker.ts; TS_NODE_PROJECT=config/node.json ts-node src/node.ts",
+);
+const yamlConfigSelectionRegression = explicitTypeScriptConfigSelection(
+  "env:\n  TS_NODE_PROJECT: configs/yaml.json\n",
+);
+const environmentFileSelectionRegression = explicitTypeScriptConfigSelection(
+  "node --env-file=.env.ci --import tsx apps/api/src/index.ts",
+);
+const workflowConfigSelectionRegression = githubWorkflowCommandContexts(
+  join(root, ".github", "workflows", "config-context-regression.yml"),
+  `name: Config context regression
+defaults:
+  run:
+    working-directory: apps/default
+env:
+  TSX_TSCONFIG_PATH: config/top.json
+jobs:
+  api:
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - run: cd src && node --env-file=.env --import tsx index.ts
+  worker:
+    steps:
+      - run: node --env-file=../../shared.env --import tsx src/index.ts
+        working-directory: packages/worker
+        env:
+          TS_NODE_PROJECT: config/worker.json
+`,
+);
+const workflowConfigSelectionContexts =
+  workflowConfigSelectionRegression.commands
+    .map((context) => ({
+      environmentFiles:
+        explicitTypeScriptConfigCommandSelection(context).environmentFiles,
+      resolutionBase: relative(root, context.resolutionBase).replaceAll(
+        "\\",
+        "/",
+      ),
+      specifiers: explicitTypeScriptConfigCommandSelection(context).specifiers,
+    }))
+    .sort((left, right) =>
+      left.resolutionBase.localeCompare(right.resolutionBase),
+    );
+const sharedEnvironmentPath = join(root, "shared.env");
+const sharedEnvironmentConfig =
+  "TSX_TSCONFIG_PATH=config/runtime.json\nTS_NODE_PROJECT=config/node.json";
+const sharedEnvironmentContexts = [
+  join(root, "apps", "api"),
+  join(root, "packages", "worker"),
+];
+const sharedEnvironmentConfigTargets = new Set(
+  sharedEnvironmentContexts.flatMap((resolutionBase) =>
+    explicitTypeScriptConfigSelection(sharedEnvironmentConfig).specifiers.map(
+      (specifier) => resolvePath(resolutionBase, specifier),
+    ),
+  ),
+);
+const posixRuntimeDirectoryRegression = runtimeDirectoryCommandContexts({
+  command: "cd apps/api && node --env-file=.env --import tsx src/index.ts",
+  label: "package.json",
+  modelRuntimeDirectoryChanges: true,
+  resolutionBase: root,
+  selectorPreamble: "",
+});
+const workflowRuntimeDirectoryRegression = runtimeDirectoryCommandContexts(
+  workflowConfigSelectionRegression.commands[0] ?? {
+    command: "",
+    label: "",
+    modelRuntimeDirectoryChanges: true,
+    resolutionBase: "",
+    selectorPreamble: "",
+  },
+);
+const cmdRuntimeDirectoryRegression = runtimeDirectoryCommandContexts({
+  command:
+    "chdir /d packages\\worker & node --env-file=.env --import tsx src/index.ts",
+  label: "scripts/run.cmd",
+  modelRuntimeDirectoryChanges: true,
+  resolutionBase: root,
+  selectorPreamble: "",
+});
+const powershellRuntimeDirectoryRegression = runtimeDirectoryCommandContexts({
+  command:
+    "Set-Location -LiteralPath apps/api; $env:TS_NODE_PROJECT='config/node.json'; ts-node src/index.ts",
+  label: "scripts/run.ps1",
+  modelRuntimeDirectoryChanges: true,
+  resolutionBase: root,
+  selectorPreamble: "",
+});
+const dynamicRuntimeDirectoryRegression = runtimeDirectoryCommandContexts({
+  command: "cd $TARGET && node --env-file=.env --import tsx src/index.ts",
+  label: "package.json",
+  modelRuntimeDirectoryChanges: true,
+  resolutionBase: root,
+  selectorPreamble: "",
+});
+const escapedRuntimeDirectoryRegression = runtimeDirectoryCommandContexts({
+  command: "cd ../outside && node --env-file=.env --import tsx src/index.ts",
+  label: "package.json",
+  modelRuntimeDirectoryChanges: true,
+  resolutionBase: root,
+  selectorPreamble: "",
+});
+if (
+  explicitConfigSelectionRegression.invalid ||
+  JSON.stringify(explicitConfigSelectionRegression.specifiers) !==
+    JSON.stringify([
+      "custom.json",
+      "configs/build.json",
+      "config/tsx.json",
+      "config/node.json",
+    ]) ||
+  !explicitTypeScriptConfigSelection(
+    "tsx --tsconfig $UNREVIEWED_CONFIG src/index.ts",
+  ).invalid ||
+  !explicitTypeScriptConfigSelection("tsc --build custom.json").invalid ||
+  !explicitTypeScriptConfigSelection("tsc -b custom.json sibling.json")
+    .invalid ||
+  yamlConfigSelectionRegression.invalid ||
+  JSON.stringify(yamlConfigSelectionRegression.specifiers) !==
+    JSON.stringify(["configs/yaml.json"]) ||
+  environmentFileSelectionRegression.invalid ||
+  JSON.stringify(environmentFileSelectionRegression.environmentFiles) !==
+    JSON.stringify([".env.ci"]) ||
+  workflowConfigSelectionRegression.violations.length !== 0 ||
+  JSON.stringify(workflowConfigSelectionContexts) !==
+    JSON.stringify([
+      {
+        environmentFiles: [".env"],
+        resolutionBase: "apps/api",
+        specifiers: ["config/top.json"],
+      },
+      {
+        environmentFiles: ["../../shared.env"],
+        resolutionBase: "packages/worker",
+        specifiers: ["config/top.json", "config/worker.json"],
+      },
+    ]) ||
+  environmentFileResolutionContextKey(
+    sharedEnvironmentPath,
+    sharedEnvironmentContexts[0] ?? "",
+  ) ===
+    environmentFileResolutionContextKey(
+      sharedEnvironmentPath,
+      sharedEnvironmentContexts[1] ?? "",
+    ) ||
+  sharedEnvironmentConfigTargets.size !== 4 ||
+  posixRuntimeDirectoryRegression.invalid ||
+  posixRuntimeDirectoryRegression.contexts.length !== 1 ||
+  posixRuntimeDirectoryRegression.contexts[0]?.resolutionBase !==
+    join(root, "apps", "api") ||
+  JSON.stringify(
+    explicitTypeScriptConfigCommandSelection(
+      posixRuntimeDirectoryRegression.contexts[0] ?? {
+        command: "",
+        label: "",
+        modelRuntimeDirectoryChanges: false,
+        resolutionBase: "",
+        selectorPreamble: "",
+      },
+    ).environmentFiles,
+  ) !== JSON.stringify([".env"]) ||
+  workflowRuntimeDirectoryRegression.invalid ||
+  workflowRuntimeDirectoryRegression.contexts.length !== 1 ||
+  workflowRuntimeDirectoryRegression.contexts[0]?.resolutionBase !==
+    join(root, "apps", "api", "src") ||
+  JSON.stringify(
+    explicitTypeScriptConfigCommandSelection(
+      workflowRuntimeDirectoryRegression.contexts[0] ?? {
+        command: "",
+        label: "",
+        modelRuntimeDirectoryChanges: false,
+        resolutionBase: "",
+        selectorPreamble: "",
+      },
+    ).environmentFiles,
+  ) !== JSON.stringify([".env"]) ||
+  cmdRuntimeDirectoryRegression.invalid ||
+  cmdRuntimeDirectoryRegression.contexts[0]?.resolutionBase !==
+    join(root, "packages", "worker") ||
+  powershellRuntimeDirectoryRegression.invalid ||
+  powershellRuntimeDirectoryRegression.contexts.at(-1)?.resolutionBase !==
+    join(root, "apps", "api") ||
+  JSON.stringify(
+    explicitTypeScriptConfigCommandSelection(
+      powershellRuntimeDirectoryRegression.contexts.at(-1) ?? {
+        command: "",
+        label: "",
+        modelRuntimeDirectoryChanges: false,
+        resolutionBase: "",
+        selectorPreamble: "",
+      },
+    ).specifiers,
+  ) !== JSON.stringify(["config/node.json"]) ||
+  !dynamicRuntimeDirectoryRegression.invalid ||
+  !escapedRuntimeDirectoryRegression.invalid
+)
+  throw new Error("Boundary explicit TypeScript config classifier regressed");
 verifyDependencyPolicyClassifiers();
 const gitignoreViolation = npmrcGitignoreViolation(
   await readFile(join(root, ".gitignore"), "utf8"),
@@ -1016,10 +1377,131 @@ if (
     { devDependencies: { typescript: "5.9.3" } },
     "apps/api/package.json",
   ) ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/tsconfig.json", {
+    compilerOptions: { paths: { "@app/*": ["src/*"] } },
+  }) !== null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/tsconfig.json", {
+    compilerOptions: {
+      baseUrl: "../..",
+      paths: {
+        "@opaque-handoff": [
+          "packages/filing-parser-normalization-handoff/src/index.ts",
+        ],
+      },
+    },
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("tsconfig.base.json", {
+    compilerOptions: {
+      paths: {
+        "@opaque-handoff": [
+          "packages/filing-parser-normalization-handoff/src/index.ts",
+        ],
+      },
+    },
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/tsconfig.json", {
+    compilerOptions: {
+      baseUrl: "../../packages/filing-parser-normalization-handoff",
+    },
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/tsconfig.json", {
+    compilerOptions: {
+      rootDirs: [
+        "src",
+        "../../packages/filing-parser-normalization-handoff/src",
+      ],
+    },
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/tsconfig.json", {
+    compilerOptions: {
+      jsxImportSource: filingParserNormalizationHandoffModule,
+    },
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/custom.json", {
+    extends: "../../packages/filing-parser-normalization-handoff/tsconfig.json",
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/custom.json", {
+    include: ["../../packages/*/src/**/*.ts"],
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/custom.json", {
+    include: ["../../packages/filing-parser-normalization-?andoff/src/**/*.ts"],
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/custom.json", {
+    references: [
+      { path: "../../packages/filing-parser-normalization-handoff" },
+    ],
+  }) === null ||
+  filingParserNormalizationHandoffTsconfigViolation("apps/api/custom.json", {
+    compilerOptions: {
+      baseUrl: "../..",
+      paths: {
+        "@opaque/*": ["packages/*/src/index.ts"],
+      },
+    },
+  }) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation("package.json", {
+    scripts: { verify: "pnpm test" },
+  }) !== null ||
+  filingParserNormalizationHandoffManifestCompositionViolation("package.json", {
+    imports: {
+      "#handoff": "./packages/filing-parser-normalization-handoff/src/index.ts",
+    },
+  }) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation("package.json", {
+    exports: {
+      "./handoff":
+        "./packages/filing-parser-normalization-handoff/src/index.ts",
+    },
+  }) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation(
+    "apps/api/package.json",
+    {
+      scripts: {
+        handoff:
+          "tsx ../../packages/filing-parser-normalization-handoff/src/index.ts",
+      },
+    },
+  ) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation(
+    "apps/api/package.json",
+    {
+      scripts: {
+        handoff:
+          'tsx ../../packages/filing-parser-normalization-"handoff"/src/index.ts',
+      },
+    },
+  ) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation("package.json", {
+    imports: {
+      "#handoff":
+        "./packages/filing-parser-normalization-%68andoff/src/index.ts",
+    },
+  }) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation("package.json", {
+    scripts: {
+      handoff:
+        "node -e import('./packages/filing-parser-normalization-%68andoff/src/index.ts')",
+    },
+  }) === null ||
+  filingParserNormalizationHandoffManifestCompositionViolation("package.json", {
+    typesVersions: {
+      "*": {
+        "handoff/*": ["packages/*/src/index.ts"],
+      },
+    },
+  }) === null ||
   filingParserNormalizationHandoffExternalCompositionViolation(
     "apps/api/src/index.ts",
     'void import("node:fs");',
   ) !== null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void import("../../../packages/filing-parser-normalization-%68andoff/src/index.ts");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void import("data:text/javascript;base64,ZXhwb3J0IGRlZmF1bHQgMQ==");',
+  ) === null ||
   filingParserNormalizationHandoffExternalCompositionViolation(
     "apps/api/src/index.ts",
     'const target = "../../../packages/filing-parser-normalization-handoff/src/index"; void import(target);',
@@ -1027,7 +1509,267 @@ if (
   filingParserNormalizationHandoffExternalCompositionViolation(
     "apps/api/src/index.ts",
     'const target = "../../../packages/filing-parser-normalization-handoff/src/index"; void require(target);',
-  ) === null
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { createRequire } from "node:module"; void createRequire(import.meta.url)("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { createRequire as makeRequire } from "node:module"; const load = makeRequire(import.meta.url); void load("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void module.require("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const load = require; void load("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (require as any)("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    "const loaders = { load: require }; void loaders;",
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const load = require.bind(undefined); void load("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import * as nodeModule from "node:module"; void nodeModule.createRequire(import.meta.url)("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void module["req" + "uire"]("../../../packages/filing-parser-normalization-handoff/src/index");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    "const { require: load } = module; void load;",
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { createRequire } from "node:module"; const loaders = { load: createRequire(import.meta.url) }; void loaders;',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/shim.ts",
+    'export { createRequire as factory } from "node:module";',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/shim.ts",
+    'import { createRequire as factory } from "node:module"; export { factory };',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/shim.ts",
+    'export * from "node:module";',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/shim.ts",
+    'import * as nodeModule from "node:module"; export { nodeModule };',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { Module } from "node:module"; void Module.createRequire(import.meta.url).resolve("pg");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { register, registerHooks } from "node:module"; void register; void registerHooks;',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { tsImport } from "tsx/esm/api"; void tsImport("../../../packages/filing-parser-normalization-handoff/src/index.ts", import.meta.url);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'const documented = "packages/filing-parser-normalization-handoff/src/index.ts"; function spawn(value: string) { void value; } spawn(documented);',
+  ) !== null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawn as launch } from "node:child_process"; let target = "safe.ts"; target = "packages/filing-parser-normalization-handoff/src/index.ts"; launch("tsx", [target]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawn } from "node:child_process"; let launch = (value: string) => void value; launch = spawn; const target = "packages/filing-parser-normalization-handoff/src/index.ts"; launch("tsx", [target]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'const childProcess = require("node:child_process"); const { execFile: run } = childProcess; let arguments_: string[] = []; arguments_ = ["packages/filing-parser-normalization-handoff/src/index.ts"]; run("tsx", arguments_);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import * as childProcess from "node:child_process"; const target = "packages/filing-parser-normalization-handoff/src/index.ts"; childProcess["spa" + "wn"]("tsx", [target]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawnSync } from "node:child_process"; let launch: typeof spawnSync | undefined; launch ??= spawnSync; launch("tsx", ["packages/filing-parser-normalization-handoff/src/index.ts"]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawn } from "node:child_process"; let target = "packages/filing-parser-normalization-"; target += "handoff/src/index.ts"; spawn("tsx", [target]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawn } from "node:child_process"; const launch = (...arguments_: unknown[]) => spawn(...arguments_); launch("tsx", ["packages/filing-parser-normalization-handoff/src/index.ts"]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawnSync } from "node:child_process"; Reflect.apply(spawnSync, undefined, ["tsx", ["packages/filing-parser-normalization-handoff/src/index.ts"]]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    'import { spawn } from "node:child_process"; spawn("tsx", ["packages/filing-parser-normalization-handoff/src/index.ts"]);',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void import("node:module");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    "void module.constructor;",
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.cjs",
+    'void eval("require");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void Function("return 1")();',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {}).constructor("return 1")();',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {})[["con", "structor"].join("")];',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {})[["con", , "structor"].join("")];',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {})[["con", ...[,], "structor"].join("")];',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {})[["con", undefined, "structor"].join("")];',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {})[["con", null, "structor"].join("")];',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void (() => {})[["con", void 0, "structor"].join("")];',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const get = process.getBuiltinModule; void get("node:module");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const { getBuiltinModule: get } = process; void get("node:module");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const key = "getBuiltinModule"; void process[key]("node:module");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void Object.getOwnPropertyDescriptor(process, "getBuiltinModule")?.value;',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const read = Object.getOwnPropertyDescriptor; void read(process, "getBuiltinModule")?.value;',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const runtime = process; const key = "getBuiltinModule"; void runtime[key]("node:module");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    "const box = { runtime: process }; void box;",
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void ["../../../packages/filing-parser-normalization-", "handoff/src/index.ts"].join("");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void ["../../../packages/filing-parser-normalization-", , "handoff/src/index.ts"].join("");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void ["../../../packages/filing-parser-normalization-hand", ...[,], "off/src/index.ts"].join("");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void ["../../../packages/filing-parser-normalization-hand", undefined, "off/src/index.ts"].join("");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void ["../../../packages/filing-parser-normalization-hand", null, "off/src/index.ts"].join("");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void ["../../../packages/filing-parser-normalization-hand", void 0, "off/src/index.ts"].join("");',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { runInThisContext } from "node:vm"; void runInThisContext;',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    '/// <reference path="../../../packages/filing-parser-normalization-handoff/src/index.ts" />\nexport {};',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "tools/consume",
+    '#!/usr/bin/env node\nimport "../packages/filing-parser-normalization-handoff/src/index.ts";',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "tools/run-handoff.sh",
+    "corepack pnpm exec tsx packages/filing-parser-normalization-handoff/src/index.ts",
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "tools/run-handoff.sh",
+    'corepack pnpm exec tsx packages/filing-parser-normalization-"handoff"/src/index.ts',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "tools/run-handoff.sh",
+    "corepack pnpm exec tsx packages/filing-parser-normalization-hand\\off/src/index.ts",
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "tools/run-handoff.sh",
+    'corepack pnpm exec tsx packages/filing-parser-normalization-hand\\of"f"/src/index.ts',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "tools/run-handoff.sh",
+    'corepack pnpm exec tsx "packages/filing-parser-normalization-hand\\o" + "ff/src/index.ts"',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    ".github/workflows/handoff.yml",
+    'steps:\n  - run: corepack pnpm exec tsx "packages/filing-parser-normalization-" + "handoff/src/index.ts"',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "next.config.mjs",
+    'export default { webpack(config) { config.resolve.alias.handoff = "./packages/filing-parser-normalization-handoff/src/index.ts"; return config; } };',
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'void require("node:fs");',
+  ) !== null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { createRequire } from "node:module"; void createRequire(import.meta.url).resolve("pg");',
+  ) !== null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'import { createRequire as makeRequire } from "node:module"; void makeRequire(import.meta.url).resolve("pg/package.json");',
+  ) !== null
 )
   throw new Error(
     "Filing-parser-normalization-handoff composition classifier regressed",
@@ -2115,9 +2857,10 @@ if (
   throw new Error("Filing-payload-custody test classifier regressed");
 const filingPayloadCustodyVerifierPath = `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.ts`;
 const validFilingPayloadCustodyVerifierProcessSource = `import { spawn } from "node:child_process";
-function git(cwd: string, args: readonly string[]) {
-  return spawn("git", args, {
+function git(cwd: string, args: readonly string[], environment: NodeJS.ProcessEnv) {
+  return spawn("git", gitArgumentsWithoutReplacementObjects(args), {
     cwd,
+    env: environment,
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -2138,6 +2881,13 @@ if (
   ) === null ||
   filingPayloadCustodyChildProcessViolation(
     filingPayloadCustodyVerifierPath,
+    validFilingPayloadCustodyVerifierProcessSource.replace(
+      "gitArgumentsWithoutReplacementObjects(args)",
+      "args",
+    ),
+  ) === null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyVerifierPath,
     `${validFilingPayloadCustodyVerifierProcessSource}\nconst unsafeSpawn = spawn; void unsafeSpawn;`,
   ) === null ||
   filingPayloadCustodyToolGlobalViolation(
@@ -2148,16 +2898,20 @@ if (
   throw new Error("Filing-payload-custody verifier process guard regressed");
 const filingPayloadCustodyAcceptancePath = `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-acceptance.ts`;
 const validFilingPayloadCustodyAcceptanceProcessSource = `import { spawn } from "node:child_process";
-void commandOutput("git", []);
 void commandOutput("pnpm", []);
-void commandOutput("git", []);
+function git(cwd: string, args: readonly string[]) {
+  return commandOutput("git", gitArgumentsWithoutReplacementObjects(args), cwd);
+}
+void git(".", []);
 function commandOutput(
   command: string,
   args: readonly string[],
   cwd = ".",
+  environment: NodeJS.ProcessEnv = {},
 ) {
   return spawn(command, args, {
     cwd,
+    env: environment,
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -2178,8 +2932,15 @@ if (
   filingPayloadCustodyChildProcessViolation(
     filingPayloadCustodyAcceptancePath,
     validFilingPayloadCustodyAcceptanceProcessSource.replace(
-      'void commandOutput("git", []);',
-      'const commandName = "git"; void commandOutput(commandName, []);',
+      'void commandOutput("pnpm", []);',
+      'const commandName = "pnpm"; void commandOutput(commandName, []);',
+    ),
+  ) === null ||
+  filingPayloadCustodyChildProcessViolation(
+    filingPayloadCustodyAcceptancePath,
+    validFilingPayloadCustodyAcceptanceProcessSource.replace(
+      "gitArgumentsWithoutReplacementObjects(args)",
+      "args",
     ),
   ) === null ||
   filingPayloadCustodyChildProcessViolation(
@@ -2382,7 +3143,10 @@ for (const file of filesToInspect) {
     !isDockerfileName(basename(file).toLowerCase())
   )
     continue;
-  const content = await readFile(file, "utf8");
+  const content = typeScriptConfigFilesToInspect.has(file)
+    ? typeScriptConfigContents.get(file)
+    : await readFile(file, "utf8");
+  if (content === undefined) continue;
   for (const pattern of forbiddenText) {
     if (pattern.test(content))
       violations.push(`${relativePath}: matched ${pattern}`);
@@ -2413,8 +3177,37 @@ for (const file of filesToInspect) {
   if (file.endsWith("package.json")) {
     inspectDependencies(relativePath, JSON.parse(content) as unknown);
   }
+  if (typeScriptConfigFilesToInspect.has(file)) {
+    const parsed = ts.parseConfigFileTextToJson(relativePath, content);
+    if (parsed.error !== undefined) {
+      violations.push(
+        `${relativePath}: TypeScript config must remain parseable`,
+      );
+    } else {
+      const handoffAliasViolation =
+        filingParserNormalizationHandoffTsconfigViolation(
+          relativePath,
+          parsed.config,
+        );
+      if (handoffAliasViolation !== null)
+        violations.push(`${relativePath}: ${handoffAliasViolation}`);
+    }
+  }
   inspectCompositionBoundary(relativePath, content);
   inspectFilingParserWorker(relativePath, content);
+}
+
+for (const file of externalCompositionFilesToInspect) {
+  if (filesToInspect.has(file)) continue;
+  const relativePath = relative(root, file).replaceAll("\\", "/");
+  const content = await readFile(file, "utf8");
+  const handoffViolation =
+    filingParserNormalizationHandoffExternalCompositionViolation(
+      relativePath,
+      content,
+    );
+  if (handoffViolation !== null)
+    violations.push(`${relativePath}: ${handoffViolation}`);
 }
 
 if (violations.length > 0) {
@@ -2556,6 +3349,13 @@ function inspectDependencies(path: string, manifest: unknown): void {
     violations.push(
       `${path}: Cycle 2i parser-normalization handoff must not be composed into another package`,
     );
+  const handoffManifestCompositionViolation =
+    filingParserNormalizationHandoffManifestCompositionViolation(
+      path,
+      manifest,
+    );
+  if (handoffManifestCompositionViolation !== null)
+    violations.push(`${path}: ${handoffManifestCompositionViolation}`);
   if (path === `${filingFactComparisonPackagePrefix}package.json`) {
     const manifestViolation = filingFactComparisonManifestViolation(manifest);
     if (manifestViolation !== null)
@@ -3568,13 +4368,13 @@ function filingParserNormalizationHandoffImportViolation(
             ]);
   if (
     modules.length !== new Set(modules).size ||
-    modules.some((module) => !allowed.has(module)) ||
+    modules.some((moduleName) => !allowed.has(moduleName)) ||
     (isTest
       ? ![
           "vitest",
           "./filing-parser-normalization-handoff",
           "./test-filing-parser-normalization-handoff-builder",
-        ].every((module) => modules.includes(module))
+        ].every((moduleName) => modules.includes(moduleName))
       : modules.length !== allowed.size)
   )
     return "handoff source may import only its exact crypto, Cycle 2d, core, builder, and Vitest surfaces";
@@ -4701,7 +5501,7 @@ function filingPayloadCustodyTestViolation(
       if (
         !ts.isPropertyAccessExpression(parent) ||
         parent.expression !== node ||
-        parent.name.text !== "platform"
+        !["env", "platform"].includes(parent.name.text)
       ) {
         invalidProcessUse = true;
         return;
@@ -4836,6 +5636,11 @@ function filingPayloadCustodyChildProcessViolation(
   const commands = commandOutputCalls.map((call) =>
     staticStringValue(call.arguments[0]),
   );
+  const hardenedRepositoryGitCalls = commandOutputCalls.filter(
+    (call) =>
+      staticStringValue(call.arguments[0]) === "git" &&
+      isGitArgumentsWithoutReplacementObjectsCall(call.arguments[1]),
+  );
   const commandOutputDeclarations = sourceFile.statements.filter(
     (statement): statement is ts.FunctionDeclaration =>
       ts.isFunctionDeclaration(statement) &&
@@ -4860,7 +5665,8 @@ function filingPayloadCustodyChildProcessViolation(
             identifier !== spawnArgs,
         );
   if (
-    JSON.stringify(commands) !== JSON.stringify(["git", "pnpm", "git"]) ||
+    JSON.stringify(commands) !== JSON.stringify(["pnpm", "git"]) ||
+    hardenedRepositoryGitCalls.length !== 1 ||
     commandOutputReferences.length !== commandOutputCalls.length ||
     commandOutputDeclarations.length !== 1 ||
     commandParameter === undefined ||
@@ -4909,18 +5715,24 @@ function isClosedCustodySpawnCall(
       ? staticStringValue(command) !== "git"
       : !ts.isIdentifier(command) || command.text !== "command") ||
     args === undefined ||
-    !ts.isIdentifier(args) ||
-    args.text !== "args" ||
+    (expectedCommand === "git"
+      ? !isGitArgumentsWithoutReplacementObjectsCall(args)
+      : !ts.isIdentifier(args) || args.text !== "args") ||
     options === undefined ||
     !ts.isObjectLiteralExpression(options) ||
-    options.properties.length !== 3
+    options.properties.length !== 4
   )
     return false;
-  const [cwd, shell, stdio] = options.properties;
+  const [cwd, environment, shell, stdio] = options.properties;
   return (
     cwd !== undefined &&
     ts.isShorthandPropertyAssignment(cwd) &&
     cwd.name.text === "cwd" &&
+    environment !== undefined &&
+    ts.isPropertyAssignment(environment) &&
+    propertyNameText(environment.name) === "env" &&
+    ts.isIdentifier(environment.initializer) &&
+    environment.initializer.text === "environment" &&
     shell !== undefined &&
     ts.isPropertyAssignment(shell) &&
     propertyNameText(shell.name) === "shell" &&
@@ -4931,6 +5743,25 @@ function isClosedCustodySpawnCall(
     ts.isArrayLiteralExpression(stdio.initializer) &&
     JSON.stringify(stdio.initializer.elements.map(staticStringValue)) ===
       JSON.stringify(["ignore", "pipe", "pipe"])
+  );
+}
+
+function isGitArgumentsWithoutReplacementObjectsCall(
+  node: ts.Expression | undefined,
+): boolean {
+  if (
+    node === undefined ||
+    !ts.isCallExpression(node) ||
+    !ts.isIdentifier(node.expression) ||
+    node.expression.text !== "gitArgumentsWithoutReplacementObjects" ||
+    node.arguments.length !== 1
+  )
+    return false;
+  const argument = node.arguments[0];
+  return (
+    argument !== undefined &&
+    ts.isIdentifier(argument) &&
+    argument.text === "args"
   );
 }
 
@@ -5195,6 +6026,113 @@ function hasFilingParserNormalizationHandoffDependency(
   });
 }
 
+function filingParserNormalizationHandoffManifestCompositionViolation(
+  manifestPath: string,
+  manifest: unknown,
+): string | null {
+  if (
+    manifestPath.startsWith(filingParserNormalizationHandoffPackagePrefix) ||
+    !isRecord(manifest)
+  )
+    return null;
+  for (const field of [
+    "bin",
+    "browser",
+    "exports",
+    "imports",
+    "main",
+    "module",
+    "types",
+    "typesVersions",
+    "typings",
+  ]) {
+    if (
+      manifestValueReferencesFilingParserNormalizationHandoff(
+        manifestPath,
+        manifest[field],
+      )
+    )
+      return "package imports, exports, or entry points must not target the Cycle 2i handoff";
+  }
+  if (manifest.scripts === undefined) return null;
+  if (!isRecord(manifest.scripts))
+    return "package scripts must remain an object of literal commands";
+  for (const command of Object.values(manifest.scripts)) {
+    if (typeof command !== "string")
+      return "package scripts must remain an object of literal commands";
+    if (commandReferencesFilingParserNormalizationHandoff(command))
+      return "package scripts must not execute or compose the Cycle 2i handoff";
+  }
+  return null;
+}
+
+function manifestValueReferencesFilingParserNormalizationHandoff(
+  manifestPath: string,
+  value: unknown,
+): boolean {
+  const pending = [value];
+  let inspectedValues = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    inspectedValues += 1;
+    if (inspectedValues > 4096) return true;
+    if (typeof current === "string") {
+      const normalized = current.replaceAll("\\", "/");
+      const resolvedPattern = normalized.startsWith(".")
+        ? posixNormalize(`${posixDirname(manifestPath)}/${normalized}`)
+        : posixNormalize(normalized);
+      if (
+        commandReferencesFilingParserNormalizationHandoff(normalized) ||
+        boundaryTargetPatternCanReachHandoff(resolvedPattern) ||
+        referencesFilingParserNormalizationHandoffPath(manifestPath, normalized)
+      )
+        return true;
+    } else if (Array.isArray(current)) {
+      for (const item of current as unknown[]) pending.push(item);
+    } else if (isRecord(current)) {
+      pending.push(...Object.values(current));
+    }
+  }
+  return false;
+}
+
+function commandReferencesFilingParserNormalizationHandoff(
+  command: string,
+): boolean {
+  if (hasUrlPercentEscape(command)) return true;
+  const shellUnescaped = command
+    .replace(/\\\r?\n/gu, "")
+    .replace(/\\([^\r\n])/gu, "$1");
+  const interpretations = new Set([
+    command,
+    command.replaceAll("\\", "/"),
+    shellUnescaped,
+  ]);
+  for (const interpretation of [...interpretations]) {
+    let literalConcatenation = interpretation.replace(/\\\r?\n/gu, "");
+    let previous = "";
+    while (literalConcatenation !== previous) {
+      previous = literalConcatenation;
+      literalConcatenation = literalConcatenation.replace(
+        /(["'])\s*\+\s*(["'])/gu,
+        "",
+      );
+    }
+    literalConcatenation = literalConcatenation
+      .replace(/\$(?=["'])/gu, "")
+      .replace(/["']/gu, "");
+    interpretations.add(literalConcatenation);
+    interpretations.add(literalConcatenation.replace(/\\([^\r\n])/gu, "$1"));
+  }
+  return [...interpretations].some((candidate) =>
+    staticStringCanReachHandoff(candidate),
+  );
+}
+
+function hasUrlPercentEscape(value: string): boolean {
+  return /%[0-9a-f]{2}/iu.test(value);
+}
+
 function hasFilingFactComparisonDependency(
   manifest: unknown,
   manifestPath: string,
@@ -5341,6 +6279,7 @@ function referencesFilingParserNormalizationHandoffPath(
   sourcePath: string,
   specifier: string,
 ): boolean {
+  if (hasUrlPercentEscape(specifier)) return true;
   if (
     specifier === filingParserNormalizationHandoffModule ||
     specifier.startsWith(`${filingParserNormalizationHandoffModule}/`)
@@ -5521,14 +6460,911 @@ function filingParserNormalizationHandoffExternalCompositionViolation(
 ): string | null {
   if (path.startsWith(filingParserNormalizationHandoffPackagePrefix))
     return null;
+  if (!isNodeSourceExecutable(path, content)) {
+    if (
+      isCommandSurfaceExecutable(path, content) &&
+      commandReferencesFilingParserNormalizationHandoff(content)
+    )
+      return "Cycle 2i parser-normalization handoff must remain package-isolated";
+    return null;
+  }
+  const moduleSpecifiers = collectModuleSpecifiers(content);
   if (
     hasUnresolvedRuntimeModuleLoad(content) ||
-    collectModuleSpecifiers(content).some((specifier) =>
-      referencesFilingParserNormalizationHandoffPath(path, specifier),
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasForbiddenNodeModuleCapability(content) ||
+    hasIndirectRuntimeModuleLoad(content) ||
+    hasFilingParserNormalizationHandoffStaticTarget(path, content) ||
+    moduleSpecifiers.some(
+      (specifier) =>
+        /^(?:blob|data):/iu.test(specifier) ||
+        specifier === "tsx" ||
+        specifier.startsWith("tsx/") ||
+        referencesFilingParserNormalizationHandoffPath(path, specifier),
     )
   )
     return "Cycle 2i parser-normalization handoff must remain package-isolated";
   return null;
+}
+
+function filingParserNormalizationHandoffTsconfigViolation(
+  configPath: string,
+  config: unknown,
+): string | null {
+  if (!isRecord(config)) return null;
+  const compilerOptions = isRecord(config.compilerOptions)
+    ? config.compilerOptions
+    : {};
+  const {
+    baseUrl,
+    jsxImportSource,
+    paths,
+    plugins,
+    rootDirs,
+    typeRoots,
+    types,
+  } = compilerOptions;
+  const externalConfig = !configPath.startsWith(
+    filingParserNormalizationHandoffPackagePrefix,
+  );
+  if (externalConfig) {
+    const extendsSpecifiers = typeScriptConfigExtendsSpecifiers(config) ?? [];
+    if (
+      extendsSpecifiers.some((target) =>
+        typeScriptConfigTargetCanReachHandoff(configPath, target),
+      )
+    )
+      return "TypeScript config inheritance must not target the Cycle 2i handoff package";
+    for (const field of [config.files, config.include]) {
+      if (
+        Array.isArray(field) &&
+        field.some(
+          (target) =>
+            typeof target === "string" &&
+            typeScriptConfigTargetCanReachHandoff(configPath, target),
+        )
+      )
+        return "TypeScript files/include must not reach the Cycle 2i handoff package";
+    }
+    if (
+      Array.isArray(config.references) &&
+      config.references.some(
+        (reference) =>
+          isRecord(reference) &&
+          typeof reference.path === "string" &&
+          typeScriptConfigTargetCanReachHandoff(configPath, reference.path),
+      )
+    )
+      return "TypeScript project references must not target the Cycle 2i handoff package";
+    if (
+      typeof baseUrl === "string" &&
+      typeScriptConfigTargetCanReachHandoff(configPath, baseUrl)
+    )
+      return "TypeScript baseUrl must not resolve into the Cycle 2i handoff package";
+    if (
+      Array.isArray(rootDirs) &&
+      rootDirs.some(
+        (rootDirectory) =>
+          typeof rootDirectory === "string" &&
+          typeScriptConfigTargetCanReachHandoff(configPath, rootDirectory),
+      )
+    )
+      return "TypeScript rootDirs must not include the Cycle 2i handoff package";
+    for (const field of [typeRoots, types]) {
+      if (
+        Array.isArray(field) &&
+        field.some(
+          (target) =>
+            typeof target === "string" &&
+            typeScriptConfigTargetCanReachHandoff(configPath, target),
+        )
+      )
+        return "TypeScript type roots must not target the Cycle 2i handoff package";
+    }
+    if (
+      Array.isArray(plugins) &&
+      plugins.some(
+        (plugin) =>
+          isRecord(plugin) &&
+          typeof plugin.name === "string" &&
+          typeScriptConfigTargetCanReachHandoff(configPath, plugin.name),
+      )
+    )
+      return "TypeScript plugins must not load the Cycle 2i handoff package";
+    if (
+      typeof jsxImportSource === "string" &&
+      typeScriptConfigTargetCanReachHandoff(configPath, jsxImportSource)
+    )
+      return "TypeScript jsxImportSource must not target the Cycle 2i handoff package";
+  }
+  if (!isRecord(paths)) return null;
+  const normalizedBaseUrl = typeof baseUrl === "string" ? baseUrl : ".";
+  const resolutionBase = posixNormalize(
+    `${posixDirname(configPath)}/${normalizedBaseUrl.replaceAll("\\", "/")}`,
+  );
+  for (const targets of Object.values(paths)) {
+    if (!Array.isArray(targets)) continue;
+    for (const target of targets) {
+      if (typeof target !== "string") continue;
+      const normalizedTarget = target.replaceAll("\\", "/");
+      if (
+        typeScriptConfigTargetCanReachHandoff(
+          configPath,
+          normalizedTarget,
+          resolutionBase,
+        )
+      )
+        return "TypeScript path aliases must not target the Cycle 2i handoff package";
+    }
+  }
+  return null;
+}
+
+function typeScriptConfigTargetCanReachHandoff(
+  configPath: string,
+  target: string,
+  resolutionBase = posixDirname(configPath),
+): boolean {
+  if (referencesFilingParserNormalizationHandoffPath(configPath, target))
+    return true;
+  const normalizedTarget = target.replaceAll("\\", "/");
+  const resolvedPattern =
+    normalizedTarget.startsWith("@") ||
+    normalizedTarget.startsWith("/") ||
+    /^[a-z]:\//iu.test(normalizedTarget) ||
+    normalizedTarget.startsWith("file:")
+      ? posixNormalize(normalizedTarget)
+      : posixNormalize(`${resolutionBase}/${normalizedTarget}`);
+  return boundaryTargetPatternCanReachHandoff(resolvedPattern);
+}
+
+function boundaryTargetPatternCanReachHandoff(pattern: string): boolean {
+  if (hasUrlPercentEscape(pattern)) return true;
+  const wildcardIndex = pattern.search(/[*?]/u);
+  if (wildcardIndex === -1) return false;
+  const prefix = pattern.slice(0, wildcardIndex).replace(/\/+$/u, "");
+  const absoluteHandoffPath = `${root.replaceAll("\\", "/")}/packages/filing-parser-normalization-handoff`;
+  return [
+    filingParserNormalizationHandoffModule,
+    "packages/filing-parser-normalization-handoff",
+    absoluteHandoffPath,
+    `file:///${absoluteHandoffPath}`,
+  ].some((candidate) => prefix.length === 0 || candidate.startsWith(prefix));
+}
+
+function isNodeSourceExecutable(path: string, content: string): boolean {
+  const extension = extname(path).toLowerCase();
+  if (executableSourceExtensions.has(extension)) return true;
+  if (extension !== "" || isDockerfileName(basename(path))) return false;
+  const firstLine = content.split(/\r?\n/u, 1)[0] ?? "";
+  return /^#!.*\b(?:bun|deno|node|ts-node|tsx)(?:\.exe)?\b/iu.test(firstLine);
+}
+
+function isCommandSurfaceExecutable(path: string, content: string): boolean {
+  const extension = extname(path).toLowerCase();
+  if (commandSurfaceExtensions.has(extension)) return true;
+  if (extension !== "" || isDockerfileName(basename(path))) return false;
+  const firstLine = content.split(/\r?\n/u, 1)[0] ?? "";
+  return /^#!.*\b(?:bash|cmd|dash|fish|ksh|powershell|pwsh|sh|zsh)(?:\.exe)?\b/iu.test(
+    firstLine,
+  );
+}
+
+function hasFilingParserNormalizationHandoffStaticTarget(
+  path: string,
+  content: string,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const metadataSurface =
+    filingParserNormalizationHandoffMetadataLiteralPaths.has(path);
+  const targetBearingIdentifiers = new Set<string>();
+  const staticStringIdentifiers = metadataSurface
+    ? collectBoundaryStaticStringIdentifierValues(sourceFile)
+    : new Map<string, string>();
+  for (const [name, value] of staticStringIdentifiers) {
+    if (staticStringCanReachHandoff(value)) targetBearingIdentifiers.add(name);
+  }
+  const executionSinkAliases = collectBoundaryExecutionSinkAliases(sourceFile);
+  if (metadataSurface) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const collect = (node: ts.Node): void => {
+        let assignedNames: readonly ts.Identifier[] = [];
+        let assignedValue: ts.Expression | undefined;
+        if (ts.isVariableDeclaration(node) && node.initializer !== undefined) {
+          assignedNames = boundaryBindingIdentifiers(node.name);
+          assignedValue = node.initializer;
+        } else if (
+          ts.isBinaryExpression(node) &&
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        ) {
+          assignedNames = boundaryAssignmentIdentifiers(node.left);
+          assignedValue = node.right;
+        }
+        if (
+          assignedValue !== undefined &&
+          boundaryNodeContainsHandoffTarget(
+            assignedValue,
+            targetBearingIdentifiers,
+            staticStringIdentifiers,
+          )
+        ) {
+          for (const name of assignedNames) {
+            if (targetBearingIdentifiers.has(name.text)) continue;
+            targetBearingIdentifiers.add(name.text);
+            changed = true;
+          }
+        }
+        ts.forEachChild(node, collect);
+      };
+      collect(sourceFile);
+    }
+  }
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    const executionArguments =
+      metadataSurface && (ts.isCallExpression(node) || ts.isNewExpression(node))
+        ? boundaryExecutionArguments(node, executionSinkAliases)
+        : null;
+    if (
+      metadataSurface &&
+      executionArguments?.some((argument) =>
+        boundaryNodeContainsHandoffTarget(
+          argument,
+          targetBearingIdentifiers,
+          staticStringIdentifiers,
+        ),
+      )
+    ) {
+      found = true;
+      return;
+    }
+    if (metadataSurface) {
+      ts.forEachChild(node, visit);
+      return;
+    }
+    let value: string | null = null;
+    if (ts.isStringLiteralLike(node)) value = node.text;
+    else if (ts.isBinaryExpression(node) || ts.isCallExpression(node))
+      value = staticStringValue(node);
+    if (value !== null && staticStringCanReachHandoff(value)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function collectBoundaryStaticStringIdentifierValues(
+  sourceFile: ts.SourceFile,
+): ReadonlyMap<string, string> {
+  const values = new Map<string, string>();
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer !== undefined
+    ) {
+      const value = boundaryStaticStringValue(node.initializer, values);
+      if (value !== null) values.set(node.name.text, value);
+    } else if (
+      ts.isBinaryExpression(node) &&
+      ts.isIdentifier(unwrapBoundaryExpression(node.left))
+    ) {
+      const name = unwrapBoundaryExpression(node.left) as ts.Identifier;
+      if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        const value = boundaryStaticStringValue(node.right, values);
+        if (value !== null) values.set(name.text, value);
+      } else if (node.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) {
+        const left = values.get(name.text);
+        const right = boundaryStaticStringValue(node.right, values);
+        if (left !== undefined && right !== null)
+          values.set(name.text, left + right);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return values;
+}
+
+function boundaryStaticStringValue(
+  expression: ts.Expression,
+  identifiers: ReadonlyMap<string, string>,
+): string | null {
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(value)) return identifiers.get(value.text) ?? null;
+  if (
+    ts.isBinaryExpression(value) &&
+    value.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    const left = boundaryStaticStringValue(value.left, identifiers);
+    const right = boundaryStaticStringValue(value.right, identifiers);
+    return left === null || right === null ? null : left + right;
+  }
+  return staticStringValue(value);
+}
+
+interface BoundaryExecutionSinkAliases {
+  readonly callableIdentifiers: ReadonlySet<string>;
+  readonly childProcessNamespaces: ReadonlySet<string>;
+  readonly tsxNamespaces: ReadonlySet<string>;
+}
+
+function collectBoundaryExecutionSinkAliases(
+  sourceFile: ts.SourceFile,
+): BoundaryExecutionSinkAliases {
+  const callableIdentifiers = new Set<string>();
+  const childProcessNamespaces = new Set<string>();
+  const tsxNamespaces = new Set<string>();
+
+  const addImportedBindings = (node: ts.Node): void => {
+    if (
+      ts.isImportDeclaration(node) &&
+      !node.importClause?.isTypeOnly &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    ) {
+      const moduleName = node.moduleSpecifier.text;
+      const importClause = node.importClause;
+      if (importClause !== undefined) {
+        const namespaceAliases = boundaryChildProcessModuleNames.has(moduleName)
+          ? childProcessNamespaces
+          : isBoundaryTsxApiModule(moduleName)
+            ? tsxNamespaces
+            : null;
+        const sinkNames = boundaryChildProcessModuleNames.has(moduleName)
+          ? boundaryChildProcessExecutionSinkNames
+          : isBoundaryTsxApiModule(moduleName)
+            ? boundaryTsxExecutionSinkNames
+            : null;
+        if (namespaceAliases !== null && importClause.name !== undefined)
+          namespaceAliases.add(importClause.name.text);
+        if (
+          namespaceAliases !== null &&
+          importClause.namedBindings !== undefined
+        ) {
+          if (ts.isNamespaceImport(importClause.namedBindings)) {
+            namespaceAliases.add(importClause.namedBindings.name.text);
+          } else if (sinkNames !== null) {
+            for (const element of importClause.namedBindings.elements) {
+              if (
+                !element.isTypeOnly &&
+                sinkNames.has((element.propertyName ?? element.name).text)
+              )
+                callableIdentifiers.add(element.name.text);
+            }
+          }
+        }
+      }
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      !node.isTypeOnly &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression !== undefined &&
+      ts.isStringLiteralLike(node.moduleReference.expression)
+    ) {
+      const moduleName = node.moduleReference.expression.text;
+      if (boundaryChildProcessModuleNames.has(moduleName))
+        childProcessNamespaces.add(node.name.text);
+      else if (isBoundaryTsxApiModule(moduleName))
+        tsxNamespaces.add(node.name.text);
+    }
+    ts.forEachChild(node, addImportedBindings);
+  };
+  addImportedBindings(sourceFile);
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const addAlias = (
+      name: ts.Identifier,
+      initializer: ts.Expression,
+    ): void => {
+      if (
+        (isBoundaryExecutionCallableExpression(initializer, {
+          callableIdentifiers,
+          childProcessNamespaces,
+          tsxNamespaces,
+        }) ||
+          (isBoundaryFunctionWithBody(initializer) &&
+            boundaryFunctionForwardsToExecutionSink(initializer, {
+              callableIdentifiers,
+              childProcessNamespaces,
+              tsxNamespaces,
+            }))) &&
+        !callableIdentifiers.has(name.text)
+      ) {
+        callableIdentifiers.add(name.text);
+        changed = true;
+      }
+      if (
+        isBoundaryExecutionModuleNamespaceExpression(
+          initializer,
+          boundaryChildProcessModuleNames,
+          childProcessNamespaces,
+        ) &&
+        !childProcessNamespaces.has(name.text)
+      ) {
+        childProcessNamespaces.add(name.text);
+        changed = true;
+      }
+      if (
+        isBoundaryExecutionModuleNamespaceExpression(
+          initializer,
+          null,
+          tsxNamespaces,
+        ) &&
+        !tsxNamespaces.has(name.text)
+      ) {
+        const target = boundaryRuntimeModuleSpecifier(initializer);
+        if (target === null || isBoundaryTsxApiModule(target)) {
+          tsxNamespaces.add(name.text);
+          changed = true;
+        }
+      }
+    };
+    const collectAliases = (node: ts.Node): void => {
+      let binding: ts.BindingName | ts.Expression | undefined;
+      let initializer: ts.Expression | undefined;
+      if (ts.isVariableDeclaration(node) && node.initializer !== undefined) {
+        binding = node.name;
+        initializer = node.initializer;
+      } else if (
+        ts.isBinaryExpression(node) &&
+        [
+          ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+          ts.SyntaxKind.BarBarEqualsToken,
+          ts.SyntaxKind.EqualsToken,
+          ts.SyntaxKind.QuestionQuestionEqualsToken,
+        ].includes(node.operatorToken.kind)
+      ) {
+        binding = node.left;
+        initializer = node.right;
+      }
+      if (binding !== undefined && initializer !== undefined) {
+        const names = boundaryAssignmentIdentifiers(binding);
+        if (names.length === 1 && ts.isIdentifier(binding))
+          addAlias(binding, initializer);
+        else
+          collectBoundaryExecutionBindingAliases(
+            binding,
+            initializer,
+            callableIdentifiers,
+            childProcessNamespaces,
+            tsxNamespaces,
+            () => {
+              changed = true;
+            },
+          );
+      }
+      if (
+        ts.isFunctionDeclaration(node) &&
+        node.name !== undefined &&
+        boundaryFunctionForwardsToExecutionSink(node, {
+          callableIdentifiers,
+          childProcessNamespaces,
+          tsxNamespaces,
+        }) &&
+        !callableIdentifiers.has(node.name.text)
+      ) {
+        callableIdentifiers.add(node.name.text);
+        changed = true;
+      }
+      ts.forEachChild(node, collectAliases);
+    };
+    collectAliases(sourceFile);
+  }
+
+  return { callableIdentifiers, childProcessNamespaces, tsxNamespaces };
+}
+
+function collectBoundaryExecutionBindingAliases(
+  binding: ts.BindingName | ts.Expression,
+  initializer: ts.Expression,
+  callableIdentifiers: Set<string>,
+  childProcessNamespaces: Set<string>,
+  tsxNamespaces: Set<string>,
+  changed: () => void,
+): void {
+  const childProcessNamespace = isBoundaryExecutionModuleNamespaceExpression(
+    initializer,
+    boundaryChildProcessModuleNames,
+    childProcessNamespaces,
+  );
+  const tsxNamespace = isBoundaryExecutionModuleNamespaceExpression(
+    initializer,
+    null,
+    tsxNamespaces,
+  );
+  const addCallable = (name: ts.Identifier, propertyName: string): void => {
+    if (
+      ((childProcessNamespace &&
+        boundaryChildProcessExecutionSinkNames.has(propertyName)) ||
+        (tsxNamespace && boundaryTsxExecutionSinkNames.has(propertyName))) &&
+      !callableIdentifiers.has(name.text)
+    ) {
+      callableIdentifiers.add(name.text);
+      changed();
+    }
+  };
+  if (ts.isObjectBindingPattern(binding)) {
+    for (const element of binding.elements) {
+      if (!ts.isIdentifier(element.name)) continue;
+      if (element.dotDotDotToken !== undefined) {
+        const namespaceSet = childProcessNamespace
+          ? childProcessNamespaces
+          : tsxNamespace
+            ? tsxNamespaces
+            : null;
+        if (namespaceSet !== null && !namespaceSet.has(element.name.text)) {
+          namespaceSet.add(element.name.text);
+          changed();
+        }
+        continue;
+      }
+      addCallable(
+        element.name,
+        boundaryBindingPropertyName(element) ?? element.name.text,
+      );
+    }
+  } else if (ts.isObjectLiteralExpression(binding)) {
+    for (const property of binding.properties) {
+      if (
+        ts.isPropertyAssignment(property) &&
+        ts.isIdentifier(unwrapBoundaryExpression(property.initializer))
+      )
+        addCallable(
+          unwrapBoundaryExpression(property.initializer) as ts.Identifier,
+          boundaryPropertyName(property.name) ?? "",
+        );
+      else if (ts.isShorthandPropertyAssignment(property))
+        addCallable(property.name, property.name.text);
+    }
+  }
+}
+
+function boundaryBindingIdentifiers(
+  binding: ts.BindingName,
+): readonly ts.Identifier[] {
+  if (ts.isIdentifier(binding)) return [binding];
+  return binding.elements.flatMap((element) =>
+    ts.isOmittedExpression(element)
+      ? []
+      : boundaryBindingIdentifiers(element.name),
+  );
+}
+
+function boundaryAssignmentIdentifiers(
+  binding: ts.BindingName | ts.Expression,
+): readonly ts.Identifier[] {
+  const value = ts.isExpression(binding)
+    ? unwrapBoundaryExpression(binding)
+    : binding;
+  if (ts.isIdentifier(value)) return [value];
+  if (ts.isObjectBindingPattern(value) || ts.isArrayBindingPattern(value))
+    return boundaryBindingIdentifiers(value);
+  if (
+    ts.isPropertyAccessExpression(value) ||
+    ts.isElementAccessExpression(value)
+  ) {
+    const receiver = unwrapBoundaryExpression(value.expression);
+    return ts.isIdentifier(receiver) ? [receiver] : [];
+  }
+  if (ts.isObjectLiteralExpression(value))
+    return value.properties.flatMap((property) => {
+      if (ts.isShorthandPropertyAssignment(property)) return [property.name];
+      if (!ts.isPropertyAssignment(property)) return [];
+      return boundaryAssignmentIdentifiers(property.initializer);
+    });
+  if (ts.isArrayLiteralExpression(value))
+    return value.elements.flatMap((element) =>
+      ts.isSpreadElement(element)
+        ? boundaryAssignmentIdentifiers(element.expression)
+        : boundaryAssignmentIdentifiers(element),
+    );
+  return [];
+}
+
+function boundaryBindingPropertyName(
+  element: ts.BindingElement,
+): string | null {
+  return element.propertyName === undefined
+    ? null
+    : boundaryPropertyName(element.propertyName);
+}
+
+function boundaryPropertyName(
+  name: ts.PropertyName | ts.BindingName,
+): string | null {
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteralLike(name) ||
+    ts.isNumericLiteral(name)
+  )
+    return name.text;
+  if (ts.isComputedPropertyName(name))
+    return staticStringValue(name.expression);
+  return null;
+}
+
+function isBoundaryTsxApiModule(moduleName: string): boolean {
+  return moduleName === "tsx" || moduleName.startsWith("tsx/");
+}
+
+function boundaryRuntimeModuleSpecifier(
+  expression: ts.Expression,
+): string | null {
+  const value = unwrapBoundaryExpression(expression);
+  if (!ts.isCallExpression(value)) return null;
+  const callee = unwrapBoundaryExpression(value.expression);
+  if (
+    value.expression.kind !== ts.SyntaxKind.ImportKeyword &&
+    !(ts.isIdentifier(callee) && callee.text === "require")
+  )
+    return null;
+  return staticStringValue(value.arguments[0]);
+}
+
+function isBoundaryExecutionModuleNamespaceExpression(
+  expression: ts.Expression,
+  moduleNames: ReadonlySet<string> | null,
+  namespaceAliases: ReadonlySet<string>,
+): boolean {
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(value)) return namespaceAliases.has(value.text);
+  const moduleName = boundaryRuntimeModuleSpecifier(value);
+  return (
+    moduleName !== null &&
+    (moduleNames === null
+      ? isBoundaryTsxApiModule(moduleName)
+      : moduleNames.has(moduleName))
+  );
+}
+
+function isBoundaryExecutionCallableExpression(
+  expression: ts.Expression,
+  aliases: BoundaryExecutionSinkAliases,
+): boolean {
+  const target = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(target))
+    return aliases.callableIdentifiers.has(target.text);
+  const childProcessSink = namedBoundaryPropertyAccess(
+    target,
+    boundaryChildProcessExecutionSinkNames,
+  );
+  if (
+    childProcessSink !== null &&
+    isBoundaryExecutionModuleNamespaceExpression(
+      childProcessSink.expression,
+      boundaryChildProcessModuleNames,
+      aliases.childProcessNamespaces,
+    )
+  )
+    return true;
+  const tsxSink = namedBoundaryPropertyAccess(
+    target,
+    boundaryTsxExecutionSinkNames,
+  );
+  if (
+    tsxSink !== null &&
+    isBoundaryExecutionModuleNamespaceExpression(
+      tsxSink.expression,
+      null,
+      aliases.tsxNamespaces,
+    )
+  )
+    return true;
+  if (ts.isCallExpression(target)) {
+    const bind = namedBoundaryPropertyAccess(
+      target.expression,
+      new Set(["bind"]),
+    );
+    return (
+      bind !== null &&
+      isBoundaryExecutionCallableExpression(bind.expression, aliases)
+    );
+  }
+  return false;
+}
+
+type BoundaryFunctionWithBody =
+  ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression;
+
+function isBoundaryFunctionWithBody(
+  node: ts.Node,
+): node is BoundaryFunctionWithBody {
+  return (
+    ts.isArrowFunction(node) ||
+    (ts.isFunctionDeclaration(node) && node.body !== undefined) ||
+    (ts.isFunctionExpression(node) && node.body !== undefined)
+  );
+}
+
+function boundaryFunctionForwardsToExecutionSink(
+  node: BoundaryFunctionWithBody,
+  aliases: BoundaryExecutionSinkAliases,
+): boolean {
+  if (node.body === undefined) return false;
+  const parameterNames = new Set(
+    node.parameters.flatMap((parameter) =>
+      boundaryBindingIdentifiers(parameter.name).map((name) => name.text),
+    ),
+  );
+  if (parameterNames.size === 0) return false;
+  let forwards = false;
+  const visit = (candidate: ts.Node): void => {
+    if (forwards) return;
+    if (ts.isCallExpression(candidate) || ts.isNewExpression(candidate)) {
+      const arguments_ = boundaryExecutionArguments(candidate, aliases);
+      if (
+        arguments_?.some((argument) =>
+          boundaryNodeReferencesIdentifier(argument, parameterNames),
+        )
+      ) {
+        forwards = true;
+        return;
+      }
+    }
+    ts.forEachChild(candidate, visit);
+  };
+  visit(node.body);
+  return forwards;
+}
+
+function boundaryNodeReferencesIdentifier(
+  node: ts.Node,
+  names: ReadonlySet<string>,
+): boolean {
+  let found = false;
+  const visit = (candidate: ts.Node): void => {
+    if (ts.isIdentifier(candidate) && names.has(candidate.text)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(candidate, visit);
+  };
+  visit(node);
+  return found;
+}
+
+function boundaryExecutionArguments(
+  node: ts.CallExpression | ts.NewExpression,
+  aliases: BoundaryExecutionSinkAliases,
+): readonly ts.Expression[] | null {
+  if (isBoundaryExecutionSink(node.expression, aliases)) {
+    const arguments_ = node.arguments ?? [];
+    const executable = staticStringValue(arguments_[0]);
+    return executable !== null && !boundaryRuntimeLauncherCommand(executable)
+      ? arguments_.slice(0, 1)
+      : arguments_;
+  }
+  if (!ts.isCallExpression(node)) return null;
+  const reflectApply = namedBoundaryPropertyAccess(
+    node.expression,
+    new Set(["apply"]),
+  );
+  if (
+    reflectApply === null ||
+    !ts.isIdentifier(unwrapBoundaryExpression(reflectApply.expression)) ||
+    unwrapBoundaryExpression(reflectApply.expression).getText() !== "Reflect"
+  )
+    return null;
+  const callable = node.arguments[0];
+  if (
+    callable === undefined ||
+    !isBoundaryExecutionCallableExpression(callable, aliases)
+  )
+    return null;
+  return node.arguments.slice(2);
+}
+
+function boundaryRuntimeLauncherCommand(command: string): boolean {
+  const executable = command
+    .replaceAll("\\", "/")
+    .split("/")
+    .at(-1)
+    ?.replace(/\.(?:bat|cmd|exe)$/iu, "");
+  return (
+    executable !== undefined &&
+    new Set([
+      "bash",
+      "bun",
+      "cmd",
+      "corepack",
+      "deno",
+      "node",
+      "npm",
+      "npx",
+      "pnpm",
+      "powershell",
+      "pwsh",
+      "python",
+      "python3",
+      "sh",
+      "ts-node",
+      "tsx",
+      "yarn",
+    ]).has(executable.toLowerCase())
+  );
+}
+
+function boundaryNodeContainsHandoffTarget(
+  node: ts.Node,
+  targetBearingIdentifiers: ReadonlySet<string>,
+  staticStringIdentifiers: ReadonlyMap<string, string> = new Map(),
+): boolean {
+  let found = false;
+  const visit = (candidate: ts.Node): void => {
+    if (
+      (ts.isIdentifier(candidate) &&
+        (targetBearingIdentifiers.has(candidate.text) ||
+          staticStringCanReachHandoff(
+            staticStringIdentifiers.get(candidate.text) ?? "",
+          ))) ||
+      ((ts.isStringLiteralLike(candidate) ||
+        ts.isBinaryExpression(candidate) ||
+        ts.isCallExpression(candidate)) &&
+        staticStringCanReachHandoff(
+          ts.isExpression(candidate)
+            ? (boundaryStaticStringValue(candidate, staticStringIdentifiers) ??
+                "")
+            : "",
+        ))
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(candidate, visit);
+  };
+  visit(node);
+  return found;
+}
+
+function isBoundaryExecutionSink(
+  expression: ts.Expression,
+  aliases: BoundaryExecutionSinkAliases,
+): boolean {
+  const target = unwrapBoundaryExpression(expression);
+  if (target.kind === ts.SyntaxKind.ImportKeyword) return true;
+  if (isBoundaryExecutionCallableExpression(target, aliases)) return true;
+  const indirectInvocation = namedBoundaryPropertyAccess(
+    target,
+    new Set(["apply", "call"]),
+  );
+  return (
+    indirectInvocation !== null &&
+    isBoundaryExecutionCallableExpression(
+      indirectInvocation.expression,
+      aliases,
+    )
+  );
+}
+
+function staticStringCanReachHandoff(value: string): boolean {
+  const candidates = [value];
+  if (hasUrlPercentEscape(value)) {
+    try {
+      candidates.push(decodeURIComponent(value));
+    } catch {
+      return true;
+    }
+  }
+  return candidates.some((candidate) => {
+    const normalized = candidate.replaceAll("\\", "/");
+    return (
+      normalized.includes(filingParserNormalizationHandoffModule) ||
+      normalized.includes("packages/filing-parser-normalization-handoff")
+    );
+  });
 }
 
 function hasUnresolvedRuntimeModuleLoad(content: string): boolean {
@@ -5541,11 +7377,15 @@ function hasUnresolvedRuntimeModuleLoad(content: string): boolean {
   );
   let found = false;
   const visit = (node: ts.Node): void => {
+    const callTarget = ts.isCallExpression(node)
+      ? unwrapBoundaryExpression(node.expression)
+      : null;
     if (
       ts.isCallExpression(node) &&
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) &&
-          node.expression.text === "require")) &&
+        (callTarget !== null &&
+          ts.isIdentifier(callTarget) &&
+          callTarget.text === "require")) &&
       staticStringValue(node.arguments[0]) === null
     ) {
       found = true;
@@ -5557,6 +7397,846 @@ function hasUnresolvedRuntimeModuleLoad(content: string): boolean {
   return found;
 }
 
+function hasForbiddenDynamicCodeCapability(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    "boundary-source.tsx",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const forbiddenIdentifiers = new Set(["AsyncFunction", "Function", "eval"]);
+  const forbiddenProperties = new Set([
+    "AsyncFunction",
+    "Function",
+    "binding",
+    "dlopen",
+    "eval",
+    "getBuiltinModule",
+    "mainModule",
+    "require",
+  ]);
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, new Set(["constructor"])) !== null
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isObjectBindingPattern(node.name) &&
+      node.name.elements.some((element) => {
+        const propertyName = element.propertyName ?? element.name;
+        return (
+          (ts.isIdentifier(propertyName) ||
+            ts.isStringLiteralLike(propertyName)) &&
+          forbiddenProperties.has(propertyName.text)
+        );
+      })
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ts.isIdentifier(node) &&
+      forbiddenIdentifiers.has(node.text) &&
+      !isBoundaryIdentifierDeclarationOrPropertyName(node)
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, forbiddenProperties) !== null
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ((ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly) ||
+        (ts.isExportDeclaration(node) && !node.isTypeOnly)) &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      ["node:vm", "vm"].includes(node.moduleSpecifier.text)
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ts.isImportEqualsDeclaration(node) &&
+      !node.isTypeOnly &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression !== undefined &&
+      ts.isStringLiteralLike(node.moduleReference.expression) &&
+      ["node:vm", "vm"].includes(node.moduleReference.expression.text)
+    ) {
+      found = true;
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = unwrapBoundaryExpression(node.expression);
+      const target = staticStringValue(node.arguments[0]);
+      if (
+        ["node:vm", "vm"].includes(target ?? "") &&
+        (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+          (ts.isIdentifier(callee) && callee.text === "require"))
+      ) {
+        found = true;
+        return;
+      }
+      const reflectGet = namedBoundaryPropertyAccess(callee, new Set(["get"]));
+      if (
+        reflectGet !== null &&
+        ts.isIdentifier(unwrapBoundaryExpression(reflectGet.expression)) &&
+        unwrapBoundaryExpression(reflectGet.expression).getText() ===
+          "Reflect" &&
+        forbiddenProperties.has(staticStringValue(node.arguments[1]) ?? "")
+      ) {
+        found = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function hasForbiddenNodeModuleCapability(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    "boundary-source.tsx",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  let found = false;
+  const capabilitySources = new Set(["globalThis", "module", "process"]);
+  const reflectionReaders = new Set<string>();
+  let aliasesChanged = true;
+  while (aliasesChanged) {
+    aliasesChanged = false;
+    const collectAliases = (node: ts.Node): void => {
+      let name: ts.Identifier | undefined;
+      let initializer: ts.Expression | undefined;
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+        name = node.name;
+        initializer = node.initializer;
+      } else if (
+        ts.isParameter(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer !== undefined
+      ) {
+        name = node.name;
+        initializer = node.initializer;
+      } else if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        ts.isIdentifier(node.left)
+      ) {
+        name = node.left;
+        initializer = node.right;
+      }
+      if (name !== undefined && initializer !== undefined) {
+        if (
+          isBoundaryCapabilitySource(initializer, capabilitySources) &&
+          !capabilitySources.has(name.text)
+        ) {
+          capabilitySources.add(name.text);
+          aliasesChanged = true;
+        }
+        const value = unwrapBoundaryExpression(initializer);
+        if (
+          (ts.isPropertyAccessExpression(value) ||
+            ts.isElementAccessExpression(value)) &&
+          ts.isIdentifier(unwrapBoundaryExpression(value.expression)) &&
+          ["Object", "Reflect"].includes(
+            unwrapBoundaryExpression(value.expression).getText(),
+          ) &&
+          !reflectionReaders.has(name.text)
+        ) {
+          reflectionReaders.add(name.text);
+          aliasesChanged = true;
+        }
+      }
+      ts.forEachChild(node, collectAliases);
+    };
+    collectAliases(sourceFile);
+  }
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isPropertyAssignment(node) &&
+        isBoundaryCapabilitySource(node.initializer, capabilitySources)) ||
+      (ts.isShorthandPropertyAssignment(node) &&
+        capabilitySources.has(node.name.text)) ||
+      (ts.isArrayLiteralExpression(node) &&
+        node.elements.some(
+          (element) =>
+            !ts.isSpreadElement(element) &&
+            isBoundaryCapabilitySource(element, capabilitySources),
+        )) ||
+      (ts.isReturnStatement(node) &&
+        isBoundaryCapabilitySource(node.expression, capabilitySources)) ||
+      (ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        !ts.isIdentifier(node.left) &&
+        isBoundaryCapabilitySource(node.right, capabilitySources)) ||
+      ((ts.isCallExpression(node) || ts.isNewExpression(node)) &&
+        node.arguments?.some((argument) =>
+          isBoundaryCapabilitySource(argument, capabilitySources),
+        ))
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ts.isImportDeclaration(node) &&
+      !node.importClause?.isTypeOnly &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      ["module", "node:module"].includes(node.moduleSpecifier.text)
+    ) {
+      const importClause = node.importClause;
+      if (
+        importClause === undefined ||
+        importClause.name !== undefined ||
+        importClause.namedBindings === undefined ||
+        ts.isNamespaceImport(importClause.namedBindings) ||
+        importClause.namedBindings.elements.some(
+          (element) =>
+            !element.isTypeOnly &&
+            (element.propertyName ?? element.name).text !== "createRequire",
+        )
+      ) {
+        found = true;
+        return;
+      }
+    }
+    if (
+      ts.isExportDeclaration(node) &&
+      !node.isTypeOnly &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      ["module", "node:module"].includes(node.moduleSpecifier.text)
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ts.isImportEqualsDeclaration(node) &&
+      !node.isTypeOnly &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression !== undefined &&
+      ts.isStringLiteralLike(node.moduleReference.expression) &&
+      ["module", "node:module"].includes(node.moduleReference.expression.text)
+    ) {
+      found = true;
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = unwrapBoundaryExpression(node.expression);
+      const target = staticStringValue(node.arguments[0]);
+      const reflection =
+        ts.isPropertyAccessExpression(callee) ||
+        ts.isElementAccessExpression(callee)
+          ? callee
+          : null;
+      if (
+        ((reflection !== null &&
+          ts.isIdentifier(unwrapBoundaryExpression(reflection.expression)) &&
+          ["Object", "Reflect"].includes(
+            unwrapBoundaryExpression(reflection.expression).getText(),
+          )) ||
+          (ts.isIdentifier(callee) && reflectionReaders.has(callee.text))) &&
+        isBoundaryCapabilitySource(node.arguments[0], capabilitySources)
+      ) {
+        found = true;
+        return;
+      }
+      const getBuiltinModule = namedBoundaryPropertyAccess(
+        callee,
+        new Set(["getBuiltinModule"]),
+      );
+      if (getBuiltinModule !== null) {
+        found = true;
+        return;
+      }
+      if (
+        ["module", "node:module"].includes(target ?? "") &&
+        (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+          (ts.isIdentifier(callee) && callee.text === "require"))
+      ) {
+        found = true;
+        return;
+      }
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      isBoundaryCapabilitySource(node.expression, capabilitySources) &&
+      ((ts.isElementAccessExpression(node) &&
+        staticStringValue(node.argumentExpression) === null) ||
+        unwrapBoundaryExpression(node.expression).getText() === "module" ||
+        (unwrapBoundaryExpression(node.expression).getText() === "process" &&
+          namedBoundaryPropertyAccess(node, new Set(["mainModule"])) !==
+            null) ||
+        (unwrapBoundaryExpression(node.expression).getText() === "globalThis" &&
+          namedBoundaryPropertyAccess(node, new Set(["module", "process"])) !==
+            null))
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function isBoundaryCapabilitySource(
+  expression: ts.Expression | undefined,
+  capabilitySources: ReadonlySet<string>,
+): boolean {
+  if (expression === undefined) return false;
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(value)) return capabilitySources.has(value.text);
+  return (
+    (ts.isPropertyAccessExpression(value) ||
+      ts.isElementAccessExpression(value)) &&
+    ts.isIdentifier(unwrapBoundaryExpression(value.expression)) &&
+    unwrapBoundaryExpression(value.expression).getText() === "globalThis" &&
+    namedBoundaryPropertyAccess(value, new Set(["module", "process"])) !== null
+  );
+}
+
+function hasIndirectRuntimeModuleLoad(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    "boundary-source.tsx",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const createRequireFactories = new Set<string>();
+  const moduleNamespaces = new Set(["module"]);
+  const runtimeLoaders = new Set(["require"]);
+
+  const collectImports = (node: ts.Node): void => {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.importClause !== undefined &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      ["module", "node:module"].includes(node.moduleSpecifier.text)
+    ) {
+      const { importClause } = node;
+      if (importClause.isTypeOnly) {
+        ts.forEachChild(node, collectImports);
+        return;
+      }
+      if (importClause.name !== undefined)
+        moduleNamespaces.add(importClause.name.text);
+      if (importClause.namedBindings !== undefined) {
+        if (ts.isNamespaceImport(importClause.namedBindings)) {
+          moduleNamespaces.add(importClause.namedBindings.name.text);
+        } else {
+          for (const element of importClause.namedBindings.elements) {
+            const importedName = (element.propertyName ?? element.name).text;
+            if (!element.isTypeOnly && importedName === "createRequire")
+              createRequireFactories.add(element.name.text);
+          }
+        }
+      }
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      !node.isTypeOnly &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression !== undefined &&
+      ts.isStringLiteralLike(node.moduleReference.expression) &&
+      ["module", "node:module"].includes(node.moduleReference.expression.text)
+    ) {
+      moduleNamespaces.add(node.name.text);
+    }
+    ts.forEachChild(node, collectImports);
+  };
+  collectImports(sourceFile);
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const add = (set: Set<string>, value: string): void => {
+      if (!set.has(value)) {
+        set.add(value);
+        changed = true;
+      }
+    };
+    const classifyBinding = (
+      name: ts.BindingName,
+      initializer: ts.Expression | undefined,
+    ): void => {
+      if (initializer === undefined) return;
+      if (ts.isIdentifier(name)) {
+        if (isNodeModuleNamespaceExpression(initializer, moduleNamespaces))
+          add(moduleNamespaces, name.text);
+        if (
+          isCreateRequireFactoryExpression(
+            initializer,
+            createRequireFactories,
+            moduleNamespaces,
+          )
+        )
+          add(createRequireFactories, name.text);
+        if (
+          isRuntimeLoaderExpression(
+            initializer,
+            runtimeLoaders,
+            createRequireFactories,
+            moduleNamespaces,
+          )
+        )
+          add(runtimeLoaders, name.text);
+        return;
+      }
+      if (
+        !ts.isObjectBindingPattern(name) ||
+        !isNodeModuleNamespaceExpression(initializer, moduleNamespaces)
+      )
+        return;
+      for (const element of name.elements) {
+        if (!ts.isIdentifier(element.name)) continue;
+        const propertyName = element.propertyName ?? element.name;
+        const exportedName =
+          ts.isIdentifier(propertyName) || ts.isStringLiteralLike(propertyName)
+            ? propertyName.text
+            : null;
+        if (exportedName === "createRequire")
+          add(createRequireFactories, element.name.text);
+        if (exportedName === "require") add(runtimeLoaders, element.name.text);
+      }
+    };
+    const collectAliases = (node: ts.Node): void => {
+      if (ts.isVariableDeclaration(node)) {
+        classifyBinding(node.name, node.initializer);
+      } else if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        ts.isIdentifier(node.left)
+      ) {
+        classifyBinding(node.left, node.right);
+      }
+      ts.forEachChild(node, collectAliases);
+    };
+    collectAliases(sourceFile);
+  }
+
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      (isIndirectRuntimeLoaderInvocation(
+        node,
+        runtimeLoaders,
+        createRequireFactories,
+        moduleNamespaces,
+      ) ||
+        isRuntimeModuleLoaderEscape(
+          node,
+          runtimeLoaders,
+          createRequireFactories,
+          moduleNamespaces,
+        ))
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      !ts.isCallExpression(node) &&
+      isRuntimeModuleLoaderEscape(
+        node,
+        runtimeLoaders,
+        createRequireFactories,
+        moduleNamespaces,
+      )
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
+function isRuntimeModuleLoaderEscape(
+  node: ts.Node,
+  runtimeLoaders: ReadonlySet<string>,
+  createRequireFactories: ReadonlySet<string>,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  if (ts.isExportDeclaration(node) && !node.isTypeOnly) {
+    const sourceModule =
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+        ? node.moduleSpecifier.text
+        : null;
+    if (["module", "node:module"].includes(sourceModule ?? "")) {
+      if (
+        node.exportClause === undefined ||
+        ts.isNamespaceExport(node.exportClause)
+      )
+        return true;
+      if (
+        node.exportClause.elements.some(
+          (element) =>
+            !element.isTypeOnly &&
+            ["createRequire", "default"].includes(
+              (element.propertyName ?? element.name).text,
+            ),
+        )
+      )
+        return true;
+    }
+    if (
+      node.exportClause !== undefined &&
+      ts.isNamedExports(node.exportClause) &&
+      node.exportClause.elements.some((element) => {
+        if (element.isTypeOnly) return false;
+        const localName = (element.propertyName ?? element.name).text;
+        return (
+          runtimeLoaders.has(localName) ||
+          createRequireFactories.has(localName) ||
+          moduleNamespaces.has(localName)
+        );
+      })
+    )
+      return true;
+  }
+  if (ts.isExportAssignment(node))
+    return (
+      isRuntimeLoaderExpression(
+        node.expression,
+        runtimeLoaders,
+        createRequireFactories,
+        moduleNamespaces,
+      ) ||
+      isCreateRequireFactoryExpression(
+        node.expression,
+        createRequireFactories,
+        moduleNamespaces,
+      ) ||
+      isNodeModuleNamespaceExpression(node.expression, moduleNamespaces)
+    );
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isObjectBindingPattern(node.name) &&
+    node.initializer !== undefined &&
+    isNodeModuleNamespaceExpression(node.initializer, moduleNamespaces)
+  ) {
+    for (const element of node.name.elements) {
+      const propertyName = element.propertyName ?? element.name;
+      if (
+        (ts.isIdentifier(propertyName) ||
+          ts.isStringLiteralLike(propertyName)) &&
+        ["createRequire", "require"].includes(propertyName.text)
+      )
+        return true;
+    }
+  }
+  if (ts.isIdentifier(node)) {
+    if (isBoundaryIdentifierDeclarationOrPropertyName(node)) return false;
+    if (createRequireFactories.has(node.text))
+      return !isImmediatelyInvokedBoundaryExpression(node);
+    if (runtimeLoaders.has(node.text))
+      return (
+        !isImmediatelyInvokedBoundaryExpression(node) &&
+        !isImmediatelyInvokedBoundaryPropertyReceiver(
+          node,
+          new Set(["resolve"]),
+        )
+      );
+    if (node.text !== "module" && moduleNamespaces.has(node.text))
+      return !isImmediatelyInvokedBoundaryPropertyReceiver(
+        node,
+        new Set(["createRequire"]),
+      );
+    return false;
+  }
+  if (
+    (ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)) &&
+    isModuleRequireExpression(node, moduleNamespaces)
+  )
+    return (
+      !isImmediatelyInvokedBoundaryExpression(node) &&
+      !isImmediatelyInvokedBoundaryPropertyReceiver(node, new Set(["resolve"]))
+    );
+  if (
+    (ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)) &&
+    isCreateRequireFactoryExpression(
+      node,
+      createRequireFactories,
+      moduleNamespaces,
+    )
+  )
+    return !isImmediatelyInvokedBoundaryExpression(node);
+  if (
+    ts.isCallExpression(node) &&
+    isCreateRequireInvocation(node, createRequireFactories, moduleNamespaces)
+  )
+    return (
+      !isImmediatelyInvokedBoundaryExpression(node) &&
+      !isImmediatelyInvokedBoundaryPropertyReceiver(node, new Set(["resolve"]))
+    );
+  if (
+    ts.isCallExpression(node) &&
+    isNodeModuleNamespaceExpression(node, moduleNamespaces)
+  )
+    return !isImmediatelyInvokedBoundaryPropertyReceiver(
+      node,
+      new Set(["createRequire"]),
+    );
+  return false;
+}
+
+function isBoundaryIdentifierDeclarationOrPropertyName(
+  node: ts.Identifier,
+): boolean {
+  const { parent } = node;
+  if (ts.isShorthandPropertyAssignment(parent)) return false;
+  if (
+    ts.isImportSpecifier(parent) &&
+    (parent.name === node || parent.propertyName === node)
+  )
+    return true;
+  if (ts.isExportSpecifier(parent)) return true;
+  return (parent as ts.NamedDeclaration).name === node;
+}
+
+function isImmediatelyInvokedBoundaryExpression(
+  expression: ts.Expression,
+): boolean {
+  const outerExpression = outermostBoundaryExpression(expression);
+  return (
+    ts.isCallExpression(outerExpression.parent) &&
+    outerExpression.parent.expression === outerExpression
+  );
+}
+
+function isImmediatelyInvokedBoundaryPropertyReceiver(
+  expression: ts.Expression,
+  names: ReadonlySet<string>,
+): boolean {
+  const outerExpression = outermostBoundaryExpression(expression);
+  const propertyAccess =
+    (ts.isPropertyAccessExpression(outerExpression.parent) ||
+      ts.isElementAccessExpression(outerExpression.parent)) &&
+    outerExpression.parent.expression === outerExpression
+      ? namedBoundaryPropertyAccess(outerExpression.parent, names)
+      : null;
+  return (
+    propertyAccess !== null &&
+    isImmediatelyInvokedBoundaryExpression(propertyAccess)
+  );
+}
+
+function outermostBoundaryExpression(expression: ts.Expression): ts.Expression {
+  let value = expression;
+  while (
+    (ts.isParenthesizedExpression(value.parent) ||
+      ts.isAsExpression(value.parent) ||
+      ts.isTypeAssertionExpression(value.parent) ||
+      ts.isNonNullExpression(value.parent) ||
+      ts.isSatisfiesExpression(value.parent) ||
+      ts.isAwaitExpression(value.parent)) &&
+    value.parent.expression === value
+  )
+    value = value.parent;
+  return value;
+}
+
+function isIndirectRuntimeLoaderInvocation(
+  node: ts.CallExpression,
+  runtimeLoaders: ReadonlySet<string>,
+  createRequireFactories: ReadonlySet<string>,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  const callee = unwrapBoundaryExpression(node.expression);
+  if (ts.isIdentifier(callee))
+    return callee.text !== "require" && runtimeLoaders.has(callee.text);
+  if (isModuleRequireExpression(callee, moduleNamespaces)) return true;
+  if (
+    ts.isCallExpression(callee) &&
+    isCreateRequireInvocation(callee, createRequireFactories, moduleNamespaces)
+  )
+    return true;
+  if (
+    namedBoundaryPropertyAccess(callee, new Set(["apply", "call"])) !== null &&
+    isRuntimeLoaderExpression(
+      namedBoundaryPropertyAccess(callee, new Set(["apply", "call"]))
+        ?.expression,
+      runtimeLoaders,
+      createRequireFactories,
+      moduleNamespaces,
+    )
+  )
+    return true;
+  const reflectApply = namedBoundaryPropertyAccess(callee, new Set(["apply"]));
+  return (
+    reflectApply !== null &&
+    ts.isIdentifier(unwrapBoundaryExpression(reflectApply.expression)) &&
+    unwrapBoundaryExpression(reflectApply.expression).getText() === "Reflect" &&
+    isRuntimeLoaderExpression(
+      node.arguments[0],
+      runtimeLoaders,
+      createRequireFactories,
+      moduleNamespaces,
+    )
+  );
+}
+
+function isRuntimeLoaderExpression(
+  expression: ts.Expression | undefined,
+  runtimeLoaders: ReadonlySet<string>,
+  createRequireFactories: ReadonlySet<string>,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  if (expression === undefined) return false;
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(value)) return runtimeLoaders.has(value.text);
+  if (isModuleRequireExpression(value, moduleNamespaces)) return true;
+  if (
+    ts.isCallExpression(value) &&
+    isCreateRequireInvocation(value, createRequireFactories, moduleNamespaces)
+  )
+    return true;
+  const bind =
+    ts.isCallExpression(value) &&
+    namedBoundaryPropertyAccess(value.expression, new Set(["bind"]));
+  return (
+    bind !== false &&
+    bind !== null &&
+    isRuntimeLoaderExpression(
+      bind.expression,
+      runtimeLoaders,
+      createRequireFactories,
+      moduleNamespaces,
+    )
+  );
+}
+
+function isCreateRequireInvocation(
+  expression: ts.CallExpression,
+  createRequireFactories: ReadonlySet<string>,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  return isCreateRequireFactoryExpression(
+    expression.expression,
+    createRequireFactories,
+    moduleNamespaces,
+  );
+}
+
+function isCreateRequireFactoryExpression(
+  expression: ts.Expression,
+  createRequireFactories: ReadonlySet<string>,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(value)) return createRequireFactories.has(value.text);
+  const createRequire = namedBoundaryPropertyAccess(
+    value,
+    new Set(["createRequire"]),
+  );
+  return (
+    createRequire !== null &&
+    isNodeModuleNamespaceExpression(createRequire.expression, moduleNamespaces)
+  );
+}
+
+function isModuleRequireExpression(
+  expression: ts.Expression,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  const value = unwrapBoundaryExpression(expression);
+  const moduleRequire = namedBoundaryPropertyAccess(
+    value,
+    new Set(["require"]),
+  );
+  return (
+    moduleRequire !== null &&
+    isNodeModuleNamespaceExpression(moduleRequire.expression, moduleNamespaces)
+  );
+}
+
+function isNodeModuleNamespaceExpression(
+  expression: ts.Expression,
+  moduleNamespaces: ReadonlySet<string>,
+): boolean {
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isIdentifier(value)) return moduleNamespaces.has(value.text);
+  const getBuiltinModule =
+    ts.isCallExpression(value) &&
+    namedBoundaryPropertyAccess(
+      value.expression,
+      new Set(["getBuiltinModule"]),
+    );
+  return (
+    ts.isCallExpression(value) &&
+    ((value.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      ["module", "node:module"].includes(
+        staticStringValue(value.arguments[0]) ?? "",
+      )) ||
+      (ts.isIdentifier(value.expression) &&
+        value.expression.text === "require" &&
+        ["module", "node:module"].includes(
+          staticStringValue(value.arguments[0]) ?? "",
+        )) ||
+      (getBuiltinModule !== false &&
+        getBuiltinModule !== null &&
+        ts.isIdentifier(
+          unwrapBoundaryExpression(getBuiltinModule.expression),
+        ) &&
+        unwrapBoundaryExpression(getBuiltinModule.expression).getText() ===
+          "process" &&
+        ["module", "node:module"].includes(
+          staticStringValue(value.arguments[0]) ?? "",
+        )))
+  );
+}
+
+function namedBoundaryPropertyAccess(
+  expression: ts.Expression,
+  names: ReadonlySet<string>,
+): ts.PropertyAccessExpression | ts.ElementAccessExpression | null {
+  const value = unwrapBoundaryExpression(expression);
+  if (ts.isPropertyAccessExpression(value))
+    return names.has(value.name.text) ? value : null;
+  if (
+    ts.isElementAccessExpression(value) &&
+    names.has(staticStringValue(value.argumentExpression) ?? "")
+  )
+    return value;
+  return null;
+}
+
+function unwrapBoundaryExpression(expression: ts.Expression): ts.Expression {
+  let value = expression;
+  while (
+    ts.isParenthesizedExpression(value) ||
+    ts.isAsExpression(value) ||
+    ts.isTypeAssertionExpression(value) ||
+    ts.isNonNullExpression(value) ||
+    ts.isSatisfiesExpression(value) ||
+    ts.isAwaitExpression(value)
+  )
+    value = value.expression;
+  return value;
+}
+
 function collectModuleSpecifiers(content: string): string[] {
   const sourceFile = ts.createSourceFile(
     "boundary-source.tsx",
@@ -5565,9 +8245,18 @@ function collectModuleSpecifiers(content: string): string[] {
     true,
     ts.ScriptKind.TSX,
   );
-  const specifiers: string[] = [];
+  const specifiers: string[] = [
+    ...sourceFile.referencedFiles.map((reference) => reference.fileName),
+    ...sourceFile.typeReferenceDirectives.map(
+      (reference) => reference.fileName,
+    ),
+    ...sourceFile.amdDependencies.map((dependency) => dependency.path),
+  ];
 
   const visit = (node: ts.Node): void => {
+    const callTarget = ts.isCallExpression(node)
+      ? unwrapBoundaryExpression(node.expression)
+      : null;
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
       node.moduleSpecifier &&
@@ -5590,8 +8279,9 @@ function collectModuleSpecifiers(content: string): string[] {
     } else if (
       ts.isCallExpression(node) &&
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) &&
-          node.expression.text === "require"))
+        (callTarget !== null &&
+          ts.isIdentifier(callTarget) &&
+          callTarget.text === "require"))
     ) {
       const specifier = staticStringValue(node.arguments[0]);
       if (specifier !== null) specifiers.push(specifier);
@@ -5616,7 +8306,68 @@ function staticStringValue(node: ts.Expression | undefined): string | null {
     const right = staticStringValue(node.right);
     return left === null || right === null ? null : left + right;
   }
+  if (
+    ts.isCallExpression(node) &&
+    node.arguments.length <= 1 &&
+    namedBoundaryPropertyAccess(node.expression, new Set(["join"])) !== null
+  ) {
+    const joinAccess = namedBoundaryPropertyAccess(
+      node.expression,
+      new Set(["join"]),
+    );
+    const receiver =
+      joinAccess === null
+        ? null
+        : unwrapBoundaryExpression(joinAccess.expression);
+    const separator =
+      node.arguments.length === 0 ? "," : staticStringValue(node.arguments[0]);
+    if (
+      receiver !== null &&
+      ts.isArrayLiteralExpression(receiver) &&
+      separator !== null
+    ) {
+      const values = staticArrayJoinValues(receiver);
+      if (values !== null) return values.join(separator);
+    }
+  }
   return null;
+}
+
+function staticArrayJoinValues(
+  array: ts.ArrayLiteralExpression,
+  depth = 0,
+): string[] | null {
+  if (depth > 16) return null;
+  const values: string[] = [];
+  for (const element of array.elements) {
+    if (values.length >= 64) return null;
+    if (ts.isOmittedExpression(element)) {
+      values.push("");
+      continue;
+    }
+    if (ts.isSpreadElement(element)) {
+      const spread = unwrapBoundaryExpression(element.expression);
+      if (!ts.isArrayLiteralExpression(spread)) return null;
+      const spreadValues = staticArrayJoinValues(spread, depth + 1);
+      if (spreadValues === null || values.length + spreadValues.length > 64)
+        return null;
+      values.push(...spreadValues);
+      continue;
+    }
+    const value = unwrapBoundaryExpression(element);
+    if (
+      (ts.isIdentifier(value) && value.text === "undefined") ||
+      value.kind === ts.SyntaxKind.NullKeyword ||
+      ts.isVoidExpression(value)
+    ) {
+      values.push("");
+      continue;
+    }
+    const staticValue = staticStringValue(value);
+    if (staticValue === null) return null;
+    values.push(staticValue);
+  }
+  return values;
 }
 
 function recordKeys(value: unknown): string[] {
@@ -5631,11 +8382,1113 @@ function isDockerfileName(fileName: string): boolean {
   return /^dockerfile(?:[.-].+)?$/i.test(fileName);
 }
 
+interface ExplicitTypeScriptConfigCommandContext {
+  command: string;
+  label: string;
+  modelRuntimeDirectoryChanges: boolean;
+  resolutionBase: string;
+  selectorPreamble: string;
+}
+
+interface GitHubWorkflowYamlEntry {
+  indent: number;
+  key: string;
+  keyIndent: number;
+  lineIndex: number;
+  sequence: boolean;
+  value: string;
+}
+
+function environmentFileResolutionContextKey(
+  canonicalEnvironmentPath: string,
+  resolutionBase: string,
+): string {
+  const canonicalizedEnvironmentPath = resolvePath(canonicalEnvironmentPath);
+  const canonicalizedResolutionBase = resolvePath(resolutionBase);
+  const key = `${canonicalizedEnvironmentPath}\0${canonicalizedResolutionBase}`;
+  return process.platform === "win32" ? key.toLowerCase() : key;
+}
+
+function isGitHubWorkflowPath(path: string): boolean {
+  const relativePath = relative(root, path).replaceAll("\\", "/");
+  return (
+    relativePath.startsWith(".github/workflows/") &&
+    [".yaml", ".yml"].includes(extname(relativePath).toLowerCase())
+  );
+}
+
+interface RuntimeCommandSegment {
+  command: string;
+  separatorAfter: "&" | "&&" | ";" | "newline" | "pipe" | "||" | null;
+}
+
+interface RuntimeDirectoryChange {
+  directory: string;
+  supportsSingleAmpersand: boolean;
+}
+
+function explicitTypeScriptConfigCommandSelection(
+  context: ExplicitTypeScriptConfigCommandContext,
+): ReturnType<typeof explicitTypeScriptConfigSelection> {
+  return explicitTypeScriptConfigSelection(
+    [context.selectorPreamble, context.command]
+      .filter((value) => value.length > 0)
+      .join("\n"),
+  );
+}
+
+function runtimeDirectoryCommandContexts(
+  context: ExplicitTypeScriptConfigCommandContext,
+): {
+  contexts: ExplicitTypeScriptConfigCommandContext[];
+  invalid: boolean;
+} {
+  if (!context.modelRuntimeDirectoryChanges)
+    return { contexts: [context], invalid: false };
+  const completeSelection = explicitTypeScriptConfigCommandSelection(context);
+  const hasSelectors =
+    completeSelection.invalid ||
+    completeSelection.specifiers.length > 0 ||
+    completeSelection.environmentFiles.length > 0;
+  const segments = splitRuntimeCommandSegments(context.command);
+  const contexts: ExplicitTypeScriptConfigCommandContext[] = [];
+  let resolutionBase = context.resolutionBase;
+  for (const segment of segments) {
+    const directoryChange = runtimeDirectoryChange(segment.command);
+    if (directoryChange !== null) {
+      if (
+        segment.separatorAfter === "pipe" ||
+        segment.separatorAfter === "||" ||
+        (segment.separatorAfter === "&" &&
+          !directoryChange.supportsSingleAmpersand)
+      )
+        return { contexts: [], invalid: hasSelectors };
+      const nextResolutionBase = runtimeDirectoryResolutionBase(
+        resolutionBase,
+        directoryChange.directory,
+      );
+      if (nextResolutionBase === null)
+        return { contexts: [], invalid: hasSelectors };
+      resolutionBase = nextResolutionBase;
+      continue;
+    }
+    if (hasRuntimeDirectoryChangeIntent(segment.command))
+      return { contexts: [], invalid: hasSelectors };
+    const selectedContext: ExplicitTypeScriptConfigCommandContext = {
+      command: segment.command,
+      label: context.label,
+      modelRuntimeDirectoryChanges: false,
+      resolutionBase,
+      selectorPreamble: context.selectorPreamble,
+    };
+    const selection = explicitTypeScriptConfigCommandSelection(selectedContext);
+    if (
+      selection.invalid ||
+      selection.specifiers.length > 0 ||
+      selection.environmentFiles.length > 0
+    )
+      contexts.push(selectedContext);
+  }
+  return { contexts, invalid: false };
+}
+
+function splitRuntimeCommandSegments(command: string): RuntimeCommandSegment[] {
+  const segments: RuntimeCommandSegment[] = [];
+  let current = "";
+  let quote: "'" | '"' | null = null;
+  let escaped = false;
+  const push = (
+    separatorAfter: RuntimeCommandSegment["separatorAfter"],
+  ): void => {
+    if (current.trim().length > 0)
+      segments.push({ command: current.trim(), separatorAfter });
+    current = "";
+  };
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index] ?? "";
+    if (escaped) {
+      current += character;
+      escaped = false;
+      continue;
+    }
+    if (quote !== null) {
+      current += character;
+      if (character === "\\" || (quote === '"' && character === "`")) {
+        escaped = true;
+      } else if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      current += character;
+      continue;
+    }
+    const nextCharacter = command[index + 1] ?? "";
+    if (character === "&") {
+      if (nextCharacter === "&") index += 1;
+      push(nextCharacter === "&" ? "&&" : "&");
+      continue;
+    }
+    if (character === "|") {
+      if (nextCharacter === "|") index += 1;
+      push(nextCharacter === "|" ? "||" : "pipe");
+      continue;
+    }
+    if (character === ";") {
+      push(";");
+      continue;
+    }
+    if (character === "\r" || character === "\n") {
+      if (character === "\r" && nextCharacter === "\n") index += 1;
+      push("newline");
+      continue;
+    }
+    current += character;
+  }
+  push(null);
+  return segments;
+}
+
+function runtimeDirectoryChange(
+  command: string,
+): RuntimeDirectoryChange | null {
+  const value = command.trim().replace(/^@/u, "");
+  const cmdMatch = /^(cd|chdir)\s+(?:(\/d)\s+)?(.+)$/iu.exec(value);
+  if (cmdMatch !== null) {
+    const directory = literalRuntimeDirectory(cmdMatch[3] ?? "");
+    if (directory === null) return null;
+    return {
+      directory,
+      supportsSingleAmpersand:
+        cmdMatch[1]?.toLowerCase() === "chdir" || cmdMatch[2] !== undefined,
+    };
+  }
+  const powershellMatch =
+    /^(?:set-location|sl)\s+(?:(?:-literalpath|-path)\s+)?(.+)$/iu.exec(value);
+  if (powershellMatch === null) return null;
+  const directory = literalRuntimeDirectory(powershellMatch[1] ?? "");
+  return directory === null
+    ? null
+    : { directory, supportsSingleAmpersand: false };
+}
+
+function literalRuntimeDirectory(argument: string): string | null {
+  const value = argument.replace(/\s+#.*$/u, "").trim();
+  if (value.length === 0) return null;
+  let directory = value;
+  if (value.startsWith('"') || value.startsWith("'")) {
+    const quote = value[0];
+    if (value.at(-1) !== quote) return null;
+    directory = value.slice(1, -1);
+    if (quote === "'") directory = directory.replaceAll("''", "'");
+  } else if (/\s/u.test(value)) {
+    return null;
+  }
+  if (
+    directory.length === 0 ||
+    directory === "-" ||
+    directory.startsWith("~") ||
+    /[$%`!*?]/u.test(directory)
+  )
+    return null;
+  return directory;
+}
+
+function runtimeDirectoryResolutionBase(
+  resolutionBase: string,
+  directory: string,
+): string | null {
+  if (isAbsolute(directory) || /^(?:[A-Za-z]:[\\/]|[\\/]{2})/u.test(directory))
+    return null;
+  const portableDirectory = directory.replace(/[\\/]/gu, sep);
+  const nextResolutionBase = resolvePath(resolutionBase, portableDirectory);
+  return isPathWithinRoot(root, nextResolutionBase) ? nextResolutionBase : null;
+}
+
+function hasRuntimeDirectoryChangeIntent(command: string): boolean {
+  const value = command.trim().replace(/^@/u, "");
+  return (
+    /(?:^|[({:]|\b(?:call|command|do|if|then)\s+)(?:cd|chdir|set-location|sl|pushd|push-location|popd|pop-location)\b/iu.test(
+      value,
+    ) ||
+    /\bprocess\s*\.\s*chdir\s*\(/iu.test(value) ||
+    /\b(?:bash|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh(?:\.exe)?|sh)\b[\s\S]*\b(?:cd|chdir|set-location|sl)\b/iu.test(
+      value,
+    )
+  );
+}
+
+function githubWorkflowCommandContexts(
+  sourcePath: string,
+  content: string,
+): {
+  commands: ExplicitTypeScriptConfigCommandContext[];
+  violations: string[];
+} {
+  const label = boundaryRelativePath(sourcePath);
+  const commands: ExplicitTypeScriptConfigCommandContext[] = [];
+  const workflowViolations: string[] = [];
+  const rawLines = content.split(/\r?\n/u);
+  if (rawLines.some((line) => /^\t+/u.test(line))) {
+    return {
+      commands,
+      violations: [
+        `${label}: GitHub workflow indentation must use spaces while discovering TypeScript config selectors`,
+      ],
+    };
+  }
+  const entries = githubWorkflowYamlEntries(rawLines);
+  const topLevelEntries = entries.filter(
+    (entry) => !entry.sequence && entry.keyIndent === 0,
+  );
+  const jobsEntry = topLevelEntries.find((entry) => entry.key === "jobs");
+  const rawSelection = explicitTypeScriptConfigSelection(content);
+  if (jobsEntry === undefined) {
+    if (
+      rawSelection.invalid ||
+      rawSelection.specifiers.length > 0 ||
+      rawSelection.environmentFiles.length > 0
+    )
+      workflowViolations.push(
+        `${label}: GitHub workflow TypeScript config selectors must belong to a run step`,
+      );
+    return { commands, violations: workflowViolations };
+  }
+
+  const topDefaults = topLevelEntries.find((entry) => entry.key === "defaults");
+  const topEnvironment = topLevelEntries.find((entry) => entry.key === "env");
+  const topWorkingDirectory = githubWorkflowDefaultWorkingDirectory(
+    entries,
+    rawLines,
+    topDefaults,
+  );
+  const topEnvironmentText = githubWorkflowEntryBlockText(
+    entries,
+    rawLines,
+    topEnvironment,
+  );
+  const jobsEnd = githubWorkflowEntryEnd(entries, jobsEntry, rawLines.length);
+  const jobs = githubWorkflowDirectMappingChildren(entries, jobsEntry, jobsEnd);
+  for (const job of jobs) {
+    const jobEnd = githubWorkflowEntryEnd(entries, job, jobsEnd);
+    const jobChildren = githubWorkflowDirectMappingChildren(
+      entries,
+      job,
+      jobEnd,
+    );
+    const jobDefaults = jobChildren.find((entry) => entry.key === "defaults");
+    const jobEnvironment = jobChildren.find((entry) => entry.key === "env");
+    const stepsEntry = jobChildren.find((entry) => entry.key === "steps");
+    if (stepsEntry === undefined) continue;
+    const jobWorkingDirectory = githubWorkflowDefaultWorkingDirectory(
+      entries,
+      rawLines,
+      jobDefaults,
+    );
+    const jobEnvironmentText = githubWorkflowEntryBlockText(
+      entries,
+      rawLines,
+      jobEnvironment,
+    );
+    const stepsEnd = githubWorkflowEntryEnd(entries, stepsEntry, jobEnd);
+    const stepStarts = entries.filter(
+      (entry) =>
+        entry.sequence &&
+        entry.lineIndex > stepsEntry.lineIndex &&
+        entry.lineIndex < stepsEnd,
+    );
+    const stepIndent = Math.min(
+      ...stepStarts.map((entry) => entry.indent),
+      Number.POSITIVE_INFINITY,
+    );
+    const steps = stepStarts.filter((entry) => entry.indent === stepIndent);
+    for (const [stepIndex, step] of steps.entries()) {
+      const nextStep = steps[stepIndex + 1];
+      const stepEnd = nextStep?.lineIndex ?? stepsEnd;
+      const stepEntries = entries.filter(
+        (entry) =>
+          entry.lineIndex >= step.lineIndex &&
+          entry.lineIndex < stepEnd &&
+          entry.keyIndent === step.keyIndent,
+      );
+      const runEntry = stepEntries.find((entry) => entry.key === "run");
+      if (runEntry === undefined) continue;
+      const stepEnvironment = stepEntries.find((entry) => entry.key === "env");
+      const stepWorkingDirectory = stepEntries.find(
+        (entry) => entry.key === "working-directory",
+      );
+      const runCommand = githubWorkflowScalarValue(entries, rawLines, runEntry);
+      if (runCommand === null || runCommand === undefined) {
+        workflowViolations.push(
+          `${label}: job ${JSON.stringify(job.key)} run step ${stepIndex + 1} must use a literal command while discovering TypeScript config selectors`,
+        );
+        continue;
+      }
+      const selectorPreamble = [
+        topEnvironmentText,
+        jobEnvironmentText,
+        githubWorkflowEntryBlockText(entries, rawLines, stepEnvironment),
+      ]
+        .filter((value) => value.length > 0)
+        .join("\n");
+      const selection = explicitTypeScriptConfigSelection(
+        [selectorPreamble, runCommand]
+          .filter((value) => value.length > 0)
+          .join("\n"),
+      );
+      const selectedWorkingDirectory =
+        stepWorkingDirectory !== undefined
+          ? githubWorkflowScalarValue(entries, rawLines, stepWorkingDirectory)
+          : jobWorkingDirectory !== undefined
+            ? jobWorkingDirectory
+            : topWorkingDirectory !== undefined
+              ? topWorkingDirectory
+              : ".";
+      const resolutionBase = githubWorkflowResolutionBase(
+        selectedWorkingDirectory,
+      );
+      if (resolutionBase === null) {
+        if (
+          selection.invalid ||
+          selection.specifiers.length > 0 ||
+          selection.environmentFiles.length > 0
+        )
+          workflowViolations.push(
+            `${label}: job ${JSON.stringify(job.key)} run step ${stepIndex + 1} must use a literal repository-local working-directory when selecting TypeScript configuration`,
+          );
+        continue;
+      }
+      commands.push({
+        command: runCommand,
+        label: `${label} (job ${job.key}, run step ${stepIndex + 1})`,
+        modelRuntimeDirectoryChanges: true,
+        resolutionBase,
+        selectorPreamble,
+      });
+    }
+  }
+
+  const coveredSpecifiers = new Set<string>();
+  const coveredEnvironmentFiles = new Set<string>();
+  let coveredSelectionInvalid = false;
+  for (const context of commands) {
+    const selection = explicitTypeScriptConfigCommandSelection(context);
+    coveredSelectionInvalid ||= selection.invalid;
+    for (const specifier of selection.specifiers)
+      coveredSpecifiers.add(specifier);
+    for (const environmentFile of selection.environmentFiles)
+      coveredEnvironmentFiles.add(environmentFile);
+  }
+  if (
+    (rawSelection.invalid && !coveredSelectionInvalid) ||
+    rawSelection.specifiers.some(
+      (specifier) => !coveredSpecifiers.has(specifier),
+    ) ||
+    rawSelection.environmentFiles.some(
+      (specifier) => !coveredEnvironmentFiles.has(specifier),
+    )
+  )
+    workflowViolations.push(
+      `${label}: GitHub workflow TypeScript config selectors must belong to supported run or env mappings`,
+    );
+  return { commands, violations: workflowViolations };
+}
+
+function githubWorkflowYamlEntries(
+  rawLines: readonly string[],
+): GitHubWorkflowYamlEntry[] {
+  const entries: GitHubWorkflowYamlEntry[] = [];
+  for (const [lineIndex, rawLine] of rawLines.entries()) {
+    const match = /^( *)(-\s+)?([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/u.exec(
+      rawLine,
+    );
+    if (match === null) continue;
+    const indentation = match[1]?.length ?? 0;
+    const sequence = match[2] !== undefined;
+    entries.push({
+      indent: indentation,
+      key: match[3] ?? "",
+      keyIndent: indentation + (sequence ? 2 : 0),
+      lineIndex,
+      sequence,
+      value: match[4] ?? "",
+    });
+  }
+  return entries;
+}
+
+function githubWorkflowEntryEnd(
+  entries: readonly GitHubWorkflowYamlEntry[],
+  entry: GitHubWorkflowYamlEntry,
+  fallbackEnd: number,
+): number {
+  return (
+    entries.find(
+      (candidate) =>
+        candidate.lineIndex > entry.lineIndex &&
+        candidate.keyIndent <= entry.keyIndent,
+    )?.lineIndex ?? fallbackEnd
+  );
+}
+
+function githubWorkflowDirectMappingChildren(
+  entries: readonly GitHubWorkflowYamlEntry[],
+  parent: GitHubWorkflowYamlEntry,
+  parentEnd: number,
+): GitHubWorkflowYamlEntry[] {
+  const descendants = entries.filter(
+    (entry) =>
+      !entry.sequence &&
+      entry.lineIndex > parent.lineIndex &&
+      entry.lineIndex < parentEnd &&
+      entry.keyIndent > parent.keyIndent,
+  );
+  const directIndent = Math.min(
+    ...descendants.map((entry) => entry.keyIndent),
+    Number.POSITIVE_INFINITY,
+  );
+  return descendants.filter((entry) => entry.keyIndent === directIndent);
+}
+
+function githubWorkflowDefaultWorkingDirectory(
+  entries: readonly GitHubWorkflowYamlEntry[],
+  rawLines: readonly string[],
+  defaultsEntry: GitHubWorkflowYamlEntry | undefined,
+): string | null | undefined {
+  if (defaultsEntry === undefined) return undefined;
+  const defaultsEnd = githubWorkflowEntryEnd(
+    entries,
+    defaultsEntry,
+    rawLines.length,
+  );
+  const runEntry = githubWorkflowDirectMappingChildren(
+    entries,
+    defaultsEntry,
+    defaultsEnd,
+  ).find((entry) => entry.key === "run");
+  if (runEntry === undefined) return undefined;
+  const runEnd = githubWorkflowEntryEnd(entries, runEntry, defaultsEnd);
+  const workingDirectoryEntry = githubWorkflowDirectMappingChildren(
+    entries,
+    runEntry,
+    runEnd,
+  ).find((entry) => entry.key === "working-directory");
+  if (workingDirectoryEntry === undefined) return undefined;
+  return githubWorkflowScalarValue(entries, rawLines, workingDirectoryEntry);
+}
+
+function githubWorkflowEntryBlockText(
+  entries: readonly GitHubWorkflowYamlEntry[],
+  rawLines: readonly string[],
+  entry: GitHubWorkflowYamlEntry | undefined,
+): string {
+  if (entry === undefined) return "";
+  const end = githubWorkflowEntryEnd(entries, entry, rawLines.length);
+  return rawLines.slice(entry.lineIndex, end).join("\n");
+}
+
+function githubWorkflowScalarValue(
+  entries: readonly GitHubWorkflowYamlEntry[],
+  rawLines: readonly string[],
+  entry: GitHubWorkflowYamlEntry | undefined,
+): string | null | undefined {
+  if (entry === undefined) return undefined;
+  const value = entry.value.trim();
+  if (/^[|>][+-]?$/u.test(value)) {
+    const end = githubWorkflowEntryEnd(entries, entry, rawLines.length);
+    const body = rawLines.slice(entry.lineIndex + 1, end);
+    const contentIndents = body
+      .filter((line) => line.trim().length > 0)
+      .map((line) => /^ */u.exec(line)?.[0].length ?? 0);
+    const contentIndent = Math.min(...contentIndents, Number.POSITIVE_INFINITY);
+    if (!Number.isFinite(contentIndent) || contentIndent <= entry.keyIndent)
+      return null;
+    return body
+      .map((line) => line.slice(Math.min(contentIndent, line.length)))
+      .join(value.startsWith(">") ? " " : "\n");
+  }
+  if (value.startsWith('"')) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return typeof parsed === "string" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  if (value.startsWith("'")) {
+    if (!value.endsWith("'")) return null;
+    return value.slice(1, -1).replaceAll("''", "'");
+  }
+  return value.replace(/\s+#.*$/u, "").trim();
+}
+
+function githubWorkflowResolutionBase(
+  workingDirectory: string | null | undefined,
+): string | null {
+  if (
+    workingDirectory === null ||
+    workingDirectory === undefined ||
+    workingDirectory.length === 0 ||
+    isAbsolute(workingDirectory) ||
+    /^(?:[A-Za-z]:[\\/]|[\\/]{2})/u.test(workingDirectory) ||
+    /[$%`]/u.test(workingDirectory)
+  )
+    return null;
+  const resolutionBase = resolvePath(root, workingDirectory);
+  return isPathWithinRoot(root, resolutionBase) ? resolutionBase : null;
+}
+
+async function discoverExplicitTypeScriptConfigFiles(
+  candidateFiles: ReadonlySet<string>,
+): Promise<{ files: Set<string>; violations: string[] }> {
+  const files = new Set<string>();
+  const discoveryViolations: string[] = [];
+  const canonicalRoot = await realpath(root);
+  const visitedEnvironmentResolutionContexts = new Set<string>();
+  for (const sourcePath of [...candidateFiles].sort()) {
+    let boundedSource: Awaited<ReturnType<typeof readBoundedUtf8File>>;
+    try {
+      boundedSource = await readBoundedUtf8File(
+        sourcePath,
+        MAX_TYPESCRIPT_CONFIG_BYTES,
+      );
+    } catch (error) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(sourcePath)}: command surface must remain readable while discovering TypeScript config selectors (${boundaryErrorCode(error)})`,
+      );
+      continue;
+    }
+    if (!boundedSource.ok) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(sourcePath)}: command surface must remain a bounded regular file while discovering TypeScript config selectors`,
+      );
+      continue;
+    }
+    const isPackageManifest =
+      basename(sourcePath).toLowerCase() === "package.json";
+    let commandContexts: ExplicitTypeScriptConfigCommandContext[] = [];
+    if (isPackageManifest) {
+      let manifest: unknown;
+      try {
+        manifest = JSON.parse(boundedSource.content) as unknown;
+      } catch {
+        continue;
+      }
+      if (!isRecord(manifest) || !isRecord(manifest.scripts)) continue;
+      for (const command of Object.values(manifest.scripts)) {
+        if (typeof command === "string")
+          commandContexts.push({
+            command,
+            label: boundaryRelativePath(sourcePath),
+            modelRuntimeDirectoryChanges: true,
+            resolutionBase: dirname(sourcePath),
+            selectorPreamble: "",
+          });
+      }
+    } else if (isGitHubWorkflowPath(sourcePath)) {
+      const workflowContexts = githubWorkflowCommandContexts(
+        sourcePath,
+        boundedSource.content,
+      );
+      commandContexts = workflowContexts.commands;
+      discoveryViolations.push(...workflowContexts.violations);
+    } else {
+      commandContexts.push({
+        command: boundedSource.content,
+        label: boundaryRelativePath(sourcePath),
+        modelRuntimeDirectoryChanges: true,
+        resolutionBase: root,
+        selectorPreamble: "",
+      });
+    }
+    const pendingCommands = [...commandContexts];
+    while (pendingCommands.length > 0) {
+      const current = pendingCommands.shift();
+      if (current === undefined) break;
+      if (current.modelRuntimeDirectoryChanges) {
+        const runtimeContexts = runtimeDirectoryCommandContexts(current);
+        if (runtimeContexts.invalid) {
+          discoveryViolations.push(
+            `${current.label}: runtime directory changes must name literal repository-local directories when selecting TypeScript configuration`,
+          );
+          continue;
+        }
+        pendingCommands.unshift(...runtimeContexts.contexts);
+        continue;
+      }
+      const selection = explicitTypeScriptConfigCommandSelection(current);
+      if (selection.invalid) {
+        discoveryViolations.push(
+          `${current.label}: TypeScript config selectors and environment files must name literal local files`,
+        );
+        continue;
+      }
+      let canonicalResolutionBase: string;
+      try {
+        canonicalResolutionBase = await realpath(current.resolutionBase);
+        const resolutionBaseStats = await stat(canonicalResolutionBase);
+        if (
+          !resolutionBaseStats.isDirectory() ||
+          !isPathWithinRoot(canonicalRoot, canonicalResolutionBase)
+        ) {
+          discoveryViolations.push(
+            `${current.label}: TypeScript config selector working directories must remain repository-local directories`,
+          );
+          continue;
+        }
+      } catch (error) {
+        discoveryViolations.push(
+          `${current.label}: TypeScript config selector working directory must remain readable (${boundaryErrorCode(error)})`,
+        );
+        continue;
+      }
+      for (const specifier of selection.specifiers) {
+        if (/[$%`]/u.test(specifier)) {
+          discoveryViolations.push(
+            `${current.label}: TypeScript config selectors must not use shell expansion`,
+          );
+          continue;
+        }
+        files.add(resolvePath(canonicalResolutionBase, specifier));
+      }
+      for (const specifier of selection.environmentFiles) {
+        const environmentPath = resolvePath(canonicalResolutionBase, specifier);
+        let canonicalEnvironmentPath: string;
+        try {
+          canonicalEnvironmentPath = await realpath(environmentPath);
+        } catch (error) {
+          discoveryViolations.push(
+            `${current.label}: selected environment file ${JSON.stringify(specifier)} must remain readable (${boundaryErrorCode(error)})`,
+          );
+          continue;
+        }
+        if (!isPathWithinRoot(canonicalRoot, canonicalEnvironmentPath)) {
+          discoveryViolations.push(
+            `${current.label}: selected environment files must remain inside the repository`,
+          );
+          continue;
+        }
+        const environmentResolutionContextKey =
+          environmentFileResolutionContextKey(
+            canonicalEnvironmentPath,
+            canonicalResolutionBase,
+          );
+        if (
+          visitedEnvironmentResolutionContexts.has(
+            environmentResolutionContextKey,
+          )
+        )
+          continue;
+        if (
+          visitedEnvironmentResolutionContexts.size >=
+          MAX_TYPESCRIPT_CONFIG_FILES
+        ) {
+          discoveryViolations.push(
+            `Environment-file discovery exceeds ${MAX_TYPESCRIPT_CONFIG_FILES} file-and-working-directory contexts`,
+          );
+          break;
+        }
+        visitedEnvironmentResolutionContexts.add(
+          environmentResolutionContextKey,
+        );
+        let boundedEnvironment: Awaited<ReturnType<typeof readBoundedUtf8File>>;
+        try {
+          boundedEnvironment = await readBoundedUtf8File(
+            canonicalEnvironmentPath,
+            MAX_TYPESCRIPT_CONFIG_BYTES,
+          );
+        } catch (error) {
+          discoveryViolations.push(
+            `${boundaryRelativePath(canonicalEnvironmentPath)}: selected environment file must remain readable (${boundaryErrorCode(error)})`,
+          );
+          continue;
+        }
+        if (!boundedEnvironment.ok) {
+          discoveryViolations.push(
+            `${boundaryRelativePath(canonicalEnvironmentPath)}: selected environment file must remain a bounded regular file`,
+          );
+          continue;
+        }
+        pendingCommands.push({
+          command: boundedEnvironment.content,
+          label: boundaryRelativePath(canonicalEnvironmentPath),
+          modelRuntimeDirectoryChanges: false,
+          resolutionBase: canonicalResolutionBase,
+          selectorPreamble: "",
+        });
+      }
+    }
+  }
+  return { files, violations: discoveryViolations };
+}
+
+function explicitTypeScriptConfigSelection(command: string): {
+  environmentFiles: readonly string[];
+  invalid: boolean;
+  specifiers: readonly string[];
+} {
+  const environmentFiles: string[] = [];
+  const specifiers: string[] = [];
+  let expectedSelectors = 0;
+  let matchedSelectors = 0;
+  const collect = (
+    source: string,
+    selector: RegExp,
+    expected: RegExp,
+    output: string[] = specifiers,
+  ): void => {
+    expectedSelectors += [...source.matchAll(expected)].length;
+    for (const match of source.matchAll(selector)) {
+      const value = match.slice(1).find((group) => group !== undefined);
+      if (value !== undefined) {
+        output.push(value);
+        matchedSelectors += 1;
+      }
+    }
+  };
+  const literalArgument = String.raw`(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\s;&|]+))`;
+  collect(
+    command,
+    new RegExp(String.raw`--tsconfig(?:\s*=\s*|\s+)${literalArgument}`, "giu"),
+    /--tsconfig(?:\s*=\s*|\s+)/giu,
+  );
+  for (const segment of command.split(/&&|\|\||[;|\r\n]/u)) {
+    const usesTsc = /\btsc(?:\.cmd|\.exe)?\b/iu.test(segment);
+    if (
+      usesTsc &&
+      /(?:^|\s)(?:--build|-b)(?:(?:\s*=\s*)|(?=\s|$))/iu.test(segment)
+    )
+      return {
+        environmentFiles: [...new Set(environmentFiles)],
+        invalid: true,
+        specifiers: [...new Set(specifiers)],
+      };
+    if (!usesTsc && !/\bts-node(?:\.cmd|\.exe)?\b/iu.test(segment)) continue;
+    collect(
+      segment,
+      new RegExp(
+        String.raw`(?:--project|-p)(?:\s*=\s*|\s+)${literalArgument}`,
+        "giu",
+      ),
+      /(?:--project|-p)(?:\s*=\s*|\s+)/giu,
+    );
+  }
+  collect(
+    command,
+    new RegExp(
+      String.raw`(?:\bset\s+"TSX_TSCONFIG_PATH=([^"\r\n]+)"|TSX_TSCONFIG_PATH\s*=\s*${literalArgument}|^\s*TSX_TSCONFIG_PATH\s*:\s*${literalArgument})`,
+      "gimu",
+    ),
+    /(?:TSX_TSCONFIG_PATH\s*=|^\s*TSX_TSCONFIG_PATH\s*:)/gimu,
+  );
+  collect(
+    command,
+    new RegExp(
+      String.raw`(?:\bset\s+"TS_NODE_PROJECT=([^"\r\n]+)"|TS_NODE_PROJECT\s*=\s*${literalArgument}|^\s*TS_NODE_PROJECT\s*:\s*${literalArgument})`,
+      "gimu",
+    ),
+    /(?:TS_NODE_PROJECT\s*=|^\s*TS_NODE_PROJECT\s*:)/gimu,
+  );
+  collect(
+    command,
+    new RegExp(
+      String.raw`--env-file(?:-if-exists)?(?:\s*=\s*|\s+)${literalArgument}`,
+      "giu",
+    ),
+    /--env-file(?:-if-exists)?(?:\s*=\s*|\s+)/giu,
+    environmentFiles,
+  );
+  return {
+    environmentFiles: [...new Set(environmentFiles)],
+    invalid:
+      matchedSelectors !== expectedSelectors ||
+      [...specifiers, ...environmentFiles].some((specifier) =>
+        /[$%`]/u.test(specifier),
+      ),
+    specifiers: [...new Set(specifiers)],
+  };
+}
+
+async function discoverTypeScriptConfigFiles(
+  initialFiles: readonly string[],
+): Promise<{
+  contents: Map<string, string>;
+  files: Set<string>;
+  violations: string[];
+}> {
+  const contents = new Map<string, string>();
+  const contentsByCanonicalPath = new Map<string, string>();
+  const files = new Set<string>();
+  const discoveryViolations: string[] = [];
+  const canonicalRoot = await realpath(root);
+  const visitedCanonicalPaths = new Set<string>();
+  const queue = initialFiles.map((path) => ({ depth: 0, path }));
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined) break;
+    let canonicalPath: string;
+    try {
+      canonicalPath = await realpath(current.path);
+    } catch (error) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(current.path)}: TypeScript config must remain readable (${boundaryErrorCode(error)})`,
+      );
+      continue;
+    }
+    if (!isPathWithinRoot(canonicalRoot, canonicalPath)) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(current.path)}: TypeScript config inheritance must remain inside the repository`,
+      );
+      continue;
+    }
+    if (visitedCanonicalPaths.has(canonicalPath)) {
+      files.add(current.path);
+      const cachedContent = contentsByCanonicalPath.get(canonicalPath);
+      if (cachedContent !== undefined)
+        contents.set(current.path, cachedContent);
+      continue;
+    }
+    if (visitedCanonicalPaths.size >= MAX_TYPESCRIPT_CONFIG_FILES) {
+      discoveryViolations.push(
+        `TypeScript config inheritance exceeds ${MAX_TYPESCRIPT_CONFIG_FILES} files`,
+      );
+      break;
+    }
+    visitedCanonicalPaths.add(canonicalPath);
+    files.add(current.path);
+    if (current.depth > MAX_TYPESCRIPT_CONFIG_CHAIN_DEPTH) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(current.path)}: TypeScript config inheritance exceeds depth ${MAX_TYPESCRIPT_CONFIG_CHAIN_DEPTH}`,
+      );
+      continue;
+    }
+
+    let boundedConfig:
+      | { content: string; ok: true }
+      | { ok: false; reason: "not_regular" | "too_large" };
+    try {
+      boundedConfig = await readBoundedUtf8File(
+        canonicalPath,
+        MAX_TYPESCRIPT_CONFIG_BYTES,
+      );
+    } catch (error) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(current.path)}: TypeScript config must remain a readable file (${boundaryErrorCode(error)})`,
+      );
+      continue;
+    }
+    if (!boundedConfig.ok) {
+      discoveryViolations.push(
+        boundedConfig.reason === "too_large"
+          ? `${boundaryRelativePath(current.path)}: TypeScript config exceeds ${MAX_TYPESCRIPT_CONFIG_BYTES} bytes`
+          : `${boundaryRelativePath(current.path)}: TypeScript config must remain a regular file`,
+      );
+      continue;
+    }
+    contents.set(current.path, boundedConfig.content);
+    contentsByCanonicalPath.set(canonicalPath, boundedConfig.content);
+    const parsed = ts.parseConfigFileTextToJson(
+      boundaryRelativePath(current.path),
+      boundedConfig.content,
+    );
+    if (parsed.error !== undefined) continue;
+    const extendsSpecifiers = typeScriptConfigExtendsSpecifiers(parsed.config);
+    if (extendsSpecifiers === null) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(current.path)}: TypeScript config extends must be a string or string array`,
+      );
+      continue;
+    }
+    const referenceSpecifiers = typeScriptConfigReferenceSpecifiers(
+      parsed.config,
+    );
+    if (referenceSpecifiers === null) {
+      discoveryViolations.push(
+        `${boundaryRelativePath(current.path)}: TypeScript config references must contain literal paths`,
+      );
+      continue;
+    }
+    const configTargets = [
+      ...extendsSpecifiers.map((specifier) => ({
+        kind: "extends" as const,
+        specifier,
+      })),
+      ...referenceSpecifiers.map((specifier) => ({
+        kind: "project reference" as const,
+        specifier,
+      })),
+    ];
+    for (const { kind, specifier } of configTargets) {
+      if (!specifier.startsWith(".") && !isAbsolute(specifier)) {
+        discoveryViolations.push(
+          `${boundaryRelativePath(current.path)}: TypeScript config ${kind} must resolve to a local repository file`,
+        );
+        continue;
+      }
+      const candidates =
+        kind === "extends"
+          ? localTypeScriptConfigExtendsCandidates(canonicalPath, specifier)
+          : localTypeScriptProjectReferenceCandidates(canonicalPath, specifier);
+      let inheritedPath: string | null = null;
+      for (const candidate of candidates) {
+        let candidateCanonicalPath: string;
+        try {
+          candidateCanonicalPath = await realpath(candidate);
+        } catch (error) {
+          if (isMissingPathError(error)) continue;
+          throw error;
+        }
+        if (!isPathWithinRoot(canonicalRoot, candidateCanonicalPath)) {
+          discoveryViolations.push(
+            `${boundaryRelativePath(current.path)}: TypeScript config ${kind} must remain inside the repository`,
+          );
+          inheritedPath = candidateCanonicalPath;
+          break;
+        }
+        try {
+          const candidateStats = await stat(candidateCanonicalPath);
+          if (!candidateStats.isFile()) continue;
+        } catch (error) {
+          if (isMissingPathError(error)) continue;
+          throw error;
+        }
+        inheritedPath = candidateCanonicalPath;
+        break;
+      }
+      if (inheritedPath === null) {
+        discoveryViolations.push(
+          `${boundaryRelativePath(current.path)}: TypeScript config ${kind} target ${JSON.stringify(specifier)} must remain readable`,
+        );
+        continue;
+      }
+      if (!isPathWithinRoot(canonicalRoot, inheritedPath)) continue;
+      queue.push({ depth: current.depth + 1, path: inheritedPath });
+    }
+  }
+
+  return { contents, files, violations: discoveryViolations };
+}
+
+async function readBoundedUtf8File(
+  path: string,
+  maximumBytes: number,
+): Promise<
+  | { content: string; ok: true }
+  | { ok: false; reason: "not_regular" | "too_large" }
+> {
+  const handle = await open(path, "r");
+  try {
+    const fileStats = await handle.stat();
+    if (!fileStats.isFile()) return { ok: false, reason: "not_regular" };
+    if (fileStats.size > maximumBytes)
+      return { ok: false, reason: "too_large" };
+    const bytes = Buffer.allocUnsafe(maximumBytes + 1);
+    let totalBytes = 0;
+    while (totalBytes < bytes.length) {
+      const { bytesRead } = await handle.read(
+        bytes,
+        totalBytes,
+        bytes.length - totalBytes,
+        totalBytes,
+      );
+      if (bytesRead === 0) break;
+      totalBytes += bytesRead;
+    }
+    if (totalBytes > maximumBytes) return { ok: false, reason: "too_large" };
+    return {
+      content: bytes.toString("utf8", 0, totalBytes),
+      ok: true,
+    };
+  } finally {
+    await handle.close();
+  }
+}
+
+function typeScriptConfigExtendsSpecifiers(
+  config: unknown,
+): readonly string[] | null {
+  if (!isRecord(config) || config.extends === undefined) return [];
+  if (typeof config.extends === "string") return [config.extends];
+  if (
+    Array.isArray(config.extends) &&
+    config.extends.every((value) => typeof value === "string")
+  )
+    return config.extends;
+  return null;
+}
+
+function typeScriptConfigReferenceSpecifiers(
+  config: unknown,
+): readonly string[] | null {
+  if (!isRecord(config) || config.references === undefined) return [];
+  if (!Array.isArray(config.references)) return null;
+  const specifiers: string[] = [];
+  for (const reference of config.references) {
+    if (!isRecord(reference) || typeof reference.path !== "string") return null;
+    specifiers.push(reference.path);
+  }
+  return specifiers;
+}
+
+function localTypeScriptConfigExtendsCandidates(
+  configPath: string,
+  specifier: string,
+): readonly string[] {
+  const base = resolvePath(dirname(configPath), specifier);
+  if (extname(base).toLowerCase() === ".json") return [base];
+  return [base, `${base}.json`, join(base, "tsconfig.json")];
+}
+
+function localTypeScriptProjectReferenceCandidates(
+  configPath: string,
+  specifier: string,
+): readonly string[] {
+  const base = resolvePath(dirname(configPath), specifier);
+  return extname(base).toLowerCase() === ".json"
+    ? [base]
+    : [join(base, "tsconfig.json")];
+}
+
+function isPathWithinRoot(canonicalRoot: string, candidate: string): boolean {
+  const pathFromRoot = relative(canonicalRoot, candidate);
+  return (
+    pathFromRoot === "" ||
+    (!isAbsolute(pathFromRoot) &&
+      pathFromRoot !== ".." &&
+      !pathFromRoot.startsWith(`..${sep}`))
+  );
+}
+
+function boundaryRelativePath(path: string): string {
+  const relativePath = relative(root, path);
+  return isAbsolute(relativePath)
+    ? path.replaceAll("\\", "/")
+    : relativePath.replaceAll("\\", "/");
+}
+
+function boundaryErrorCode(error: unknown): string {
+  return error instanceof Error && "code" in error
+    ? String(error.code)
+    : "unknown error";
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return ["ENOENT", "ENOTDIR"].includes(boundaryErrorCode(error));
+}
+
+function isTypeScriptConfigFileName(fileName: string): boolean {
+  return /^tsconfig(?:\.[a-z0-9_-]+)*\.json$/iu.test(fileName);
+}
+
 function isRootBoundaryFile(fileName: string): boolean {
   const lowerName = fileName.toLowerCase();
   return (
     lowerName === "package.json" ||
     lowerName === "pnpm-workspace.yaml" ||
+    isTypeScriptConfigFileName(lowerName) ||
     isRootInfrastructureFile(lowerName)
   );
 }

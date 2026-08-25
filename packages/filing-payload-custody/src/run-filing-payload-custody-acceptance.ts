@@ -24,6 +24,8 @@ import {
   type FilingPayloadCustodyEvidenceSourceHash,
 } from "./filing-payload-custody-evidence";
 import {
+  gitArgumentsWithoutReplacementObjects,
+  gitEnvironmentWithoutGrafts,
   hasNonEmptyStderr,
   verifyCycle2cCommitBoundary,
 } from "./filing-payload-custody-evidence-verifier";
@@ -44,6 +46,7 @@ import { buildFilingPayloadCustodyAcceptanceCases } from "./test-payload-builder
 
 const EVIDENCE_FILE_NAME = "research-cockpit-filing-payload-custody-v1.json";
 const MAX_COMMAND_BYTES = 4_194_304;
+const COMMAND_TIMEOUT_MILLISECONDS = 30_000;
 
 type Stage =
   | "bootstrap"
@@ -263,7 +266,7 @@ async function main(): Promise<void> {
 
   stage = "tool_versions";
   const tools = Object.freeze({
-    git: text(await commandOutput("git", ["--version"])),
+    git: text(await git(repositoryPath, ["--version"])),
     node: process.version,
     pnpm: text(await commandOutput("pnpm", ["--version"])),
   });
@@ -474,35 +477,60 @@ async function trustedEvidencePath(
 }
 
 async function git(cwd: string, args: readonly string[]): Promise<Uint8Array> {
-  return commandOutput("git", args, cwd);
+  return commandOutput(
+    "git",
+    gitArgumentsWithoutReplacementObjects(args),
+    cwd,
+    gitEnvironmentWithoutGrafts(process.env),
+  );
 }
 
 async function commandOutput(
   command: string,
   args: readonly string[],
   cwd = process.cwd(),
+  environment: Readonly<NodeJS.ProcessEnv> = process.env,
 ): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
+      env: environment,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
     });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let total = 0;
+    let settled = false;
+    const finish = (
+      outcome: "resolve" | "reject",
+      value?: Uint8Array,
+    ): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (outcome === "resolve" && value !== undefined) resolve(value);
+      else reject(new Error("command failed"));
+    };
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish("reject");
+    }, COMMAND_TIMEOUT_MILLISECONDS);
+    timeout.unref();
     const collect = (target: Buffer[]) => (chunk: Buffer) => {
       total += chunk.byteLength;
-      if (total > MAX_COMMAND_BYTES) child.kill();
-      else target.push(chunk);
+      if (total > MAX_COMMAND_BYTES) {
+        child.kill("SIGKILL");
+        finish("reject");
+      } else target.push(chunk);
     };
     child.stdout.on("data", collect(stdout));
     child.stderr.on("data", collect(stderr));
-    child.once("error", reject);
+    child.once("error", () => finish("reject"));
     child.once("close", (code) => {
       if (code !== 0 || total > MAX_COMMAND_BYTES || hasNonEmptyStderr(stderr))
-        reject(new Error("command failed"));
-      else resolve(new Uint8Array(Buffer.concat(stdout)));
+        finish("reject");
+      else finish("resolve", new Uint8Array(Buffer.concat(stdout)));
     });
   });
 }

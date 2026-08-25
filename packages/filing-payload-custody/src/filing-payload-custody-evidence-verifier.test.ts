@@ -1,11 +1,15 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  decodeCycle2cAbsoluteGitPath,
   decodeCycle2cGitNulList,
+  gitArgumentsWithoutReplacementObjects,
+  gitEnvironmentWithoutGrafts,
   hasNonEmptyStderr,
   isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed,
   isAuthenticatedReplayMaintenanceCommitDiffSetAllowed,
@@ -37,6 +41,7 @@ import {
   isFastify5121MaintenanceCommitDiffSetAllowed,
   isFastify5121MaintenanceTransitionRoutingRequired,
   isGitProcessResultAllowed,
+  isEmptyGitGraftsSnapshotAllowed,
   isOfflineEvidenceInputCustodyBaselineMergeBaseAllowed,
   isOfflineEvidenceInputCustodyCommitDiffSetAllowed,
   isOfflineEvidenceInputCustodySurfaceRoutingRequired,
@@ -48,6 +53,7 @@ import {
   readSmallRegularFileWithOperations,
   type SmallRegularFileOperations,
   type SmallRegularFileStat,
+  verifyNoEffectiveGitGrafts,
   verifyFilingPayloadCustodyEvidenceOffline,
 } from "./filing-payload-custody-evidence-verifier";
 
@@ -628,6 +634,7 @@ const CYCLE_2I_TRANSITION = [
     path: "docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md",
     status: "A",
   },
+  { path: "packages/db/tests/projection-normalization.test.ts", status: "M" },
   {
     path: "packages/filing-parser-normalization-handoff/package.json",
     status: "A",
@@ -903,6 +910,38 @@ function smallFileHarness(options: SmallFileHarnessOptions = {}): {
   return { observations, operations };
 }
 
+function gitOutput(
+  args: readonly string[],
+  environment: Readonly<NodeJS.ProcessEnv> = gitEnvironmentWithoutGrafts(
+    process.env,
+  ),
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "git",
+      [
+        "--no-replace-objects",
+        "--no-lazy-fetch",
+        "-c",
+        "advice.graftFileDeprecated=false",
+        ...args,
+      ],
+      {
+        encoding: "utf8",
+        env: environment,
+        killSignal: "SIGKILL",
+        timeout: 30_000,
+        windowsHide: true,
+      },
+      (error, stdout) => {
+        if (error !== null)
+          reject(new Error("Git fixture failed.", { cause: error }));
+        else resolve(stdout);
+      },
+    );
+  });
+}
+
 afterEach(async () => {
   await Promise.all(
     temporaryDirectories
@@ -991,7 +1030,7 @@ describe("offline filing payload custody evidence review", () => {
     expect(cycle2h).toHaveLength(82);
     expect(fastifyMaintenance).toHaveLength(85);
     expect(pnpmDependencyPolicyMaintenance).toHaveLength(88);
-    expect(cycle2i).toHaveLength(97);
+    expect(cycle2i).toHaveLength(98);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(legacy)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2d)).toBe(true);
@@ -1620,13 +1659,13 @@ describe("offline filing payload custody evidence review", () => {
     expect(isCycle2iBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
     expect(isCycle2iBaselineMergeBaseAllowed(undefined)).toBe(false);
 
-    expect(CYCLE_2I_TRANSITION).toHaveLength(20);
+    expect(CYCLE_2I_TRANSITION).toHaveLength(21);
     expect(
       CYCLE_2I_TRANSITION.filter((entry) => entry.status === "A"),
     ).toHaveLength(9);
     expect(
       CYCLE_2I_TRANSITION.filter((entry) => entry.status === "M"),
-    ).toHaveLength(11);
+    ).toHaveLength(12);
     expect(isCycle2iCommitDiffSetAllowed(CYCLE_2I_TRANSITION)).toBe(true);
     expect(
       isCycle2iCommitDiffSetAllowed([...CYCLE_2I_TRANSITION].reverse()),
@@ -2268,6 +2307,156 @@ describe("offline filing payload custody evidence review", () => {
     expect(isGitProcessResultAllowed(0, 41, 64, [new Uint8Array([1])])).toBe(
       false,
     );
+    expect(isGitProcessResultAllowed(0, 41, 64, [], true)).toBe(false);
+  });
+
+  it("disables Git replacement objects and lazy fetches without mutating caller arguments", () => {
+    const args = ["show", "revision:path"] as const;
+    const hardened = gitArgumentsWithoutReplacementObjects(args);
+    expect(hardened).toEqual([
+      "--no-replace-objects",
+      "--no-lazy-fetch",
+      "-c",
+      "advice.graftFileDeprecated=false",
+      "show",
+      "revision:path",
+    ]);
+    expect(Object.isFrozen(hardened)).toBe(true);
+    expect(args).toEqual(["show", "revision:path"]);
+  });
+
+  it("canonicalizes the platform null graft environment", () => {
+    const inherited = {
+      GIT_GRAFT_FILE: "first",
+      Path: "path-value",
+      git_graft_file: "second",
+    };
+    const windows = gitEnvironmentWithoutGrafts(inherited, "win32");
+    expect(windows).toEqual({ GIT_GRAFT_FILE: "NUL", Path: "path-value" });
+    expect(Object.isFrozen(windows)).toBe(true);
+    expect(gitEnvironmentWithoutGrafts(inherited, "linux")).toEqual({
+      GIT_GRAFT_FILE: "/dev/null",
+      Path: "path-value",
+    });
+    expect(inherited).toEqual({
+      GIT_GRAFT_FILE: "first",
+      Path: "path-value",
+      git_graft_file: "second",
+    });
+  });
+
+  it("accepts only a stable empty regular effective grafts file", () => {
+    const empty = smallFileStat({ size: 0 });
+    expect(isEmptyGitGraftsSnapshotAllowed(empty, empty, empty, empty, 0)).toBe(
+      true,
+    );
+    expect(
+      isEmptyGitGraftsSnapshotAllowed(
+        empty,
+        empty,
+        empty,
+        smallFileStat({ size: 1 }),
+        0,
+      ),
+    ).toBe(false);
+    expect(isEmptyGitGraftsSnapshotAllowed(empty, empty, empty, empty, 1)).toBe(
+      false,
+    );
+    expect(
+      isEmptyGitGraftsSnapshotAllowed(
+        empty,
+        empty,
+        empty,
+        smallFileStat({ size: 0, symbolicLink: true }),
+        0,
+      ),
+    ).toBe(false);
+  });
+
+  it("resolves and rejects the effective grafts file from a linked worktree", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "custody-grafts-test-"));
+    temporaryDirectories.push(directory);
+    const repositoryPath = join(directory, "repository");
+    const worktreePath = join(directory, "linked-worktree");
+    await gitOutput(["init", "--quiet", repositoryPath]);
+    await writeFile(join(repositoryPath, "tracked.txt"), "tracked\n");
+    await gitOutput(["-C", repositoryPath, "add", "tracked.txt"]);
+    await gitOutput([
+      "-C",
+      repositoryPath,
+      "-c",
+      "user.name=Evidence Test",
+      "-c",
+      "user.email=evidence@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "--quiet",
+      "-m",
+      "initial",
+    ]);
+    await gitOutput([
+      "-C",
+      repositoryPath,
+      "worktree",
+      "add",
+      "--quiet",
+      "--detach",
+      worktreePath,
+      "HEAD",
+    ]);
+
+    const ambientEnvironment = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => key.toUpperCase() !== "GIT_GRAFT_FILE",
+      ),
+    );
+
+    await expect(
+      verifyNoEffectiveGitGrafts(worktreePath, ambientEnvironment),
+    ).resolves.toBe(undefined);
+    const graftsPath = (
+      await gitOutput(
+        [
+          "-C",
+          worktreePath,
+          "rev-parse",
+          "--path-format=absolute",
+          "--git-path",
+          "info/grafts",
+        ],
+        ambientEnvironment,
+      )
+    ).trim();
+    expect(
+      decodeCycle2cAbsoluteGitPath(new TextEncoder().encode(`${graftsPath}\n`)),
+    ).toBe(graftsPath);
+    await mkdir(dirname(graftsPath), { recursive: true });
+    await writeFile(graftsPath, `${"0".repeat(40)}\n`);
+    await expect(
+      gitOutput(["-C", worktreePath, "rev-parse", "HEAD"]),
+    ).resolves.toMatch(/^[0-9a-f]{40}\n$/u);
+    await expect(
+      verifyNoEffectiveGitGrafts(worktreePath, ambientEnvironment),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    await writeFile(graftsPath, new Uint8Array());
+    await expect(
+      verifyNoEffectiveGitGrafts(worktreePath, ambientEnvironment),
+    ).resolves.toBe(undefined);
+
+    const ambientGraftsPath = join(directory, "ambient-grafts");
+    const overriddenEnvironment = {
+      ...ambientEnvironment,
+      GIT_GRAFT_FILE: ambientGraftsPath,
+    };
+    await writeFile(ambientGraftsPath, `${"1".repeat(40)}\n`);
+    await expect(
+      verifyNoEffectiveGitGrafts(worktreePath, overriddenEnvironment),
+    ).rejects.toThrow("Offline filing payload custody evidence review failed.");
+    await writeFile(ambientGraftsPath, new Uint8Array());
+    await expect(
+      verifyNoEffectiveGitGrafts(worktreePath, overriddenEnvironment),
+    ).resolves.toBe(undefined);
   });
 
   it("requires exact trailing-NUL framing with no empty or BOM-prefixed fields", () => {

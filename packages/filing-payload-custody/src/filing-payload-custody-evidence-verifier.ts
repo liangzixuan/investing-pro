@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
+import { isAbsolute } from "node:path";
 
 import {
   FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS,
@@ -35,6 +36,8 @@ const CYCLE_2I_BASELINE_REVISION =
   "dda2ecafc70aa6c4859a29cb312849bac5dec253" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
+const MAX_GIT_PATH_BYTES = 32_768;
+const GIT_TIMEOUT_MILLISECONDS = 30_000;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/u;
@@ -643,6 +646,7 @@ const CYCLE_2I_TRANSITION = Object.freeze([
     path: "docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md",
     status: "A",
   },
+  { path: "packages/db/tests/projection-normalization.test.ts", status: "M" },
   {
     path: "packages/filing-parser-normalization-handoff/package.json",
     status: "A",
@@ -993,6 +997,7 @@ export async function verifyCycle2cCommitBoundary(
   repositoryPath: string,
   revision: string,
 ): Promise<void> {
+  await verifyNoEffectiveGitGrafts(repositoryPath);
   await git(
     repositoryPath,
     ["cat-file", "-e", `${BASELINE_REVISION}^{commit}`],
@@ -1724,12 +1729,149 @@ export function isGitProcessResultAllowed(
   outputBytes: number,
   maximumOutputBytes: number,
   stderr: readonly Uint8Array[],
+  timedOut = false,
 ): boolean {
   return (
+    !timedOut &&
     code === 0 &&
     outputBytes <= maximumOutputBytes &&
     !hasNonEmptyStderr(stderr)
   );
+}
+
+/** @internal Exact replacement-ref hardening regression seam. */
+export function gitArgumentsWithoutReplacementObjects(
+  args: readonly string[],
+): readonly string[] {
+  return Object.freeze([
+    "--no-replace-objects",
+    "--no-lazy-fetch",
+    "-c",
+    "advice.graftFileDeprecated=false",
+    ...args,
+  ]);
+}
+
+/** @internal Exact graft-environment hardening regression seam. */
+export function gitEnvironmentWithoutGrafts(
+  environment: Readonly<NodeJS.ProcessEnv>,
+  platform: NodeJS.Platform = process.platform,
+): Readonly<NodeJS.ProcessEnv> {
+  const sanitized = Object.fromEntries(
+    Object.entries(environment).filter(
+      ([key]) => key.toUpperCase() !== "GIT_GRAFT_FILE",
+    ),
+  );
+  sanitized.GIT_GRAFT_FILE = platform === "win32" ? "NUL" : "/dev/null";
+  return Object.freeze(sanitized);
+}
+
+/** @internal Exact effective-grafts-path regression seam. */
+export function decodeCycle2cAbsoluteGitPath(bytes: Uint8Array): string {
+  let value: string;
+  try {
+    value = new TextDecoder("utf-8", {
+      fatal: true,
+      ignoreBOM: true,
+    }).decode(bytes);
+  } catch {
+    return invalid();
+  }
+  const path = value.slice(0, -1);
+  if (
+    value.includes("\ufeff") ||
+    !value.endsWith("\n") ||
+    path.length === 0 ||
+    /[\0\r\n]/u.test(path) ||
+    !isAbsolute(path)
+  )
+    invalid();
+  return path;
+}
+
+/** @internal Exact empty-grafts TOCTOU regression seam. */
+export function isEmptyGitGraftsSnapshotAllowed(
+  pathBefore: SmallRegularFileStat,
+  descriptorBefore: SmallRegularFileStat,
+  descriptorAfter: SmallRegularFileStat,
+  pathAfter: SmallRegularFileStat,
+  bytesRead: number,
+): boolean {
+  const snapshots = [pathBefore, descriptorBefore, descriptorAfter, pathAfter];
+  return (
+    bytesRead === 0 &&
+    snapshots.every(
+      (snapshot) =>
+        snapshot.isFile() &&
+        !snapshot.isSymbolicLink() &&
+        snapshot.size === 0 &&
+        Number.isFinite(snapshot.mtimeMs) &&
+        Number.isFinite(snapshot.ctimeMs) &&
+        isSameSmallRegularFileState(pathBefore, snapshot),
+    )
+  );
+}
+
+/** @internal Exported only for effective-worktree graft regressions. */
+export async function verifyNoEffectiveGitGrafts(
+  repositoryPath: string,
+  environment: Readonly<NodeJS.ProcessEnv> = process.env,
+): Promise<void> {
+  const graftsPath = decodeCycle2cAbsoluteGitPath(
+    await gitWithAmbientGrafts(
+      repositoryPath,
+      ["rev-parse", "--path-format=absolute", "--git-path", "info/grafts"],
+      MAX_GIT_PATH_BYTES,
+      environment,
+    ),
+  );
+  let pathBefore: SmallRegularFileStat;
+  try {
+    pathBefore = await lstat(graftsPath);
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") return;
+    return invalid();
+  }
+  if (
+    !isEmptyGitGraftsSnapshotAllowed(
+      pathBefore,
+      pathBefore,
+      pathBefore,
+      pathBefore,
+      0,
+    )
+  )
+    invalid();
+  const noFollow = constants.O_NOFOLLOW;
+  const nonBlock = constants.O_NONBLOCK;
+  const flags =
+    constants.O_RDONLY |
+    (typeof noFollow === "number" ? noFollow : 0) |
+    (typeof nonBlock === "number" ? nonBlock : 0);
+  try {
+    const handle = await open(graftsPath, flags);
+    try {
+      const descriptorBefore = await handle.stat();
+      const probe = Buffer.alloc(1);
+      const { bytesRead } = await handle.read(probe, 0, probe.byteLength, 0);
+      const descriptorAfter = await handle.stat();
+      const pathAfter = await lstat(graftsPath);
+      if (
+        !isEmptyGitGraftsSnapshotAllowed(
+          pathBefore,
+          descriptorBefore,
+          descriptorAfter,
+          pathAfter,
+          bytesRead,
+        )
+      )
+        invalid();
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return invalid();
+  }
 }
 
 async function cycle2iTransitionSurfaceDiffPaths(
@@ -2667,29 +2809,85 @@ async function git(
   args: readonly string[],
   maximumOutputBytes = MAX_GIT_BYTES,
 ): Promise<Uint8Array> {
+  return spawnGit(
+    cwd,
+    args,
+    maximumOutputBytes,
+    gitEnvironmentWithoutGrafts(process.env),
+  );
+}
+
+function gitWithAmbientGrafts(
+  cwd: string,
+  args: readonly string[],
+  maximumOutputBytes: number,
+  environment: Readonly<NodeJS.ProcessEnv>,
+): Promise<Uint8Array> {
+  return spawnGit(cwd, args, maximumOutputBytes, environment);
+}
+
+function spawnGit(
+  cwd: string,
+  args: readonly string[],
+  maximumOutputBytes: number,
+  environment: Readonly<NodeJS.ProcessEnv>,
+): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
-    const child = spawn("git", args, {
+    const child = spawn("git", gitArgumentsWithoutReplacementObjects(args), {
       cwd,
+      env: environment,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
     });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let bytes = 0;
+    let settled = false;
+    let timedOut = false;
+    const finish = (
+      outcome: "resolve" | "reject",
+      value?: Uint8Array,
+    ): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (outcome === "resolve" && value !== undefined) resolve(value);
+      else reject(new Error("git failed"));
+    };
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+      finish("reject");
+    }, GIT_TIMEOUT_MILLISECONDS);
+    timeout.unref();
     const collect = (target: Buffer[]) => (chunk: Buffer) => {
       bytes += chunk.byteLength;
-      if (bytes > maximumOutputBytes) child.kill();
-      else target.push(chunk);
+      if (bytes > maximumOutputBytes) {
+        child.kill("SIGKILL");
+        finish("reject");
+      } else target.push(chunk);
     };
     child.stdout.on("data", collect(stdout));
     child.stderr.on("data", collect(stderr));
-    child.once("error", reject);
+    child.once("error", () => finish("reject"));
     child.once("close", (code) => {
-      if (!isGitProcessResultAllowed(code, bytes, maximumOutputBytes, stderr))
-        reject(new Error("git failed"));
-      else resolve(new Uint8Array(Buffer.concat(stdout)));
+      if (
+        !isGitProcessResultAllowed(
+          code,
+          bytes,
+          maximumOutputBytes,
+          stderr,
+          timedOut,
+        )
+      )
+        finish("reject");
+      else finish("resolve", new Uint8Array(Buffer.concat(stdout)));
     });
   });
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
 }
 
 function required(
