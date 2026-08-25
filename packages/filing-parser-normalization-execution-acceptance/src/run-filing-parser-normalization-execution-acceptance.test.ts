@@ -4,6 +4,7 @@ import { FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL } from "@research
 
 import {
   exactCreateArguments,
+  imageIdValue,
   validateContainerInspection,
   validateRequestLimits,
 } from "./run-filing-parser-normalization-execution-acceptance";
@@ -16,6 +17,19 @@ const ARCHIVE_PATH = "/tmp/cycle2j/filing.zip";
 const MOUNT = `type=bind,source=${ARCHIVE_PATH},destination=/input/filing.zip,readonly`;
 
 describe("filing parser normalization execution live Docker audit", () => {
+  it("accepts only Docker's exact newline-free IID file", () => {
+    expect(imageIdValue(IMAGE)).toBe(IMAGE);
+    for (const substituted of [
+      `${IMAGE}\n`,
+      `${IMAGE}\r\n`,
+      ` ${IMAGE}`,
+      `${IMAGE} `,
+      IMAGE.toUpperCase(),
+      `sha256:${"0".repeat(63)}`,
+    ])
+      expect(() => imageIdValue(substituted)).toThrow();
+  });
+
   it("accepts only the exact create arguments and request bounds", () => {
     const args = createArguments();
     expect(exactCreateArguments(args, CONTAINER_NAME, MOUNT, IMAGE)).toBe(true);

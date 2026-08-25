@@ -1093,10 +1093,10 @@ function command(
   });
 }
 
-function imageIdValue(value: string): `sha256:${string}` {
-  const normalized = decodeExactLine(text(value));
-  if (!HASH.test(normalized)) fail();
-  return normalized as `sha256:${string}`;
+/** @internal Exported for exact Docker IID-file regression tests. */
+export function imageIdValue(value: string): `sha256:${string}` {
+  if (!HASH.test(value)) fail();
+  return value as `sha256:${string}`;
 }
 
 function decodeExactLine(value: Uint8Array): string {
