@@ -1287,6 +1287,7 @@ function fail(): never {
   throw new Error("acceptance failed");
 }
 
+// Keep direct execution last so every runtime class binding is initialized.
 const invokedPath = process.argv[1];
 if (
   invokedPath !== undefined &&

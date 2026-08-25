@@ -505,7 +505,7 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
         await harness.boundary.close();
       });
     }
-  }, 10_000);
+  });
 
   it("hardens every key-store read byte result before decryption", async () => {
     for (const carrierKind of [
