@@ -134,6 +134,41 @@ const filingFactNormalizationTestModules = new Map<string, readonly string[]>([
     ],
   ],
 ]);
+const filingParserNormalizationHandoffModule =
+  "@research-cockpit/filing-parser-normalization-handoff";
+const filingParserNormalizationHandoffPackagePrefix =
+  "packages/filing-parser-normalization-handoff/";
+const filingParserNormalizationHandoffSourcePrefix = `${filingParserNormalizationHandoffPackagePrefix}src/`;
+const filingParserNormalizationHandoffIndexPath = `${filingParserNormalizationHandoffSourcePrefix}index.ts`;
+const filingParserNormalizationHandoffProductionPath = `${filingParserNormalizationHandoffSourcePrefix}filing-parser-normalization-handoff.ts`;
+const filingParserNormalizationHandoffBuilderPath = `${filingParserNormalizationHandoffSourcePrefix}test-filing-parser-normalization-handoff-builder.ts`;
+const filingParserNormalizationHandoffUnitTestPath = `${filingParserNormalizationHandoffSourcePrefix}filing-parser-normalization-handoff.test.ts`;
+const filingParserNormalizationHandoffSecurityTestPath = `${filingParserNormalizationHandoffSourcePrefix}filing-parser-normalization-handoff-security.test.ts`;
+const filingParserNormalizationHandoffPublicExports = [
+  ["FILING_PARSER_NORMALIZATION_HANDOFF_CHECKS", false],
+  ["FILING_PARSER_NORMALIZATION_HANDOFF_CLAIM", false],
+  ["FILING_PARSER_NORMALIZATION_HANDOFF_LIMITS", false],
+  ["FILING_PARSER_NORMALIZATION_HANDOFF_NOT_PROVEN", false],
+  ["FILING_PARSER_NORMALIZATION_HANDOFF_SCHEMA_VERSION", false],
+  ["handoffAuthenticatedSyntheticFilingParserResults", false],
+  ["FilingParserNormalizationHandoffOptions", true],
+  ["FilingParserNormalizationHandoffProvenance", true],
+  ["FilingParserNormalizationHandoffQuarantinedResult", true],
+  ["FilingParserNormalizationHandoffResult", true],
+  ["FilingParserNormalizationHandoffSuccess", true],
+] as const;
+const filingParserNormalizationHandoffSourcePaths = new Set([
+  filingParserNormalizationHandoffBuilderPath,
+  filingParserNormalizationHandoffIndexPath,
+  filingParserNormalizationHandoffProductionPath,
+  filingParserNormalizationHandoffSecurityTestPath,
+  filingParserNormalizationHandoffUnitTestPath,
+]);
+const filingParserNormalizationHandoffPackagePaths = [
+  `${filingParserNormalizationHandoffPackagePrefix}package.json`,
+  `${filingParserNormalizationHandoffPackagePrefix}tsconfig.json`,
+  ...filingParserNormalizationHandoffSourcePaths,
+].sort();
 const forbiddenFilingFactNormalizationGlobals = new Set([
   "Bun",
   "Deno",
@@ -702,6 +737,18 @@ if (filingQualityPrecommitmentTreeViolation !== null)
   violations.push(
     `${filingQualityPrecommitmentPackagePrefix}: ${filingQualityPrecommitmentTreeViolation}`,
   );
+const filingParserNormalizationHandoffTreeViolation =
+  exactFilingParserNormalizationHandoffTreeViolation(
+    [...filesToInspect]
+      .map((file) => relative(root, file).replaceAll("\\", "/"))
+      .filter((path) =>
+        path.startsWith(filingParserNormalizationHandoffPackagePrefix),
+      ),
+  );
+if (filingParserNormalizationHandoffTreeViolation !== null)
+  violations.push(
+    `${filingParserNormalizationHandoffPackagePrefix}: ${filingParserNormalizationHandoffTreeViolation}`,
+  );
 
 // Release-gate regression cases: these common root-level surfaces must remain
 // classified even when their files are not present in a given checkout.
@@ -939,6 +986,172 @@ if (
   ) === null
 )
   throw new Error("Filing-fact-normalization source classifier regressed");
+if (
+  !referencesModule(
+    'import { handoffAuthenticatedSyntheticFilingParserResults } from "@research-cockpit/filing-parser-normalization-handoff";',
+    filingParserNormalizationHandoffModule,
+  ) ||
+  !referencesFilingParserNormalizationHandoffPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-parser-normalization-handoff/src/index",
+  ) ||
+  !hasFilingParserNormalizationHandoffDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-parser-normalization-handoff": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  !hasFilingParserNormalizationHandoffDependency(
+    {
+      devDependencies: {
+        "handoff-path-alias":
+          "link:../../packages/filing-parser-normalization-handoff",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  hasFilingParserNormalizationHandoffDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  )
+)
+  throw new Error(
+    "Filing-parser-normalization-handoff composition classifier regressed",
+  );
+const validFilingParserNormalizationHandoffManifest = {
+  name: filingParserNormalizationHandoffModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+  dependencies: {
+    [filingFactNormalizationModule]: "workspace:*",
+  },
+};
+if (
+  filingParserNormalizationHandoffManifestViolation(
+    validFilingParserNormalizationHandoffManifest,
+  ) !== null ||
+  filingParserNormalizationHandoffManifestViolation({
+    ...validFilingParserNormalizationHandoffManifest,
+    dependencies: {},
+  }) === null ||
+  filingParserNormalizationHandoffManifestViolation({
+    ...validFilingParserNormalizationHandoffManifest,
+    exports: {
+      ...validFilingParserNormalizationHandoffManifest.exports,
+      "./test": "./src/test-filing-parser-normalization-handoff-builder.ts",
+    },
+  }) === null
+)
+  throw new Error(
+    "Filing-parser-normalization-handoff manifest classifier regressed",
+  );
+const validFilingParserNormalizationHandoffSource = `import {
+  createHash,
+  createPublicKey,
+  verify as verifySignature,
+} from "node:crypto";
+import { types as utilTypes } from "node:util";
+import {
+  FILING_FACT_NORMALIZATION_LIMITS,
+  normalizeSyntheticFilingFactPair,
+  type FilingFactNormalizationRecord,
+} from "@research-cockpit/filing-fact-normalization";
+void createHash;
+void createPublicKey;
+void verifySignature;
+void utilTypes;
+void FILING_FACT_NORMALIZATION_LIMITS;
+void normalizeSyntheticFilingFactPair;
+`;
+const validFilingParserNormalizationHandoffIndexSource = `export {
+  FILING_PARSER_NORMALIZATION_HANDOFF_CHECKS,
+  FILING_PARSER_NORMALIZATION_HANDOFF_CLAIM,
+  FILING_PARSER_NORMALIZATION_HANDOFF_LIMITS,
+  FILING_PARSER_NORMALIZATION_HANDOFF_NOT_PROVEN,
+  FILING_PARSER_NORMALIZATION_HANDOFF_SCHEMA_VERSION,
+  handoffAuthenticatedSyntheticFilingParserResults,
+  type FilingParserNormalizationHandoffOptions,
+  type FilingParserNormalizationHandoffProvenance,
+  type FilingParserNormalizationHandoffQuarantinedResult,
+  type FilingParserNormalizationHandoffResult,
+  type FilingParserNormalizationHandoffSuccess,
+} from "./filing-parser-normalization-handoff";
+`;
+if (
+  exactFilingParserNormalizationHandoffTreeViolation(
+    filingParserNormalizationHandoffPackagePaths,
+  ) !== null ||
+  exactFilingParserNormalizationHandoffTreeViolation(
+    filingParserNormalizationHandoffPackagePaths.slice(1),
+  ) === null ||
+  exactFilingParserNormalizationHandoffTreeViolation([
+    ...filingParserNormalizationHandoffPackagePaths,
+    `${filingParserNormalizationHandoffSourcePrefix}io-helper.ts`,
+  ]) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    validFilingParserNormalizationHandoffSource,
+  ) !== null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    validFilingParserNormalizationHandoffSource.replace(
+      "createHash",
+      "randomBytes",
+    ),
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nvoid fetch("");`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nvoid Date.now();`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nvoid Math.random();`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nvoid crypto.getRandomValues(new Uint8Array(1));`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nvoid setTimeout(() => undefined, 0);`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nconst target = "node:fs"; void import(target);`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffProductionPath,
+    `${validFilingParserNormalizationHandoffSource}\nimport "node:fs";`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffIndexPath,
+    validFilingParserNormalizationHandoffIndexSource,
+  ) !== null ||
+  filingParserNormalizationHandoffImportViolation(
+    filingParserNormalizationHandoffIndexPath,
+    `${validFilingParserNormalizationHandoffIndexSource}\nexport * from "./test-filing-parser-normalization-handoff-builder";`,
+  ) === null ||
+  filingParserNormalizationHandoffImportViolation(
+    `${filingParserNormalizationHandoffSourcePrefix}io-helper.ts`,
+    'import "node:fs";',
+  ) === null
+)
+  throw new Error(
+    "Filing-parser-normalization-handoff source classifier regressed",
+  );
 if (
   !referencesModule(
     'import { compareSyntheticFilingFactValidatorReports } from "@research-cockpit/filing-fact-comparison";',
@@ -2229,6 +2442,16 @@ function exactFilingQualityPrecommitmentTreeViolation(
     : "package tree must remain the exact reviewed manifest, tsconfig, core, index, builder, and two tests";
 }
 
+function exactFilingParserNormalizationHandoffTreeViolation(
+  packagePaths: readonly string[],
+): string | null {
+  const actual = [...packagePaths].sort();
+  return JSON.stringify(actual) ===
+    JSON.stringify(filingParserNormalizationHandoffPackagePaths)
+    ? null
+    : "package tree must remain the exact reviewed manifest, tsconfig, core, index, builder, and two tests";
+}
+
 function inspectDependencies(path: string, manifest: unknown): void {
   if (!isRecord(manifest)) {
     violations.push(`${path}: package manifest must be an object`);
@@ -2302,10 +2525,24 @@ function inspectDependencies(path: string, manifest: unknown): void {
   }
   if (
     !path.startsWith("packages/filing-fact-normalization/") &&
+    path !== `${filingParserNormalizationHandoffPackagePrefix}package.json` &&
     hasFilingFactNormalizationDependency(manifest, path)
   )
     violations.push(
       `${path}: synthetic filing-fact normalization must not be composed into another package`,
+    );
+  if (path === `${filingParserNormalizationHandoffPackagePrefix}package.json`) {
+    const manifestViolation =
+      filingParserNormalizationHandoffManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith(filingParserNormalizationHandoffPackagePrefix) &&
+    hasFilingParserNormalizationHandoffDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: Cycle 2i parser-normalization handoff must not be composed into another package`,
     );
   if (path === `${filingFactComparisonPackagePrefix}package.json`) {
     const manifestViolation = filingFactComparisonManifestViolation(manifest);
@@ -2954,6 +3191,31 @@ function filingFactNormalizationManifestViolation(
     : "filing-fact-normalization package must retain its exact private, zero-dependency, index-only script and export surface";
 }
 
+function filingParserNormalizationHandoffManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-parser-normalization-handoff package manifest must be an exact object";
+  const expected = {
+    name: filingParserNormalizationHandoffModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      [filingFactNormalizationModule]: "workspace:*",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-parser-normalization-handoff package must retain its exact private, Cycle 2d-only workspace dependency, index-only script and export surface";
+}
+
 function filingFactComparisonManifestViolation(
   manifest: unknown,
 ): string | null {
@@ -3079,10 +3341,24 @@ function inspectCompositionBoundary(path: string, content: string): void {
     !path.startsWith("packages/filing-fact-normalization/") &&
     moduleSpecifiers.some((specifier) =>
       referencesFilingFactNormalizationPath(path, specifier),
-    )
+    ) &&
+    !isAllowedFilingFactNormalizationExternalImportPath(path)
   )
     violations.push(
       `${path}: synthetic filing-fact normalization must remain package-isolated`,
+    );
+  const filingParserNormalizationHandoffViolation =
+    filingParserNormalizationHandoffImportViolation(path, content);
+  if (filingParserNormalizationHandoffViolation !== null)
+    violations.push(`${path}: ${filingParserNormalizationHandoffViolation}`);
+  if (
+    !path.startsWith(filingParserNormalizationHandoffPackagePrefix) &&
+    moduleSpecifiers.some((specifier) =>
+      referencesFilingParserNormalizationHandoffPath(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: Cycle 2i parser-normalization handoff must remain package-isolated`,
     );
   const filingFactComparisonViolation = filingFactComparisonImportViolation(
     path,
@@ -3242,6 +3518,116 @@ function filingFactNormalizationImportViolation(
       return "normalization security test must retain its exact hash-only crypto binding";
   }
   return filingFactNormalizationGlobalViolation(path, content, "test");
+}
+
+function filingParserNormalizationHandoffImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (!path.startsWith(filingParserNormalizationHandoffSourcePrefix))
+    return null;
+  if (!filingParserNormalizationHandoffSourcePaths.has(path))
+    return "source set must remain the exact reviewed core, index, builder, and two tests";
+  if (hasRuntimeDynamicImport(content))
+    return "handoff sources must not use runtime dynamic imports";
+  if (
+    path === filingParserNormalizationHandoffIndexPath &&
+    !isExactFilingParserNormalizationHandoffIndex(content)
+  )
+    return "public index must retain the exact reviewed Cycle 2i export surface";
+
+  const modules = collectModuleSpecifiers(content);
+  const isTest =
+    path === filingParserNormalizationHandoffUnitTestPath ||
+    path === filingParserNormalizationHandoffSecurityTestPath;
+  const allowed =
+    path === filingParserNormalizationHandoffIndexPath
+      ? new Set(["./filing-parser-normalization-handoff"])
+      : path === filingParserNormalizationHandoffProductionPath
+        ? new Set(["node:crypto", "node:util", filingFactNormalizationModule])
+        : path === filingParserNormalizationHandoffBuilderPath
+          ? new Set([
+              "node:crypto",
+              filingFactNormalizationModule,
+              "./filing-parser-normalization-handoff",
+            ])
+          : new Set([
+              "node:crypto",
+              "vitest",
+              "./filing-parser-normalization-handoff",
+              "./test-filing-parser-normalization-handoff-builder",
+            ]);
+  if (
+    modules.length !== new Set(modules).size ||
+    modules.some((module) => !allowed.has(module)) ||
+    (isTest
+      ? ![
+          "vitest",
+          "./filing-parser-normalization-handoff",
+          "./test-filing-parser-normalization-handoff-builder",
+        ].every((module) => modules.includes(module))
+      : modules.length !== allowed.size)
+  )
+    return "handoff source may import only its exact crypto, Cycle 2d, core, builder, and Vitest surfaces";
+  if (
+    path === filingParserNormalizationHandoffProductionPath &&
+    !hasExactFilingParserNormalizationHandoffProductionImports(content)
+  )
+    return "handoff core must retain its exact hash, Ed25519 verifier, intrinsic-carrier, and Cycle 2d bindings";
+
+  const forbiddenGlobals = new Set([
+    "Atomics",
+    "BroadcastChannel",
+    "Bun",
+    "Date",
+    "Deno",
+    "EventSource",
+    "Function",
+    "Math",
+    "MessageChannel",
+    "SharedWorker",
+    "WebSocket",
+    "Worker",
+    "XMLHttpRequest",
+    "console",
+    "crypto",
+    "eval",
+    "fetch",
+    "global",
+    "globalThis",
+    "module",
+    "navigator",
+    "performance",
+    "process",
+    "queueMicrotask",
+    "require",
+    "setImmediate",
+    "setInterval",
+    "setTimeout",
+  ]);
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbidden: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbidden === null &&
+      ts.isIdentifier(node) &&
+      forbiddenGlobals.has(node.text)
+    ) {
+      forbidden = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbidden === null
+    ? null
+    : "handoff sources must not use clock, randomness, scheduling, network, process, logging, dynamic-code, or worker surfaces";
 }
 
 function filingFactComparisonImportViolation(
@@ -3942,6 +4328,114 @@ function isExactFilingFactNormalizationIndex(content: string): boolean {
   const expected = filingFactNormalizationPublicExports.map(
     ([name, typeOnly]) => [name, name, typeOnly],
   );
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function isExactFilingParserNormalizationHandoffIndex(
+  content: string,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingParserNormalizationHandoffIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  const declaration = sourceFile.statements[0];
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !==
+      "./filing-parser-normalization-handoff" ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = filingParserNormalizationHandoffPublicExports.map(
+    ([name, typeOnly]) => [name, name, typeOnly],
+  );
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function hasExactFilingParserNormalizationHandoffProductionImports(
+  content: string,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingParserNormalizationHandoffProductionPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  return (
+    imports.length === 3 &&
+    isExactFilingParserNormalizationHandoffImport(imports[0], "node:crypto", [
+      ["createHash", "createHash", false],
+      ["createPublicKey", "createPublicKey", false],
+      ["verify", "verifySignature", false],
+    ]) &&
+    isExactFilingParserNormalizationHandoffImport(imports[1], "node:util", [
+      ["types", "utilTypes", false],
+    ]) &&
+    isExactFilingParserNormalizationHandoffImport(
+      imports[2],
+      filingFactNormalizationModule,
+      [
+        [
+          "FILING_FACT_NORMALIZATION_LIMITS",
+          "FILING_FACT_NORMALIZATION_LIMITS",
+          false,
+        ],
+        [
+          "normalizeSyntheticFilingFactPair",
+          "normalizeSyntheticFilingFactPair",
+          false,
+        ],
+        [
+          "FilingFactNormalizationRecord",
+          "FilingFactNormalizationRecord",
+          true,
+        ],
+      ],
+    )
+  );
+}
+
+function isExactFilingParserNormalizationHandoffImport(
+  declaration: ts.ImportDeclaration | undefined,
+  moduleName: string,
+  expected: ReadonlyArray<readonly [string, string, boolean]>,
+): boolean {
+  if (
+    declaration === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== moduleName
+  )
+    return false;
+  const clause = declaration.importClause;
+  if (
+    clause === undefined ||
+    clause.isTypeOnly ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings)
+  )
+    return false;
+  const actual = clause.namedBindings.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
@@ -4663,6 +5157,35 @@ function hasFilingFactNormalizationDependency(
   });
 }
 
+function hasFilingParserNormalizationHandoffDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingParserNormalizationHandoffModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingParserNormalizationHandoffModule))
+        return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingParserNormalizationHandoffPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
 function hasFilingFactComparisonDependency(
   manifest: unknown,
   manifestPath: string,
@@ -4793,6 +5316,35 @@ function referencesFilingFactNormalizationPath(
     resolved === "packages/filing-fact-normalization" ||
     resolved.startsWith("packages/filing-fact-normalization/") ||
     resolved.includes("/packages/filing-fact-normalization/")
+  );
+}
+
+function isAllowedFilingFactNormalizationExternalImportPath(
+  sourcePath: string,
+): boolean {
+  return (
+    sourcePath === filingParserNormalizationHandoffProductionPath ||
+    sourcePath === filingParserNormalizationHandoffBuilderPath
+  );
+}
+
+function referencesFilingParserNormalizationHandoffPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingParserNormalizationHandoffModule ||
+    specifier.startsWith(`${filingParserNormalizationHandoffModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-parser-normalization-handoff" ||
+    resolved.startsWith(filingParserNormalizationHandoffPackagePrefix) ||
+    resolved.includes("/packages/filing-parser-normalization-handoff/")
   );
 }
 

@@ -381,6 +381,48 @@ run/job/artifact `32757171127` / `97527284597` / `9531290999` passed runtime
 acceptance and exact-commit review on attempt 1. Parser and custody remain
 regression and historical-boundary anchors, not a new Cycle 2h evidence domain.
 
+Cycle 2i defines the next bounded source-stage interface in the private
+`@research-cockpit/filing-parser-normalization-handoff` package. It accepts
+exactly two raw synthetic archives and two canonical Ed25519-signed complete
+ten-fact parser-result envelopes in distinct original/amendment roles. It owns
+and bounds the archive, envelope, and supplied public-key bytes; verifies
+canonical envelope syntax, domain-separated signatures, supplied key/image
+expectations, and recomputed raw-archive SHA-256 bindings; and rejects any
+missing, duplicate, defaulted, inferred, repaired, or silently remapped fact.
+It does not translate or widen Cycle 2a's historical two-fact v1 result; that
+shape fails the complete ten-fact contract.
+
+Cycle 2i canonicalizes the embedded documents while parsing the closed signed
+envelopes. After carrier, envelope, signature, key/image, and raw-archive
+binding checks pass, it delegates those exact original/amendment bytes
+unchanged to the public `normalizeSyntheticFilingFactPair` function. Cycle 2d
+validates the closed roles, facts, metadata, and pair during delegation; only a
+downstream `normalized` result succeeds. Success exposes only the immutable
+normalized record plus aggregate handoff provenance.
+Any invalid input or provenance, partial fact set, substitution, mutation,
+dependency failure, or downstream Cycle 2d quarantine collapses to the same
+empty value-free handoff quarantine.
+
+The sole bounded target is
+`bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
+Implementation and promotion are pending from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`; the exact successor commit, local
+inventory, and Ubuntu/Windows CI anchors will be recorded only after the source
+transition is frozen and green. No run IDs, job IDs, path counts, or test counts
+are asserted in advance.
+
+Cycle 2i creates no dedicated workflow, evidence schema, evidence artifact,
+offline review, or evidence note. Historical Cycle 2a and Cycle 2d evidence is
+immutable, and any parser, custody, or PostgreSQL workflow on the eventual
+commit is regression health only. The handoff does not prove actual parser
+execution or correctness, signed-document derivation from archive content
+beyond digest binding, key or image authority, real filing authenticity, Cycle
+2b authority, independent validation, adjudicated quality, application
+composition, full Cycle 2 exit, B15/V15, real-data admission, or production.
+See
+[ADR 0036](./docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
+and the [Cycle 2i exit matrix](./docs/CYCLE_2I_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -818,6 +860,15 @@ blocked.
   ingress inventory. The claim and every promotion gate are Pass only for exact
   source commit `61701307ded7fa77a555e27925ae86670f6b4dc0`. It does not harden poisoned primordials, isolate caller code,
   authenticate real sources, or close any wider Cycle 2 or production gate.
+- Cycle 2i targets only the bounded synthetic authenticated interface from two
+  raw-archive digest bindings and two signed complete ten-fact
+  original/amendment envelopes into the unchanged Cycle 2d normalizer. Its
+  implementation, exact successor commit, local inventory, and Ubuntu/Windows
+  CI anchors are pending from baseline
+  `dda2ecafc70aa6c4859a29cb312849bac5dec253`. It does not execute or validate a
+  parser, establish key/image/source authority, approve Cycle 2b, prove
+  independent adjudication or real quality, admit real filings, or close any
+  production gate.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -878,4 +929,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0034](./docs/adr/0034-bounded-synthetic-declared-reference-precommitment.md),
 [Cycle 2h exit matrix](./docs/CYCLE_2H_EXIT_MATRIX.md),
 [ADR 0035](./docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md),
+[Cycle 2i exit matrix](./docs/CYCLE_2I_EXIT_MATRIX.md),
+[ADR 0036](./docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md),
 and [architecture decisions](./docs/adr/).

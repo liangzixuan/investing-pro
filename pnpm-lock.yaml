@@ -119,6 +119,12 @@ importers:
 
   packages/filing-parser: {}
 
+  packages/filing-parser-normalization-handoff:
+    dependencies:
+      '@research-cockpit/filing-fact-normalization':
+        specifier: workspace:*
+        version: link:../filing-fact-normalization
+
   packages/filing-payload-custody: {}
 
   packages/filing-quality-measurement: {}

@@ -25,6 +25,10 @@ import {
   isCycle2hBaselineMergeBaseAllowed,
   isCycle2hCommitDiffSetAllowed,
   isCycle2hTransitionRoutingRequired,
+  isCycle2iBaselineMergeBaseAllowed,
+  isCycle2iCommitDiffSetAllowed,
+  isCycle2iHandoffTreeAllowed,
+  isCycle2iTransitionRoutingRequired,
   isCiTestSerializationBaselineMergeBaseAllowed,
   isCiTestSerializationCommitDiffSetAllowed,
   isCiTestSerializationSurfaceRoutingRequired,
@@ -345,6 +349,15 @@ const CYCLE_2G_PACKAGE_TREE = [
   "packages/filing-quality-precommitment/src/test-filing-quality-precommitment-builder.ts",
   "packages/filing-quality-precommitment/tsconfig.json",
 ].sort();
+const CYCLE_2I_HANDOFF_TREE = [
+  "packages/filing-parser-normalization-handoff/package.json",
+  "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff-security.test.ts",
+  "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.test.ts",
+  "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.ts",
+  "packages/filing-parser-normalization-handoff/src/index.ts",
+  "packages/filing-parser-normalization-handoff/src/test-filing-parser-normalization-handoff-builder.ts",
+  "packages/filing-parser-normalization-handoff/tsconfig.json",
+].sort();
 const CYCLE_2G_TRANSITION = [
   { path: "LICENSE_POLICY.md", status: "M" },
   { path: "README.md", status: "M" },
@@ -601,6 +614,68 @@ const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
   "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
 const PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION =
   "c1f27f4dfe946d999dad9473176e0285b01a48bc" as const;
+const CYCLE_2I_BASELINE_REVISION =
+  "dda2ecafc70aa6c4859a29cb312849bac5dec253" as const;
+const CYCLE_2I_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2I_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/package.json",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/index.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/test-filing-parser-normalization-handoff-builder.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/tsconfig.json",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+] as const;
+const CYCLE_2I_TRANSITION_PATHS = CYCLE_2I_TRANSITION.map(
+  (entry) => entry.path,
+);
 const AUTHENTICATED_REPLAY_MAINTENANCE_SURFACE_PATH =
   "packages/filing-payload-custody/src/payload-custody.ts" as const;
 const CI_TEST_SERIALIZATION_TRANSITION = [
@@ -706,6 +781,12 @@ const PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS = [
   ...new Set([
     ...FASTIFY_5_12_1_MAINTENANCE_CUMULATIVE_DIFF_PATHS,
     ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map((entry) => entry.path),
+  ]),
+].sort();
+const CYCLE_2I_CUMULATIVE_DIFF_PATHS = [
+  ...new Set([
+    ...PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS,
+    ...CYCLE_2I_TRANSITION_PATHS,
   ]),
 ].sort();
 
@@ -885,6 +966,15 @@ describe("offline filing payload custody evidence review", () => {
               ? "M"
               : "A",
       }));
+    const cycle2i = CYCLE_2I_CUMULATIVE_DIFF_PATHS.map((path) => ({
+      path,
+      status:
+        path === ".npmrc"
+          ? "D"
+          : path === CYCLE_2H_PRE_BASELINE_MAINTENANCE_PATH
+            ? "M"
+            : "A",
+    }));
     expect(complete).toHaveLength(33);
     expect(legacy).toHaveLength(32);
     expect(cycle2d).toHaveLength(44);
@@ -895,6 +985,7 @@ describe("offline filing payload custody evidence review", () => {
     expect(cycle2h).toHaveLength(82);
     expect(fastifyMaintenance).toHaveLength(85);
     expect(pnpmDependencyPolicyMaintenance).toHaveLength(88);
+    expect(cycle2i).toHaveLength(97);
     expect(isCycle2cCommitDiffSetAllowed(complete)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(legacy)).toBe(true);
     expect(isCycle2cCommitDiffSetAllowed(cycle2d)).toBe(true);
@@ -907,6 +998,7 @@ describe("offline filing payload custody evidence review", () => {
     expect(isCycle2cCommitDiffSetAllowed(pnpmDependencyPolicyMaintenance)).toBe(
       true,
     );
+    expect(isCycle2cCommitDiffSetAllowed(cycle2i)).toBe(true);
     expect(
       isCycle2cCommitDiffSetAllowed(
         cycle2hBaseline.map((entry) =>
@@ -989,6 +1081,13 @@ describe("offline filing payload custody evidence review", () => {
           pnpmDependencyPolicyMaintenance.filter(
             (entry) => entry.path !== omitted.path,
           ),
+        ),
+      ).toBe(false);
+    }
+    for (const omitted of cycle2i) {
+      expect(
+        isCycle2cCommitDiffSetAllowed(
+          cycle2i.filter((entry) => entry.path !== omitted.path),
         ),
       ).toBe(false);
     }
@@ -1485,6 +1584,124 @@ describe("offline filing payload custody evidence review", () => {
     expect(
       isFastify5121MaintenanceTransitionRoutingRequired(CYCLE_2H_TRANSITION),
     ).toBe(false);
+  });
+
+  it("admits and routes only the exact Cycle 2i handoff successor before pnpm maintenance", () => {
+    expect(isCycle2iHandoffTreeAllowed([])).toBe(true);
+    expect(isCycle2iHandoffTreeAllowed(CYCLE_2I_HANDOFF_TREE)).toBe(true);
+    expect(
+      isCycle2iHandoffTreeAllowed([...CYCLE_2I_HANDOFF_TREE].reverse()),
+    ).toBe(false);
+    for (const omitted of CYCLE_2I_HANDOFF_TREE) {
+      expect(
+        isCycle2iHandoffTreeAllowed(
+          CYCLE_2I_HANDOFF_TREE.filter((path) => path !== omitted),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2iHandoffTreeAllowed(
+        [
+          ...CYCLE_2I_HANDOFF_TREE,
+          "packages/filing-parser-normalization-handoff/src/unreviewed.ts",
+        ].sort(),
+      ),
+    ).toBe(false);
+
+    expect(isCycle2iBaselineMergeBaseAllowed(CYCLE_2I_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2iBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
+    expect(isCycle2iBaselineMergeBaseAllowed(undefined)).toBe(false);
+
+    expect(CYCLE_2I_TRANSITION).toHaveLength(19);
+    expect(
+      CYCLE_2I_TRANSITION.filter((entry) => entry.status === "A"),
+    ).toHaveLength(9);
+    expect(
+      CYCLE_2I_TRANSITION.filter((entry) => entry.status === "M"),
+    ).toHaveLength(10);
+    expect(isCycle2iCommitDiffSetAllowed(CYCLE_2I_TRANSITION)).toBe(true);
+    expect(
+      isCycle2iCommitDiffSetAllowed([...CYCLE_2I_TRANSITION].reverse()),
+    ).toBe(false);
+
+    for (const entry of CYCLE_2I_TRANSITION) {
+      expect(
+        isCycle2iCommitDiffSetAllowed(
+          CYCLE_2I_TRANSITION.filter((candidate) => candidate !== entry),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2iCommitDiffSetAllowed([...CYCLE_2I_TRANSITION, entry]),
+      ).toBe(false);
+      expect(isCycle2cCommitDiffEntryAllowed(entry.status, entry.path)).toBe(
+        true,
+      );
+      expect(isCycle2cCommitDiffEntryAllowed("D", entry.path)).toBe(false);
+      expect(isCycle2cCommitDiffEntryAllowed("R100", entry.path)).toBe(false);
+
+      for (const status of ["A", "M", "D", "R100"]) {
+        if (status === entry.status) continue;
+        expect(
+          isCycle2iCommitDiffSetAllowed(
+            CYCLE_2I_TRANSITION.map((candidate) =>
+              candidate === entry ? { ...candidate, status } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+    expect(
+      isCycle2iCommitDiffSetAllowed([
+        ...CYCLE_2I_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+
+    expect(isCycle2iTransitionRoutingRequired(CYCLE_2I_TRANSITION_PATHS)).toBe(
+      true,
+    );
+    for (const path of CYCLE_2I_TRANSITION_PATHS) {
+      expect(isCycle2iTransitionRoutingRequired([path])).toBe(true);
+      expect(
+        isCycle2iTransitionRoutingRequired(
+          CYCLE_2I_TRANSITION_PATHS.filter((candidate) => candidate !== path),
+        ),
+      ).toBe(true);
+    }
+    expect(isCycle2iTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle2iTransitionRoutingRequired([])).toBe(false);
+    expect(
+      isCycle2iTransitionRoutingRequired(
+        [...CYCLE_2I_TRANSITION_PATHS].reverse(),
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2iTransitionRoutingRequired([
+        CYCLE_2I_TRANSITION_PATHS[0] as string,
+        CYCLE_2I_TRANSITION_PATHS[0] as string,
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2iTransitionRoutingRequired([
+        ...CYCLE_2I_TRANSITION_PATHS,
+        "docs/unreviewed.md",
+      ]),
+    ).toBe(false);
+    const pnpmOverlap = CYCLE_2I_TRANSITION_PATHS.filter((path) =>
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS.some(
+        (candidate) => candidate === path,
+      ),
+    );
+    expect(pnpmOverlap).toEqual([
+      "pnpm-lock.yaml",
+      "scripts/verify-boundaries.ts",
+    ]);
+    expect(isCycle2iTransitionRoutingRequired(pnpmOverlap)).toBe(true);
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(pnpmOverlap),
+    ).toBe(true);
   });
 
   it("admits and routes only the exact pnpm dependency-policy maintenance successor before authenticated replay", () => {

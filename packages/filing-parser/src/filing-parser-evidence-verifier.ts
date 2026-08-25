@@ -41,6 +41,8 @@ const AUTHENTICATED_REPLAY_MAINTENANCE_BASELINE_REVISION =
   "ecc3a3ef7d054ca7cf3810edf0be72042f123b6b" as const;
 const PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION =
   "c1f27f4dfe946d999dad9473176e0285b01a48bc" as const;
+const CYCLE_2I_BASELINE_REVISION =
+  "dda2ecafc70aa6c4859a29cb312849bac5dec253" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -111,6 +113,17 @@ const CYCLE_2G_DISCONNECTED_SUCCESSOR_TREE = Object.freeze(
     "packages/filing-quality-precommitment/src/index.ts",
     "packages/filing-quality-precommitment/src/test-filing-quality-precommitment-builder.ts",
     "packages/filing-quality-precommitment/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2I_HANDOFF_SUCCESSOR_TREE = Object.freeze(
+  [
+    "packages/filing-parser-normalization-handoff/package.json",
+    "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff-security.test.ts",
+    "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.test.ts",
+    "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.ts",
+    "packages/filing-parser-normalization-handoff/src/index.ts",
+    "packages/filing-parser-normalization-handoff/src/test-filing-parser-normalization-handoff-builder.ts",
+    "packages/filing-parser-normalization-handoff/tsconfig.json",
   ].sort(),
 );
 const CYCLE_2D_TRANSITION = Object.freeze(
@@ -647,6 +660,66 @@ const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION = Object.freeze(
     { path: "pnpm-workspace.yaml", status: "M" },
     { path: "scripts/verify-boundaries.ts", status: "M" },
   ].sort((left, right) => left.path.localeCompare(right.path)),
+);
+const CYCLE_2I_TRANSITION = Object.freeze([
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2I_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/package.json",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/filing-parser-normalization-handoff.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/index.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/src/test-filing-parser-normalization-handoff-builder.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-normalization-handoff/tsconfig.json",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+]);
+const CYCLE_2I_TRANSITION_PATHS = new Set(
+  CYCLE_2I_TRANSITION.map((entry) => entry.path),
 );
 const PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS = new Set(
   PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION.map((entry) => entry.path),
@@ -1283,6 +1356,27 @@ export async function verifyCycle2aCommitBoundary(
   )
     invalidReview();
 
+  const handoffTreeEntries = splitNul(
+    await git(repositoryPath, [
+      "ls-tree",
+      "-r",
+      "-z",
+      "--full-tree",
+      revision,
+      "--",
+      "packages/filing-parser-normalization-handoff",
+    ]),
+  );
+  const handoffPaths = handoffTreeEntries.map((entry) => {
+    const match = /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entry);
+    return match?.[1] ?? invalidReview();
+  });
+  if (!isCycle2iHandoffTreeAllowed(handoffPaths)) invalidReview();
+
+  const cycle2iBaselineDiffPaths = await cycle2iTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
   const pnpmDependencyPolicyMaintenanceSurfaceDiffPaths =
     await pnpmDependencyPolicyMaintenanceTransitionSurfaceDiffPaths(
       repositoryPath,
@@ -1315,7 +1409,9 @@ export async function verifyCycle2aCommitBoundary(
     repositoryPath,
     revision,
   );
-  if (
+  if (isCycle2iTransitionRoutingRequired(cycle2iBaselineDiffPaths)) {
+    await verifyCycle2iTransition(repositoryPath, revision);
+  } else if (
     isPnpmDependencyPolicyMaintenanceTransitionRoutingRequired(
       pnpmDependencyPolicyMaintenanceSurfaceDiffPaths,
       diffEntries,
@@ -1390,6 +1486,7 @@ export function isCycle2aCommitDiffEntryAllowed(
     (status === "A" || status === "M") &&
     path !== undefined &&
     (CYCLE_2A_DIFF_ALLOWLIST.has(path) ||
+      CYCLE_2I_TRANSITION_PATHS.has(path) ||
       CYCLE_2H_TRANSITION_PATHS.has(path) ||
       (path !== ".npmrc" &&
         PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS.has(path)))
@@ -1486,6 +1583,20 @@ export function isCycle2gDisconnectedQualityPrecommitmentTreeAllowed(
   );
 }
 
+/** @internal Exported only for exact disconnected-successor regression tests. */
+export function isCycle2iHandoffTreeAllowed(paths: readonly string[]): boolean {
+  return (
+    paths.length === 0 || exactPathList(paths, CYCLE_2I_HANDOFF_SUCCESSOR_TREE)
+  );
+}
+
+/** @internal Exported only for exact successor-routing regression tests. */
+export function isCycle2iBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CYCLE_2I_BASELINE_REVISION;
+}
+
 /** @internal Exported only for exact successor-routing regression tests. */
 export function isCycle2hBaselineMergeBaseAllowed(
   mergeBase: string | undefined,
@@ -1514,6 +1625,22 @@ export function isPnpmDependencyPolicyMaintenanceBaselineMergeBaseAllowed(
   mergeBase: string | undefined,
 ): boolean {
   return mergeBase === PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION;
+}
+
+/** @internal Exact Cycle 2i successor routing regression seam. */
+export function isCycle2iTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.length > 0 &&
+    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
+    baselineDiffPaths.every(
+      (path, index) =>
+        CYCLE_2I_TRANSITION_PATHS.has(path) &&
+        (index === 0 || (baselineDiffPaths[index - 1] as string) < path),
+    )
+  );
 }
 
 /** @internal Exact pnpm dependency-policy maintenance routing regression seam. */
@@ -1882,6 +2009,53 @@ export function isOfflineEvidenceInputCustodyCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+/** @internal Exact Cycle 2i successor regression seam. */
+export function isCycle2iCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return (
+    entries.length === CYCLE_2I_TRANSITION.length &&
+    new Set(entries.map((entry) => entry.path)).size === entries.length &&
+    entries.every((entry, index) => {
+      const expected = CYCLE_2I_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+async function cycle2iTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2I_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2iBaselineMergeBaseAllowed(mergeBase)) return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2I_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CYCLE_2I_TRANSITION_PATHS,
+    ]),
   );
 }
 
@@ -2344,6 +2518,45 @@ async function verifyCiTestSerializationTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCiTestSerializationCommitDiffSetAllowed(entries)) invalidReview();
+}
+
+async function verifyCycle2iTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2I_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2I_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2iBaselineMergeBaseAllowed(mergeBase)) invalidReview();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CYCLE_2I_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2iCommitDiffSetAllowed(entries)) invalidReview();
 }
 
 async function verifyPnpmDependencyPolicyMaintenanceTransition(

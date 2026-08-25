@@ -1,4 +1,4 @@
-# Sprint 0 through source-stage Cycle 2h threat model
+# Sprint 0 through pending source-stage Cycle 2i threat model
 
 ## Current trust boundaries
 
@@ -348,6 +348,55 @@ Parser run/job/artifact `32757171096` / `97527284903` / `9531335028` and custody
 run/job/artifact `32757171127` / `97527284597` / `9531290999` passed runtime
 acceptance and commit-bound review on attempt 1. Parser and custody remain
 regression and historical-boundary anchors, not a new Cycle 2h evidence domain.
+
+Cycle 2i addresses a narrower P1 interface threat: historical Cycle 2a signed
+parser-result provenance and historical Cycle 2d normalization existed as
+separate contracts, so no bounded boundary required exact raw-archive digest
+bindings and authenticated complete parser-result envelopes before delegating
+canonical documents to the normalizer. The pending private
+`@research-cockpit/filing-parser-normalization-handoff` package accepts exactly
+two raw synthetic archives and two canonical Ed25519-signed complete ten-fact
+envelopes with distinct original/amendment roles.
+It does not translate or widen Cycle 2a's historical two-fact v1 output; that
+shape fails the complete-result contract.
+
+The handoff owns and bounds archive, envelope, and supplied canonical Ed25519
+DER SPKI bytes before use. It rejects non-canonical JSON and duplicate keys,
+reconstructs each domain-separated signing payload, verifies the signature
+under the supplied key, requires exact supplied key and image identities, and
+recomputes the corresponding raw-archive SHA-256. Canonical document
+reconstruction is part of strict envelope parsing; provenance and archive
+verification precede unchanged delegation of the exact embedded
+original/amendment bytes to `normalizeSyntheticFilingFactPair`. Cycle 2d then
+validates the distinct roles, complete closed ten-fact sets, parser, taxonomy,
+concept, unit, period, dimension, source, amendment lineage, and pair; only its
+`normalized` result succeeds.
+
+This closes only substitution, partial-set, silent-repair, and unverified
+synthetic interface paths under caller-supplied trust inputs. It does not prove
+the key owner or image is authoritative, that the image or parser ran, that
+extraction was correct, or that signed documents were derived from archive
+content beyond the asserted digest binding. A malicious or mistaken caller can
+supply a self-consistent key, image identity, archives, and signed envelopes;
+Cycle 2i authenticates their internal binding, not their external truth.
+
+Any carrier, syntax, signature, key/image, archive-digest, role, fact-set,
+metadata, lineage, mutation, dependency, or downstream Cycle 2d failure maps to
+the same empty value-free quarantine. Failure reveals no normalized facts,
+input values, archive/document hashes, provenance identifiers, signature or
+mismatch detail, or canary content. Success exposes only the unchanged Cycle
+2d normalized record plus aggregate synthetic handoff provenance.
+
+The sole target is
+`bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
+Implementation and promotion are pending from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The exact successor commit, frozen
+local inventory, and Ubuntu/Windows CI anchors will be recorded only after the
+complete transition is green; no run/job or count is asserted in advance.
+Cycle 2i adds no dedicated workflow, evidence schema, evidence artifact,
+offline review, evidence note, I/O, parser execution, custody, database, API,
+web, queue, or real data. Historical Cycle 2a and Cycle 2d evidence remains
+immutable, and any existing live workflow is regression health only.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -749,6 +798,13 @@ leave the server projection.
   focused hostile-carrier coverage and every promotion gate pass only for exact
   source commit `61701307ded7fa77a555e27925ae86670f6b4dc0`; historical Cycle
   2a–2g jobs do not establish the Superseded old-source conclusions.
+- Pending Cycle 2i defines one atomic synthetic interface: both raw archives
+  must hash to their corresponding canonical signed complete ten-fact
+  original/amendment envelopes, supplied key/image expectations and Ed25519
+  signatures must verify, and exact embedded Cycle 2d documents must normalize
+  without repair. This is not yet a promoted guarantee; its exact successor
+  commit and local/two-OS gates remain pending from baseline
+  `dda2ecafc70aa6c4859a29cb312849bac5dec253`.
 
 ## Non-production constraints
 
@@ -965,6 +1021,25 @@ the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md). The claim and every gate
 are Pass only for exact source commit
 `61701307ded7fa77a555e27925ae86670f6b4dc0`.
 
+Cycle 2i's target is only
+`bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`
+for exactly two raw synthetic archives and two canonical Ed25519-signed
+complete ten-fact original/amendment envelopes under caller-supplied key/image
+expectations. It can establish exact cryptographic consistency, recomputed
+archive-digest binding, complete closed fact roles, unchanged Cycle 2d
+delegation, immutable aggregate provenance, and fail-closed empty quarantine.
+It cannot establish actual parser/worker/container execution, extraction or
+accounting correctness, signer identity or key/image authority, signed-document
+derivation from archive content beyond a digest assertion, real filing/SEC
+authenticity, Cycle 2b inventory/rights/steward/authority/human review,
+independent validation, adjudicated ground truth or real quality, custody,
+database/API/web/queue composition, B15/V15, full Cycle 2 exit, real-data
+admission, or production readiness. Implementation and promotion remain
+pending from exact baseline `dda2ecafc70aa6c4859a29cb312849bac5dec253`.
+The exact boundary is in
+[ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
+and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -976,7 +1051,8 @@ are Pass only for exact source commit
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
    in-process candidate precommitment, plus Cycle 2h's byte-carrier hardening,
-   are engineering preparation only and do not satisfy any real-corpus
+   and Cycle 2i's pending authenticated synthetic parser-result-to-normalizer
+   handoff are engineering preparation only and do not satisfy any real-corpus
    prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.

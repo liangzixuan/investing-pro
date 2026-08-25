@@ -19,7 +19,9 @@ Cycle 2g in-process candidate-observation precommitment at that same commit now
 also Superseded, and Cycle 2h cross-boundary intrinsic byte-snapshot hardening
 Pass only on exact source commit
 `61701307ded7fa77a555e27925ae86670f6b4dc0`, restoring the Cycle 2a–2g bounded
-owned-byte premises only on that hardened successor;
+owned-byte premises only on that hardened successor; pending source-stage Cycle
+2i authenticated synthetic parser-result-to-normalization handoff from exact
+baseline `dda2ecafc70aa6c4859a29cb312849bac5dec253`;
 synthetic data only.
 
 ## Identity
@@ -727,6 +729,61 @@ quality, durable precommitment, network safety, production custody/KMS, full
 Cycle 2 exit, or production admission. See
 [ADR 0035](./adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md) and
 the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
+
+## Cycle 2i authenticated parser-normalization handoff boundary
+
+Cycle 2i adds no canonical admitted filing, parser execution, normalized fact
+authority, evidence passport, rights policy, tenant, persistent record,
+database command, or production entity. Its private
+`@research-cockpit/filing-parser-normalization-handoff` package defines one
+disconnected synthetic transport result: an immutable Cycle 2d normalized
+record paired with aggregate handoff provenance after an exact four-role input
+set passes.
+
+The four roles are the original raw archive, amendment raw archive, canonical
+Ed25519-signed original complete ten-fact parser-result envelope, and canonical
+Ed25519-signed amendment complete ten-fact parser-result envelope. Archive,
+envelope, and supplied public-key byte carriers are owned and bounded. The
+boundary recomputes each raw-archive SHA-256, requires the corresponding signed
+source binding, verifies each canonical domain-separated signature under the
+supplied public key, and requires the supplied expected key/image identities.
+These fields record internally verified synthetic call provenance, not signer,
+key, image, SEC, counsel, steward, or filing authority.
+
+The embedded documents are reconstructed as exact canonical original/amendment
+Cycle 2d bytes and delegated to `normalizeSyntheticFilingFactPair`. Cycle 2d
+then validates the closed ten-fact roles, parser, taxonomy, concept, unit,
+period, dimension, source, amendment-lineage, and pair contracts. Missing,
+duplicate, defaulted, inferred, repaired, or silently remapped facts cannot
+produce a successful handoff. Cycle 2i neither creates a parallel normalizer
+nor changes the Cycle 2d canonical document, normalized record, fact-version,
+or lineage contracts.
+
+A successful handoff exposes the unchanged normalized record plus immutable
+aggregate counts, expected key/image identifiers, the canonical SPKI hash, and
+a pair binding over both source hashes, both Cycle 2d document hashes, and the
+key/image/SPKI identities. It does not hash the signed-envelope or signature
+bytes or the normalized result. That aggregate is not admitted filing
+provenance, an evidence passport, an authority decision, or durable custody.
+Every invalid carrier,
+envelope, signature, provenance assertion, archive binding, role or fact set,
+pair lineage, dependency failure, or downstream quarantine maps to one empty
+value-free handoff quarantine. Failure has no canonical facts, normalized
+record, archive/document hashes, provenance identifiers, mismatch detail, or
+canary content.
+
+The sole target claim is
+`bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
+Implementation and promotion remain pending from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`; no exact successor, local
+inventory, CI anchor, path count, or test count is asserted yet. Cycle 2i adds
+no dedicated workflow, evidence schema, artifact, review, or note and does not
+modify historical Cycle 2a or Cycle 2d evidence. It cannot establish actual
+parser execution/correctness, key or source authority, real inputs, Cycle 2b
+approval, independence, adjudicated quality, persistence, B15/V15, full Cycle
+2 exit, real-data admission, or production. See
+[ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
+and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

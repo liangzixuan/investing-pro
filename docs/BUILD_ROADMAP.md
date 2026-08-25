@@ -1017,6 +1017,60 @@ the promotion rule are in
 [ADR 0035](./adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md) and
 the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
 
+## Cycle 2i — bounded synthetic authenticated parser-normalization handoff
+
+Status: **implementation and promotion are pending from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The exact successor commit, frozen
+local inventory, and Ubuntu/Windows CI anchors will be recorded only after the
+complete transition is green. Cycle 2b, full Cycle 2 quality, real-data
+admission, and production remain Blocked.**
+
+Cycle 2i closes the highest-priority provenance-preserving schema-interface
+gap between the historical Cycle 2a signed-parser shape and the historical
+Cycle 2d normalizer. The private
+`@research-cockpit/filing-parser-normalization-handoff` package accepts exactly
+two raw synthetic archives and two canonical Ed25519-signed complete ten-fact
+parser-result envelopes with distinct original/amendment roles. It owns and
+bounds archive, envelope, and supplied public-key bytes; verifies canonical
+JSON, domain-separated signatures, supplied key/image expectations, and
+recomputed archive SHA-256 bindings; and admits no missing, duplicate,
+defaulted, inferred, repaired, or silently remapped fact.
+It introduces a parallel complete-result protocol; it does not consume,
+translate, or widen Cycle 2a's historical two-fact v1 result, which fails this
+contract.
+
+The boundary canonicalizes the embedded documents while parsing the closed
+signed envelopes. After carrier, envelope, signature, key/image, and
+raw-archive binding checks pass, it delegates those exact original/amendment
+bytes unchanged to `normalizeSyntheticFilingFactPair`. Cycle 2d validates the
+closed roles, facts, metadata, and pair during delegation; only a downstream
+`normalized` result succeeds. Success exposes the immutable normalized record
+plus aggregate handoff provenance. Invalid input or provenance, a
+partial fact set, substitution, mutation, dependency error, or downstream
+Cycle 2d quarantine produces one empty value-free quarantine with no values,
+hashes, provenance identifiers, mismatch details, or canary content.
+
+The sole bounded target claim is
+`bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
+It proves only internal cryptographic consistency under the supplied key/image
+expectations, exact archive-digest binding, complete closed synthetic
+ten-fact documents, and exact Cycle 2d delegation. It does not prove actual
+parser or container execution, extraction/accounting correctness, key or image
+authority, signed-document derivation from archive content beyond the digest
+assertion, real filing authenticity, Cycle 2b inputs or approvals, independent
+validation, adjudicated ground truth, real quality, or production.
+
+Cycle 2i uses the full frozen-byte local release gate and the existing
+Ubuntu/Windows CI matrix only. It creates no dedicated workflow, evidence
+schema, evidence artifact, offline review, or evidence note. Existing parser,
+custody, or PostgreSQL runs for the eventual commit are regression health only.
+Historical Cycle 2a and Cycle 2d evidence remains immutable. No source commit,
+run/job anchor, path count, or test count will be filled until observed on the
+complete exact transition. Exact checks, nonclaims, and the promotion rule are
+in
+[ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
+and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -1031,8 +1085,10 @@ Exit gate: at least 100 representative filings and 2,000 critical assertions mee
 
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, nor bounded source-stage Cycle
-2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0` satisfies this
-exit gate. Real payload bytes and digest validation, approved corpus
+2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, nor pending
+source-stage Cycle 2i satisfies this exit gate. Cycle 2i does not establish that
+a parser executed or correctly derived its signed documents. Real payload
+bytes and digest validation, approved corpus
 inputs, real ten-fact coverage, truly independent validation, independently adjudicated
 precision/recall, general XBRL/iXBRL and taxonomy/plugin support, correction
 lineage, production operations, and real-data admission remain pending.
