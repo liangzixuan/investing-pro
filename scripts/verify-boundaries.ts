@@ -2628,6 +2628,9 @@ if (
     ),
   ) === null ||
   filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    `${reviewedExecutionAcceptanceRunnerSource}\nclass LateAcceptanceBinding {}`,
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
     reviewedExecutionAcceptanceRunnerSource.replace(
       'import { spawn } from "node:child_process";',
       'import { exec, spawn } from "node:child_process";',
@@ -5993,9 +5996,6 @@ function filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
     invalidProcessReference ||
     JSON.stringify(processPropertyReferences) !==
       JSON.stringify([
-        "argv",
-        "stderr",
-        "exitCode",
         "version",
         "platform",
         "arch",
@@ -6004,6 +6004,9 @@ function filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
         "env",
         "env",
         "env",
+        "argv",
+        "stderr",
+        "exitCode",
       ]) ||
     resolveBindings.length !== 1 ||
     !hasExactUnaliasedImportBinding(resolveBindings[0], "node:path") ||
@@ -6378,7 +6381,9 @@ function filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
     !ts.isVariableStatement(invokedPathVariableStatement) ||
     invokedPathVariableStatement.parent !== sourceFile ||
     sourceFile.statements.indexOf(invokedPathVariableStatement) + 1 !==
-      sourceFile.statements.indexOf(invokedIf)
+      sourceFile.statements.indexOf(invokedIf) ||
+    sourceFile.statements.at(-2) !== invokedPathVariableStatement ||
+    sourceFile.statements.at(-1) !== invokedIf
   )
     return violation;
   const markerCallbackArgument = mainCatch.mainCall.arguments[0];
@@ -6809,8 +6814,8 @@ function filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
     ...emitterOnceCalls,
   ].map((call) => call.getText(sourceFile).replace(/\s+/gu, " ").trim());
   if (
-    promiseCatchCalls[0]?.arguments[0] !== mainCatch.callback ||
-    promiseCatchCalls[1]?.getText(sourceFile).replace(/\s+/gu, " ").trim() !==
+    promiseCatchCalls[1]?.arguments[0] !== mainCatch.callback ||
+    promiseCatchCalls[0]?.getText(sourceFile).replace(/\s+/gu, " ").trim() !==
       "removeImage(imageId).catch(() => undefined)" ||
     JSON.stringify(normalizedListenerCalls) !==
       JSON.stringify([

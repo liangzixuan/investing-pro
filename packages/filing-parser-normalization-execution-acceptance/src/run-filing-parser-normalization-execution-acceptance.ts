@@ -139,24 +139,6 @@ export function filingParserNormalizationExecutionAcceptanceCleanupShouldReplace
   return hadPrimaryFailure === false;
 }
 
-const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(resolve(invokedPath)).href
-) {
-  let acceptancePhase: AcceptancePhase = "environment";
-  await main((phase) => {
-    acceptancePhase = phase;
-  }).catch(() => {
-    process.stderr.write(
-      filingParserNormalizationExecutionAcceptanceFailureDiagnostic(
-        acceptancePhase,
-      ),
-    );
-    process.exitCode = 1;
-  });
-}
-
 async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
   markPhase("environment");
   const environment = acceptanceEnvironment();
@@ -1303,4 +1285,22 @@ function requiredSourceHash(
 
 function fail(): never {
   throw new Error("acceptance failed");
+}
+
+const invokedPath = process.argv[1];
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(resolve(invokedPath)).href
+) {
+  let acceptancePhase: AcceptancePhase = "environment";
+  await main((phase) => {
+    acceptancePhase = phase;
+  }).catch(() => {
+    process.stderr.write(
+      filingParserNormalizationExecutionAcceptanceFailureDiagnostic(
+        acceptancePhase,
+      ),
+    );
+    process.exitCode = 1;
+  });
 }
