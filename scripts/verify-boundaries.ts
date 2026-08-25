@@ -196,6 +196,67 @@ const filingParserNormalizationExecutionAcceptanceSourcePrefix = `${filingParser
 const filingParserNormalizationExecutionAcceptanceIndexPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}index.ts`;
 const filingParserNormalizationExecutionAcceptanceRunnerPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}run-filing-parser-normalization-execution-acceptance.ts`;
 const filingParserNormalizationExecutionAcceptanceRunnerTestPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}run-filing-parser-normalization-execution-acceptance.test.ts`;
+const filingParserNormalizationExecutionAcceptanceFailurePhases = [
+  "environment",
+  "repository_anchor",
+  "source_inventory",
+  "image_metadata",
+  "staging",
+  "image_build",
+  "image_inspection",
+  "audited_setup",
+  "audited_success",
+  "audited_replay",
+  "audited_tamper",
+  "audited_role_swap",
+  "audited_residue",
+  "production_setup",
+  "production_success",
+  "production_replay",
+  "production_tamper",
+  "production_residue",
+  "evidence_assembly",
+  "tool_versions",
+  "image_removal",
+  "evidence_write",
+  "cleanup",
+] as const;
+const filingParserNormalizationExecutionAcceptanceMarkerSequence = [
+  ...filingParserNormalizationExecutionAcceptanceFailurePhases.slice(0, 19),
+  "tool_versions",
+  "evidence_assembly",
+  "image_removal",
+  "evidence_write",
+  "cleanup",
+] as const;
+const filingParserNormalizationExecutionAcceptanceNextStatementAnchors = [
+  "const environment = acceptanceEnvironment();",
+  "const revision = decodeExactLine(",
+  "const sourceHashes = await committedSourceHashes(revision);",
+  "const imageMetadata = await readPinnedImageMetadata();",
+  "const temporaryDirectory = await mkdtemp(",
+  "const build = await command(",
+  "await verifyBuiltImage(imageId);",
+  "const fixture = buildSyntheticFilingParserNormalizationExecutionFixture();",
+  "const successStart = recorder.documentOutputs.length;",
+  "const replayStart = recorder.documentOutputs.length;",
+  "const tamperedOriginal = Uint8Array.from(fixture.originalArchive);",
+  "const swapped = await boundary.execute(",
+  "recorder.assertComplete();",
+  "const productionBoundary = createFilingParserNormalizationExecutionBoundary(",
+  "const productionSuccess = await productionBoundary.execute(",
+  "const productionReplay = await productionBoundary.execute(",
+  "const productionRejected = await productionBoundary.execute(",
+  "await assertZeroResidue();",
+  "const outcomes: readonly FilingParserNormalizationExecutionEvidenceCaseOutcome[] = Object.freeze([",
+  "const tools = await toolVersions();",
+  "const evidence = createFilingParserNormalizationExecutionEvidence({",
+  "await removeImage(imageId);",
+  "temporaryEvidencePath = `${environment.evidencePath}.tmp`;",
+  'await Promise.reject( error instanceof Error ? error : new Error("acceptance failed")',
+] as const;
+const filingParserNormalizationExecutionAcceptanceFailurePrefix =
+  "filing_parser_normalization_execution_acceptance_failed phase=";
 const filingParserNormalizationExecutionEvidenceReviewPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-review.ts`;
 const filingParserNormalizationExecutionEvidenceReviewTestPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-review.test.ts`;
 const filingParserNormalizationExecutionEvidenceVerifierPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-verifier.ts`;
@@ -385,6 +446,8 @@ const filingParserNormalizationExecutionAcceptanceModules = new Map<
   [
     filingParserNormalizationExecutionAcceptanceRunnerTestPath,
     [
+      "node:child_process",
+      "node:url",
       "vitest",
       filingParserNormalizationExecutionModule,
       "./run-filing-parser-normalization-execution-acceptance",
@@ -2381,6 +2444,197 @@ const reviewedExecutionImageSource = await readFile(
   join(root, filingParserNormalizationExecutionImageReviewPath),
   "utf8",
 );
+if (
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource,
+  ) !== null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      '"tool_versions",',
+      '"tool_versions_removed",',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      /return "filing_parser_normalization_execution_acceptance_failed phase=image_build\\n";/u,
+      "return String(phase);",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    `${reviewedExecutionAcceptanceRunnerSource}\nprocess.stderr.write("secret");`,
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "}).catch(() => {",
+      "}).catch((error) => {",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "filing_parser_normalization_execution_acceptance_failed phase=environment",
+      "filing_parser_normalization_execution_acceptance_error phase=environment",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "return hadPrimaryFailure === false;",
+      "return true;",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "acceptancePhase = phase;",
+      'acceptancePhase = "environment";',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "process.exitCode = 1;",
+      "process.exitCode = 0;",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "  await main((phase) => {",
+      "  void main((phase) => {",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    `${reviewedExecutionAcceptanceRunnerSource}\nconst runtime = process;\nruntime.stderr.write(runtime.env.SECRET ?? "");`,
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      'stdio: ["ignore", "pipe", "pipe"],',
+      'stdio: "inherit",',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    `${reviewedExecutionAcceptanceRunnerSource}\nvoid writeFile("/dev/stderr", "secret");`,
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      'markPhase("image_inspection");',
+      'if (false) markPhase("image_inspection");',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    `${reviewedExecutionAcceptanceRunnerSource}\nvoid main(() => undefined);`,
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "primaryFailure = true;",
+      "primaryFailure = true;\n    primaryFailure &&= false;",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "}).catch(() => {",
+      "}).catch(async () => {",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "invokedPath !== undefined &&",
+      "invokedPath === invokedPath &&",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "isAbsolute, join, resolve }",
+      "isAbsolute, join, resolve as pathResolve }",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource
+      .replace('markPhase("image_inspection");', "void 0;")
+      .replace(
+        'markPhase("image_build");',
+        'markPhase("image_build");\n    markPhase("image_inspection");',
+      ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "async function main(markPhase: AcceptancePhaseMarker): Promise<void> {",
+      "async function main(markPhase: AcceptancePhaseMarker): Promise<void> {\n  const filingParserNormalizationExecutionAcceptanceCleanupShouldReplacePhase = (): boolean => true;",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "export const ACCEPTANCE_PHASES",
+      "const ACCEPTANCE_PHASES",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      'let acceptancePhase: AcceptancePhase = "environment";',
+      'let acceptancePhase: AcceptancePhase = "environment", filingParserNormalizationExecutionAcceptanceFailureDiagnostic = (): string => "filing_parser_normalization_execution_acceptance_failed phase=environment\\n", leakedRevision = requiredEnvironment("GITHUB_SHA");',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "const environment = acceptanceEnvironment();",
+      'const environment = acceptanceEnvironment();\n  void writeFile("/dev/" + "stderr", environment.evidencePath);',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    `${reviewedExecutionAcceptanceRunnerSource}\nthrow new Error(requiredEnvironment("GITHUB_SHA"));`,
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "const environment = acceptanceEnvironment();",
+      'const environment = acceptanceEnvironment();\n  void setTimeout(() => { throw new Error(requiredEnvironment("GITHUB_SHA")); }, 0);',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "const environment = acceptanceEnvironment();",
+      'const environment = acceptanceEnvironment();\n  globalThis["console"].error(environment.evidencePath);',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "const environment = acceptanceEnvironment();",
+      "const environment = acceptanceEnvironment();\n  global.console.error(environment.evidencePath);",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "const environment = acceptanceEnvironment();",
+      "const environment = acceptanceEnvironment();\n  void readFile(environment.evidencePath).then(() => undefined);",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "const environment = acceptanceEnvironment();",
+      "const environment = acceptanceEnvironment();\n  readFile(environment.evidencePath).finally(() => undefined);",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "async function main(markPhase: AcceptancePhaseMarker): Promise<void> {",
+      "async function main(markPhase: AcceptancePhaseMarker): Promise<void> {\n  const Promise = { reject: async (value: unknown): Promise<never> => await globalThis.Promise.reject(value) };",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "await Promise.reject(",
+      "void Promise.reject(",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      "  writeFile,",
+      "  appendFile,\n  writeFile,",
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+    reviewedExecutionAcceptanceRunnerSource.replace(
+      'import { spawn } from "node:child_process";',
+      'import { exec, spawn } from "node:child_process";',
+    ),
+  ) === null
+)
+  throw new Error("Cycle 2j live acceptance diagnostic classifier regressed");
 if (
   filingParserNormalizationExecutionImportViolation(
     filingParserNormalizationExecutionProductionPath,
@@ -5252,6 +5506,1390 @@ function filingParserNormalizationExecutionDynamicLoadViolation(
     hasIndirectRuntimeModuleLoad(content)
     ? "Cycle 2j sources must not use runtime module loading, node:module recovery, or dynamic code"
     : null;
+}
+
+function filingParserNormalizationExecutionAcceptanceDiagnosticViolation(
+  content: string,
+): string | null {
+  const violation =
+    "Cycle 2j live acceptance must retain its exact value-free failure-phase diagnostic";
+  const sourceFile = ts.createSourceFile(
+    filingParserNormalizationExecutionAcceptanceRunnerPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const phaseDeclarations: ts.VariableDeclaration[] = [];
+  const trackerDeclarations: ts.VariableDeclaration[] = [];
+  const primaryDeclarations: ts.VariableDeclaration[] = [];
+  const diagnosticFunctions: ts.FunctionDeclaration[] = [];
+  const diagnosticBindings: ts.Identifier[] = [];
+  const diagnosticReferences: ts.Identifier[] = [];
+  const cleanupPrecedenceFunctions: ts.FunctionDeclaration[] = [];
+  const mainFunctions: ts.FunctionDeclaration[] = [];
+  const invokedPathDeclarations: ts.VariableDeclaration[] = [];
+  const markerPhases: string[] = [];
+  const markerCalls: ts.CallExpression[] = [];
+  const markPhaseBindings: ts.Identifier[] = [];
+  const markPhaseReferences: ts.Identifier[] = [];
+  const cleanupPrecedenceBindings: ts.Identifier[] = [];
+  const cleanupPrecedenceReferences: ts.Identifier[] = [];
+  const mainReferences: ts.Identifier[] = [];
+  const directMainCalls: ts.CallExpression[] = [];
+  const primaryBindings: ts.Identifier[] = [];
+  const primaryReferences: ts.Identifier[] = [];
+  const primaryAssignments: ts.BinaryExpression[] = [];
+  const processPropertyReferences: string[] = [];
+  const stderrAccesses: ts.Node[] = [];
+  const stdoutAccesses: ts.Node[] = [];
+  const stderrWrites: ts.CallExpression[] = [];
+  const stdioProperties: ts.PropertyAssignment[] = [];
+  const resolveBindings: ts.Identifier[] = [];
+  const pathToFileUrlBindings: ts.Identifier[] = [];
+  const promiseBindings: ts.Identifier[] = [];
+  const promiseReferences: ts.Identifier[] = [];
+  const errorBindings: ts.Identifier[] = [];
+  const promiseStaticCalls: ts.CallExpression[] = [];
+  const promiseNewCalls: ts.NewExpression[] = [];
+  const effectfulFsPromiseNames = new Set([
+    "lstat",
+    "mkdtemp",
+    "readFile",
+    "rename",
+    "rm",
+    "writeFile",
+  ]);
+  const effectfulFsPromiseBindings: ts.Identifier[] = [];
+  const effectfulFsPromiseReferences: ts.Identifier[] = [];
+  const effectfulFsPromiseCalls: ts.CallExpression[] = [];
+  const writeFileBindings: ts.Identifier[] = [];
+  const writeFileReferences: ts.Identifier[] = [];
+  const writeFileCalls: ts.CallExpression[] = [];
+  const spawnBindings: ts.Identifier[] = [];
+  const spawnReferences: ts.Identifier[] = [];
+  const spawnCalls: ts.CallExpression[] = [];
+  const setTimeoutBindings: ts.Identifier[] = [];
+  const setTimeoutReferences: ts.Identifier[] = [];
+  const setTimeoutCalls: ts.CallExpression[] = [];
+  const clearTimeoutBindings: ts.Identifier[] = [];
+  const clearTimeoutReferences: ts.Identifier[] = [];
+  const clearTimeoutCalls: ts.CallExpression[] = [];
+  const promiseThenCalls: ts.CallExpression[] = [];
+  const promiseFinallyCalls: ts.CallExpression[] = [];
+  const promiseCatchCalls: ts.CallExpression[] = [];
+  const addEventListenerCalls: ts.CallExpression[] = [];
+  const removeEventListenerCalls: ts.CallExpression[] = [];
+  const emitterOnCalls: ts.CallExpression[] = [];
+  const emitterOnceCalls: ts.CallExpression[] = [];
+  const mainCatches: {
+    readonly callback: ts.ArrowFunction | ts.FunctionExpression;
+    readonly mainCall: ts.CallExpression;
+  }[] = [];
+  let forbiddenFailureDetail = false;
+  let forbiddenOutputTarget = false;
+  let forbiddenGlobalRecovery = false;
+  let forbiddenValueVoid = false;
+  let invalidProcessReference = false;
+
+  const isBindingIdentifier = (node: ts.Identifier): boolean => {
+    const { parent } = node;
+    return (
+      ((ts.isVariableDeclaration(parent) ||
+        ts.isParameter(parent) ||
+        ts.isBindingElement(parent) ||
+        ts.isFunctionDeclaration(parent) ||
+        ts.isFunctionExpression(parent) ||
+        ts.isClassDeclaration(parent) ||
+        ts.isClassExpression(parent) ||
+        ts.isTypeAliasDeclaration(parent) ||
+        ts.isInterfaceDeclaration(parent) ||
+        ts.isEnumDeclaration(parent)) &&
+        parent.name === node) ||
+      (ts.isImportSpecifier(parent) && parent.name === node) ||
+      (ts.isNamespaceImport(parent) && parent.name === node) ||
+      (ts.isImportClause(parent) && parent.name === node)
+    );
+  };
+
+  const processStreamName = (node: ts.Node): string | null => {
+    if (
+      !ts.isPropertyAccessExpression(node) &&
+      !ts.isElementAccessExpression(node)
+    )
+      return null;
+    const receiver = unwrapBoundaryExpression(node.expression);
+    if (!ts.isIdentifier(receiver) || receiver.text !== "process") return null;
+    return ts.isPropertyAccessExpression(node)
+      ? node.name.text
+      : staticStringValue(node.argumentExpression);
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+      if (node.name.text === "ACCEPTANCE_PHASES") phaseDeclarations.push(node);
+      if (node.name.text === "acceptancePhase") trackerDeclarations.push(node);
+      if (node.name.text === "primaryFailure") primaryDeclarations.push(node);
+      if (node.name.text === "invokedPath") invokedPathDeclarations.push(node);
+    }
+    if (
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text ===
+        "filingParserNormalizationExecutionAcceptanceFailureDiagnostic"
+    )
+      diagnosticFunctions.push(node);
+    if (
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text ===
+        "filingParserNormalizationExecutionAcceptanceCleanupShouldReplacePhase"
+    )
+      cleanupPrecedenceFunctions.push(node);
+    if (ts.isFunctionDeclaration(node) && node.name?.text === "main")
+      mainFunctions.push(node);
+    if (ts.isCallExpression(node)) {
+      const callee = unwrapBoundaryExpression(node.expression);
+      if (ts.isIdentifier(callee)) {
+        if (effectfulFsPromiseNames.has(callee.text))
+          effectfulFsPromiseCalls.push(node);
+        if (callee.text === "writeFile") writeFileCalls.push(node);
+        if (callee.text === "spawn") spawnCalls.push(node);
+        if (callee.text === "setTimeout") setTimeoutCalls.push(node);
+        if (callee.text === "clearTimeout") clearTimeoutCalls.push(node);
+      }
+      const chainedCall = namedBoundaryPropertyAccess(
+        node.expression,
+        new Set([
+          "addEventListener",
+          "catch",
+          "finally",
+          "on",
+          "once",
+          "removeEventListener",
+          "then",
+        ]),
+      );
+      if (chainedCall !== null) {
+        const chainedName = ts.isPropertyAccessExpression(chainedCall)
+          ? chainedCall.name.text
+          : staticStringValue(chainedCall.argumentExpression);
+        switch (chainedName) {
+          case "addEventListener":
+            addEventListenerCalls.push(node);
+            break;
+          case "catch":
+            promiseCatchCalls.push(node);
+            break;
+          case "finally":
+            promiseFinallyCalls.push(node);
+            break;
+          case "on":
+            emitterOnCalls.push(node);
+            break;
+          case "once":
+            emitterOnceCalls.push(node);
+            break;
+          case "removeEventListener":
+            removeEventListenerCalls.push(node);
+            break;
+          case "then":
+            promiseThenCalls.push(node);
+            break;
+        }
+      }
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        ts.isIdentifier(callee.expression) &&
+        callee.expression.text === "Promise"
+      )
+        promiseStaticCalls.push(node);
+      if (ts.isIdentifier(callee) && callee.text === "main")
+        directMainCalls.push(node);
+      if (ts.isIdentifier(callee) && callee.text === "markPhase") {
+        markerCalls.push(node);
+        const markerArgument = node.arguments[0];
+        const marker =
+          node.arguments.length === 1 &&
+          markerArgument !== undefined &&
+          ts.isStringLiteral(markerArgument)
+            ? markerArgument.text
+            : null;
+        if (marker !== null) markerPhases.push(marker);
+      }
+      const writeAccess = namedBoundaryPropertyAccess(
+        node.expression,
+        new Set(["write"]),
+      );
+      if (
+        writeAccess !== null &&
+        processStreamName(unwrapBoundaryExpression(writeAccess.expression)) ===
+          "stderr"
+      )
+        stderrWrites.push(node);
+      const catchAccess = namedBoundaryPropertyAccess(
+        node.expression,
+        new Set(["catch"]),
+      );
+      const catchReceiver =
+        catchAccess === null
+          ? null
+          : unwrapBoundaryExpression(catchAccess.expression);
+      if (
+        catchReceiver !== null &&
+        ts.isCallExpression(catchReceiver) &&
+        ts.isIdentifier(unwrapBoundaryExpression(catchReceiver.expression)) &&
+        unwrapBoundaryExpression(catchReceiver.expression).getText() ===
+          "main" &&
+        node.arguments.length === 1
+      ) {
+        const callbackArgument = node.arguments[0];
+        if (callbackArgument !== undefined) {
+          const callback = unwrapBoundaryExpression(callbackArgument);
+          if (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
+            mainCatches.push({ callback, mainCall: catchReceiver });
+        }
+      }
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isIdentifier(unwrapBoundaryExpression(node.left)) &&
+      unwrapBoundaryExpression(node.left).getText() === "primaryFailure"
+    )
+      primaryAssignments.push(node);
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(unwrapBoundaryExpression(node.expression)) &&
+      unwrapBoundaryExpression(node.expression).getText() === "Promise"
+    )
+      promiseNewCalls.push(node);
+    if (
+      ts.isPropertyAssignment(node) &&
+      propertyNameText(node.name) === "stdio"
+    )
+      stdioProperties.push(node);
+    if (ts.isIdentifier(node)) {
+      if (effectfulFsPromiseNames.has(node.text)) {
+        if (isBindingIdentifier(node)) effectfulFsPromiseBindings.push(node);
+        else effectfulFsPromiseReferences.push(node);
+      }
+      if (["console", "global", "globalThis"].includes(node.text))
+        forbiddenGlobalRecovery = true;
+      if (node.text === "main") {
+        if (!(
+          ts.isFunctionDeclaration(node.parent) && node.parent.name === node
+        ))
+          mainReferences.push(node);
+      } else if (node.text === "markPhase") {
+        if (isBindingIdentifier(node)) markPhaseBindings.push(node);
+        else markPhaseReferences.push(node);
+      } else if (
+        node.text ===
+        "filingParserNormalizationExecutionAcceptanceFailureDiagnostic"
+      ) {
+        if (isBindingIdentifier(node)) diagnosticBindings.push(node);
+        else diagnosticReferences.push(node);
+      } else if (
+        node.text ===
+        "filingParserNormalizationExecutionAcceptanceCleanupShouldReplacePhase"
+      ) {
+        if (isBindingIdentifier(node)) cleanupPrecedenceBindings.push(node);
+        else cleanupPrecedenceReferences.push(node);
+      } else if (node.text === "primaryFailure") {
+        if (isBindingIdentifier(node)) primaryBindings.push(node);
+        else primaryReferences.push(node);
+      } else if (node.text === "resolve" && isBindingIdentifier(node)) {
+        resolveBindings.push(node);
+      } else if (node.text === "pathToFileURL" && isBindingIdentifier(node)) {
+        pathToFileUrlBindings.push(node);
+      } else if (node.text === "Promise") {
+        if (isBindingIdentifier(node)) promiseBindings.push(node);
+        else if (!ts.isTypeReferenceNode(node.parent))
+          promiseReferences.push(node);
+      } else if (node.text === "Error" && isBindingIdentifier(node)) {
+        errorBindings.push(node);
+      } else if (node.text === "writeFile") {
+        if (isBindingIdentifier(node)) writeFileBindings.push(node);
+        else writeFileReferences.push(node);
+      } else if (node.text === "spawn") {
+        if (isBindingIdentifier(node)) spawnBindings.push(node);
+        else spawnReferences.push(node);
+      } else if (node.text === "setTimeout") {
+        if (isBindingIdentifier(node)) setTimeoutBindings.push(node);
+        else setTimeoutReferences.push(node);
+      } else if (node.text === "clearTimeout") {
+        if (isBindingIdentifier(node)) clearTimeoutBindings.push(node);
+        else clearTimeoutReferences.push(node);
+      } else if (node.text === "process") {
+        const parent = node.parent;
+        if (
+          !ts.isPropertyAccessExpression(parent) ||
+          parent.expression !== node ||
+          parent.questionDotToken !== undefined
+        ) {
+          invalidProcessReference = true;
+        } else {
+          processPropertyReferences.push(parent.name.text);
+          if (
+            ["argv", "env", "stderr"].includes(parent.name.text) &&
+            !(
+              (ts.isPropertyAccessExpression(parent.parent) ||
+                ts.isElementAccessExpression(parent.parent)) &&
+              parent.parent.expression === parent
+            )
+          )
+            invalidProcessReference = true;
+        }
+      }
+    }
+    if (ts.isVoidExpression(node)) forbiddenValueVoid = true;
+    if (ts.isStringLiteralLike(node)) {
+      const outputTarget = node.text.replaceAll("\\", "/").toLowerCase();
+      if (
+        outputTarget === "inherit" ||
+        outputTarget.includes("/dev/stderr") ||
+        outputTarget.includes("/dev/stdout") ||
+        outputTarget.includes("/dev/fd/1") ||
+        outputTarget.includes("/dev/fd/2") ||
+        outputTarget.includes("/proc/self/fd/1") ||
+        outputTarget.includes("/proc/self/fd/2") ||
+        outputTarget.includes("conerr$") ||
+        outputTarget.includes("conout$")
+      )
+        forbiddenOutputTarget = true;
+    }
+    const stream = processStreamName(node);
+    if (stream === "stderr") stderrAccesses.push(node);
+    if (stream === "stdout") stdoutAccesses.push(node);
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      ["message", "stack"].includes(
+        ts.isPropertyAccessExpression(node)
+          ? node.name.text
+          : (staticStringValue(node.argumentExpression) ?? ""),
+      )
+    )
+      forbiddenFailureDetail = true;
+    if (ts.isIdentifier(node) && node.text === "console")
+      forbiddenFailureDetail = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  const hasExactUnaliasedImportBinding = (
+    binding: ts.Identifier | undefined,
+    moduleName: string,
+  ): boolean => {
+    if (binding === undefined || !ts.isImportSpecifier(binding.parent))
+      return false;
+    const specifier = binding.parent;
+    let ancestor: ts.Node = specifier;
+    while (!ts.isImportDeclaration(ancestor) && ancestor.parent !== undefined)
+      ancestor = ancestor.parent;
+    return (
+      ts.isImportDeclaration(ancestor) &&
+      ts.isStringLiteral(ancestor.moduleSpecifier) &&
+      ancestor.moduleSpecifier.text === moduleName &&
+      specifier.propertyName === undefined &&
+      specifier.name === binding
+    );
+  };
+  const exactNamedImportBindings = (
+    moduleName: string,
+    names: readonly string[],
+  ): readonly ts.Identifier[] | null => {
+    const imports = sourceFile.statements.filter(
+      (statement): statement is ts.ImportDeclaration =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text === moduleName,
+    );
+    const clause = imports[0]?.importClause;
+    if (
+      imports.length !== 1 ||
+      clause === undefined ||
+      clause.isTypeOnly ||
+      clause.name !== undefined ||
+      clause.namedBindings === undefined ||
+      !ts.isNamedImports(clause.namedBindings) ||
+      clause.namedBindings.elements.length !== names.length
+    )
+      return null;
+    const bindings: ts.Identifier[] = [];
+    for (let index = 0; index < names.length; index += 1) {
+      const expected = names[index];
+      const specifier = clause.namedBindings.elements[index];
+      if (
+        expected === undefined ||
+        specifier === undefined ||
+        specifier.isTypeOnly ||
+        specifier.propertyName !== undefined ||
+        specifier.name.text !== expected
+      )
+        return null;
+      bindings.push(specifier.name);
+    }
+    return bindings;
+  };
+  const fsPromiseBindings = exactNamedImportBindings("node:fs/promises", [
+    "lstat",
+    "mkdtemp",
+    "readFile",
+    "rename",
+    "rm",
+    "writeFile",
+  ]);
+  const childProcessBindings = exactNamedImportBindings("node:child_process", [
+    "spawn",
+  ]);
+  const topLevelIfStatements = sourceFile.statements.filter(ts.isIfStatement);
+  const topLevelVariableStatements = sourceFile.statements.filter(
+    ts.isVariableStatement,
+  );
+  const topLevelVariableNames = topLevelVariableStatements.flatMap(
+    (statement) =>
+      statement.declarationList.declarations.map((declaration) =>
+        ts.isIdentifier(declaration.name) ? declaration.name.text : null,
+      ),
+  );
+  const topLevelKindsValid = sourceFile.statements.every(
+    (statement) =>
+      ts.isImportDeclaration(statement) ||
+      ts.isVariableStatement(statement) ||
+      ts.isTypeAliasDeclaration(statement) ||
+      ts.isInterfaceDeclaration(statement) ||
+      ts.isFunctionDeclaration(statement) ||
+      ts.isClassDeclaration(statement) ||
+      ts.isIfStatement(statement),
+  );
+  let unexpectedTopLevelInitializerExecution = false;
+  for (const statement of topLevelVariableStatements) {
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        ts.isIdentifier(declaration.name) &&
+        declaration.name.text === "ACCEPTANCE_PHASES"
+      )
+        continue;
+      const inspectInitializer = (node: ts.Node): void => {
+        if (
+          ts.isCallExpression(node) ||
+          ts.isNewExpression(node) ||
+          ts.isAwaitExpression(node) ||
+          ts.isTaggedTemplateExpression(node)
+        ) {
+          unexpectedTopLevelInitializerExecution = true;
+          return;
+        }
+        ts.forEachChild(node, inspectInitializer);
+      };
+      if (declaration.initializer !== undefined)
+        inspectInitializer(declaration.initializer);
+    }
+  }
+  if (
+    forbiddenFailureDetail ||
+    forbiddenOutputTarget ||
+    forbiddenGlobalRecovery ||
+    forbiddenValueVoid ||
+    invalidProcessReference ||
+    JSON.stringify(processPropertyReferences) !==
+      JSON.stringify([
+        "argv",
+        "stderr",
+        "exitCode",
+        "version",
+        "platform",
+        "arch",
+        "env",
+        "env",
+        "env",
+        "env",
+        "env",
+      ]) ||
+    resolveBindings.length !== 1 ||
+    !hasExactUnaliasedImportBinding(resolveBindings[0], "node:path") ||
+    pathToFileUrlBindings.length !== 1 ||
+    !hasExactUnaliasedImportBinding(pathToFileUrlBindings[0], "node:url") ||
+    promiseBindings.length !== 0 ||
+    errorBindings.length !== 0 ||
+    fsPromiseBindings === null ||
+    effectfulFsPromiseBindings.length !== fsPromiseBindings.length ||
+    effectfulFsPromiseBindings.some(
+      (binding, index) => binding !== fsPromiseBindings[index],
+    ) ||
+    JSON.stringify(
+      effectfulFsPromiseReferences.map((reference) => reference.text),
+    ) !==
+      JSON.stringify([
+        "mkdtemp",
+        "readFile",
+        "writeFile",
+        "rename",
+        "rm",
+        "rm",
+        "readFile",
+        "lstat",
+      ]) ||
+    effectfulFsPromiseCalls.length !== effectfulFsPromiseReferences.length ||
+    effectfulFsPromiseReferences.some(
+      (reference, index) =>
+        reference !== effectfulFsPromiseCalls[index]?.expression,
+    ) ||
+    fsPromiseBindings[5] !== writeFileBindings[0] ||
+    childProcessBindings === null ||
+    childProcessBindings[0] !== spawnBindings[0] ||
+    writeFileBindings.length !== 1 ||
+    writeFileReferences.length !== 1 ||
+    writeFileCalls.length !== 1 ||
+    writeFileReferences[0] !== writeFileCalls[0]?.expression ||
+    spawnBindings.length !== 1 ||
+    spawnReferences.length !== 1 ||
+    spawnCalls.length !== 1 ||
+    spawnReferences[0] !== spawnCalls[0]?.expression ||
+    setTimeoutBindings.length !== 0 ||
+    setTimeoutReferences.length !== 1 ||
+    setTimeoutCalls.length !== 1 ||
+    setTimeoutReferences[0] !== setTimeoutCalls[0]?.expression ||
+    clearTimeoutBindings.length !== 0 ||
+    clearTimeoutReferences.length !== 1 ||
+    clearTimeoutCalls.length !== 1 ||
+    clearTimeoutReferences[0] !== clearTimeoutCalls[0]?.expression ||
+    promiseThenCalls.length !== 0 ||
+    promiseFinallyCalls.length !== 0 ||
+    promiseCatchCalls.length !== 2 ||
+    addEventListenerCalls.length !== 1 ||
+    removeEventListenerCalls.length !== 1 ||
+    emitterOnCalls.length !== 2 ||
+    emitterOnceCalls.length !== 2 ||
+    JSON.stringify(
+      promiseStaticCalls.map((call) =>
+        ts.isPropertyAccessExpression(call.expression)
+          ? call.expression.name.text
+          : null,
+      ),
+    ) !== JSON.stringify(["resolve", "reject", "reject"]) ||
+    promiseNewCalls.length !== 1 ||
+    !topLevelKindsValid ||
+    topLevelIfStatements.length !== 1 ||
+    JSON.stringify(topLevelVariableNames) !==
+      JSON.stringify([
+        "BASE_INDEX_DIGEST",
+        "BASE_PLATFORM_MANIFEST_DIGEST",
+        "BASE_IMAGE",
+        "KEY_ID",
+        "EVIDENCE_FILE",
+        "HASH",
+        "COMMIT",
+        "MAX_COMMAND_BYTES",
+        "ACCEPTANCE_PHASES",
+        "invokedPath",
+      ]) ||
+    unexpectedTopLevelInitializerExecution
+  )
+    return violation;
+  const stdioProperty = stdioProperties[0];
+  const stdioInitializer =
+    stdioProperty === undefined
+      ? undefined
+      : unwrapBoundaryExpression(stdioProperty.initializer);
+  if (
+    stdioProperties.length !== 1 ||
+    stdioInitializer === undefined ||
+    !ts.isArrayLiteralExpression(stdioInitializer) ||
+    JSON.stringify(
+      stdioInitializer.elements.map((element) =>
+        ts.isStringLiteral(element) ? element.text : null,
+      ),
+    ) !== JSON.stringify(["ignore", "pipe", "pipe"])
+  )
+    return violation;
+
+  const phaseDeclaration = phaseDeclarations[0];
+  const phaseVariableStatement =
+    phaseDeclaration !== undefined &&
+    ts.isVariableDeclarationList(phaseDeclaration.parent)
+      ? phaseDeclaration.parent.parent
+      : undefined;
+  if (
+    phaseDeclarations.length !== 1 ||
+    phaseDeclaration === undefined ||
+    phaseDeclaration.initializer === undefined ||
+    !ts.isVariableDeclarationList(phaseDeclaration.parent) ||
+    (phaseDeclaration.parent.flags & ts.NodeFlags.Const) === 0 ||
+    phaseVariableStatement === undefined ||
+    !ts.isVariableStatement(phaseVariableStatement) ||
+    phaseVariableStatement.modifiers?.length !== 1 ||
+    phaseVariableStatement.modifiers[0]?.kind !== ts.SyntaxKind.ExportKeyword
+  )
+    return violation;
+  const frozenPhases = unwrapBoundaryExpression(phaseDeclaration.initializer);
+  if (!ts.isCallExpression(frozenPhases)) return violation;
+  const freeze = unwrapBoundaryExpression(frozenPhases.expression);
+  if (
+    !ts.isPropertyAccessExpression(freeze) ||
+    freeze.name.text !== "freeze" ||
+    !ts.isIdentifier(unwrapBoundaryExpression(freeze.expression)) ||
+    unwrapBoundaryExpression(freeze.expression).getText() !== "Object" ||
+    frozenPhases.arguments.length !== 1
+  )
+    return violation;
+  const frozenPhaseArgument = frozenPhases.arguments[0];
+  if (frozenPhaseArgument === undefined) return violation;
+  const phaseArray = unwrapBoundaryExpression(frozenPhaseArgument);
+  if (
+    !ts.isArrayLiteralExpression(phaseArray) ||
+    phaseArray.elements.some((element) => !ts.isStringLiteral(element)) ||
+    JSON.stringify(
+      phaseArray.elements.map((element) =>
+        ts.isStringLiteral(element) ? element.text : null,
+      ),
+    ) !==
+      JSON.stringify(filingParserNormalizationExecutionAcceptanceFailurePhases)
+  )
+    return violation;
+
+  const diagnosticFunction = diagnosticFunctions[0];
+  if (
+    diagnosticFunctions.length !== 1 ||
+    diagnosticFunction === undefined ||
+    diagnosticFunction.name === undefined ||
+    diagnosticBindings.length !== 1 ||
+    diagnosticBindings[0] !== diagnosticFunction.name ||
+    diagnosticReferences.length !== 1
+  )
+    return violation;
+  const diagnosticParameter = diagnosticFunction.parameters[0];
+  const diagnosticBody = diagnosticFunction.body;
+  if (
+    diagnosticFunction.modifiers?.length !== 1 ||
+    diagnosticFunction.modifiers[0]?.kind !== ts.SyntaxKind.ExportKeyword ||
+    diagnosticFunction.parameters.length !== 1 ||
+    diagnosticParameter === undefined ||
+    !ts.isIdentifier(diagnosticParameter.name) ||
+    diagnosticParameter.name.text !== "phase" ||
+    diagnosticParameter.type?.kind !== ts.SyntaxKind.UnknownKeyword ||
+    diagnosticFunction.type?.kind !== ts.SyntaxKind.StringKeyword ||
+    diagnosticBody === undefined ||
+    diagnosticBody.statements.length !== 1
+  )
+    return violation;
+  const switchStatement = diagnosticBody.statements[0];
+  if (
+    switchStatement === undefined ||
+    !ts.isSwitchStatement(switchStatement) ||
+    !ts.isIdentifier(switchStatement.expression) ||
+    switchStatement.expression.text !== "phase" ||
+    switchStatement.caseBlock.clauses.length !==
+      filingParserNormalizationExecutionAcceptanceFailurePhases.length + 1
+  )
+    return violation;
+  for (
+    let index = 0;
+    index < filingParserNormalizationExecutionAcceptanceFailurePhases.length;
+    index += 1
+  ) {
+    const phase =
+      filingParserNormalizationExecutionAcceptanceFailurePhases[index];
+    const clause = switchStatement.caseBlock.clauses[index];
+    const statement = clause?.statements[0];
+    if (
+      phase === undefined ||
+      clause === undefined ||
+      !ts.isCaseClause(clause) ||
+      !ts.isStringLiteral(clause.expression) ||
+      clause.expression.text !== phase ||
+      clause.statements.length !== 1 ||
+      statement === undefined ||
+      !ts.isReturnStatement(statement) ||
+      statement.expression === undefined ||
+      !ts.isStringLiteral(statement.expression) ||
+      statement.expression.text !==
+        `${filingParserNormalizationExecutionAcceptanceFailurePrefix}${phase}\n`
+    )
+      return violation;
+  }
+  const defaultClause = switchStatement.caseBlock.clauses.at(-1);
+  const defaultStatement = defaultClause?.statements[0];
+  if (
+    defaultClause === undefined ||
+    !ts.isDefaultClause(defaultClause) ||
+    defaultClause.statements.length !== 1 ||
+    defaultStatement === undefined ||
+    !ts.isReturnStatement(defaultStatement) ||
+    defaultStatement.expression === undefined ||
+    !ts.isStringLiteral(defaultStatement.expression) ||
+    defaultStatement.expression.text !==
+      `${filingParserNormalizationExecutionAcceptanceFailurePrefix}internal\n`
+  )
+    return violation;
+
+  const cleanupPrecedenceFunction = cleanupPrecedenceFunctions[0];
+  if (
+    cleanupPrecedenceFunctions.length !== 1 ||
+    cleanupPrecedenceFunction === undefined ||
+    cleanupPrecedenceFunction.modifiers?.length !== 1 ||
+    cleanupPrecedenceFunction.modifiers[0]?.kind !==
+      ts.SyntaxKind.ExportKeyword ||
+    cleanupPrecedenceFunction.parameters.length !== 1 ||
+    cleanupPrecedenceFunction.type?.kind !== ts.SyntaxKind.BooleanKeyword ||
+    cleanupPrecedenceFunction.body?.statements.length !== 1 ||
+    cleanupPrecedenceFunction.name === undefined ||
+    cleanupPrecedenceBindings.length !== 1 ||
+    cleanupPrecedenceBindings[0] !== cleanupPrecedenceFunction.name ||
+    cleanupPrecedenceReferences.length !== 1
+  )
+    return violation;
+  const cleanupPrecedenceParameter = cleanupPrecedenceFunction.parameters[0];
+  const cleanupPrecedenceReturn = cleanupPrecedenceFunction.body?.statements[0];
+  if (
+    cleanupPrecedenceParameter === undefined ||
+    !ts.isIdentifier(cleanupPrecedenceParameter.name) ||
+    cleanupPrecedenceParameter.name.text !== "hadPrimaryFailure" ||
+    cleanupPrecedenceParameter.type?.kind !== ts.SyntaxKind.BooleanKeyword ||
+    cleanupPrecedenceReturn === undefined ||
+    !ts.isReturnStatement(cleanupPrecedenceReturn) ||
+    cleanupPrecedenceReturn.expression === undefined ||
+    !ts.isBinaryExpression(cleanupPrecedenceReturn.expression) ||
+    cleanupPrecedenceReturn.expression.operatorToken.kind !==
+      ts.SyntaxKind.EqualsEqualsEqualsToken ||
+    !ts.isIdentifier(cleanupPrecedenceReturn.expression.left) ||
+    cleanupPrecedenceReturn.expression.left.text !== "hadPrimaryFailure" ||
+    cleanupPrecedenceReturn.expression.right.kind !== ts.SyntaxKind.FalseKeyword
+  )
+    return violation;
+
+  const trackerDeclaration = trackerDeclarations[0];
+  const mainFunction = mainFunctions[0];
+  const mainParameter = mainFunction?.parameters[0];
+  if (
+    markerCalls.length !== markerPhases.length ||
+    JSON.stringify(markerPhases) !==
+      JSON.stringify(
+        filingParserNormalizationExecutionAcceptanceMarkerSequence,
+      ) ||
+    trackerDeclarations.length !== 1 ||
+    trackerDeclaration === undefined ||
+    trackerDeclaration.initializer === undefined ||
+    !ts.isStringLiteral(trackerDeclaration.initializer) ||
+    trackerDeclaration.initializer.text !== "environment" ||
+    !ts.isVariableDeclarationList(trackerDeclaration.parent) ||
+    (trackerDeclaration.parent.flags & ts.NodeFlags.Let) === 0 ||
+    trackerDeclaration.parent.declarations.length !== 1 ||
+    mainFunctions.length !== 1 ||
+    mainFunction === undefined ||
+    mainFunction.modifiers?.length !== 1 ||
+    mainFunction.modifiers[0]?.kind !== ts.SyntaxKind.AsyncKeyword ||
+    mainFunction.parameters.length !== 1 ||
+    mainParameter === undefined ||
+    !ts.isIdentifier(mainParameter.name) ||
+    mainParameter.name.text !== "markPhase" ||
+    mainParameter.type?.getText(sourceFile) !== "AcceptancePhaseMarker" ||
+    mainFunction.type?.getText(sourceFile) !== "Promise<void>" ||
+    mainFunction.body === undefined ||
+    markPhaseBindings.length !== 1 ||
+    markPhaseBindings[0] !== mainParameter.name ||
+    markPhaseReferences.length !== markerCalls.length ||
+    markerCalls.some(
+      (call, index) =>
+        !ts.isIdentifier(call.expression) ||
+        call.expression.text !== "markPhase" ||
+        markPhaseReferences[index] !== call.expression,
+    ) ||
+    mainCatches.length !== 1 ||
+    directMainCalls.length !== 1 ||
+    mainReferences.length !== 1
+  )
+    return violation;
+  const mainCatch = mainCatches[0];
+  if (
+    mainCatch === undefined ||
+    directMainCalls[0] !== mainCatch.mainCall ||
+    mainReferences[0] !== mainCatch.mainCall.expression ||
+    !ts.isArrowFunction(mainCatch.callback) ||
+    mainCatch.callback.modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
+    ) === true ||
+    mainCatch.callback.parameters.length !== 0 ||
+    mainCatch.mainCall.arguments.length !== 1 ||
+    !ts.isBlock(mainCatch.callback.body) ||
+    mainCatch.callback.body.statements.length !== 2
+  )
+    return violation;
+  const mainCallProperty = mainCatch.mainCall.parent;
+  const caughtMainCall = mainCallProperty.parent;
+  const awaitedMainCall = caughtMainCall.parent;
+  const invokedStatement = awaitedMainCall.parent;
+  const invokedBlock = invokedStatement.parent;
+  const invokedIf = invokedBlock.parent;
+  if (
+    !ts.isPropertyAccessExpression(mainCallProperty) ||
+    mainCallProperty.expression !== mainCatch.mainCall ||
+    mainCallProperty.name.text !== "catch" ||
+    !ts.isCallExpression(caughtMainCall) ||
+    caughtMainCall.expression !== mainCallProperty ||
+    caughtMainCall.arguments[0] !== mainCatch.callback ||
+    !ts.isAwaitExpression(awaitedMainCall) ||
+    awaitedMainCall.expression !== caughtMainCall ||
+    !ts.isExpressionStatement(invokedStatement) ||
+    invokedStatement.expression !== awaitedMainCall ||
+    !ts.isBlock(invokedBlock) ||
+    invokedBlock.statements.length !== 2 ||
+    invokedBlock.statements[1] !== invokedStatement ||
+    !ts.isIfStatement(invokedIf) ||
+    invokedIf.parent !== sourceFile ||
+    topLevelIfStatements[0] !== invokedIf ||
+    invokedIf.thenStatement !== invokedBlock ||
+    invokedIf.elseStatement !== undefined ||
+    invokedIf.expression.getText(sourceFile).replace(/\s+/gu, "") !==
+      "invokedPath!==undefined&&import.meta.url===pathToFileURL(resolve(invokedPath)).href"
+  )
+    return violation;
+  const trackerDeclarationList = trackerDeclaration.parent;
+  const trackerVariableStatement = trackerDeclarationList.parent;
+  if (
+    !ts.isVariableStatement(trackerVariableStatement) ||
+    invokedBlock.statements[0] !== trackerVariableStatement
+  )
+    return violation;
+  const invokedPathDeclaration = invokedPathDeclarations[0];
+  if (
+    invokedPathDeclarations.length !== 1 ||
+    invokedPathDeclaration === undefined ||
+    invokedPathDeclaration.initializer === undefined ||
+    !ts.isVariableDeclarationList(invokedPathDeclaration.parent) ||
+    (invokedPathDeclaration.parent.flags & ts.NodeFlags.Const) === 0
+  )
+    return violation;
+  const invokedPathInitializer = unwrapBoundaryExpression(
+    invokedPathDeclaration.initializer,
+  );
+  const invokedPathVariableStatement = invokedPathDeclaration.parent.parent;
+  const argvAccess = ts.isElementAccessExpression(invokedPathInitializer)
+    ? unwrapBoundaryExpression(invokedPathInitializer.expression)
+    : undefined;
+  if (
+    !ts.isElementAccessExpression(invokedPathInitializer) ||
+    argvAccess === undefined ||
+    !ts.isPropertyAccessExpression(argvAccess) ||
+    !ts.isIdentifier(argvAccess.expression) ||
+    argvAccess.expression.text !== "process" ||
+    argvAccess.name.text !== "argv" ||
+    !ts.isNumericLiteral(invokedPathInitializer.argumentExpression) ||
+    invokedPathInitializer.argumentExpression.text !== "1" ||
+    !ts.isVariableStatement(invokedPathVariableStatement) ||
+    invokedPathVariableStatement.parent !== sourceFile ||
+    sourceFile.statements.indexOf(invokedPathVariableStatement) + 1 !==
+      sourceFile.statements.indexOf(invokedIf)
+  )
+    return violation;
+  const markerCallbackArgument = mainCatch.mainCall.arguments[0];
+  if (markerCallbackArgument === undefined) return violation;
+  const markerCallback = unwrapBoundaryExpression(markerCallbackArgument);
+  const markerParameter = ts.isArrowFunction(markerCallback)
+    ? markerCallback.parameters[0]
+    : undefined;
+  if (
+    !ts.isArrowFunction(markerCallback) ||
+    markerCallback.parameters.length !== 1 ||
+    markerParameter === undefined ||
+    !ts.isIdentifier(markerParameter.name) ||
+    markerParameter.name.text !== "phase" ||
+    !ts.isBlock(markerCallback.body) ||
+    markerCallback.body.statements.length !== 1
+  )
+    return violation;
+  const trackerStatement = markerCallback.body.statements[0];
+  if (
+    trackerStatement === undefined ||
+    !ts.isExpressionStatement(trackerStatement) ||
+    !ts.isBinaryExpression(trackerStatement.expression) ||
+    trackerStatement.expression.operatorToken.kind !==
+      ts.SyntaxKind.EqualsToken ||
+    !ts.isIdentifier(
+      unwrapBoundaryExpression(trackerStatement.expression.left),
+    ) ||
+    unwrapBoundaryExpression(trackerStatement.expression.left).getText() !==
+      "acceptancePhase" ||
+    !ts.isIdentifier(
+      unwrapBoundaryExpression(trackerStatement.expression.right),
+    ) ||
+    unwrapBoundaryExpression(trackerStatement.expression.right).getText() !==
+      "phase"
+  )
+    return violation;
+
+  if (
+    stderrAccesses.length !== 1 ||
+    stdoutAccesses.length !== 0 ||
+    stderrWrites.length !== 1 ||
+    forbiddenFailureDetail
+  )
+    return violation;
+  const stderrWrite = stderrWrites[0];
+  if (stderrWrite === undefined || stderrWrite.arguments.length !== 1)
+    return violation;
+  const stderrArgument = stderrWrite.arguments[0];
+  const stderrWriteAccess = unwrapBoundaryExpression(stderrWrite.expression);
+  const stderrStreamAccess =
+    ts.isPropertyAccessExpression(stderrWriteAccess) &&
+    stderrWriteAccess.name.text === "write"
+      ? unwrapBoundaryExpression(stderrWriteAccess.expression)
+      : undefined;
+  if (
+    stderrArgument === undefined ||
+    !ts.isPropertyAccessExpression(stderrWriteAccess) ||
+    stderrStreamAccess === undefined ||
+    !ts.isPropertyAccessExpression(stderrStreamAccess) ||
+    stderrStreamAccess.name.text !== "stderr" ||
+    !ts.isIdentifier(stderrStreamAccess.expression) ||
+    stderrStreamAccess.expression.text !== "process" ||
+    !ts.isCallExpression(stderrArgument) ||
+    !ts.isIdentifier(unwrapBoundaryExpression(stderrArgument.expression)) ||
+    unwrapBoundaryExpression(stderrArgument.expression).getText() !==
+      "filingParserNormalizationExecutionAcceptanceFailureDiagnostic" ||
+    diagnosticReferences[0] !== stderrArgument.expression ||
+    stderrArgument.arguments.length !== 1 ||
+    !nodeIsWithin(stderrWrite, mainCatch.callback.body)
+  )
+    return violation;
+  const catchStderrStatement = mainCatch.callback.body.statements[0];
+  const catchExitStatement = mainCatch.callback.body.statements[1];
+  const catchExitExpression =
+    catchExitStatement !== undefined &&
+    ts.isExpressionStatement(catchExitStatement)
+      ? catchExitStatement.expression
+      : undefined;
+  const catchExitTarget =
+    catchExitExpression !== undefined &&
+    ts.isBinaryExpression(catchExitExpression) &&
+    catchExitExpression.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      ? unwrapBoundaryExpression(catchExitExpression.left)
+      : undefined;
+  if (
+    catchStderrStatement === undefined ||
+    !ts.isExpressionStatement(catchStderrStatement) ||
+    catchStderrStatement.expression !== stderrWrite ||
+    catchExitExpression === undefined ||
+    !ts.isBinaryExpression(catchExitExpression) ||
+    catchExitTarget === undefined ||
+    !ts.isPropertyAccessExpression(catchExitTarget) ||
+    catchExitTarget.name.text !== "exitCode" ||
+    !ts.isIdentifier(catchExitTarget.expression) ||
+    catchExitTarget.expression.text !== "process" ||
+    !ts.isNumericLiteral(catchExitExpression.right) ||
+    catchExitExpression.right.text !== "1"
+  )
+    return violation;
+  const diagnosticPhaseArgument = stderrArgument.arguments[0];
+  if (
+    diagnosticPhaseArgument === undefined ||
+    !ts.isIdentifier(unwrapBoundaryExpression(diagnosticPhaseArgument)) ||
+    unwrapBoundaryExpression(diagnosticPhaseArgument).getText() !==
+      "acceptancePhase"
+  )
+    return violation;
+
+  const primaryDeclaration = primaryDeclarations[0];
+  const primaryAssignment = primaryAssignments[0];
+  if (
+    primaryDeclarations.length !== 1 ||
+    primaryDeclaration === undefined ||
+    primaryDeclaration.initializer?.kind !== ts.SyntaxKind.FalseKeyword ||
+    !ts.isVariableDeclarationList(primaryDeclaration.parent) ||
+    (primaryDeclaration.parent.flags & ts.NodeFlags.Let) === 0 ||
+    primaryBindings.length !== 1 ||
+    primaryBindings[0] !== primaryDeclaration.name ||
+    primaryReferences.length !== 2 ||
+    primaryAssignments.length !== 1 ||
+    primaryAssignment === undefined ||
+    primaryAssignment.right.kind !== ts.SyntaxKind.TrueKeyword
+  )
+    return violation;
+  const primaryAssignmentStatement = primaryAssignment.parent;
+  if (!ts.isExpressionStatement(primaryAssignmentStatement)) return violation;
+  const primaryCatchBlock = primaryAssignmentStatement.parent;
+  if (
+    !ts.isBlock(primaryCatchBlock) ||
+    primaryCatchBlock.statements.length !== 2
+  )
+    return violation;
+  const primaryCatch = primaryCatchBlock.parent;
+  const primaryThrow = primaryCatchBlock.statements[1];
+  const primaryCatchName = ts.isCatchClause(primaryCatch)
+    ? primaryCatch.variableDeclaration?.name
+    : undefined;
+  if (
+    !ts.isCatchClause(primaryCatch) ||
+    primaryThrow === undefined ||
+    !ts.isThrowStatement(primaryThrow) ||
+    primaryCatchName === undefined ||
+    !ts.isIdentifier(primaryCatchName) ||
+    primaryCatchName.text !== "error" ||
+    primaryThrow.expression === undefined ||
+    !ts.isIdentifier(primaryThrow.expression) ||
+    primaryThrow.expression.text !== "error"
+  )
+    return violation;
+  const cleanupCall = markerCalls.at(-1);
+  if (cleanupCall === undefined) return violation;
+  const cleanupStatement = cleanupCall.parent;
+  if (!ts.isExpressionStatement(cleanupStatement)) return violation;
+  const cleanupIf = cleanupStatement.parent;
+  const cleanupCondition = ts.isIfStatement(cleanupIf)
+    ? unwrapBoundaryExpression(cleanupIf.expression)
+    : undefined;
+  const cleanupConditionCallee =
+    cleanupCondition !== undefined && ts.isCallExpression(cleanupCondition)
+      ? cleanupCondition.expression
+      : undefined;
+  if (
+    !ts.isIfStatement(cleanupIf) ||
+    cleanupIf.thenStatement !== cleanupStatement ||
+    cleanupIf.elseStatement !== undefined ||
+    cleanupCondition === undefined ||
+    !ts.isCallExpression(cleanupCondition) ||
+    cleanupConditionCallee === undefined ||
+    !ts.isIdentifier(cleanupConditionCallee) ||
+    cleanupConditionCallee.text !==
+      "filingParserNormalizationExecutionAcceptanceCleanupShouldReplacePhase" ||
+    cleanupPrecedenceReferences[0] !== cleanupConditionCallee ||
+    cleanupCondition.arguments.length !== 1
+  )
+    return violation;
+  const cleanupPrimaryArgument = cleanupCondition.arguments[0];
+  if (
+    cleanupPrimaryArgument === undefined ||
+    !ts.isIdentifier(unwrapBoundaryExpression(cleanupPrimaryArgument)) ||
+    unwrapBoundaryExpression(cleanupPrimaryArgument).getText() !==
+      "primaryFailure" ||
+    !ts.isIdentifier(unwrapBoundaryExpression(primaryAssignment.left)) ||
+    primaryReferences[0] !== unwrapBoundaryExpression(primaryAssignment.left) ||
+    primaryReferences[1] !== cleanupPrimaryArgument
+  )
+    return violation;
+  const cleanupBlock = cleanupIf.parent;
+  if (!ts.isBlock(cleanupBlock) || cleanupBlock.statements.length !== 2)
+    return violation;
+  const cleanupCatch = cleanupBlock.parent;
+  const cleanupRejection = cleanupBlock.statements[1];
+  const cleanupCatchName = ts.isCatchClause(cleanupCatch)
+    ? cleanupCatch.variableDeclaration?.name
+    : undefined;
+  const cleanupAwait =
+    cleanupRejection !== undefined &&
+    ts.isExpressionStatement(cleanupRejection) &&
+    ts.isAwaitExpression(cleanupRejection.expression)
+      ? cleanupRejection.expression
+      : undefined;
+  const cleanupRejectCall =
+    cleanupAwait !== undefined && ts.isCallExpression(cleanupAwait.expression)
+      ? cleanupAwait.expression
+      : undefined;
+  const cleanupRejectAccess =
+    cleanupRejectCall !== undefined &&
+    ts.isPropertyAccessExpression(cleanupRejectCall.expression)
+      ? cleanupRejectCall.expression
+      : undefined;
+  const cleanupRejectReason = cleanupRejectCall?.arguments[0];
+  const cleanupReasonCondition =
+    cleanupRejectReason !== undefined &&
+    ts.isConditionalExpression(cleanupRejectReason)
+      ? cleanupRejectReason.condition
+      : undefined;
+  const cleanupFallbackError =
+    cleanupRejectReason !== undefined &&
+    ts.isConditionalExpression(cleanupRejectReason)
+      ? cleanupRejectReason.whenFalse
+      : undefined;
+  const cleanupFallbackMessage =
+    cleanupFallbackError !== undefined &&
+    ts.isNewExpression(cleanupFallbackError)
+      ? cleanupFallbackError.arguments?.[0]
+      : undefined;
+  if (
+    !ts.isCatchClause(cleanupCatch) ||
+    cleanupAwait === undefined ||
+    cleanupRejectCall === undefined ||
+    cleanupRejectAccess === undefined ||
+    cleanupRejectAccess.name.text !== "reject" ||
+    !ts.isIdentifier(cleanupRejectAccess.expression) ||
+    cleanupRejectAccess.expression.text !== "Promise" ||
+    cleanupRejectCall.arguments.length !== 1 ||
+    cleanupCatchName === undefined ||
+    !ts.isIdentifier(cleanupCatchName) ||
+    cleanupCatchName.text !== "error" ||
+    cleanupRejectReason === undefined ||
+    !ts.isConditionalExpression(cleanupRejectReason) ||
+    cleanupReasonCondition === undefined ||
+    !ts.isBinaryExpression(cleanupReasonCondition) ||
+    cleanupReasonCondition.operatorToken.kind !==
+      ts.SyntaxKind.InstanceOfKeyword ||
+    !ts.isIdentifier(cleanupReasonCondition.left) ||
+    cleanupReasonCondition.left.text !== "error" ||
+    !ts.isIdentifier(cleanupReasonCondition.right) ||
+    cleanupReasonCondition.right.text !== "Error" ||
+    !ts.isIdentifier(cleanupRejectReason.whenTrue) ||
+    cleanupRejectReason.whenTrue.text !== "error" ||
+    cleanupFallbackError === undefined ||
+    !ts.isNewExpression(cleanupFallbackError) ||
+    !ts.isIdentifier(cleanupFallbackError.expression) ||
+    cleanupFallbackError.expression.text !== "Error" ||
+    cleanupFallbackError.arguments?.length !== 1 ||
+    cleanupFallbackMessage === undefined ||
+    !ts.isStringLiteral(cleanupFallbackMessage) ||
+    cleanupFallbackMessage.text !== "acceptance failed"
+  )
+    return violation;
+  const outerTry = primaryCatch.parent;
+  const innerCleanupTry = cleanupCatch.parent;
+  const mainBody = mainFunction.body;
+  const primaryDeclarationStatement = primaryDeclaration.parent.parent;
+  const markerHasExpectedNextStatement = (
+    call: ts.CallExpression,
+    index: number,
+  ): boolean => {
+    const markerStatement = call.parent;
+    const anchor =
+      filingParserNormalizationExecutionAcceptanceNextStatementAnchors[index];
+    if (!ts.isExpressionStatement(markerStatement) || anchor === undefined)
+      return false;
+    let nextStatement: ts.Statement | undefined;
+    if (markerPhases[index] === "cleanup") {
+      if (markerStatement.parent !== cleanupIf) return false;
+      const cleanupIndex = cleanupBlock.statements.indexOf(cleanupIf);
+      nextStatement = cleanupBlock.statements[cleanupIndex + 1];
+    } else {
+      const markerBlock = markerStatement.parent;
+      if (!ts.isBlock(markerBlock)) return false;
+      const markerIndex = markerBlock.statements.indexOf(markerStatement);
+      nextStatement = markerBlock.statements[markerIndex + 1];
+    }
+    return (
+      nextStatement !== undefined &&
+      nextStatement
+        .getText(sourceFile)
+        .replace(/\s+/gu, " ")
+        .trim()
+        .startsWith(anchor)
+    );
+  };
+  if (
+    !ts.isTryStatement(outerTry) ||
+    outerTry.parent !== mainBody ||
+    outerTry.catchClause !== primaryCatch ||
+    outerTry.finallyBlock === undefined ||
+    !ts.isTryStatement(innerCleanupTry) ||
+    innerCleanupTry.catchClause !== cleanupCatch ||
+    innerCleanupTry.parent !== outerTry.finallyBlock ||
+    outerTry.finallyBlock.statements.length !== 1 ||
+    outerTry.finallyBlock.statements[0] !== innerCleanupTry ||
+    !ts.isVariableStatement(primaryDeclarationStatement) ||
+    primaryDeclarationStatement.parent !== mainBody ||
+    mainBody.statements.indexOf(primaryDeclarationStatement) + 1 !==
+      mainBody.statements.indexOf(outerTry) ||
+    markerCalls.some((call, index) => {
+      const statement = call.parent;
+      const phase = markerPhases[index];
+      return (
+        !markerHasExpectedNextStatement(call, index) ||
+        !ts.isExpressionStatement(statement) ||
+        (phase === "cleanup"
+          ? statement.parent !== cleanupIf
+          : statement.parent !== mainBody &&
+            statement.parent !== outerTry.tryBlock)
+      );
+    })
+  )
+    return violation;
+
+  const commandFunctions = sourceFile.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) && statement.name?.text === "command",
+  );
+  const commandFunction = commandFunctions[0];
+  const normalizedFsPromiseCalls = effectfulFsPromiseCalls.map((call) =>
+    call.getText(sourceFile).replace(/\s+/gu, " ").trim(),
+  );
+  if (
+    JSON.stringify(normalizedFsPromiseCalls) !==
+    JSON.stringify([
+      'mkdtemp( join(environment.runnerTemp, "filing-normalization-execution-"), )',
+      'readFile(imageIdFile, "utf8")',
+      'writeFile( temporaryEvidencePath, serializeCanonicalFilingParserNormalizationExecutionEvidence(evidence), { encoding: "utf8", flag: "wx", mode: 0o600 }, )',
+      "rename(temporaryEvidencePath, environment.evidencePath)",
+      "rm(temporaryEvidencePath, { force: true })",
+      "rm(temporaryDirectory, { force: true, recursive: true })",
+      'readFile( "packages/filing-parser-normalization-execution/acceptance/python-image.json", "utf8", )',
+      "lstat(path)",
+    ])
+  )
+    return violation;
+  const writeFileCall = writeFileCalls[0];
+  const writeFileAwait = writeFileCall?.parent;
+  const writeFileStatement = writeFileAwait?.parent;
+  const writeFilePath = writeFileCall?.arguments[0];
+  const writeFilePayload = writeFileCall?.arguments[1];
+  if (
+    commandFunctions.length !== 1 ||
+    commandFunction === undefined ||
+    commandFunction.body === undefined ||
+    writeFileCall === undefined ||
+    writeFileCall.arguments.length !== 3 ||
+    writeFilePath === undefined ||
+    !ts.isIdentifier(writeFilePath) ||
+    writeFilePath.text !== "temporaryEvidencePath" ||
+    writeFilePayload === undefined ||
+    !ts.isCallExpression(writeFilePayload) ||
+    !ts.isIdentifier(writeFilePayload.expression) ||
+    writeFilePayload.expression.text !==
+      "serializeCanonicalFilingParserNormalizationExecutionEvidence" ||
+    writeFileAwait === undefined ||
+    !ts.isAwaitExpression(writeFileAwait) ||
+    writeFileStatement === undefined ||
+    !ts.isExpressionStatement(writeFileStatement) ||
+    writeFileStatement.parent !== outerTry.tryBlock
+  )
+    return violation;
+
+  const spawnCall = spawnCalls[0];
+  const spawnArguments = spawnCall?.arguments;
+  const spawnExecutable = spawnArguments?.[0];
+  const spawnArray = spawnArguments?.[1];
+  const spawnOptions = spawnArguments?.[2];
+  const spawnSpread =
+    spawnArray !== undefined && ts.isArrayLiteralExpression(spawnArray)
+      ? spawnArray.elements[0]
+      : undefined;
+  if (
+    spawnCall === undefined ||
+    spawnArguments?.length !== 3 ||
+    spawnExecutable === undefined ||
+    !ts.isIdentifier(spawnExecutable) ||
+    spawnExecutable.text !== "executable" ||
+    spawnArray === undefined ||
+    !ts.isArrayLiteralExpression(spawnArray) ||
+    spawnArray.elements.length !== 1 ||
+    spawnSpread === undefined ||
+    !ts.isSpreadElement(spawnSpread) ||
+    !ts.isIdentifier(spawnSpread.expression) ||
+    spawnSpread.expression.text !== "args" ||
+    spawnOptions === undefined ||
+    !ts.isObjectLiteralExpression(spawnOptions) ||
+    !nodeIsWithin(spawnCall, commandFunction.body)
+  )
+    return violation;
+
+  const setTimeoutCall = setTimeoutCalls[0];
+  const clearTimeoutCall = clearTimeoutCalls[0];
+  const timeoutCallback = setTimeoutCall?.arguments[0];
+  const timeoutDuration = setTimeoutCall?.arguments[1];
+  const clearTimeoutArgument = clearTimeoutCall?.arguments[0];
+  if (
+    setTimeoutCall === undefined ||
+    setTimeoutCall.arguments.length !== 2 ||
+    timeoutCallback === undefined ||
+    !ts.isIdentifier(timeoutCallback) ||
+    timeoutCallback.text !== "stop" ||
+    timeoutDuration === undefined ||
+    !ts.isIdentifier(timeoutDuration) ||
+    timeoutDuration.text !== "timeoutMilliseconds" ||
+    !nodeIsWithin(setTimeoutCall, commandFunction.body) ||
+    clearTimeoutCall === undefined ||
+    clearTimeoutCall.arguments.length !== 1 ||
+    clearTimeoutArgument === undefined ||
+    !ts.isIdentifier(clearTimeoutArgument) ||
+    clearTimeoutArgument.text !== "timer" ||
+    !nodeIsWithin(clearTimeoutCall, commandFunction.body)
+  )
+    return violation;
+
+  const normalizedListenerCalls = [
+    ...addEventListenerCalls,
+    ...removeEventListenerCalls,
+    ...emitterOnCalls,
+    ...emitterOnceCalls,
+  ].map((call) => call.getText(sourceFile).replace(/\s+/gu, " ").trim());
+  if (
+    promiseCatchCalls[0]?.arguments[0] !== mainCatch.callback ||
+    promiseCatchCalls[1]?.getText(sourceFile).replace(/\s+/gu, " ").trim() !==
+      "removeImage(imageId).catch(() => undefined)" ||
+    JSON.stringify(normalizedListenerCalls) !==
+      JSON.stringify([
+        'signal?.addEventListener("abort", abort, { once: true })',
+        'signal?.removeEventListener("abort", abort)',
+        'child.stdout.on("data", (chunk: Buffer) => { stdoutBytes += chunk.byteLength; if (stdoutBytes > stdoutLimitBytes) stop(); else stdout.push(Buffer.from(chunk)); })',
+        'child.stderr.on("data", (chunk: Buffer) => { stderrBytes += chunk.byteLength; if (stderrBytes > stderrLimitBytes) stop(); else stderr.push(Buffer.from(chunk)); })',
+        'child.once("error", (error) => finish(error))',
+        'child.once("close", (code, closeSignal) => { if ( failed || closeSignal !== null || code === null || !Number.isSafeInteger(code) || code < 0 || code > 255 ) { finish(new Error("acceptance failed")); return; } finish(undefined, { exitCode: code, stderr: Uint8Array.from(Buffer.concat(stderr)), stdout: Uint8Array.from(Buffer.concat(stdout)), }); })',
+      ])
+  )
+    return violation;
+
+  const promiseResolveCall = promiseStaticCalls[0];
+  const cleanupPromiseRejectCall = promiseStaticCalls[1];
+  const commandPromiseRejectCall = promiseStaticCalls[2];
+  const promiseNewCall = promiseNewCalls[0];
+  const commandRejectArgument = commandPromiseRejectCall?.arguments[0];
+  const commandRejectMessage =
+    commandRejectArgument !== undefined &&
+    ts.isNewExpression(commandRejectArgument)
+      ? commandRejectArgument.arguments?.[0]
+      : undefined;
+  const promiseRuntimeIdentifiers = [
+    promiseResolveCall !== undefined &&
+    ts.isPropertyAccessExpression(promiseResolveCall.expression)
+      ? promiseResolveCall.expression.expression
+      : undefined,
+    cleanupPromiseRejectCall !== undefined &&
+    ts.isPropertyAccessExpression(cleanupPromiseRejectCall.expression)
+      ? cleanupPromiseRejectCall.expression.expression
+      : undefined,
+    commandPromiseRejectCall !== undefined &&
+    ts.isPropertyAccessExpression(commandPromiseRejectCall.expression)
+      ? commandPromiseRejectCall.expression.expression
+      : undefined,
+    promiseNewCall?.expression,
+  ];
+  const promiseExecutor = promiseNewCall?.arguments?.[0];
+  if (
+    promiseReferences.length !== 4 ||
+    promiseResolveCall === undefined ||
+    promiseResolveCall.arguments.length !== 1 ||
+    cleanupPromiseRejectCall !== cleanupRejectCall ||
+    commandPromiseRejectCall === undefined ||
+    commandPromiseRejectCall.arguments.length !== 1 ||
+    commandRejectArgument === undefined ||
+    !ts.isNewExpression(commandRejectArgument) ||
+    !ts.isIdentifier(commandRejectArgument.expression) ||
+    commandRejectArgument.expression.text !== "Error" ||
+    commandRejectMessage === undefined ||
+    !ts.isStringLiteral(commandRejectMessage) ||
+    commandRejectMessage.text !== "acceptance failed" ||
+    !nodeIsWithin(commandPromiseRejectCall, commandFunction.body) ||
+    promiseNewCall === undefined ||
+    promiseNewCall.arguments?.length !== 1 ||
+    promiseExecutor === undefined ||
+    !ts.isArrowFunction(promiseExecutor) ||
+    !nodeIsWithin(promiseNewCall, commandFunction.body) ||
+    promiseRuntimeIdentifiers.some(
+      (identifier, index) =>
+        identifier === undefined ||
+        !ts.isIdentifier(identifier) ||
+        identifier.text !== "Promise" ||
+        promiseReferences[index] !== identifier,
+    )
+  )
+    return violation;
+  return null;
+}
+
+function nodeIsWithin(node: ts.Node, ancestor: ts.Node): boolean {
+  for (
+    let current: ts.Node | undefined = node;
+    current;
+    current = current.parent
+  )
+    if (current === ancestor) return true;
+  return false;
 }
 
 function filingParserNormalizationExecutionForbiddenGlobalViolation(

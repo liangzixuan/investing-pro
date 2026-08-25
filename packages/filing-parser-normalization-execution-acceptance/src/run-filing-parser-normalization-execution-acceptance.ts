@@ -50,22 +50,118 @@ const EVIDENCE_FILE =
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const MAX_COMMAND_BYTES = 4_194_304;
+export const ACCEPTANCE_PHASES = Object.freeze([
+  "environment",
+  "repository_anchor",
+  "source_inventory",
+  "image_metadata",
+  "staging",
+  "image_build",
+  "image_inspection",
+  "audited_setup",
+  "audited_success",
+  "audited_replay",
+  "audited_tamper",
+  "audited_role_swap",
+  "audited_residue",
+  "production_setup",
+  "production_success",
+  "production_replay",
+  "production_tamper",
+  "production_residue",
+  "evidence_assembly",
+  "tool_versions",
+  "image_removal",
+  "evidence_write",
+  "cleanup",
+] as const);
+type AcceptancePhase = (typeof ACCEPTANCE_PHASES)[number];
+type AcceptancePhaseMarker = (phase: AcceptancePhase) => void;
+
+export function filingParserNormalizationExecutionAcceptanceFailureDiagnostic(
+  phase: unknown,
+): string {
+  switch (phase) {
+    case "environment":
+      return "filing_parser_normalization_execution_acceptance_failed phase=environment\n";
+    case "repository_anchor":
+      return "filing_parser_normalization_execution_acceptance_failed phase=repository_anchor\n";
+    case "source_inventory":
+      return "filing_parser_normalization_execution_acceptance_failed phase=source_inventory\n";
+    case "image_metadata":
+      return "filing_parser_normalization_execution_acceptance_failed phase=image_metadata\n";
+    case "staging":
+      return "filing_parser_normalization_execution_acceptance_failed phase=staging\n";
+    case "image_build":
+      return "filing_parser_normalization_execution_acceptance_failed phase=image_build\n";
+    case "image_inspection":
+      return "filing_parser_normalization_execution_acceptance_failed phase=image_inspection\n";
+    case "audited_setup":
+      return "filing_parser_normalization_execution_acceptance_failed phase=audited_setup\n";
+    case "audited_success":
+      return "filing_parser_normalization_execution_acceptance_failed phase=audited_success\n";
+    case "audited_replay":
+      return "filing_parser_normalization_execution_acceptance_failed phase=audited_replay\n";
+    case "audited_tamper":
+      return "filing_parser_normalization_execution_acceptance_failed phase=audited_tamper\n";
+    case "audited_role_swap":
+      return "filing_parser_normalization_execution_acceptance_failed phase=audited_role_swap\n";
+    case "audited_residue":
+      return "filing_parser_normalization_execution_acceptance_failed phase=audited_residue\n";
+    case "production_setup":
+      return "filing_parser_normalization_execution_acceptance_failed phase=production_setup\n";
+    case "production_success":
+      return "filing_parser_normalization_execution_acceptance_failed phase=production_success\n";
+    case "production_replay":
+      return "filing_parser_normalization_execution_acceptance_failed phase=production_replay\n";
+    case "production_tamper":
+      return "filing_parser_normalization_execution_acceptance_failed phase=production_tamper\n";
+    case "production_residue":
+      return "filing_parser_normalization_execution_acceptance_failed phase=production_residue\n";
+    case "evidence_assembly":
+      return "filing_parser_normalization_execution_acceptance_failed phase=evidence_assembly\n";
+    case "tool_versions":
+      return "filing_parser_normalization_execution_acceptance_failed phase=tool_versions\n";
+    case "image_removal":
+      return "filing_parser_normalization_execution_acceptance_failed phase=image_removal\n";
+    case "evidence_write":
+      return "filing_parser_normalization_execution_acceptance_failed phase=evidence_write\n";
+    case "cleanup":
+      return "filing_parser_normalization_execution_acceptance_failed phase=cleanup\n";
+    default:
+      return "filing_parser_normalization_execution_acceptance_failed phase=internal\n";
+  }
+}
+
+export function filingParserNormalizationExecutionAcceptanceCleanupShouldReplacePhase(
+  hadPrimaryFailure: boolean,
+): boolean {
+  return hadPrimaryFailure === false;
+}
 
 const invokedPath = process.argv[1];
 if (
   invokedPath !== undefined &&
   import.meta.url === pathToFileURL(resolve(invokedPath)).href
-)
-  await main().catch(() => {
+) {
+  let acceptancePhase: AcceptancePhase = "environment";
+  await main((phase) => {
+    acceptancePhase = phase;
+  }).catch(() => {
     process.stderr.write(
-      "Filing parser normalization execution acceptance failed.\n",
+      filingParserNormalizationExecutionAcceptanceFailureDiagnostic(
+        acceptancePhase,
+      ),
     );
     process.exitCode = 1;
   });
+}
 
-async function main(): Promise<void> {
+async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
+  markPhase("environment");
   const environment = acceptanceEnvironment();
   const startedAt = new Date().toISOString();
+  markPhase("repository_anchor");
   const revision = decodeExactLine(
     (await checkedCommand("git", ["rev-parse", "HEAD"], 5_000)).stdout,
   );
@@ -78,12 +174,15 @@ async function main(): Promise<void> {
   if (worktree.stdout.byteLength !== 0 || worktree.stderr.byteLength !== 0)
     fail();
 
+  markPhase("source_inventory");
   const sourceHashes = await committedSourceHashes(revision);
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
     "fixtures/synthetic/filing-parser-normalization-execution/v1/manifest.json",
   );
+  markPhase("image_metadata");
   const imageMetadata = await readPinnedImageMetadata();
+  markPhase("staging");
   const temporaryDirectory = await mkdtemp(
     join(environment.runnerTemp, "filing-normalization-execution-"),
   );
@@ -91,7 +190,9 @@ async function main(): Promise<void> {
   let imageId: `sha256:${string}` | null = null;
   let temporaryEvidencePath: string | null = null;
   let evidenceWritten = false;
+  let primaryFailure = false;
   try {
+    markPhase("image_build");
     const build = await command(
       "docker",
       [
@@ -111,8 +212,10 @@ async function main(): Promise<void> {
     );
     if (build.exitCode !== 0) fail();
     imageId = imageIdValue(await readFile(imageIdFile, "utf8"));
+    markPhase("image_inspection");
     await verifyBuiltImage(imageId);
 
+    markPhase("audited_setup");
     const fixture = buildSyntheticFilingParserNormalizationExecutionFixture();
     const { privateKey, publicKey } = generateKeyPairSync("ed25519");
     const publicKeySpki = Uint8Array.from(
@@ -136,6 +239,7 @@ async function main(): Promise<void> {
       signer,
     });
 
+    markPhase("audited_success");
     const successStart = recorder.documentOutputs.length;
     const success = await boundary.execute(
       fixture.originalArchive,
@@ -144,6 +248,7 @@ async function main(): Promise<void> {
     const successDocuments = recorder.documentOutputs.slice(successStart);
     assertNormalized(success, successDocuments, fixture);
 
+    markPhase("audited_replay");
     const replayStart = recorder.documentOutputs.length;
     const replay = await boundary.execute(
       fixture.originalArchive,
@@ -157,6 +262,7 @@ async function main(): Promise<void> {
     )
       fail();
 
+    markPhase("audited_tamper");
     const tamperedOriginal = Uint8Array.from(fixture.originalArchive);
     tamperedOriginal[0] = (tamperedOriginal[0] ?? 0) ^ 0xff;
     const tampered = await boundary.execute(
@@ -164,17 +270,20 @@ async function main(): Promise<void> {
       fixture.amendmentArchive,
     );
     assertQuarantined(tampered);
+    markPhase("audited_role_swap");
     const swapped = await boundary.execute(
       fixture.amendmentArchive,
       fixture.originalArchive,
     );
     assertQuarantined(swapped);
+    markPhase("audited_residue");
     recorder.assertComplete();
     await assertZeroResidue();
 
     // The recorder proves the inspected Docker configuration. This second
     // pass exercises the shipped default process runner itself so a surrogate
     // runner cannot produce the live artifact on its behalf.
+    markPhase("production_setup");
     const productionBoundary = createFilingParserNormalizationExecutionBoundary(
       {
         imageSha256: imageId,
@@ -182,27 +291,33 @@ async function main(): Promise<void> {
         signer,
       },
     );
+    markPhase("production_success");
     const productionSuccess = await productionBoundary.execute(
       fixture.originalArchive,
       fixture.amendmentArchive,
     );
+    if (
+      productionSuccess.status !== "normalized" ||
+      canonicalJson(productionSuccess) !== canonicalJson(success)
+    )
+      fail();
+    markPhase("production_replay");
     const productionReplay = await productionBoundary.execute(
       fixture.originalArchive,
       fixture.amendmentArchive,
     );
+    if (canonicalJson(productionReplay) !== canonicalJson(productionSuccess))
+      fail();
+    markPhase("production_tamper");
     const productionRejected = await productionBoundary.execute(
       tamperedOriginal,
       fixture.amendmentArchive,
     );
-    if (
-      productionSuccess.status !== "normalized" ||
-      canonicalJson(productionSuccess) !== canonicalJson(success) ||
-      canonicalJson(productionReplay) !== canonicalJson(productionSuccess)
-    )
-      fail();
     assertQuarantined(productionRejected);
+    markPhase("production_residue");
     await assertZeroResidue();
 
+    markPhase("evidence_assembly");
     const outcomes: readonly FilingParserNormalizationExecutionEvidenceCaseOutcome[] =
       Object.freeze([
         Object.freeze({
@@ -223,8 +338,10 @@ async function main(): Promise<void> {
         quarantineOutcome("original-amendment-role-swap", swapped),
       ]);
 
+    markPhase("tool_versions");
     const tools = await toolVersions();
     const completedAt = new Date().toISOString();
+    markPhase("evidence_assembly");
     const evidence = createFilingParserNormalizationExecutionEvidence({
       caseOutcomes: outcomes,
       checksPassed: FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_CHECKS,
@@ -288,8 +405,10 @@ async function main(): Promise<void> {
         workflowName: FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_WORKFLOW,
       }),
     });
+    markPhase("image_removal");
     await removeImage(imageId);
     imageId = null;
+    markPhase("evidence_write");
     temporaryEvidencePath = `${environment.evidencePath}.tmp`;
     await assertPathAbsent(temporaryEvidencePath);
     await writeFile(
@@ -301,13 +420,28 @@ async function main(): Promise<void> {
     await rename(temporaryEvidencePath, environment.evidencePath);
     temporaryEvidencePath = null;
     evidenceWritten = true;
+  } catch (error) {
+    primaryFailure = true;
+    throw error;
   } finally {
-    if (imageId !== null) await removeImage(imageId).catch(() => undefined);
-    if (temporaryEvidencePath !== null)
-      await rm(temporaryEvidencePath, { force: true });
-    await rm(temporaryDirectory, { force: true, recursive: true });
-    if (!evidenceWritten) {
-      // A candidate artifact is never written on failure or cancellation.
+    try {
+      if (imageId !== null) await removeImage(imageId).catch(() => undefined);
+      if (temporaryEvidencePath !== null)
+        await rm(temporaryEvidencePath, { force: true });
+      await rm(temporaryDirectory, { force: true, recursive: true });
+      if (!evidenceWritten) {
+        // A candidate artifact is never written on failure or cancellation.
+      }
+    } catch (error) {
+      if (
+        filingParserNormalizationExecutionAcceptanceCleanupShouldReplacePhase(
+          primaryFailure,
+        )
+      )
+        markPhase("cleanup");
+      await Promise.reject(
+        error instanceof Error ? error : new Error("acceptance failed"),
+      );
     }
   }
 }
