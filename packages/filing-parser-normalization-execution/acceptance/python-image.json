@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "image": "docker.io/library/python:3.12.13-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2",
+  "tag": "3.12.13-slim-bookworm",
+  "indexDigest": "sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2",
+  "platform": "linux/amd64",
+  "platformManifestDigest": "sha256:6e13e65c55e33adf203d77ee371cf8bf5d81bd4902ef07565721f46bf44917af",
+  "pythonVersion": "3.12.13",
+  "distribution": "Debian GNU/Linux 12 (bookworm) slim",
+  "officialRegistryManifestUrl": "https://registry-1.docker.io/v2/library/python/manifests/3.12.13-slim-bookworm",
+  "officialImageDefinitionUrl": "https://github.com/docker-library/official-images/blob/master/library/python",
+  "cpythonLicense": "Python Software Foundation License Version 2",
+  "cpythonLicenseUrl": "https://docs.python.org/3.12/license.html",
+  "containerPackageLicenseInventoryStatus": "not_proven_ci_acceptance_only"
+}

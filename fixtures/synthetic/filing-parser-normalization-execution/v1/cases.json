@@ -1,0 +1,21 @@
+{
+  "cases": [
+    {
+      "caseId": "exact-original-amendment-pair",
+      "expectedStatus": "normalized",
+      "replay": true
+    },
+    {
+      "caseId": "original-archive-tamper",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "original-amendment-role-swap",
+      "expectedStatus": "quarantined",
+      "replay": false
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "synthetic": true
+}

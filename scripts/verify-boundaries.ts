@@ -168,6 +168,237 @@ const filingFactNormalizationTestModules = new Map<string, readonly string[]>([
 ]);
 const filingParserNormalizationHandoffModule =
   "@research-cockpit/filing-parser-normalization-handoff";
+const filingParserNormalizationExecutionModule =
+  "@research-cockpit/filing-parser-normalization-execution";
+const filingParserNormalizationExecutionPackagePrefix =
+  "packages/filing-parser-normalization-execution/";
+const filingParserNormalizationExecutionSourcePrefix = `${filingParserNormalizationExecutionPackagePrefix}src/`;
+const filingParserNormalizationExecutionIndexPath = `${filingParserNormalizationExecutionSourcePrefix}index.ts`;
+const filingParserNormalizationExecutionProductionPath = `${filingParserNormalizationExecutionSourcePrefix}filing-parser-normalization-execution.ts`;
+const filingParserNormalizationExecutionBuilderPath = `${filingParserNormalizationExecutionSourcePrefix}test-filing-parser-normalization-execution-builder.ts`;
+const filingParserNormalizationExecutionUnitTestPath = `${filingParserNormalizationExecutionSourcePrefix}filing-parser-normalization-execution.test.ts`;
+const filingParserNormalizationExecutionSecurityTestPath = `${filingParserNormalizationExecutionSourcePrefix}filing-parser-normalization-execution-security.test.ts`;
+const filingParserNormalizationExecutionWorkerDockerfilePath = `${filingParserNormalizationExecutionPackagePrefix}worker/Dockerfile`;
+const filingParserNormalizationExecutionWorkerParserPath = `${filingParserNormalizationExecutionPackagePrefix}worker/parser.py`;
+const filingParserNormalizationExecutionWorkerParserTestPath = `${filingParserNormalizationExecutionPackagePrefix}worker/parser_test.py`;
+const filingParserNormalizationExecutionWorkerTaxonomyPath = `${filingParserNormalizationExecutionPackagePrefix}worker/taxonomy-v1.json`;
+const filingParserNormalizationExecutionImageReviewPath = `${filingParserNormalizationExecutionPackagePrefix}acceptance/python-image.json`;
+const filingParserNormalizationExecutionAcceptanceModule =
+  "@research-cockpit/filing-parser-normalization-execution-acceptance";
+const filingParserNormalizationExecutionRootScriptAliases = new Set([
+  "filing-parser-normalization-execution:acceptance",
+  "filing-parser-normalization-execution:evidence-review",
+  "guardrails:filing-parser-normalization-execution-fixtures",
+]);
+const filingParserNormalizationExecutionAcceptancePackagePrefix =
+  "packages/filing-parser-normalization-execution-acceptance/";
+const filingParserNormalizationExecutionAcceptanceSourcePrefix = `${filingParserNormalizationExecutionAcceptancePackagePrefix}src/`;
+const filingParserNormalizationExecutionAcceptanceIndexPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}index.ts`;
+const filingParserNormalizationExecutionAcceptanceRunnerPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}run-filing-parser-normalization-execution-acceptance.ts`;
+const filingParserNormalizationExecutionAcceptanceRunnerTestPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}run-filing-parser-normalization-execution-acceptance.test.ts`;
+const filingParserNormalizationExecutionEvidenceReviewPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-review.ts`;
+const filingParserNormalizationExecutionEvidenceReviewTestPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-review.test.ts`;
+const filingParserNormalizationExecutionEvidenceVerifierPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-verifier.ts`;
+const filingParserNormalizationExecutionEvidenceVerifierTestPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence-verifier.test.ts`;
+const filingParserNormalizationExecutionEvidencePath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence.ts`;
+const filingParserNormalizationExecutionEvidenceTestPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}filing-parser-normalization-execution-evidence.test.ts`;
+const filingParserNormalizationExecutionEvidenceReviewRunnerPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}run-filing-parser-normalization-execution-evidence-review.ts`;
+const filingParserNormalizationExecutionEvidenceBuilderPath = `${filingParserNormalizationExecutionAcceptanceSourcePrefix}test-filing-parser-normalization-execution-evidence-builder.ts`;
+const filingParserNormalizationExecutionFixtureGuardPath =
+  "scripts/verify-filing-parser-normalization-execution-fixtures.ts";
+const filingParserNormalizationExecutionWorkflowPath =
+  ".github/workflows/filing-parser-normalization-execution-acceptance.yml";
+const filingParserNormalizationExecutionPublicExports = [
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_CHECKS", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_CLAIM", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_NOT_PROVEN", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_SCHEMA_VERSION", false],
+  ["FilingParserNormalizationExecutionConfigurationError", false],
+  ["createFilingParserNormalizationExecutionBoundary", false],
+  ["FilingParserNormalizationExecutionBoundary", true],
+  ["FilingParserNormalizationExecutionConfiguration", true],
+  ["FilingParserNormalizationExecutionOptions", true],
+  ["FilingParserNormalizationExecutionProcessRequest", true],
+  ["FilingParserNormalizationExecutionProcessResult", true],
+  ["FilingParserNormalizationExecutionProcessRunner", true],
+  ["FilingParserNormalizationExecutionProvenance", true],
+  ["FilingParserNormalizationExecutionQuarantinedResult", true],
+  ["FilingParserNormalizationExecutionResult", true],
+  ["FilingParserNormalizationExecutionSigner", true],
+  ["FilingParserNormalizationExecutionSuccess", true],
+] as const;
+const filingParserNormalizationExecutionEvidencePublicExports = [
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_CHECKS", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_CLAIM", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_NOT_PROVEN", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_SCHEMA_VERSION", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_SOURCE_PATHS", false],
+  ["FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_WORKFLOW", false],
+  ["createFilingParserNormalizationExecutionEvidence", false],
+  ["filingParserNormalizationExecutionEvidenceSha256", false],
+  ["parseCanonicalFilingParserNormalizationExecutionEvidence", false],
+  ["serializeCanonicalFilingParserNormalizationExecutionEvidence", false],
+  ["FilingParserNormalizationExecutionEvidence", true],
+  ["FilingParserNormalizationExecutionEvidenceCaseOutcome", true],
+  ["FilingParserNormalizationExecutionEvidenceSourceHash", true],
+] as const;
+const filingParserNormalizationExecutionEvidenceVerifierPublicExports = [
+  ["verifyFilingParserNormalizationExecutionEvidenceOffline", false],
+  ["FilingParserNormalizationExecutionEvidenceReview", true],
+  ["FilingParserNormalizationExecutionEvidenceReviewOptions", true],
+] as const;
+const filingParserNormalizationExecutionSourcePaths = new Set([
+  filingParserNormalizationExecutionBuilderPath,
+  filingParserNormalizationExecutionIndexPath,
+  filingParserNormalizationExecutionProductionPath,
+  filingParserNormalizationExecutionSecurityTestPath,
+  filingParserNormalizationExecutionUnitTestPath,
+]);
+const filingParserNormalizationExecutionTestModules = new Map<
+  string,
+  readonly string[]
+>([
+  [
+    filingParserNormalizationExecutionUnitTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-parser-normalization-execution",
+      "./test-filing-parser-normalization-execution-builder",
+    ],
+  ],
+  [
+    filingParserNormalizationExecutionSecurityTestPath,
+    [
+      "node:crypto",
+      "vitest",
+      "./filing-parser-normalization-execution",
+      "./test-filing-parser-normalization-execution-builder",
+    ],
+  ],
+]);
+const filingParserNormalizationExecutionPackagePaths = [
+  `${filingParserNormalizationExecutionPackagePrefix}package.json`,
+  `${filingParserNormalizationExecutionPackagePrefix}tsconfig.json`,
+  filingParserNormalizationExecutionImageReviewPath,
+  filingParserNormalizationExecutionWorkerDockerfilePath,
+  filingParserNormalizationExecutionWorkerParserPath,
+  filingParserNormalizationExecutionWorkerParserTestPath,
+  filingParserNormalizationExecutionWorkerTaxonomyPath,
+  ...filingParserNormalizationExecutionSourcePaths,
+].sort();
+const filingParserNormalizationExecutionAcceptanceSourcePaths = new Set([
+  filingParserNormalizationExecutionAcceptanceIndexPath,
+  filingParserNormalizationExecutionAcceptanceRunnerPath,
+  filingParserNormalizationExecutionAcceptanceRunnerTestPath,
+  filingParserNormalizationExecutionEvidencePath,
+  filingParserNormalizationExecutionEvidenceReviewPath,
+  filingParserNormalizationExecutionEvidenceReviewRunnerPath,
+  filingParserNormalizationExecutionEvidenceBuilderPath,
+  filingParserNormalizationExecutionEvidenceReviewTestPath,
+  filingParserNormalizationExecutionEvidenceTestPath,
+  filingParserNormalizationExecutionEvidenceVerifierPath,
+  filingParserNormalizationExecutionEvidenceVerifierTestPath,
+]);
+const filingParserNormalizationExecutionAcceptancePackagePaths = [
+  `${filingParserNormalizationExecutionAcceptancePackagePrefix}package.json`,
+  `${filingParserNormalizationExecutionAcceptancePackagePrefix}tsconfig.json`,
+  ...filingParserNormalizationExecutionAcceptanceSourcePaths,
+].sort();
+const filingParserNormalizationExecutionAcceptanceModules = new Map<
+  string,
+  readonly string[]
+>([
+  [
+    filingParserNormalizationExecutionAcceptanceIndexPath,
+    [
+      "./filing-parser-normalization-execution-evidence",
+      "./filing-parser-normalization-execution-evidence-verifier",
+    ],
+  ],
+  [filingParserNormalizationExecutionEvidencePath, ["node:crypto"]],
+  [
+    filingParserNormalizationExecutionEvidenceTestPath,
+    [
+      "vitest",
+      "./filing-parser-normalization-execution-evidence",
+      "./test-filing-parser-normalization-execution-evidence-builder",
+    ],
+  ],
+  [
+    filingParserNormalizationExecutionEvidenceVerifierPath,
+    [
+      "node:child_process",
+      "node:crypto",
+      "node:fs",
+      "node:fs/promises",
+      "node:path",
+      "node:util",
+      "./filing-parser-normalization-execution-evidence",
+    ],
+  ],
+  [
+    filingParserNormalizationExecutionEvidenceVerifierTestPath,
+    [
+      "node:child_process",
+      "node:crypto",
+      "node:fs/promises",
+      "node:path",
+      "node:os",
+      "vitest",
+      "./filing-parser-normalization-execution-evidence",
+      "./filing-parser-normalization-execution-evidence-verifier",
+      "./test-filing-parser-normalization-execution-evidence-builder",
+    ],
+  ],
+  [
+    filingParserNormalizationExecutionEvidenceReviewPath,
+    ["./filing-parser-normalization-execution-evidence-verifier"],
+  ],
+  [
+    filingParserNormalizationExecutionEvidenceReviewTestPath,
+    ["vitest", "./filing-parser-normalization-execution-evidence-review"],
+  ],
+  [
+    filingParserNormalizationExecutionEvidenceReviewRunnerPath,
+    ["./filing-parser-normalization-execution-evidence-review"],
+  ],
+  [
+    filingParserNormalizationExecutionEvidenceBuilderPath,
+    ["./filing-parser-normalization-execution-evidence"],
+  ],
+  [
+    filingParserNormalizationExecutionAcceptanceRunnerPath,
+    [
+      "node:crypto",
+      "node:fs/promises",
+      "node:path",
+      "node:child_process",
+      "node:url",
+      filingParserNormalizationExecutionModule,
+      `${filingParserNormalizationExecutionModule}/test`,
+      "./filing-parser-normalization-execution-evidence",
+    ],
+  ],
+  [
+    filingParserNormalizationExecutionAcceptanceRunnerTestPath,
+    [
+      "vitest",
+      filingParserNormalizationExecutionModule,
+      "./run-filing-parser-normalization-execution-acceptance",
+    ],
+  ],
+]);
+const filingParserNormalizationExecutionMetadataLiteralPaths = new Set([
+  "scripts/verify-boundaries.ts",
+  filingParserNormalizationExecutionFixtureGuardPath,
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+]);
 const filingParserNormalizationHandoffPackagePrefix =
   "packages/filing-parser-normalization-handoff/";
 const filingParserNormalizationHandoffSourcePrefix = `${filingParserNormalizationHandoffPackagePrefix}src/`;
@@ -202,6 +433,7 @@ const filingParserNormalizationHandoffMetadataLiteralPaths = new Set([
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  filingParserNormalizationExecutionEvidencePath,
 ]);
 const boundaryChildProcessExecutionSinkNames = new Set([
   "exec",
@@ -704,6 +936,20 @@ const allowedWorkerPythonImports = new Set([
   "import zipfile",
   "import zlib",
 ]);
+const allowedFilingParserNormalizationExecutionWorkerPythonImports = new Set([
+  "from __future__ import annotations",
+  "from datetime import date, datetime",
+  "from pathlib import PurePosixPath",
+  "from typing import Final",
+  "from xml.etree import ElementTree",
+  "import hashlib",
+  "import json",
+  "import re",
+  "import stat",
+  "import struct",
+  "import sys",
+  "import zlib",
+]);
 const copiedAssetExtensions = new Set([
   ".gif",
   ".jpeg",
@@ -761,6 +1007,9 @@ for (const sourceRoot of sourceRoots) {
     filesToInspect.add(file);
 }
 filesToInspect.add(join(root, filingPayloadCustodyFixtureGuardPath));
+filesToInspect.add(
+  join(root, filingParserNormalizationExecutionFixtureGuardPath),
+);
 for (const file of await walk(root)) {
   const fileName = basename(file).toLowerCase();
   const extension = extname(fileName);
@@ -860,6 +1109,32 @@ const filingParserNormalizationHandoffTreeViolation =
 if (filingParserNormalizationHandoffTreeViolation !== null)
   violations.push(
     `${filingParserNormalizationHandoffPackagePrefix}: ${filingParserNormalizationHandoffTreeViolation}`,
+  );
+const filingParserNormalizationExecutionTreeViolation =
+  exactFilingParserNormalizationExecutionTreeViolation(
+    [...filesToInspect]
+      .map((file) => relative(root, file).replaceAll("\\", "/"))
+      .filter((path) =>
+        path.startsWith(filingParserNormalizationExecutionPackagePrefix),
+      ),
+  );
+if (filingParserNormalizationExecutionTreeViolation !== null)
+  violations.push(
+    `${filingParserNormalizationExecutionPackagePrefix}: ${filingParserNormalizationExecutionTreeViolation}`,
+  );
+const filingParserNormalizationExecutionAcceptanceTreeViolation =
+  exactFilingParserNormalizationExecutionAcceptanceTreeViolation(
+    [...filesToInspect]
+      .map((file) => relative(root, file).replaceAll("\\", "/"))
+      .filter((path) =>
+        path.startsWith(
+          filingParserNormalizationExecutionAcceptancePackagePrefix,
+        ),
+      ),
+  );
+if (filingParserNormalizationExecutionAcceptanceTreeViolation !== null)
+  violations.push(
+    `${filingParserNormalizationExecutionAcceptancePackagePrefix}: ${filingParserNormalizationExecutionAcceptanceTreeViolation}`,
   );
 
 // Release-gate regression cases: these common root-level surfaces must remain
@@ -1905,6 +2180,275 @@ if (
 )
   throw new Error(
     "Filing-parser-normalization-handoff source classifier regressed",
+  );
+const reviewedFilingParserNormalizationExecutionManifest = {
+  name: filingParserNormalizationExecutionModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: {
+    ".": "./src/index.ts",
+    "./test": "./src/test-filing-parser-normalization-execution-builder.ts",
+  },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+    "test:worker": "python -I -B worker/parser_test.py",
+  },
+  dependencies: {
+    [filingParserNormalizationHandoffModule]: "workspace:*",
+  },
+};
+const reviewedFilingParserNormalizationExecutionAcceptanceManifest = {
+  name: filingParserNormalizationExecutionAcceptanceModule,
+  version: "0.1.0",
+  private: true,
+  type: "module",
+  exports: { ".": "./src/index.ts" },
+  scripts: {
+    build: "tsc --noEmit",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+  },
+  dependencies: {
+    [filingParserNormalizationExecutionModule]: "workspace:*",
+  },
+};
+const reviewedFilingParserNormalizationExecutionTsconfig = {
+  extends: "../../tsconfig.base.json",
+  compilerOptions: { noEmit: true, types: ["node"] },
+  include: ["src/**/*.ts"],
+};
+if (
+  exactFilingParserNormalizationExecutionTreeViolation(
+    filingParserNormalizationExecutionPackagePaths,
+  ) !== null ||
+  exactFilingParserNormalizationExecutionAcceptanceTreeViolation(
+    filingParserNormalizationExecutionAcceptancePackagePaths,
+  ) !== null ||
+  filingParserNormalizationExecutionManifestViolation(
+    reviewedFilingParserNormalizationExecutionManifest,
+  ) !== null ||
+  filingParserNormalizationExecutionAcceptanceManifestViolation(
+    reviewedFilingParserNormalizationExecutionAcceptanceManifest,
+  ) !== null
+)
+  throw new Error("Cycle 2j exact tree/manifest positive classifier regressed");
+if (
+  filingParserNormalizationExecutionTsconfigViolation(
+    `${filingParserNormalizationExecutionPackagePrefix}tsconfig.json`,
+    reviewedFilingParserNormalizationExecutionTsconfig,
+  ) !== null ||
+  !hasFilingParserNormalizationExecutionDependency(
+    {
+      dependencies: {
+        [filingParserNormalizationExecutionModule]: "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  )
+)
+  throw new Error("Cycle 2j tsconfig/dependency positive classifier regressed");
+if (
+  exactFilingParserNormalizationExecutionTreeViolation(
+    filingParserNormalizationExecutionPackagePaths.slice(1),
+  ) === null ||
+  exactFilingParserNormalizationExecutionTreeViolation([
+    ...filingParserNormalizationExecutionPackagePaths,
+    `${filingParserNormalizationExecutionSourcePrefix}loader.ts`,
+  ]) === null ||
+  exactFilingParserNormalizationExecutionAcceptanceTreeViolation(
+    filingParserNormalizationExecutionAcceptancePackagePaths.slice(1),
+  ) === null ||
+  exactFilingParserNormalizationExecutionAcceptanceTreeViolation([
+    ...filingParserNormalizationExecutionAcceptancePackagePaths,
+    `${filingParserNormalizationExecutionAcceptanceSourcePrefix}loader.ts`,
+  ]) === null ||
+  filingParserNormalizationExecutionManifestViolation({
+    ...reviewedFilingParserNormalizationExecutionManifest,
+    exports: { ".": "./src/index.ts" },
+  }) === null ||
+  filingParserNormalizationExecutionManifestViolation({
+    ...reviewedFilingParserNormalizationExecutionManifest,
+    scripts: {
+      ...reviewedFilingParserNormalizationExecutionManifest.scripts,
+      "test:worker": "python worker/parser_test.py",
+    },
+  }) === null ||
+  filingParserNormalizationExecutionAcceptanceManifestViolation({
+    ...reviewedFilingParserNormalizationExecutionAcceptanceManifest,
+    dependencies: {},
+  }) === null
+)
+  throw new Error("Cycle 2j exact tree/manifest negative classifier regressed");
+if (
+  filingParserNormalizationExecutionTsconfigViolation(
+    "apps/api/tsconfig.json",
+    {
+      compilerOptions: {
+        baseUrl: "../..",
+        paths: { "@cycle2j": ["packages/*/src/index.ts"] },
+      },
+    },
+  ) === null ||
+  !hasFilingParserNormalizationExecutionDependency(
+    {
+      devDependencies: {
+        alias: "link:../filing-parser-normalization-execution",
+      },
+    },
+    "packages/ui/package.json",
+  ) ||
+  hasFilingParserNormalizationExecutionDependency(
+    { dependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  )
+)
+  throw new Error("Cycle 2j tsconfig/dependency negative classifier regressed");
+if (
+  filingParserNormalizationExecutionManifestCompositionViolation(
+    "apps/api/package.json",
+    {
+      exports: {
+        "./cycle2j":
+          "../../packages/filing-parser-normalization-execution/src/index.ts",
+      },
+    },
+  ) === null ||
+  filingParserNormalizationExecutionManifestCompositionViolation(
+    "apps/api/package.json",
+    {
+      scripts: {
+        cycle2j:
+          "tsx ../../packages/filing-parser-normalization-execution/src/index.ts",
+      },
+    },
+  ) === null
+)
+  throw new Error("Cycle 2j manifest composition classifier regressed");
+if (
+  filingParserNormalizationExecutionExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    `import ${JSON.stringify(filingParserNormalizationExecutionModule)};`,
+  ) === null ||
+  filingParserNormalizationExecutionExternalCompositionViolation(
+    "apps/api/src/index.ts",
+    'const target = "@research-cockpit/filing-parser-normalization-execution"; void import(target);',
+  ) === null ||
+  filingParserNormalizationExecutionExternalCompositionViolation(
+    ".github/workflows/unrelated.yml",
+    "steps:\n  - run: pnpm filing-parser-normalization-execution:acceptance",
+  ) === null
+)
+  throw new Error("Cycle 2j external composition classifier regressed");
+if (
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    filingParserNormalizationExecutionBuilderPath,
+    `import ${JSON.stringify(filingParserNormalizationHandoffModule)};`,
+  ) === null
+)
+  throw new Error("Cycle 2j reciprocal handoff classifier regressed");
+const reviewedExecutionCoreSource = await readFile(
+  join(root, filingParserNormalizationExecutionProductionPath),
+  "utf8",
+);
+const reviewedExecutionIndexSource = await readFile(
+  join(root, filingParserNormalizationExecutionIndexPath),
+  "utf8",
+);
+const reviewedExecutionAcceptanceIndexSource = await readFile(
+  join(root, filingParserNormalizationExecutionAcceptanceIndexPath),
+  "utf8",
+);
+const reviewedExecutionAcceptanceRunnerSource = await readFile(
+  join(root, filingParserNormalizationExecutionAcceptanceRunnerPath),
+  "utf8",
+);
+const reviewedExecutionWorkerSource = await readFile(
+  join(root, filingParserNormalizationExecutionWorkerParserPath),
+  "utf8",
+);
+const reviewedExecutionWorkerTestSource = await readFile(
+  join(root, filingParserNormalizationExecutionWorkerParserTestPath),
+  "utf8",
+);
+const reviewedExecutionTaxonomySource = await readFile(
+  join(root, filingParserNormalizationExecutionWorkerTaxonomyPath),
+  "utf8",
+);
+const reviewedExecutionImageSource = await readFile(
+  join(root, filingParserNormalizationExecutionImageReviewPath),
+  "utf8",
+);
+if (
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionProductionPath,
+    reviewedExecutionCoreSource,
+  ) !== null ||
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionProductionPath,
+    `${reviewedExecutionCoreSource}\nvoid import(target);`,
+  ) === null ||
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionIndexPath,
+    reviewedExecutionIndexSource,
+  ) !== null ||
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionIndexPath,
+    `${reviewedExecutionIndexSource}\nexport * from "./test-filing-parser-normalization-execution-builder";`,
+  ) === null ||
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionAcceptanceIndexPath,
+    reviewedExecutionAcceptanceIndexSource,
+  ) !== null ||
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionAcceptanceRunnerPath,
+    reviewedExecutionAcceptanceRunnerSource,
+  ) !== null ||
+  filingParserNormalizationExecutionImportViolation(
+    filingParserNormalizationExecutionAcceptanceRunnerPath,
+    `${reviewedExecutionAcceptanceRunnerSource}\nimport "node:https";`,
+  ) === null ||
+  filingParserNormalizationHandoffExternalCompositionViolation(
+    filingParserNormalizationExecutionProductionPath,
+    reviewedExecutionCoreSource,
+  ) !== null ||
+  workerPythonImportViolation(
+    reviewedExecutionWorkerSource,
+    allowedFilingParserNormalizationExecutionWorkerPythonImports,
+  ) !== null ||
+  workerPythonImportViolation(
+    `${reviewedExecutionWorkerSource}\nimport socket`,
+    allowedFilingParserNormalizationExecutionWorkerPythonImports,
+  ) === null ||
+  filingParserNormalizationExecutionWorkerTestViolation(
+    reviewedExecutionWorkerTestSource,
+  ) !== null ||
+  filingParserNormalizationExecutionWorkerTestViolation(
+    `${reviewedExecutionWorkerTestSource}\nimport socket`,
+  ) === null ||
+  filingParserNormalizationExecutionTaxonomyViolation(
+    reviewedExecutionTaxonomySource,
+  ) !== null ||
+  filingParserNormalizationExecutionTaxonomyViolation(
+    reviewedExecutionTaxonomySource.replace(
+      '"taxonomyVersion": "1.0.0"',
+      '"taxonomyVersion": "9.0.0"',
+    ),
+  ) === null ||
+  filingParserNormalizationExecutionImageReviewViolation(
+    reviewedExecutionImageSource,
+  ) !== null ||
+  filingParserNormalizationExecutionImageReviewViolation(
+    reviewedExecutionImageSource.replace(
+      '"pythonVersion": "3.12.13"',
+      '"pythonVersion": "3.13.0"',
+    ),
+  ) === null
+)
+  throw new Error(
+    "Filing-parser-normalization-execution reviewed source classifier regressed",
   );
 if (
   !referencesModule(
@@ -3128,7 +3672,10 @@ for (const file of filesToInspect) {
   const relativePath = relative(root, file).replaceAll("\\", "/");
   const extension = extname(file).toLowerCase();
   if (
-    relativePath.startsWith("packages/filing-parser/") &&
+    (relativePath.startsWith("packages/filing-parser/") ||
+      relativePath.startsWith(
+        filingParserNormalizationExecutionPackagePrefix,
+      )) &&
     (extension === ".pyc" || relativePath.includes("/__pycache__/"))
   ) {
     violations.push(`${relativePath}: generated Python bytecode is forbidden`);
@@ -3191,6 +3738,13 @@ for (const file of filesToInspect) {
         );
       if (handoffAliasViolation !== null)
         violations.push(`${relativePath}: ${handoffAliasViolation}`);
+      const executionAliasViolation =
+        filingParserNormalizationExecutionTsconfigViolation(
+          relativePath,
+          parsed.config,
+        );
+      if (executionAliasViolation !== null)
+        violations.push(`${relativePath}: ${executionAliasViolation}`);
     }
   }
   inspectCompositionBoundary(relativePath, content);
@@ -3208,6 +3762,13 @@ for (const file of externalCompositionFilesToInspect) {
     );
   if (handoffViolation !== null)
     violations.push(`${relativePath}: ${handoffViolation}`);
+  const executionViolation =
+    filingParserNormalizationExecutionExternalCompositionViolation(
+      relativePath,
+      content,
+    );
+  if (executionViolation !== null)
+    violations.push(`${relativePath}: ${executionViolation}`);
 }
 
 if (violations.length > 0) {
@@ -3255,6 +3816,26 @@ function exactFilingParserNormalizationHandoffTreeViolation(
     JSON.stringify(filingParserNormalizationHandoffPackagePaths)
     ? null
     : "package tree must remain the exact reviewed manifest, tsconfig, core, index, builder, and two tests";
+}
+
+function exactFilingParserNormalizationExecutionTreeViolation(
+  packagePaths: readonly string[],
+): string | null {
+  const actual = [...packagePaths].sort();
+  return JSON.stringify(actual) ===
+    JSON.stringify(filingParserNormalizationExecutionPackagePaths)
+    ? null
+    : "package tree must remain the exact reviewed manifest, tsconfig, image review, core, index, builder, two TypeScript tests, Dockerfile, parser, parser test, and taxonomy";
+}
+
+function exactFilingParserNormalizationExecutionAcceptanceTreeViolation(
+  packagePaths: readonly string[],
+): string | null {
+  const actual = [...packagePaths].sort();
+  return JSON.stringify(actual) ===
+    JSON.stringify(filingParserNormalizationExecutionAcceptancePackagePaths)
+    ? null
+    : "acceptance package tree must remain the exact reviewed 13-file manifest, tsconfig, index, live runner and test, evidence model, verifier, review CLI, builder, and three evidence tests";
 }
 
 function inspectDependencies(path: string, manifest: unknown): void {
@@ -3344,6 +3925,7 @@ function inspectDependencies(path: string, manifest: unknown): void {
   }
   if (
     !path.startsWith(filingParserNormalizationHandoffPackagePrefix) &&
+    path !== `${filingParserNormalizationExecutionPackagePrefix}package.json` &&
     hasFilingParserNormalizationHandoffDependency(manifest, path)
   )
     violations.push(
@@ -3356,6 +3938,40 @@ function inspectDependencies(path: string, manifest: unknown): void {
     );
   if (handoffManifestCompositionViolation !== null)
     violations.push(`${path}: ${handoffManifestCompositionViolation}`);
+  if (
+    path === `${filingParserNormalizationExecutionPackagePrefix}package.json`
+  ) {
+    const manifestViolation =
+      filingParserNormalizationExecutionManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    path ===
+    `${filingParserNormalizationExecutionAcceptancePackagePrefix}package.json`
+  ) {
+    const manifestViolation =
+      filingParserNormalizationExecutionAcceptanceManifestViolation(manifest);
+    if (manifestViolation !== null)
+      violations.push(`${path}: ${manifestViolation}`);
+  }
+  if (
+    !path.startsWith(filingParserNormalizationExecutionPackagePrefix) &&
+    !path.startsWith(
+      filingParserNormalizationExecutionAcceptancePackagePrefix,
+    ) &&
+    hasFilingParserNormalizationExecutionDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: Cycle 2j parser-normalization execution must remain limited to its exact acceptance package`,
+    );
+  const executionManifestCompositionViolation =
+    filingParserNormalizationExecutionManifestCompositionViolation(
+      path,
+      manifest,
+    );
+  if (executionManifestCompositionViolation !== null)
+    violations.push(`${path}: ${executionManifestCompositionViolation}`);
   if (path === `${filingFactComparisonPackagePrefix}package.json`) {
     const manifestViolation = filingFactComparisonManifestViolation(manifest);
     if (manifestViolation !== null)
@@ -4028,6 +4644,60 @@ function filingParserNormalizationHandoffManifestViolation(
     : "filing-parser-normalization-handoff package must retain its exact private, Cycle 2d-only workspace dependency, index-only script and export surface";
 }
 
+function filingParserNormalizationExecutionManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-parser-normalization-execution package manifest must be an exact object";
+  const expected = {
+    name: filingParserNormalizationExecutionModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: {
+      ".": "./src/index.ts",
+      "./test": "./src/test-filing-parser-normalization-execution-builder.ts",
+    },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+      "test:worker": "python -I -B worker/parser_test.py",
+    },
+    dependencies: {
+      [filingParserNormalizationHandoffModule]: "workspace:*",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-parser-normalization-execution package must retain its exact private, Cycle 2i-only dependency, public index, test-builder subpath, and script surface";
+}
+
+function filingParserNormalizationExecutionAcceptanceManifestViolation(
+  manifest: unknown,
+): string | null {
+  if (!isRecord(manifest))
+    return "filing-parser-normalization-execution acceptance manifest must be an exact object";
+  const expected = {
+    name: filingParserNormalizationExecutionAcceptanceModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      [filingParserNormalizationExecutionModule]: "workspace:*",
+    },
+  };
+  return JSON.stringify(manifest) === JSON.stringify(expected)
+    ? null
+    : "filing-parser-normalization-execution acceptance package must retain its exact private, Cycle 2j-only dependency, index-only export, and script surface";
+}
+
 function filingFactComparisonManifestViolation(
   manifest: unknown,
 ): string | null {
@@ -4168,6 +4838,19 @@ function inspectCompositionBoundary(path: string, content: string): void {
   if (filingParserNormalizationHandoffExternalViolation !== null)
     violations.push(
       `${path}: ${filingParserNormalizationHandoffExternalViolation}`,
+    );
+  const filingParserNormalizationExecutionViolation =
+    filingParserNormalizationExecutionImportViolation(path, content);
+  if (filingParserNormalizationExecutionViolation !== null)
+    violations.push(`${path}: ${filingParserNormalizationExecutionViolation}`);
+  const filingParserNormalizationExecutionExternalViolation =
+    filingParserNormalizationExecutionExternalCompositionViolation(
+      path,
+      content,
+    );
+  if (filingParserNormalizationExecutionExternalViolation !== null)
+    violations.push(
+      `${path}: ${filingParserNormalizationExecutionExternalViolation}`,
     );
   const filingFactComparisonViolation = filingFactComparisonImportViolation(
     path,
@@ -4437,6 +5120,167 @@ function filingParserNormalizationHandoffImportViolation(
   return forbidden === null
     ? null
     : "handoff sources must not use clock, randomness, scheduling, network, process, logging, dynamic-code, or worker surfaces";
+}
+
+function filingParserNormalizationExecutionImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (path === filingParserNormalizationExecutionFixtureGuardPath) {
+    const modules = collectModuleSpecifiers(content);
+    if (
+      JSON.stringify(modules) !==
+      JSON.stringify(["node:crypto", "node:fs/promises", "node:path"])
+    )
+      return "Cycle 2j fixture guard must retain its exact hash, filesystem, and path imports";
+    return filingParserNormalizationExecutionDynamicLoadViolation(content);
+  }
+  if (path.startsWith(filingParserNormalizationExecutionSourcePrefix)) {
+    if (!filingParserNormalizationExecutionSourcePaths.has(path))
+      return "Cycle 2j source set must remain the exact reviewed core, index, builder, and two tests";
+    const dynamicViolation =
+      filingParserNormalizationExecutionDynamicLoadViolation(content);
+    if (dynamicViolation !== null) return dynamicViolation;
+    if (path === filingParserNormalizationExecutionIndexPath)
+      return isExactFilingParserNormalizationExecutionIndex(content)
+        ? null
+        : "Cycle 2j public index must retain the exact reviewed production export surface";
+    const modules = collectModuleSpecifiers(content);
+    if (path === filingParserNormalizationExecutionProductionPath) {
+      if (
+        JSON.stringify(modules) !==
+          JSON.stringify([
+            "node:crypto",
+            "node:child_process",
+            "node:fs/promises",
+            "node:os",
+            "node:path",
+            "node:util",
+            filingParserNormalizationHandoffModule,
+          ]) ||
+        !hasExactFilingParserNormalizationExecutionProductionImports(content)
+      )
+        return "Cycle 2j core must retain its exact crypto, Docker spawn, staging, path, intrinsic-carrier, and Cycle 2i bindings";
+      return filingParserNormalizationExecutionForbiddenGlobalViolation(
+        path,
+        content,
+      );
+    }
+    if (path === filingParserNormalizationExecutionBuilderPath) {
+      const sourceFile = ts.createSourceFile(
+        path,
+        content,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS,
+      );
+      const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+      if (
+        JSON.stringify(modules) !== JSON.stringify(["node:crypto"]) ||
+        imports.length !== 1 ||
+        !isExactFilingParserNormalizationHandoffImport(
+          imports[0],
+          "node:crypto",
+          [["createHash", "createHash", false]],
+        )
+      )
+        return "Cycle 2j synthetic archive builder may import only exact node:crypto createHash";
+      return filingParserNormalizationExecutionForbiddenGlobalViolation(
+        path,
+        content,
+      );
+    }
+    const expectedTestModules =
+      filingParserNormalizationExecutionTestModules.get(path);
+    return expectedTestModules !== undefined &&
+      JSON.stringify(modules) === JSON.stringify(expectedTestModules)
+      ? null
+      : "Cycle 2j tests may import only their exact Vitest, Ed25519, core, and builder surfaces";
+  }
+  if (
+    !path.startsWith(filingParserNormalizationExecutionAcceptanceSourcePrefix)
+  )
+    return null;
+  if (!filingParserNormalizationExecutionAcceptanceSourcePaths.has(path))
+    return "Cycle 2j acceptance source set must remain the exact reviewed index, live runner, evidence model, verifier, review CLI, builder, and tests";
+  const dynamicViolation =
+    filingParserNormalizationExecutionDynamicLoadViolation(content);
+  if (dynamicViolation !== null) return dynamicViolation;
+  const expectedModules =
+    filingParserNormalizationExecutionAcceptanceModules.get(path);
+  const modules = collectModuleSpecifiers(content);
+  if (
+    expectedModules === undefined ||
+    JSON.stringify(modules) !== JSON.stringify(expectedModules)
+  )
+    return "Cycle 2j acceptance source may import only its exact reviewed Node, Cycle 2j, evidence, CLI, builder, and Vitest surfaces";
+  if (
+    path === filingParserNormalizationExecutionAcceptanceIndexPath &&
+    !isExactFilingParserNormalizationExecutionAcceptanceIndex(content)
+  )
+    return "Cycle 2j acceptance index must retain the exact evidence and offline-verifier export surface";
+  return null;
+}
+
+function filingParserNormalizationExecutionDynamicLoadViolation(
+  content: string,
+): string | null {
+  return hasRuntimeDynamicImport(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasForbiddenNodeModuleCapability(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+    ? "Cycle 2j sources must not use runtime module loading, node:module recovery, or dynamic code"
+    : null;
+}
+
+function filingParserNormalizationExecutionForbiddenGlobalViolation(
+  path: string,
+  content: string,
+): string | null {
+  const forbiddenGlobals = new Set([
+    "Bun",
+    "Deno",
+    "EventSource",
+    "Function",
+    "SharedWorker",
+    "WebSocket",
+    "Worker",
+    "XMLHttpRequest",
+    "console",
+    "crypto",
+    "eval",
+    "fetch",
+    "global",
+    "globalThis",
+    "module",
+    "navigator",
+    "process",
+    "require",
+  ]);
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbidden: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbidden === null &&
+      ts.isIdentifier(node) &&
+      forbiddenGlobals.has(node.text)
+    ) {
+      forbidden = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbidden === null
+    ? null
+    : "Cycle 2j core and builder must not use network, process, logging, dynamic-code, ambient crypto, or worker globals";
 }
 
 function filingFactComparisonImportViolation(
@@ -5175,6 +6019,143 @@ function isExactFilingParserNormalizationHandoffIndex(
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
+function isExactFilingParserNormalizationExecutionIndex(
+  content: string,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingParserNormalizationExecutionIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (sourceFile.statements.length !== 1) return false;
+  return isExactNamedReExportDeclaration(
+    sourceFile.statements[0],
+    "./filing-parser-normalization-execution",
+    filingParserNormalizationExecutionPublicExports,
+  );
+}
+
+function isExactFilingParserNormalizationExecutionAcceptanceIndex(
+  content: string,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingParserNormalizationExecutionAcceptanceIndexPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  return (
+    sourceFile.statements.length === 2 &&
+    isExactNamedReExportDeclaration(
+      sourceFile.statements[0],
+      "./filing-parser-normalization-execution-evidence",
+      filingParserNormalizationExecutionEvidencePublicExports,
+    ) &&
+    isExactNamedReExportDeclaration(
+      sourceFile.statements[1],
+      "./filing-parser-normalization-execution-evidence-verifier",
+      filingParserNormalizationExecutionEvidenceVerifierPublicExports,
+    )
+  );
+}
+
+function isExactNamedReExportDeclaration(
+  declaration: ts.Statement | undefined,
+  moduleName: string,
+  expectedExports: ReadonlyArray<readonly [string, boolean]>,
+): boolean {
+  if (
+    declaration === undefined ||
+    !ts.isExportDeclaration(declaration) ||
+    declaration.isTypeOnly ||
+    declaration.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== moduleName ||
+    declaration.exportClause === undefined ||
+    !ts.isNamedExports(declaration.exportClause)
+  )
+    return false;
+  const actual = declaration.exportClause.elements.map((specifier) => [
+    specifier.propertyName?.text ?? specifier.name.text,
+    specifier.name.text,
+    specifier.isTypeOnly,
+  ]);
+  const expected = expectedExports.map(([name, typeOnly]) => [
+    name,
+    name,
+    typeOnly,
+  ]);
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function hasExactFilingParserNormalizationExecutionProductionImports(
+  content: string,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    filingParserNormalizationExecutionProductionPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  return (
+    imports.length === 7 &&
+    isExactFilingParserNormalizationHandoffImport(imports[0], "node:crypto", [
+      ["createHash", "createHash", false],
+      ["createPublicKey", "createPublicKey", false],
+      ["randomUUID", "randomUUID", false],
+    ]) &&
+    isExactFilingParserNormalizationHandoffImport(
+      imports[1],
+      "node:child_process",
+      [["spawn", "spawn", false]],
+    ) &&
+    isExactFilingParserNormalizationHandoffImport(
+      imports[2],
+      "node:fs/promises",
+      [
+        ["mkdtemp", "mkdtemp", false],
+        ["rm", "rm", false],
+        ["writeFile", "writeFile", false],
+      ],
+    ) &&
+    isExactFilingParserNormalizationHandoffImport(imports[3], "node:os", [
+      ["tmpdir", "tmpdir", false],
+    ]) &&
+    isExactFilingParserNormalizationHandoffImport(imports[4], "node:path", [
+      ["join", "join", false],
+    ]) &&
+    isExactFilingParserNormalizationHandoffImport(imports[5], "node:util", [
+      ["types", "utilTypes", false],
+    ]) &&
+    isExactFilingParserNormalizationHandoffImport(
+      imports[6],
+      filingParserNormalizationHandoffModule,
+      [
+        [
+          "handoffAuthenticatedSyntheticFilingParserResults",
+          "handoffAuthenticatedSyntheticFilingParserResults",
+          false,
+        ],
+        [
+          "FilingParserNormalizationHandoffProvenance",
+          "FilingParserNormalizationHandoffProvenance",
+          true,
+        ],
+        [
+          "FilingParserNormalizationHandoffSuccess",
+          "FilingParserNormalizationHandoffSuccess",
+          true,
+        ],
+      ],
+    )
+  );
+}
+
 function hasExactFilingParserNormalizationHandoffProductionImports(
   content: string,
 ): boolean {
@@ -5856,34 +6837,242 @@ function isExactCorpusAdmissionCryptoImport(
 }
 
 function inspectFilingParserWorker(path: string, content: string): void {
-  if (path === "packages/filing-parser/worker/Dockerfile") {
+  if (path === filingParserNormalizationExecutionImageReviewPath) {
+    const violation =
+      filingParserNormalizationExecutionImageReviewViolation(content);
+    if (violation !== null) violations.push(`${path}: ${violation}`);
+    return;
+  }
+  if (
+    path === "packages/filing-parser/worker/Dockerfile" ||
+    path === filingParserNormalizationExecutionWorkerDockerfilePath
+  ) {
     const violation = filingParserDockerfileViolation(content);
     if (violation !== null) violations.push(`${path}: ${violation}`);
     return;
   }
-  if (path !== "packages/filing-parser/worker/parser.py") return;
+  if (path === filingParserNormalizationExecutionWorkerTaxonomyPath) {
+    const violation =
+      filingParserNormalizationExecutionTaxonomyViolation(content);
+    if (violation !== null) violations.push(`${path}: ${violation}`);
+    return;
+  }
+  if (path === filingParserNormalizationExecutionWorkerParserTestPath) {
+    const violation =
+      filingParserNormalizationExecutionWorkerTestViolation(content);
+    if (violation !== null) violations.push(`${path}: ${violation}`);
+    return;
+  }
+  if (
+    path !== "packages/filing-parser/worker/parser.py" &&
+    path !== filingParserNormalizationExecutionWorkerParserPath
+  )
+    return;
   for (const pattern of forbiddenWorkerPython) {
     if (pattern.test(content))
       violations.push(`${path}: disconnected worker matched ${pattern}`);
   }
-  const importViolation = workerPythonImportViolation(content);
+  const importViolation = workerPythonImportViolation(
+    content,
+    path === filingParserNormalizationExecutionWorkerParserPath
+      ? allowedFilingParserNormalizationExecutionWorkerPythonImports
+      : allowedWorkerPythonImports,
+  );
   if (importViolation !== null) violations.push(`${path}: ${importViolation}`);
 }
 
-function workerPythonImportViolation(content: string): string | null {
+function filingParserNormalizationExecutionWorkerTestViolation(
+  content: string,
+): string | null {
+  const imports = content
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => /^(?:from|import)\s/u.test(line));
+  const expectedImports = [
+    "from __future__ import annotations",
+    "import importlib.util",
+    "import json",
+    "import unittest",
+    "from pathlib import Path",
+    "from types import ModuleType",
+  ];
+  if (JSON.stringify(imports) !== JSON.stringify(expectedImports))
+    return "Cycle 2j worker test may import only its exact future, local-loader, JSON, unittest, Path, and type surfaces";
+  if (
+    /^\s*(?:from|import)\s+(?:ctypes|ftplib|http|os|requests|runpy|socket|subprocess|urllib)\b/mu.test(
+      content,
+    ) ||
+    /(?:^|[^\w.])(?:__import__|compile|eval|exec)\s*\(/mu.test(content) ||
+    !content.includes('Path(__file__).with_name("parser.py")') ||
+    !content.includes(
+      'importlib.util.spec_from_file_location("cycle2j_worker", path)',
+    )
+  )
+    return "Cycle 2j worker test must load only the adjacent parser and must not gain network, process, plugin, or arbitrary dynamic-code capability";
+  return null;
+}
+
+function filingParserNormalizationExecutionImageReviewViolation(
+  content: string,
+): string | null {
+  if (
+    !content.endsWith("\n") ||
+    content.includes("\r") ||
+    content.startsWith("\ufeff")
+  )
+    return "Cycle 2j image review must remain newline-terminated UTF-8 JSON";
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content) as unknown;
+  } catch {
+    return "Cycle 2j image review must remain parseable JSON";
+  }
+  const expected = {
+    schemaVersion: 1,
+    image:
+      "docker.io/library/python:3.12.13-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2",
+    tag: "3.12.13-slim-bookworm",
+    indexDigest:
+      "sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2",
+    platform: "linux/amd64",
+    platformManifestDigest:
+      "sha256:6e13e65c55e33adf203d77ee371cf8bf5d81bd4902ef07565721f46bf44917af",
+    pythonVersion: "3.12.13",
+    distribution: "Debian GNU/Linux 12 (bookworm) slim",
+    officialRegistryManifestUrl:
+      "https://registry-1.docker.io/v2/library/python/manifests/3.12.13-slim-bookworm",
+    officialImageDefinitionUrl:
+      "https://github.com/docker-library/official-images/blob/master/library/python",
+    cpythonLicense: "Python Software Foundation License Version 2",
+    cpythonLicenseUrl: "https://docs.python.org/3.12/license.html",
+    containerPackageLicenseInventoryStatus: "not_proven_ci_acceptance_only",
+  };
+  if (
+    Object.keys(expected).some(
+      (key) => content.split(JSON.stringify(key)).length !== 2,
+    )
+  )
+    return "Cycle 2j image review must contain every exact field once without duplicate metadata";
+  return JSON.stringify(parsed) === JSON.stringify(expected)
+    ? null
+    : "Cycle 2j image review must retain its exact version, base/index/platform digests, URLs, license, distribution, and nonclaim status";
+}
+
+function workerPythonImportViolation(
+  content: string,
+  allowedImports: ReadonlySet<string> = allowedWorkerPythonImports,
+): string | null {
   const imports = content
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter((line) => /^(?:from|import)\s/u.test(line));
   if (
-    imports.length !== allowedWorkerPythonImports.size ||
-    imports.some((line) => !allowedWorkerPythonImports.has(line)) ||
-    [...allowedWorkerPythonImports].some(
+    imports.length !== allowedImports.size ||
+    imports.some((line) => !allowedImports.has(line)) ||
+    [...allowedImports].some(
       (expected) => imports.filter((line) => line === expected).length !== 1,
     )
   )
     return "worker imports must remain the exact reviewed standard-library allowlist";
   return null;
+}
+
+function filingParserNormalizationExecutionTaxonomyViolation(
+  content: string,
+): string | null {
+  if (
+    !content.endsWith("\n") ||
+    content.includes("\r") ||
+    content.startsWith("\ufeff") ||
+    (content.match(/"facts"/gu) ?? []).length !== 1 ||
+    (content.match(/"namespace"/gu) ?? []).length !== 1 ||
+    (content.match(/"schemaVersion"/gu) ?? []).length !== 1 ||
+    (content.match(/"taxonomyFamily"/gu) ?? []).length !== 1 ||
+    (content.match(/"taxonomyVersion"/gu) ?? []).length !== 1 ||
+    (content.match(/"concept"/gu) ?? []).length !== 10 ||
+    (content.match(/"key"/gu) ?? []).length !== 10 ||
+    (content.match(/"periodKind"/gu) ?? []).length !== 10 ||
+    (content.match(/"unit"/gu) ?? []).length !== 10
+  )
+    return "Cycle 2j taxonomy must remain one newline-terminated, duplicate-free closed ten-fact JSON document";
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content) as unknown;
+  } catch {
+    return "Cycle 2j taxonomy must remain parseable JSON";
+  }
+  const expected = {
+    facts: [
+      {
+        concept: "rc-synthetic:Assets",
+        key: "assets",
+        periodKind: "instant",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:CashAndCashEquivalents",
+        key: "cash",
+        periodKind: "instant",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:Debt",
+        key: "debt",
+        periodKind: "instant",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:WeightedAverageDilutedShares",
+        key: "diluted_shares",
+        periodKind: "duration",
+        unit: "shares",
+      },
+      {
+        concept: "rc-synthetic:FreeCashFlow",
+        key: "free_cash_flow",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:GrossProfit",
+        key: "gross_profit",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:NetIncome",
+        key: "net_income",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:OperatingCashFlow",
+        key: "operating_cash_flow",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:OperatingIncome",
+        key: "operating_income",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        concept: "rc-synthetic:Revenue",
+        key: "revenue",
+        periodKind: "duration",
+        unit: "USD",
+      },
+    ],
+    namespace:
+      "urn:research-cockpit:synthetic:filing-normalization-execution:v1",
+    schemaVersion: "1.0.0",
+    taxonomyFamily: "rc-synthetic-ten-fact",
+    taxonomyVersion: "1.0.0",
+  };
+  return JSON.stringify(parsed) === JSON.stringify(expected)
+    ? null
+    : "Cycle 2j taxonomy must remain the exact closed ten-fact namespace, version, concept, key, period-kind, and unit mapping";
 }
 
 function filingParserDockerfileViolation(content: string): string | null {
@@ -6026,12 +7215,55 @@ function hasFilingParserNormalizationHandoffDependency(
   });
 }
 
+function hasFilingParserNormalizationExecutionDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (
+        name === filingParserNormalizationExecutionModule ||
+        name === filingParserNormalizationExecutionAcceptanceModule
+      )
+        return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (
+        normalizedValue.includes(filingParserNormalizationExecutionModule) ||
+        normalizedValue.includes(
+          filingParserNormalizationExecutionAcceptanceModule,
+        )
+      )
+        return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingParserNormalizationExecutionPath(
+          manifestPath,
+          pathValue,
+        )
+      );
+    });
+  });
+}
+
 function filingParserNormalizationHandoffManifestCompositionViolation(
   manifestPath: string,
   manifest: unknown,
 ): string | null {
   if (
     manifestPath.startsWith(filingParserNormalizationHandoffPackagePrefix) ||
+    manifestPath ===
+      `${filingParserNormalizationExecutionPackagePrefix}package.json` ||
     !isRecord(manifest)
   )
     return null;
@@ -6064,6 +7296,138 @@ function filingParserNormalizationHandoffManifestCompositionViolation(
       return "package scripts must not execute or compose the Cycle 2i handoff";
   }
   return null;
+}
+
+function filingParserNormalizationExecutionManifestCompositionViolation(
+  manifestPath: string,
+  manifest: unknown,
+): string | null {
+  if (
+    manifestPath ===
+      `${filingParserNormalizationExecutionPackagePrefix}package.json` ||
+    manifestPath ===
+      `${filingParserNormalizationExecutionAcceptancePackagePrefix}package.json` ||
+    !isRecord(manifest)
+  )
+    return null;
+  for (const field of [
+    "bin",
+    "browser",
+    "exports",
+    "imports",
+    "main",
+    "module",
+    "types",
+    "typesVersions",
+    "typings",
+  ]) {
+    if (
+      manifestValueReferencesFilingParserNormalizationExecution(
+        manifestPath,
+        manifest[field],
+      )
+    )
+      return "package imports, exports, or entry points must not target Cycle 2j execution or acceptance";
+  }
+  if (manifest.scripts === undefined) return null;
+  if (!isRecord(manifest.scripts))
+    return "package scripts must remain an object of literal commands";
+  const approvedRootScripts = new Map([
+    [
+      "guardrails",
+      "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:filing-parser-fixtures && pnpm guardrails:filing-parser-normalization-execution-fixtures && pnpm guardrails:filing-payload-custody-fixtures && pnpm guardrails:migrations && pnpm guardrails:postgres-acceptance && pnpm guardrails:licenses",
+    ],
+    [
+      "guardrails:filing-parser-normalization-execution-fixtures",
+      "tsx scripts/verify-filing-parser-normalization-execution-fixtures.ts",
+    ],
+    [
+      "filing-parser-normalization-execution:acceptance",
+      "tsx packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-acceptance.ts",
+    ],
+    [
+      "filing-parser-normalization-execution:evidence-review",
+      "tsx packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-evidence-review.ts",
+    ],
+  ]);
+  for (const [name, command] of Object.entries(manifest.scripts)) {
+    if (typeof command !== "string")
+      return "package scripts must remain an object of literal commands";
+    if (!commandReferencesFilingParserNormalizationExecution(command)) continue;
+    if (
+      manifestPath === "package.json" &&
+      approvedRootScripts.get(name) === command
+    )
+      continue;
+    return "package scripts must not execute or compose Cycle 2j outside its exact root acceptance and review entrypoints";
+  }
+  return null;
+}
+
+function manifestValueReferencesFilingParserNormalizationExecution(
+  manifestPath: string,
+  value: unknown,
+): boolean {
+  const pending = [value];
+  let inspectedValues = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    inspectedValues += 1;
+    if (inspectedValues > 4096) return true;
+    if (typeof current === "string") {
+      const normalized = current.replaceAll("\\", "/");
+      const resolvedPattern = normalized.startsWith(".")
+        ? posixNormalize(`${posixDirname(manifestPath)}/${normalized}`)
+        : posixNormalize(normalized);
+      if (
+        commandReferencesFilingParserNormalizationExecution(normalized) ||
+        boundaryTargetPatternCanReachExecution(resolvedPattern) ||
+        referencesFilingParserNormalizationExecutionPath(
+          manifestPath,
+          normalized,
+        )
+      )
+        return true;
+    } else if (Array.isArray(current)) {
+      for (const item of current as unknown[]) pending.push(item);
+    } else if (isRecord(current)) {
+      pending.push(...Object.values(current));
+    }
+  }
+  return false;
+}
+
+function commandReferencesFilingParserNormalizationExecution(
+  command: string,
+): boolean {
+  if (hasUrlPercentEscape(command)) return true;
+  const shellUnescaped = command
+    .replace(/\\\r?\n/gu, "")
+    .replace(/\\([^\r\n])/gu, "$1");
+  const interpretations = new Set([
+    command,
+    command.replaceAll("\\", "/"),
+    shellUnescaped,
+  ]);
+  for (const interpretation of [...interpretations]) {
+    let literalConcatenation = interpretation.replace(/\\\r?\n/gu, "");
+    let previous = "";
+    while (literalConcatenation !== previous) {
+      previous = literalConcatenation;
+      literalConcatenation = literalConcatenation.replace(
+        /(["'])\s*\+\s*(["'])/gu,
+        "",
+      );
+    }
+    literalConcatenation = literalConcatenation
+      .replace(/\$(?=["'])/gu, "")
+      .replace(/["']/gu, "");
+    interpretations.add(literalConcatenation);
+    interpretations.add(literalConcatenation.replace(/\\([^\r\n])/gu, "$1"));
+  }
+  return [...interpretations].some((candidate) =>
+    staticStringCanReachExecution(candidate),
+  );
 }
 
 function manifestValueReferencesFilingParserNormalizationHandoff(
@@ -6296,6 +7660,38 @@ function referencesFilingParserNormalizationHandoffPath(
   );
 }
 
+function referencesFilingParserNormalizationExecutionPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (hasUrlPercentEscape(specifier)) return true;
+  if (
+    specifier === filingParserNormalizationExecutionModule ||
+    specifier.startsWith(`${filingParserNormalizationExecutionModule}/`) ||
+    specifier === filingParserNormalizationExecutionAcceptanceModule ||
+    specifier.startsWith(
+      `${filingParserNormalizationExecutionAcceptanceModule}/`,
+    )
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-parser-normalization-execution" ||
+    resolved.startsWith(filingParserNormalizationExecutionPackagePrefix) ||
+    resolved === "packages/filing-parser-normalization-execution-acceptance" ||
+    resolved.startsWith(
+      filingParserNormalizationExecutionAcceptancePackagePrefix,
+    ) ||
+    resolved.includes("/packages/filing-parser-normalization-execution/") ||
+    resolved.includes(
+      "/packages/filing-parser-normalization-execution-acceptance/",
+    )
+  );
+}
+
 function referencesFilingFactComparisonPath(
   sourcePath: string,
   specifier: string,
@@ -6458,7 +7854,11 @@ function filingParserNormalizationHandoffExternalCompositionViolation(
   path: string,
   content: string,
 ): string | null {
-  if (path.startsWith(filingParserNormalizationHandoffPackagePrefix))
+  if (
+    path.startsWith(filingParserNormalizationHandoffPackagePrefix) ||
+    path === filingParserNormalizationExecutionProductionPath ||
+    path === filingParserNormalizationExecutionWorkflowPath
+  )
     return null;
   if (!isNodeSourceExecutable(path, content)) {
     if (
@@ -6484,6 +7884,45 @@ function filingParserNormalizationHandoffExternalCompositionViolation(
     )
   )
     return "Cycle 2i parser-normalization handoff must remain package-isolated";
+  return null;
+}
+
+function filingParserNormalizationExecutionExternalCompositionViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (
+    path.startsWith(filingParserNormalizationExecutionPackagePrefix) ||
+    path.startsWith(
+      filingParserNormalizationExecutionAcceptancePackagePrefix,
+    ) ||
+    path === filingParserNormalizationExecutionWorkflowPath
+  )
+    return null;
+  if (!isNodeSourceExecutable(path, content)) {
+    if (
+      isCommandSurfaceExecutable(path, content) &&
+      commandReferencesFilingParserNormalizationExecution(content)
+    )
+      return "Cycle 2j execution and acceptance entrypoints must remain isolated";
+    return null;
+  }
+  const moduleSpecifiers = collectModuleSpecifiers(content);
+  if (
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasForbiddenNodeModuleCapability(content) ||
+    hasIndirectRuntimeModuleLoad(content) ||
+    hasFilingParserNormalizationExecutionStaticTarget(path, content) ||
+    moduleSpecifiers.some(
+      (specifier) =>
+        /^(?:blob|data):/iu.test(specifier) ||
+        specifier === "tsx" ||
+        specifier.startsWith("tsx/") ||
+        referencesFilingParserNormalizationExecutionPath(path, specifier),
+    )
+  )
+    return "Cycle 2j execution and acceptance packages must remain isolated";
   return null;
 }
 
@@ -6600,6 +8039,165 @@ function filingParserNormalizationHandoffTsconfigViolation(
   return null;
 }
 
+function filingParserNormalizationExecutionTsconfigViolation(
+  configPath: string,
+  config: unknown,
+): string | null {
+  if (!isRecord(config)) return null;
+  if (
+    configPath ===
+      `${filingParserNormalizationExecutionPackagePrefix}tsconfig.json` ||
+    configPath ===
+      `${filingParserNormalizationExecutionAcceptancePackagePrefix}tsconfig.json`
+  ) {
+    const expected = {
+      extends: "../../tsconfig.base.json",
+      compilerOptions: { noEmit: true, types: ["node"] },
+      include: ["src/**/*.ts"],
+    };
+    return JSON.stringify(config) === JSON.stringify(expected)
+      ? null
+      : "Cycle 2j package tsconfig must retain its exact base config, no-emit Node type surface, and local source include";
+  }
+  const compilerOptions = isRecord(config.compilerOptions)
+    ? config.compilerOptions
+    : {};
+  const {
+    baseUrl,
+    jsxImportSource,
+    paths,
+    plugins,
+    rootDirs,
+    typeRoots,
+    types,
+  } = compilerOptions;
+  const extendsSpecifiers = typeScriptConfigExtendsSpecifiers(config) ?? [];
+  if (
+    extendsSpecifiers.some((target) =>
+      typeScriptConfigTargetCanReachExecution(configPath, target),
+    )
+  )
+    return "TypeScript config inheritance must not target Cycle 2j execution or acceptance";
+  for (const field of [config.files, config.include]) {
+    if (
+      Array.isArray(field) &&
+      field.some(
+        (target) =>
+          typeof target === "string" &&
+          typeScriptConfigTargetCanReachExecution(configPath, target),
+      )
+    )
+      return "TypeScript files/include must not reach Cycle 2j execution or acceptance";
+  }
+  if (
+    Array.isArray(config.references) &&
+    config.references.some(
+      (reference) =>
+        isRecord(reference) &&
+        typeof reference.path === "string" &&
+        typeScriptConfigTargetCanReachExecution(configPath, reference.path),
+    )
+  )
+    return "TypeScript project references must not target Cycle 2j execution or acceptance";
+  if (
+    typeof baseUrl === "string" &&
+    typeScriptConfigTargetCanReachExecution(configPath, baseUrl)
+  )
+    return "TypeScript baseUrl must not resolve into Cycle 2j execution or acceptance";
+  if (
+    Array.isArray(rootDirs) &&
+    rootDirs.some(
+      (rootDirectory) =>
+        typeof rootDirectory === "string" &&
+        typeScriptConfigTargetCanReachExecution(configPath, rootDirectory),
+    )
+  )
+    return "TypeScript rootDirs must not include Cycle 2j execution or acceptance";
+  for (const field of [typeRoots, types]) {
+    if (
+      Array.isArray(field) &&
+      field.some(
+        (target) =>
+          typeof target === "string" &&
+          typeScriptConfigTargetCanReachExecution(configPath, target),
+      )
+    )
+      return "TypeScript type roots must not target Cycle 2j execution or acceptance";
+  }
+  if (
+    Array.isArray(plugins) &&
+    plugins.some(
+      (plugin) =>
+        isRecord(plugin) &&
+        typeof plugin.name === "string" &&
+        typeScriptConfigTargetCanReachExecution(configPath, plugin.name),
+    )
+  )
+    return "TypeScript plugins must not load Cycle 2j execution or acceptance";
+  if (
+    typeof jsxImportSource === "string" &&
+    typeScriptConfigTargetCanReachExecution(configPath, jsxImportSource)
+  )
+    return "TypeScript jsxImportSource must not target Cycle 2j execution or acceptance";
+  if (!isRecord(paths)) return null;
+  const normalizedBaseUrl = typeof baseUrl === "string" ? baseUrl : ".";
+  const resolutionBase = posixNormalize(
+    `${posixDirname(configPath)}/${normalizedBaseUrl.replaceAll("\\", "/")}`,
+  );
+  for (const targets of Object.values(paths)) {
+    if (!Array.isArray(targets)) continue;
+    for (const target of targets) {
+      if (
+        typeof target === "string" &&
+        typeScriptConfigTargetCanReachExecution(
+          configPath,
+          target,
+          resolutionBase,
+        )
+      )
+        return "TypeScript path aliases must not target Cycle 2j execution or acceptance";
+    }
+  }
+  return null;
+}
+
+function typeScriptConfigTargetCanReachExecution(
+  configPath: string,
+  target: string,
+  resolutionBase = posixDirname(configPath),
+): boolean {
+  if (referencesFilingParserNormalizationExecutionPath(configPath, target))
+    return true;
+  const normalizedTarget = target.replaceAll("\\", "/");
+  const resolvedPattern =
+    normalizedTarget.startsWith("@") ||
+    normalizedTarget.startsWith("/") ||
+    /^[a-z]:\//iu.test(normalizedTarget) ||
+    normalizedTarget.startsWith("file:")
+      ? posixNormalize(normalizedTarget)
+      : posixNormalize(`${resolutionBase}/${normalizedTarget}`);
+  return boundaryTargetPatternCanReachExecution(resolvedPattern);
+}
+
+function boundaryTargetPatternCanReachExecution(pattern: string): boolean {
+  if (hasUrlPercentEscape(pattern)) return true;
+  const wildcardIndex = pattern.search(/[*?]/u);
+  if (wildcardIndex === -1) return false;
+  const prefix = pattern.slice(0, wildcardIndex).replace(/\/+$/u, "");
+  const absoluteExecutionPath = `${root.replaceAll("\\", "/")}/packages/filing-parser-normalization-execution`;
+  const absoluteAcceptancePath = `${root.replaceAll("\\", "/")}/packages/filing-parser-normalization-execution-acceptance`;
+  return [
+    filingParserNormalizationExecutionModule,
+    filingParserNormalizationExecutionAcceptanceModule,
+    "packages/filing-parser-normalization-execution",
+    "packages/filing-parser-normalization-execution-acceptance",
+    absoluteExecutionPath,
+    absoluteAcceptancePath,
+    `file:///${absoluteExecutionPath}`,
+    `file:///${absoluteAcceptancePath}`,
+  ].some((candidate) => prefix.length === 0 || candidate.startsWith(prefix));
+}
+
 function typeScriptConfigTargetCanReachHandoff(
   configPath: string,
   target: string,
@@ -6654,6 +8252,32 @@ function hasFilingParserNormalizationHandoffStaticTarget(
   path: string,
   content: string,
 ): boolean {
+  return hasFilingParserNormalizationStaticTarget(
+    path,
+    content,
+    filingParserNormalizationHandoffMetadataLiteralPaths,
+    staticStringCanReachHandoff,
+  );
+}
+
+function hasFilingParserNormalizationExecutionStaticTarget(
+  path: string,
+  content: string,
+): boolean {
+  return hasFilingParserNormalizationStaticTarget(
+    path,
+    content,
+    filingParserNormalizationExecutionMetadataLiteralPaths,
+    staticStringCanReachExecution,
+  );
+}
+
+function hasFilingParserNormalizationStaticTarget(
+  path: string,
+  content: string,
+  metadataLiteralPaths: ReadonlySet<string>,
+  canReachTarget: (value: string) => boolean,
+): boolean {
   const sourceFile = ts.createSourceFile(
     path,
     content,
@@ -6661,14 +8285,13 @@ function hasFilingParserNormalizationHandoffStaticTarget(
     true,
     ts.ScriptKind.TSX,
   );
-  const metadataSurface =
-    filingParserNormalizationHandoffMetadataLiteralPaths.has(path);
+  const metadataSurface = metadataLiteralPaths.has(path);
   const targetBearingIdentifiers = new Set<string>();
   const staticStringIdentifiers = metadataSurface
     ? collectBoundaryStaticStringIdentifierValues(sourceFile)
     : new Map<string, string>();
   for (const [name, value] of staticStringIdentifiers) {
-    if (staticStringCanReachHandoff(value)) targetBearingIdentifiers.add(name);
+    if (canReachTarget(value)) targetBearingIdentifiers.add(name);
   }
   const executionSinkAliases = collectBoundaryExecutionSinkAliases(sourceFile);
   if (metadataSurface) {
@@ -6694,6 +8317,7 @@ function hasFilingParserNormalizationHandoffStaticTarget(
             assignedValue,
             targetBearingIdentifiers,
             staticStringIdentifiers,
+            canReachTarget,
           )
         ) {
           for (const name of assignedNames) {
@@ -6720,6 +8344,7 @@ function hasFilingParserNormalizationHandoffStaticTarget(
           argument,
           targetBearingIdentifiers,
           staticStringIdentifiers,
+          canReachTarget,
         ),
       )
     ) {
@@ -6734,7 +8359,7 @@ function hasFilingParserNormalizationHandoffStaticTarget(
     if (ts.isStringLiteralLike(node)) value = node.text;
     else if (ts.isBinaryExpression(node) || ts.isCallExpression(node))
       value = staticStringValue(node);
-    if (value !== null && staticStringCanReachHandoff(value)) {
+    if (value !== null && canReachTarget(value)) {
       found = true;
       return;
     }
@@ -7301,19 +8926,18 @@ function boundaryNodeContainsHandoffTarget(
   node: ts.Node,
   targetBearingIdentifiers: ReadonlySet<string>,
   staticStringIdentifiers: ReadonlyMap<string, string> = new Map(),
+  canReachTarget: (value: string) => boolean = staticStringCanReachHandoff,
 ): boolean {
   let found = false;
   const visit = (candidate: ts.Node): void => {
     if (
       (ts.isIdentifier(candidate) &&
         (targetBearingIdentifiers.has(candidate.text) ||
-          staticStringCanReachHandoff(
-            staticStringIdentifiers.get(candidate.text) ?? "",
-          ))) ||
+          canReachTarget(staticStringIdentifiers.get(candidate.text) ?? ""))) ||
       ((ts.isStringLiteralLike(candidate) ||
         ts.isBinaryExpression(candidate) ||
         ts.isCallExpression(candidate)) &&
-        staticStringCanReachHandoff(
+        canReachTarget(
           ts.isExpression(candidate)
             ? (boundaryStaticStringValue(candidate, staticStringIdentifiers) ??
                 "")
@@ -7363,6 +8987,29 @@ function staticStringCanReachHandoff(value: string): boolean {
     return (
       normalized.includes(filingParserNormalizationHandoffModule) ||
       normalized.includes("packages/filing-parser-normalization-handoff")
+    );
+  });
+}
+
+function staticStringCanReachExecution(value: string): boolean {
+  const candidates = [value];
+  if (hasUrlPercentEscape(value)) {
+    try {
+      candidates.push(decodeURIComponent(value));
+    } catch {
+      return true;
+    }
+  }
+  return candidates.some((candidate) => {
+    const normalized = candidate.replaceAll("\\", "/");
+    const commandTokens = normalized.split(/[\s"'`;&|()]+/u);
+    return (
+      normalized.includes(filingParserNormalizationExecutionModule) ||
+      normalized.includes(filingParserNormalizationExecutionAcceptanceModule) ||
+      normalized.includes("packages/filing-parser-normalization-execution") ||
+      commandTokens.some((token) =>
+        filingParserNormalizationExecutionRootScriptAliases.has(token),
+      )
     );
   });
 }

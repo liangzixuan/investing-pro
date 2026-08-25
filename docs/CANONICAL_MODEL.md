@@ -22,6 +22,8 @@ Pass only on exact source commit
 owned-byte premises only on that hardened successor; promoted source-stage
 Cycle 2i authenticated synthetic parser-result-to-normalization handoff Pass
 only for exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a`;
+proposed Cycle 2j isolated ten-fact parser execution-to-normalization remains
+Pending from baseline `f17bacc6adc46851e182d260d59830652f1953bb`;
 synthetic data only.
 
 ## Identity
@@ -788,6 +790,30 @@ inputs, Cycle 2b approval, independence, adjudicated quality, persistence, B15/V
 2 exit, real-data admission, or production. See
 [ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
+
+## Pending Cycle 2j parser-execution normalization boundary
+
+Cycle 2j proposes no canonical real filing, authority decision, tenant record,
+or persistent production entity. It adds one pending disconnected synthetic
+execution result: exactly one original and one amendment archive execute in
+fresh bounded workers; the host validates their complete canonical Cycle 2d
+ten-fact documents, signs Cycle 2i envelopes outside the workers, and delegates
+the exact archive/envelope bytes to the unchanged Cycle 2i handoff.
+
+Only a Cycle 2i `normalized` result may expose the immutable normalized pair and
+bounded aggregate execution provenance. Any archive, worker, output, cleanup,
+source binding, signature, role, mutation, or downstream failure must expose one
+empty value-free execution quarantine. The proposed claim is
+`bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
+It remains Pending from baseline
+`f17bacc6adc46851e182d260d59830652f1953bb`; no successor, transition, local
+gate, live evidence, artifact, or review is accepted.
+
+This pending contract creates no real source, signer/image authority,
+independent second parser, adjudicated quality, custody, API/web/database/queue
+composition, B15/V15, real-data admission, or production authority. See
+[ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
+and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

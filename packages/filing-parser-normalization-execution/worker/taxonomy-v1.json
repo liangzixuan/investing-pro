@@ -1,0 +1,68 @@
+{
+  "facts": [
+    {
+      "concept": "rc-synthetic:Assets",
+      "key": "assets",
+      "periodKind": "instant",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:CashAndCashEquivalents",
+      "key": "cash",
+      "periodKind": "instant",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:Debt",
+      "key": "debt",
+      "periodKind": "instant",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:WeightedAverageDilutedShares",
+      "key": "diluted_shares",
+      "periodKind": "duration",
+      "unit": "shares"
+    },
+    {
+      "concept": "rc-synthetic:FreeCashFlow",
+      "key": "free_cash_flow",
+      "periodKind": "duration",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:GrossProfit",
+      "key": "gross_profit",
+      "periodKind": "duration",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:NetIncome",
+      "key": "net_income",
+      "periodKind": "duration",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:OperatingCashFlow",
+      "key": "operating_cash_flow",
+      "periodKind": "duration",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:OperatingIncome",
+      "key": "operating_income",
+      "periodKind": "duration",
+      "unit": "USD"
+    },
+    {
+      "concept": "rc-synthetic:Revenue",
+      "key": "revenue",
+      "periodKind": "duration",
+      "unit": "USD"
+    }
+  ],
+  "namespace": "urn:research-cockpit:synthetic:filing-normalization-execution:v1",
+  "schemaVersion": "1.0.0",
+  "taxonomyFamily": "rc-synthetic-ten-fact",
+  "taxonomyVersion": "1.0.0"
+}

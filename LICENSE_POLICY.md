@@ -21,11 +21,13 @@ This is an engineering approval for the synthetic development slice, not counsel
 
 ## Cycle 2a acceptance-image boundary
 
-The isolated filing-parser acceptance job pins the Docker Official Image
+The isolated Cycle 2a filing-parser and Cycle 2j parser-normalization execution
+acceptance jobs pin the same Docker Official Image
 `python:3.12.13-slim-bookworm` by its exact OCI index digest and separately
-records the `linux/amd64` child-manifest digest. CPython 3.12.13 is distributed
-under the Python Software Foundation License Version 2; the primary license
-text is retained at <https://docs.python.org/3.12/license.html>.
+record the `linux/amd64` child-manifest digest in their domain-specific image
+metadata. CPython 3.12.13 is distributed under the Python Software Foundation
+License Version 2; the primary license text is retained at
+<https://docs.python.org/3.12/license.html>.
 
 That CPython license anchor does not classify or approve the complete image.
 The image also contains Debian Bookworm packages with their own licenses. A

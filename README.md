@@ -427,6 +427,21 @@ See
 [ADR 0036](./docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./docs/CYCLE_2I_EXIT_MATRIX.md).
 
+Cycle 2j is the next pending repository-controlled milestone. From exact
+baseline `f17bacc6adc46851e182d260d59830652f1953bb`, it proposes to execute one
+closed synthetic original archive and one amendment archive in fresh bounded,
+network-disabled Python 3.12 workers, create complete signed ten-fact envelopes
+outside those workers, and delegate the exact archive/envelope pair to the
+unchanged Cycle 2i handoff. Its sole proposed claim is
+`bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
+No source successor, transition inventory, local result, dedicated live run,
+artifact, or offline review has been accepted, so implementation and promotion
+remain Pending. This milestone cannot prove general parser or accounting
+correctness, independent validation, signer/image/source authority, real filing
+quality, Cycle 2b authority, B15/V15, real-data admission, or production. See
+[ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
+and the [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -873,6 +888,12 @@ blocked.
   parser, establish key/image/source authority, approve Cycle 2b, prove
   independent adjudication or real quality, admit real filings, or close any
   production gate.
+- Cycle 2j is Pending from baseline
+  `f17bacc6adc46851e182d260d59830652f1953bb`. It targets only two fresh isolated
+  executions of the closed synthetic ten-fact original/amendment pair through
+  outside-worker signing and the unchanged Cycle 2i handoff. No successor or
+  source/live promotion gate has passed, and external authority, independent
+  real quality, full Cycle 2 exit, and production remain Blocked.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -935,4 +956,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0035](./docs/adr/0035-cross-boundary-intrinsic-byte-snapshot-hardening.md),
 [Cycle 2i exit matrix](./docs/CYCLE_2I_EXIT_MATRIX.md),
 [ADR 0036](./docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md),
+[Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md),
+[ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md),
 and [architecture decisions](./docs/adr/).

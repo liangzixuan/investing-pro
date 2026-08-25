@@ -1,0 +1,116 @@
+name: Filing parser normalization execution acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/ci.yml
+      - .github/workflows/filing-parser-normalization-execution-acceptance.yml
+      - fixtures/synthetic/filing-parser-normalization-execution/**
+      - LICENSE_POLICY.md
+      - package.json
+      - packages/filing-fact-normalization/**
+      - packages/filing-parser-normalization-handoff/**
+      - packages/filing-parser-normalization-execution/**
+      - packages/filing-parser-normalization-execution-acceptance/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/verify-boundaries.ts
+      - scripts/verify-filing-parser-normalization-execution-fixtures.ts
+      - THIRD_PARTY_NOTICES.md
+      - tsconfig.base.json
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ci.yml
+      - .github/workflows/filing-parser-normalization-execution-acceptance.yml
+      - fixtures/synthetic/filing-parser-normalization-execution/**
+      - LICENSE_POLICY.md
+      - package.json
+      - packages/filing-fact-normalization/**
+      - packages/filing-parser-normalization-handoff/**
+      - packages/filing-parser-normalization-execution/**
+      - packages/filing-parser-normalization-execution-acceptance/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/verify-boundaries.ts
+      - scripts/verify-filing-parser-normalization-execution-fixtures.ts
+      - THIRD_PARTY_NOTICES.md
+      - tsconfig.base.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: filing-parser-normalization-execution-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: Ten-fact parser execution (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out exact source and history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: 3.12.13
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile --strict-peer-dependencies
+
+      - name: Verify execution and evidence sources
+        run: |
+          pnpm --filter @research-cockpit/filing-parser-normalization-execution typecheck
+          pnpm --filter @research-cockpit/filing-parser-normalization-execution test
+          pnpm --filter @research-cockpit/filing-parser-normalization-execution test:worker
+          pnpm --filter @research-cockpit/filing-parser-normalization-execution-acceptance typecheck
+          pnpm --filter @research-cockpit/filing-parser-normalization-execution-acceptance test
+          pnpm guardrails:boundaries
+          pnpm guardrails:filing-parser-normalization-execution-fixtures
+
+      - name: Run ten-fact parser normalization execution acceptance
+        env:
+          CI: "true"
+          FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-normalization-execution-v1.json
+        run: pnpm filing-parser-normalization-execution:acceptance
+
+      - name: Verify canonical evidence against the exact commit
+        shell: bash
+        env:
+          EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-normalization-execution-v1.json
+        run: |
+          evidence_sha256="sha256:$(sha256sum "$EVIDENCE_PATH" | cut -d ' ' -f 1)"
+          pnpm filing-parser-normalization-execution:evidence-review -- \
+            --evidence "$EVIDENCE_PATH" \
+            --evidence-sha256 "$evidence_sha256" \
+            --repo "$GITHUB_WORKSPACE" \
+            --repository "$GITHUB_REPOSITORY" \
+            --revision "$GITHUB_SHA" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --run-id "$GITHUB_RUN_ID"
+
+      - name: Upload filing parser normalization execution evidence
+        if: ${{ success() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filing-parser-normalization-execution-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-cockpit-filing-parser-normalization-execution-v1.json
+          if-no-files-found: error
+          retention-days: 30

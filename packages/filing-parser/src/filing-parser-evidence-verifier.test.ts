@@ -40,6 +40,11 @@ import {
   isCycle2iCommitDiffSetAllowed,
   isCycle2iHandoffTreeAllowed,
   isCycle2iTransitionRoutingRequired,
+  isCycle2jAcceptanceTreeAllowed,
+  isCycle2jBaselineMergeBaseAllowed,
+  isCycle2jCommitDiffSetAllowed,
+  isCycle2jExecutionTreeAllowed,
+  isCycle2jTransitionRoutingRequired,
   isFastify5121MaintenanceBaselineMergeBaseAllowed,
   isFastify5121MaintenanceCommitDiffSetAllowed,
   isFastify5121MaintenanceTransitionRoutingRequired,
@@ -357,6 +362,35 @@ const CYCLE_2I_HANDOFF_TREE = [
   "packages/filing-parser-normalization-handoff/src/test-filing-parser-normalization-handoff-builder.ts",
   "packages/filing-parser-normalization-handoff/tsconfig.json",
 ].sort();
+const CYCLE_2J_EXECUTION_TREE = [
+  "packages/filing-parser-normalization-execution/acceptance/python-image.json",
+  "packages/filing-parser-normalization-execution/package.json",
+  "packages/filing-parser-normalization-execution/src/filing-parser-normalization-execution-security.test.ts",
+  "packages/filing-parser-normalization-execution/src/filing-parser-normalization-execution.test.ts",
+  "packages/filing-parser-normalization-execution/src/filing-parser-normalization-execution.ts",
+  "packages/filing-parser-normalization-execution/src/index.ts",
+  "packages/filing-parser-normalization-execution/src/test-filing-parser-normalization-execution-builder.ts",
+  "packages/filing-parser-normalization-execution/tsconfig.json",
+  "packages/filing-parser-normalization-execution/worker/Dockerfile",
+  "packages/filing-parser-normalization-execution/worker/parser.py",
+  "packages/filing-parser-normalization-execution/worker/parser_test.py",
+  "packages/filing-parser-normalization-execution/worker/taxonomy-v1.json",
+].sort();
+const CYCLE_2J_ACCEPTANCE_TREE = [
+  "packages/filing-parser-normalization-execution-acceptance/package.json",
+  "packages/filing-parser-normalization-execution-acceptance/src/filing-parser-normalization-execution-evidence-review.test.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/filing-parser-normalization-execution-evidence-review.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/filing-parser-normalization-execution-evidence-verifier.test.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/filing-parser-normalization-execution-evidence-verifier.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/filing-parser-normalization-execution-evidence.test.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/filing-parser-normalization-execution-evidence.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/index.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-acceptance.test.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-acceptance.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-evidence-review.ts",
+  "packages/filing-parser-normalization-execution-acceptance/src/test-filing-parser-normalization-execution-evidence-builder.ts",
+  "packages/filing-parser-normalization-execution-acceptance/tsconfig.json",
+].sort();
 const CYCLE_2G_TRANSITION = [
   { path: "LICENSE_POLICY.md", status: "M" },
   { path: "README.md", status: "M" },
@@ -453,6 +487,61 @@ const PNPM_DEPENDENCY_POLICY_MAINTENANCE_BASELINE_REVISION =
   "c1f27f4dfe946d999dad9473176e0285b01a48bc" as const;
 const CYCLE_2I_BASELINE_REVISION =
   "dda2ecafc70aa6c4859a29cb312849bac5dec253" as const;
+const CYCLE_2J_BASELINE_REVISION =
+  "f17bacc6adc46851e182d260d59830652f1953bb" as const;
+const CYCLE_2J_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-normalization-execution-acceptance.yml",
+    status: "A",
+  },
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2J_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-parser-normalization-execution/v1/cases.json",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-parser-normalization-execution/v1/manifest.json",
+    status: "A",
+  },
+  { path: "package.json", status: "M" },
+  ...CYCLE_2J_ACCEPTANCE_TREE.map((path) => ({ path, status: "A" })),
+  ...CYCLE_2J_EXECUTION_TREE.map((path) => ({ path, status: "A" })),
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+  {
+    path: "scripts/verify-filing-parser-normalization-execution-fixtures.ts",
+    status: "A",
+  },
+] as const;
+const CYCLE_2J_TRANSITION_PATHS = CYCLE_2J_TRANSITION.map(
+  (entry) => entry.path,
+);
 const CYCLE_2I_TRANSITION = [
   { path: "README.md", status: "M" },
   { path: "docs/BUILD_ROADMAP.md", status: "M" },
@@ -1558,6 +1647,146 @@ describe("offline filing parser evidence review", () => {
       isFastify5121MaintenanceCommitDiffSetAllowed([
         ...CYCLE_2H_TRANSITION,
         ...FASTIFY_5_12_1_MAINTENANCE_TRANSITION,
+      ]),
+    ).toBe(false);
+  });
+
+  it("admits only the exact Cycle 2j execution and acceptance package trees", () => {
+    const trees = [
+      {
+        allowed: isCycle2jExecutionTreeAllowed,
+        paths: CYCLE_2J_EXECUTION_TREE,
+        unreviewed:
+          "packages/filing-parser-normalization-execution/src/unreviewed.ts",
+      },
+      {
+        allowed: isCycle2jAcceptanceTreeAllowed,
+        paths: CYCLE_2J_ACCEPTANCE_TREE,
+        unreviewed:
+          "packages/filing-parser-normalization-execution-acceptance/src/unreviewed.ts",
+      },
+    ] as const;
+    for (const tree of trees) {
+      expect(tree.allowed([])).toBe(true);
+      expect(tree.allowed(tree.paths)).toBe(true);
+      expect(tree.allowed([...tree.paths].reverse())).toBe(false);
+      for (const omitted of tree.paths) {
+        expect(
+          tree.allowed(tree.paths.filter((path) => path !== omitted)),
+        ).toBe(false);
+      }
+      expect(tree.allowed([...tree.paths, tree.paths[0] as string])).toBe(
+        false,
+      );
+      expect(tree.allowed([...tree.paths, tree.unreviewed].sort())).toBe(false);
+    }
+
+    expect(isCycle2jBaselineMergeBaseAllowed(CYCLE_2J_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2jBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
+    expect(isCycle2jBaselineMergeBaseAllowed(undefined)).toBe(false);
+  });
+
+  it("admits and routes only the exact whole Cycle 2j transition before Cycle 2i and maintenance", () => {
+    expect(CYCLE_2J_TRANSITION).toHaveLength(44);
+    expect(
+      CYCLE_2J_TRANSITION.filter((entry) => entry.status === "A"),
+    ).toHaveLength(31);
+    expect(
+      CYCLE_2J_TRANSITION.filter((entry) => entry.status === "M"),
+    ).toHaveLength(13);
+    expect(isCycle2jCommitDiffSetAllowed(CYCLE_2J_TRANSITION)).toBe(true);
+    expect(
+      isCycle2jCommitDiffSetAllowed([...CYCLE_2J_TRANSITION].reverse()),
+    ).toBe(false);
+
+    for (const entry of CYCLE_2J_TRANSITION) {
+      expect(
+        isCycle2jCommitDiffSetAllowed(
+          CYCLE_2J_TRANSITION.filter((candidate) => candidate !== entry),
+        ),
+      ).toBe(false);
+      expect(
+        isCycle2jCommitDiffSetAllowed([...CYCLE_2J_TRANSITION, entry]),
+      ).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed(entry.status, entry.path)).toBe(
+        true,
+      );
+      expect(isCycle2aCommitDiffEntryAllowed("D", entry.path)).toBe(false);
+      expect(isCycle2aCommitDiffEntryAllowed("R100", entry.path)).toBe(false);
+
+      for (const status of ["A", "M", "D", "R100"]) {
+        if (status === entry.status) continue;
+        expect(
+          isCycle2jCommitDiffSetAllowed(
+            CYCLE_2J_TRANSITION.map((candidate) =>
+              candidate === entry ? { ...candidate, status } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+    }
+    expect(
+      isCycle2jCommitDiffSetAllowed([
+        ...CYCLE_2J_TRANSITION,
+        { path: "docs/unreviewed.md", status: "A" },
+      ]),
+    ).toBe(false);
+
+    expect(isCycle2jTransitionRoutingRequired(CYCLE_2J_TRANSITION_PATHS)).toBe(
+      true,
+    );
+    for (const path of CYCLE_2J_TRANSITION_PATHS) {
+      expect(isCycle2jTransitionRoutingRequired([path])).toBe(true);
+    }
+    expect(isCycle2jTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle2jTransitionRoutingRequired([])).toBe(false);
+    expect(
+      isCycle2jTransitionRoutingRequired(
+        [...CYCLE_2J_TRANSITION_PATHS].reverse(),
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2jTransitionRoutingRequired([
+        CYCLE_2J_TRANSITION_PATHS[0] as string,
+        CYCLE_2J_TRANSITION_PATHS[0] as string,
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2jTransitionRoutingRequired([
+        ...CYCLE_2J_TRANSITION_PATHS,
+        "docs/unreviewed.md",
+      ]),
+    ).toBe(false);
+
+    const cycle2iOverlap = CYCLE_2J_TRANSITION_PATHS.filter((path) =>
+      CYCLE_2I_TRANSITION_PATHS.some((candidate) => candidate === path),
+    );
+    expect(cycle2iOverlap.length).toBeGreaterThan(0);
+    expect(isCycle2jTransitionRoutingRequired(cycle2iOverlap)).toBe(true);
+    expect(isCycle2iTransitionRoutingRequired(cycle2iOverlap)).toBe(true);
+
+    const pnpmOverlap = CYCLE_2J_TRANSITION_PATHS.filter((path) =>
+      PNPM_DEPENDENCY_POLICY_MAINTENANCE_SURFACE_PATHS.some(
+        (candidate) => candidate === path,
+      ),
+    );
+    expect(pnpmOverlap).toEqual([
+      "package.json",
+      "pnpm-lock.yaml",
+      "scripts/verify-boundaries.ts",
+    ]);
+    expect(isCycle2jTransitionRoutingRequired(pnpmOverlap)).toBe(true);
+    expect(
+      isPnpmDependencyPolicyMaintenanceSurfaceRoutingRequired(pnpmOverlap),
+    ).toBe(true);
+
+    expect(isCycle2iCommitDiffSetAllowed(CYCLE_2J_TRANSITION)).toBe(false);
+    expect(
+      isCycle2jCommitDiffSetAllowed([
+        ...CYCLE_2J_TRANSITION,
+        ...CYCLE_2I_TRANSITION,
       ]),
     ).toBe(false);
   });

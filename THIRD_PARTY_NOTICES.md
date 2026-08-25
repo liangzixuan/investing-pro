@@ -22,11 +22,12 @@ No third-party financial market data, competitor content, images, fonts, or mode
 
 ## CI acceptance infrastructure
 
-Cycle 2a uses the Docker Official Image
-`python:3.12.13-slim-bookworm` only in its isolated synthetic parser acceptance
-job. The exact OCI index and `linux/amd64` child-manifest digests are recorded in
-`packages/filing-parser/acceptance/python-image.json`. CPython 3.12.13 uses the
-Python Software Foundation License Version 2:
+Cycle 2a and Cycle 2j use the Docker Official Image
+`python:3.12.13-slim-bookworm` only in their isolated synthetic parser
+acceptance jobs. The exact OCI index and `linux/amd64` child-manifest digests
+are recorded in `packages/filing-parser/acceptance/python-image.json` and
+`packages/filing-parser-normalization-execution/acceptance/python-image.json`.
+CPython 3.12.13 uses the Python Software Foundation License Version 2:
 <https://docs.python.org/3.12/license.html>.
 
 This notice is not a complete license inventory for the Debian Bookworm

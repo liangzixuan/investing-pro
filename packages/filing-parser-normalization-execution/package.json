@@ -1,0 +1,19 @@
+{
+  "name": "@research-cockpit/filing-parser-normalization-execution",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test": "./src/test-filing-parser-normalization-execution-builder.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:worker": "python -I -B worker/parser_test.py"
+  },
+  "dependencies": {
+    "@research-cockpit/filing-parser-normalization-handoff": "workspace:*"
+  }
+}
