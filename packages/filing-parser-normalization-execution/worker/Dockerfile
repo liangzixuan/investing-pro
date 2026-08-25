@@ -15,3 +15,4 @@ COPY --chown=0:0 --chmod=0444 worker/taxonomy-v1.json /worker/taxonomy-v1.json
 USER 65532:65532
 
 ENTRYPOINT ["python", "-I", "-B", "/worker/parser.py"]
+CMD []

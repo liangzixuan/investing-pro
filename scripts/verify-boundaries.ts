@@ -3646,6 +3646,9 @@ USER 65532:65532
 
 ENTRYPOINT ["python", "-I", "-B", "/worker/parser.py"]
 `;
+const validFilingParserNormalizationExecutionWorkerDockerfile = `${validWorkerDockerfile.trimEnd()}
+CMD []
+`;
 if (
   filingParserDockerfileViolation(validWorkerDockerfile) !== null ||
   filingParserDockerfileViolation(`${validWorkerDockerfile}EXPOSE 8080\n`) ===
@@ -3667,6 +3670,23 @@ if (
   ) === null
 )
   throw new Error("Filing-parser Dockerfile classifier regressed");
+if (
+  filingParserNormalizationExecutionDockerfileViolation(
+    validFilingParserNormalizationExecutionWorkerDockerfile,
+  ) !== null ||
+  filingParserNormalizationExecutionDockerfileViolation(
+    validWorkerDockerfile,
+  ) === null ||
+  filingParserNormalizationExecutionDockerfileViolation(
+    validFilingParserNormalizationExecutionWorkerDockerfile.replace(
+      "CMD []",
+      'CMD ["python3"]',
+    ),
+  ) === null
+)
+  throw new Error(
+    "Filing-parser-normalization-execution Dockerfile classifier regressed",
+  );
 
 for (const file of filesToInspect) {
   const relativePath = relative(root, file).replaceAll("\\", "/");
@@ -6843,11 +6863,14 @@ function inspectFilingParserWorker(path: string, content: string): void {
     if (violation !== null) violations.push(`${path}: ${violation}`);
     return;
   }
-  if (
-    path === "packages/filing-parser/worker/Dockerfile" ||
-    path === filingParserNormalizationExecutionWorkerDockerfilePath
-  ) {
+  if (path === "packages/filing-parser/worker/Dockerfile") {
     const violation = filingParserDockerfileViolation(content);
+    if (violation !== null) violations.push(`${path}: ${violation}`);
+    return;
+  }
+  if (path === filingParserNormalizationExecutionWorkerDockerfilePath) {
+    const violation =
+      filingParserNormalizationExecutionDockerfileViolation(content);
     if (violation !== null) violations.push(`${path}: ${violation}`);
     return;
   }
@@ -7119,6 +7142,14 @@ function filingParserDockerfileViolation(content: string): string | null {
   )
     return "worker Dockerfile must retain the exact reviewed instruction sequence";
   return null;
+}
+
+function filingParserNormalizationExecutionDockerfileViolation(
+  content: string,
+): string | null {
+  return content === validFilingParserNormalizationExecutionWorkerDockerfile
+    ? null
+    : "Cycle 2j worker Dockerfile must clear the inherited base command and retain the exact reviewed zero-install instruction sequence";
 }
 
 function isForbiddenFilingParserCompositionPath(path: string): boolean {

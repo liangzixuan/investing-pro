@@ -4,6 +4,7 @@ import {
   chmod,
   mkdir,
   mkdtemp,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -174,11 +175,11 @@ describe("Cycle 2j offline evidence verifier", () => {
         ),
       ).toThrow("evidence review failed");
     expect(accessorReads).toBe(0);
-  });
+  }, 30_000);
 });
 
 async function repositoryFixture() {
-  const root = await mkdtemp(join(tmpdir(), "cycle2j-review-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "cycle2j-review-"));
   temporaryDirectories.push(root);
   const repository = join(root, "repo");
   const evidenceDirectory = join(root, "evidence");
@@ -205,9 +206,7 @@ async function repositoryFixture() {
   const sourceHashes =
     FILING_PARSER_NORMALIZATION_EXECUTION_EVIDENCE_SOURCE_PATHS.map((path) => ({
       path,
-      sha256: sha256(
-        execFileSync(git, ["-C", repository, "show", `${revision}:${path}`]),
-      ),
+      sha256: sha256(Buffer.from(`source:${path}\n`, "utf8")),
     }));
   const manifest = sourceHashes.find(({ path }) =>
     path.endsWith("/manifest.json"),

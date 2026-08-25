@@ -12,7 +12,7 @@
     },
     {
       "path": "packages/filing-parser-normalization-execution/worker/Dockerfile",
-      "sha256": "sha256:2f50135778787401c223eb6a2bf2ce133d43126f0dfc9b5b5dbf99479ab193a0"
+      "sha256": "sha256:352558f06b6e7b5f19124b262660f90860f6cb7edb1e3ee58f5e5891d9fe1ca3"
     },
     {
       "path": "packages/filing-parser-normalization-execution/worker/parser.py",
