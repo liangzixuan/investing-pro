@@ -8,34 +8,35 @@ original/amendment documents to the public Cycle 2d normalizer. The decision is
 recorded in
 [ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md).
 
-Current status: **implementation and promotion are pending. The exact baseline
-is `dda2ecafc70aa6c4859a29cb312849bac5dec253`; the exact successor source
-commit, frozen local inventory, and Ubuntu/Windows CI anchors remain pending
-until the transition is complete. Cycle 2b, full Cycle 2 quality, real-data
-admission, and production admission remain Blocked.** There is no real filing,
-actual parser execution, external key authority, independent adjudication,
-dedicated workflow, evidence schema, evidence artifact, offline evidence
-review, or evidence note.
+Current status: **Pass only for exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The transition is exactly 21 paths
+(9 added, 12 modified), the frozen local gate passed 1,064 tests with 3 skips,
+and CI run `32817294734` passed on Ubuntu and Windows. Cycle 2b, full Cycle 2
+quality, real-data admission, and production admission remain Blocked.** There
+is no real filing, actual parser execution, external key authority, independent
+adjudication, dedicated workflow, evidence schema, evidence artifact, offline
+evidence review, or evidence note.
 
-| Gate                         | Required result                                                                                                                                                                               | Current status                                           |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Exact role inventory         | Exactly one original archive, amendment archive, signed original ten-fact envelope, and signed amendment ten-fact envelope are accepted                                                       | Pending                                                  |
-| Owned bounded inputs         | Raw archives, envelope bytes, and supplied Ed25519 DER SPKI bytes are intrinsically validated, bounded, and copied before use                                                                 | Pending                                                  |
-| Canonical envelopes          | Both envelopes are strict canonical UTF-8 JSON with duplicate keys and unexpected fields rejected                                                                                             | Pending                                                  |
-| Supplied provenance          | Canonical DER SPKI re-export matches supplied bytes; each Ed25519 signature over the exact domain-separated canonical payload verifies under that key and exact expected key/image identities | Pending; this does not prove key or image authority      |
-| Archive binding              | SHA-256 is recomputed over both owned raw archives and matches the corresponding signed envelope                                                                                              | Pending                                                  |
-| Complete fact pairs          | During delegation, Cycle 2d requires each distinct role to satisfy the exact closed ten-fact metadata, taxonomy, unit, period, dimension, source, and lineage contract without repair         | Pending                                                  |
-| Exact Cycle 2d handoff       | Exact embedded canonical original/amendment document bytes delegate without remapping to `normalizeSyntheticFilingFactPair`                                                                   | Pending                                                  |
-| Atomic success               | Success exposes one immutable Cycle 2d normalized record plus aggregate handoff provenance                                                                                                    | Pending                                                  |
-| Fail-closed result           | Invalid input, provenance, partial sets, substitutions, mutation, dependency failure, or downstream quarantine returns one empty value-free quarantine                                        | Pending                                                  |
-| Local integration            | Format, lint, guardrails, all project typechecks/tests/builds, and the boundary verifier pass for one frozen exact successor commit                                                           | Pending; no count or exact successor commit asserted yet |
-| Two-OS CI                    | The existing Ubuntu and Windows CI matrix passes on the same exact successor commit                                                                                                           | Pending; no run or job anchors asserted yet              |
-| Dedicated evidence           | Separate workflow/schema/artifact/offline review                                                                                                                                              | Not created; not required for this source-stage contract |
-| Parser execution/correctness | A real parser executes and correctly extracts the ten facts                                                                                                                                   | Not proven; outside 2i                                   |
-| Key and source authority     | Signer identity, key authority/custody, image execution, SEC source authenticity, and external attestation are established                                                                    | Not proven; outside 2i                                   |
-| Cycle 2b authority           | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                       | Blocked; outside 2i                                      |
-| Independent quality          | Representative real filings and independently adjudicated assertions meet approved thresholds with zero silent critical failures                                                              | Blocked                                                  |
-| Production admission         | Real-data rights, persistence, security, privacy, scale, and operational gates pass                                                                                                           | Blocked                                                  |
+| Gate                         | Required result                                                                                                                                                                               | Current status                                              |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Exact role inventory         | Exactly one original archive, amendment archive, signed original ten-fact envelope, and signed amendment ten-fact envelope are accepted                                                       | Pass                                                        |
+| Owned bounded inputs         | Raw archives, envelope bytes, and supplied Ed25519 DER SPKI bytes are intrinsically validated, bounded, and copied before use                                                                 | Pass                                                        |
+| Canonical envelopes          | Both envelopes are strict canonical UTF-8 JSON with duplicate keys and unexpected fields rejected                                                                                             | Pass                                                        |
+| Supplied provenance          | Canonical DER SPKI re-export matches supplied bytes; each Ed25519 signature over the exact domain-separated canonical payload verifies under that key and exact expected key/image identities | Pass; this does not prove key or image authority            |
+| Archive binding              | SHA-256 is recomputed over both owned raw archives and matches the corresponding signed envelope                                                                                              | Pass                                                        |
+| Complete fact pairs          | During delegation, Cycle 2d requires each distinct role to satisfy the exact closed ten-fact metadata, taxonomy, unit, period, dimension, source, and lineage contract without repair         | Pass                                                        |
+| Exact Cycle 2d handoff       | Exact embedded canonical original/amendment document bytes delegate without remapping to `normalizeSyntheticFilingFactPair`                                                                   | Pass                                                        |
+| Atomic success               | Success exposes one immutable Cycle 2d normalized record plus aggregate handoff provenance                                                                                                    | Pass                                                        |
+| Fail-closed result           | Invalid input, provenance, partial sets, substitutions, mutation, dependency failure, or downstream quarantine returns one empty value-free quarantine                                        | Pass                                                        |
+| Local integration            | Format, lint, guardrails, all project typechecks/tests/builds, and the boundary verifier pass for one frozen exact successor commit                                                           | Pass: 49 files; 1,064 passed; 3 skipped                     |
+| Two-OS CI                    | The existing Ubuntu and Windows CI matrix passes on the same exact successor commit                                                                                                           | Pass: run `32817294734`; jobs `97708048290` / `97708048027` |
+| Dedicated evidence           | Separate workflow/schema/artifact/offline review                                                                                                                                              | Not created; not required for this source-stage contract    |
+| Parser execution/correctness | A real parser executes and correctly extracts the ten facts                                                                                                                                   | Not proven; outside 2i                                      |
+| Key and source authority     | Signer identity, key authority/custody, image execution, SEC source authenticity, and external attestation are established                                                                    | Not proven; outside 2i                                      |
+| Cycle 2b authority           | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                       | Blocked; outside 2i                                         |
+| Independent quality          | Representative real filings and independently adjudicated assertions meet approved thresholds with zero silent critical failures                                                              | Blocked                                                     |
+| Production admission         | Real-data rights, persistence, security, privacy, scale, and operational gates pass                                                                                                           | Blocked                                                     |
 
 ## Target claim and exact checks
 
@@ -87,17 +88,18 @@ The exact ordered nonclaims are:
 Cycle 2a and Cycle 2d checks, nonclaims, source sets, schemas, artifacts,
 evidence notes, and exact historical anchors remain immutable. Cycle 2i does
 not add a record to either historical evidence domain and does not claim that
-their historical executions produced its signed ten-fact envelopes. Existing
-parser, custody, and PostgreSQL runs for the eventual source commit, if any,
-are regression health only.
+their historical executions produced its signed ten-fact envelopes. Parser
+run/job `32817294720` / `97708047987`, custody run/job `32817294732` /
+`97708048009`, and PostgreSQL run/job `32817294741` / `97708049006` passed as
+regression health only.
 
 The Cycle 2i transition begins at exact baseline
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The claim can be promoted only
-after the complete exact package-and-document transition is frozen, the full
-local gate passes on those bytes, the exact successor commit is recorded, and
-the existing Ubuntu/Windows CI matrix passes on that same commit. No run ID,
-job ID, path count, or test count is accepted before it is observed and bound
-to those exact bytes.
+`dda2ecafc70aa6c4859a29cb312849bac5dec253` and ends at exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a`. Both evidence verifiers freeze the
+same exact 21-path transition: 9 additions and 12 modifications, with no rename
+or deletion. The full local gate passed on those bytes with 49 test files,
+1,064 passed tests, and 3 skips (1,067 total cases). CI run `32817294734` passed
+on the same commit in Ubuntu job `97708048290` and Windows job `97708048027`.
 
 Failure, cancellation, an omitted, extra, renamed, or deleted transition path,
 a partial package tree, non-canonical envelope, archive-digest mismatch,

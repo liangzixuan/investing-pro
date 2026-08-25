@@ -19,9 +19,9 @@ Cycle 2g in-process candidate-observation precommitment at that same commit now
 also Superseded, and Cycle 2h cross-boundary intrinsic byte-snapshot hardening
 Pass only on exact source commit
 `61701307ded7fa77a555e27925ae86670f6b4dc0`, restoring the Cycle 2a–2g bounded
-owned-byte premises only on that hardened successor; pending source-stage Cycle
-2i authenticated synthetic parser-result-to-normalization handoff from exact
-baseline `dda2ecafc70aa6c4859a29cb312849bac5dec253`;
+owned-byte premises only on that hardened successor; promoted source-stage
+Cycle 2i authenticated synthetic parser-result-to-normalization handoff Pass
+only for exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a`;
 synthetic data only.
 
 ## Identity
@@ -774,13 +774,17 @@ canary content.
 
 The sole target claim is
 `bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
-Implementation and promotion remain pending from exact baseline
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`; no exact successor, local
-inventory, CI anchor, path count, or test count is asserted yet. Cycle 2i adds
-no dedicated workflow, evidence schema, artifact, review, or note and does not
-modify historical Cycle 2a or Cycle 2d evidence. It cannot establish actual
-parser execution/correctness, key or source authority, real inputs, Cycle 2b
-approval, independence, adjudicated quality, persistence, B15/V15, full Cycle
+Implementation and promotion are Pass only for exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`: 21 exact transition paths (9 added,
+12 modified), a frozen local gate with 1,064 passed tests and 3 skips, and CI
+run `32817294734` with Ubuntu job `97708048290` and Windows job `97708048027`.
+Parser run/job `32817294720` / `97708047987`, custody run/job `32817294732` /
+`97708048009`, and PostgreSQL run/job `32817294741` / `97708049006` passed as
+regression health only. Cycle 2i adds no dedicated workflow, evidence schema,
+artifact, review, or note and does not modify historical Cycle 2a or Cycle 2d evidence. It cannot
+establish actual parser execution/correctness, key or source authority, real
+inputs, Cycle 2b approval, independence, adjudicated quality, persistence, B15/V15, full Cycle
 2 exit, real-data admission, or production. See
 [ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).

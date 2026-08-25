@@ -1019,11 +1019,12 @@ the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md).
 
 ## Cycle 2i — bounded synthetic authenticated parser-normalization handoff
 
-Status: **implementation and promotion are pending from exact baseline
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The exact successor commit, frozen
-local inventory, and Ubuntu/Windows CI anchors will be recorded only after the
-complete transition is green. Cycle 2b, full Cycle 2 quality, real-data
-admission, and production remain Blocked.**
+Status: **implementation and promotion are Pass only for exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The transition is exactly 21 paths
+(9 added, 12 modified), and the frozen local gate plus Ubuntu/Windows CI run
+`32817294734` passed. Cycle 2b, full Cycle 2 quality, real-data admission, and
+production remain Blocked.**
 
 Cycle 2i closes the highest-priority provenance-preserving schema-interface
 gap between the historical Cycle 2a signed-parser shape and the historical
@@ -1062,12 +1063,13 @@ validation, adjudicated ground truth, real quality, or production.
 
 Cycle 2i uses the full frozen-byte local release gate and the existing
 Ubuntu/Windows CI matrix only. It creates no dedicated workflow, evidence
-schema, evidence artifact, offline review, or evidence note. Existing parser,
-custody, or PostgreSQL runs for the eventual commit are regression health only.
-Historical Cycle 2a and Cycle 2d evidence remains immutable. No source commit,
-run/job anchor, path count, or test count will be filled until observed on the
-complete exact transition. Exact checks, nonclaims, and the promotion rule are
-in
+schema, evidence artifact, offline review, or evidence note. The local gate
+passed 49 test files with 1,064 passed and 3 skipped (1,067 total cases). CI run
+`32817294734` passed in Ubuntu job `97708048290` and Windows job `97708048027`.
+Parser run/job `32817294720` / `97708047987`, custody run/job `32817294732` /
+`97708048009`, and PostgreSQL run/job `32817294741` / `97708049006` passed as
+regression health only. Historical Cycle 2a and Cycle 2d evidence remains immutable. Exact
+checks, nonclaims, and the promotion rule are in
 [ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
 
@@ -1085,7 +1087,7 @@ Exit gate: at least 100 representative filings and 2,000 critical assertions mee
 
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, nor bounded source-stage Cycle
-2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, nor pending
+2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, nor promoted
 source-stage Cycle 2i satisfies this exit gate. Cycle 2i does not establish that
 a parser executed or correctly derived its signed documents. Real payload
 bytes and digest validation, approved corpus

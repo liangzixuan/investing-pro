@@ -1,4 +1,4 @@
-# Sprint 0 through pending source-stage Cycle 2i threat model
+# Sprint 0 through promoted source-stage Cycle 2i threat model
 
 ## Current trust boundaries
 
@@ -353,7 +353,7 @@ Cycle 2i addresses a narrower P1 interface threat: historical Cycle 2a signed
 parser-result provenance and historical Cycle 2d normalization existed as
 separate contracts, so no bounded boundary required exact raw-archive digest
 bindings and authenticated complete parser-result envelopes before delegating
-canonical documents to the normalizer. The pending private
+canonical documents to the normalizer. The private
 `@research-cockpit/filing-parser-normalization-handoff` package accepts exactly
 two raw synthetic archives and two canonical Ed25519-signed complete ten-fact
 envelopes with distinct original/amendment roles.
@@ -389,14 +389,18 @@ mismatch detail, or canary content. Success exposes only the unchanged Cycle
 
 The sole target is
 `bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
-Implementation and promotion are pending from exact baseline
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The exact successor commit, frozen
-local inventory, and Ubuntu/Windows CI anchors will be recorded only after the
-complete transition is green; no run/job or count is asserted in advance.
+Implementation and promotion are Pass only for exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a`, whose exact baseline is
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`. Its 21-path transition (9 added, 12
+modified), frozen local gate (1,064 passed tests and 3 skips), and CI run
+`32817294734` in Ubuntu job `97708048290` and Windows job `97708048027` all
+passed on those source bytes.
 Cycle 2i adds no dedicated workflow, evidence schema, evidence artifact,
 offline review, evidence note, I/O, parser execution, custody, database, API,
 web, queue, or real data. Historical Cycle 2a and Cycle 2d evidence remains
-immutable, and any existing live workflow is regression health only.
+immutable. Parser run/job `32817294720` / `97708047987`, custody run/job
+`32817294732` / `97708048009`, and PostgreSQL run/job `32817294741` /
+`97708049006` are regression health only.
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -798,12 +802,12 @@ leave the server projection.
   focused hostile-carrier coverage and every promotion gate pass only for exact
   source commit `61701307ded7fa77a555e27925ae86670f6b4dc0`; historical Cycle
   2a–2g jobs do not establish the Superseded old-source conclusions.
-- Pending Cycle 2i defines one atomic synthetic interface: both raw archives
+- Promoted Cycle 2i defines one atomic synthetic interface: both raw archives
   must hash to their corresponding canonical signed complete ten-fact
   original/amendment envelopes, supplied key/image expectations and Ed25519
   signatures must verify, and exact embedded Cycle 2d documents must normalize
-  without repair. This is not yet a promoted guarantee; its exact successor
-  commit and local/two-OS gates remain pending from baseline
+  without repair. This bounded guarantee and every promotion gate pass only for
+  exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from baseline
   `dda2ecafc70aa6c4859a29cb312849bac5dec253`.
 
 ## Non-production constraints
@@ -1034,8 +1038,9 @@ derivation from archive content beyond a digest assertion, real filing/SEC
 authenticity, Cycle 2b inventory/rights/steward/authority/human review,
 independent validation, adjudicated ground truth or real quality, custody,
 database/API/web/queue composition, B15/V15, full Cycle 2 exit, real-data
-admission, or production readiness. Implementation and promotion remain
-pending from exact baseline `dda2ecafc70aa6c4859a29cb312849bac5dec253`.
+admission, or production readiness. Implementation and promotion are Pass only
+for exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from
+baseline `dda2ecafc70aa6c4859a29cb312849bac5dec253`.
 The exact boundary is in
 [ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
@@ -1051,7 +1056,7 @@ and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
    in-process candidate precommitment, plus Cycle 2h's byte-carrier hardening,
-   and Cycle 2i's pending authenticated synthetic parser-result-to-normalizer
+   and Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff are engineering preparation only and do not satisfy any real-corpus
    prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

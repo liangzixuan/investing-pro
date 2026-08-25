@@ -1,10 +1,11 @@
 # ADR 0036: bounded synthetic authenticated parser-normalization handoff
 
-Status: implementation and promotion are pending. The exact baseline is
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`; the exact successor source commit,
-final local source inventory, and Ubuntu/Windows CI anchors remain to be
-recorded after the source transition is frozen. Cycle 2b, full Cycle 2 quality,
-real-data admission, and production admission remain Blocked.
+Status: accepted and promoted only for exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from exact baseline
+`dda2ecafc70aa6c4859a29cb312849bac5dec253`. The transition is exactly 21 paths
+(9 added, 12 modified); the frozen local release gate and Ubuntu/Windows CI
+passed on those source bytes. Cycle 2b, full Cycle 2 quality, real-data
+admission, and production admission remain Blocked.
 
 ## Context
 
@@ -95,20 +96,24 @@ Ed25519 key pairs and is not part of that production runtime claim. Cycle 2i's
 only promotion evidence is the frozen-byte full local release gate and the
 repository's existing Ubuntu/Windows CI matrix for one exact successor commit.
 
-The exact successor commit and remote anchors are intentionally pending until
-the source transition is complete and green. No run ID, job ID, test count, or
-path count is asserted in advance. Cycle 2i creates no dedicated workflow,
-evidence schema, evidence artifact, retained log package, offline evidence
-review, or evidence note. Any existing parser, custody, or PostgreSQL workflow
-triggered by the eventual commit is regression health only and cannot become
-Cycle 2i evidence.
+The frozen local gate passed formatting, lint, every guardrail, dependency and
+peer policy, all project typechecks, 49 test files with 1,064 passed and 3
+skipped (1,067 total cases), and all builds. CI run `32817294734` passed in
+Ubuntu job `97708048290` and Windows job `97708048027` on the exact source
+commit. Cycle 2i creates no dedicated workflow, evidence schema, evidence
+artifact, retained log package, offline evidence review, or evidence note.
+Parser run/job `32817294720` / `97708047987`, custody run/job `32817294732` /
+`97708048009`, and PostgreSQL run/job `32817294741` / `97708049006` passed as
+regression health only and cannot become Cycle 2i evidence.
 
 Cycle 2a and Cycle 2d evidence, checks, nonclaims, source sets, artifacts,
 notes, and historical anchors remain immutable. Cycle 2i does not amend their
 records or claim that their historical executions produced its two envelopes.
 The transition begins at exact baseline
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`; exact changed-path and cumulative
-history inventories remain pending until the successor commit is frozen.
+`dda2ecafc70aa6c4859a29cb312849bac5dec253` and ends at exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a`. Both evidence verifiers freeze the
+same exact 21-path, 9-added/12-modified transition; no rename or deletion is
+admitted.
 
 ## Exact target claim and checks
 

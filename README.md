@@ -405,17 +405,21 @@ empty value-free handoff quarantine.
 
 The sole bounded target is
 `bounded_synthetic_authenticated_ten_fact_parser_result_to_normalization_handoff`.
-Implementation and promotion are pending from exact baseline
-`dda2ecafc70aa6c4859a29cb312849bac5dec253`; the exact successor commit, local
-inventory, and Ubuntu/Windows CI anchors will be recorded only after the source
-transition is frozen and green. No run IDs, job IDs, path counts, or test counts
-are asserted in advance.
+Implementation and promotion are Pass only for exact source commit
+`5a1589ede57e00d6ff60521e7b53bea2ac849b0a`, whose transition from exact
+baseline `dda2ecafc70aa6c4859a29cb312849bac5dec253` is exactly 21 paths: 9 added
+and 12 modified. The frozen-byte local release gate passed all formatting,
+lint, guardrail, dependency, typecheck, test, and build stages with 49 test
+files, 1,064 passed tests, and 3 intentional skips (1,067 total cases). CI run
+`32817294734` passed in Ubuntu job `97708048290` and Windows job
+`97708048027` on those exact source bytes.
 
 Cycle 2i creates no dedicated workflow, evidence schema, evidence artifact,
 offline review, or evidence note. Historical Cycle 2a and Cycle 2d evidence is
-immutable, and any parser, custody, or PostgreSQL workflow on the eventual
-commit is regression health only. The handoff does not prove actual parser
-execution or correctness, signed-document derivation from archive content
+immutable. Parser run/job `32817294720` / `97708047987`, custody run/job
+`32817294732` / `97708048009`, and PostgreSQL run/job `32817294741` /
+`97708049006` passed as regression health only. The handoff does not prove
+actual parser execution or correctness, signed-document derivation from archive content
 beyond digest binding, key or image authority, real filing authenticity, Cycle
 2b authority, independent validation, adjudicated quality, application
 composition, full Cycle 2 exit, B15/V15, real-data admission, or production.
@@ -863,8 +867,8 @@ blocked.
 - Cycle 2i targets only the bounded synthetic authenticated interface from two
   raw-archive digest bindings and two signed complete ten-fact
   original/amendment envelopes into the unchanged Cycle 2d normalizer. Its
-  implementation, exact successor commit, local inventory, and Ubuntu/Windows
-  CI anchors are pending from baseline
+  bounded source claim and every promotion gate are Pass only for exact source
+  commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a`, from baseline
   `dda2ecafc70aa6c4859a29cb312849bac5dec253`. It does not execute or validate a
   parser, establish key/image/source authority, approve Cycle 2b, prove
   independent adjudication or real quality, admit real filings, or close any
