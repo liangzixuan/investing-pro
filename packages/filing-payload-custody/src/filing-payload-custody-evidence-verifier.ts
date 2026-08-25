@@ -36,6 +36,8 @@ const CYCLE_2I_BASELINE_REVISION =
   "dda2ecafc70aa6c4859a29cb312849bac5dec253" as const;
 const CYCLE_2J_BASELINE_REVISION =
   "f17bacc6adc46851e182d260d59830652f1953bb" as const;
+const CYCLE_2K_BASELINE_REVISION =
+  "962a00f65835fc6126e4da98e0e0d5998e8d59cc" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const MAX_GIT_PATH_BYTES = 32_768;
@@ -134,6 +136,39 @@ const CYCLE_2J_ACCEPTANCE_PACKAGE_TREE = Object.freeze(
     "packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-evidence-review.ts",
     "packages/filing-parser-normalization-execution-acceptance/src/test-filing-parser-normalization-execution-evidence-builder.ts",
     "packages/filing-parser-normalization-execution-acceptance/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2K_CORE_PACKAGE_TREE = Object.freeze(
+  [
+    "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
+    "packages/filing-parser-cross-engine-execution/package.json",
+    "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution-security.test.ts",
+    "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.test.ts",
+    "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.ts",
+    "packages/filing-parser-cross-engine-execution/src/index.ts",
+    "packages/filing-parser-cross-engine-execution/src/test-cross-engine-execution-builder.ts",
+    "packages/filing-parser-cross-engine-execution/tsconfig.json",
+    "packages/filing-parser-cross-engine-execution/worker/Dockerfile",
+    "packages/filing-parser-cross-engine-execution/worker/parser.mjs",
+    "packages/filing-parser-cross-engine-execution/worker/parser.test.mjs",
+    "packages/filing-parser-cross-engine-execution/worker/taxonomy-v1.json",
+  ].sort(),
+);
+const CYCLE_2K_ACCEPTANCE_PACKAGE_TREE = Object.freeze(
+  [
+    "packages/filing-parser-cross-engine-execution-acceptance/package.json",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-review.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-review.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/index.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-evidence-review.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/test-filing-parser-cross-engine-execution-evidence-builder.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/tsconfig.json",
   ].sort(),
 );
 const CYCLE_2D_TRANSITION = Object.freeze(
@@ -881,11 +916,64 @@ const CYCLE_2J_TRANSITION = Object.freeze([
     status: "A",
   },
 ]);
+const CYCLE_2K_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "A",
+  },
+  { path: "LICENSE_POLICY.md", status: "M" },
+  { path: "README.md", status: "M" },
+  { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2K_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-parser-cross-engine-execution/v1/cases.json",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-parser-cross-engine-execution/v1/manifest.json",
+    status: "A",
+  },
+  { path: "package.json", status: "M" },
+  ...CYCLE_2K_ACCEPTANCE_PACKAGE_TREE.map((path) => ({ path, status: "A" })),
+  ...CYCLE_2K_CORE_PACKAGE_TREE.map((path) => ({ path, status: "A" })),
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+  {
+    path: "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+    status: "A",
+  },
+]);
 const CYCLE_2I_TRANSITION_PATHS = new Set(
   CYCLE_2I_TRANSITION.map((entry) => entry.path),
 );
 const CYCLE_2J_TRANSITION_PATHS = new Set(
   CYCLE_2J_TRANSITION.map((entry) => entry.path),
+);
+const CYCLE_2K_TRANSITION_PATHS = new Set(
+  CYCLE_2K_TRANSITION.map((entry) => entry.path),
 );
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
@@ -1068,6 +1156,14 @@ const CYCLE_2J_CUMULATIVE_DIFF_PATHS = Object.freeze(
     ...new Set([
       ...CYCLE_2I_CUMULATIVE_DIFF_PATHS,
       ...CYCLE_2J_TRANSITION.map((entry) => entry.path),
+    ]),
+  ].sort(),
+);
+const CYCLE_2K_CUMULATIVE_DIFF_PATHS = Object.freeze(
+  [
+    ...new Set([
+      ...CYCLE_2J_CUMULATIVE_DIFF_PATHS,
+      ...CYCLE_2K_TRANSITION.map((entry) => entry.path),
     ]),
   ].sort(),
 );
@@ -1266,6 +1362,16 @@ export async function verifyCycle2cCommitBoundary(
     revision,
     "packages/filing-parser-normalization-execution-acceptance",
   );
+  const cycle2kCoreTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-cross-engine-execution",
+  );
+  const cycle2kAcceptanceTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-cross-engine-execution-acceptance",
+  );
   if (
     !exactList(packageTree, EXPECTED_PACKAGE_TREE) ||
     !exactList(fixtureTree, EXPECTED_FIXTURE_TREE) ||
@@ -1275,7 +1381,9 @@ export async function verifyCycle2cCommitBoundary(
     !isCycle2gQualityPrecommitmentTreeAllowed(qualityPrecommitmentTree) ||
     !isCycle2iHandoffTreeAllowed(handoffTree) ||
     !isCycle2jCoreTreeAllowed(cycle2jCoreTree) ||
-    !isCycle2jAcceptanceTreeAllowed(cycle2jAcceptanceTree)
+    !isCycle2jAcceptanceTreeAllowed(cycle2jAcceptanceTree) ||
+    !isCycle2kCoreTreeAllowed(cycle2kCoreTree) ||
+    !isCycle2kAcceptanceTreeAllowed(cycle2kAcceptanceTree)
   )
     invalid();
   const cycle2hBaselineDiffPaths = await cycle2hTransitionSurfaceDiffPaths(
@@ -1295,6 +1403,10 @@ export async function verifyCycle2cCommitBoundary(
     revision,
   );
   const cycle2jBaselineDiffPaths = await cycle2jTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2kBaselineDiffPaths = await cycle2kTransitionSurfaceDiffPaths(
     repositoryPath,
     revision,
   );
@@ -1318,7 +1430,9 @@ export async function verifyCycle2cCommitBoundary(
       repositoryPath,
       revision,
     );
-  if (isCycle2jTransitionRoutingRequired(cycle2jBaselineDiffPaths))
+  if (isCycle2kTransitionRoutingRequired(cycle2kBaselineDiffPaths))
+    await verifyCycle2kTransition(repositoryPath, revision);
+  else if (isCycle2jTransitionRoutingRequired(cycle2jBaselineDiffPaths))
     await verifyCycle2jTransition(repositoryPath, revision);
   else if (isCycle2iTransitionRoutingRequired(cycle2iBaselineDiffPaths))
     await verifyCycle2iTransition(repositoryPath, revision);
@@ -1398,6 +1512,7 @@ export function isCycle2cCommitDiffEntryAllowed(
       CYCLE_2H_TRANSITION_PATHS.has(path) ||
       CYCLE_2I_TRANSITION_PATHS.has(path) ||
       CYCLE_2J_TRANSITION_PATHS.has(path) ||
+      CYCLE_2K_TRANSITION_PATHS.has(path) ||
       FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS.has(path) ||
       PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS.has(path))
   );
@@ -1431,7 +1546,8 @@ export function isCycle2cCommitDiffSetAllowed(
         PNPM_DEPENDENCY_POLICY_MAINTENANCE_CUMULATIVE_DIFF_PATHS,
       ) ||
       exactList(paths, CYCLE_2I_CUMULATIVE_DIFF_PATHS) ||
-      exactList(paths, CYCLE_2J_CUMULATIVE_DIFF_PATHS))
+      exactList(paths, CYCLE_2J_CUMULATIVE_DIFF_PATHS) ||
+      exactList(paths, CYCLE_2K_CUMULATIVE_DIFF_PATHS))
   );
 }
 
@@ -1502,6 +1618,27 @@ export function isCycle2jAcceptanceTreeAllowed(
   return (
     paths.length === 0 || exactList(paths, CYCLE_2J_ACCEPTANCE_PACKAGE_TREE)
   );
+}
+
+/** @internal Exact disconnected-successor tree regression seam. */
+export function isCycle2kCoreTreeAllowed(paths: readonly string[]): boolean {
+  return paths.length === 0 || exactList(paths, CYCLE_2K_CORE_PACKAGE_TREE);
+}
+
+/** @internal Exact disconnected-successor tree regression seam. */
+export function isCycle2kAcceptanceTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return (
+    paths.length === 0 || exactList(paths, CYCLE_2K_ACCEPTANCE_PACKAGE_TREE)
+  );
+}
+
+/** @internal Exact successor-routing regression seam. */
+export function isCycle2kBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CYCLE_2K_BASELINE_REVISION;
 }
 
 /** @internal Exact successor-routing regression seam. */
@@ -1595,6 +1732,22 @@ export function isCycle2jTransitionRoutingRequired(
     baselineDiffPaths.every(
       (path, index) =>
         CYCLE_2J_TRANSITION_PATHS.has(path) &&
+        (index === 0 || (baselineDiffPaths[index - 1] as string) < path),
+    )
+  );
+}
+
+/** @internal Exact Cycle 2k successor routing regression seam. */
+export function isCycle2kTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.length > 0 &&
+    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
+    baselineDiffPaths.every(
+      (path, index) =>
+        CYCLE_2K_TRANSITION_PATHS.has(path) &&
         (index === 0 || (baselineDiffPaths[index - 1] as string) < path),
     )
   );
@@ -1990,6 +2143,27 @@ export function isCycle2jCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact Cycle 2k successor regression seam. */
+export function isCycle2kCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return (
+    entries.length === CYCLE_2K_TRANSITION.length &&
+    new Set(entries.map((entry) => entry.path)).size === entries.length &&
+    entries.every((entry, index) => {
+      const expected = CYCLE_2K_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
 /** @internal Exact process-output regression seam. */
 export function hasNonEmptyStderr(chunks: readonly Uint8Array[]): boolean {
   return chunks.some((chunk) => chunk.byteLength !== 0);
@@ -2168,6 +2342,32 @@ async function cycle2iTransitionSurfaceDiffPaths(
       revision,
       "--",
       ...CYCLE_2I_TRANSITION_PATHS,
+    ]),
+  );
+}
+
+async function cycle2kTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2K_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2kBaselineMergeBaseAllowed(mergeBase)) return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2K_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CYCLE_2K_TRANSITION_PATHS,
     ]),
   );
 }
@@ -2682,6 +2882,60 @@ async function verifyCycle2iTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCycle2iCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyCycle2kTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2K_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2K_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2kBaselineMergeBaseAllowed(mergeBase)) invalid();
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CYCLE_2K_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2kCommitDiffSetAllowed(entries)) invalid();
+  const coreTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-cross-engine-execution",
+  );
+  const acceptanceTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-cross-engine-execution-acceptance",
+  );
+  if (
+    !exactList(coreTree, CYCLE_2K_CORE_PACKAGE_TREE) ||
+    !exactList(acceptanceTree, CYCLE_2K_ACCEPTANCE_PACKAGE_TREE)
+  )
+    invalid();
 }
 
 async function verifyCycle2jTransition(

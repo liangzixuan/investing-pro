@@ -119,6 +119,21 @@ importers:
 
   packages/filing-parser: {}
 
+  packages/filing-parser-cross-engine-execution:
+    dependencies:
+      '@research-cockpit/filing-parser-normalization-execution':
+        specifier: workspace:*
+        version: link:../filing-parser-normalization-execution
+
+  packages/filing-parser-cross-engine-execution-acceptance:
+    dependencies:
+      '@research-cockpit/filing-parser-cross-engine-execution':
+        specifier: workspace:*
+        version: link:../filing-parser-cross-engine-execution
+      '@research-cockpit/filing-parser-normalization-execution':
+        specifier: workspace:*
+        version: link:../filing-parser-normalization-execution
+
   packages/filing-parser-normalization-execution:
     dependencies:
       '@research-cockpit/filing-parser-normalization-handoff':

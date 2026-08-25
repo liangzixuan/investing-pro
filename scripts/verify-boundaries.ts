@@ -185,6 +185,100 @@ const filingParserNormalizationExecutionWorkerTaxonomyPath = `${filingParserNorm
 const filingParserNormalizationExecutionImageReviewPath = `${filingParserNormalizationExecutionPackagePrefix}acceptance/python-image.json`;
 const filingParserNormalizationExecutionAcceptanceModule =
   "@research-cockpit/filing-parser-normalization-execution-acceptance";
+const filingParserCrossEngineExecutionModule =
+  "@research-cockpit/filing-parser-cross-engine-execution";
+const filingParserCrossEngineExecutionAcceptanceModule =
+  "@research-cockpit/filing-parser-cross-engine-execution-acceptance";
+const filingParserCrossEngineExecutionPackagePrefix =
+  "packages/filing-parser-cross-engine-execution/";
+const filingParserCrossEngineExecutionAcceptancePackagePrefix =
+  "packages/filing-parser-cross-engine-execution-acceptance/";
+const filingParserCrossEngineExecutionRootScriptAliases = [
+  "filing-parser-cross-engine-execution:acceptance",
+  "filing-parser-cross-engine-execution:evidence-review",
+  "guardrails:filing-parser-cross-engine-execution-fixtures",
+] as const;
+const filingParserCrossEngineExecutionCorePaths = [
+  "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
+  "packages/filing-parser-cross-engine-execution/package.json",
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution-security.test.ts",
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.test.ts",
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.ts",
+  "packages/filing-parser-cross-engine-execution/src/index.ts",
+  "packages/filing-parser-cross-engine-execution/src/test-cross-engine-execution-builder.ts",
+  "packages/filing-parser-cross-engine-execution/tsconfig.json",
+  "packages/filing-parser-cross-engine-execution/worker/Dockerfile",
+  "packages/filing-parser-cross-engine-execution/worker/parser.mjs",
+  "packages/filing-parser-cross-engine-execution/worker/parser.test.mjs",
+  "packages/filing-parser-cross-engine-execution/worker/taxonomy-v1.json",
+] as const;
+const filingParserCrossEngineExecutionAcceptanceSourceNames = [
+  "filing-parser-cross-engine-execution-evidence-review.test.ts",
+  "filing-parser-cross-engine-execution-evidence-review.ts",
+  "filing-parser-cross-engine-execution-evidence-verifier.test.ts",
+  "filing-parser-cross-engine-execution-evidence-verifier.ts",
+  "filing-parser-cross-engine-execution-evidence.test.ts",
+  "filing-parser-cross-engine-execution-evidence.ts",
+  "index.ts",
+  "run-filing-parser-cross-engine-execution-acceptance.test.ts",
+  "run-filing-parser-cross-engine-execution-acceptance.ts",
+  "run-filing-parser-cross-engine-execution-evidence-review.ts",
+  "test-filing-parser-cross-engine-execution-evidence-builder.ts",
+] as const;
+const filingParserCrossEngineExecutionAcceptancePaths = [
+  `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json`,
+  ...filingParserCrossEngineExecutionAcceptanceSourceNames.map(
+    (name) =>
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}src/${name}`,
+  ),
+  `${filingParserCrossEngineExecutionAcceptancePackagePrefix}tsconfig.json`,
+].sort();
+const filingParserCrossEngineExecutionPublicExports = [
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_CHECKS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_CLAIM", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_LIMITS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_NOT_PROVEN", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_ROLES", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_SCHEMA_VERSION", false],
+  ["FilingParserCrossEngineExecutionConfigurationError", false],
+  ["createFilingParserCrossEngineExecutionBoundary", false],
+  ["FilingParserCrossEngineExecutionBoundary", true],
+  ["FilingParserCrossEngineExecutionConfiguration", true],
+  ["FilingParserCrossEngineExecutionEngineConfiguration", true],
+  ["FilingParserCrossEngineExecutionEngineProvenance", true],
+  ["FilingParserCrossEngineExecutionOptions", true],
+  ["FilingParserCrossEngineExecutionProvenance", true],
+  ["FilingParserCrossEngineExecutionQuarantinedResult", true],
+  ["FilingParserCrossEngineExecutionResult", true],
+  ["FilingParserCrossEngineExecutionRole", true],
+  ["FilingParserCrossEngineExecutionSuccess", true],
+] as const;
+const filingParserCrossEngineExecutionEvidencePublicExports = [
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW", false],
+  ["FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS", false],
+  ["createFilingParserCrossEngineExecutionEvidence", false],
+  ["filingParserCrossEngineExecutionEvidenceSha256", false],
+  ["filingParserCrossEngineImplementationSha256", false],
+  ["parseCanonicalFilingParserCrossEngineExecutionEvidence", false],
+  ["serializeCanonicalFilingParserCrossEngineExecutionEvidence", false],
+  ["FilingParserCrossEngineExecutionEvidence", true],
+  ["FilingParserCrossEngineExecutionEvidenceCaseOutcome", true],
+  ["FilingParserCrossEngineExecutionEvidenceEngine", true],
+  ["FilingParserCrossEngineExecutionEvidenceSourceHash", true],
+  ["FilingParserCrossEngineExecutionEvidenceTransitionEntry", true],
+] as const;
+const filingParserCrossEngineExecutionVerifierPublicExports = [
+  ["repositoryRelativePathIsContained", false],
+  ["verifyFilingParserCrossEngineExecutionEvidenceOffline", false],
+  ["FilingParserCrossEngineExecutionEvidenceReview", true],
+  ["FilingParserCrossEngineExecutionEvidenceReviewOptions", true],
+] as const;
 const filingParserNormalizationExecutionRootScriptAliases = new Set([
   "filing-parser-normalization-execution:acceptance",
   "filing-parser-normalization-execution:evidence-review",
@@ -1128,6 +1222,9 @@ const typeScriptConfigFilesToInspect = typeScriptConfigDiscovery.files;
 const typeScriptConfigContents = typeScriptConfigDiscovery.contents;
 const workspacePackageNames =
   await collectWorkspacePackageNames(filesToInspect);
+violations.push(
+  ...(await filingParserCrossEngineExecutionBoundaryViolations()),
+);
 
 const filingFactComparisonTreeViolation =
   exactFilingFactComparisonTreeViolation(
@@ -4055,6 +4152,627 @@ if (violations.length > 0) {
 }
 console.log("Clean-room source and dependency boundary verified.");
 
+async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
+  string[]
+> {
+  const found: string[] = [];
+  if (
+    !cycle2kExactTree(
+      filingParserCrossEngineExecutionCorePaths,
+      filingParserCrossEngineExecutionCorePaths,
+    ) ||
+    cycle2kExactTree(
+      filingParserCrossEngineExecutionCorePaths.slice(1),
+      filingParserCrossEngineExecutionCorePaths,
+    ) ||
+    cycle2kExactTree(
+      [...filingParserCrossEngineExecutionCorePaths, "loader.ts"],
+      filingParserCrossEngineExecutionCorePaths,
+    )
+  )
+    throw new Error("Cycle 2k exact-tree classifier regressed");
+  const listed = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter(
+      (path) =>
+        path.startsWith(filingParserCrossEngineExecutionPackagePrefix) ||
+        path.startsWith(
+          filingParserCrossEngineExecutionAcceptancePackagePrefix,
+        ),
+    );
+  const core = listed
+    .filter((path) =>
+      path.startsWith(filingParserCrossEngineExecutionPackagePrefix),
+    )
+    .sort();
+  const acceptance = listed
+    .filter((path) =>
+      path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix),
+    )
+    .sort();
+  if (!cycle2kExactTree(core, filingParserCrossEngineExecutionCorePaths))
+    found.push(
+      `${filingParserCrossEngineExecutionPackagePrefix}: Cycle 2k core tree must remain exact`,
+    );
+  if (
+    !cycle2kExactTree(
+      acceptance,
+      filingParserCrossEngineExecutionAcceptancePaths,
+    )
+  )
+    found.push(
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}: Cycle 2k acceptance tree must remain exact`,
+    );
+
+  const coreManifest = await cycle2kJson(
+    `${filingParserCrossEngineExecutionPackagePrefix}package.json`,
+    found,
+  );
+  const expectedCoreManifest = {
+    name: filingParserCrossEngineExecutionModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run src && node --test worker/parser.test.mjs",
+      "test:worker": "node --test worker/parser.test.mjs",
+    },
+    dependencies: {
+      [filingParserNormalizationExecutionModule]: "workspace:*",
+    },
+  };
+  if (JSON.stringify(coreManifest) !== JSON.stringify(expectedCoreManifest))
+    found.push("Cycle 2k core manifest must remain exact");
+  const acceptanceManifest = await cycle2kJson(
+    `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json`,
+    found,
+  );
+  const expectedAcceptanceManifest = {
+    name: filingParserCrossEngineExecutionAcceptanceModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      [filingParserCrossEngineExecutionModule]: "workspace:*",
+      [filingParserNormalizationExecutionModule]: "workspace:*",
+    },
+  };
+  if (
+    JSON.stringify(acceptanceManifest) !==
+    JSON.stringify(expectedAcceptanceManifest)
+  )
+    found.push("Cycle 2k acceptance manifest must remain exact");
+  const expectedCoreTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { allowJs: true, noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts", "worker/*.mjs"],
+  };
+  const coreTsconfig = await cycle2kJson(
+    `${filingParserCrossEngineExecutionPackagePrefix}tsconfig.json`,
+    found,
+  );
+  if (JSON.stringify(coreTsconfig) !== JSON.stringify(expectedCoreTsconfig))
+    found.push(
+      `${filingParserCrossEngineExecutionPackagePrefix}tsconfig.json: Cycle 2k tsconfig must remain exact`,
+    );
+  const expectedAcceptanceTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts"],
+  };
+  const acceptanceTsconfig = await cycle2kJson(
+    `${filingParserCrossEngineExecutionAcceptancePackagePrefix}tsconfig.json`,
+    found,
+  );
+  if (
+    JSON.stringify(acceptanceTsconfig) !==
+    JSON.stringify(expectedAcceptanceTsconfig)
+  )
+    found.push(
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}tsconfig.json: Cycle 2k tsconfig must remain exact`,
+    );
+
+  const allowedCoreModules = new Set([
+    "node:crypto",
+    "node:util",
+    "vitest",
+    filingParserNormalizationExecutionModule,
+    `${filingParserNormalizationExecutionModule}/test`,
+    "./filing-parser-cross-engine-execution",
+    "./test-cross-engine-execution-builder",
+  ]);
+  const coreIndexPath = `${filingParserCrossEngineExecutionPackagePrefix}src/index.ts`;
+  const coreIndex = ts.createSourceFile(
+    coreIndexPath,
+    await cycle2kText(coreIndexPath, found),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    coreIndex.statements.length !== 1 ||
+    !isExactNamedReExportDeclaration(
+      coreIndex.statements[0],
+      "./filing-parser-cross-engine-execution",
+      filingParserCrossEngineExecutionPublicExports,
+    )
+  )
+    found.push("Cycle 2k core public export surface must remain exact");
+  const allowedAcceptanceModules = new Set([
+    "node:child_process",
+    "node:crypto",
+    "node:fs",
+    "node:fs/promises",
+    "node:os",
+    "node:path",
+    "node:url",
+    "node:util",
+    "vitest",
+    filingParserCrossEngineExecutionModule,
+    filingParserNormalizationExecutionModule,
+    `${filingParserNormalizationExecutionModule}/test`,
+  ]);
+  const acceptanceIndexPath = `${filingParserCrossEngineExecutionAcceptancePackagePrefix}src/index.ts`;
+  const acceptanceIndex = ts.createSourceFile(
+    acceptanceIndexPath,
+    await cycle2kText(acceptanceIndexPath, found),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    acceptanceIndex.statements.length !== 2 ||
+    !isExactNamedReExportDeclaration(
+      acceptanceIndex.statements[0],
+      "./filing-parser-cross-engine-execution-evidence",
+      filingParserCrossEngineExecutionEvidencePublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      acceptanceIndex.statements[1],
+      "./filing-parser-cross-engine-execution-evidence-verifier",
+      filingParserCrossEngineExecutionVerifierPublicExports,
+    )
+  )
+    found.push("Cycle 2k acceptance public export surface must remain exact");
+  for (const path of [...core, ...acceptance].filter((path) =>
+    path.endsWith(".ts"),
+  )) {
+    const content = await readFile(join(root, path), "utf8");
+    const allowed = path.startsWith(
+      filingParserCrossEngineExecutionAcceptancePackagePrefix,
+    )
+      ? allowedAcceptanceModules
+      : allowedCoreModules;
+    for (const module of collectModuleSpecifiers(content)) {
+      if (
+        module.startsWith("./") &&
+        path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix)
+      ) {
+        const target = `${posixDirname(path)}/${module.slice(2)}.ts`;
+        if (!filingParserCrossEngineExecutionAcceptancePaths.includes(target))
+          found.push(`${path}: unreviewed Cycle 2k local import ${module}`);
+      } else if (!allowed.has(module))
+        found.push(`${path}: unreviewed Cycle 2k import ${module}`);
+    }
+    if (
+      /\b(?:import|require)\s*\(/u.test(content) ||
+      /\b(?:eval|Function)\s*\(/u.test(content)
+    )
+      found.push(`${path}: dynamic loading or evaluation is forbidden`);
+  }
+
+  const docker = await cycle2kText(
+    `${filingParserCrossEngineExecutionPackagePrefix}worker/Dockerfile`,
+    found,
+  );
+  for (const required of [
+    "node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df",
+    "COPY --chown=0:0 --chmod=0444 worker/parser.mjs /worker/parser.mjs",
+    "COPY --chown=0:0 --chmod=0444 worker/taxonomy-v1.json /worker/taxonomy-v1.json",
+    "USER 65532:65532",
+    'ENTRYPOINT ["node", "--disable-proto=throw", "/worker/parser.mjs"]',
+  ])
+    if (!docker.includes(required))
+      found.push("Cycle 2k Dockerfile pin regressed");
+  if (/^(?:ADD|RUN)\b/mu.test(docker))
+    found.push("Cycle 2k Dockerfile must remain zero-install");
+  const workerParserPath = `${filingParserCrossEngineExecutionPackagePrefix}worker/parser.mjs`;
+  const workerTestPath = `${filingParserCrossEngineExecutionPackagePrefix}worker/parser.test.mjs`;
+  const workerTaxonomyPath = `${filingParserCrossEngineExecutionPackagePrefix}worker/taxonomy-v1.json`;
+  const workerParser = await cycle2kText(workerParserPath, found);
+  const workerTest = await cycle2kText(workerTestPath, found);
+  const workerTaxonomy = await cycle2kJson(workerTaxonomyPath, found);
+  const workerParserLintDirective =
+    "/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- The sealed dependency-free worker is plain JavaScript; exact source guards and adversarial runtime tests cover its untyped protocol boundary. */";
+  const workerTestLintDirective =
+    "/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- The sealed dependency-free worker test exercises intentionally untyped hostile inputs under exact source guards. */";
+  for (const [path, content, directive] of [
+    [workerParserPath, workerParser, workerParserLintDirective],
+    [workerTestPath, workerTest, workerTestLintDirective],
+  ] as const)
+    if (
+      !content.startsWith(`${directive}\n\n`) ||
+      [...content.matchAll(/eslint-(?:disable|enable)/gu)].length !== 1
+    )
+      found.push(`${path}: exact scoped JavaScript lint directive is required`);
+  for (const [path, content] of [
+    [workerParserPath, workerParser],
+    [workerTestPath, workerTest],
+  ] as const) {
+    const violation = cycle2kWorkerModuleViolation(path, content);
+    if (violation !== null) found.push(`${path}: ${violation}`);
+  }
+  if (!cycle2kExactTaxonomy(workerTaxonomy))
+    found.push(`${workerTaxonomyPath}: exact ordered taxonomy is required`);
+  const reviewedWorkerParserImports = [
+    'import "node:crypto";',
+    'import "node:fs/promises";',
+    'import "node:url";',
+    'import "node:zlib";',
+  ].join("\n");
+  const reviewedWorkerTestImports = [
+    'import "node:assert/strict";',
+    'import "node:fs/promises";',
+    'import "node:test";',
+    'import "node:zlib";',
+    'import "./parser.mjs";',
+  ].join("\n");
+  if (
+    cycle2kWorkerModuleViolation(
+      workerParserPath,
+      reviewedWorkerParserImports,
+    ) !== null ||
+    cycle2kWorkerModuleViolation(workerTestPath, reviewedWorkerTestImports) !==
+      null ||
+    cycle2kWorkerModuleViolation(
+      workerParserPath,
+      `${reviewedWorkerParserImports}\nimport "node:net";`,
+    ) === null ||
+    cycle2kWorkerModuleViolation(
+      workerParserPath,
+      `${reviewedWorkerParserImports}\nvoid import("node:crypto");`,
+    ) === null ||
+    cycle2kExactTaxonomy({
+      ...cycle2kExpectedTaxonomy(),
+      facts: [
+        ...cycle2kExpectedTaxonomy().facts,
+        {
+          key: "extra",
+          concept: "rc-synthetic:Extra",
+          periodKind: "instant",
+          unit: "USD",
+        },
+      ],
+    })
+  )
+    throw new Error("Cycle 2k worker/taxonomy classifier regressed");
+  const image = await cycle2kJson(
+    `${filingParserCrossEngineExecutionPackagePrefix}acceptance/node-image.json`,
+    found,
+  );
+  if (
+    !image ||
+    image.indexDigest !==
+      "sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df" ||
+    image.platformManifestDigest !==
+      "sha256:e5a8dee7bc1e6a215d224a7ef8206f7e77271bc3cabd5febf2beafac0674f174" ||
+    image.containerPackageLicenseInventoryStatus !==
+      "not_proven_ci_acceptance_only"
+  )
+    found.push("Cycle 2k Node image metadata pin regressed");
+
+  const rootManifest = await cycle2kJson("package.json", found);
+  const scripts =
+    rootManifest && typeof rootManifest.scripts === "object"
+      ? (rootManifest.scripts as Record<string, unknown>)
+      : {};
+  const expectedScripts = {
+    "filing-parser-cross-engine-execution:acceptance":
+      "tsx packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts",
+    "filing-parser-cross-engine-execution:evidence-review":
+      "tsx packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-evidence-review.ts",
+    "guardrails:filing-parser-cross-engine-execution-fixtures":
+      "tsx scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+  };
+  for (const [name, command] of Object.entries(expectedScripts))
+    if (scripts[name] !== command)
+      found.push(`package.json: exact Cycle 2k script ${name} is required`);
+  if (
+    typeof scripts.guardrails !== "string" ||
+    !scripts.guardrails.includes(
+      "pnpm guardrails:filing-parser-normalization-execution-fixtures && pnpm guardrails:filing-parser-cross-engine-execution-fixtures && pnpm guardrails:filing-payload-custody-fixtures",
+    )
+  )
+    found.push("package.json: exact Cycle 2k guardrail ordering is required");
+
+  const boundSurfacePaths = [
+    "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  ];
+  for (const path of boundSurfacePaths) {
+    const content = await cycle2kText(path, found);
+    if (!content.includes("filing-parser-cross-engine-execution"))
+      found.push(`${path}: Cycle 2k source binding is incomplete`);
+  }
+  const workflow = await cycle2kText(
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    found,
+  );
+  if (
+    !workflow.startsWith(
+      "name: Filing parser cross-engine execution acceptance\n\non:\n  workflow_dispatch:\n  push:\n",
+    ) ||
+    /^\s+pull_request:/mu.test(workflow)
+  )
+    found.push(
+      "Cycle 2k live evidence workflow must remain push/dispatch-only",
+    );
+  for (const command of [
+    "pnpm --filter @research-cockpit/filing-parser-normalization-execution typecheck",
+    "pnpm --filter @research-cockpit/filing-parser-normalization-execution test",
+    "pnpm --filter @research-cockpit/filing-parser-normalization-execution test:worker",
+    "pnpm --filter @research-cockpit/filing-parser-cross-engine-execution typecheck",
+    "pnpm --filter @research-cockpit/filing-parser-cross-engine-execution test",
+    "pnpm --filter @research-cockpit/filing-parser-cross-engine-execution test:worker",
+    "pnpm --filter @research-cockpit/filing-parser-cross-engine-execution-acceptance typecheck",
+    "pnpm --filter @research-cockpit/filing-parser-cross-engine-execution-acceptance test",
+    "pnpm guardrails:boundaries",
+    "pnpm guardrails:filing-parser-cross-engine-execution-fixtures",
+    "pnpm filing-parser-cross-engine-execution:acceptance",
+    "pnpm filing-parser-cross-engine-execution:evidence-review",
+    "if: ${{ success() }}",
+  ])
+    if (!workflow.includes(command))
+      found.push(`Cycle 2k workflow is missing exact command ${command}`);
+  const fixtureManifest = await cycle2kJson(
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v1/manifest.json",
+    found,
+  );
+  const expectedFixtureSources = [
+    "packages/filing-parser-normalization-execution/acceptance/python-image.json",
+    "packages/filing-parser-normalization-execution/src/test-filing-parser-normalization-execution-builder.ts",
+    "packages/filing-parser-normalization-execution/worker/Dockerfile",
+    "packages/filing-parser-normalization-execution/worker/parser.py",
+    "packages/filing-parser-normalization-execution/worker/parser_test.py",
+    "packages/filing-parser-normalization-execution/worker/taxonomy-v1.json",
+    "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
+    "packages/filing-parser-cross-engine-execution/src/test-cross-engine-execution-builder.ts",
+    "packages/filing-parser-cross-engine-execution/worker/Dockerfile",
+    "packages/filing-parser-cross-engine-execution/worker/parser.mjs",
+    "packages/filing-parser-cross-engine-execution/worker/parser.test.mjs",
+    "packages/filing-parser-cross-engine-execution/worker/taxonomy-v1.json",
+  ];
+  const fixturePaths = Array.isArray(fixtureManifest?.files)
+    ? fixtureManifest.files.map((entry) =>
+        isRecord(entry) ? entry.path : undefined,
+      )
+    : [];
+  if (JSON.stringify(fixturePaths) !== JSON.stringify(expectedFixtureSources))
+    found.push("Cycle 2k fixture source inventory must remain exact");
+
+  const externalAllow = new Set([
+    ...core,
+    ...acceptance,
+    "scripts/verify-boundaries.ts",
+    "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  ]);
+  if (
+    cycle2kExternalCompositionViolation(
+      `${filingParserCrossEngineExecutionPackagePrefix}src/index.ts`,
+      `export {} from ${JSON.stringify(filingParserCrossEngineExecutionModule)};`,
+      externalAllow,
+    ) ||
+    !cycle2kExternalCompositionViolation(
+      "apps/api/src/cycle2k.ts",
+      `import ${JSON.stringify(filingParserCrossEngineExecutionModule)};`,
+      externalAllow,
+    ) ||
+    !cycle2kExternalCompositionViolation(
+      ".github/workflows/unrelated.yml",
+      "run: pnpm filing-parser-cross-engine-execution:acceptance",
+      externalAllow,
+    ) ||
+    !cycle2kExternalCompositionViolation(
+      "apps/api/src/dynamic.ts",
+      `void import(${JSON.stringify(filingParserCrossEngineExecutionModule)});`,
+      externalAllow,
+    )
+  )
+    throw new Error("Cycle 2k external-composition classifier regressed");
+  for (const file of externalCompositionFilesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    const content = await readFile(file, "utf8");
+    if (cycle2kExternalCompositionViolation(path, content, externalAllow))
+      found.push(`${path}: external Cycle 2k composition is forbidden`);
+  }
+  return found;
+}
+
+async function cycle2kText(path: string, found: string[]): Promise<string> {
+  try {
+    return await readFile(join(root, path), "utf8");
+  } catch {
+    found.push(`${path}: required Cycle 2k file is missing`);
+    return "";
+  }
+}
+
+function cycle2kExactTree(
+  actual: readonly string[],
+  expected: readonly string[],
+): boolean {
+  return (
+    JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort())
+  );
+}
+
+function cycle2kExternalCompositionViolation(
+  path: string,
+  content: string,
+  allowedPaths: ReadonlySet<string>,
+): boolean {
+  if (allowedPaths.has(path)) return false;
+  return (
+    content.includes(filingParserCrossEngineExecutionModule) ||
+    content.includes(filingParserCrossEngineExecutionPackagePrefix) ||
+    filingParserCrossEngineExecutionRootScriptAliases.some((alias) =>
+      content.includes(alias),
+    )
+  );
+}
+
+function cycle2kWorkerModuleViolation(
+  path: string,
+  content: string,
+): string | null {
+  const parserPath = `${filingParserCrossEngineExecutionPackagePrefix}worker/parser.mjs`;
+  const testPath = `${filingParserCrossEngineExecutionPackagePrefix}worker/parser.test.mjs`;
+  const expected =
+    path === parserPath
+      ? ["node:crypto", "node:fs/promises", "node:url", "node:zlib"]
+      : path === testPath
+        ? [
+            "./parser.mjs",
+            "node:assert/strict",
+            "node:fs/promises",
+            "node:test",
+            "node:zlib",
+          ]
+        : null;
+  if (expected === null) return "unreviewed worker module path";
+  const actual = [...new Set(collectModuleSpecifiers(content))].sort();
+  if (JSON.stringify(actual) !== JSON.stringify([...expected].sort()))
+    return "worker imports must remain the exact reviewed built-in/direct-parser set";
+  if (
+    /\bimport\s*\(/u.test(content) ||
+    /\brequire\s*\(/u.test(content) ||
+    /\b(?:eval|Function)\s*\(/u.test(content) ||
+    /\b(?:fetch|WebSocket|EventSource|XMLHttpRequest|Worker)\b/u.test(
+      content,
+    ) ||
+    /["'](?:node:)?(?:child_process|cluster|dgram|dns|http|https|net|tls|worker_threads)["']/u.test(
+      content,
+    )
+  )
+    return "dynamic code, networking, subprocesses, and worker threads are forbidden";
+  return null;
+}
+
+function cycle2kExpectedTaxonomy(): {
+  family: string;
+  version: string;
+  namespace: string;
+  facts: Array<{
+    key: string;
+    concept: string;
+    periodKind: string;
+    unit: string;
+  }>;
+} {
+  return {
+    family: "rc-synthetic-ten-fact",
+    version: "1.0.0",
+    namespace:
+      "urn:research-cockpit:synthetic:filing-normalization-execution:v1",
+    facts: [
+      {
+        key: "assets",
+        concept: "rc-synthetic:Assets",
+        periodKind: "instant",
+        unit: "USD",
+      },
+      {
+        key: "cash",
+        concept: "rc-synthetic:CashAndCashEquivalents",
+        periodKind: "instant",
+        unit: "USD",
+      },
+      {
+        key: "debt",
+        concept: "rc-synthetic:Debt",
+        periodKind: "instant",
+        unit: "USD",
+      },
+      {
+        key: "diluted_shares",
+        concept: "rc-synthetic:WeightedAverageDilutedShares",
+        periodKind: "duration",
+        unit: "shares",
+      },
+      {
+        key: "free_cash_flow",
+        concept: "rc-synthetic:FreeCashFlow",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        key: "gross_profit",
+        concept: "rc-synthetic:GrossProfit",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        key: "net_income",
+        concept: "rc-synthetic:NetIncome",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        key: "operating_cash_flow",
+        concept: "rc-synthetic:OperatingCashFlow",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        key: "operating_income",
+        concept: "rc-synthetic:OperatingIncome",
+        periodKind: "duration",
+        unit: "USD",
+      },
+      {
+        key: "revenue",
+        concept: "rc-synthetic:Revenue",
+        periodKind: "duration",
+        unit: "USD",
+      },
+    ],
+  };
+}
+
+function cycle2kExactTaxonomy(value: unknown): boolean {
+  return JSON.stringify(value) === JSON.stringify(cycle2kExpectedTaxonomy());
+}
+
+async function cycle2kJson(
+  path: string,
+  found: string[],
+): Promise<Record<string, unknown> | null> {
+  const text = await cycle2kText(path, found);
+  try {
+    const value = JSON.parse(text) as unknown;
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  } catch {
+    found.push(`${path}: Cycle 2k JSON must parse`);
+    return null;
+  }
+}
+
 function exactFilingFactComparisonTreeViolation(
   packagePaths: readonly string[],
 ): string | null {
@@ -4237,6 +4955,8 @@ function inspectDependencies(path: string, manifest: unknown): void {
     !path.startsWith(
       filingParserNormalizationExecutionAcceptancePackagePrefix,
     ) &&
+    !path.startsWith(filingParserCrossEngineExecutionPackagePrefix) &&
+    !path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix) &&
     hasFilingParserNormalizationExecutionDependency(manifest, path)
   )
     violations.push(
@@ -8938,6 +9658,10 @@ function filingParserNormalizationHandoffManifestCompositionViolation(
     manifestPath.startsWith(filingParserNormalizationHandoffPackagePrefix) ||
     manifestPath ===
       `${filingParserNormalizationExecutionPackagePrefix}package.json` ||
+    manifestPath ===
+      `${filingParserCrossEngineExecutionPackagePrefix}package.json` ||
+    manifestPath ===
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json` ||
     !isRecord(manifest)
   )
     return null;
@@ -8981,6 +9705,10 @@ function filingParserNormalizationExecutionManifestCompositionViolation(
       `${filingParserNormalizationExecutionPackagePrefix}package.json` ||
     manifestPath ===
       `${filingParserNormalizationExecutionAcceptancePackagePrefix}package.json` ||
+    manifestPath ===
+      `${filingParserCrossEngineExecutionPackagePrefix}package.json` ||
+    manifestPath ===
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json` ||
     !isRecord(manifest)
   )
     return null;
@@ -9009,7 +9737,7 @@ function filingParserNormalizationExecutionManifestCompositionViolation(
   const approvedRootScripts = new Map([
     [
       "guardrails",
-      "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:filing-parser-fixtures && pnpm guardrails:filing-parser-normalization-execution-fixtures && pnpm guardrails:filing-payload-custody-fixtures && pnpm guardrails:migrations && pnpm guardrails:postgres-acceptance && pnpm guardrails:licenses",
+      "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:filing-parser-fixtures && pnpm guardrails:filing-parser-normalization-execution-fixtures && pnpm guardrails:filing-parser-cross-engine-execution-fixtures && pnpm guardrails:filing-payload-custody-fixtures && pnpm guardrails:migrations && pnpm guardrails:postgres-acceptance && pnpm guardrails:licenses",
     ],
     [
       "guardrails:filing-parser-normalization-execution-fixtures",
@@ -9022,6 +9750,18 @@ function filingParserNormalizationExecutionManifestCompositionViolation(
     [
       "filing-parser-normalization-execution:evidence-review",
       "tsx packages/filing-parser-normalization-execution-acceptance/src/run-filing-parser-normalization-execution-evidence-review.ts",
+    ],
+    [
+      "guardrails:filing-parser-cross-engine-execution-fixtures",
+      "tsx scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+    ],
+    [
+      "filing-parser-cross-engine-execution:acceptance",
+      "tsx packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts",
+    ],
+    [
+      "filing-parser-cross-engine-execution:evidence-review",
+      "tsx packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-evidence-review.ts",
     ],
   ]);
   for (const [name, command] of Object.entries(manifest.scripts)) {
@@ -9530,8 +10270,15 @@ function filingParserNormalizationHandoffExternalCompositionViolation(
 ): string | null {
   if (
     path.startsWith(filingParserNormalizationHandoffPackagePrefix) ||
+    path.startsWith(filingParserCrossEngineExecutionPackagePrefix) ||
+    path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix) ||
     path === filingParserNormalizationExecutionProductionPath ||
-    path === filingParserNormalizationExecutionWorkflowPath
+    path === filingParserNormalizationExecutionWorkflowPath ||
+    path ===
+      ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml" ||
+    path ===
+      "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts" ||
+    path === "scripts/verify-boundaries.ts"
   )
     return null;
   if (!isNodeSourceExecutable(path, content)) {
@@ -9570,7 +10317,14 @@ function filingParserNormalizationExecutionExternalCompositionViolation(
     path.startsWith(
       filingParserNormalizationExecutionAcceptancePackagePrefix,
     ) ||
-    path === filingParserNormalizationExecutionWorkflowPath
+    path.startsWith(filingParserCrossEngineExecutionPackagePrefix) ||
+    path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix) ||
+    path === filingParserNormalizationExecutionWorkflowPath ||
+    path ===
+      ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml" ||
+    path ===
+      "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts" ||
+    path === "scripts/verify-boundaries.ts"
   )
     return null;
   if (!isNodeSourceExecutable(path, content)) {

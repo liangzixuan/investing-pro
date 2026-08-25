@@ -1111,6 +1111,43 @@ nonclaims, and the exact promotion boundary are in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
+## Cycle 2k — bounded synthetic cross-engine parser execution agreement
+
+Status: **proposal-only and Pending from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. No successor source commit,
+frozen transition, local result, CI result, dedicated live run, retained
+artifact, or offline-review verdict exists. Cycle 2b, full Cycle 2 quality,
+real-data admission, and production remain Blocked.**
+
+Cycle 2k proposes one narrow repository-controlled successor. The existing
+Cycle 2j Python worker and one distinct zero-install pinned Node worker execute
+the same owned synthetic original/amendment pair. Each fixed role must produce
+byte-exact equal complete canonical stdout documents, and both complete engine
+pairs must produce byte-exact equal Cycle 2d normalization records through the
+unchanged normalization path. Any disagreement or failure returns one atomic,
+empty, value-free quarantine. The sole proposed claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
+
+Promotion requires one frozen exact successor transition from the baseline; a
+full local gate; exact-source Ubuntu/Windows CI and required parser, custody,
+PostgreSQL, and Cycle 2j regression gates; and a separately authorized Ubuntu
+real-Docker success-only artifact. The versioned evidence and independently
+anchored `offline_consistent` review must bind both image digests, both exact
+worker source inventories and hashes, fixtures, cases, checks, nonclaims, and
+every Cycle 2k source hash. Historical evidence, schemas, checks, nonclaims,
+source sets, artifacts, and run anchors remain immutable; regressions cannot be
+relabeled as Cycle 2k evidence.
+
+Distinct language, source, image, and process identities do not prove true
+organizational, operator, key, host, or failure-domain independence. Cycle 2k
+also cannot establish general parser/accounting correctness, real SEC/source
+authority, Cycle 2b approval, independently adjudicated real quality, real-data
+admission, full Cycle 2 exit, or production. Cycle 2b remains externally
+Blocked on the exact 100-entry inventory, rights/steward approvals, chronology,
+authority keys, and human review. Exact proposed gates and nonclaims are in
+[ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
+and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.

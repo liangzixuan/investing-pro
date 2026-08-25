@@ -34,3 +34,12 @@ This notice is not a complete license inventory for the Debian Bookworm
 packages contained in the image and is not production-image approval. Complete
 image package/license inventory, redistribution review, counsel/procurement
 approval, vulnerability admission, and production use remain pending.
+
+Cycle 2k also uses Docker Official Image `node:24.19.0-bookworm-slim` only in
+its isolated synthetic cross-engine acceptance job. Its exact OCI index and
+`linux/amd64` child-manifest digests are recorded in
+`packages/filing-parser-cross-engine-execution/acceptance/node-image.json`.
+Node.js 24.19.0 uses the MIT License:
+<https://github.com/nodejs/node/blob/v24.19.0/LICENSE>. This notice does not
+approve the image or inventory the licenses of its Debian Bookworm packages;
+production use and the complete reviews remain pending.

@@ -25,6 +25,9 @@ only for exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a`;
 Cycle 2j isolated ten-fact parser execution-to-normalization Pass only for exact
 source commit `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
 `f17bacc6adc46851e182d260d59830652f1953bb`;
+Cycle 2k cross-engine execution agreement proposal Pending from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, with no canonical result or
+promoted source/evidence record;
 synthetic data only.
 
 ## Identity
@@ -817,6 +820,35 @@ independent second parser, adjudicated quality, custody, API/web/database/queue
 composition, B15/V15, real-data admission, or production authority. See
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
+
+## Pending Cycle 2k cross-engine execution agreement proposal
+
+Cycle 2k proposes no canonical real filing, authority, quality, tenant,
+persistence, or production entity. From exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, it proposes to execute the same
+owned synthetic original/amendment pair through the existing Cycle 2j Python
+worker and a distinct zero-install pinned Node worker. Per-role complete
+canonical stdout documents and both complete Cycle 2d normalization records
+must agree byte for byte; otherwise the result is one atomic empty value-free
+quarantine. The sole proposed claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
+
+No successor commit, frozen transition, local/CI result, dedicated real-Docker
+artifact, or `offline_consistent` review exists, so no Cycle 2k agreement record
+is canonical or promoted. A future promotion must bind both pinned images and
+both exact source inventories, pass all local/two-OS/regression/live gates, and
+retain a success-only artifact with independently anchored offline review.
+Every historical evidence record and anchor remains immutable.
+
+Distinct language, source, image, and process identities do not prove true
+organizational, operator, key, host, or failure-domain independence. The
+proposal cannot establish general parser/accounting correctness, real
+SEC/source authority, Cycle 2b approval, independently adjudicated real quality,
+real-data admission, B15/V15, full Cycle 2 exit, or production. Cycle 2b remains
+externally Blocked on the exact inventory, rights/steward approvals, chronology,
+authority keys, and human review. See
+[ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
+and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

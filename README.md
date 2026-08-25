@@ -446,6 +446,22 @@ admission, or production. See
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md).
 
+Cycle 2k is a proposal-only cross-engine successor and is **Pending** from exact
+baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Its sole proposed claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`:
+the existing Cycle 2j Python worker and a distinct zero-install pinned Node
+worker must produce byte-exact equal complete stdout documents and complete
+normalization records for the same owned synthetic original/amendment pair, or
+return one atomic value-free quarantine. No successor commit, frozen
+transition, local/CI result, dedicated live artifact, or `offline_consistent`
+review exists. The proposal does not establish true organizational, operator,
+key, host, or failure-domain independence; general parser or accounting
+correctness; real SEC/source authority; Cycle 2b approval; independently
+adjudicated real quality; real-data admission; or production. Cycle 2b remains
+externally Blocked on the exact inventory, rights/steward approvals, chronology,
+authority keys, and human review. See [ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
+and the [Cycle 2k exit matrix](./docs/CYCLE_2K_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -900,6 +916,12 @@ blocked.
   signing, unchanged Cycle 2i handoff, exact-source workflows, retained live
   artifact, and offline review passed. External authority, independent real
   quality, full Cycle 2 exit, and production remain Blocked.
+- Cycle 2k is a proposal-only cross-engine agreement milestone and is Pending
+  from exact baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. No successor
+  source, frozen transition, local/CI/live evidence, artifact, or offline verdict
+  exists. It cannot establish true independence, correctness, real source
+  authority, Cycle 2b approval, adjudicated real quality, real data, or
+  production.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -964,4 +986,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0036](./docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md),
 [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md),
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md),
+[Cycle 2k exit matrix](./docs/CYCLE_2K_EXIT_MATRIX.md),
+[ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md),
 and [architecture decisions](./docs/adr/).

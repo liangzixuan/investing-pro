@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2j threat model
+# Sprint 0 through promoted Cycle 2j and Pending Cycle 2k threat model
 
 ## Current trust boundaries
 
@@ -429,6 +429,27 @@ application/database/queue composition, full Cycle 2 exit, real-data admission,
 or production. Its exact promoted boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
+
+Cycle 2k is a proposal-only successor and is Pending from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. It proposes to execute the same
+owned synthetic original/amendment pair through the existing Cycle 2j Python
+worker and a distinct zero-install pinned Node worker. Each fixed role's live
+canonical stdout document and both engines' complete normalization records must
+agree byte for byte; any disagreement or failure returns one atomic empty
+value-free quarantine. The sole proposed claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
+
+No successor source, frozen transition, local/CI result, dedicated real-Docker
+artifact, or `offline_consistent` verdict exists. Distinct language, source,
+image, and process identities cannot establish true organizational, operator,
+key, host, or failure-domain independence. The proposal also cannot establish
+general parser/accounting correctness, real SEC/source authority, Cycle 2b
+approval, independently adjudicated real quality, real data, or production.
+Cycle 2b remains externally Blocked on the exact inventory, rights/steward
+approvals, chronology, authority keys, and human review. Historical evidence
+and anchors remain immutable. See
+[ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
+and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -1094,6 +1115,13 @@ boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
+Cycle 2k's successor target remains only a Pending proposal from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc` for the sole claim
+`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
+No source or evidence result is promoted. Exact gates and nonclaims are in
+[ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
+and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1108,6 +1136,8 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
+   Pending Cycle 2k cross-engine agreement would remain engineering preparation
+   only and would not satisfy any external authority or real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

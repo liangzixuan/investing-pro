@@ -38,6 +38,14 @@ CI-acceptance infrastructure for the bounded Cycle 2a isolation gate. It is
 not added to the production dependency allowlist and creates no blanket license
 exception.
 
+Cycle 2k additionally pins Docker Official Image
+`node:24.19.0-bookworm-slim` by exact OCI index digest and records its
+`linux/amd64` child-manifest digest. Node.js 24.19.0 is MIT-licensed; its
+primary license is at <https://github.com/nodejs/node/blob/v24.19.0/LICENSE>.
+This is only synthetic CI-acceptance infrastructure. The complete Debian image
+license inventory, redistribution review, vulnerability admission,
+counsel/procurement review, and production approval remain pending.
+
 The exact Cycle 2a live run and retained evidence remain historical green
 facts, but their bounded owned-byte security conclusion is Superseded by the
 Cycle 2h hostile-carrier finding on those bytes. Cycle 2h restores that premise
