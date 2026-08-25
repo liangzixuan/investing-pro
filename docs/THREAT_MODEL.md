@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2i and pending Cycle 2j threat model
+# Sprint 0 through promoted Cycle 2j threat model
 
 ## Current trust boundaries
 
@@ -402,28 +402,31 @@ immutable. Parser run/job `32817294720` / `97708047987`, custody run/job
 `32817294732` / `97708048009`, and PostgreSQL run/job `32817294741` /
 `97708049006` are regression health only.
 
-Cycle 2j targets the remaining repository-controlled execution/derivation gap.
-It proposes exactly two fresh, isolated, digest-pinned, network-disabled worker
-executions over one closed synthetic original/amendment archive pair. The host
-must recompute source digests, validate complete canonical Cycle 2d ten-fact
-documents, sign Cycle 2i envelopes outside the workers, and pass the exact
-archive/envelope bytes without repair to the unchanged Cycle 2i handoff. This
-narrows the risk that self-consistent envelopes were never produced by the
-reviewed worker path.
+Cycle 2j closes one repository-controlled execution/derivation gap. Each
+accepted closed synthetic original/amendment archive pair uses exactly two
+fresh, isolated, digest-pinned, network-disabled workers; additional fresh
+workers cover replay and adversarial paths. The host must recompute source
+digests, validate complete canonical Cycle 2d ten-fact documents, sign Cycle 2i
+envelopes outside the workers, and pass the exact archive/envelope bytes without
+repair to the unchanged Cycle 2i handoff. This narrows the risk that
+self-consistent envelopes were never produced by the reviewed worker path.
 
-The proposed sole claim is
+The sole claim is
 `bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
-It remains Pending from exact baseline
-`f17bacc6adc46851e182d260d59830652f1953bb`: no successor, transition inventory,
-local gate, dedicated live run, artifact, or offline review is accepted. Any
-input, container, output, signing, source, role, mutation, cleanup, or handoff
-failure must collapse to one empty value-free quarantine.
+It is Pass only for exact source commit
+`b2c7a28c2c5720253eba275b65d3313b114c3bc4` from exact baseline
+`f17bacc6adc46851e182d260d59830652f1953bb`. The 44-path transition, 1,095-pass
+local gate, all exact-source workflows, dedicated run/job `32897837981` /
+`97964475815`, retained artifact `9581921300`, matching artifact/evidence
+anchors, and 51-of-51 `offline_consistent` review passed. Any input, container,
+output, signing, source, role, mutation, cleanup, or handoff failure collapses
+to one empty value-free quarantine.
 
-Even if promoted, Cycle 2j cannot establish general parser or accounting
-correctness, an independent second engine, signer/image/source authority, real
-filing authenticity, Cycle 2b approval, adjudicated real quality, custody,
+Cycle 2j cannot establish general parser or accounting correctness, an
+independent second engine, signer/image/source authority, real filing
+authenticity, Cycle 2b approval, adjudicated real quality, custody,
 application/database/queue composition, full Cycle 2 exit, real-data admission,
-or production. Its exact pending boundary is in
+or production. Its exact promoted boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
@@ -834,11 +837,13 @@ leave the server projection.
   without repair. This bounded guarantee and every promotion gate pass only for
   exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a` from baseline
   `dda2ecafc70aa6c4859a29cb312849bac5dec253`.
-- Pending Cycle 2j proposes exactly two fresh isolated executions of a closed
-  synthetic ten-fact original/amendment pair, outside-worker signed Cycle 2i
-  envelopes, and unchanged atomic normalization. No source or live promotion
-  gate has passed from baseline
-  `f17bacc6adc46851e182d260d59830652f1953bb`.
+- Cycle 2j is Pass only for exact source commit
+  `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
+  `f17bacc6adc46851e182d260d59830652f1953bb`. Each accepted closed synthetic
+  ten-fact original/amendment pair uses exactly two fresh isolated workers;
+  additional fresh workers cover replay and adversarial paths. Outside-worker
+  signed Cycle 2i envelopes, unchanged atomic normalization, exact-source
+  workflows, retained evidence, and offline review passed.
 
 ## Non-production constraints
 
@@ -1075,16 +1080,17 @@ The exact boundary is in
 [ADR 0036](./adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
 
-Cycle 2j's proposed target is only
+Cycle 2j's promoted target is only
 `bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`
 for one closed synthetic original/amendment archive pair executed in fresh
 bounded workers and delegated through the unchanged Cycle 2i handoff. It cannot
 establish real source or signer authority, general parser/accounting
 correctness, independent validation, adjudicated real quality, custody,
 database/API/web/queue composition, B15/V15, full Cycle 2 exit, real-data
-admission, or production readiness. Every source and dedicated live gate is
-Pending from baseline `f17bacc6adc46851e182d260d59830652f1953bb`. The exact
-pending boundary is in
+admission, or production readiness. Every source and dedicated live gate passed
+only for exact source commit `b2c7a28c2c5720253eba275b65d3313b114c3bc4`
+from baseline `f17bacc6adc46851e182d260d59830652f1953bb`. The exact promoted
+boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
@@ -1100,7 +1106,7 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
    in-process candidate precommitment, plus Cycle 2h's byte-carrier hardening,
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
-   handoff, and pending Cycle 2j's isolated synthetic execution proposal are
+   handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.

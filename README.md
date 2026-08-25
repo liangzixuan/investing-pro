@@ -427,18 +427,22 @@ See
 [ADR 0036](./docs/adr/0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 and the [Cycle 2i exit matrix](./docs/CYCLE_2I_EXIT_MATRIX.md).
 
-Cycle 2j is the next pending repository-controlled milestone. From exact
-baseline `f17bacc6adc46851e182d260d59830652f1953bb`, it proposes to execute one
-closed synthetic original archive and one amendment archive in fresh bounded,
-network-disabled Python 3.12 workers, create complete signed ten-fact envelopes
-outside those workers, and delegate the exact archive/envelope pair to the
-unchanged Cycle 2i handoff. Its sole proposed claim is
+Cycle 2j now promotes one bounded repository-controlled execution milestone.
+From exact baseline `f17bacc6adc46851e182d260d59830652f1953bb`, one closed
+synthetic original archive and one amendment archive execute in fresh bounded,
+network-disabled Python 3.12 workers; the host creates complete signed ten-fact
+envelopes and delegates the exact archive/envelope pair to the unchanged Cycle
+2i handoff. Its sole claim is
 `bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
-No source successor, transition inventory, local result, dedicated live run,
-artifact, or offline review has been accepted, so implementation and promotion
-remain Pending. This milestone cannot prove general parser or accounting
-correctness, independent validation, signer/image/source authority, real filing
-quality, Cycle 2b authority, B15/V15, real-data admission, or production. See
+It is Pass only for exact source commit
+`b2c7a28c2c5720253eba275b65d3313b114c3bc4`: the exact 44-path transition,
+1,095-pass local gate, Ubuntu/Windows CI run `32897837955`, exact-source parser,
+custody, and PostgreSQL regressions, dedicated run/job `32897837981` /
+`97964475815`, retained artifact `9581921300`, and 51-of-51
+`offline_consistent` review all passed. This milestone cannot prove general
+parser or accounting correctness, independent validation, signer/image/source
+authority, real filing quality, Cycle 2b authority, B15/V15, real-data
+admission, or production. See
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md).
 
@@ -888,12 +892,14 @@ blocked.
   parser, establish key/image/source authority, approve Cycle 2b, prove
   independent adjudication or real quality, admit real filings, or close any
   production gate.
-- Cycle 2j is Pending from baseline
-  `f17bacc6adc46851e182d260d59830652f1953bb`. It targets only two fresh isolated
-  executions of the closed synthetic ten-fact original/amendment pair through
-  outside-worker signing and the unchanged Cycle 2i handoff. No successor or
-  source/live promotion gate has passed, and external authority, independent
-  real quality, full Cycle 2 exit, and production remain Blocked.
+- Cycle 2j is Pass only for exact source commit
+  `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
+  `f17bacc6adc46851e182d260d59830652f1953bb`. Each accepted closed synthetic
+  ten-fact original/amendment pair uses exactly two fresh isolated workers;
+  additional fresh workers cover replay and adversarial paths. Outside-worker
+  signing, unchanged Cycle 2i handoff, exact-source workflows, retained live
+  artifact, and offline review passed. External authority, independent real
+  quality, full Cycle 2 exit, and production remain Blocked.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),

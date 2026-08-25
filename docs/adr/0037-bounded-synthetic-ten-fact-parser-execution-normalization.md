@@ -1,10 +1,12 @@
 # ADR 0037: bounded synthetic ten-fact parser execution to normalization
 
-Status: proposed; implementation and promotion are Pending from exact baseline
-`f17bacc6adc46851e182d260d59830652f1953bb`. No source successor, transition
-inventory, local result, live run, artifact, or offline review is accepted yet.
-Cycle 2b, full Cycle 2 quality, real-data admission, and production admission
-remain Blocked.
+Status: accepted and promoted only for exact source commit
+`b2c7a28c2c5720253eba275b65d3313b114c3bc4` from exact baseline
+`f17bacc6adc46851e182d260d59830652f1953bb`. The transition is exactly 44 paths
+(31 added, 13 modified); the frozen local release gate, all exact-source
+regression workflows, dedicated live execution, retained artifact, and
+independently anchored offline review passed. Cycle 2b, full Cycle 2 quality,
+real-data admission, and production admission remain Blocked.
 
 ## Context
 
@@ -22,7 +24,7 @@ exact archives and envelopes to the unchanged Cycle 2i handoff. This work
 cannot replace the externally controlled Cycle 2b authority gate or the real
 quality gate.
 
-## Proposed decision
+## Decision
 
 Add one private, disconnected
 `@research-cockpit/filing-parser-normalization-execution` package and one
@@ -54,10 +56,10 @@ failure returns one empty value-free `execution_quarantined` result with no
 fact values, raw bytes, hashes, provenance identifiers, mismatch details, or
 canary content.
 
-The sole proposed target claim is
+The sole target claim is
 `bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
-It remains Pending until one exact successor commit passes every source and
-live promotion gate below.
+It is accepted only for the exact source commit and evidence anchors recorded
+below.
 
 ## Required checks
 
@@ -103,31 +105,56 @@ The exact ordered nonclaims are:
 
 ## Evidence and promotion boundary
 
-Source promotion requires an exact transition from baseline
-`f17bacc6adc46851e182d260d59830652f1953bb`, frozen in both historical filing
-evidence verifiers with omission, extra-path, status, baseline, and merge-base
-regressions. The full local release gate and the existing Ubuntu/Windows CI,
-historical parser, custody, and PostgreSQL regression workflows must pass on
-the exact same source commit.
+The exact transition begins at
+`f17bacc6adc46851e182d260d59830652f1953bb` and ends at
+`b2c7a28c2c5720253eba275b65d3313b114c3bc4`. Both historical filing evidence
+verifiers freeze the same 44-path transition: 31 additions and 13 modifications,
+with no rename or deletion. The full local release gate passed formatting,
+lint, every guardrail, dependency and peer policy, all typechecks, 55 test
+files with 1,095 passed and 4 skipped, and all builds. The Python worker
+separately passed 6 of 6 tests without writing bytecode.
 
-Because this claim includes actual container execution, it also requires a
-dedicated Ubuntu live workflow, success-only canonical evidence bound to the
-exact commit, image, sources, cases, run, and attempt, a retained artifact, and
-an independently anchored offline review whose only success verdict is
-`offline_consistent`. Failure or cancellation retains no candidate artifact and
-cannot promote the claim. All of these gates are Pending.
+CI run `32897837955` passed in Ubuntu job `97964475832` and Windows job
+`97964475617`. Filing parser isolation run/job `32898633916` / `97966990149`,
+filing payload custody run/job `32897838012` / `97964476010`, and PostgreSQL
+run/job `32898674640` / `97967111035` passed on the same source commit as
+regression health only.
 
-No pending or future Cycle 2j result can authenticate GitHub, Docker, the host
-kernel, supplied trust anchors, signer authority, SEC source truth, or real
-filing quality. Those remain separate review or external admission duties.
+Dedicated run `32897837981`, attempt 1, passed in Ubuntu job `97964475815` and
+retained artifact `9581921300`, named
+`filing-parser-normalization-execution-evidence-v1-b2c7a28c2c5720253eba275b65d3313b114c3bc4-1`.
+The downloaded ZIP digest
+`sha256:a23c5d291970addb0e6a5369a93bf2dfd29efab1f20520e48d7644bfbf81dcee`
+matches GitHub's artifact digest. The canonical evidence digest is
+`sha256:671a67088a2630f8c397a7dab71301290271f9474ca78868bc4617aa476b2639`;
+the independently supplied exact repository, revision, run, attempt, and
+digest returned `offline_consistent` with 51 of 51 source hashes.
+
+The schema-v1 record binds fixture manifest
+`sha256:4484902fec490f6a949ad1f85621c710e7d31efd2b8d42402122c5fdf5b84d8f`
+and built image
+`sha256:fe4a350e5a9cff1a3a62bfe0c5338eca486258696c91fec68d454727e16790b5`.
+It records Python 3.12.13, Docker client/server 28.0.4, Node v24.19.0, pnpm
+11.19.0, 16 exact checks, 16 exact nonclaims, 51 source hashes, one normalized
+exact original/amendment pair, two value-free adversarial quarantines, and a
+matching exact replay. The two-container runtime count belongs to the
+successful pair; replay, tamper, and role-swap coverage uses additional fresh
+workers.
+
+The `offline_consistent` verdict cannot authenticate GitHub, artifact custody,
+Docker, the host kernel, supplied trust anchors, signer or image authority, SEC
+source truth, or real filing quality. Those remain separate review or external
+admission duties. Failure, cancellation, source-transition drift, a different
+commit, or any failed exact check would have prevented promotion.
 
 ## Consequences
 
-If promoted, Cycle 2j can establish only that two reviewed synthetic archives
-were processed by the exact bounded worker path, converted into complete signed
-ten-fact envelopes, and normalized atomically through Cycle 2i. It cannot
-establish that the synthetic extraction rules are generally correct, that a
-second independent engine agrees, or that any real filing may be admitted.
+Cycle 2j establishes only that two reviewed synthetic archives were processed
+by the exact bounded worker path, converted into complete signed ten-fact
+envelopes, and normalized atomically through Cycle 2i on the promoted source
+and evidence anchors. It cannot establish that the synthetic extraction rules
+are generally correct, that a second independent engine agrees, or that any
+real filing may be admitted.
 
 Cycle 2b remains Blocked until an externally reviewed exact 100-filing manifest,
 rights and steward approvals, chronology, authority keys, and human review all

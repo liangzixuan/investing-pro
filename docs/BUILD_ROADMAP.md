@@ -1075,35 +1075,39 @@ and the [Cycle 2i exit matrix](./CYCLE_2I_EXIT_MATRIX.md).
 
 ## Cycle 2j — bounded synthetic ten-fact parser execution to normalization
 
-Status: **proposed and Pending from exact baseline
-`f17bacc6adc46851e182d260d59830652f1953bb`. No source successor, transition
-inventory, local result, dedicated live run, artifact, or offline review has
-been accepted. Cycle 2b, full Cycle 2 quality, real-data admission, and
-production remain Blocked.**
+Status: **Pass only for exact source commit
+`b2c7a28c2c5720253eba275b65d3313b114c3bc4` from exact baseline
+`f17bacc6adc46851e182d260d59830652f1953bb`. The exact 44-path transition,
+1,095-pass local gate, all exact-source workflows, dedicated live execution,
+retained artifact, and 51-of-51 `offline_consistent` review passed. Cycle 2b,
+full Cycle 2 quality, real-data admission, and production remain Blocked.**
 
 Cycle 2j isolates the next repository-controlled execution gap without widening
 Cycle 2a's frozen two-fact v1 protocol. One source-controlled synthetic original
-archive and one amendment archive must execute in separate fresh, digest-pinned,
-network-disabled, bounded Python 3.12 workers. The host must validate one exact
-complete Cycle 2d ten-fact document from each worker, recompute each archive
-digest, sign the complete envelopes outside the workers, and delegate the exact
-archive/envelope bytes without repair or remapping to the unchanged Cycle 2i
-handoff. Success is one immutable normalized pair with aggregate execution
+archive and one amendment archive execute in separate fresh, digest-pinned,
+network-disabled, bounded Python 3.12 workers. The host validates one exact
+complete Cycle 2d ten-fact document from each worker, recomputes each archive
+digest, signs the complete envelopes outside the workers, and delegates the
+exact archive/envelope bytes without repair or remapping to the unchanged Cycle
+2i handoff. Success is one immutable normalized pair with aggregate execution
 provenance; every stage failure is one empty value-free quarantine.
 
-The sole proposed target claim is
+The sole bounded target claim is
 `bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
-Promotion requires a frozen exact successor from the baseline, the full local
-gate, the existing CI and historical regression workflows, and a dedicated
-Ubuntu live execution gate with a success-only exact-commit artifact and
-independently anchored `offline_consistent` review. Every gate is Pending.
+The transition contains 31 additions and 13 modifications with no rename or
+deletion. CI run `32897837955`, parser run `32898633916`, custody run
+`32897838012`, PostgreSQL run `32898674640`, and dedicated run/job
+`32897837981` / `97964475815` passed on the exact source commit. Artifact
+`9581921300` binds the exact commit, image, 51 source hashes, 3 cases, 16
+checks, and 16 nonclaims; the independently anchored canonical evidence digest
+returned `offline_consistent`.
 
 Cycle 2j does not establish real SEC bytes or authenticity, counsel/rights/
 steward/key authority, general XBRL/iXBRL or accounting correctness, an
 independent second engine, adjudicated ground truth, real quality thresholds,
 custody or retention operations, application/database/queue composition,
 B15/V15, full Cycle 2 exit, real-data admission, or production. Exact checks,
-nonclaims, and the pending promotion rule are in
+nonclaims, and the exact promotion boundary are in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
@@ -1122,13 +1126,14 @@ Exit gate: at least 100 representative filings and 2,000 critical assertions mee
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, nor bounded source-stage Cycle
 2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted
-source-stage Cycle 2i, nor pending Cycle 2j satisfies this exit gate. Cycle 2i
-does not establish that a parser executed or correctly derived its signed
-documents; Cycle 2j has no accepted source or live result. Real payload
-bytes and digest validation, approved corpus
-inputs, real ten-fact coverage, truly independent validation, independently adjudicated
-precision/recall, general XBRL/iXBRL and taxonomy/plugin support, correction
-lineage, production operations, and real-data admission remain pending.
+source-stage Cycle 2i, nor promoted bounded synthetic Cycle 2j satisfies this
+exit gate. Cycle 2i does not establish that a parser executed or correctly
+derived its signed documents; Cycle 2j establishes only the exact reviewed
+synthetic pair and cannot admit real filings. Real payload bytes and digest
+validation, approved corpus inputs, real ten-fact coverage, truly independent
+validation, independently adjudicated precision/recall, general XBRL/iXBRL and
+taxonomy/plugin support, correction lineage, production operations, and
+real-data admission remain pending.
 
 ## Cycle 3 — product breadth
 
