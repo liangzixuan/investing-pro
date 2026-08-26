@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import { FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL } from "@research-cockpit/filing-parser-normalization-execution";
 
+import { FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES } from "./filing-parser-cross-engine-execution-evidence";
+
 import {
   ACCEPTANCE_PHASES,
   NODE_IMAGE_INSPECTION_PROFILE,
@@ -12,6 +14,7 @@ import {
   exactCreateArguments,
   filingParserCrossEngineExecutionAcceptanceCleanupShouldReplacePhase,
   filingParserCrossEngineExecutionAcceptanceFailureDiagnostic,
+  filingParserCrossEngineExecutionEvidenceValidationPhase,
   imageIdValue,
   validateBuiltImageInspection,
   validateContainerInspection,
@@ -67,6 +70,25 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       "production_residue",
       "evidence_assembly",
       "tool_versions",
+      "evidence_validation_root_contract",
+      "evidence_validation_timestamps",
+      "evidence_validation_claim_tuples",
+      "evidence_validation_case_outcomes",
+      "evidence_validation_transition",
+      "evidence_validation_runtime",
+      "evidence_validation_source_hashes",
+      "evidence_validation_engines",
+      "evidence_validation_fixture_binding",
+      "evidence_validation_summary",
+      "evidence_validation_tools_contract",
+      "evidence_validation_tool_docker_client",
+      "evidence_validation_tool_docker_server",
+      "evidence_validation_tool_git",
+      "evidence_validation_tool_node",
+      "evidence_validation_tool_pnpm",
+      "evidence_validation_tool_python",
+      "evidence_validation_workflow",
+      "evidence_validation_canonical_freeze",
       "image_removal",
       "evidence_write",
       "cleanup",
@@ -83,6 +105,18 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       expect(diagnostic).not.toMatch(
         /sha256:|github\.com|artifact[_=:]|revision[_=:]|secret[_=:]|token[_=:]|key[_=:]/iu,
       );
+    }
+  });
+
+  it("maps every closed evidence stage to one value-free acceptance phase", () => {
+    for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES) {
+      const phase =
+        filingParserCrossEngineExecutionEvidenceValidationPhase(stage);
+      expect(phase).toBe(`evidence_validation_${stage}`);
+      expect(ACCEPTANCE_PHASES).toContain(phase);
+      expect(
+        filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(phase),
+      ).toBe(`${DIAGNOSTIC_PREFIX}${phase}\n`);
     }
   });
 
@@ -139,7 +173,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
-  it("requires the exact linear three-commit corrective chain on both ancestry views", () => {
+  it("requires the exact linear four-commit corrective chain on both ancestry views", () => {
     expect(runnerSource).toContain('["merge-base", base, revision]');
     expect(runnerSource).toContain('["rev-list", "--count", revisionRange]');
     expect(runnerSource).toContain(
@@ -154,10 +188,16 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     expect(runnerSource).toContain(
       '["rev-list", "--parents", "--max-count=1", failedCorrective]',
     );
-    expect(runnerSource).toContain('successorCount !== "3"');
-    expect(runnerSource).toContain('firstParentCount !== "3"');
     expect(runnerSource).toContain(
-      "parentLine !== `${revision} ${failedCorrective}`",
+      '["rev-list", "--parents", "--max-count=1", failedRecovery]',
+    );
+    expect(runnerSource).toContain('successorCount !== "4"');
+    expect(runnerSource).toContain('firstParentCount !== "4"');
+    expect(runnerSource).toContain(
+      "parentLine !== `${revision} ${failedRecovery}`",
+    );
+    expect(runnerSource).toContain(
+      "failedRecoveryParentLine !== `${failedRecovery} ${failedCorrective}`",
     );
     expect(runnerSource).toContain(
       "failedCorrectiveParentLine !== `${failedCorrective} ${failedPrecursor}`",
@@ -165,6 +205,20 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     expect(runnerSource).toContain(
       "failedPrecursorParentLine !== `${failedPrecursor} ${base}`",
     );
+  });
+
+  it("uses the model validator once and maps only its closed stage", () => {
+    const validation = runnerSource.indexOf(
+      "createFilingParserCrossEngineExecutionEvidenceForAcceptance(",
+    );
+    const stageMapping = runnerSource.indexOf(
+      "filingParserCrossEngineExecutionEvidenceValidationPhase(stage)",
+      validation,
+    );
+    const removal = runnerSource.indexOf('markPhase("image_removal")');
+    expect(validation).toBeGreaterThan(0);
+    expect(stageMapping).toBeGreaterThan(validation);
+    expect(removal).toBeGreaterThan(stageMapping);
   });
 
   it("derives the complete source-hash inventory from the exact transition", () => {

@@ -1120,7 +1120,12 @@ attempt 1 failed closed at image inspection and retained no artifact. Failed
 corrective revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348` is its exact
 direct child. Run `32912204603` attempt 1 completed live Docker execution and
 residue phases, then failed closed at evidence assembly and retained no
-artifact. One exact recovery child, its green gates, retained evidence, and
+artifact. Failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`
+is its exact direct child. Run `32913611954` attempt 1, job `98012515052`,
+completed live Docker execution and residue phases, then failed closed at
+evidence assembly; its offline review and upload were skipped, and it retained
+zero artifacts. All three failed runs are non-evidence. One exact recovery
+child, its green gates, retained evidence, and
 offline-review verdict remain required. Cycle 2b, full Cycle 2 quality,
 real-data admission, and production remain Blocked.**
 
@@ -1133,13 +1138,14 @@ unchanged normalization path. Any disagreement or failure returns one atomic,
 empty, value-free quarantine. The sole proposed claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-Promotion requires one frozen exact linear three-commit recovery chain from the
-baseline through both failed revisions to one recovery child; a full local
+Promotion requires one frozen exact linear four-commit recovery chain from the
+baseline through all three failed revisions to one recovery child; a full local
 gate; exact-source Ubuntu/Windows CI and required parser, custody,
 PostgreSQL, and Cycle 2j regression gates; and a separately authorized Ubuntu
 real-Docker success-only artifact. The versioned evidence and independently
 anchored `offline_consistent` review must bind the baseline, failed precursor,
-failed corrective revision, recovery revision, both image digests, both exact
+failed corrective revision, failed recovery revision, recovery revision, both
+image digests, both exact
 worker source inventories and hashes, fixtures, cases, checks, nonclaims, and
 every Cycle 2k source hash. Historical evidence, schemas, checks, nonclaims,
 source sets, artifacts, and run anchors remain immutable; regressions cannot be

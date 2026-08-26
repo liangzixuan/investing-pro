@@ -28,8 +28,9 @@ source commit `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
 Cycle 2k cross-engine execution agreement proposal Pending exact recovery from
 baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, with no canonical result or promoted
-source/evidence record;
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` to failed recovery revision
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, with no canonical result or
+promoted source/evidence record;
 synthetic data only.
 
 ## Identity
@@ -829,7 +830,8 @@ Cycle 2k proposes no canonical real filing, authority, quality, tenant,
 persistence, or production entity. From exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, through failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76`, failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, and one required exact recovery
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, failed recovery revision
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, and one required exact recovery
 child, it proposes to execute the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Per-role complete
@@ -841,9 +843,13 @@ quarantine. The sole proposed claim is
 Dedicated run `32910394736` attempt 1 failed closed at image inspection and
 retained no artifact. Run `32912204603` attempt 1 completed live Docker
 execution and every residue phase, then failed closed at evidence assembly and
-also retained no artifact. No recovery revision, passing live artifact, or
-`offline_consistent` review exists, so no Cycle 2k agreement record is canonical
-or promoted. A future promotion must bind the exact recovery chain, both pinned images and
+also retained no artifact. Run `32913611954` attempt 1, job `98012515052`, also
+completed live Docker execution and every residue phase, then failed closed at
+evidence assembly; its offline review and upload were skipped, and it retained
+zero artifacts. All three runs are non-evidence. No successful recovery
+revision, passing live artifact, or `offline_consistent` review exists, so no
+Cycle 2k agreement record is canonical or promoted. A future promotion must
+bind the exact recovery chain, both pinned images and
 both exact source inventories, pass all local/two-OS/regression/live gates, and
 retain a success-only artifact with independently anchored offline review.
 Every historical evidence record and anchor remains immutable.

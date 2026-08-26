@@ -9,6 +9,8 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVI
   "14b4ecf41806dca7759a06bebf7ef8da96374f76" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION =
   "061944f8f770e8a08b2a38d1e2fedf8b8e2de348" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION =
+  "f29e39cea40e76d500df833fd8e0e94e0c86a68c" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM =
   "bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW =
@@ -30,7 +32,7 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS =
     "atomic_cross_engine_agreement_or_single_empty_value_free_quarantine",
     "engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine",
     "swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage",
-    "success_only_exact_three_commit_recovery_transition_two_image_case_source_artifact_and_offline_review",
+    "success_only_exact_four_commit_recovery_transition_two_image_case_source_artifact_and_offline_review",
     "historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data",
   ] as const);
 
@@ -195,6 +197,7 @@ export interface FilingParserCrossEngineExecutionEvidence {
   readonly evidenceVersion: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VERSION;
   readonly failedCorrectiveRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
   readonly failedPrecursorRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
+  readonly failedRecoveryRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION;
   readonly fixtureManifestSha256: `sha256:${string}`;
   readonly notProven: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN;
   readonly repository: string;
@@ -257,6 +260,35 @@ export interface FilingParserCrossEngineExecutionEvidence {
     readonly workflowName: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW;
   };
 }
+
+/** @internal Closed value-free stages used only by the live acceptance diagnostic. */
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES =
+  Object.freeze([
+    "root_contract",
+    "timestamps",
+    "claim_tuples",
+    "case_outcomes",
+    "transition",
+    "runtime",
+    "source_hashes",
+    "engines",
+    "fixture_binding",
+    "summary",
+    "tools_contract",
+    "tool_docker_client",
+    "tool_docker_server",
+    "tool_git",
+    "tool_node",
+    "tool_pnpm",
+    "tool_python",
+    "workflow",
+    "canonical_freeze",
+  ] as const);
+export type FilingParserCrossEngineExecutionEvidenceValidationStage =
+  (typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES)[number];
+type FilingParserCrossEngineExecutionEvidenceValidationStageMarker = (
+  stage: FilingParserCrossEngineExecutionEvidenceValidationStage,
+) => void;
 
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
@@ -336,6 +368,19 @@ export function createFilingParserCrossEngineExecutionEvidence(
 ): FilingParserCrossEngineExecutionEvidence {
   try {
     return normalizeEvidence(value);
+  } catch {
+    return invalid();
+  }
+}
+
+/** @internal Uses the same model while exposing only a closed validation stage. */
+export function createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+  value: FilingParserCrossEngineExecutionEvidence,
+  markStage: FilingParserCrossEngineExecutionEvidenceValidationStageMarker,
+): FilingParserCrossEngineExecutionEvidence {
+  try {
+    const staged = normalizeEvidence(value, markStage);
+    return normalizeEvidence(staged);
   } catch {
     return invalid();
   }
@@ -441,7 +486,9 @@ export function filingParserCrossEngineExecutionRequiredSourcePaths(
 
 function normalizeEvidence(
   value: unknown,
+  markStage?: FilingParserCrossEngineExecutionEvidenceValidationStageMarker,
 ): FilingParserCrossEngineExecutionEvidence {
+  markStage?.("root_contract");
   const root = exactRecord(value, [
     "baseline",
     "caseOutcomes",
@@ -452,6 +499,7 @@ function normalizeEvidence(
     "evidenceVersion",
     "failedCorrectiveRevision",
     "failedPrecursorRevision",
+    "failedRecoveryRevision",
     "fixtureManifestSha256",
     "notProven",
     "repository",
@@ -475,18 +523,27 @@ function normalizeEvidence(
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION ||
     root.failedPrecursorRevision !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION ||
+    root.failedRecoveryRevision !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION ||
     root.schemaVersion !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION ||
     root.status !== "passed" ||
     root.synthetic !== true ||
     !REPOSITORY.test(string(root.repository)) ||
     !COMMIT.test(string(root.revision)) ||
-    !HASH.test(string(root.fixtureManifestSha256)) ||
+    !HASH.test(string(root.fixtureManifestSha256))
+  )
+    return invalid();
+
+  markStage?.("timestamps");
+  if (
     !isExactUtc(string(root.startedAt)) ||
     !isExactUtc(string(root.completedAt)) ||
     string(root.startedAt) > string(root.completedAt)
   )
     return invalid();
+
+  markStage?.("claim_tuples");
   exactStringTuple(
     root.checksPassed,
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
@@ -496,6 +553,7 @@ function normalizeEvidence(
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
   );
 
+  markStage?.("case_outcomes");
   const outcomes = array(root.caseOutcomes).map(normalizeOutcome);
   if (
     outcomes.length !== CASE_IDS.length ||
@@ -503,14 +561,18 @@ function normalizeEvidence(
   )
     return invalid();
 
+  markStage?.("transition");
   const transition = normalizeTransition(root.transition);
+  markStage?.("runtime");
   normalizeRuntime(root.runtime);
   const requiredSourcePaths =
     filingParserCrossEngineExecutionRequiredSourcePaths(transition.entries);
+  markStage?.("source_hashes");
   const sourceHashes = normalizeSourceHashes(
     root.sourceHashes,
     requiredSourcePaths,
   );
+  markStage?.("engines");
   const engines = array(root.engines).map(normalizeEngine);
   if (
     engines.length !== 2 ||
@@ -536,12 +598,14 @@ function normalizeEvidence(
     )
       return invalid();
   }
+  markStage?.("fixture_binding");
   const fixtureManifest = sourceHashes.find(
     ({ path }) =>
       path ===
       "fixtures/synthetic/filing-parser-cross-engine-execution/v1/manifest.json",
   );
   if (fixtureManifest?.sha256 !== root.fixtureManifestSha256) return invalid();
+  markStage?.("summary");
   const summary = exactRecord(root.summary, [
     "agreed",
     "quarantined",
@@ -555,6 +619,7 @@ function normalizeEvidence(
     summary.total !== 4
   )
     return invalid();
+  markStage?.("tools_contract");
   const tools = exactRecord(root.tools, [
     "dockerClient",
     "dockerServer",
@@ -563,8 +628,18 @@ function normalizeEvidence(
     "pnpm",
     "python",
   ]);
-  for (const key of Object.keys(tools))
+  for (const [key, stage] of [
+    ["dockerClient", "tool_docker_client"],
+    ["dockerServer", "tool_docker_server"],
+    ["git", "tool_git"],
+    ["node", "tool_node"],
+    ["pnpm", "tool_pnpm"],
+    ["python", "tool_python"],
+  ] as const) {
+    markStage?.(stage);
     if (!VERSION.test(string(tools[key]))) return invalid();
+  }
+  markStage?.("workflow");
   const workflow = exactRecord(root.workflow, [
     "artifactName",
     "event",
@@ -591,6 +666,7 @@ function normalizeEvidence(
   )
     return invalid();
 
+  markStage?.("canonical_freeze");
   return deepFreeze(
     JSON.parse(canonicalJson(root)) as FilingParserCrossEngineExecutionEvidence,
   );

@@ -53,6 +53,7 @@ describe("filing parser cross-engine execution evidence review", () => {
       evidenceSha256: `sha256:${"a".repeat(64)}`,
       failedCorrectiveRevision: "061944f8f770e8a08b2a38d1e2fedf8b8e2de348",
       failedPrecursorRevision: "14b4ecf41806dca7759a06bebf7ef8da96374f76",
+      failedRecoveryRevision: "f29e39cea40e76d500df833fd8e0e94e0c86a68c",
       repository: "owner/repo",
       revision: "b".repeat(40),
       runAttempt: 1,

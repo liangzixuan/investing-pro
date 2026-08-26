@@ -56,106 +56,86 @@ describe("offline cross-engine evidence verifier hardening", () => {
       expect(repositoryRelativePathIsContained(value)).toBe(false);
     expect(repositoryRelativePathIsContained("packages/x.ts")).toBe(true);
   });
-  it("requires the exact three-commit corrective chain and rejects ancestry drift", () => {
+  it("requires the exact four-commit corrective chain and rejects ancestry drift", () => {
     const baseline = "962a00f65835fc6126e4da98e0e0d5998e8d59cc";
     const failedPrecursor = "14b4ecf41806dca7759a06bebf7ef8da96374f76";
     const failedCorrective = "061944f8f770e8a08b2a38d1e2fedf8b8e2de348";
+    const failedRecovery = "f29e39cea40e76d500df833fd8e0e94e0c86a68c";
     const revision = "b".repeat(40);
+    const validArguments = [
+      baseline,
+      "4",
+      "4",
+      revision,
+      `${revision} ${failedRecovery}`,
+      `${failedRecovery} ${failedCorrective}`,
+      `${failedCorrective} ${failedPrecursor}`,
+      `${failedPrecursor} ${baseline}`,
+    ] as const;
     expect(
-      filingParserCrossEngineExecutionCorrectiveChainAllowed(
-        baseline,
-        "3",
-        "3",
-        revision,
-        `${revision} ${failedCorrective}`,
-        `${failedCorrective} ${failedPrecursor}`,
-        `${failedPrecursor} ${baseline}`,
-      ),
+      filingParserCrossEngineExecutionCorrectiveChainAllowed(...validArguments),
     ).toBe(true);
-    expect(
-      filingParserCrossEngineExecutionCorrectiveChainAllowed(
-        "a".repeat(40),
-        "3",
-        "3",
-        revision,
-        `${revision} ${failedCorrective}`,
-        `${failedCorrective} ${failedPrecursor}`,
-        `${failedPrecursor} ${baseline}`,
-      ),
-    ).toBe(false);
-    expect(
-      filingParserCrossEngineExecutionCorrectiveChainAllowed(
-        baseline,
-        "2",
-        "3",
-        revision,
-        `${revision} ${failedCorrective}`,
-        `${failedCorrective} ${failedPrecursor}`,
-        `${failedPrecursor} ${baseline}`,
-      ),
-    ).toBe(false);
-    expect(
-      filingParserCrossEngineExecutionCorrectiveChainAllowed(
-        baseline,
-        "3",
-        "2",
-        revision,
-        `${revision} ${failedCorrective}`,
-        `${failedCorrective} ${failedPrecursor}`,
-        `${failedPrecursor} ${baseline}`,
-      ),
-    ).toBe(false);
-    for (const parentLine of [
-      `${revision} ${"a".repeat(40)}`,
-      `${revision} ${"a".repeat(40)} ${failedCorrective}`,
-      `${revision} ${failedCorrective} ${"a".repeat(40)}`,
-      `${revision} ${failedCorrective} `,
-    ])
+    const mutations: Array<(values: string[]) => void> = [
+      (values) => {
+        values[0] = "a".repeat(40);
+      },
+      (values) => {
+        values[1] = "3";
+      },
+      (values) => {
+        values[2] = "3";
+      },
+      (values) => {
+        values[4] = `${revision} ${failedCorrective}`;
+      },
+      (values) => {
+        values[4] = `${revision} ${failedRecovery} ${failedCorrective}`;
+      },
+      (values) => {
+        values[5] = `${failedRecovery} ${failedPrecursor}`;
+      },
+      (values) => {
+        values[5] = `${failedRecovery} ${failedCorrective} ${failedPrecursor}`;
+      },
+      (values) => {
+        values[5] = `${failedRecovery} ${failedPrecursor} ${failedCorrective}`;
+      },
+      (values) => {
+        values[6] = `${failedCorrective} ${baseline}`;
+      },
+      (values) => {
+        values[6] = `${failedCorrective} ${failedPrecursor} ${baseline}`;
+      },
+      (values) => {
+        values[7] = `${failedPrecursor} ${"a".repeat(40)}`;
+      },
+      (values) => {
+        values[7] = `${failedPrecursor} ${baseline} ${"a".repeat(40)}`;
+      },
+      (values) => {
+        values[4] += " ";
+      },
+      (values) => {
+        values[5] += " ";
+      },
+      (values) => {
+        values[6] += " ";
+      },
+      (values) => {
+        values[7] += " ";
+      },
+    ];
+    for (const mutate of mutations) {
+      const values = [...validArguments];
+      mutate(values);
       expect(
         filingParserCrossEngineExecutionCorrectiveChainAllowed(
-          baseline,
-          "3",
-          "3",
-          revision,
-          parentLine,
-          `${failedCorrective} ${failedPrecursor}`,
-          `${failedPrecursor} ${baseline}`,
+          ...(values as Parameters<
+            typeof filingParserCrossEngineExecutionCorrectiveChainAllowed
+          >),
         ),
       ).toBe(false);
-    for (const failedCorrectiveParentLine of [
-      `${failedCorrective} ${"a".repeat(40)}`,
-      `${failedCorrective} ${failedPrecursor} ${"a".repeat(40)}`,
-      `${failedCorrective} ${"a".repeat(40)} ${failedPrecursor}`,
-      `${failedCorrective} ${failedPrecursor} `,
-    ])
-      expect(
-        filingParserCrossEngineExecutionCorrectiveChainAllowed(
-          baseline,
-          "3",
-          "3",
-          revision,
-          `${revision} ${failedCorrective}`,
-          failedCorrectiveParentLine,
-          `${failedPrecursor} ${baseline}`,
-        ),
-      ).toBe(false);
-    for (const failedPrecursorParentLine of [
-      `${failedPrecursor} ${"a".repeat(40)}`,
-      `${failedPrecursor} ${baseline} ${"a".repeat(40)}`,
-      `${failedPrecursor} ${"a".repeat(40)} ${baseline}`,
-      `${failedPrecursor} ${baseline} `,
-    ])
-      expect(
-        filingParserCrossEngineExecutionCorrectiveChainAllowed(
-          baseline,
-          "3",
-          "3",
-          revision,
-          `${revision} ${failedCorrective}`,
-          `${failedCorrective} ${failedPrecursor}`,
-          failedPrecursorParentLine,
-        ),
-      ).toBe(false);
+    }
   });
   it("rejects empty, oversized, fractional, and unsafe file sizes", () => {
     expect(filingParserCrossEngineExecutionFileSizeAllowed(1, 10)).toBe(true);

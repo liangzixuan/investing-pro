@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createFilingParserCrossEngineExecutionEvidence,
+  createFilingParserCrossEngineExecutionEvidenceForAcceptance,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
   filingParserCrossEngineExecutionExpectedTransition,
   filingParserCrossEngineExecutionRequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
@@ -46,6 +48,121 @@ describe("filing parser cross-engine execution evidence", () => {
     ).toEqual(evidence);
   });
 
+  it("exposes only the closed validation stage to live acceptance", () => {
+    const stages: string[] = [];
+    const evidence =
+      createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+        buildFilingParserCrossEngineExecutionEvidenceInput(),
+        (stage) => stages.push(stage),
+      );
+    expect(stages).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
+    );
+    expect(Object.isFrozen(evidence)).toBe(true);
+    expect(
+      Object.isFrozen(
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
+      ),
+    ).toBe(true);
+    for (const stage of stages) {
+      expect(stage).toMatch(/^[a-z_]+$/u);
+      expect(stage).not.toMatch(
+        /sha256|github|artifact|revision|secret|token|key|path/iu,
+      );
+    }
+  });
+
+  it("classifies invalid carriers without reflecting their values", () => {
+    const cases: readonly [
+      expected: string,
+      mutate: (root: Record<string, unknown>) => void,
+    ][] = [
+      ["root_contract", (root) => (root.unexpected = "secret")],
+      ["timestamps", (root) => (root.startedAt = "not-a-time")],
+      ["claim_tuples", (root) => (root.checksPassed = [])],
+      ["case_outcomes", (root) => (outcome(root, 0).factVersionCount = 19)],
+      ["transition", (root) => records(transition(root).entries).pop()],
+      ["runtime", (root) => (runtime(root).auditedContainerCount = 14)],
+      ["source_hashes", (root) => records(root.sourceHashes).pop()],
+      ["engines", (root) => (engine(root, 0).runtimeVersion = "wrong")],
+      ["fixture_binding", (root) => (root.fixtureManifestSha256 = HASH_Z)],
+      [
+        "summary",
+        (root) => ((root.summary as Record<string, unknown>).total = 3),
+      ],
+      [
+        "tools_contract",
+        (root) =>
+          ((root.tools as Record<string, unknown>).unexpected = "secret"),
+      ],
+      ["tool_docker_client", (root) => setTool(root, "dockerClient", "")],
+      ["tool_docker_server", (root) => setTool(root, "dockerServer", "")],
+      ["tool_git", (root) => setTool(root, "git", "")],
+      ["tool_node", (root) => setTool(root, "node", "")],
+      ["tool_pnpm", (root) => setTool(root, "pnpm", "")],
+      ["tool_python", (root) => setTool(root, "python", "")],
+      ["workflow", (root) => (workflow(root).artifactName = "wrong")],
+    ];
+    for (const [expected, mutate] of cases) {
+      const value = mutableEvidence();
+      mutate(value);
+      let observed = "not_started";
+      expect(() =>
+        createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+          value as never,
+          (stage) => {
+            observed = stage;
+          },
+        ),
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+      expect(observed).toBe(expected);
+    }
+  });
+
+  it("never lets the stage callback change canonical acceptance semantics", () => {
+    for (const [target, afterStage] of [
+      ["baseline", "timestamps"],
+      ["completedAt", "claim_tuples"],
+      ["checksPassed", "case_outcomes"],
+      ["caseOutcomes", "transition"],
+      ["transition", "runtime"],
+      ["runtime", "source_hashes"],
+      ["sourceHashes", "engines"],
+      ["engines", "fixture_binding"],
+      ["fixtureManifestSha256", "summary"],
+      ["summary", "tools_contract"],
+      ["tools", "workflow"],
+      ["workflow", "canonical_freeze"],
+    ] as const) {
+      const value = mutableEvidence();
+      let mutated = false;
+      expect(() =>
+        createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+          value as never,
+          (stage) => {
+            if (mutated || stage !== afterStage) return;
+            mutated = true;
+            value[target] = "mutated-after-validation";
+          },
+        ),
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+      expect(() =>
+        createFilingParserCrossEngineExecutionEvidence(value as never),
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+    }
+  });
+
+  it("maps throwing stage callbacks to the same generic evidence error", () => {
+    expect(() =>
+      createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+        buildFilingParserCrossEngineExecutionEvidenceInput(),
+        () => {
+          throw new Error("secret callback detail");
+        },
+      ),
+    ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+  });
+
   it("rejects contradictory success bindings and value-bearing quarantines", () => {
     for (const mutate of [
       (root: Record<string, unknown>) =>
@@ -87,6 +204,8 @@ describe("filing parser cross-engine execution evidence", () => {
         (root.failedPrecursorRevision = "0".repeat(40)),
       (root: Record<string, unknown>) =>
         (root.failedCorrectiveRevision = "0".repeat(40)),
+      (root: Record<string, unknown>) =>
+        (root.failedRecoveryRevision = "0".repeat(40)),
       (root: Record<string, unknown>) =>
         (workflow(root).artifactName = "wrong"),
       (root: Record<string, unknown>) =>
@@ -191,6 +310,13 @@ function runtime(root: Record<string, unknown>): Record<string, unknown> {
 }
 function workflow(root: Record<string, unknown>): Record<string, unknown> {
   return root.workflow as Record<string, unknown>;
+}
+function setTool(
+  root: Record<string, unknown>,
+  key: string,
+  value: string,
+): void {
+  (root.tools as Record<string, unknown>)[key] = value;
 }
 function transition(root: Record<string, unknown>): Record<string, unknown> {
   return root.transition as Record<string, unknown>;

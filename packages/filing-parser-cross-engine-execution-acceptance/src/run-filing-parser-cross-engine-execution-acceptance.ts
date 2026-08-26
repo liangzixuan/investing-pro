@@ -37,17 +37,19 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
-  createFilingParserCrossEngineExecutionEvidence,
+  createFilingParserCrossEngineExecutionEvidenceForAcceptance,
   filingParserCrossEngineExecutionRequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
   serializeCanonicalFilingParserCrossEngineExecutionEvidence,
   type FilingParserCrossEngineExecutionEvidenceCaseOutcome,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
   type FilingParserCrossEngineExecutionEvidenceTransitionEntry,
+  type FilingParserCrossEngineExecutionEvidenceValidationStage,
 } from "./filing-parser-cross-engine-execution-evidence";
 
 const PYTHON_BASE_INDEX_DIGEST =
@@ -108,6 +110,25 @@ export const ACCEPTANCE_PHASES = Object.freeze([
   "production_residue",
   "evidence_assembly",
   "tool_versions",
+  "evidence_validation_root_contract",
+  "evidence_validation_timestamps",
+  "evidence_validation_claim_tuples",
+  "evidence_validation_case_outcomes",
+  "evidence_validation_transition",
+  "evidence_validation_runtime",
+  "evidence_validation_source_hashes",
+  "evidence_validation_engines",
+  "evidence_validation_fixture_binding",
+  "evidence_validation_summary",
+  "evidence_validation_tools_contract",
+  "evidence_validation_tool_docker_client",
+  "evidence_validation_tool_docker_server",
+  "evidence_validation_tool_git",
+  "evidence_validation_tool_node",
+  "evidence_validation_tool_pnpm",
+  "evidence_validation_tool_python",
+  "evidence_validation_workflow",
+  "evidence_validation_canonical_freeze",
   "image_removal",
   "evidence_write",
   "cleanup",
@@ -163,6 +184,44 @@ export function filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(
       return `${prefix}evidence_assembly\n`;
     case "tool_versions":
       return `${prefix}tool_versions\n`;
+    case "evidence_validation_root_contract":
+      return `${prefix}evidence_validation_root_contract\n`;
+    case "evidence_validation_timestamps":
+      return `${prefix}evidence_validation_timestamps\n`;
+    case "evidence_validation_claim_tuples":
+      return `${prefix}evidence_validation_claim_tuples\n`;
+    case "evidence_validation_case_outcomes":
+      return `${prefix}evidence_validation_case_outcomes\n`;
+    case "evidence_validation_transition":
+      return `${prefix}evidence_validation_transition\n`;
+    case "evidence_validation_runtime":
+      return `${prefix}evidence_validation_runtime\n`;
+    case "evidence_validation_source_hashes":
+      return `${prefix}evidence_validation_source_hashes\n`;
+    case "evidence_validation_engines":
+      return `${prefix}evidence_validation_engines\n`;
+    case "evidence_validation_fixture_binding":
+      return `${prefix}evidence_validation_fixture_binding\n`;
+    case "evidence_validation_summary":
+      return `${prefix}evidence_validation_summary\n`;
+    case "evidence_validation_tools_contract":
+      return `${prefix}evidence_validation_tools_contract\n`;
+    case "evidence_validation_tool_docker_client":
+      return `${prefix}evidence_validation_tool_docker_client\n`;
+    case "evidence_validation_tool_docker_server":
+      return `${prefix}evidence_validation_tool_docker_server\n`;
+    case "evidence_validation_tool_git":
+      return `${prefix}evidence_validation_tool_git\n`;
+    case "evidence_validation_tool_node":
+      return `${prefix}evidence_validation_tool_node\n`;
+    case "evidence_validation_tool_pnpm":
+      return `${prefix}evidence_validation_tool_pnpm\n`;
+    case "evidence_validation_tool_python":
+      return `${prefix}evidence_validation_tool_python\n`;
+    case "evidence_validation_workflow":
+      return `${prefix}evidence_validation_workflow\n`;
+    case "evidence_validation_canonical_freeze":
+      return `${prefix}evidence_validation_canonical_freeze\n`;
     case "image_removal":
       return `${prefix}image_removal\n`;
     case "evidence_write":
@@ -171,6 +230,51 @@ export function filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(
       return `${prefix}cleanup\n`;
     default:
       return `${prefix}internal\n`;
+  }
+}
+
+export function filingParserCrossEngineExecutionEvidenceValidationPhase(
+  stage: FilingParserCrossEngineExecutionEvidenceValidationStage,
+): AcceptancePhase {
+  switch (stage) {
+    case "root_contract":
+      return "evidence_validation_root_contract";
+    case "timestamps":
+      return "evidence_validation_timestamps";
+    case "claim_tuples":
+      return "evidence_validation_claim_tuples";
+    case "case_outcomes":
+      return "evidence_validation_case_outcomes";
+    case "transition":
+      return "evidence_validation_transition";
+    case "runtime":
+      return "evidence_validation_runtime";
+    case "source_hashes":
+      return "evidence_validation_source_hashes";
+    case "engines":
+      return "evidence_validation_engines";
+    case "fixture_binding":
+      return "evidence_validation_fixture_binding";
+    case "summary":
+      return "evidence_validation_summary";
+    case "tools_contract":
+      return "evidence_validation_tools_contract";
+    case "tool_docker_client":
+      return "evidence_validation_tool_docker_client";
+    case "tool_docker_server":
+      return "evidence_validation_tool_docker_server";
+    case "tool_git":
+      return "evidence_validation_tool_git";
+    case "tool_node":
+      return "evidence_validation_tool_node";
+    case "tool_pnpm":
+      return "evidence_validation_tool_pnpm";
+    case "tool_python":
+      return "evidence_validation_tool_python";
+    case "workflow":
+      return "evidence_validation_workflow";
+    case "canonical_freeze":
+      return "evidence_validation_canonical_freeze";
   }
 }
 
@@ -488,100 +592,111 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     const tools = await toolVersions();
     const completedAt = new Date().toISOString();
     markPhase("evidence_assembly");
-    const evidence = createFilingParserCrossEngineExecutionEvidence({
-      baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
-      caseOutcomes: outcomes,
-      checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
-      claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
-      completedAt,
-      evidenceVersion: 1,
-      failedCorrectiveRevision:
-        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
-      failedPrecursorRevision:
-        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
-      fixtureManifestSha256,
-      engines: Object.freeze([
-        Object.freeze({
-          architecture: "amd64" as const,
-          baseIndexDigest: pythonMetadata.indexDigest,
-          basePlatformManifestDigest: pythonMetadata.platformManifestDigest,
-          builtImageId: pythonImageId,
-          engineId: PYTHON_ENGINE_ID,
-          implementationSha256: pythonImplementationSha256,
-          implementationSourceHashes: pythonSources,
-          operatingSystem: "linux" as const,
-          role: "python-primary" as const,
-          runtimeVersion: "Python 3.12.13",
-        }),
-        Object.freeze({
-          architecture: "amd64" as const,
-          baseIndexDigest: nodeMetadata.indexDigest,
-          basePlatformManifestDigest: nodeMetadata.platformManifestDigest,
-          builtImageId: nodeImageId,
-          engineId: NODE_ENGINE_ID,
-          implementationSha256: nodeImplementationSha256,
-          implementationSourceHashes: nodeSources,
-          operatingSystem: "linux" as const,
-          role: "node-secondary" as const,
-          runtimeVersion: "Node v24.19.0",
-        }),
-      ]),
-      notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
-      repository: environment.repository,
-      revision,
-      runtime: Object.freeze({
-        capabilitiesDropped: Object.freeze(["ALL"] as const),
-        containerControlMilliseconds: 5_000 as const,
-        auditedContainerCount: 15,
-        containerUser: "65532:65532" as const,
-        cpuCount: 0.5 as const,
-        engineCount: 2 as const,
-        inputMount: "/input/filing.zip:ro" as const,
-        memoryBytes: 134_217_728 as const,
-        networkMode: "none" as const,
-        noNewPrivileges: true as const,
-        noPublishedPorts: true as const,
-        openFiles: 64 as const,
-        pids: 32 as const,
-        processTerminationMilliseconds: 250 as const,
-        productionContainerCount: 9,
-        readOnlyRootFilesystem: true as const,
-        signerMilliseconds: 5_000 as const,
-        stderrLimitBytes: 4_096 as const,
-        stdoutLimitBytes: 262_144 as const,
-        successfulPairContainerCount: 4 as const,
-        temporaryFilesystem:
-          "/tmp:rw,noexec,nosuid,nodev,size=8388608" as const,
-        wallClockMilliseconds: 5_000 as const,
-        zeroResidue: true as const,
-      }),
-      schemaVersion:
-        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
-      sourceHashes,
-      startedAt,
-      status: "passed" as const,
-      summary: Object.freeze({
-        agreed: 1 as const,
-        quarantined: 3 as const,
-        replayMatched: true as const,
-        total: 4 as const,
-      }),
-      synthetic: true as const,
-      tools,
-      workflow: Object.freeze({
-        artifactName: `filing-parser-cross-engine-execution-evidence-v1-${revision}-${environment.runAttempt}`,
-        event: environment.event,
-        job: "acceptance" as const,
-        ref: environment.ref,
-        runAttempt: environment.runAttempt,
-        runId: environment.runId,
-        workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
-      }),
-      transition: Object.freeze({
-        entries: transition,
-        pathCount: transition.length,
-      }),
-    });
+    const evidence =
+      createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+        {
+          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
+          caseOutcomes: outcomes,
+          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
+          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
+          completedAt,
+          evidenceVersion: 1,
+          failedCorrectiveRevision:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
+          failedPrecursorRevision:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
+          failedRecoveryRevision:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
+          fixtureManifestSha256,
+          engines: Object.freeze([
+            Object.freeze({
+              architecture: "amd64" as const,
+              baseIndexDigest: pythonMetadata.indexDigest,
+              basePlatformManifestDigest: pythonMetadata.platformManifestDigest,
+              builtImageId: pythonImageId,
+              engineId: PYTHON_ENGINE_ID,
+              implementationSha256: pythonImplementationSha256,
+              implementationSourceHashes: pythonSources,
+              operatingSystem: "linux" as const,
+              role: "python-primary" as const,
+              runtimeVersion: "Python 3.12.13",
+            }),
+            Object.freeze({
+              architecture: "amd64" as const,
+              baseIndexDigest: nodeMetadata.indexDigest,
+              basePlatformManifestDigest: nodeMetadata.platformManifestDigest,
+              builtImageId: nodeImageId,
+              engineId: NODE_ENGINE_ID,
+              implementationSha256: nodeImplementationSha256,
+              implementationSourceHashes: nodeSources,
+              operatingSystem: "linux" as const,
+              role: "node-secondary" as const,
+              runtimeVersion: "Node v24.19.0",
+            }),
+          ]),
+          notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
+          repository: environment.repository,
+          revision,
+          runtime: Object.freeze({
+            capabilitiesDropped: Object.freeze(["ALL"] as const),
+            containerControlMilliseconds: 5_000 as const,
+            auditedContainerCount: 15,
+            containerUser: "65532:65532" as const,
+            cpuCount: 0.5 as const,
+            engineCount: 2 as const,
+            inputMount: "/input/filing.zip:ro" as const,
+            memoryBytes: 134_217_728 as const,
+            networkMode: "none" as const,
+            noNewPrivileges: true as const,
+            noPublishedPorts: true as const,
+            openFiles: 64 as const,
+            pids: 32 as const,
+            processTerminationMilliseconds: 250 as const,
+            productionContainerCount: 9,
+            readOnlyRootFilesystem: true as const,
+            signerMilliseconds: 5_000 as const,
+            stderrLimitBytes: 4_096 as const,
+            stdoutLimitBytes: 262_144 as const,
+            successfulPairContainerCount: 4 as const,
+            temporaryFilesystem:
+              "/tmp:rw,noexec,nosuid,nodev,size=8388608" as const,
+            wallClockMilliseconds: 5_000 as const,
+            zeroResidue: true as const,
+          }),
+          schemaVersion:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
+          sourceHashes,
+          startedAt,
+          status: "passed" as const,
+          summary: Object.freeze({
+            agreed: 1 as const,
+            quarantined: 3 as const,
+            replayMatched: true as const,
+            total: 4 as const,
+          }),
+          synthetic: true as const,
+          tools,
+          workflow: Object.freeze({
+            artifactName: `filing-parser-cross-engine-execution-evidence-v1-${revision}-${environment.runAttempt}`,
+            event: environment.event,
+            job: "acceptance" as const,
+            ref: environment.ref,
+            runAttempt: environment.runAttempt,
+            runId: environment.runId,
+            workflowName:
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
+          }),
+          transition: Object.freeze({
+            entries: transition,
+            pathCount: transition.length,
+          }),
+        },
+        (stage) => {
+          markPhase(
+            filingParserCrossEngineExecutionEvidenceValidationPhase(stage),
+          );
+        },
+      );
     markPhase("image_removal");
     await removeImage(pythonImageId);
     pythonImageId = null;
@@ -728,6 +843,8 @@ async function exactCorrectiveChainTransition(
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   const failedCorrective =
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
+  const failedRecovery =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
   );
@@ -772,11 +889,21 @@ async function exactCorrectiveChainTransition(
       )
     ).stdout,
   );
+  const failedRecoveryParentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", failedRecovery],
+        5_000,
+      )
+    ).stdout,
+  );
   if (
     mergeBase !== base ||
-    successorCount !== "3" ||
-    firstParentCount !== "3" ||
-    parentLine !== `${revision} ${failedCorrective}` ||
+    successorCount !== "4" ||
+    firstParentCount !== "4" ||
+    parentLine !== `${revision} ${failedRecovery}` ||
+    failedRecoveryParentLine !== `${failedRecovery} ${failedCorrective}` ||
     failedCorrectiveParentLine !== `${failedCorrective} ${failedPrecursor}` ||
     failedPrecursorParentLine !== `${failedPrecursor} ${base}`
   )

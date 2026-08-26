@@ -433,7 +433,8 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 Cycle 2k is a proposal-only successor and is Pending exact recovery from
 baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`. It proposes to execute the same
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` to failed recovery revision
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c`. It proposes to execute the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Each fixed role's live
 canonical stdout document and both engines' complete normalization records must
@@ -444,7 +445,10 @@ value-free quarantine. The sole proposed claim is
 Dedicated run `32910394736` attempt 1 failed closed at image inspection and
 retained no artifact. Run `32912204603` attempt 1 completed live Docker
 execution and every residue phase, then failed closed at evidence assembly and
-also retained no artifact. One exact recovery child and its green local, CI,
+also retained no artifact. Run `32913611954` attempt 1, job `98012515052`, also
+completed live Docker execution and every residue phase, then failed closed at
+evidence assembly; its offline review and upload were skipped, and it retained
+zero artifacts. All three runs are non-evidence. One exact recovery child and its green local, CI,
 regression, live-evidence, and offline-review gates remain required. Distinct language, source,
 image, and process identities cannot establish true organizational, operator,
 key, host, or failure-domain independence. The proposal also cannot establish
@@ -1121,7 +1125,9 @@ boundary is in
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
 Cycle 2k's successor target remains only a Pending exact recovery child of
-failed corrective revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, itself
+failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, itself
+an exact single-parent direct child of failed corrective revision
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, itself
 an exact single-parent direct child of failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76`, itself an exact single-parent
 direct child of baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, for the sole claim
