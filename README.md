@@ -495,6 +495,32 @@ quality composition is deferred, and real quality, real data, Cycle 2b
 authority, and production remain Blocked. See [ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./docs/CYCLE_2L_EXIT_MATRIX.md).
 
+Cycle 2m is **Pending source implementation** from exact baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Its sole target claim is
+`bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
+The public configuration exposes only sealed engine descriptors. An internal
+ephemeral Ed25519 signer and package-owned audited Docker runners must perform
+exactly four fresh create/start/attach/remove lifecycles per invocation, leave
+zero container residue, and bind every lifecycle receipt with the Cycle 2l
+agreement, normalization record, and key context into a distinct invocation
+binding. Two invocations over the same inputs must normalize identically while
+producing eight unique container-ID digests and distinct lifecycle and
+invocation hashes. Any configuration, lifecycle, receipt, binding, agreement,
+or cleanup failure must return one atomic empty value-free quarantine.
+Promotion requires one exact single-parent source child of the baseline, full
+local and exact-source CI, a success-only retained v3 artifact, and independent
+offline review. The source SHA, run/job, artifact, digests, and offline verdict
+remain Pending. Cycle 2l v2 and Cycle 2k v1 evidence remain immutable history.
+Docker daemon/host/kernel/container-ID authenticity, image supply-chain
+attestation, semantic absence of nonce/cache behavior inside workers, external
+signer identity/KMS, quality composition, real parser quality, Cycle 2b
+authority, 100 real filings/2,000 assertions, B15/V15, real data, and production
+remain nonclaims or Blocked. Quality composition is deferred because lifecycle
+freshness must be established before metrics can consume execution output;
+Cycle 2b cannot be manufactured from synthetic metadata, keys, or approvals.
+See [ADR 0040](./docs/adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
+and the [Cycle 2m exit matrix](./docs/CYCLE_2M_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -972,6 +998,17 @@ blocked.
   It cannot prove
   injected boundary or receipt authenticity, fresh execution, independent real
   quality, real data, Cycle 2b authority, or production.
+- Cycle 2m is Pending source implementation from exact baseline
+  `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It targets a sealed
+  source-owned direct-Docker boundary with an internal ephemeral signer, exactly
+  four fresh zero-residue container lifecycles per invocation, lifecycle and
+  invocation binding, and repeat-run normalization agreement with eight unique
+  container-ID digests. Promotion requires an exact single-parent child, full
+  local/two-OS CI, a success-only v3 artifact, and independent offline review;
+  all live anchors remain Pending. Cycle 2l v2 and Cycle 2k v1 history remain
+  immutable. Docker/host authenticity, image attestation, worker-internal
+  nonce/cache semantics, external signer/KMS identity, quality, Cycle 2b, real
+  data, B15/V15, and production remain nonclaims or Blocked.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -1040,4 +1077,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md),
 [Cycle 2l exit matrix](./docs/CYCLE_2L_EXIT_MATRIX.md),
 [ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md),
+[Cycle 2m exit matrix](./docs/CYCLE_2M_EXIT_MATRIX.md),
+[ADR 0040](./docs/adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md),
 and [architecture decisions](./docs/adr/).

@@ -1,29 +1,44 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN,
+} from "@research-cockpit/filing-parser-cross-engine-execution";
+
+import {
   createFilingParserCrossEngineExecutionEvidence,
   createFilingParserCrossEngineExecutionEvidenceForAcceptance,
   createFilingParserCrossEngineExecutionEvidenceV2,
   createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance,
+  createFilingParserCrossEngineExecutionEvidenceV3,
+  createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
   filingParserCrossEngineExecutionExpectedTransition,
   filingParserCrossEngineExecutionRequiredSourcePaths,
   filingParserCrossEngineExecutionV2RequiredSourcePaths,
+  filingParserCrossEngineExecutionV3RequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
   parseCanonicalFilingParserCrossEngineExecutionEvidence,
   parseCanonicalFilingParserCrossEngineExecutionEvidenceV2,
+  parseCanonicalFilingParserCrossEngineExecutionEvidenceV3,
   serializeCanonicalFilingParserCrossEngineExecutionEvidence,
   serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3,
 } from "./filing-parser-cross-engine-execution-evidence";
 import {
   buildFilingParserCrossEngineExecutionEvidenceInput,
   buildFilingParserCrossEngineExecutionEvidenceV2Input,
+  buildFilingParserCrossEngineExecutionEvidenceV3Input,
 } from "./test-filing-parser-cross-engine-execution-evidence-builder";
 
 const HASH_Z = `sha256:${"0".repeat(64)}`;
@@ -523,6 +538,212 @@ describe("filing parser cross-engine execution evidence v2", () => {
   });
 });
 
+describe("filing parser cross-engine execution evidence v3", () => {
+  it("round-trips one canonical line and preserves both historical protocols", () => {
+    const evidence = createFilingParserCrossEngineExecutionEvidenceV3(
+      buildFilingParserCrossEngineExecutionEvidenceV3Input(),
+    );
+    const serialized =
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence);
+    expect(serialized.endsWith("\n")).toBe(true);
+    expect(serialized.slice(0, -1)).not.toContain("\n");
+    expect(
+      parseCanonicalFilingParserCrossEngineExecutionEvidenceV3(
+        new TextEncoder().encode(serialized),
+      ),
+    ).toEqual(evidence);
+    expect(evidence.schemaVersion).toBe("3.0.0");
+    expect(evidence.evidenceVersion).toBe(3);
+    expect(evidence.historicalV1).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+    );
+    expect(evidence.historicalV2).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+    );
+    expect(evidence.checksPassed).toHaveLength(16);
+    expect(evidence.notProven).toHaveLength(16);
+  });
+
+  it("uses binary source ordering and binds the v3 fixture pair", () => {
+    const paths = filingParserCrossEngineExecutionV3RequiredSourcePaths([
+      { path: "README.md", status: "M" },
+      { path: "packages/example.ts", status: "M" },
+    ]);
+    expect(paths).toEqual(
+      [...paths].sort((left, right) =>
+        left < right ? -1 : left > right ? 1 : 0,
+      ),
+    );
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        "fixtures/synthetic/filing-parser-cross-engine-execution/v3/cases.json",
+        "fixtures/synthetic/filing-parser-cross-engine-execution/v3/manifest.json",
+      ]),
+    );
+  });
+
+  it("validates two stable-normalization invocations and five value-free quarantines", () => {
+    const evidence = createFilingParserCrossEngineExecutionEvidenceV3(
+      buildFilingParserCrossEngineExecutionEvidenceV3Input(),
+    );
+    expect(evidence.caseOutcomes.map(({ caseId }) => caseId)).toEqual([
+      "same-input-direct-docker-distinct-lifecycle-invocations",
+      "unknown-python-image",
+      "pre-aborted-signal",
+      "original-archive-tamper",
+      "original-amendment-role-swap",
+      "identical-archives",
+    ]);
+    const success = evidence.caseOutcomes[0];
+    expect(success?.invocations).toHaveLength(2);
+    expect(success?.invocations?.[0]?.normalizationSha256).toBe(
+      success?.invocations?.[1]?.normalizationSha256,
+    );
+    expect(success?.invocations?.[0]?.invocationBindingSha256).not.toBe(
+      success?.invocations?.[1]?.invocationBindingSha256,
+    );
+    expect(
+      new Set(
+        success?.invocations?.flatMap(({ lifecycleReceipts }) =>
+          lifecycleReceipts.map(({ containerIdSha256 }) => containerIdSha256),
+        ),
+      ).size,
+    ).toBe(8);
+    for (const outcome of evidence.caseOutcomes.slice(1)) {
+      expect(outcome.observedStatus).toBe("quarantined");
+      expect(outcome.invocations).toBeNull();
+      for (const value of Object.values(outcome))
+        if (
+          value !== outcome.caseId &&
+          value !== "quarantined" &&
+          value !== false
+        )
+          expect(value).toBeNull();
+    }
+  });
+
+  it("exposes only the frozen v3 stages, checks, and nonclaims", () => {
+    const stages: string[] = [];
+    createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance(
+      buildFilingParserCrossEngineExecutionEvidenceV3Input(),
+      (stage) => stages.push(stage),
+    );
+    expect(stages).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES,
+    );
+    expect(
+      Object.isFrozen(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS),
+    ).toBe(true);
+    expect(
+      Object.isFrozen(
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+      ),
+    ).toBe(true);
+    expect(FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
+    );
+    expect(FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+    );
+  });
+
+  it("rejects every lifecycle and outer-invocation binding mutation", () => {
+    for (const [mutationIndex, mutate] of [
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).archiveSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).containerIdSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).documentRole = "amendment"),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).documentSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).engineId = "wrong-engine"),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).imageSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).implementationSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).keyId = "wrong-key"),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).lifecycleBindingSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).publicKeySpkiSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).role = "node-secondary"),
+      (root: Record<string, unknown>) =>
+        (receiptV3(root, 0, 0).zeroResidue = false),
+      (root: Record<string, unknown>) =>
+        (invocationV3(root, 0).agreementSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (invocationV3(root, 0).invocationBindingSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (invocationV3(root, 0).normalizationSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (invocationV3(root, 0).publicKeySpkiSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (records(
+          invocationV3(root, 0).agreementEngines,
+        )[0]!.executionBindingSha256 = HASH_Z),
+    ].entries()) {
+      const value = mutableEvidenceV3();
+      mutate(value);
+      expect(
+        () => createFilingParserCrossEngineExecutionEvidenceV3(value as never),
+        `mutation ${mutationIndex}`,
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+    }
+  });
+
+  it("rejects topology, history, identity, ordering, summary, and noncanonical mutations", () => {
+    for (const mutate of [
+      (root: Record<string, unknown>) => (root.baseline = "0".repeat(40)),
+      (root: Record<string, unknown>) =>
+        ((root.historicalV1 as Record<string, unknown>).artifactId = "1"),
+      (root: Record<string, unknown>) =>
+        ((root.historicalV2 as Record<string, unknown>).artifactId = "1"),
+      (root: Record<string, unknown>) =>
+        (root.checksPassed = [
+          ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
+        ].reverse()),
+      (root: Record<string, unknown>) =>
+        (root.notProven = [
+          ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+        ].slice(1)),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 1).originalArchiveSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 1).caseId = "pre-aborted-signal"),
+      (root: Record<string, unknown>) =>
+        (runtime(root).successfulContainerCount = 7),
+      (root: Record<string, unknown>) =>
+        (workflow(root).artifactName = "wrong"),
+      (root: Record<string, unknown>) =>
+        ((root.summary as Record<string, unknown>).normalizationStable = false),
+    ]) {
+      const value = mutableEvidenceV3();
+      mutate(value);
+      expect(() =>
+        createFilingParserCrossEngineExecutionEvidenceV3(value as never),
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+    }
+    const canonical =
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(
+        buildFilingParserCrossEngineExecutionEvidenceV3Input(),
+      );
+    for (const text of [
+      canonical.slice(0, -1),
+      ` ${canonical}`,
+      canonical.replace("\n", "\n\n"),
+    ])
+      expect(() =>
+        parseCanonicalFilingParserCrossEngineExecutionEvidenceV3(
+          new TextEncoder().encode(text),
+        ),
+      ).toThrow();
+  });
+});
+
 function mutableEvidence(): Record<string, unknown> {
   return structuredClone(
     buildFilingParserCrossEngineExecutionEvidenceInput(),
@@ -533,6 +754,11 @@ function mutableEvidenceV2(): Record<string, unknown> {
     buildFilingParserCrossEngineExecutionEvidenceV2Input(),
   ) as unknown as Record<string, unknown>;
 }
+function mutableEvidenceV3(): Record<string, unknown> {
+  return structuredClone(
+    buildFilingParserCrossEngineExecutionEvidenceV3Input(),
+  ) as unknown as Record<string, unknown>;
+}
 function records(value: unknown): Record<string, unknown>[] {
   return value as Record<string, unknown>[];
 }
@@ -541,6 +767,24 @@ function outcome(
   index: number,
 ): Record<string, unknown> {
   return records(root.caseOutcomes)[index] as Record<string, unknown>;
+}
+function invocationV3(
+  root: Record<string, unknown>,
+  index: number,
+): Record<string, unknown> {
+  return records(outcome(root, 0).invocations)[index] as Record<
+    string,
+    unknown
+  >;
+}
+function receiptV3(
+  root: Record<string, unknown>,
+  invocationIndex: number,
+  receiptIndex: number,
+): Record<string, unknown> {
+  return records(invocationV3(root, invocationIndex).lifecycleReceipts)[
+    receiptIndex
+  ] as Record<string, unknown>;
 }
 function engine(
   root: Record<string, unknown>,

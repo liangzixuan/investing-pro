@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2l threat model
+# Sprint 0 through Pending Cycle 2m threat model
 
 ## Current trust boundaries
 
@@ -509,6 +509,36 @@ Quality composition is deferred, and real-data, Cycle 2b authority, full
 quality, and production gates remain Blocked. See
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
+
+Cycle 2m is Pending source implementation from exact baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It removes injected child
+factories, runners, and signers from the public configuration: callers may
+supply only sealed engine descriptors. The package must own audited direct-
+Docker runners and an internal ephemeral Ed25519 signer. Each invocation must
+create, start, attach to, and remove exactly four fresh containers, verify zero
+residue, and bind every lifecycle receipt with the Cycle 2l agreement, complete
+normalization record, and key context into one distinct invocation binding.
+Two invocations over the same inputs must normalize identically but yield eight
+unique container-ID digests and distinct lifecycle and invocation hashes. Any
+descriptor, Docker operation, receipt, binding, agreement, uniqueness, or
+cleanup failure returns one atomic empty value-free quarantine.
+
+The sole target claim is
+`bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
+Promotion requires one exact single-parent child of the baseline, full local
+and exact-source CI, a success-only retained canonical v3 artifact, digest
+inspection, and independently anchored offline review. All source and live
+anchors remain Pending. Cycle 2l v2 and Cycle 2k v1 evidence remain immutable.
+This boundary does not authenticate the Docker daemon, host, kernel, or
+container IDs; attest the worker-image supply chain; semantically prove the
+absence of nonce/cache behavior inside workers; establish an external signer,
+KMS, or HSM identity; prove real parser quality; establish Cycle 2b authority;
+cover 100 real filings or 2,000 adjudicated assertions; create B15/V15; admit
+real data; or authorize production. Quality composition is deferred until the
+fresh lifecycle boundary is proven. Cycle 2b cannot be created from synthetic
+metadata, authority keys, approvals, clocks, or human-review assertions. See
+[ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
+and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -1196,6 +1226,16 @@ Exact gates and nonclaims are in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
+Cycle 2m's target is only
+`bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`
+from baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It is Pending until one
+exact single-parent child passes the full local, two-OS CI, success-only v3
+artifact, digest-inspection, and independent offline-review gates. It preserves
+Cycle 2l v2 and Cycle 2k v1 history and does not widen any external-authority,
+real-quality, real-data, or production boundary. Exact gates and nonclaims are
+in [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
+and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1210,7 +1250,8 @@ and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
-   Superseded Cycle 2k and promoted Cycle 2l cross-engine agreement remain
+   Superseded Cycle 2k, promoted Cycle 2l, and Pending Cycle 2m cross-engine
+   lifecycle agreement remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

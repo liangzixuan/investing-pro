@@ -112,4 +112,46 @@ describe("filing parser cross-engine execution evidence review", () => {
       `${JSON.stringify(review)}\n`,
     );
   });
+  it("emits the v3 review with the immutable v1 and v2 anchors", () => {
+    const review = {
+      artifactName: "artifact-v3",
+      baseline: "1cb7d3ce024cbd29665af7ec4e010da0c380b726",
+      evidenceSha256: `sha256:${"a".repeat(64)}`,
+      evidenceVersion: 3,
+      historicalV1: {
+        artifactId: "9588542275",
+        claimStatus: "superseded",
+        evidenceSha256:
+          "sha256:aa45aaed5d28898fd0ea9b563792c61f5d4b908a8e2a8a4602bcb96bb9d2c965",
+        evidenceVersion: 1,
+        jobId: "98022742591",
+        reason:
+          "cross_input_child_receipt_replay_and_common_mode_lineage_reciprocity_gap",
+        runId: "32917020041",
+        sourceRevision: "54908db1ded8193ac4ade7a3d6f38505c6b4b8e5",
+      },
+      historicalV2: {
+        artifactId: "9623531283",
+        baseline: "b9b7dd19996f0c5bb1e073ab5522c42e06dee397",
+        claimStatus: "historical_pass",
+        evidenceSha256:
+          "sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8",
+        evidenceVersion: 2,
+        failedPrecursorRevision: "67af24176df3c17fd6d54498095888c9a43ebe1f",
+        jobId: "98325467722",
+        runId: "33013464847",
+        sourceRevision: "2e3a7e33a76d19b993375958aff671707a81ef05",
+      },
+      repository: "owner/repo",
+      revision: "b".repeat(40),
+      runAttempt: 1,
+      runId: "123",
+      sourceCount: 80,
+      transitionPathCount: 14,
+      verdict: "offline_consistent",
+    } as const;
+    expect(filingParserCrossEngineExecutionEvidenceReviewStdout(review)).toBe(
+      `${JSON.stringify(review)}\n`,
+    );
+  });
 });

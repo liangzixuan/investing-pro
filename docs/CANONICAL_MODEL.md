@@ -33,6 +33,9 @@ Pass only for exact source commit `2e3a7e33a76d19b993375958aff671707a81ef05`,
 the corrective child of failed precursor
 `67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
 `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`;
+Cycle 2m source-owned direct-Docker lifecycle binding Pending source
+implementation from exact baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`;
 synthetic data only.
 
 ## Identity
@@ -927,6 +930,48 @@ authority, B15/V15, full Cycle 2 exit, real-data admission, and production
 remain Blocked. See
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
+
+## Pending Cycle 2m source-owned Docker lifecycle agreement
+
+Cycle 2m adds no canonical real filing, authority, quality, tenant,
+persistence, or production entity. Public configuration contains only sealed
+engine descriptors. An internal ephemeral Ed25519 signer and package-owned
+audited direct-Docker runners must perform exactly four fresh
+create/start/attach/remove lifecycles per invocation and prove removal with zero
+container residue.
+
+Each independently recomputable lifecycle receipt must bind archive digest,
+document role and digest, container-ID digest, engine id, role, image and
+implementation digests, key id and SPKI digest, and `zeroResidue`. The internal
+runner separately validates exact create/start `--attach`/`rm --force`/residue
+order plus exit and output snapshots; no hidden operation transcript is part of
+the public receipt preimage. The four receipts, Cycle 2l agreement, complete
+normalization record, and key context bind into one distinct invocation hash.
+Two invocations over the same
+owned synthetic inputs must produce byte-identical normalization while yielding
+eight unique container-ID digests and distinct lifecycle and invocation hashes.
+Any malformed configuration, Docker operation failure, receipt mismatch,
+agreement mismatch, reuse, or cleanup failure returns one atomic empty
+value-free quarantine.
+
+The sole target claim is
+`bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
+It remains Pending until one exact single-parent child of baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726` passes full local and exact-source
+CI, retains a success-only canonical v3 artifact, and returns an independently
+anchored offline-consistent review. The source SHA, runs/jobs, artifact,
+digests, and offline verdict remain Pending. Cycle 2l v2 and Cycle 2k v1
+evidence and their source history remain immutable.
+
+Docker daemon/host/kernel/container-ID authenticity, worker-image supply-chain
+attestation, semantic absence of nonce/cache behavior inside workers, external
+signer identity/KMS/HSM custody, real parser quality, Cycle 2b authority, 100
+real filings/2,000 assertions, B15/V15, real-data admission, and production are
+not established. Quality composition is deferred until this lifecycle boundary
+is proven. Synthetic manifests, keys, approvals, or clocks cannot establish
+Cycle 2b's externally reviewed authority. See
+[ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
+and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

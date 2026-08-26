@@ -433,6 +433,263 @@ export interface FilingParserCrossEngineExecutionEvidenceV2 {
   readonly workflow: FilingParserCrossEngineExecutionEvidence["workflow"];
 }
 
+/**
+ * Cycle 2m is an additive direct-execution evidence protocol. Historical v1
+ * and v2 constants, parsers, formulas, and artifacts remain independently
+ * reviewable; live acceptance writes only this closed v3 contract.
+ */
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION =
+  "3.0.0" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VERSION =
+  3 as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE =
+  "1cb7d3ce024cbd29665af7ec4e010da0c380b726" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM =
+  "bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW =
+  "Filing parser cross-engine execution acceptance" as const;
+
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS =
+  Object.freeze([
+    "exact_source_owned_direct_docker_python_and_node_engine_configuration",
+    "no_caller_injected_boundary_runner_signer_key_factory_or_execution_callback",
+    "intrinsic_closed_descriptor_and_digest_configuration_snapshot",
+    "internally_generated_ephemeral_ed25519_signer_and_public_key_binding",
+    "fresh_unique_container_create_start_attach_remove_and_zero_residue_per_engine_role_archive",
+    "exact_four_container_original_amendment_python_node_lifecycle_partition",
+    "package_owned_bounded_shell_false_docker_process_execution_and_output_snapshots",
+    "current_archive_document_handoff_execution_fact_and_reciprocal_lineage_validation",
+    "byte_exact_cross_engine_normalization_agreement_after_complete_child_validation",
+    "lifecycle_receipt_container_identity_role_image_and_archive_binding",
+    "outer_invocation_binding_over_agreement_normalization_key_and_lifecycle_receipts",
+    "same_input_normalization_stability_with_distinct_lifecycle_and_invocation_bindings",
+    "atomic_direct_agreement_or_single_empty_value_free_quarantine",
+    "abort_timeout_process_signer_output_cleanup_residue_and_concurrency_failure_coverage",
+    "success_only_exact_source_v3_workflow_artifact_and_offline_review",
+    "v1_v2_evidence_immutability_and_no_quality_real_data_or_production_widening",
+  ] as const);
+
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN =
+  Object.freeze([
+    "docker_daemon_host_kernel_runtime_or_container_id_authenticity",
+    "worker_binary_runtime_image_registry_supply_chain_or_attestation_beyond_reviewed_digests",
+    "fresh_semantic_computation_nonce_challenge_or_cache_absence_inside_worker",
+    "ephemeral_signer_external_identity_kms_hsm_custody_rotation_or_nonrepudiation",
+    "true_organizational_operator_key_host_or_failure_domain_independence",
+    "general_parser_xbrl_ixbrl_taxonomy_plugin_or_accounting_correctness",
+    "real_public_filing_bytes_sec_source_authenticity_or_attestation",
+    "cycle2b_external_manifest_rights_steward_key_authority_or_phaseb_admission",
+    "counsel_identity_legal_validity_revocation_freshness_or_data_rights",
+    "independently_adjudicated_ground_truth_or_two_thousand_assertions",
+    "precision_recall_document_success_thresholds_or_zero_silent_failures",
+    "general_alias_unit_conversion_dimension_fiscal_calendar_or_amendment_coverage",
+    "edgar_fetch_dns_tls_ssrf_rate_limit_malware_or_archive_safety",
+    "multi_issuer_batch_concurrency_retry_crash_recovery_load_or_slo",
+    "database_api_web_queue_persistence_evidence_passport_or_b15_v15",
+    "real_data_admission_full_cycle2_exit_or_production_use",
+  ] as const);
+
+const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SOURCE_PATHS =
+  Object.freeze([
+    ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SOURCE_PATHS,
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v3/cases.json",
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v3/manifest.json",
+  ] as const);
+
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY =
+  Object.freeze({
+    artifactId: "9623531283" as const,
+    baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+    claimStatus: "historical_pass" as const,
+    evidenceSha256:
+      "sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8" as const,
+    evidenceVersion: 2 as const,
+    failedPrecursorRevision:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+    jobId: "98325467722" as const,
+    runId: "33013464847" as const,
+    sourceRevision: "2e3a7e33a76d19b993375958aff671707a81ef05" as const,
+  });
+
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS =
+  Object.freeze([
+    "same-input-direct-docker-distinct-lifecycle-invocations",
+    "unknown-python-image",
+    "pre-aborted-signal",
+    "original-archive-tamper",
+    "original-amendment-role-swap",
+    "identical-archives",
+  ] as const);
+
+export type FilingParserCrossEngineExecutionEvidenceV3CaseId =
+  (typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS)[number];
+
+export interface FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt {
+  readonly archiveSha256: `sha256:${string}`;
+  readonly containerIdSha256: `sha256:${string}`;
+  readonly documentRole: "amendment" | "original";
+  readonly documentSha256: `sha256:${string}`;
+  readonly engineId: string;
+  readonly imageSha256: `sha256:${string}`;
+  readonly implementationSha256: `sha256:${string}`;
+  readonly keyId: string;
+  readonly lifecycleBindingSha256: `sha256:${string}`;
+  readonly publicKeySpkiSha256: `sha256:${string}`;
+  readonly role: "node-secondary" | "python-primary";
+  readonly zeroResidue: true;
+}
+
+export interface FilingParserCrossEngineExecutionEvidenceV3Invocation {
+  readonly agreementSha256: `sha256:${string}`;
+  readonly agreementEngines: readonly [
+    {
+      readonly engineId: string;
+      readonly executionBindingSha256: `sha256:${string}`;
+      readonly imageSha256: `sha256:${string}`;
+      readonly implementationSha256: `sha256:${string}`;
+      readonly role: "python-primary";
+    },
+    {
+      readonly engineId: string;
+      readonly executionBindingSha256: `sha256:${string}`;
+      readonly imageSha256: `sha256:${string}`;
+      readonly implementationSha256: `sha256:${string}`;
+      readonly role: "node-secondary";
+    },
+  ];
+  readonly executionMode: "source_owned_direct_docker";
+  readonly invocationBindingSha256: `sha256:${string}`;
+  readonly keyId: string;
+  readonly lifecycleReceipts: readonly [
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+  ];
+  readonly normalizationSha256: `sha256:${string}`;
+  readonly publicKeySpkiSha256: `sha256:${string}`;
+  readonly resultSha256: `sha256:${string}`;
+}
+
+export interface FilingParserCrossEngineExecutionEvidenceV3CaseOutcome {
+  readonly amendmentArchiveSha256: `sha256:${string}` | null;
+  readonly caseId: FilingParserCrossEngineExecutionEvidenceV3CaseId;
+  readonly expectedStatus: "agreed" | "quarantined";
+  readonly factVersionCount: 20 | null;
+  readonly invocationBindingsDistinct: boolean;
+  readonly invocations:
+    | readonly [
+        FilingParserCrossEngineExecutionEvidenceV3Invocation,
+        FilingParserCrossEngineExecutionEvidenceV3Invocation,
+      ]
+    | null;
+  readonly lifecycleBindingsDistinct: boolean;
+  readonly lineageCount: 10 | null;
+  readonly normalizationStable: boolean;
+  readonly observedStatus: "agreed" | "quarantined";
+  readonly originalArchiveSha256: `sha256:${string}` | null;
+}
+
+export interface FilingParserCrossEngineExecutionEvidenceV3 {
+  readonly baseline: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE;
+  readonly caseOutcomes: readonly FilingParserCrossEngineExecutionEvidenceV3CaseOutcome[];
+  readonly checksPassed: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS;
+  readonly claim: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM;
+  readonly completedAt: string;
+  readonly directExecutionValidation: {
+    readonly configurationSnapshot: "intrinsic_closed_exact";
+    readonly callerInjectionSurface: "none";
+    readonly lifecycleBinding: "recomputed_exact";
+    readonly outerInvocationBinding: "recomputed_exact";
+    readonly processExecution: "package_owned_bounded_shell_false";
+    readonly signer: "internally_generated_ephemeral_ed25519";
+  };
+  readonly engines: FilingParserCrossEngineExecutionEvidence["engines"];
+  readonly evidenceVersion: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VERSION;
+  readonly fixtureManifestSha256: `sha256:${string}`;
+  readonly historicalV1: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY;
+  readonly historicalV2: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY;
+  readonly notProven: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN;
+  readonly repository: string;
+  readonly revision: string;
+  readonly runtime: {
+    readonly capabilitiesDropped: readonly ["ALL"];
+    readonly containerControlMilliseconds: 5_000;
+    readonly containerUser: "65532:65532";
+    readonly cpuCount: 0.5;
+    readonly engineCount: 2;
+    readonly inputMount: "/input/filing.zip:ro";
+    readonly memoryBytes: 134_217_728;
+    readonly networkMode: "none";
+    readonly noNewPrivileges: true;
+    readonly noPublishedPorts: true;
+    readonly openFiles: 64;
+    readonly pids: 32;
+    readonly processTerminationMilliseconds: 250;
+    readonly readOnlyRootFilesystem: true;
+    readonly signerMilliseconds: 5_000;
+    readonly stderrLimitBytes: 4_096;
+    readonly stdoutLimitBytes: 262_144;
+    readonly successfulContainerCount: 8;
+    readonly successfulInvocationCount: 2;
+    readonly successfulLifecycleReceiptCount: 8;
+    readonly temporaryFilesystem: "/tmp:rw,noexec,nosuid,nodev,size=8388608";
+    readonly uniqueContainerIdSha256Count: 8;
+    readonly wallClockMilliseconds: 5_000;
+    readonly zeroResidue: true;
+  };
+  readonly schemaVersion: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION;
+  readonly sourceHashes: readonly FilingParserCrossEngineExecutionEvidenceSourceHash[];
+  readonly startedAt: string;
+  readonly status: "passed";
+  readonly summary: {
+    readonly agreed: 1;
+    readonly invocationBindingsDistinct: true;
+    readonly lifecycleBindingsDistinct: true;
+    readonly normalizationStable: true;
+    readonly quarantined: 5;
+    readonly total: 6;
+  };
+  readonly synthetic: true;
+  readonly tools: FilingParserCrossEngineExecutionEvidence["tools"];
+  readonly transition: FilingParserCrossEngineExecutionEvidence["transition"];
+  readonly workflow: {
+    readonly artifactName: string;
+    readonly event: "push" | "workflow_dispatch";
+    readonly job: "acceptance";
+    readonly ref: string;
+    readonly runAttempt: number;
+    readonly runId: string;
+    readonly workflowName: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW;
+  };
+}
+
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES =
+  Object.freeze([
+    "root_contract",
+    "timestamps",
+    "claim_tuples",
+    "historical_evidence",
+    "direct_execution_validation",
+    "case_outcomes",
+    "transition",
+    "runtime",
+    "source_hashes",
+    "engines",
+    "lifecycle_bindings",
+    "outer_invocation_bindings",
+    "fixture_binding",
+    "summary",
+    "tools_contract",
+    "workflow",
+    "canonical_freeze",
+  ] as const);
+export type FilingParserCrossEngineExecutionEvidenceV3ValidationStage =
+  (typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES)[number];
+type FilingParserCrossEngineExecutionEvidenceV3ValidationStageMarker = (
+  stage: FilingParserCrossEngineExecutionEvidenceV3ValidationStage,
+) => void;
+
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES =
   Object.freeze([
     "root_contract",
@@ -500,6 +757,11 @@ const V2_EXECUTION_BINDING_DOMAIN =
 const V2_AGREEMENT_DOMAIN =
   "research-cockpit:synthetic-filing-parser-cross-engine-execution:v1\u0000";
 const V2_LIVE_KEY_ID = "cycle2k-ephemeral-ed25519-v1";
+const V3_LIFECYCLE_BINDING_DOMAIN =
+  "research-cockpit:synthetic-filing-parser-direct-container-lifecycle:v1\u0000";
+const V3_INVOCATION_BINDING_DOMAIN =
+  "research-cockpit:synthetic-filing-parser-direct-cross-engine-invocation:v1\u0000";
+const V3_LIVE_KEY_ID = "cycle2m-ephemeral-ed25519-v1";
 const ENGINE_CONTRACTS = Object.freeze({
   "python-primary": Object.freeze({
     engineId: "python-3.12-primary-v1",
@@ -832,6 +1094,707 @@ export function filingParserCrossEngineExecutionV2RequiredSourcePaths(
       ]),
     ].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
   );
+}
+
+/** @internal Additive Cycle 2m direct-execution evidence model. */
+export function createFilingParserCrossEngineExecutionEvidenceV3(
+  value: FilingParserCrossEngineExecutionEvidenceV3,
+): FilingParserCrossEngineExecutionEvidenceV3 {
+  try {
+    return normalizeEvidenceV3(value);
+  } catch {
+    return invalid();
+  }
+}
+
+/** @internal Closed, value-free live-acceptance validation seam for v3. */
+export function createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance(
+  value: FilingParserCrossEngineExecutionEvidenceV3,
+  markStage: FilingParserCrossEngineExecutionEvidenceV3ValidationStageMarker,
+): FilingParserCrossEngineExecutionEvidenceV3 {
+  try {
+    const staged = normalizeEvidenceV3(value, markStage);
+    return normalizeEvidenceV3(staged);
+  } catch {
+    return invalid();
+  }
+}
+
+/** @internal Parses the canonical one-line Cycle 2m evidence artifact. */
+export function parseCanonicalFilingParserCrossEngineExecutionEvidenceV3(
+  bytes: Uint8Array,
+): FilingParserCrossEngineExecutionEvidenceV3 {
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      bytes,
+    );
+  } catch {
+    return invalid();
+  }
+  if (!text.endsWith("\n") || text.slice(0, -1).includes("\n"))
+    return invalid();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text.slice(0, -1)) as unknown;
+  } catch {
+    return invalid();
+  }
+  try {
+    const evidence = normalizeEvidenceV3(parsed);
+    if (
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence) !==
+      text
+    )
+      return invalid();
+    return evidence;
+  } catch {
+    return invalid();
+  }
+}
+
+/** @internal Serializes the canonical one-line Cycle 2m evidence artifact. */
+export function serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(
+  evidence: FilingParserCrossEngineExecutionEvidenceV3,
+): string {
+  try {
+    return `${canonicalJson(normalizeEvidenceV3(evidence))}\n`;
+  } catch {
+    return invalid();
+  }
+}
+
+/** @internal Computes the digest of the exact canonical Cycle 2m artifact. */
+export function filingParserCrossEngineExecutionEvidenceV3Sha256(
+  evidence: FilingParserCrossEngineExecutionEvidenceV3,
+): `sha256:${string}` {
+  try {
+    return sha256(
+      new TextEncoder().encode(
+        serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence),
+      ),
+    );
+  } catch {
+    return invalid();
+  }
+}
+
+/** @internal Independently recomputes one direct Docker lifecycle receipt. */
+export function filingParserCrossEngineExecutionV3LifecycleBindingSha256(value: {
+  readonly archiveSha256: `sha256:${string}`;
+  readonly containerIdSha256: `sha256:${string}`;
+  readonly documentRole: "amendment" | "original";
+  readonly documentSha256: `sha256:${string}`;
+  readonly engineId: string;
+  readonly imageSha256: `sha256:${string}`;
+  readonly implementationSha256: `sha256:${string}`;
+  readonly keyId: string;
+  readonly publicKeySpkiSha256: `sha256:${string}`;
+  readonly role: "node-secondary" | "python-primary";
+  readonly zeroResidue: true;
+}): `sha256:${string}` {
+  return domainCanonicalSha256(V3_LIFECYCLE_BINDING_DOMAIN, value, false);
+}
+
+/** @internal Independently recomputes one direct cross-engine invocation. */
+export function filingParserCrossEngineExecutionV3InvocationBindingSha256(value: {
+  readonly agreementSha256: `sha256:${string}`;
+  readonly executionMode: "source_owned_direct_docker";
+  readonly keyId: string;
+  readonly lifecycleReceipts: readonly [
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+    FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+  ];
+  readonly normalizationSha256: `sha256:${string}`;
+  readonly publicKeySpkiSha256: `sha256:${string}`;
+}): `sha256:${string}` {
+  return domainCanonicalSha256(V3_INVOCATION_BINDING_DOMAIN, value, false);
+}
+
+/** @internal Exact v3 source-inventory projection shared by model and runner. */
+export function filingParserCrossEngineExecutionV3RequiredSourcePaths(
+  transition: readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[],
+): readonly string[] {
+  return Object.freeze(
+    [
+      ...new Set([
+        ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SOURCE_PATHS,
+        ...transition.map((entry) => entry.path),
+      ]),
+    ].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
+  );
+}
+
+function normalizeEvidenceV3(
+  value: unknown,
+  markStage?: FilingParserCrossEngineExecutionEvidenceV3ValidationStageMarker,
+): FilingParserCrossEngineExecutionEvidenceV3 {
+  markStage?.("root_contract");
+  const root = exactRecord(value, [
+    "baseline",
+    "caseOutcomes",
+    "checksPassed",
+    "claim",
+    "completedAt",
+    "directExecutionValidation",
+    "engines",
+    "evidenceVersion",
+    "fixtureManifestSha256",
+    "historicalV1",
+    "historicalV2",
+    "notProven",
+    "repository",
+    "revision",
+    "runtime",
+    "schemaVersion",
+    "sourceHashes",
+    "startedAt",
+    "status",
+    "summary",
+    "synthetic",
+    "tools",
+    "transition",
+    "workflow",
+  ]);
+  if (
+    root.schemaVersion !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION ||
+    root.evidenceVersion !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VERSION ||
+    root.baseline !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE ||
+    root.claim !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM ||
+    root.status !== "passed" ||
+    root.synthetic !== true ||
+    !REPOSITORY.test(string(root.repository)) ||
+    !COMMIT.test(string(root.revision)) ||
+    !HASH.test(string(root.fixtureManifestSha256))
+  )
+    return invalid();
+
+  markStage?.("timestamps");
+  const startedAt = string(root.startedAt);
+  const completedAt = string(root.completedAt);
+  if (
+    !isExactUtc(startedAt) ||
+    !isExactUtc(completedAt) ||
+    completedAt < startedAt
+  )
+    return invalid();
+
+  markStage?.("claim_tuples");
+  exactStringTuple(
+    root.checksPassed,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
+  );
+  exactStringTuple(
+    root.notProven,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+  );
+
+  markStage?.("historical_evidence");
+  if (
+    canonicalJson(root.historicalV1) !==
+      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY) ||
+    canonicalJson(root.historicalV2) !==
+      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY)
+  )
+    return invalid();
+
+  markStage?.("direct_execution_validation");
+  const direct = exactRecord(root.directExecutionValidation, [
+    "callerInjectionSurface",
+    "configurationSnapshot",
+    "lifecycleBinding",
+    "outerInvocationBinding",
+    "processExecution",
+    "signer",
+  ]);
+  if (
+    direct.callerInjectionSurface !== "none" ||
+    direct.configurationSnapshot !== "intrinsic_closed_exact" ||
+    direct.lifecycleBinding !== "recomputed_exact" ||
+    direct.outerInvocationBinding !== "recomputed_exact" ||
+    direct.processExecution !== "package_owned_bounded_shell_false" ||
+    direct.signer !== "internally_generated_ephemeral_ed25519"
+  )
+    return invalid();
+
+  markStage?.("case_outcomes");
+  const outcomes = array(root.caseOutcomes).map(normalizeOutcomeV3);
+  if (
+    outcomes.length !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS.length ||
+    outcomes.some(
+      (outcome, index) =>
+        outcome.caseId !==
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS[index],
+    )
+  )
+    return invalid();
+
+  markStage?.("transition");
+  const transition = normalizeTransitionV2(root.transition);
+  markStage?.("runtime");
+  normalizeRuntimeV3(root.runtime);
+  const requiredSourcePaths =
+    filingParserCrossEngineExecutionV3RequiredSourcePaths(transition.entries);
+  markStage?.("source_hashes");
+  const sourceHashes = normalizeSourceHashes(
+    root.sourceHashes,
+    requiredSourcePaths,
+  );
+
+  markStage?.("engines");
+  const engines = array(root.engines).map(normalizeEngine);
+  if (
+    engines.length !== 2 ||
+    engines[0]?.role !== "python-primary" ||
+    engines[1]?.role !== "node-secondary" ||
+    engines[0].builtImageId === engines[1].builtImageId ||
+    engines[0].implementationSha256 === engines[1].implementationSha256 ||
+    engines[0].engineId === engines[1].engineId
+  )
+    return invalid();
+  for (const engine of engines) {
+    const paths =
+      engine.role === "python-primary"
+        ? FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS.python
+        : FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS.node;
+    const projected = paths.map((path) => {
+      const source = sourceHashes.find((entry) => entry.path === path);
+      return source ?? invalid();
+    });
+    if (
+      canonicalJson(engine.implementationSourceHashes) !==
+      canonicalJson(projected)
+    )
+      return invalid();
+  }
+  markStage?.("lifecycle_bindings");
+  validateV3SuccessBindings(outcomes[0], engines);
+  markStage?.("outer_invocation_bindings");
+
+  markStage?.("fixture_binding");
+  const fixtureManifest = sourceHashes.find(
+    ({ path }) =>
+      path ===
+      "fixtures/synthetic/filing-parser-cross-engine-execution/v3/manifest.json",
+  );
+  if (fixtureManifest?.sha256 !== root.fixtureManifestSha256) return invalid();
+
+  markStage?.("summary");
+  const summary = exactRecord(root.summary, [
+    "agreed",
+    "invocationBindingsDistinct",
+    "lifecycleBindingsDistinct",
+    "normalizationStable",
+    "quarantined",
+    "total",
+  ]);
+  if (
+    summary.agreed !== 1 ||
+    summary.invocationBindingsDistinct !== true ||
+    summary.lifecycleBindingsDistinct !== true ||
+    summary.normalizationStable !== true ||
+    summary.quarantined !== 5 ||
+    summary.total !== 6
+  )
+    return invalid();
+
+  markStage?.("tools_contract");
+  const tools = exactRecord(root.tools, [
+    "dockerClient",
+    "dockerServer",
+    "git",
+    "node",
+    "pnpm",
+    "python",
+  ]);
+  if (
+    [
+      tools.dockerClient,
+      tools.dockerServer,
+      tools.git,
+      tools.node,
+      tools.pnpm,
+      tools.python,
+    ].some((tool) => !VERSION.test(string(tool)))
+  )
+    return invalid();
+
+  markStage?.("workflow");
+  const workflow = exactRecord(root.workflow, [
+    "artifactName",
+    "event",
+    "job",
+    "ref",
+    "runAttempt",
+    "runId",
+    "workflowName",
+  ]);
+  if (
+    !/^[A-Za-z0-9._-]{1,240}$/u.test(string(workflow.artifactName)) ||
+    !["push", "workflow_dispatch"].includes(string(workflow.event)) ||
+    workflow.job !== "acceptance" ||
+    !VERSION.test(string(workflow.ref)) ||
+    !positiveInteger(workflow.runAttempt) ||
+    !/^[1-9][0-9]{0,19}$/u.test(string(workflow.runId)) ||
+    workflow.workflowName !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW ||
+    workflow.artifactName !==
+      `filing-parser-cross-engine-execution-evidence-v3-${String(root.revision)}-${String(workflow.runAttempt)}`
+  )
+    return invalid();
+
+  markStage?.("canonical_freeze");
+  return deepFreeze(
+    JSON.parse(
+      canonicalJson(root),
+    ) as FilingParserCrossEngineExecutionEvidenceV3,
+  );
+}
+
+function normalizeOutcomeV3(
+  value: unknown,
+): FilingParserCrossEngineExecutionEvidenceV3CaseOutcome {
+  const outcome = exactRecord(value, [
+    "amendmentArchiveSha256",
+    "caseId",
+    "expectedStatus",
+    "factVersionCount",
+    "invocationBindingsDistinct",
+    "invocations",
+    "lifecycleBindingsDistinct",
+    "lineageCount",
+    "normalizationStable",
+    "observedStatus",
+    "originalArchiveSha256",
+  ]);
+  if (
+    !FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS.includes(
+      outcome.caseId as FilingParserCrossEngineExecutionEvidenceV3CaseId,
+    )
+  )
+    return invalid();
+  const success =
+    outcome.caseId ===
+    "same-input-direct-docker-distinct-lifecycle-invocations";
+  if (
+    outcome.expectedStatus !== (success ? "agreed" : "quarantined") ||
+    outcome.observedStatus !== outcome.expectedStatus ||
+    outcome.invocationBindingsDistinct !== success ||
+    outcome.lifecycleBindingsDistinct !== success ||
+    outcome.normalizationStable !== success
+  )
+    return invalid();
+  if (!success) {
+    if (
+      outcome.amendmentArchiveSha256 !== null ||
+      outcome.factVersionCount !== null ||
+      outcome.invocations !== null ||
+      outcome.lineageCount !== null ||
+      outcome.originalArchiveSha256 !== null
+    )
+      return invalid();
+    return outcome as unknown as FilingParserCrossEngineExecutionEvidenceV3CaseOutcome;
+  }
+  if (
+    !HASH.test(string(outcome.originalArchiveSha256)) ||
+    !HASH.test(string(outcome.amendmentArchiveSha256)) ||
+    outcome.originalArchiveSha256 === outcome.amendmentArchiveSha256 ||
+    outcome.factVersionCount !== 20 ||
+    outcome.lineageCount !== 10
+  )
+    return invalid();
+  const invocations = array(outcome.invocations).map(normalizeInvocationV3);
+  if (invocations.length !== 2) return invalid();
+  return Object.freeze({
+    ...outcome,
+    invocations: Object.freeze(invocations),
+  }) as unknown as FilingParserCrossEngineExecutionEvidenceV3CaseOutcome;
+}
+
+function normalizeInvocationV3(
+  value: unknown,
+): FilingParserCrossEngineExecutionEvidenceV3Invocation {
+  const invocation = exactRecord(value, [
+    "agreementEngines",
+    "agreementSha256",
+    "executionMode",
+    "invocationBindingSha256",
+    "keyId",
+    "lifecycleReceipts",
+    "normalizationSha256",
+    "publicKeySpkiSha256",
+    "resultSha256",
+  ]);
+  if (
+    !HASH.test(string(invocation.agreementSha256)) ||
+    invocation.executionMode !== "source_owned_direct_docker" ||
+    !HASH.test(string(invocation.invocationBindingSha256)) ||
+    invocation.keyId !== V3_LIVE_KEY_ID ||
+    !HASH.test(string(invocation.normalizationSha256)) ||
+    !HASH.test(string(invocation.publicKeySpkiSha256)) ||
+    !HASH.test(string(invocation.resultSha256))
+  )
+    return invalid();
+  const agreementEngines = array(invocation.agreementEngines).map(
+    (engineValue, index) => normalizeAgreementEngineV3(engineValue, index),
+  );
+  const lifecycleReceipts = array(invocation.lifecycleReceipts).map(
+    normalizeLifecycleReceiptV3,
+  );
+  if (agreementEngines.length !== 2 || lifecycleReceipts.length !== 4)
+    return invalid();
+  return Object.freeze({
+    ...invocation,
+    agreementEngines: Object.freeze(agreementEngines),
+    lifecycleReceipts: Object.freeze(lifecycleReceipts),
+  }) as unknown as FilingParserCrossEngineExecutionEvidenceV3Invocation;
+}
+
+function normalizeAgreementEngineV3(
+  value: unknown,
+  index: number,
+): FilingParserCrossEngineExecutionEvidenceV3Invocation["agreementEngines"][number] {
+  const engine = exactRecord(value, [
+    "engineId",
+    "executionBindingSha256",
+    "imageSha256",
+    "implementationSha256",
+    "role",
+  ]);
+  const expectedRole = index === 0 ? "python-primary" : "node-secondary";
+  if (
+    !ENGINE.test(string(engine.engineId)) ||
+    !HASH.test(string(engine.executionBindingSha256)) ||
+    !HASH.test(string(engine.imageSha256)) ||
+    !HASH.test(string(engine.implementationSha256)) ||
+    engine.role !== expectedRole
+  )
+    return invalid();
+  return engine as unknown as FilingParserCrossEngineExecutionEvidenceV3Invocation["agreementEngines"][number];
+}
+
+function normalizeLifecycleReceiptV3(
+  value: unknown,
+): FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt {
+  const receipt = exactRecord(value, [
+    "archiveSha256",
+    "containerIdSha256",
+    "documentRole",
+    "documentSha256",
+    "engineId",
+    "imageSha256",
+    "implementationSha256",
+    "keyId",
+    "lifecycleBindingSha256",
+    "publicKeySpkiSha256",
+    "role",
+    "zeroResidue",
+  ]);
+  if (
+    !HASH.test(string(receipt.archiveSha256)) ||
+    !HASH.test(string(receipt.containerIdSha256)) ||
+    !["amendment", "original"].includes(string(receipt.documentRole)) ||
+    !HASH.test(string(receipt.documentSha256)) ||
+    !ENGINE.test(string(receipt.engineId)) ||
+    !HASH.test(string(receipt.imageSha256)) ||
+    !HASH.test(string(receipt.implementationSha256)) ||
+    receipt.keyId !== V3_LIVE_KEY_ID ||
+    !HASH.test(string(receipt.lifecycleBindingSha256)) ||
+    !HASH.test(string(receipt.publicKeySpkiSha256)) ||
+    !["node-secondary", "python-primary"].includes(string(receipt.role)) ||
+    receipt.zeroResidue !== true
+  )
+    return invalid();
+  const expected = filingParserCrossEngineExecutionV3LifecycleBindingSha256({
+    archiveSha256: receipt.archiveSha256 as `sha256:${string}`,
+    containerIdSha256: receipt.containerIdSha256 as `sha256:${string}`,
+    documentRole: receipt.documentRole as "amendment" | "original",
+    documentSha256: receipt.documentSha256 as `sha256:${string}`,
+    engineId: string(receipt.engineId),
+    imageSha256: receipt.imageSha256 as `sha256:${string}`,
+    implementationSha256: receipt.implementationSha256 as `sha256:${string}`,
+    keyId: string(receipt.keyId),
+    publicKeySpkiSha256: receipt.publicKeySpkiSha256 as `sha256:${string}`,
+    role: receipt.role as "node-secondary" | "python-primary",
+    zeroResidue: true,
+  });
+  if (receipt.lifecycleBindingSha256 !== expected) return invalid();
+  return receipt as unknown as FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt;
+}
+
+function validateV3SuccessBindings(
+  outcome: FilingParserCrossEngineExecutionEvidenceV3CaseOutcome | undefined,
+  engines: readonly FilingParserCrossEngineExecutionEvidenceEngine[],
+): void {
+  const python = engines[0];
+  const node = engines[1];
+  const invocations = outcome?.invocations;
+  if (
+    outcome === undefined ||
+    python === undefined ||
+    node === undefined ||
+    invocations === null ||
+    invocations === undefined ||
+    invocations.length !== 2
+  )
+    return invalid();
+  const containerIds = new Set<string>();
+  const lifecycleBindings = new Set<string>();
+  const originalDocuments: string[] = [];
+  const amendmentDocuments: string[] = [];
+  for (const invocation of invocations) {
+    const receipts = invocation.lifecycleReceipts;
+    const expectedRoles = [
+      [python, "python-primary", "original"],
+      [python, "python-primary", "amendment"],
+      [node, "node-secondary", "original"],
+      [node, "node-secondary", "amendment"],
+    ] as const;
+    if (
+      invocation.keyId !== V3_LIVE_KEY_ID ||
+      receipts.some((receipt, index) => {
+        const expected = expectedRoles[index];
+        if (expected === undefined) return true;
+        const [engine, role, documentRole] = expected;
+        return (
+          receipt.role !== role ||
+          receipt.documentRole !== documentRole ||
+          receipt.engineId !== engine.engineId ||
+          receipt.imageSha256 !== engine.builtImageId ||
+          receipt.implementationSha256 !== engine.implementationSha256 ||
+          receipt.keyId !== invocation.keyId ||
+          receipt.publicKeySpkiSha256 !== invocation.publicKeySpkiSha256 ||
+          receipt.archiveSha256 !==
+            (documentRole === "original"
+              ? outcome.originalArchiveSha256
+              : outcome.amendmentArchiveSha256)
+        );
+      })
+    )
+      return invalid();
+    for (const receipt of receipts) {
+      containerIds.add(receipt.containerIdSha256);
+      lifecycleBindings.add(receipt.lifecycleBindingSha256);
+    }
+    if (
+      receipts[0].documentSha256 !== receipts[2].documentSha256 ||
+      receipts[1].documentSha256 !== receipts[3].documentSha256 ||
+      receipts[0].documentSha256 === receipts[1].documentSha256
+    )
+      return invalid();
+    originalDocuments.push(receipts[0].documentSha256);
+    amendmentDocuments.push(receipts[1].documentSha256);
+    const agreementEngines = invocation.agreementEngines;
+    if (
+      agreementEngines[0].engineId !== python.engineId ||
+      agreementEngines[0].imageSha256 !== python.builtImageId ||
+      agreementEngines[0].implementationSha256 !==
+        python.implementationSha256 ||
+      agreementEngines[1].engineId !== node.engineId ||
+      agreementEngines[1].imageSha256 !== node.builtImageId ||
+      agreementEngines[1].implementationSha256 !== node.implementationSha256 ||
+      agreementEngines[0].executionBindingSha256 ===
+        agreementEngines[1].executionBindingSha256
+    )
+      return invalid();
+    const expectedAgreement = filingParserCrossEngineExecutionV2AgreementSha256(
+      {
+        amendmentArchiveSha256:
+          outcome.amendmentArchiveSha256 as `sha256:${string}`,
+        engines: agreementEngines,
+        normalizationSha256: invocation.normalizationSha256,
+        originalArchiveSha256:
+          outcome.originalArchiveSha256 as `sha256:${string}`,
+      },
+    );
+    if (invocation.agreementSha256 !== expectedAgreement) return invalid();
+    const expectedInvocation =
+      filingParserCrossEngineExecutionV3InvocationBindingSha256({
+        agreementSha256: invocation.agreementSha256,
+        executionMode: invocation.executionMode,
+        keyId: invocation.keyId,
+        lifecycleReceipts: invocation.lifecycleReceipts,
+        normalizationSha256: invocation.normalizationSha256,
+        publicKeySpkiSha256: invocation.publicKeySpkiSha256,
+      });
+    if (invocation.invocationBindingSha256 !== expectedInvocation)
+      return invalid();
+  }
+  if (
+    containerIds.size !== 8 ||
+    lifecycleBindings.size !== 8 ||
+    originalDocuments[0] !== originalDocuments[1] ||
+    amendmentDocuments[0] !== amendmentDocuments[1] ||
+    invocations[0].normalizationSha256 !== invocations[1].normalizationSha256 ||
+    invocations[0].publicKeySpkiSha256 === invocations[1].publicKeySpkiSha256 ||
+    invocations[0].invocationBindingSha256 ===
+      invocations[1].invocationBindingSha256 ||
+    invocations[0].resultSha256 === invocations[1].resultSha256
+  )
+    return invalid();
+}
+
+function normalizeRuntimeV3(value: unknown): void {
+  const runtime = exactRecord(value, [
+    "capabilitiesDropped",
+    "containerControlMilliseconds",
+    "containerUser",
+    "cpuCount",
+    "engineCount",
+    "inputMount",
+    "memoryBytes",
+    "networkMode",
+    "noNewPrivileges",
+    "noPublishedPorts",
+    "openFiles",
+    "pids",
+    "processTerminationMilliseconds",
+    "readOnlyRootFilesystem",
+    "signerMilliseconds",
+    "stderrLimitBytes",
+    "stdoutLimitBytes",
+    "successfulContainerCount",
+    "successfulInvocationCount",
+    "successfulLifecycleReceiptCount",
+    "temporaryFilesystem",
+    "uniqueContainerIdSha256Count",
+    "wallClockMilliseconds",
+    "zeroResidue",
+  ]);
+  exactStringTuple(runtime.capabilitiesDropped, ["ALL"]);
+  if (
+    runtime.containerControlMilliseconds !== 5_000 ||
+    runtime.containerUser !== "65532:65532" ||
+    runtime.cpuCount !== 0.5 ||
+    runtime.engineCount !== 2 ||
+    runtime.inputMount !== "/input/filing.zip:ro" ||
+    runtime.memoryBytes !== 134_217_728 ||
+    runtime.networkMode !== "none" ||
+    runtime.noNewPrivileges !== true ||
+    runtime.noPublishedPorts !== true ||
+    runtime.openFiles !== 64 ||
+    runtime.pids !== 32 ||
+    runtime.processTerminationMilliseconds !== 250 ||
+    runtime.readOnlyRootFilesystem !== true ||
+    runtime.signerMilliseconds !== 5_000 ||
+    runtime.stderrLimitBytes !== 4_096 ||
+    runtime.stdoutLimitBytes !== 262_144 ||
+    runtime.successfulContainerCount !== 8 ||
+    runtime.successfulInvocationCount !== 2 ||
+    runtime.successfulLifecycleReceiptCount !== 8 ||
+    runtime.temporaryFilesystem !==
+      "/tmp:rw,noexec,nosuid,nodev,size=8388608" ||
+    runtime.uniqueContainerIdSha256Count !== 8 ||
+    runtime.wallClockMilliseconds !== 5_000 ||
+    runtime.zeroResidue !== true
+  )
+    return invalid();
 }
 
 function normalizeEvidenceV2(

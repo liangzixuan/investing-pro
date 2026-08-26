@@ -1212,6 +1212,46 @@ remain Blocked; quality composition is deferred. Exact gates and nonclaims are i
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
+## Cycle 2m — source-owned direct-Docker lifecycle-bound agreement
+
+Status: **Pending source implementation from exact baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. The source SHA, passing CI and
+dedicated run/job, retained v3 artifact, digests, and offline-review verdict
+remain Pending.**
+
+Cycle 2m closes only the next repository-controlled execution-lifecycle gap.
+Its sole target claim is
+`bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
+Public configuration exposes only sealed engine descriptors. The package owns
+the audited direct-Docker runners and an internal ephemeral Ed25519 signer.
+Each invocation must perform exactly four fresh create/start/attach/remove
+lifecycles, verify removal and zero container residue, and bind the lifecycle
+receipts with the Cycle 2l agreement, normalization record, and key context into
+one distinct invocation binding. Repeating the same inputs must produce
+byte-identical normalization while yielding eight unique container-ID digests
+and distinct lifecycle and invocation hashes. Any failure returns one atomic,
+empty, value-free quarantine.
+
+Promotion requires one exact single-parent source child of baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`, full local verification,
+exact-source Ubuntu and Windows CI, a success-only retained canonical v3
+artifact, artifact and evidence digest inspection, and independently anchored
+offline review. Cycle 2l v2 and Cycle 2k v1 evidence remain immutable historical
+facts.
+
+Docker daemon, host, kernel, and container-ID authenticity; worker-image supply
+chain or attestation; semantic proof that workers contain no nonce or cache;
+external signer identity, KMS, or HSM custody; real parser quality; Cycle 2b
+authority; 100 representative real filings or 2,000 adjudicated assertions;
+B15/V15; real-data admission; and production remain nonclaims or Blocked.
+Quality composition remains deferred because lifecycle freshness and
+source-owned execution must be established before synthetic metrics consume
+the execution result. Cycle 2b cannot be manufactured from repository-owned
+synthetic manifests, authority keys, approvals, clocks, or human-review claims.
+Exact checks and nonclaims are in
+[ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
+and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -1227,8 +1267,8 @@ Exit gate: at least 100 representative filings and 2,000 critical assertions mee
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
-Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, nor promoted
-bounded synthetic Cycle 2l satisfies this exit gate. Cycle 2i does not establish that a parser
+Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
+bounded synthetic Cycle 2l, nor Pending Cycle 2m satisfies this exit gate. Cycle 2i does not establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest
 validation, approved corpus inputs, real ten-fact coverage, truly independent

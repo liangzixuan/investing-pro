@@ -1,0 +1,58 @@
+{
+  "agreedCases": 1,
+  "caseCount": 6,
+  "casesSha256": "sha256:7c3a553f46841893f52ae8e87da11fa6d09b1a807d3ac3ab3b25b57e6b7d1e0b",
+  "files": [
+    {
+      "path": "packages/filing-parser-normalization-execution/acceptance/python-image.json",
+      "sha256": "sha256:3c89a16768a4dcac237c0ce5bab75fbdbda35084c4088daeb86cbdc705b9327a"
+    },
+    {
+      "path": "packages/filing-parser-normalization-execution/src/test-filing-parser-normalization-execution-builder.ts",
+      "sha256": "sha256:037cc33200a14e97765ee8738f3442d46539e2bb5bde01f2547350bbddc04a09"
+    },
+    {
+      "path": "packages/filing-parser-normalization-execution/worker/Dockerfile",
+      "sha256": "sha256:352558f06b6e7b5f19124b262660f90860f6cb7edb1e3ee58f5e5891d9fe1ca3"
+    },
+    {
+      "path": "packages/filing-parser-normalization-execution/worker/parser.py",
+      "sha256": "sha256:170800b4a50a8fb051e54a84d060a14c6f5f3d6ce7b82552cfafa3fcf40b2def"
+    },
+    {
+      "path": "packages/filing-parser-normalization-execution/worker/parser_test.py",
+      "sha256": "sha256:2e20a43bc436974d1a35151bdb6f64c402489020e12c0dd70819c6612085df65"
+    },
+    {
+      "path": "packages/filing-parser-normalization-execution/worker/taxonomy-v1.json",
+      "sha256": "sha256:c394318881507a7cf0735cabdad173e4674dafdf5a829317c1c760a5fd1e4ecb"
+    },
+    {
+      "path": "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
+      "sha256": "sha256:6af3fe45669770abdb6d40403a774fb1633cc477264f004a17a7c8a296519686"
+    },
+    {
+      "path": "packages/filing-parser-cross-engine-execution/src/test-cross-engine-execution-builder.ts",
+      "sha256": "sha256:93b6986bd96f0933bfbefdf589d6274b592f803f94f55d5dec20f2e32ec72f99"
+    },
+    {
+      "path": "packages/filing-parser-cross-engine-execution/worker/Dockerfile",
+      "sha256": "sha256:e93a67b65a639f87b2930bb602a3f46d610b30b7ba9a9418b362d579f23bd331"
+    },
+    {
+      "path": "packages/filing-parser-cross-engine-execution/worker/parser.mjs",
+      "sha256": "sha256:554487ebcc53cd6d2e6f13e3b3acfcced6f4899b16ef7f6b26b2f276c1c899b1"
+    },
+    {
+      "path": "packages/filing-parser-cross-engine-execution/worker/parser.test.mjs",
+      "sha256": "sha256:f5dd68eaa9780a867ed1c301ddb89fbc9567214f79c49e0ee1cfd5b122ce46e4"
+    },
+    {
+      "path": "packages/filing-parser-cross-engine-execution/worker/taxonomy-v1.json",
+      "sha256": "sha256:cf296b721195edbf30ce96affb434567412a3b2d66c70d89500c7cde480a93f2"
+    }
+  ],
+  "quarantinedCases": 5,
+  "schemaVersion": "3.0.0",
+  "synthetic": true
+}

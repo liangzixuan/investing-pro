@@ -1,8 +1,5 @@
-import {
-  createHash,
-  generateKeyPairSync,
-  sign as ed25519Sign,
-} from "node:crypto";
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   lstat,
   mkdtemp,
@@ -12,48 +9,44 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
-import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import {
   FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL,
   FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS,
-  createFilingParserNormalizationExecutionBoundary,
   type FilingParserNormalizationExecutionProcessRequest,
-  type FilingParserNormalizationExecutionProcessResult,
-  type FilingParserNormalizationExecutionResult,
-  type FilingParserNormalizationExecutionBoundary,
 } from "@research-cockpit/filing-parser-normalization-execution";
 import { buildSyntheticFilingParserNormalizationExecutionFixture } from "@research-cockpit/filing-parser-normalization-execution/test";
 
 import {
-  createFilingParserCrossEngineExecutionBoundary,
-  type FilingParserCrossEngineExecutionResult,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN,
+  createFilingParserCrossEngineDirectExecutionBoundary,
+  type FilingParserCrossEngineDirectExecutionResult,
+  type FilingParserCrossEngineDirectExecutionSuccess,
 } from "@research-cockpit/filing-parser-cross-engine-execution";
 
 import {
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
-  createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance,
-  filingParserCrossEngineExecutionV2RequiredSourcePaths,
+  createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance,
+  filingParserCrossEngineExecutionV3RequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
-  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
   type FilingParserCrossEngineExecutionEvidenceTransitionEntry,
-  type FilingParserCrossEngineExecutionEvidenceV2CaseOutcome,
+  type FilingParserCrossEngineExecutionEvidenceV3CaseId,
+  type FilingParserCrossEngineExecutionEvidenceV3CaseOutcome,
+  type FilingParserCrossEngineExecutionEvidenceV3Invocation,
+  type FilingParserCrossEngineExecutionEvidenceV3ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceValidationStage,
 } from "./filing-parser-cross-engine-execution-evidence";
@@ -72,20 +65,23 @@ const NODE_BASE_IMAGE =
   "docker.io/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df" as const;
 const PYTHON_ENGINE_ID = "python-3.12-primary-v1";
 const NODE_ENGINE_ID = "node-24-secondary-v1";
-const KEY_ID = "cycle2k-ephemeral-ed25519-v1";
 const EVIDENCE_FILE =
-  "research-cockpit-filing-parser-cross-engine-execution-v2.json";
+  "research-cockpit-filing-parser-cross-engine-execution-v3.json";
+const UNKNOWN_IMAGE = `sha256:${"0".repeat(64)}` as const;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const MAX_COMMAND_BYTES = 4_194_304;
+
 export interface FilingParserCrossEngineImageInspectionProfile {
   readonly entrypoint: readonly string[];
   readonly workingDirectory: "/input" | "/worker";
 }
+
 export const PYTHON_IMAGE_INSPECTION_PROFILE = Object.freeze({
   entrypoint: Object.freeze(["python", "-I", "-B", "/worker/parser.py"]),
   workingDirectory: "/worker" as const,
 });
+
 export const NODE_IMAGE_INSPECTION_PROFILE = Object.freeze({
   entrypoint: Object.freeze([
     "node",
@@ -94,6 +90,37 @@ export const NODE_IMAGE_INSPECTION_PROFILE = Object.freeze({
   ]),
   workingDirectory: "/input" as const,
 });
+
+const V3_VALIDATION_PHASES = Object.freeze([
+  "evidence_validation_root_contract",
+  "evidence_validation_timestamps",
+  "evidence_validation_claim_tuples",
+  "evidence_validation_historical_evidence",
+  "evidence_validation_direct_execution_validation",
+  "evidence_validation_case_outcomes",
+  "evidence_validation_lifecycle_bindings",
+  "evidence_validation_outer_invocation_bindings",
+  "evidence_validation_transition",
+  "evidence_validation_runtime",
+  "evidence_validation_source_hashes",
+  "evidence_validation_engines",
+  "evidence_validation_fixture_binding",
+  "evidence_validation_summary",
+  "evidence_validation_tools_contract",
+  "evidence_validation_workflow",
+  "evidence_validation_canonical_freeze",
+] as const);
+const LEGACY_VALIDATION_PHASES = Object.freeze([
+  "evidence_validation_historical_v1",
+  "evidence_validation_binding_validation",
+  "evidence_validation_tool_docker_client",
+  "evidence_validation_tool_docker_server",
+  "evidence_validation_tool_git",
+  "evidence_validation_tool_node",
+  "evidence_validation_tool_pnpm",
+  "evidence_validation_tool_python",
+] as const);
+
 export const ACCEPTANCE_PHASES = Object.freeze([
   "environment",
   "repository_anchor",
@@ -102,47 +129,25 @@ export const ACCEPTANCE_PHASES = Object.freeze([
   "staging",
   "image_build",
   "image_inspection",
-  "audited_setup",
-  "audited_success",
-  "audited_cached_replay",
-  "audited_lineage_mutation",
-  "audited_replay",
-  "audited_mismatch",
-  "audited_tamper",
-  "audited_role_swap",
-  "audited_residue",
-  "production_setup",
-  "production_success",
-  "production_replay",
-  "production_tamper",
-  "production_residue",
-  "evidence_assembly",
+  "direct_setup",
+  "direct_success_first",
+  "direct_success_second",
+  "direct_success_validation",
+  "adversarial_unknown_python_image",
+  "adversarial_pre_aborted_signal",
+  "adversarial_original_archive_tamper",
+  "adversarial_original_amendment_role_swap",
+  "adversarial_identical_archives",
+  "direct_residue",
   "tool_versions",
-  "evidence_validation_root_contract",
-  "evidence_validation_timestamps",
-  "evidence_validation_claim_tuples",
-  "evidence_validation_historical_v1",
-  "evidence_validation_binding_validation",
-  "evidence_validation_case_outcomes",
-  "evidence_validation_transition",
-  "evidence_validation_runtime",
-  "evidence_validation_source_hashes",
-  "evidence_validation_engines",
-  "evidence_validation_fixture_binding",
-  "evidence_validation_summary",
-  "evidence_validation_tools_contract",
-  "evidence_validation_tool_docker_client",
-  "evidence_validation_tool_docker_server",
-  "evidence_validation_tool_git",
-  "evidence_validation_tool_node",
-  "evidence_validation_tool_pnpm",
-  "evidence_validation_tool_python",
-  "evidence_validation_workflow",
-  "evidence_validation_canonical_freeze",
+  "evidence_assembly",
+  ...V3_VALIDATION_PHASES,
+  ...LEGACY_VALIDATION_PHASES,
   "image_removal",
   "evidence_write",
   "cleanup",
 ] as const);
+
 type AcceptancePhase = (typeof ACCEPTANCE_PHASES)[number];
 type AcceptancePhaseMarker = (phase: AcceptancePhase) => void;
 
@@ -151,106 +156,94 @@ export function filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(
 ): string {
   const prefix =
     "filing_parser_cross_engine_execution_acceptance_failed phase=";
-  switch (phase) {
-    case "environment":
-      return `${prefix}environment\n`;
-    case "repository_anchor":
-      return `${prefix}repository_anchor\n`;
-    case "source_inventory":
-      return `${prefix}source_inventory\n`;
-    case "image_metadata":
-      return `${prefix}image_metadata\n`;
-    case "staging":
-      return `${prefix}staging\n`;
-    case "image_build":
-      return `${prefix}image_build\n`;
-    case "image_inspection":
-      return `${prefix}image_inspection\n`;
-    case "audited_setup":
-      return `${prefix}audited_setup\n`;
-    case "audited_success":
-      return `${prefix}audited_success\n`;
-    case "audited_cached_replay":
-      return `${prefix}audited_cached_replay\n`;
-    case "audited_lineage_mutation":
-      return `${prefix}audited_lineage_mutation\n`;
-    case "audited_replay":
-      return `${prefix}audited_replay\n`;
-    case "audited_mismatch":
-      return `${prefix}audited_mismatch\n`;
-    case "audited_tamper":
-      return `${prefix}audited_tamper\n`;
-    case "audited_role_swap":
-      return `${prefix}audited_role_swap\n`;
-    case "audited_residue":
-      return `${prefix}audited_residue\n`;
-    case "production_setup":
-      return `${prefix}production_setup\n`;
-    case "production_success":
-      return `${prefix}production_success\n`;
-    case "production_replay":
-      return `${prefix}production_replay\n`;
-    case "production_tamper":
-      return `${prefix}production_tamper\n`;
-    case "production_residue":
-      return `${prefix}production_residue\n`;
-    case "evidence_assembly":
-      return `${prefix}evidence_assembly\n`;
-    case "tool_versions":
-      return `${prefix}tool_versions\n`;
-    case "evidence_validation_root_contract":
-      return `${prefix}evidence_validation_root_contract\n`;
-    case "evidence_validation_timestamps":
-      return `${prefix}evidence_validation_timestamps\n`;
-    case "evidence_validation_claim_tuples":
-      return `${prefix}evidence_validation_claim_tuples\n`;
-    case "evidence_validation_historical_v1":
-      return `${prefix}evidence_validation_historical_v1\n`;
-    case "evidence_validation_binding_validation":
-      return `${prefix}evidence_validation_binding_validation\n`;
-    case "evidence_validation_case_outcomes":
-      return `${prefix}evidence_validation_case_outcomes\n`;
-    case "evidence_validation_transition":
-      return `${prefix}evidence_validation_transition\n`;
-    case "evidence_validation_runtime":
-      return `${prefix}evidence_validation_runtime\n`;
-    case "evidence_validation_source_hashes":
-      return `${prefix}evidence_validation_source_hashes\n`;
-    case "evidence_validation_engines":
-      return `${prefix}evidence_validation_engines\n`;
-    case "evidence_validation_fixture_binding":
-      return `${prefix}evidence_validation_fixture_binding\n`;
-    case "evidence_validation_summary":
-      return `${prefix}evidence_validation_summary\n`;
-    case "evidence_validation_tools_contract":
-      return `${prefix}evidence_validation_tools_contract\n`;
-    case "evidence_validation_tool_docker_client":
-      return `${prefix}evidence_validation_tool_docker_client\n`;
-    case "evidence_validation_tool_docker_server":
-      return `${prefix}evidence_validation_tool_docker_server\n`;
-    case "evidence_validation_tool_git":
-      return `${prefix}evidence_validation_tool_git\n`;
-    case "evidence_validation_tool_node":
-      return `${prefix}evidence_validation_tool_node\n`;
-    case "evidence_validation_tool_pnpm":
-      return `${prefix}evidence_validation_tool_pnpm\n`;
-    case "evidence_validation_tool_python":
-      return `${prefix}evidence_validation_tool_python\n`;
-    case "evidence_validation_workflow":
-      return `${prefix}evidence_validation_workflow\n`;
-    case "evidence_validation_canonical_freeze":
-      return `${prefix}evidence_validation_canonical_freeze\n`;
-    case "image_removal":
-      return `${prefix}image_removal\n`;
-    case "evidence_write":
-      return `${prefix}evidence_write\n`;
-    case "cleanup":
-      return `${prefix}cleanup\n`;
-    default:
-      return `${prefix}internal\n`;
+  if (
+    typeof phase === "string" &&
+    (ACCEPTANCE_PHASES as readonly string[]).includes(phase)
+  )
+    return `${prefix}${phase}\n`;
+  return `${prefix}internal\n`;
+}
+
+export function filingParserCrossEngineExecutionEvidenceV3ValidationPhase(
+  stage: FilingParserCrossEngineExecutionEvidenceV3ValidationStage,
+): AcceptancePhase {
+  switch (stage) {
+    case "root_contract":
+      return "evidence_validation_root_contract";
+    case "timestamps":
+      return "evidence_validation_timestamps";
+    case "claim_tuples":
+      return "evidence_validation_claim_tuples";
+    case "historical_evidence":
+      return "evidence_validation_historical_evidence";
+    case "direct_execution_validation":
+      return "evidence_validation_direct_execution_validation";
+    case "case_outcomes":
+      return "evidence_validation_case_outcomes";
+    case "lifecycle_bindings":
+      return "evidence_validation_lifecycle_bindings";
+    case "outer_invocation_bindings":
+      return "evidence_validation_outer_invocation_bindings";
+    case "transition":
+      return "evidence_validation_transition";
+    case "runtime":
+      return "evidence_validation_runtime";
+    case "source_hashes":
+      return "evidence_validation_source_hashes";
+    case "engines":
+      return "evidence_validation_engines";
+    case "fixture_binding":
+      return "evidence_validation_fixture_binding";
+    case "summary":
+      return "evidence_validation_summary";
+    case "tools_contract":
+      return "evidence_validation_tools_contract";
+    case "workflow":
+      return "evidence_validation_workflow";
+    case "canonical_freeze":
+      return "evidence_validation_canonical_freeze";
   }
 }
 
+/** Historical v2 diagnostic mapper retained for offline v2 review tests. */
+export function filingParserCrossEngineExecutionEvidenceV2ValidationPhase(
+  stage: FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
+): AcceptancePhase {
+  switch (stage) {
+    case "root_contract":
+      return "evidence_validation_root_contract";
+    case "timestamps":
+      return "evidence_validation_timestamps";
+    case "claim_tuples":
+      return "evidence_validation_claim_tuples";
+    case "historical_v1":
+      return "evidence_validation_historical_v1";
+    case "binding_validation":
+      return "evidence_validation_binding_validation";
+    case "case_outcomes":
+      return "evidence_validation_case_outcomes";
+    case "transition":
+      return "evidence_validation_transition";
+    case "runtime":
+      return "evidence_validation_runtime";
+    case "source_hashes":
+      return "evidence_validation_source_hashes";
+    case "engines":
+      return "evidence_validation_engines";
+    case "fixture_binding":
+      return "evidence_validation_fixture_binding";
+    case "summary":
+      return "evidence_validation_summary";
+    case "tools_contract":
+      return "evidence_validation_tools_contract";
+    case "workflow":
+      return "evidence_validation_workflow";
+    case "canonical_freeze":
+      return "evidence_validation_canonical_freeze";
+  }
+}
+
+/** Historical v1 diagnostic mapper retained for offline v1 review tests. */
 export function filingParserCrossEngineExecutionEvidenceValidationPhase(
   stage: FilingParserCrossEngineExecutionEvidenceValidationStage,
 ): AcceptancePhase {
@@ -296,43 +289,6 @@ export function filingParserCrossEngineExecutionEvidenceValidationPhase(
   }
 }
 
-export function filingParserCrossEngineExecutionEvidenceV2ValidationPhase(
-  stage: FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
-): AcceptancePhase {
-  switch (stage) {
-    case "root_contract":
-      return "evidence_validation_root_contract";
-    case "timestamps":
-      return "evidence_validation_timestamps";
-    case "claim_tuples":
-      return "evidence_validation_claim_tuples";
-    case "historical_v1":
-      return "evidence_validation_historical_v1";
-    case "binding_validation":
-      return "evidence_validation_binding_validation";
-    case "case_outcomes":
-      return "evidence_validation_case_outcomes";
-    case "transition":
-      return "evidence_validation_transition";
-    case "runtime":
-      return "evidence_validation_runtime";
-    case "source_hashes":
-      return "evidence_validation_source_hashes";
-    case "engines":
-      return "evidence_validation_engines";
-    case "fixture_binding":
-      return "evidence_validation_fixture_binding";
-    case "summary":
-      return "evidence_validation_summary";
-    case "tools_contract":
-      return "evidence_validation_tools_contract";
-    case "workflow":
-      return "evidence_validation_workflow";
-    case "canonical_freeze":
-      return "evidence_validation_canonical_freeze";
-  }
-}
-
 export function filingParserCrossEngineExecutionAcceptanceCleanupShouldReplacePhase(
   hadPrimaryFailure: boolean,
 ): boolean {
@@ -357,16 +313,16 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     fail();
 
   markPhase("source_inventory");
-  const transition = await exactCycle2lTransition(revision);
+  const transition = await exactCycle2mTransition(revision);
   const requiredSourcePaths =
-    filingParserCrossEngineExecutionV2RequiredSourcePaths(transition);
+    filingParserCrossEngineExecutionV3RequiredSourcePaths(transition);
   const sourceHashes = await committedSourceHashes(
     revision,
     requiredSourcePaths,
   );
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
-    "fixtures/synthetic/filing-parser-cross-engine-execution/v2/manifest.json",
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v3/manifest.json",
   );
   const pythonSources = implementationSources(
     sourceHashes,
@@ -380,12 +336,13 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     filingParserCrossEngineImplementationSha256(pythonSources);
   const nodeImplementationSha256 =
     filingParserCrossEngineImplementationSha256(nodeSources);
+
   markPhase("image_metadata");
   const pythonMetadata = await readPinnedImageMetadata("python");
   const nodeMetadata = await readPinnedImageMetadata("node");
   markPhase("staging");
   const temporaryDirectory = await mkdtemp(
-    join(environment.runnerTemp, "filing-cross-engine-execution-"),
+    join(environment.runnerTemp, "filing-cross-engine-direct-execution-"),
   );
   const pythonImageIdFile = join(temporaryDirectory, "python-image-id.txt");
   const nodeImageIdFile = join(temporaryDirectory, "node-image-id.txt");
@@ -407,326 +364,124 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     markPhase("image_inspection");
     await verifyBuiltImage(pythonImageId, PYTHON_IMAGE_INSPECTION_PROFILE);
     await verifyBuiltImage(nodeImageId, NODE_IMAGE_INSPECTION_PROFILE);
+    await assertZeroResidue();
 
-    markPhase("audited_setup");
+    markPhase("direct_setup");
+    assertDirectEvidenceConstants();
     const fixture = buildSyntheticFilingParserNormalizationExecutionFixture();
-    const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-    const publicKeySpki = Uint8Array.from(
-      publicKey.export({ format: "der", type: "spki" }),
-    );
-    const signer = Object.freeze({
-      algorithm: "ed25519" as const,
-      keyId: KEY_ID,
-      sign: (payload: Uint8Array): Promise<Uint8Array> =>
-        Promise.resolve(
-          Uint8Array.from(ed25519Sign(null, payload, privateKey)),
-        ),
-    });
-    const pythonRecorder = new RecordingDockerProcessRunner(
-      [0, 0, 0, 0, 0, 0, 2, 0, 0],
-      PYTHON_IMAGE_INSPECTION_PROFILE,
-    );
-    const nodeRecorder = new RecordingDockerProcessRunner(
-      [0, 0, 0, 0, 0, 0],
-      NODE_IMAGE_INSPECTION_PROFILE,
-    );
-    const genuinePythonBoundary =
-      createFilingParserNormalizationExecutionBoundary({
-        imageSha256: pythonImageId,
-        processRunner: Object.freeze({
-          run: pythonRecorder.run.bind(pythonRecorder),
-        }),
-        publicKeySpki,
-        signer,
-      });
-    const genuineNodeBoundary =
-      createFilingParserNormalizationExecutionBoundary({
-        imageSha256: nodeImageId,
-        processRunner: Object.freeze({
-          run: nodeRecorder.run.bind(nodeRecorder),
-        }),
-        publicKeySpki,
-        signer,
-      });
-    const pythonBoundary = new RecordingNormalizationBoundary(
-      genuinePythonBoundary,
-    );
-    const nodeBoundary = new RecordingNormalizationBoundary(
-      genuineNodeBoundary,
-    );
-    const boundary = crossBoundary(
-      pythonBoundary,
-      nodeBoundary,
+    const boundary = createDirectBoundary(
       pythonImageId,
       nodeImageId,
       pythonImplementationSha256,
       nodeImplementationSha256,
     );
-
-    markPhase("audited_success");
-    const pythonSuccessStart = pythonRecorder.documentOutputs.length;
-    const nodeSuccessStart = nodeRecorder.documentOutputs.length;
-    const success = await boundary.execute(
+    markPhase("direct_success_first");
+    const first = await boundary.execute(
       fixture.originalArchive,
       fixture.amendmentArchive,
     );
-    const pythonSuccessDocuments =
-      pythonRecorder.documentOutputs.slice(pythonSuccessStart);
-    const nodeSuccessDocuments =
-      nodeRecorder.documentOutputs.slice(nodeSuccessStart);
-    assertAgreed(
-      success,
-      pythonSuccessDocuments,
-      nodeSuccessDocuments,
-      fixture,
+    assertDirectAgreed(first);
+    markPhase("direct_success_second");
+    const second = await boundary.execute(
+      fixture.originalArchive,
+      fixture.amendmentArchive,
     );
-    assertEngineAnchors(
-      success,
+    assertDirectAgreed(second);
+    markPhase("direct_success_validation");
+    const successOutcome = directSuccessOutcome(
+      first,
+      second,
+      fixture.originalArchive,
+      fixture.amendmentArchive,
       pythonImageId,
       nodeImageId,
       pythonImplementationSha256,
       nodeImplementationSha256,
     );
 
-    const pythonSuccessReceipt = pythonBoundary.requiredResult(0);
-    const nodeSuccessReceipt = nodeBoundary.requiredResult(0);
-    if (
-      pythonSuccessReceipt.status !== "normalized" ||
-      nodeSuccessReceipt.status !== "normalized"
-    )
-      fail();
-
-    markPhase("audited_cached_replay");
-    const cachedReplay = await crossBoundary(
-      cachedNormalizationBoundary(pythonSuccessReceipt),
-      cachedNormalizationBoundary(nodeSuccessReceipt),
-      pythonImageId,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
-    ).execute(Uint8Array.from([1, 2, 3]), Uint8Array.from([4, 5, 6]));
-    assertCrossQuarantined(cachedReplay);
-
-    markPhase("audited_lineage_mutation");
-    const lineageMutation = await crossBoundary(
-      commonModeLineageMutationBoundary(pythonSuccessReceipt),
-      commonModeLineageMutationBoundary(nodeSuccessReceipt),
-      pythonImageId,
+    markPhase("adversarial_unknown_python_image");
+    const unknownImage = await createDirectBoundary(
+      UNKNOWN_IMAGE,
       nodeImageId,
       pythonImplementationSha256,
       nodeImplementationSha256,
     ).execute(fixture.originalArchive, fixture.amendmentArchive);
-    assertCrossQuarantined(lineageMutation);
-
-    markPhase("audited_replay");
-    const pythonReplayStart = pythonRecorder.documentOutputs.length;
-    const nodeReplayStart = nodeRecorder.documentOutputs.length;
-    const replay = await boundary.execute(
+    const unknownImageOutcome = directQuarantineOutcome(
+      "unknown-python-image",
+      unknownImage,
+    );
+    markPhase("adversarial_pre_aborted_signal");
+    const abortController = new AbortController();
+    abortController.abort();
+    const preAborted = await boundary.execute(
       fixture.originalArchive,
       fixture.amendmentArchive,
+      Object.freeze({ signal: abortController.signal }),
     );
-    const pythonReplayDocuments =
-      pythonRecorder.documentOutputs.slice(pythonReplayStart);
-    const nodeReplayDocuments =
-      nodeRecorder.documentOutputs.slice(nodeReplayStart);
-    assertAgreed(replay, pythonReplayDocuments, nodeReplayDocuments, fixture);
-    assertEngineAnchors(
-      replay,
-      pythonImageId,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
+    const preAbortedOutcome = directQuarantineOutcome(
+      "pre-aborted-signal",
+      preAborted,
     );
-    if (
-      canonicalJson(success) !== canonicalJson(replay) ||
-      !exactDocumentOutputs(pythonSuccessDocuments, pythonReplayDocuments) ||
-      !exactDocumentOutputs(nodeSuccessDocuments, nodeReplayDocuments)
-    )
-      fail();
-
-    markPhase("audited_mismatch");
-    const pythonMismatchStart = pythonRecorder.documentOutputs.length;
-    const nodeMismatchStart = nodeRecorder.documentOutputs.length;
-    const mismatchBoundary = crossBoundary(
-      pythonBoundary,
-      mismatchingBoundary(nodeBoundary),
-      pythonImageId,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
-    );
-    const mismatch = await mismatchBoundary.execute(
-      fixture.originalArchive,
-      fixture.amendmentArchive,
-    );
-    assertCrossQuarantined(mismatch);
-    assertObservedPair(
-      pythonRecorder.documentOutputs.slice(pythonMismatchStart),
-      nodeRecorder.documentOutputs.slice(nodeMismatchStart),
-      fixture.originalDocumentBytes,
-      fixture.amendmentDocumentBytes,
-    );
-
-    markPhase("audited_tamper");
+    markPhase("adversarial_original_archive_tamper");
     const tamperedOriginal = Uint8Array.from(fixture.originalArchive);
     tamperedOriginal[0] = (tamperedOriginal[0] ?? 0) ^ 0xff;
     const tampered = await boundary.execute(
       tamperedOriginal,
       fixture.amendmentArchive,
     );
-    assertCrossQuarantined(tampered);
-    markPhase("audited_role_swap");
-    const swapStart = pythonRecorder.documentOutputs.length;
+    const tamperedOutcome = directQuarantineOutcome(
+      "original-archive-tamper",
+      tampered,
+    );
+    markPhase("adversarial_original_amendment_role_swap");
     const swapped = await boundary.execute(
       fixture.amendmentArchive,
       fixture.originalArchive,
     );
-    assertCrossQuarantined(swapped);
-    const swapDocuments = pythonRecorder.documentOutputs.slice(swapStart);
-    if (
-      swapDocuments.length !== 2 ||
-      !exactBytes(swapDocuments[0], fixture.amendmentDocumentBytes) ||
-      !exactBytes(swapDocuments[1], fixture.originalDocumentBytes)
-    )
-      fail();
-    markPhase("audited_residue");
-    pythonRecorder.assertComplete();
-    nodeRecorder.assertComplete();
-    await assertZeroResidue();
-
-    // The recorder proves the inspected Docker configuration. This second
-    // pass exercises the shipped default process runner itself so a surrogate
-    // runner cannot produce the live artifact on its behalf.
-    markPhase("production_setup");
-    const productionPython = createFilingParserNormalizationExecutionBoundary({
-      imageSha256: pythonImageId,
-      publicKeySpki,
-      signer,
-    });
-    const productionNode = createFilingParserNormalizationExecutionBoundary({
-      imageSha256: nodeImageId,
-      publicKeySpki,
-      signer,
-    });
-    const productionBoundary = crossBoundary(
-      productionPython,
-      productionNode,
-      pythonImageId,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
+    const swappedOutcome = directQuarantineOutcome(
+      "original-amendment-role-swap",
+      swapped,
     );
-    markPhase("production_success");
-    const productionSuccess = await productionBoundary.execute(
+    markPhase("adversarial_identical_archives");
+    const identical = await boundary.execute(
       fixture.originalArchive,
-      fixture.amendmentArchive,
-    );
-    if (
-      productionSuccess.status !== "agreed" ||
-      canonicalJson(productionSuccess) !== canonicalJson(success)
-    )
-      fail();
-    markPhase("production_replay");
-    const productionReplay = await productionBoundary.execute(
       fixture.originalArchive,
-      fixture.amendmentArchive,
     );
-    if (canonicalJson(productionReplay) !== canonicalJson(productionSuccess))
-      fail();
-    markPhase("production_tamper");
-    const productionRejected = await productionBoundary.execute(
-      tamperedOriginal,
-      fixture.amendmentArchive,
+    const identicalOutcome = directQuarantineOutcome(
+      "identical-archives",
+      identical,
     );
-    assertCrossQuarantined(productionRejected);
-    markPhase("production_residue");
+    markPhase("direct_residue");
     await assertZeroResidue();
-
-    markPhase("evidence_assembly");
-    const outcomes: readonly FilingParserCrossEngineExecutionEvidenceV2CaseOutcome[] =
-      Object.freeze([
-        Object.freeze({
-          amendmentArchiveSha256: sha256(fixture.amendmentArchive),
-          amendmentDocumentSha256:
-            success.normalization.amendmentDocumentSha256,
-          agreementSha256: success.provenance.agreementSha256,
-          caseId: "exact-original-amendment-cross-engine-bound-pair" as const,
-          expectedStatus: "agreed" as const,
-          factVersionCount: 20 as const,
-          lineageCount: 10 as const,
-          nodeAmendmentStdoutSha256: sha256(
-            nodeSuccessDocuments[1] as Uint8Array,
-          ),
-          nodeExecutionBindingSha256:
-            success.provenance.engines[1].executionBindingSha256,
-          nodeHandoffPairBindingSha256:
-            nodeSuccessReceipt.provenance.handoff.pairBindingSha256,
-          nodeKeyId: nodeSuccessReceipt.provenance.keyId,
-          nodeOriginalStdoutSha256: sha256(
-            nodeSuccessDocuments[0] as Uint8Array,
-          ),
-          nodePublicKeySpkiSha256:
-            nodeSuccessReceipt.provenance.handoff.publicKeySpkiSha256,
-          normalizationSha256: sha256(
-            text(`${canonicalJson(success.normalization)}\n`),
-          ),
-          observedStatus: "agreed" as const,
-          originalArchiveSha256: sha256(fixture.originalArchive),
-          originalDocumentSha256: success.normalization.originalDocumentSha256,
-          pythonAmendmentStdoutSha256: sha256(
-            pythonSuccessDocuments[1] as Uint8Array,
-          ),
-          pythonExecutionBindingSha256:
-            success.provenance.engines[0].executionBindingSha256,
-          pythonHandoffPairBindingSha256:
-            pythonSuccessReceipt.provenance.handoff.pairBindingSha256,
-          pythonKeyId: pythonSuccessReceipt.provenance.keyId,
-          pythonOriginalStdoutSha256: sha256(
-            pythonSuccessDocuments[0] as Uint8Array,
-          ),
-          pythonPublicKeySpkiSha256:
-            pythonSuccessReceipt.provenance.handoff.publicKeySpkiSha256,
-          replayMatched: true,
-          resultSha256: sha256(text(canonicalJson(success))),
-        }),
-        crossQuarantineOutcome(
-          "cached-genuine-child-receipts-under-different-archives",
-          cachedReplay,
-        ),
-        crossQuarantineOutcome("common-mode-lineage-mutation", lineageMutation),
-        crossQuarantineOutcome("cross-engine-normalization-mismatch", mismatch),
-        crossQuarantineOutcome("original-archive-tamper", tampered),
-        crossQuarantineOutcome("original-amendment-role-swap", swapped),
-      ]);
 
     markPhase("tool_versions");
     const tools = await toolVersions();
     const completedAt = new Date().toISOString();
     markPhase("evidence_assembly");
+    const outcomes = Object.freeze([
+      successOutcome,
+      unknownImageOutcome,
+      preAbortedOutcome,
+      tamperedOutcome,
+      swappedOutcome,
+      identicalOutcome,
+    ] as const);
     const evidence =
-      createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance(
+      createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance(
         {
-          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
-          bindingValidation: Object.freeze({
-            childReceiptArchiveBinding: "recomputed_exact" as const,
-            executionBinding: "recomputed_exact" as const,
-            handoffPairBinding: "recomputed_exact" as const,
-            injectedBoundaryAuthenticity: "not_established" as const,
-            inputFactRoleBinding: "validated_exact" as const,
-            lineageReciprocity: "validated_exact" as const,
-          }),
+          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
           caseOutcomes: outcomes,
-          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
-          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
+          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
+          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM,
           completedAt,
-          evidenceVersion: 2,
-          failedPrecursorRevision:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
-          failedRun:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
-          fixtureManifestSha256,
-          historicalV1:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+          directExecutionValidation: Object.freeze({
+            callerInjectionSurface: "none" as const,
+            configurationSnapshot: "intrinsic_closed_exact" as const,
+            lifecycleBinding: "recomputed_exact" as const,
+            outerInvocationBinding: "recomputed_exact" as const,
+            processExecution: "package_owned_bounded_shell_false" as const,
+            signer: "internally_generated_ephemeral_ed25519" as const,
+          }),
           engines: Object.freeze([
             Object.freeze({
               architecture: "amd64" as const,
@@ -752,15 +507,20 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
               role: "node-secondary" as const,
               runtimeVersion: "Node v24.19.0",
             }),
-          ]),
+          ] as const),
+          evidenceVersion: 3 as const,
+          fixtureManifestSha256,
+          historicalV1:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+          historicalV2:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
           notProven:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
           repository: environment.repository,
           revision,
           runtime: Object.freeze({
             capabilitiesDropped: Object.freeze(["ALL"] as const),
             containerControlMilliseconds: 5_000 as const,
-            auditedContainerCount: 15,
             containerUser: "65532:65532" as const,
             cpuCount: 0.5 as const,
             engineCount: 2 as const,
@@ -772,51 +532,56 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
             openFiles: 64 as const,
             pids: 32 as const,
             processTerminationMilliseconds: 250 as const,
-            productionContainerCount: 9,
             readOnlyRootFilesystem: true as const,
             signerMilliseconds: 5_000 as const,
             stderrLimitBytes: 4_096 as const,
             stdoutLimitBytes: 262_144 as const,
-            successfulPairContainerCount: 4 as const,
+            successfulContainerCount: 8 as const,
+            successfulInvocationCount: 2 as const,
+            successfulLifecycleReceiptCount: 8 as const,
             temporaryFilesystem:
               "/tmp:rw,noexec,nosuid,nodev,size=8388608" as const,
+            uniqueContainerIdSha256Count: 8 as const,
             wallClockMilliseconds: 5_000 as const,
             zeroResidue: true as const,
           }),
           schemaVersion:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION,
           sourceHashes,
           startedAt,
           status: "passed" as const,
           summary: Object.freeze({
             agreed: 1 as const,
+            invocationBindingsDistinct: true as const,
+            lifecycleBindingsDistinct: true as const,
+            normalizationStable: true as const,
             quarantined: 5 as const,
-            replayMatched: true as const,
             total: 6 as const,
           }),
           synthetic: true as const,
           tools,
+          transition: Object.freeze({
+            entries: transition,
+            pathCount: transition.length,
+          }),
           workflow: Object.freeze({
-            artifactName: `filing-parser-cross-engine-execution-evidence-v2-${revision}-${environment.runAttempt}`,
+            artifactName: `filing-parser-cross-engine-execution-evidence-v3-${revision}-${environment.runAttempt}`,
             event: environment.event,
             job: "acceptance" as const,
             ref: environment.ref,
             runAttempt: environment.runAttempt,
             runId: environment.runId,
             workflowName:
-              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
-          }),
-          transition: Object.freeze({
-            entries: transition,
-            pathCount: transition.length,
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW,
           }),
         },
         (stage) => {
           markPhase(
-            filingParserCrossEngineExecutionEvidenceV2ValidationPhase(stage),
+            filingParserCrossEngineExecutionEvidenceV3ValidationPhase(stage),
           );
         },
       );
+
     markPhase("image_removal");
     await removeImage(pythonImageId);
     pythonImageId = null;
@@ -827,7 +592,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await assertPathAbsent(temporaryEvidencePath);
     await writeFile(
       temporaryEvidencePath,
-      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2(evidence),
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence),
       { encoding: "utf8", flag: "wx", mode: 0o600 },
     );
     await assertPathAbsent(environment.evidencePath);
@@ -864,113 +629,201 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
   }
 }
 
-function crossBoundary(
-  pythonBoundary: FilingParserNormalizationExecutionBoundary,
-  nodeBoundary: FilingParserNormalizationExecutionBoundary,
+function createDirectBoundary(
   pythonImageSha256: `sha256:${string}`,
   nodeImageSha256: `sha256:${string}`,
   pythonImplementationSha256: `sha256:${string}`,
   nodeImplementationSha256: `sha256:${string}`,
 ) {
-  return createFilingParserCrossEngineExecutionBoundary({
-    pythonPrimary: Object.freeze({
-      boundary: pythonBoundary,
-      engineId: PYTHON_ENGINE_ID,
-      imageSha256: pythonImageSha256,
-      implementationSha256: pythonImplementationSha256,
-      role: "python-primary" as const,
-    }),
+  return createFilingParserCrossEngineDirectExecutionBoundary({
     nodeSecondary: Object.freeze({
-      boundary: nodeBoundary,
       engineId: NODE_ENGINE_ID,
       imageSha256: nodeImageSha256,
       implementationSha256: nodeImplementationSha256,
       role: "node-secondary" as const,
     }),
+    pythonPrimary: Object.freeze({
+      engineId: PYTHON_ENGINE_ID,
+      imageSha256: pythonImageSha256,
+      implementationSha256: pythonImplementationSha256,
+      role: "python-primary" as const,
+    }),
   });
 }
 
-class RecordingNormalizationBoundary implements FilingParserNormalizationExecutionBoundary {
-  readonly #boundary: FilingParserNormalizationExecutionBoundary;
-  readonly #results: FilingParserNormalizationExecutionResult[] = [];
-
-  public constructor(boundary: FilingParserNormalizationExecutionBoundary) {
-    this.#boundary = boundary;
-  }
-
-  public async execute(
-    originalArchive: unknown,
-    amendmentArchive: unknown,
-    options?: { readonly signal?: AbortSignal },
-  ): Promise<FilingParserNormalizationExecutionResult> {
-    const result = await this.#boundary.execute(
-      originalArchive,
-      amendmentArchive,
-      options,
-    );
-    this.#results.push(result);
-    return result;
-  }
-
-  public requiredResult(
-    index: number,
-  ): FilingParserNormalizationExecutionResult {
-    const result = this.#results[index];
-    if (result === undefined) fail();
-    return result;
-  }
+function assertDirectEvidenceConstants(): void {
+  if (
+    FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CLAIM !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM ||
+    canonicalJson(FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS) !==
+      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS) ||
+    canonicalJson(FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN) !==
+      canonicalJson(
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+      ) ||
+    FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.containerControlMilliseconds !==
+      5_000 ||
+    FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.processTerminationMilliseconds !==
+      250 ||
+    FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.signerMilliseconds !== 5_000 ||
+    FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.stderrBytes !== 4_096 ||
+    FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.stdoutBytes !== 262_144 ||
+    FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.workerWallMilliseconds !==
+      5_000
+  )
+    fail();
 }
 
-function cachedNormalizationBoundary(
-  result: FilingParserNormalizationExecutionResult,
-): FilingParserNormalizationExecutionBoundary {
+function assertDirectAgreed(
+  result: FilingParserCrossEngineDirectExecutionResult,
+): asserts result is FilingParserCrossEngineDirectExecutionSuccess {
+  if (
+    result.status !== "agreed" ||
+    result.claim !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM ||
+    result.normalization.factVersions.length !== 20 ||
+    result.normalization.lineage.length !== 10 ||
+    result.provenance.engineLifecycles[0].role !== "python-primary" ||
+    result.provenance.engineLifecycles[1].role !== "node-secondary" ||
+    result.provenance.engineLifecycles.some(
+      ({ lifecycles }) => lifecycles.length !== 2,
+    )
+  )
+    fail();
+}
+
+function directSuccessOutcome(
+  first: FilingParserCrossEngineDirectExecutionSuccess,
+  second: FilingParserCrossEngineDirectExecutionSuccess,
+  originalArchive: Uint8Array,
+  amendmentArchive: Uint8Array,
+  pythonImageSha256: `sha256:${string}`,
+  nodeImageSha256: `sha256:${string}`,
+  pythonImplementationSha256: `sha256:${string}`,
+  nodeImplementationSha256: `sha256:${string}`,
+): FilingParserCrossEngineExecutionEvidenceV3CaseOutcome {
+  const invocations = Object.freeze([
+    directInvocation(first),
+    directInvocation(second),
+  ] as const);
+  const receipts = invocations.flatMap(
+    (invocation) => invocation.lifecycleReceipts,
+  );
+  const containerIds = new Set(
+    receipts.map((receipt) => receipt.containerIdSha256),
+  );
+  const lifecycleBindings = new Set(
+    receipts.map((receipt) => receipt.lifecycleBindingSha256),
+  );
+  if (
+    canonicalJson(first.normalization) !==
+      canonicalJson(second.normalization) ||
+    first.provenance.normalizationSha256 !==
+      second.provenance.normalizationSha256 ||
+    first.provenance.ephemeralPublicKeySpkiSha256 ===
+      second.provenance.ephemeralPublicKeySpkiSha256 ||
+    first.provenance.invocationBindingSha256 ===
+      second.provenance.invocationBindingSha256 ||
+    invocations[0].resultSha256 === invocations[1].resultSha256 ||
+    containerIds.size !== 8 ||
+    lifecycleBindings.size !== 8
+  )
+    fail();
+  for (const success of [first, second]) {
+    const agreement = success.provenance.agreement;
+    if (
+      agreement.originalArchiveSha256 !== sha256(originalArchive) ||
+      agreement.amendmentArchiveSha256 !== sha256(amendmentArchive) ||
+      agreement.engines[0]?.role !== "python-primary" ||
+      agreement.engines[0].imageSha256 !== pythonImageSha256 ||
+      agreement.engines[0].implementationSha256 !==
+        pythonImplementationSha256 ||
+      agreement.engines[1]?.role !== "node-secondary" ||
+      agreement.engines[1].imageSha256 !== nodeImageSha256 ||
+      agreement.engines[1].implementationSha256 !== nodeImplementationSha256
+    )
+      fail();
+  }
   return Object.freeze({
-    execute: (): Promise<FilingParserNormalizationExecutionResult> =>
-      Promise.resolve(result),
+    amendmentArchiveSha256: sha256(amendmentArchive),
+    caseId: "same-input-direct-docker-distinct-lifecycle-invocations" as const,
+    expectedStatus: "agreed" as const,
+    factVersionCount: 20 as const,
+    invocationBindingsDistinct: true,
+    invocations,
+    lifecycleBindingsDistinct: true,
+    lineageCount: 10 as const,
+    normalizationStable: true,
+    observedStatus: "agreed" as const,
+    originalArchiveSha256: sha256(originalArchive),
   });
 }
 
-function commonModeLineageMutationBoundary(
-  result: FilingParserNormalizationExecutionResult,
-): FilingParserNormalizationExecutionBoundary {
-  const copied = structuredClone(result);
-  if (copied.status !== "normalized") fail();
-  const lineage = copied.normalization.lineage as unknown as Array<{
-    key: string;
-  }>;
-  const first = lineage[0];
-  const second = lineage[1];
-  if (first === undefined || second === undefined) fail();
-  const firstKey = first.key;
-  first.key = second.key;
-  second.key = firstKey;
-  return cachedNormalizationBoundary(copied);
+function directInvocation(
+  success: FilingParserCrossEngineDirectExecutionSuccess,
+): FilingParserCrossEngineExecutionEvidenceV3Invocation {
+  const agreement = success.provenance.agreement;
+  const python = success.provenance.engineLifecycles[0];
+  const node = success.provenance.engineLifecycles[1];
+  if (
+    python.role !== "python-primary" ||
+    node.role !== "node-secondary" ||
+    agreement.engines[0]?.role !== "python-primary" ||
+    agreement.engines[1]?.role !== "node-secondary"
+  )
+    fail();
+  return Object.freeze({
+    agreementEngines: Object.freeze([
+      Object.freeze({
+        ...agreement.engines[0],
+        role: "python-primary" as const,
+      }),
+      Object.freeze({
+        ...agreement.engines[1],
+        role: "node-secondary" as const,
+      }),
+    ] as const),
+    agreementSha256: agreement.agreementSha256,
+    executionMode: success.provenance.executionMode,
+    invocationBindingSha256: success.provenance.invocationBindingSha256,
+    keyId: success.provenance.keyId,
+    lifecycleReceipts: Object.freeze([
+      Object.freeze({ ...python.lifecycles[0] }),
+      Object.freeze({ ...python.lifecycles[1] }),
+      Object.freeze({ ...node.lifecycles[0] }),
+      Object.freeze({ ...node.lifecycles[1] }),
+    ] as const),
+    normalizationSha256: success.provenance.normalizationSha256,
+    publicKeySpkiSha256: success.provenance.ephemeralPublicKeySpkiSha256,
+    resultSha256: sha256(text(canonicalJson(success))),
+  });
 }
 
-function mismatchingBoundary(
-  boundary: FilingParserNormalizationExecutionBoundary,
-): FilingParserNormalizationExecutionBoundary {
+function directQuarantineOutcome(
+  caseId: Exclude<
+    FilingParserCrossEngineExecutionEvidenceV3CaseId,
+    "same-input-direct-docker-distinct-lifecycle-invocations"
+  >,
+  result: FilingParserCrossEngineDirectExecutionResult,
+): FilingParserCrossEngineExecutionEvidenceV3CaseOutcome {
+  if (
+    result.status !== "quarantined" ||
+    result.code !== "direct_execution_quarantined" ||
+    Object.keys(result).sort().join("|") !==
+      "claim|code|schemaVersion|status|synthetic"
+  )
+    fail();
   return Object.freeze({
-    async execute(
-      originalArchive: unknown,
-      amendmentArchive: unknown,
-      options?: { readonly signal?: AbortSignal },
-    ) {
-      const result = await boundary.execute(
-        originalArchive,
-        amendmentArchive,
-        options,
-      );
-      if (result.status !== "normalized") return result;
-      const copied = JSON.parse(
-        JSON.stringify(result),
-      ) as FilingParserNormalizationExecutionResult;
-      if (copied.status !== "normalized") fail();
-      const first = copied.normalization.factVersions[0];
-      if (first === undefined) fail();
-      (first as { value: string }).value = `${first.value}1`;
-      return copied;
-    },
+    amendmentArchiveSha256: null,
+    caseId,
+    expectedStatus: "quarantined" as const,
+    factVersionCount: null,
+    invocationBindingsDistinct: false,
+    invocations: null,
+    lifecycleBindingsDistinct: false,
+    lineageCount: null,
+    normalizationStable: false,
+    observedStatus: "quarantined" as const,
+    originalArchiveSha256: null,
   });
 }
 
@@ -1012,12 +865,10 @@ function implementationSources(
   );
 }
 
-async function exactCycle2lTransition(
+async function exactCycle2mTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
-  const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE;
-  const failedPrecursor =
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION;
+  const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE;
   const range = `${base}..${revision}`;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
@@ -1043,21 +894,11 @@ async function exactCycle2lTransition(
       )
     ).stdout,
   );
-  const failedPrecursorParentLine = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--parents", "--max-count=1", failedPrecursor],
-        5_000,
-      )
-    ).stdout,
-  );
   if (
     mergeBase !== base ||
-    successorCount !== "2" ||
-    firstParentCount !== "2" ||
-    parentLine !== `${revision} ${failedPrecursor}` ||
-    failedPrecursorParentLine !== `${failedPrecursor} ${base}`
+    successorCount !== "1" ||
+    firstParentCount !== "1" ||
+    parentLine !== `${revision} ${base}`
   )
     fail();
   const output = (
@@ -1089,314 +930,107 @@ async function exactCycle2lTransition(
   return Object.freeze(entries);
 }
 
-/** @internal Preserved v1 corrective-chain transition seam. */
-export async function exactCorrectiveChainTransition(
+async function committedSourceHashes(
   revision: string,
-): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
-  const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE;
-  const failedPrecursor =
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
-  const failedCorrective =
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
-  const failedDiagnostic =
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION;
-  const failedRecovery =
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION;
-  const mergeBase = decodeExactLine(
-    (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
-  );
-  const revisionRange = `${base}..${revision}`;
-  const successorCount = decodeExactLine(
-    (await checkedCommand("git", ["rev-list", "--count", revisionRange], 5_000))
-      .stdout,
-  );
-  const firstParentCount = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--first-parent", "--count", revisionRange],
-        5_000,
-      )
-    ).stdout,
-  );
-  const parentLine = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--parents", "--max-count=1", revision],
-        5_000,
-      )
-    ).stdout,
-  );
-  const failedPrecursorParentLine = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--parents", "--max-count=1", failedPrecursor],
-        5_000,
-      )
-    ).stdout,
-  );
-  const failedCorrectiveParentLine = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--parents", "--max-count=1", failedCorrective],
-        5_000,
-      )
-    ).stdout,
-  );
-  const failedRecoveryParentLine = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--parents", "--max-count=1", failedRecovery],
-        5_000,
-      )
-    ).stdout,
-  );
-  const failedDiagnosticParentLine = decodeExactLine(
-    (
-      await checkedCommand(
-        "git",
-        ["rev-list", "--parents", "--max-count=1", failedDiagnostic],
-        5_000,
-      )
-    ).stdout,
-  );
-  if (
-    mergeBase !== base ||
-    successorCount !== "5" ||
-    firstParentCount !== "5" ||
-    parentLine !== `${revision} ${failedDiagnostic}` ||
-    failedDiagnosticParentLine !== `${failedDiagnostic} ${failedRecovery}` ||
-    failedRecoveryParentLine !== `${failedRecovery} ${failedCorrective}` ||
-    failedCorrectiveParentLine !== `${failedCorrective} ${failedPrecursor}` ||
-    failedPrecursorParentLine !== `${failedPrecursor} ${base}`
-  )
-    fail();
-  const output = (
-    await checkedCommand(
+  paths: readonly string[],
+): Promise<readonly FilingParserCrossEngineExecutionEvidenceSourceHash[]> {
+  const output: FilingParserCrossEngineExecutionEvidenceSourceHash[] = [];
+  for (const path of paths) {
+    const source = await checkedCommand(
       "git",
-      ["diff", "--name-status", "--no-renames", base, revision],
+      ["show", `${revision}:${path}`],
       10_000,
       MAX_COMMAND_BYTES,
       65_536,
-    )
-  ).stdout;
-  const decoded = new TextDecoder("utf-8", { fatal: true }).decode(output);
-  if (!decoded.endsWith("\n")) fail();
-  const entries = decoded
-    .slice(0, -1)
-    .split("\n")
-    .map((line) => {
-      const match = /^(A|M)\t([^\t\r\n]+)$/u.exec(line);
-      if (match?.[1] === undefined || match[2] === undefined) fail();
-      return Object.freeze({
-        path: match[2],
-        status: match[1] as "A" | "M",
-      });
-    });
-  if (entries.length === 0) fail();
-  return Object.freeze(entries);
+    );
+    output.push(Object.freeze({ path, sha256: sha256(source.stdout) }));
+  }
+  return Object.freeze(output);
 }
 
-class RecordingDockerProcessRunner {
-  public readonly documentOutputs: Uint8Array[] = [];
-  readonly #containers = new Map<
-    string,
-    { readonly archivePath: string; readonly containerId: string }
-  >();
-  readonly #startExitCodes: number[] = [];
-  #auditFailed = false;
-  #createCount = 0;
-  #imageId: string | null = null;
-  #removeCount = 0;
-  #residueCount = 0;
-
-  public constructor(
-    private readonly expectedExitCodes: readonly number[],
-    private readonly expectedImageProfile: FilingParserCrossEngineImageInspectionProfile,
-  ) {}
-
-  public async run(
-    request: FilingParserNormalizationExecutionProcessRequest,
-  ): Promise<FilingParserNormalizationExecutionProcessResult> {
-    try {
-      const operation = this.validateRequest(request);
-      validateRequestLimits(request, operation.kind);
-      const result = await command(
-        request.command,
-        request.args,
-        request.timeoutMilliseconds,
-        request.stdoutLimitBytes,
-        request.stderrLimitBytes,
-        request.signal,
-      );
-      if (result.stderr.byteLength !== 0) fail();
-      if (operation.kind === "create") {
-        if (result.exitCode !== 0) fail();
-        this.#createCount += 1;
-        const containerId = decodeExactLine(result.stdout);
-        if (!/^[0-9a-f]{64}$/u.test(containerId)) fail();
-        this.#containers.set(operation.containerName, {
-          archivePath: operation.archivePath,
-          containerId,
-        });
-        await this.inspectCreatedContainer(
-          operation.containerName,
-          operation.archivePath,
-          containerId,
-        );
-      } else if (operation.kind === "start") {
-        if (result.exitCode !== 0 && result.exitCode !== 2) fail();
-        this.#startExitCodes.push(result.exitCode);
-        if (result.exitCode === 0)
-          this.documentOutputs.push(Uint8Array.from(result.stdout));
-      } else if (operation.kind === "remove") {
-        if (result.exitCode !== 0) fail();
-        this.#removeCount += 1;
-        this.#containers.delete(operation.containerName);
-      } else {
-        if (result.exitCode !== 0 || result.stdout.byteLength !== 0) fail();
-        this.#residueCount += 1;
-        this.#containers.delete(operation.containerName);
-      }
-      return Object.freeze({
-        exitCode: result.exitCode,
-        stderr: Uint8Array.from(result.stderr),
-        stdout: Uint8Array.from(result.stdout),
-      });
-    } catch (error) {
-      this.#auditFailed = true;
-      throw error;
-    }
-  }
-
-  public assertComplete(): void {
-    if (
-      this.#auditFailed ||
-      this.#containers.size !== 0 ||
-      this.#createCount !== this.expectedExitCodes.length ||
-      this.#removeCount !== this.expectedExitCodes.length ||
-      this.#residueCount !== this.expectedExitCodes.length ||
-      this.documentOutputs.length !==
-        this.expectedExitCodes.filter((code) => code === 0).length ||
-      JSON.stringify(this.#startExitCodes) !==
-        JSON.stringify(this.expectedExitCodes)
-    )
-      fail();
-  }
-
-  private validateRequest(
-    request: FilingParserNormalizationExecutionProcessRequest,
-  ):
-    | {
-        readonly archivePath: string;
-        readonly containerName: string;
-        readonly kind: "create";
-      }
-    | {
-        readonly containerName: string;
-        readonly kind: "remove" | "residue" | "start";
-      } {
-    const args = request.args;
-    if (request.command !== "docker" || args.length === 0) fail();
-    if (args[0] === "create") {
-      const name = argumentAfter(args, "--name");
-      const mount = argumentAfter(args, "--mount");
-      const imageId = args.at(-1);
-      const mountMatch =
-        /^type=bind,source=(.+),destination=\/input\/filing\.zip,readonly$/u.exec(
-          mount,
-        );
-      if (
-        imageId === undefined ||
-        !HASH.test(imageId) ||
-        !/^research-cockpit-filing-normalization-[0-9a-f-]{36}$/u.test(name) ||
-        mountMatch?.[1] === undefined ||
-        !isAbsolute(mountMatch[1]) ||
-        !exactCreateArguments(args, name, mount, imageId)
-      )
-        fail();
-      this.#imageId ??= imageId;
-      if (this.#imageId !== imageId || this.#containers.has(name)) fail();
-      return {
-        archivePath: mountMatch[1],
-        containerName: name,
-        kind: "create",
-      };
-    }
-    if (args[0] === "start" && args.length === 3 && args[1] === "--attach") {
-      const name = args[2] as string;
-      if (!this.#containers.has(name)) fail();
-      return { containerName: name, kind: "start" };
-    }
-    if (args[0] === "rm" && args.length === 3 && args[1] === "--force") {
-      const name = args[2] as string;
-      if (!/^research-cockpit-filing-normalization-[0-9a-f-]{36}$/u.test(name))
-        fail();
-      return { containerName: name, kind: "remove" };
-    }
-    if (
-      args.length === 8 &&
-      JSON.stringify(args.slice(0, 6)) ===
-        JSON.stringify([
-          "container",
-          "ls",
-          "--all",
-          "--quiet",
-          "--filter",
-          `label=${FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL}`,
-        ]) &&
-      args[6] === "--filter"
-    ) {
-      const match =
-        /^name=\^\/(research-cockpit-filing-normalization-[0-9a-f-]{36})\$$/u.exec(
-          args[7] as string,
-        );
-      if (match?.[1] === undefined) fail();
-      return { containerName: match[1], kind: "residue" };
-    }
+async function readPinnedImageMetadata(engine: "node" | "python"): Promise<{
+  readonly indexDigest: `sha256:${string}`;
+  readonly platformManifestDigest: `sha256:${string}`;
+}> {
+  const path =
+    engine === "node"
+      ? "packages/filing-parser-cross-engine-execution/acceptance/node-image.json"
+      : "packages/filing-parser-normalization-execution/acceptance/python-image.json";
+  const textValue = await readFile(path, "utf8");
+  const value = JSON.parse(textValue) as unknown;
+  const expected =
+    engine === "node"
+      ? {
+          schemaVersion: 1,
+          image: NODE_BASE_IMAGE,
+          tag: "24.19.0-bookworm-slim",
+          indexDigest: NODE_BASE_INDEX_DIGEST,
+          platform: "linux/amd64",
+          platformManifestDigest: NODE_BASE_PLATFORM_MANIFEST_DIGEST,
+          nodeVersion: "24.19.0",
+          distribution: "Debian GNU/Linux 12 (bookworm) slim",
+          officialRegistryManifestUrl:
+            "https://registry-1.docker.io/v2/library/node/manifests/24.19.0-bookworm-slim",
+          officialImageDefinitionUrl:
+            "https://github.com/docker-library/official-images/blob/master/library/node",
+          nodeLicense: "MIT License",
+          nodeLicenseUrl:
+            "https://github.com/nodejs/node/blob/v24.19.0/LICENSE",
+          containerPackageLicenseInventoryStatus:
+            "not_proven_ci_acceptance_only",
+        }
+      : {
+          schemaVersion: 1,
+          image: PYTHON_BASE_IMAGE,
+          tag: "3.12.13-slim-bookworm",
+          indexDigest: PYTHON_BASE_INDEX_DIGEST,
+          platform: "linux/amd64",
+          platformManifestDigest: PYTHON_BASE_PLATFORM_MANIFEST_DIGEST,
+          pythonVersion: "3.12.13",
+          distribution: "Debian GNU/Linux 12 (bookworm) slim",
+          officialRegistryManifestUrl:
+            "https://registry-1.docker.io/v2/library/python/manifests/3.12.13-slim-bookworm",
+          officialImageDefinitionUrl:
+            "https://github.com/docker-library/official-images/blob/master/library/python",
+          cpythonLicense: "Python Software Foundation License Version 2",
+          cpythonLicenseUrl: "https://docs.python.org/3.12/license.html",
+          containerPackageLicenseInventoryStatus:
+            "not_proven_ci_acceptance_only",
+        };
+  if (
+    `${JSON.stringify(value, null, 2)}\n` !== textValue ||
+    canonicalJson(value) !== canonicalJson(expected)
+  )
     fail();
-  }
-
-  private async inspectCreatedContainer(
-    containerName: string,
-    archivePath: string,
-    containerId: string,
-  ): Promise<void> {
-    if (this.#imageId === null) fail();
-    const inspected = await checkedCommand(
-      "docker",
-      ["container", "inspect", containerName],
-      5_000,
-      1_048_576,
-      4_096,
-    );
-    const parsed = JSON.parse(
-      new TextDecoder().decode(inspected.stdout),
-    ) as unknown;
-    if (!Array.isArray(parsed) || parsed.length !== 1) fail();
-    validateContainerInspection(
-      parsed[0],
-      containerId,
-      containerName,
-      this.#imageId,
-      archivePath,
-      this.expectedImageProfile,
-    );
-  }
+  return engine === "node"
+    ? Object.freeze({
+        indexDigest: NODE_BASE_INDEX_DIGEST,
+        platformManifestDigest: NODE_BASE_PLATFORM_MANIFEST_DIGEST,
+      })
+    : Object.freeze({
+        indexDigest: PYTHON_BASE_INDEX_DIGEST,
+        platformManifestDigest: PYTHON_BASE_PLATFORM_MANIFEST_DIGEST,
+      });
 }
 
-function argumentAfter(args: readonly string[], option: string): string {
-  const index = args.indexOf(option);
-  const value = index < 0 ? undefined : args[index + 1];
-  if (value === undefined || args.indexOf(option, index + 1) !== -1) fail();
-  return value;
+async function verifyBuiltImage(
+  imageId: `sha256:${string}`,
+  expectedProfile: FilingParserCrossEngineImageInspectionProfile,
+): Promise<void> {
+  const inspected = await checkedCommand(
+    "docker",
+    ["image", "inspect", imageId],
+    10_000,
+    1_048_576,
+    65_536,
+  );
+  const value = JSON.parse(
+    new TextDecoder().decode(inspected.stdout),
+  ) as unknown;
+  validateBuiltImageInspection(value, imageId, expectedProfile);
 }
 
-/** @internal Exported for acceptance-runner audit regression tests. */
+/** Historical v2 test seam retained for exact request-limit review. */
 export function validateRequestLimits(
   request: FilingParserNormalizationExecutionProcessRequest,
   kind: "create" | "remove" | "residue" | "start",
@@ -1418,7 +1052,7 @@ export function validateRequestLimits(
     fail();
 }
 
-/** @internal Exported for acceptance-runner audit regression tests. */
+/** Historical v2 test seam retained for exact Docker-create review. */
 export function exactCreateArguments(
   args: readonly string[],
   containerName: string,
@@ -1463,7 +1097,7 @@ export function exactCreateArguments(
   );
 }
 
-/** @internal Exported for acceptance-runner audit regression tests. */
+/** Historical v2 test seam retained for exact created-container review. */
 export function validateContainerInspection(
   value: unknown,
   containerId: string,
@@ -1581,6 +1215,47 @@ export function validateContainerInspection(
     fail();
 }
 
+/** @internal Exported for fail-closed Docker image inspection tests. */
+export function validateBuiltImageInspection(
+  value: unknown,
+  imageId: `sha256:${string}`,
+  expectedProfile: FilingParserCrossEngineImageInspectionProfile,
+): void {
+  validateImageProfile(expectedProfile);
+  if (!Array.isArray(value) || value.length !== 1) fail();
+  const image = recordAtLeast(value[0], ["Architecture", "Config", "Id", "Os"]);
+  const config = recordAtLeast(image.Config, [
+    "Entrypoint",
+    "Env",
+    "User",
+    "WorkingDir",
+  ]);
+  if (
+    image.Id !== imageId ||
+    image.Os !== "linux" ||
+    image.Architecture !== "amd64" ||
+    config.User !== "65532:65532" ||
+    config.WorkingDir !== expectedProfile.workingDirectory ||
+    !absentNullOrEmptyArray(config.Cmd) ||
+    !absentNullOrEmptyRecord(config.ExposedPorts) ||
+    JSON.stringify(config.Entrypoint) !==
+      JSON.stringify(expectedProfile.entrypoint) ||
+    !safeImageEnvironment(config.Env)
+  )
+    fail();
+}
+
+function validateImageProfile(
+  profile: FilingParserCrossEngineImageInspectionProfile,
+): void {
+  const canonical = JSON.stringify(profile);
+  if (
+    canonical !== JSON.stringify(PYTHON_IMAGE_INSPECTION_PROFILE) &&
+    canonical !== JSON.stringify(NODE_IMAGE_INSPECTION_PROFILE)
+  )
+    fail();
+}
+
 function recordAtLeast(
   value: unknown,
   keys: readonly string[],
@@ -1622,277 +1297,6 @@ function safeImageEnvironment(value: unknown): boolean {
         !/(?:PASSWORD|PRIVATE|SECRET|TOKEN)=/iu.test(entry),
     )
   );
-}
-
-function assertAgreed(
-  result: FilingParserCrossEngineExecutionResult,
-  pythonDocuments: readonly Uint8Array[],
-  nodeDocuments: readonly Uint8Array[],
-  fixture: ReturnType<
-    typeof buildSyntheticFilingParserNormalizationExecutionFixture
-  >,
-): asserts result is Extract<
-  FilingParserCrossEngineExecutionResult,
-  { status: "agreed" }
-> {
-  if (
-    result.status !== "agreed" ||
-    result.normalization.factVersions.length !== 20 ||
-    result.normalization.lineage.length !== 10 ||
-    result.provenance.engineCount !== 2 ||
-    result.provenance.engines[0].role !== "python-primary" ||
-    result.provenance.engines[0].engineId !== PYTHON_ENGINE_ID ||
-    result.provenance.engines[1].role !== "node-secondary" ||
-    result.provenance.engines[1].engineId !== NODE_ENGINE_ID ||
-    pythonDocuments.length !== 2 ||
-    nodeDocuments.length !== 2 ||
-    !exactDocumentOutputs(pythonDocuments, nodeDocuments) ||
-    !exactBytes(pythonDocuments[0], fixture.originalDocumentBytes) ||
-    !exactBytes(pythonDocuments[1], fixture.amendmentDocumentBytes) ||
-    result.normalization.originalDocumentSha256 !==
-      sha256(pythonDocuments[0] as Uint8Array) ||
-    result.normalization.amendmentDocumentSha256 !==
-      sha256(pythonDocuments[1] as Uint8Array)
-  )
-    fail();
-}
-
-function assertObservedPair(
-  pythonDocuments: readonly Uint8Array[],
-  nodeDocuments: readonly Uint8Array[],
-  originalDocument: Uint8Array,
-  amendmentDocument: Uint8Array,
-): void {
-  if (
-    pythonDocuments.length !== 2 ||
-    nodeDocuments.length !== 2 ||
-    !exactDocumentOutputs(pythonDocuments, nodeDocuments) ||
-    !exactBytes(pythonDocuments[0], originalDocument) ||
-    !exactBytes(pythonDocuments[1], amendmentDocument)
-  )
-    fail();
-}
-
-function assertEngineAnchors(
-  result: Extract<FilingParserCrossEngineExecutionResult, { status: "agreed" }>,
-  pythonImageSha256: `sha256:${string}`,
-  nodeImageSha256: `sha256:${string}`,
-  pythonImplementationSha256: `sha256:${string}`,
-  nodeImplementationSha256: `sha256:${string}`,
-): void {
-  const [python, node] = result.provenance.engines;
-  if (
-    python.imageSha256 !== pythonImageSha256 ||
-    python.implementationSha256 !== pythonImplementationSha256 ||
-    node.imageSha256 !== nodeImageSha256 ||
-    node.implementationSha256 !== nodeImplementationSha256 ||
-    python.imageSha256 === node.imageSha256 ||
-    python.implementationSha256 === node.implementationSha256
-  )
-    fail();
-}
-
-function assertCrossQuarantined(
-  result: FilingParserCrossEngineExecutionResult,
-): void {
-  if (
-    result.status !== "quarantined" ||
-    result.code !== "agreement_quarantined" ||
-    result.normalization !== null ||
-    result.provenance !== null
-  )
-    fail();
-}
-
-function crossQuarantineOutcome(
-  caseId:
-    | "cached-genuine-child-receipts-under-different-archives"
-    | "common-mode-lineage-mutation"
-    | "cross-engine-normalization-mismatch"
-    | "original-amendment-role-swap"
-    | "original-archive-tamper",
-  result: FilingParserCrossEngineExecutionResult,
-): FilingParserCrossEngineExecutionEvidenceV2CaseOutcome {
-  assertCrossQuarantined(result);
-  return Object.freeze({
-    amendmentArchiveSha256: null,
-    amendmentDocumentSha256: null,
-    agreementSha256: null,
-    caseId,
-    expectedStatus: "quarantined" as const,
-    factVersionCount: null,
-    lineageCount: null,
-    nodeAmendmentStdoutSha256: null,
-    nodeExecutionBindingSha256: null,
-    nodeHandoffPairBindingSha256: null,
-    nodeKeyId: null,
-    nodeOriginalStdoutSha256: null,
-    nodePublicKeySpkiSha256: null,
-    normalizationSha256: null,
-    observedStatus: "quarantined" as const,
-    originalArchiveSha256: null,
-    originalDocumentSha256: null,
-    pythonAmendmentStdoutSha256: null,
-    pythonExecutionBindingSha256: null,
-    pythonHandoffPairBindingSha256: null,
-    pythonKeyId: null,
-    pythonOriginalStdoutSha256: null,
-    pythonPublicKeySpkiSha256: null,
-    replayMatched: false,
-    resultSha256: null,
-  });
-}
-
-async function committedSourceHashes(
-  revision: string,
-  paths: readonly string[],
-): Promise<readonly FilingParserCrossEngineExecutionEvidenceSourceHash[]> {
-  const output: FilingParserCrossEngineExecutionEvidenceSourceHash[] = [];
-  for (const path of paths) {
-    const source = await checkedCommand(
-      "git",
-      ["show", `${revision}:${path}`],
-      10_000,
-      MAX_COMMAND_BYTES,
-      65_536,
-    );
-    output.push(Object.freeze({ path, sha256: sha256(source.stdout) }));
-  }
-  return Object.freeze(output);
-}
-
-async function readPinnedImageMetadata(engine: "node" | "python"): Promise<{
-  readonly indexDigest: `sha256:${string}`;
-  readonly platformManifestDigest: `sha256:${string}`;
-}> {
-  if (engine === "node") {
-    const textValue = await readFile(
-      "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
-      "utf8",
-    );
-    const value = JSON.parse(textValue) as unknown;
-    const expected = {
-      schemaVersion: 1,
-      image: NODE_BASE_IMAGE,
-      tag: "24.19.0-bookworm-slim",
-      indexDigest: NODE_BASE_INDEX_DIGEST,
-      platform: "linux/amd64",
-      platformManifestDigest: NODE_BASE_PLATFORM_MANIFEST_DIGEST,
-      nodeVersion: "24.19.0",
-      distribution: "Debian GNU/Linux 12 (bookworm) slim",
-      officialRegistryManifestUrl:
-        "https://registry-1.docker.io/v2/library/node/manifests/24.19.0-bookworm-slim",
-      officialImageDefinitionUrl:
-        "https://github.com/docker-library/official-images/blob/master/library/node",
-      nodeLicense: "MIT License",
-      nodeLicenseUrl: "https://github.com/nodejs/node/blob/v24.19.0/LICENSE",
-      containerPackageLicenseInventoryStatus: "not_proven_ci_acceptance_only",
-    } as const;
-    if (
-      `${JSON.stringify(value, null, 2)}\n` !== textValue ||
-      canonicalJson(value) !== canonicalJson(expected)
-    )
-      fail();
-    return Object.freeze({
-      indexDigest: NODE_BASE_INDEX_DIGEST,
-      platformManifestDigest: NODE_BASE_PLATFORM_MANIFEST_DIGEST,
-    });
-  }
-  const textValue = await readFile(
-    "packages/filing-parser-normalization-execution/acceptance/python-image.json",
-    "utf8",
-  );
-  const value = JSON.parse(textValue) as unknown;
-  const expected = {
-    schemaVersion: 1,
-    image: PYTHON_BASE_IMAGE,
-    tag: "3.12.13-slim-bookworm",
-    indexDigest: PYTHON_BASE_INDEX_DIGEST,
-    platform: "linux/amd64",
-    platformManifestDigest: PYTHON_BASE_PLATFORM_MANIFEST_DIGEST,
-    pythonVersion: "3.12.13",
-    distribution: "Debian GNU/Linux 12 (bookworm) slim",
-    officialRegistryManifestUrl:
-      "https://registry-1.docker.io/v2/library/python/manifests/3.12.13-slim-bookworm",
-    officialImageDefinitionUrl:
-      "https://github.com/docker-library/official-images/blob/master/library/python",
-    cpythonLicense: "Python Software Foundation License Version 2",
-    cpythonLicenseUrl: "https://docs.python.org/3.12/license.html",
-    containerPackageLicenseInventoryStatus: "not_proven_ci_acceptance_only",
-  } as const;
-  if (
-    `${JSON.stringify(value, null, 2)}\n` !== textValue ||
-    canonicalJson(value) !== canonicalJson(expected)
-  )
-    fail();
-  return Object.freeze({
-    indexDigest: PYTHON_BASE_INDEX_DIGEST,
-    platformManifestDigest: PYTHON_BASE_PLATFORM_MANIFEST_DIGEST,
-  });
-}
-
-async function verifyBuiltImage(
-  imageId: `sha256:${string}`,
-  expectedProfile: FilingParserCrossEngineImageInspectionProfile,
-): Promise<void> {
-  const inspected = await checkedCommand(
-    "docker",
-    ["image", "inspect", imageId],
-    10_000,
-    1_048_576,
-    65_536,
-  );
-  const value = JSON.parse(
-    new TextDecoder().decode(inspected.stdout),
-  ) as unknown;
-  validateBuiltImageInspection(value, imageId, expectedProfile);
-}
-
-/** @internal Exported for fail-closed Docker image inspection tests. */
-export function validateBuiltImageInspection(
-  value: unknown,
-  imageId: `sha256:${string}`,
-  expectedProfile: FilingParserCrossEngineImageInspectionProfile,
-): void {
-  validateImageProfile(expectedProfile);
-  const values = value;
-  if (!Array.isArray(values) || values.length !== 1) fail();
-  const image = recordAtLeast(values[0], [
-    "Architecture",
-    "Config",
-    "Id",
-    "Os",
-  ]);
-  const config = recordAtLeast(image.Config, [
-    "Entrypoint",
-    "Env",
-    "User",
-    "WorkingDir",
-  ]);
-  if (
-    image.Id !== imageId ||
-    image.Os !== "linux" ||
-    image.Architecture !== "amd64" ||
-    config.User !== "65532:65532" ||
-    config.WorkingDir !== expectedProfile.workingDirectory ||
-    !absentNullOrEmptyArray(config.Cmd) ||
-    !absentNullOrEmptyRecord(config.ExposedPorts) ||
-    JSON.stringify(config.Entrypoint) !==
-      JSON.stringify(expectedProfile.entrypoint) ||
-    !safeImageEnvironment(config.Env)
-  )
-    fail();
-}
-
-function validateImageProfile(
-  profile: FilingParserCrossEngineImageInspectionProfile,
-): void {
-  const canonical = JSON.stringify(profile);
-  if (
-    canonical !== JSON.stringify(PYTHON_IMAGE_INSPECTION_PROFILE) &&
-    canonical !== JSON.stringify(NODE_IMAGE_INSPECTION_PROFILE)
-  )
-    fail();
 }
 
 async function assertZeroResidue(): Promise<void> {
@@ -1971,7 +1375,7 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
     process.env.GITHUB_ACTIONS !== "true" ||
     process.env.GITHUB_JOB !== "acceptance" ||
     process.env.GITHUB_WORKFLOW !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW
   )
     fail();
   const evidencePath = requiredEnvironment(
@@ -2135,24 +1539,6 @@ async function assertPathAbsent(path: string): Promise<void> {
   }
 }
 
-function exactBytes(left: Uint8Array | undefined, right: Uint8Array): boolean {
-  return (
-    left !== undefined &&
-    left.byteLength === right.byteLength &&
-    left.every((value, index) => value === right[index])
-  );
-}
-
-function exactDocumentOutputs(
-  left: readonly Uint8Array[],
-  right: readonly Uint8Array[],
-): boolean {
-  return (
-    left.length === right.length &&
-    left.every((value, index) => exactBytes(value, right[index] as Uint8Array))
-  );
-}
-
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value === "string" || typeof value === "boolean")
     return JSON.stringify(value);
@@ -2190,7 +1576,6 @@ function fail(): never {
   throw new Error("acceptance failed");
 }
 
-// Keep direct execution last so every runtime class binding is initialized.
 const invokedPath = process.argv[1];
 if (
   invokedPath !== undefined &&

@@ -201,6 +201,9 @@ const filingParserCrossEngineExecutionRootScriptAliases = [
 const filingParserCrossEngineExecutionCorePaths = [
   "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
   "packages/filing-parser-cross-engine-execution/package.json",
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-direct-execution-security.test.ts",
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-direct-execution.test.ts",
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-direct-execution.ts",
   "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution-security.test.ts",
   "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.test.ts",
   "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.ts",
@@ -253,6 +256,23 @@ const filingParserCrossEngineExecutionPublicExports = [
   ["FilingParserCrossEngineExecutionRole", true],
   ["FilingParserCrossEngineExecutionSuccess", true],
 ] as const;
+const filingParserCrossEngineDirectExecutionPublicExports = [
+  ["FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS", false],
+  ["FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CLAIM", false],
+  ["FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_MODE", false],
+  ["FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN", false],
+  ["FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_SCHEMA_VERSION", false],
+  ["createFilingParserCrossEngineDirectExecutionBoundary", false],
+  ["FilingParserCrossEngineDirectExecutionBoundary", true],
+  ["FilingParserCrossEngineDirectExecutionConfiguration", true],
+  ["FilingParserCrossEngineDirectExecutionEngineConfiguration", true],
+  ["FilingParserCrossEngineDirectExecutionEngineLifecycle", true],
+  ["FilingParserCrossEngineDirectExecutionLifecycleReceipt", true],
+  ["FilingParserCrossEngineDirectExecutionProvenance", true],
+  ["FilingParserCrossEngineDirectExecutionQuarantinedResult", true],
+  ["FilingParserCrossEngineDirectExecutionResult", true],
+  ["FilingParserCrossEngineDirectExecutionSuccess", true],
+] as const;
 const filingParserCrossEngineExecutionEvidencePublicExports = [
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS", false],
@@ -277,17 +297,38 @@ const filingParserCrossEngineExecutionEvidencePublicExports = [
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW", false],
   ["FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS", false],
   ["createFilingParserCrossEngineExecutionEvidence", false],
+  ["createFilingParserCrossEngineExecutionEvidenceV3", false],
+  ["filingParserCrossEngineExecutionEvidenceV3Sha256", false],
   ["filingParserCrossEngineExecutionEvidenceSha256", false],
   ["filingParserCrossEngineImplementationSha256", false],
+  ["filingParserCrossEngineExecutionV3InvocationBindingSha256", false],
+  ["filingParserCrossEngineExecutionV3LifecycleBindingSha256", false],
   ["parseCanonicalFilingParserCrossEngineExecutionEvidence", false],
+  ["parseCanonicalFilingParserCrossEngineExecutionEvidenceV3", false],
   ["serializeCanonicalFilingParserCrossEngineExecutionEvidence", false],
+  ["serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3", false],
   ["FilingParserCrossEngineExecutionEvidence", true],
   ["FilingParserCrossEngineExecutionEvidenceCaseOutcome", true],
   ["FilingParserCrossEngineExecutionEvidenceEngine", true],
   ["FilingParserCrossEngineExecutionEvidenceSourceHash", true],
   ["FilingParserCrossEngineExecutionEvidenceTransitionEntry", true],
+  ["FilingParserCrossEngineExecutionEvidenceV3", true],
+  ["FilingParserCrossEngineExecutionEvidenceV3CaseId", true],
+  ["FilingParserCrossEngineExecutionEvidenceV3CaseOutcome", true],
+  ["FilingParserCrossEngineExecutionEvidenceV3Invocation", true],
+  ["FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt", true],
 ] as const;
 const filingParserCrossEngineExecutionVerifierPublicExports = [
   ["repositoryRelativePathIsContained", false],
@@ -4298,12 +4339,15 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     );
 
   const allowedCoreModules = new Set([
+    "node:child_process",
     "node:crypto",
     "node:util",
     "vitest",
     filingParserNormalizationExecutionModule,
     `${filingParserNormalizationExecutionModule}/test`,
+    "./filing-parser-cross-engine-direct-execution",
     "./filing-parser-cross-engine-execution",
+    "./index",
     "./test-cross-engine-execution-builder",
   ]);
   const coreIndexPath = `${filingParserCrossEngineExecutionPackagePrefix}src/index.ts`;
@@ -4315,11 +4359,16 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     ts.ScriptKind.TS,
   );
   if (
-    coreIndex.statements.length !== 1 ||
+    coreIndex.statements.length !== 2 ||
     !isExactNamedReExportDeclaration(
       coreIndex.statements[0],
       "./filing-parser-cross-engine-execution",
       filingParserCrossEngineExecutionPublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      coreIndex.statements[1],
+      "./filing-parser-cross-engine-direct-execution",
+      filingParserCrossEngineDirectExecutionPublicExports,
     )
   )
     found.push("Cycle 2k core public export surface must remain exact");

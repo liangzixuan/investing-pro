@@ -18,3 +18,21 @@ export {
   type FilingParserCrossEngineExecutionRole,
   type FilingParserCrossEngineExecutionSuccess,
 } from "./filing-parser-cross-engine-execution";
+
+export {
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_MODE,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_SCHEMA_VERSION,
+  createFilingParserCrossEngineDirectExecutionBoundary,
+  type FilingParserCrossEngineDirectExecutionBoundary,
+  type FilingParserCrossEngineDirectExecutionConfiguration,
+  type FilingParserCrossEngineDirectExecutionEngineConfiguration,
+  type FilingParserCrossEngineDirectExecutionEngineLifecycle,
+  type FilingParserCrossEngineDirectExecutionLifecycleReceipt,
+  type FilingParserCrossEngineDirectExecutionProvenance,
+  type FilingParserCrossEngineDirectExecutionQuarantinedResult,
+  type FilingParserCrossEngineDirectExecutionResult,
+  type FilingParserCrossEngineDirectExecutionSuccess,
+} from "./filing-parser-cross-engine-direct-execution";

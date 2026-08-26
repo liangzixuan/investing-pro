@@ -85,16 +85,53 @@ const CASES_V2 = {
   schemaVersion: "2.0.0",
   synthetic: true,
 };
+const CASES_V3 = {
+  cases: [
+    {
+      caseId: "same-input-direct-docker-distinct-lifecycle-invocations",
+      expectedStatus: "agreed",
+      replay: true,
+    },
+    {
+      caseId: "unknown-python-image",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "pre-aborted-signal",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "original-archive-tamper",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "original-amendment-role-swap",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "identical-archives",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+  ],
+  schemaVersion: "3.0.0",
+  synthetic: true,
+};
 
 await verify();
 async function verify(): Promise<void> {
   await verifyVersion("v1", CASES_V1, "1.0.0", 4, 3);
   await verifyVersion("v2", CASES_V2, "2.0.0", 6, 5);
+  await verifyVersion("v3", CASES_V3, "3.0.0", 6, 5);
 }
 async function verifyVersion(
-  version: "v1" | "v2",
+  version: "v1" | "v2" | "v3",
   expectedCases: unknown,
-  schemaVersion: "1.0.0" | "2.0.0",
+  schemaVersion: "1.0.0" | "2.0.0" | "3.0.0",
   caseCount: 4 | 6,
   quarantinedCases: 3 | 5,
 ): Promise<void> {
