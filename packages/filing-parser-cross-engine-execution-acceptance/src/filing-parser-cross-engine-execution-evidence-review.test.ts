@@ -73,4 +73,34 @@ describe("filing parser cross-engine execution evidence review", () => {
       } as never),
     ).toThrow();
   });
+  it("emits the v2 review with the superseded v1 anchors", () => {
+    const review = {
+      artifactName: "artifact-v2",
+      baseline: "b9b7dd19996f0c5bb1e073ab5522c42e06dee397",
+      evidenceSha256: `sha256:${"a".repeat(64)}`,
+      evidenceVersion: 2,
+      historicalV1: {
+        artifactId: "9588542275",
+        claimStatus: "superseded",
+        evidenceSha256:
+          "sha256:aa45aaed5d28898fd0ea9b563792c61f5d4b908a8e2a8a4602bcb96bb9d2c965",
+        evidenceVersion: 1,
+        jobId: "98022742591",
+        reason:
+          "cross_input_child_receipt_replay_and_common_mode_lineage_reciprocity_gap",
+        runId: "32917020041",
+        sourceRevision: "54908db1ded8193ac4ade7a3d6f38505c6b4b8e5",
+      },
+      repository: "owner/repo",
+      revision: "b".repeat(40),
+      runAttempt: 1,
+      runId: "123",
+      sourceCount: 68,
+      transitionPathCount: 10,
+      verdict: "offline_consistent",
+    } as const;
+    expect(filingParserCrossEngineExecutionEvidenceReviewStdout(review)).toBe(
+      `${JSON.stringify(review)}\n`,
+    );
+  });
 });

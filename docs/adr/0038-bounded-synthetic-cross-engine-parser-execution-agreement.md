@@ -1,12 +1,16 @@
 # ADR 0038: bounded synthetic cross-engine parser execution agreement
 
-Status: accepted and promoted only for exact source commit
+Status: **Superseded security conclusion and claim.** Historical execution
+evidence was accepted only for exact source commit
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. The exact five-commit chain and
 44-path transition (31 added, 13 modified), full local gate, all exact-source
 workflows, dedicated live execution, retained artifact, and independently
-anchored 66-of-66 `offline_consistent` review passed. Cycle 2b, full Cycle 2
-quality, real-data admission, and production admission remain Blocked.
+anchored 66-of-66 `offline_consistent` review passed and remain immutable
+historical facts. The bounded security conclusion and claim are Superseded
+because later review found cross-input child-receipt replay and common-mode
+lineage acceptance gaps. Cycle 2b, full Cycle 2 quality, real-data admission,
+and production admission remain Blocked.
 
 ## Context
 
@@ -67,9 +71,9 @@ failure returns one empty value-free `agreement_quarantined` result. Quarantine
 must expose no fact values, raw bytes, hashes, image or key identifiers,
 provenance, mismatch details, or canary content.
 
-The sole target claim is
+The historical sole target claim was
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It is accepted only for exact diagnostic recovery child
+It is now Superseded. It had been accepted only for exact diagnostic recovery child
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` of failed
 diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`, whose sole
 parent is failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, whose sole parent is failed
@@ -167,12 +171,35 @@ accounting truth, or engine independence. Historical Cycle 2a, Cycle 2c, Cycle
 artifacts, and anchors remain byte-exact and immutable; regression workflows
 are health checks only and are not Cycle 2k execution evidence.
 
+## Supersession
+
+The boundary validated supplied child result shapes and compared their complete
+normalization bytes, but it did not recompute the child pair and execution
+bindings against the current invocation's archive hashes. It also did not
+require every normalized fact to bind to the current archive and correct
+top-level document role. A caller could therefore supply new archives while
+both injected child boundaries returned cached valid results for an unrelated
+archive pair; agreement could expose current outer provenance with stale child
+receipt and fact bindings.
+
+Lineage validation likewise established only bounded structure, key
+uniqueness, and endpoint existence. It did not require the ten original and ten
+amendment facts to form ten reciprocal per-key predecessor/successor edges with
+matching effective times. The same malformed lineage in both engine results
+could therefore pass byte-exact agreement. These findings Supersede the
+security conclusion and claim, not the immutable historical execution record.
+Cycle 2l is the Pending successor; it adds current-input receipt/fact binding,
+host recomputation of pair/execution bindings, and reciprocal lineage
+validation before agreement.
+
 ## Consequences
 
-Cycle 2k establishes only that two distinct pinned worker implementations produced
-byte-exact equal complete ten-fact stdout documents and byte-exact equal
-complete normalization records for the one reviewed owned synthetic
-original/amendment pair under the bounded live gate.
+Cycle 2k's immutable record shows that two distinct pinned worker
+implementations produced byte-exact equal complete ten-fact stdout documents
+and byte-exact equal complete normalization records for the one reviewed owned
+synthetic original/amendment pair under that live gate. It does not establish
+the Superseded security claim because the boundary admitted the replay and
+lineage gaps above.
 
 It does not establish true organizational, operator, key, host, or
 failure-domain independence; general parser, XBRL/iXBRL, taxonomy, plugin, or
@@ -184,6 +211,8 @@ Cycle 2b and the full Cycle 2 quality gate remain externally blocked.
 ## References
 
 - [Cycle 2k exit matrix](../CYCLE_2K_EXIT_MATRIX.md)
+- [ADR 0039](./0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+- [Cycle 2l exit matrix](../CYCLE_2L_EXIT_MATRIX.md)
 - [ADR 0037](./0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 - [ADR 0036](./0036-bounded-synthetic-authenticated-parser-normalization-handoff.md)
 - [ADR 0032](./0032-bounded-synthetic-two-declared-validator-fact-comparison.md)

@@ -167,6 +167,30 @@ interface ValidatedExecution {
   readonly normalizationBytes: Uint8Array;
 }
 
+interface ValidatedNormalizationAnchors {
+  readonly amendmentDocumentSha256: `sha256:${string}`;
+  readonly originalDocumentSha256: `sha256:${string}`;
+}
+
+interface ValidatedFactVersion {
+  readonly factId: `fact:sha256:${string}`;
+  readonly key: string;
+  readonly knownFrom: string;
+  readonly knownToExclusive: string | null;
+  readonly periodEnd: string;
+  readonly periodStart: string | null;
+  readonly predecessorFactId: `fact:sha256:${string}` | null;
+  readonly sourceAcceptedAt: string;
+  readonly sourceAccession: string;
+  readonly sourceAvailableAt: string;
+  readonly sourceContentSha256: `sha256:${string}`;
+  readonly sourceConcept: string;
+  readonly sourceDocumentSha256: `sha256:${string}`;
+  readonly successorFactId: `fact:sha256:${string}` | null;
+  readonly unit: string;
+  readonly value: string;
+}
+
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ENGINE_ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
 const KEY_ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
@@ -174,6 +198,8 @@ const FACT_ID = /^fact:sha256:[0-9a-f]{64}$/u;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const ACCESSION = /^SYN-[0-9]{10}-[0-9]{2}-[0-9]{6}$/u;
+const ACCESSION_PARTS = /^SYN-([0-9]{10})-([0-9]{2})-[0-9]{6}$/u;
+const DECIMAL = /^-?(?:0|[1-9][0-9]{0,25})(?:\.[0-9]{0,11}[1-9])?$/u;
 const FACT_KEYS = Object.freeze([
   "assets",
   "cash",
@@ -186,9 +212,32 @@ const FACT_KEYS = Object.freeze([
   "operating_income",
   "revenue",
 ] as const);
+const FACT_CONTRACTS = Object.freeze([
+  ["assets", "rc-synthetic:Assets", "instant", "USD"],
+  ["cash", "rc-synthetic:CashAndCashEquivalents", "instant", "USD"],
+  ["debt", "rc-synthetic:Debt", "instant", "USD"],
+  [
+    "diluted_shares",
+    "rc-synthetic:WeightedAverageDilutedShares",
+    "duration",
+    "shares",
+  ],
+  ["free_cash_flow", "rc-synthetic:FreeCashFlow", "duration", "USD"],
+  ["gross_profit", "rc-synthetic:GrossProfit", "duration", "USD"],
+  ["net_income", "rc-synthetic:NetIncome", "duration", "USD"],
+  ["operating_cash_flow", "rc-synthetic:OperatingCashFlow", "duration", "USD"],
+  ["operating_income", "rc-synthetic:OperatingIncome", "duration", "USD"],
+  ["revenue", "rc-synthetic:Revenue", "duration", "USD"],
+] as const);
 const FACT_KEY_SET = new Set<string>(FACT_KEYS);
 const AGREEMENT_DOMAIN = new TextEncoder().encode(
   "research-cockpit:synthetic-filing-parser-cross-engine-execution:v1\u0000",
+);
+const HANDOFF_PAIR_BINDING_DOMAIN = new TextEncoder().encode(
+  "research-cockpit:synthetic-parser-normalization-handoff-pair:v1\u0000",
+);
+const EXECUTION_BINDING_DOMAIN = new TextEncoder().encode(
+  "research-cockpit:synthetic-parser-normalization-execution:v1\u0000",
 );
 const textEncoder = new TextEncoder();
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
@@ -261,10 +310,15 @@ class CrossEngineExecutionBoundary implements FilingParserCrossEngineExecutionBo
       );
       if (bytesEqual(originalArchive, amendmentArchive)) return QUARANTINED;
 
+      const originalArchiveSha256 = sha256(originalArchive);
+      const amendmentArchiveSha256 = sha256(amendmentArchive);
+
       const python = await executeEngine(
         this.configuration.pythonPrimary,
         originalArchive,
         amendmentArchive,
+        originalArchiveSha256,
+        amendmentArchiveSha256,
         signal,
       );
       if (python === null || isAborted(signal)) return QUARANTINED;
@@ -272,6 +326,8 @@ class CrossEngineExecutionBoundary implements FilingParserCrossEngineExecutionBo
         this.configuration.nodeSecondary,
         originalArchive,
         amendmentArchive,
+        originalArchiveSha256,
+        amendmentArchiveSha256,
         signal,
       );
       if (
@@ -282,8 +338,6 @@ class CrossEngineExecutionBoundary implements FilingParserCrossEngineExecutionBo
       )
         return QUARANTINED;
 
-      const originalArchiveSha256 = sha256(originalArchive);
-      const amendmentArchiveSha256 = sha256(amendmentArchive);
       const engineValues: [
         FilingParserCrossEngineExecutionEngineProvenance,
         FilingParserCrossEngineExecutionEngineProvenance,
@@ -329,6 +383,8 @@ async function executeEngine(
   engine: EngineSnapshot,
   originalArchive: Uint8Array,
   amendmentArchive: Uint8Array,
+  originalArchiveSha256: `sha256:${string}`,
+  amendmentArchiveSha256: `sha256:${string}`,
   signal: AbortSignal | undefined,
 ): Promise<ValidatedExecution | null> {
   const originalCopy = snapshotBytes(
@@ -346,12 +402,19 @@ async function executeEngine(
     ...(options === undefined ? [] : [options]),
   ])) as FilingParserNormalizationExecutionResult;
   if (isAborted(signal)) return null;
-  return validateExecutionResult(result, engine.imageSha256);
+  return validateExecutionResult(
+    result,
+    engine.imageSha256,
+    originalArchiveSha256,
+    amendmentArchiveSha256,
+  );
 }
 
 function validateExecutionResult(
   value: unknown,
   expectedImageSha256: `sha256:${string}`,
+  originalArchiveSha256: `sha256:${string}`,
+  amendmentArchiveSha256: `sha256:${string}`,
 ): ValidatedExecution | null {
   try {
     const result = exactRecord(value, [
@@ -402,14 +465,16 @@ function validateExecutionResult(
       "publicKeySpkiSha256",
       "signatureCount",
     ] as const);
+    const pairBindingSha256 = dataValue(handoff.pairBindingSha256);
+    const publicKeySpkiSha256 = dataValue(handoff.publicKeySpkiSha256);
     if (
       dataValue(handoff.archiveCount) !== 2 ||
       dataValue(handoff.documentCount) !== 2 ||
       dataValue(handoff.signatureCount) !== 2 ||
       dataValue(handoff.imageSha256) !== expectedImageSha256 ||
       dataValue(handoff.keyId) !== keyId ||
-      !sha256Value(dataValue(handoff.pairBindingSha256)) ||
-      !sha256Value(dataValue(handoff.publicKeySpkiSha256))
+      !sha256Value(pairBindingSha256) ||
+      !sha256Value(publicKeySpkiSha256)
     )
       return null;
     const normalization = snapshotJson(
@@ -418,12 +483,46 @@ function validateExecutionResult(
       FILING_PARSER_CROSS_ENGINE_EXECUTION_LIMITS.normalizationNodes,
       FILING_PARSER_CROSS_ENGINE_EXECUTION_LIMITS.normalizationStringCodePoints,
     );
-    validateNormalization(normalization);
+    const anchors = validateNormalization(
+      normalization,
+      originalArchiveSha256,
+      amendmentArchiveSha256,
+    );
+    const expectedPairBindingSha256 = sha256(
+      concatBytes(
+        HANDOFF_PAIR_BINDING_DOMAIN,
+        textEncoder.encode(
+          canonicalJson({
+            amendmentDocumentSha256: anchors.amendmentDocumentSha256,
+            amendmentSourceSha256: amendmentArchiveSha256,
+            imageSha256: expectedImageSha256,
+            keyId,
+            originalDocumentSha256: anchors.originalDocumentSha256,
+            originalSourceSha256: originalArchiveSha256,
+            publicKeySpkiSha256,
+          }),
+        ),
+      ),
+    );
+    if (pairBindingSha256 !== expectedPairBindingSha256) return null;
+    const expectedExecutionBindingSha256 = sha256(
+      concatBytes(
+        EXECUTION_BINDING_DOMAIN,
+        canonicalBytes({
+          amendmentDocumentSha256: anchors.amendmentDocumentSha256,
+          handoffPairBindingSha256: pairBindingSha256,
+          imageSha256: expectedImageSha256,
+          keyId,
+          originalDocumentSha256: anchors.originalDocumentSha256,
+        }),
+      ),
+    );
+    if (executionBindingSha256 !== expectedExecutionBindingSha256) return null;
     const frozen = deepFreeze(
       normalization,
     ) as unknown as FilingParserNormalizationExecutionSuccess["normalization"];
     return Object.freeze({
-      executionBindingSha256: executionBindingSha256 as `sha256:${string}`,
+      executionBindingSha256,
       normalization: frozen,
       normalizationBytes: canonicalBytes(frozen),
     });
@@ -432,7 +531,11 @@ function validateExecutionResult(
   }
 }
 
-function validateNormalization(value: JsonValue): void {
+function validateNormalization(
+  value: JsonValue,
+  originalArchiveSha256: `sha256:${string}`,
+  amendmentArchiveSha256: `sha256:${string}`,
+): ValidatedNormalizationAnchors {
   const record = jsonRecord(value, [
     "amendmentDocumentSha256",
     "audit",
@@ -455,6 +558,8 @@ function validateNormalization(value: JsonValue): void {
     record.originalDocumentSha256 === record.amendmentDocumentSha256
   )
     throw new TypeError();
+  const originalDocumentSha256 = record.originalDocumentSha256;
+  const amendmentDocumentSha256 = record.amendmentDocumentSha256;
   const audit = jsonRecord(record.audit, [
     "factVersionCount",
     "lineageCount",
@@ -470,9 +575,10 @@ function validateNormalization(value: JsonValue): void {
     throw new TypeError();
   if (!Array.isArray(record.lineage) || record.lineage.length !== 10)
     throw new TypeError();
-  const factIds = new Set<string>();
-  const keyCounts = new Map<string, number>();
-  for (const value of record.factVersions) {
+  const factIds = new Map<string, ValidatedFactVersion>();
+  const originalFacts = new Map<string, ValidatedFactVersion>();
+  const amendmentFacts = new Map<string, ValidatedFactVersion>();
+  for (const [index, value] of record.factVersions.entries()) {
     const fact = jsonRecord(value, [
       "dimensions",
       "factId",
@@ -503,46 +609,173 @@ function validateNormalization(value: JsonValue): void {
       factIds.has(fact.factId) ||
       typeof fact.key !== "string" ||
       !FACT_KEY_SET.has(fact.key) ||
+      typeof fact.knownFrom !== "string" ||
       !isoUtc(fact.knownFrom) ||
-      !(fact.knownToExclusive === null || isoUtc(fact.knownToExclusive)) ||
+      !(
+        fact.knownToExclusive === null ||
+        (typeof fact.knownToExclusive === "string" &&
+          isoUtc(fact.knownToExclusive))
+      ) ||
       fact.parserVersion !== "synthetic-ten-fact-producer-v1" ||
+      typeof fact.periodEnd !== "string" ||
       !isoDate(fact.periodEnd) ||
       !(fact.periodStart === null || isoDate(fact.periodStart)) ||
       !nullableFactId(fact.predecessorFactId) ||
+      typeof fact.sourceAcceptedAt !== "string" ||
       !isoUtc(fact.sourceAcceptedAt) ||
       !accession(fact.sourceAccession) ||
+      typeof fact.sourceAvailableAt !== "string" ||
       !isoUtc(fact.sourceAvailableAt) ||
+      fact.sourceAcceptedAt >= fact.sourceAvailableAt ||
+      fact.knownFrom !== fact.sourceAvailableAt ||
       typeof fact.sourceConcept !== "string" ||
       fact.sourceConcept.length === 0 ||
       !sha256Value(fact.sourceContentSha256) ||
-      (fact.sourceDocumentSha256 !== record.originalDocumentSha256 &&
-        fact.sourceDocumentSha256 !== record.amendmentDocumentSha256) ||
+      !sha256Value(fact.sourceDocumentSha256) ||
       !nullableFactId(fact.successorFactId) ||
       fact.synthetic !== true ||
       fact.taxonomyFamily !== "rc-synthetic-ten-fact" ||
       fact.taxonomyVersion !== "1.0.0" ||
-      (fact.unit !== "USD" && fact.unit !== "shares") ||
+      typeof fact.unit !== "string" ||
       typeof fact.value !== "string" ||
-      fact.value.length === 0
+      !DECIMAL.test(fact.value) ||
+      fact.value === "-0"
     )
       throw new TypeError();
-    factIds.add(fact.factId);
-    keyCounts.set(fact.key, (keyCounts.get(fact.key) ?? 0) + 1);
+    const isOriginal = index < FACT_KEYS.length;
+    const contract = FACT_CONTRACTS[index % FACT_CONTRACTS.length];
+    const expectedSourceDocumentSha256 = isOriginal
+      ? originalDocumentSha256
+      : amendmentDocumentSha256;
+    const expectedSourceContentSha256 = isOriginal
+      ? originalArchiveSha256
+      : amendmentArchiveSha256;
+    if (
+      contract === undefined ||
+      fact.key !== contract[0] ||
+      fact.sourceConcept !== contract[1] ||
+      fact.unit !== contract[3] ||
+      (contract[2] === "instant"
+        ? fact.periodStart !== null
+        : typeof fact.periodStart !== "string" ||
+          fact.periodStart >= fact.periodEnd) ||
+      fact.sourceDocumentSha256 !== expectedSourceDocumentSha256 ||
+      fact.sourceContentSha256 !== expectedSourceContentSha256 ||
+      (isOriginal
+        ? fact.predecessorFactId !== null ||
+          fact.successorFactId === null ||
+          fact.knownToExclusive === null ||
+          fact.knownToExclusive <= fact.knownFrom
+        : fact.predecessorFactId === null ||
+          fact.successorFactId !== null ||
+          fact.knownToExclusive !== null)
+    )
+      throw new TypeError();
+    const validated = Object.freeze({
+      factId: fact.factId as `fact:sha256:${string}`,
+      key: fact.key,
+      knownFrom: fact.knownFrom,
+      knownToExclusive: fact.knownToExclusive,
+      periodEnd: fact.periodEnd,
+      periodStart: fact.periodStart as string | null,
+      predecessorFactId: fact.predecessorFactId as
+        `fact:sha256:${string}` | null,
+      sourceAcceptedAt: fact.sourceAcceptedAt,
+      sourceAccession: fact.sourceAccession as string,
+      sourceAvailableAt: fact.sourceAvailableAt,
+      sourceContentSha256: fact.sourceContentSha256,
+      sourceConcept: fact.sourceConcept,
+      sourceDocumentSha256: fact.sourceDocumentSha256,
+      successorFactId: fact.successorFactId as `fact:sha256:${string}` | null,
+      unit: fact.unit,
+      value: fact.value,
+    });
+    const roleFacts = isOriginal ? originalFacts : amendmentFacts;
+    if (roleFacts.has(validated.key)) throw new TypeError();
+    roleFacts.set(validated.key, validated);
+    factIds.set(validated.factId, validated);
   }
-  if (FACT_KEYS.some((key) => keyCounts.get(key) !== 2)) throw new TypeError();
-  const lineageKeys = new Set<string>();
-  for (const value of record.lineage) {
+  if (
+    originalFacts.size !== FACT_KEYS.length ||
+    amendmentFacts.size !== FACT_KEYS.length
+  )
+    throw new TypeError();
+  const firstOriginal = originalFacts.get(FACT_KEYS[0]);
+  const firstAmendment = amendmentFacts.get(FACT_KEYS[0]);
+  const firstOriginalDuration = originalFacts.get(FACT_KEYS[3]);
+  const firstAmendmentDuration = amendmentFacts.get(FACT_KEYS[3]);
+  if (
+    firstOriginal === undefined ||
+    firstAmendment === undefined ||
+    firstOriginalDuration === undefined ||
+    firstAmendmentDuration === undefined ||
+    firstOriginalDuration.periodStart === null ||
+    firstAmendmentDuration.periodStart === null ||
+    firstOriginal.sourceAccession === firstAmendment.sourceAccession ||
+    firstOriginal.sourceAvailableAt >= firstAmendment.sourceAcceptedAt
+  )
+    throw new TypeError();
+  const originalAccessionParts = ACCESSION_PARTS.exec(
+    firstOriginal.sourceAccession,
+  );
+  const amendmentAccessionParts = ACCESSION_PARTS.exec(
+    firstAmendment.sourceAccession,
+  );
+  if (
+    originalAccessionParts?.[1] === undefined ||
+    originalAccessionParts[2] === undefined ||
+    amendmentAccessionParts?.[1] === undefined ||
+    amendmentAccessionParts[2] === undefined ||
+    originalAccessionParts[1] !== amendmentAccessionParts[1] ||
+    originalAccessionParts[2] !== firstOriginal.sourceAcceptedAt.slice(2, 4) ||
+    amendmentAccessionParts[2] !== firstAmendment.sourceAcceptedAt.slice(2, 4)
+  )
+    throw new TypeError();
+  let changed = 0;
+  let unchanged = 0;
+  for (const key of FACT_KEYS) {
+    const original = originalFacts.get(key);
+    const amendment = amendmentFacts.get(key);
+    if (
+      original === undefined ||
+      amendment === undefined ||
+      original.sourceAccession !== firstOriginal.sourceAccession ||
+      original.sourceAcceptedAt !== firstOriginal.sourceAcceptedAt ||
+      original.sourceAvailableAt !== firstOriginal.sourceAvailableAt ||
+      amendment.sourceAccession !== firstAmendment.sourceAccession ||
+      amendment.sourceAcceptedAt !== firstAmendment.sourceAcceptedAt ||
+      amendment.sourceAvailableAt !== firstAmendment.sourceAvailableAt ||
+      original.sourceConcept !== amendment.sourceConcept ||
+      original.unit !== amendment.unit ||
+      original.periodStart !== amendment.periodStart ||
+      original.periodEnd !== amendment.periodEnd ||
+      original.periodEnd !== firstOriginal.periodEnd ||
+      amendment.periodEnd !== firstOriginal.periodEnd ||
+      (original.periodStart !== null &&
+        original.periodStart !== firstOriginalDuration.periodStart) ||
+      (amendment.periodStart !== null &&
+        amendment.periodStart !== firstAmendmentDuration.periodStart) ||
+      firstOriginalDuration.periodStart !==
+        firstAmendmentDuration.periodStart ||
+      original.periodEnd >= firstOriginal.sourceAcceptedAt.slice(0, 10)
+    )
+      throw new TypeError();
+    if (original.value === amendment.value) unchanged += 1;
+    else changed += 1;
+  }
+  if (changed === 0 || unchanged === 0) throw new TypeError();
+  for (const [index, value] of record.lineage.entries()) {
     const lineage = jsonRecord(value, [
       "effectiveAt",
       "key",
       "predecessorFactId",
       "successorFactId",
     ]);
+    const expectedKey = FACT_KEYS[index];
     if (
       !isoUtc(lineage.effectiveAt) ||
       typeof lineage.key !== "string" ||
-      !FACT_KEY_SET.has(lineage.key) ||
-      lineageKeys.has(lineage.key) ||
+      lineage.key !== expectedKey ||
       typeof lineage.predecessorFactId !== "string" ||
       !factIds.has(lineage.predecessorFactId) ||
       typeof lineage.successorFactId !== "string" ||
@@ -550,8 +783,30 @@ function validateNormalization(value: JsonValue): void {
       lineage.predecessorFactId === lineage.successorFactId
     )
       throw new TypeError();
-    lineageKeys.add(lineage.key);
+    const predecessor = originalFacts.get(lineage.key);
+    const successor = amendmentFacts.get(lineage.key);
+    if (
+      predecessor === undefined ||
+      successor === undefined ||
+      lineage.predecessorFactId !== predecessor.factId ||
+      lineage.successorFactId !== successor.factId ||
+      predecessor.successorFactId !== successor.factId ||
+      successor.predecessorFactId !== predecessor.factId ||
+      predecessor.key !== lineage.key ||
+      successor.key !== lineage.key ||
+      predecessor.periodStart !== successor.periodStart ||
+      predecessor.periodEnd !== successor.periodEnd ||
+      predecessor.knownToExclusive !== lineage.effectiveAt ||
+      successor.knownFrom !== lineage.effectiveAt ||
+      successor.sourceAvailableAt !== lineage.effectiveAt ||
+      predecessor.sourceAvailableAt >= successor.sourceAcceptedAt
+    )
+      throw new TypeError();
   }
+  return Object.freeze({
+    amendmentDocumentSha256,
+    originalDocumentSha256,
+  });
 }
 
 function snapshotConfiguration(value: unknown): ConfigurationSnapshot {

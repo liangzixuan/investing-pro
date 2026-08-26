@@ -1,0 +1,36 @@
+{
+  "cases": [
+    {
+      "caseId": "exact-original-amendment-cross-engine-bound-pair",
+      "expectedStatus": "agreed",
+      "replay": true
+    },
+    {
+      "caseId": "cached-genuine-child-receipts-under-different-archives",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "common-mode-lineage-mutation",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "cross-engine-normalization-mismatch",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "original-archive-tamper",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "original-amendment-role-swap",
+      "expectedStatus": "quarantined",
+      "replay": false
+    }
+  ],
+  "schemaVersion": "2.0.0",
+  "synthetic": true
+}

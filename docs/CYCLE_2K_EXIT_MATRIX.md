@@ -10,13 +10,16 @@ Cycle 2d normalization record. Any disagreement or failure returns one atomic,
 empty, value-free quarantine. The decision is recorded in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md).
 
-Current status: **Pass only for exact source commit
+Current status: **Historical execution Pass; security conclusion and claim
+Superseded.** Exact source commit
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. The exact five-commit chain and
 44-path transition (31 added, 13 modified), full local gate, Python and Node
 worker suites, every exact-source workflow, dedicated live artifact, and
-66-of-66 `offline_consistent` review passed. Cycle 2b, full Cycle 2 quality,
-real-data admission, and production admission remain Blocked.**
+66-of-66 `offline_consistent` review passed and remain immutable historical
+facts. They do not support the Superseded bounded security conclusion. Cycle
+2b, full Cycle 2 quality, real-data admission, and production admission remain
+Blocked.
 
 | Gate                            | Required result                                                                                                                                                                                                       | Current status               |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
@@ -39,11 +42,28 @@ real-data admission, and production admission remain Blocked.**
 | Independent real quality        | Representative real filings and 2,000 independently adjudicated assertions pass frozen thresholds with zero silent critical failures                                                                                  | Blocked                      |
 | Production admission            | Real-data rights, source/fetch, persistence, security, privacy, scale, and operational gates pass                                                                                                                     | Blocked                      |
 
+## Supersession finding
+
+Cycle 2k validated child result structure and compared the two normalized
+records, but it did not bind each child receipt and normalized fact to the
+current invocation's supplied archive pair. Cached valid child results for an
+unrelated pair could therefore reach agreement while the outward provenance
+reported hashes for the new archives. The normalized facts continued to name
+the stale archives.
+
+Cycle 2k also checked lineage keys and endpoint existence without validating the
+complete reciprocal predecessor/successor relation for each frozen fact key. An
+identical common-mode lineage mutation in both child results could therefore
+pass byte-exact cross-engine agreement. These findings Supersede only the
+bounded security conclusion and claim. They do not alter the exact historical
+source, workflow, run, job, artifact, digest, review, or failed-run records
+below.
+
 ## Target claim and exact checks
 
-The sole bounded target claim is
+The historical sole bounded target claim was
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It is accepted only for exact diagnostic recovery child
+It is now Superseded. It had been accepted only for exact diagnostic recovery child
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` of failed
 diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`, with that
 revision itself the exact single-parent direct child of failed recovery
@@ -152,6 +172,9 @@ Failure, cancellation, source-transition drift, a different commit, a missing
 engine, an unpinned or equal image identity, stdout or normalization
 disagreement, noncanonical output, container residue, or non-value-free
 quarantine would have prevented promotion and retained no candidate artifact.
-This bounded Pass cannot unblock Cycle 2b, establish true independence or real
-filing quality, satisfy the full Cycle 2 exit, admit real data, create B15/V15,
-or authorize production use.
+This historical execution Pass cannot support the Superseded security claim,
+unblock Cycle 2b, establish true independence or real filing quality, satisfy
+the full Cycle 2 exit, admit real data, create B15/V15, or authorize production
+use. Cycle 2l defines the Pending successor boundary in
+[ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).

@@ -71,16 +71,16 @@ jobs:
       - name: Run cross-engine parser execution acceptance
         env:
           CI: "true"
-          FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v1.json
+          FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v2.json
         run: pnpm filing-parser-cross-engine-execution:acceptance
       - name: Independently review canonical evidence against the exact commit
         shell: bash
         env:
-          EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v1.json
+          EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v2.json
         run: |
           evidence_sha256="sha256:$(sha256sum "$EVIDENCE_PATH" | cut -d ' ' -f 1)"
           pnpm filing-parser-cross-engine-execution:evidence-review -- \
-            --artifact "filing-parser-cross-engine-execution-evidence-v1-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}" \
+            --artifact "filing-parser-cross-engine-execution-evidence-v2-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}" \
             --evidence "$EVIDENCE_PATH" \
             --evidence-sha256 "$evidence_sha256" \
             --repo "$GITHUB_WORKSPACE" \
@@ -92,7 +92,7 @@ jobs:
         if: ${{ success() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: filing-parser-cross-engine-execution-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v1.json
+          name: filing-parser-cross-engine-execution-evidence-v2-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v2.json
           if-no-files-found: error
           retention-days: 30

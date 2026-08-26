@@ -1113,22 +1113,26 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
 ## Cycle 2k — bounded synthetic cross-engine parser execution agreement
 
-Status: **Pass only for exact source commit
+Status: **Superseded security conclusion.** Exact source commit
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. The exact five-commit chain and
-44-path transition, full local gate, both worker suites, all exact-source
-workflows, dedicated live execution, retained artifact, and independently
-anchored 66-of-66 `offline_consistent` review passed. Cycle 2b, full Cycle 2
-quality, real-data admission, and production remain Blocked.**
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, its five-commit 44-path
+transition, local and exact-source gates, dedicated live execution, retained
+artifact, and 66-of-66 `offline_consistent` review remain immutable historical
+facts. They no longer support the bounded Cycle 2k security conclusion or
+claim.
 
-Cycle 2k closes one narrow repository-controlled agreement gap. The existing
-Cycle 2j Python worker and one distinct zero-install pinned Node worker execute
+Cycle 2k attempted to close one narrow repository-controlled agreement gap. The
+existing Cycle 2j Python worker and one distinct zero-install pinned Node worker execute
 the same owned synthetic original/amendment pair. Each fixed role must produce
 byte-exact equal complete canonical stdout documents, and both complete engine
 pairs must produce byte-exact equal Cycle 2d normalization records through the
 unchanged normalization path. Any disagreement or failure returns one atomic,
-empty, value-free quarantine. The sole bounded claim is
+empty, value-free quarantine. The historical sole bounded claim was
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
+That claim is Superseded because the boundary could accept cached valid child
+receipts produced for unrelated archives while outward provenance named the
+current invocation's archives. It also accepted identical common-mode lineage
+mutations when both engines agreed, without proving per-key reciprocal lineage.
 
 The exact chain ends at `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` after all
 four failed revisions and freezes 44 paths (31 additions, 13 modifications).
@@ -1152,6 +1156,47 @@ authority keys, and human review. Exact gates and nonclaims are in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
+## Cycle 2l — current-input and reciprocal-lineage cross-engine agreement
+
+Status: **Pending from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. No successor source commit,
+workflow run, job, artifact, artifact digest, evidence digest, or offline-review
+result is promoted yet.**
+
+Cycle 2l hardens the existing bounded cross-engine boundary before any quality
+composition. Its sole target claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
+Agreement requires each child normalization receipt and each fact to bind to the
+current invocation's exact original or amendment archive and correct top-level
+document role. The host recomputes child pair and execution bindings from those
+current inputs, exact normalization document hashes, the configured image, and
+the receipt-declared key/public-key context rather than trusting supplied
+receipt hashes.
+
+The complete agreed payload must contain the fixed 20-fact partition: ten
+original facts followed by ten amendment facts in frozen key order. Each key's
+original and amendment versions must form one reciprocal predecessor/successor
+edge with matching endpoints and effective time, strict accepted-before-
+available chronology, canonical decimal spelling, fixed concept/unit/period
+context, duration start strictly before end, one common period end and
+duration-fact start across both roles, accession-year and shared ten-digit issuer-segment
+consistency, and both changed and unchanged amendment outcomes represented. Any
+failure returns one atomic, empty, value-free quarantine.
+
+The v2 live matrix contains six cases: one exact archive-bound agreed pair and
+five quarantines for cached child-receipt replay under different archives,
+identical common-mode lineage mutation, cross-engine normalization mismatch,
+archive tamper, and original/amendment role swap. Promotion additionally
+requires one exact single-parent direct child of the baseline, the exact-source
+local and workflow gates, a success-only retained v2 artifact, and independently
+anchored offline review. Injected boundary and receipt authenticity and fresh
+engine execution remain nonclaims. Independent real quality, representative
+real filings, Cycle 2b authority, B15/V15, full Cycle 2 exit, real-data admission,
+and production remain Blocked; quality
+composition is deferred. Exact gates and nonclaims are in
+[ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -1165,12 +1210,12 @@ Target: 3–4 weeks after the parser threat-model gate is implemented.
 Exit gate: at least 100 representative filings and 2,000 critical assertions meet the frozen quality thresholds with zero silent critical failures.
 
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
-Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, nor bounded source-stage Cycle
-2h at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted
-source-stage Cycle 2i, nor promoted bounded synthetic Cycle 2j satisfies this
-exit gate. Cycle 2i does not establish that a parser executed or correctly
-derived its signed documents; Cycle 2j establishes only the exact reviewed
-synthetic pair and cannot admit real filings. Real payload bytes and digest
+Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
+at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
+Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, nor Pending
+Cycle 2l satisfies this exit gate. Cycle 2i does not establish that a parser
+executed or correctly derived its signed documents; Cycle 2j establishes only
+the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest
 validation, approved corpus inputs, real ten-fact coverage, truly independent
 validation, independently adjudicated precision/recall, general XBRL/iXBRL and
 taxonomy/plugin support, correction lineage, production operations, and

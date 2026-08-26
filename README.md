@@ -446,25 +446,37 @@ admission, or production. See
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k now promotes one bounded cross-engine agreement milestone. Its sole
-claim is
-`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`:
-the existing Cycle 2j Python worker and a distinct zero-install pinned Node
-worker must produce byte-exact equal complete stdout documents and complete
-normalization records for the same owned synthetic original/amendment pair, or
-return one atomic value-free quarantine. It is Pass only for exact source
-commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`: the exact five-commit,
-44-path transition; full local gate; Ubuntu/Windows CI and normalization,
-custody, isolation, and PostgreSQL regressions; dedicated run/job
-`32917020041` / `98022742591`; retained artifact `9588542275`; and 66-of-66
-`offline_consistent` review all passed. The four earlier failed runs remain
-historical non-evidence with zero artifacts. This Pass does not establish true organizational, operator,
-key, host, or failure-domain independence; general parser or accounting
-correctness; real SEC/source authority; Cycle 2b approval; independently
-adjudicated real quality; real-data admission; or production. Cycle 2b remains
-externally Blocked on the exact inventory, rights/steward approvals, chronology,
-authority keys, and human review. See [ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
+Cycle 2k's exact source, workflow, artifact, and offline-review anchors remain
+immutable historical execution facts. Its bounded security conclusion and sole
+claim
+`bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`
+are **Superseded**: cached valid child receipts for unrelated input archives
+could be accepted while outward provenance named the current archives, and an
+identical common-mode lineage mutation could pass both engines. Exact source
+commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`, run/job `32917020041` /
+`98022742591`, artifact `9588542275`, and its 66-of-66 `offline_consistent`
+review remain historical facts, not support for the Superseded conclusion. See
+[ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./docs/CYCLE_2K_EXIT_MATRIX.md).
+
+Cycle 2l is **Pending** from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. Its target claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
+The hardened boundary binds each child receipt and every normalized fact to the
+current invocation's exact archive and document role, recomputes pair and
+execution bindings, freezes the original/amendment 20-fact partition, and
+validates ten reciprocal lineage edges, strict chronology, canonical decimals,
+one common period end and duration-fact start across both roles, accession-year and
+issuer-segment consistency, and changed-plus-unchanged amendment coverage
+before agreement. The exact single-parent direct-child v2 live matrix must
+produce one agreed case and value-free quarantines for cached
+replay, identical common-mode lineage mutation, normalization mismatch, archive
+tamper, and role swap, followed by exact-source artifact and independent
+offline review. Until those anchors exist, no Cycle 2l claim is promoted.
+Injected boundary or receipt authenticity and fresh execution are nonclaims;
+quality composition is deferred, and real quality, real data, Cycle 2b
+authority, and production remain Blocked. See [ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+and the [Cycle 2l exit matrix](./docs/CYCLE_2L_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -920,16 +932,25 @@ blocked.
   signing, unchanged Cycle 2i handoff, exact-source workflows, retained live
   artifact, and offline review passed. External authority, independent real
   quality, full Cycle 2 exit, and production remain Blocked.
-- Cycle 2k is Pass only for exact source commit
+- Cycle 2k's historical execution record passed only for exact source commit
   `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
   `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Its exact five-commit chain,
   44-path transition, local and exact-source workflow gates, dedicated run/job
   `32917020041` / `98022742591`, retained artifact, and 66-of-66
   `offline_consistent` review passed. The four earlier failed runs remain
-  immutable non-evidence with zero artifacts.
-  It cannot establish true independence, correctness, real source
-  authority, Cycle 2b approval, adjudicated real quality, real data, or
-  production.
+  immutable non-evidence with zero artifacts. Its security conclusion and claim
+  are Superseded because child receipts were not bound to the current input
+  archives and common-mode lineage mutations could pass. The immutable anchors
+  remain historical facts only.
+- Cycle 2l is Pending from exact baseline
+  `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It targets exact current-archive,
+  child-receipt, document-role, pair/execution-binding, 20-fact partition, and
+  reciprocal ten-edge lineage validation. Promotion requires one exact
+  single-parent direct child, the six-case v2 live matrix, an exact-source
+  retained artifact, and independent offline review; no source SHA, run, job,
+  artifact, or digest is promoted yet. It cannot prove
+  injected boundary or receipt authenticity, fresh execution, independent real
+  quality, real data, Cycle 2b authority, or production.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),
@@ -996,4 +1017,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md),
 [Cycle 2k exit matrix](./docs/CYCLE_2K_EXIT_MATRIX.md),
 [ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md),
+[Cycle 2l exit matrix](./docs/CYCLE_2L_EXIT_MATRIX.md),
+[ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md),
 and [architecture decisions](./docs/adr/).

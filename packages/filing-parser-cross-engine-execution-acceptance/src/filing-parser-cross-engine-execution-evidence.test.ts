@@ -3,14 +3,25 @@ import { describe, expect, it } from "vitest";
 import {
   createFilingParserCrossEngineExecutionEvidence,
   createFilingParserCrossEngineExecutionEvidenceForAcceptance,
+  createFilingParserCrossEngineExecutionEvidenceV2,
+  createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
   filingParserCrossEngineExecutionExpectedTransition,
   filingParserCrossEngineExecutionRequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
   parseCanonicalFilingParserCrossEngineExecutionEvidence,
+  parseCanonicalFilingParserCrossEngineExecutionEvidenceV2,
   serializeCanonicalFilingParserCrossEngineExecutionEvidence,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2,
 } from "./filing-parser-cross-engine-execution-evidence";
-import { buildFilingParserCrossEngineExecutionEvidenceInput } from "./test-filing-parser-cross-engine-execution-evidence-builder";
+import {
+  buildFilingParserCrossEngineExecutionEvidenceInput,
+  buildFilingParserCrossEngineExecutionEvidenceV2Input,
+} from "./test-filing-parser-cross-engine-execution-evidence-builder";
 
 const HASH_Z = `sha256:${"0".repeat(64)}`;
 
@@ -187,6 +198,10 @@ describe("filing parser cross-engine execution evidence", () => {
       (root: Record<string, unknown>) =>
         (outcome(root, 0).nodeAmendmentStdoutSha256 = HASH_Z),
       (root: Record<string, unknown>) =>
+        (outcome(root, 0).nodeKeyId = "substituted-key-v1"),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).nodePublicKeySpkiSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
         (outcome(root, 0).nodeExecutionBindingSha256 = outcome(
           root,
           0,
@@ -288,9 +303,195 @@ describe("filing parser cross-engine execution evidence", () => {
   });
 });
 
+describe("filing parser cross-engine execution evidence v2", () => {
+  it("round-trips the canonical v2 artifact and preserves the immutable v1 anchors", () => {
+    const evidence = createFilingParserCrossEngineExecutionEvidenceV2(
+      buildFilingParserCrossEngineExecutionEvidenceV2Input(),
+    );
+    const serialized =
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2(evidence);
+    expect(
+      parseCanonicalFilingParserCrossEngineExecutionEvidenceV2(
+        new TextEncoder().encode(serialized),
+      ),
+    ).toEqual(evidence);
+    expect(evidence.schemaVersion).toBe("2.0.0");
+    expect(evidence.evidenceVersion).toBe(2);
+    expect(evidence.historicalV1).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+    );
+    expect(evidence.historicalV1.claimStatus).toBe("superseded");
+    expect(evidence.checksPassed).toHaveLength(16);
+    expect(evidence.notProven).toHaveLength(16);
+    expect(evidence.notProven).toContain(
+      "injected_child_boundary_factory_runner_signer_receipt_authenticity_or_fresh_execution",
+    );
+    expect(evidence.sourceHashes.map(({ path }) => path)).toEqual(
+      expect.arrayContaining([
+        "fixtures/synthetic/filing-parser-cross-engine-execution/v2/cases.json",
+        "fixtures/synthetic/filing-parser-cross-engine-execution/v2/manifest.json",
+      ]),
+    );
+    expect(evidence.fixtureManifestSha256).toBe(
+      evidence.sourceHashes.find(
+        ({ path }) =>
+          path ===
+          "fixtures/synthetic/filing-parser-cross-engine-execution/v2/manifest.json",
+      )?.sha256,
+    );
+    expect(evidence.caseOutcomes[0]).toMatchObject({
+      agreementSha256:
+        "sha256:983a8ac24edec0d5c1a9bda408a9818ea7fcf036805015d7454d807ccf974174",
+      nodeExecutionBindingSha256:
+        "sha256:3e6d9a253f15b0b2931e5c5e4ace9c2ab02357d4ccdd3426e613d5b2b9af197f",
+      nodeHandoffPairBindingSha256:
+        "sha256:ae4b5ee5bfe663eee0c375b11e877073962cc5969a3e01eee2e01686a9ba1940",
+      pythonExecutionBindingSha256:
+        "sha256:536ef7823d52bdfe9ac30b55d72d6e7048be430f11c7806e3c62adf18ba8e11f",
+      pythonHandoffPairBindingSha256:
+        "sha256:904c0cc1cb434d762f5fc5dd28a3bf5ce73dd90ccb994906221941d6cd825cee",
+    });
+  });
+
+  it("validates six ordered cases with five value-free quarantines", () => {
+    const evidence = createFilingParserCrossEngineExecutionEvidenceV2(
+      buildFilingParserCrossEngineExecutionEvidenceV2Input(),
+    );
+    expect(evidence.caseOutcomes.map(({ caseId }) => caseId)).toEqual([
+      "exact-original-amendment-cross-engine-bound-pair",
+      "cached-genuine-child-receipts-under-different-archives",
+      "common-mode-lineage-mutation",
+      "cross-engine-normalization-mismatch",
+      "original-archive-tamper",
+      "original-amendment-role-swap",
+    ]);
+    expect(evidence.summary).toEqual({
+      agreed: 1,
+      quarantined: 5,
+      replayMatched: true,
+      total: 6,
+    });
+    for (const outcome of evidence.caseOutcomes.slice(1)) {
+      expect(outcome.observedStatus).toBe("quarantined");
+      expect(outcome.replayMatched).toBe(false);
+      for (const value of Object.values(outcome))
+        if (
+          value !== outcome.caseId &&
+          value !== "quarantined" &&
+          value !== false
+        )
+          expect(value).toBeNull();
+    }
+  });
+
+  it("exposes only the closed v2 validation stages", () => {
+    const stages: string[] = [];
+    createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance(
+      buildFilingParserCrossEngineExecutionEvidenceV2Input(),
+      (stage) => stages.push(stage),
+    );
+    expect(stages).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
+    );
+    expect(
+      Object.isFrozen(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS),
+    ).toBe(true);
+    expect(
+      Object.isFrozen(
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects changes to historical anchors, binding claims, cases, and artifact identity", () => {
+    for (const mutate of [
+      (root: Record<string, unknown>) =>
+        ((root.historicalV1 as Record<string, unknown>).artifactId = "1"),
+      (root: Record<string, unknown>) =>
+        ((root.bindingValidation as Record<string, unknown>).executionBinding =
+          "trusted"),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 1).originalArchiveSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 2).caseId = "cross-engine-normalization-mismatch"),
+      (root: Record<string, unknown>) =>
+        (workflow(root).artifactName = "wrong"),
+      (root: Record<string, unknown>) =>
+        (root.checksPassed = [
+          ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+        ].reverse()),
+      (root: Record<string, unknown>) =>
+        (root.notProven = [
+          ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+        ].slice(1)),
+    ]) {
+      const value = mutableEvidenceV2();
+      mutate(value);
+      expect(() =>
+        createFilingParserCrossEngineExecutionEvidenceV2(value as never),
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+    }
+  });
+
+  it("independently rejects archive, document, pair, execution, and agreement inconsistencies", () => {
+    for (const mutate of [
+      (root: Record<string, unknown>) => {
+        const success = outcome(root, 0);
+        success.originalArchiveSha256 = success.amendmentArchiveSha256;
+      },
+      (root: Record<string, unknown>) => {
+        const success = outcome(root, 0);
+        success.originalDocumentSha256 = success.amendmentDocumentSha256;
+      },
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).pythonHandoffPairBindingSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).nodeHandoffPairBindingSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).pythonExecutionBindingSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).nodeExecutionBindingSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).agreementSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).pythonOriginalStdoutSha256 = HASH_Z),
+      (root: Record<string, unknown>) =>
+        (outcome(root, 0).nodeAmendmentStdoutSha256 = HASH_Z),
+    ]) {
+      const value = mutableEvidenceV2();
+      mutate(value);
+      expect(() =>
+        createFilingParserCrossEngineExecutionEvidenceV2(value as never),
+      ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+    }
+  });
+
+  it("rejects noncanonical v2 encodings", () => {
+    const canonical =
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2(
+        buildFilingParserCrossEngineExecutionEvidenceV2Input(),
+      );
+    for (const text of [
+      canonical.slice(0, -1),
+      ` ${canonical}`,
+      canonical.replace("\n", "\n\n"),
+    ])
+      expect(() =>
+        parseCanonicalFilingParserCrossEngineExecutionEvidenceV2(
+          new TextEncoder().encode(text),
+        ),
+      ).toThrow();
+  });
+});
+
 function mutableEvidence(): Record<string, unknown> {
   return structuredClone(
     buildFilingParserCrossEngineExecutionEvidenceInput(),
+  ) as unknown as Record<string, unknown>;
+}
+function mutableEvidenceV2(): Record<string, unknown> {
+  return structuredClone(
+    buildFilingParserCrossEngineExecutionEvidenceV2Input(),
   ) as unknown as Record<string, unknown>;
 }
 function records(value: unknown): Record<string, unknown>[] {

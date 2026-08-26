@@ -25,9 +25,11 @@ only for exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a`;
 Cycle 2j isolated ten-fact parser execution-to-normalization Pass only for exact
 source commit `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
 `f17bacc6adc46851e182d260d59830652f1953bb`;
-Cycle 2k bounded synthetic cross-engine execution agreement Pass only for exact
-source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`;
+Cycle 2k bounded synthetic cross-engine execution historical evidence Pass only
+for exact source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, with its security conclusion and
+claim now Superseded; Cycle 2l current-input and reciprocal-lineage hardening
+Pending from exact baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`;
 synthetic data only.
 
 ## Identity
@@ -821,7 +823,7 @@ composition, B15/V15, real-data admission, or production authority. See
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-## Promoted Cycle 2k cross-engine execution agreement
+## Historical Cycle 2k cross-engine execution agreement
 
 Cycle 2k adds no canonical real filing, authority, quality, tenant,
 persistence, or production entity. From exact baseline
@@ -835,10 +837,10 @@ owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Per-role complete
 canonical stdout documents and both complete Cycle 2d normalization records
 must agree byte for byte; otherwise the result is one atomic empty value-free
-quarantine. The sole claim is
+quarantine. The historical sole claim was
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-It is Pass only for exact source commit
+The historical execution evidence passed only for exact source commit
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`: the exact five-commit chain,
 44-path transition, full local and exact-source workflow gates, dedicated
 run/job `32917020041` / `98022742591`, retained artifact `9588542275`, and
@@ -848,15 +850,64 @@ four live outcomes, 16 checks, and 16 nonclaims. Failed runs `32910394736`,
 non-evidence with zero artifacts. Every historical evidence record and anchor
 remains immutable.
 
+The execution facts above remain exact historical records, but the Cycle 2k
+security conclusion and claim are Superseded. The boundary did not require each
+child receipt and normalized fact to bind to the current invocation's archive
+pair, so cached valid receipts from unrelated archives could be accepted while
+outer provenance named the new inputs. It also did not validate the complete
+per-key reciprocal lineage relation, so identical common-mode lineage mutations
+could pass byte-exact cross-engine agreement.
+
 Distinct language, source, image, and process identities do not prove true
 organizational, operator, key, host, or failure-domain independence. The
-promoted bounded result cannot establish general parser/accounting correctness, real
+historical bounded result cannot establish general parser/accounting correctness, real
 SEC/source authority, Cycle 2b approval, independently adjudicated real quality,
 real-data admission, B15/V15, full Cycle 2 exit, or production. Cycle 2b remains
 externally Blocked on the exact inventory, rights/steward approvals, chronology,
 authority keys, and human review. See
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
+
+## Pending Cycle 2l current-input and reciprocal-lineage agreement
+
+Cycle 2l adds no canonical real filing, authority, quality, tenant,
+persistence, or production entity. From exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`, it hardens the existing synthetic
+cross-engine result so agreement is possible only after both child results bind
+to the current invocation's exact original and amendment archive hashes, each
+fact binds to the correct current archive and top-level document role, and the
+host recomputes the child pair and execution bindings from current archive and
+document hashes, the configured image, and receipt-declared key/public-key
+context.
+
+The canonical result remains exactly 20 facts partitioned into ten original
+facts followed by ten amendment facts in frozen key order. For every key, the
+two versions must preserve fixed concept, unit, and period context and one
+reciprocal predecessor/successor lineage edge with matching endpoints and
+effective time. Accepted time must strictly precede available time, decimals
+must use canonical spelling, duration start must strictly precede end, all facts
+across both roles must share one period end, and all duration facts must share
+one duration start. Each
+accession's two-digit year must match its accepted-at year, the original and
+amendment accessions must share the same ten-digit issuer segment, and the pair
+must contain at least one changed and one unchanged value. Any mismatch returns
+one empty value-free quarantine.
+
+The sole target claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
+It is Pending until an exact single-parent direct child of baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` passes the six-case v2 live matrix,
+retains a success-only exact-source artifact, and returns an independently
+anchored offline-consistent review. No candidate source SHA, run, job, artifact,
+or digest is promoted in the source state.
+
+Injected boundary or child-receipt authenticity and fresh engine execution are
+not established. Quality composition is deferred; true independence,
+independently adjudicated real quality, representative real filings, Cycle 2b
+authority, B15/V15, full Cycle 2 exit, real-data admission, and production
+remain Blocked. See
+[ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

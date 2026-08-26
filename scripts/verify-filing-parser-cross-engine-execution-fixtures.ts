@@ -3,9 +3,9 @@ import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 
 const root = resolve(process.cwd());
-const directory = resolve(
+const fixtureRoot = resolve(
   root,
-  "fixtures/synthetic/filing-parser-cross-engine-execution/v1",
+  "fixtures/synthetic/filing-parser-cross-engine-execution",
 );
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const SAFE = /^(?!\/)(?![A-Za-z]:)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]+$/u;
@@ -23,7 +23,7 @@ const FILES = Object.freeze([
   "packages/filing-parser-cross-engine-execution/worker/parser.test.mjs",
   "packages/filing-parser-cross-engine-execution/worker/taxonomy-v1.json",
 ]);
-const CASES = {
+const CASES_V1 = {
   cases: [
     {
       caseId: "exact-original-amendment-cross-engine-pair",
@@ -49,9 +49,56 @@ const CASES = {
   schemaVersion: "1.0.0",
   synthetic: true,
 };
+const CASES_V2 = {
+  cases: [
+    {
+      caseId: "exact-original-amendment-cross-engine-bound-pair",
+      expectedStatus: "agreed",
+      replay: true,
+    },
+    {
+      caseId: "cached-genuine-child-receipts-under-different-archives",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "common-mode-lineage-mutation",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "cross-engine-normalization-mismatch",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "original-archive-tamper",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+    {
+      caseId: "original-amendment-role-swap",
+      expectedStatus: "quarantined",
+      replay: false,
+    },
+  ],
+  schemaVersion: "2.0.0",
+  synthetic: true,
+};
 
 await verify();
 async function verify(): Promise<void> {
+  await verifyVersion("v1", CASES_V1, "1.0.0", 4, 3);
+  await verifyVersion("v2", CASES_V2, "2.0.0", 6, 5);
+}
+async function verifyVersion(
+  version: "v1" | "v2",
+  expectedCases: unknown,
+  schemaVersion: "1.0.0" | "2.0.0",
+  caseCount: 4 | 6,
+  quarantinedCases: 3 | 5,
+): Promise<void> {
+  const directory = resolve(fixtureRoot, version);
   if (
     relative(root, directory).startsWith("..") ||
     (await realpath(directory)) !== directory
@@ -67,7 +114,7 @@ async function verify(): Promise<void> {
     fail();
   const casesBytes = await exact(resolve(directory, "cases.json"), 65_536);
   const cases = strictJson(casesBytes);
-  if (JSON.stringify(cases) !== JSON.stringify(CASES)) fail();
+  if (JSON.stringify(cases) !== JSON.stringify(expectedCases)) fail();
   const manifest = record(
     strictJson(await exact(resolve(directory, "manifest.json"), 65_536)),
     [
@@ -82,9 +129,9 @@ async function verify(): Promise<void> {
   );
   if (
     manifest.agreedCases !== 1 ||
-    manifest.caseCount !== 4 ||
-    manifest.quarantinedCases !== 3 ||
-    manifest.schemaVersion !== "1.0.0" ||
+    manifest.caseCount !== caseCount ||
+    manifest.quarantinedCases !== quarantinedCases ||
+    manifest.schemaVersion !== schemaVersion ||
     manifest.synthetic !== true ||
     manifest.casesSha256 !== sha(casesBytes) ||
     !Array.isArray(manifest.files) ||

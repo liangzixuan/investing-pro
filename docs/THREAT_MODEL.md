@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2k threat model
+# Sprint 0 through Pending Cycle 2l threat model
 
 ## Current trust boundaries
 
@@ -413,7 +413,7 @@ self-consistent envelopes were never produced by the reviewed worker path.
 
 The sole claim is
 `bounded_synthetic_one_shot_ten_fact_parser_execution_to_authenticated_normalization_handoff`.
-It is Pass only for exact source commit
+The historical execution evidence passed only for exact source commit
 `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from exact baseline
 `f17bacc6adc46851e182d260d59830652f1953bb`. The 44-path transition, 1,095-pass
 local gate, all exact-source workflows, dedicated run/job `32897837981` /
@@ -430,24 +430,25 @@ or production. Its exact promoted boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k closes one bounded cross-engine agreement gap. From exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc` through four failed revisions to
+Cycle 2k attempted to close one bounded cross-engine agreement gap. From exact
+baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through four failed revisions to
 exact source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`, it executes the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Each fixed role's live
 canonical stdout document and both engines' complete normalization records must
 agree byte for byte; any disagreement or failure returns one atomic empty
-value-free quarantine. The sole claim is
+value-free quarantine. The historical sole claim was
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-It is Pass only for exact source commit
+The historical execution evidence passed only for exact source commit
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`: the exact five-commit chain,
 44-path transition, full local and exact-source workflow gates, dedicated
 run/job `32917020041` / `98022742591`, retained artifact `9588542275`, and
 66-of-66 `offline_consistent` review passed. The four earlier failed runs
 remain historical non-evidence with zero artifacts. Distinct language, source,
 image, and process identities cannot establish true organizational, operator,
-key, host, or failure-domain independence. The bounded Pass also cannot establish
+key, host, or failure-domain independence. The historical bounded execution
+Pass also cannot establish
 general parser/accounting correctness, real SEC/source authority, Cycle 2b
 approval, independently adjudicated real quality, real data, or production.
 Cycle 2b remains externally Blocked on the exact inventory, rights/steward
@@ -455,6 +456,42 @@ approvals, chronology, authority keys, and human review. Historical evidence
 and anchors remain immutable. See
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
+
+The Cycle 2k security conclusion and claim are Superseded. A caller could
+present new archives while injected engines returned cached valid child results
+for an unrelated archive pair: outward provenance named the current inputs, but
+the normalized facts and child receipts remained bound to the stale archives.
+In addition, byte-exact engine agreement could accept an identical common-mode
+lineage mutation because the boundary did not validate complete reciprocal
+per-key predecessor/successor relations.
+
+Cycle 2l is Pending from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It treats child results as
+untrusted inputs and recomputes their pair and execution bindings against the
+current original/amendment archive hashes, exact top-level documents, the
+configured image, and receipt-declared key/public-key context. Every fact must
+bind to its current archive and correct role. The complete result must have the
+fixed original-then-amendment
+20-fact partition and ten reciprocal per-key lineage edges with matching
+endpoints and effective times, strict accepted-before-available chronology,
+canonical decimals, fixed concept/unit/period context, duration start strictly
+before end, one common period end and duration-fact start across both roles,
+accession-year and shared ten-digit issuer-segment consistency, and at least one
+changed and one unchanged amendment outcome.
+
+Any failure remains one atomic empty value-free quarantine. The six-case v2
+live matrix requires one exact archive-bound agreement and five quarantines:
+cached replay under different archives, identical common-mode lineage mutation,
+normalization mismatch, archive tamper, and role swap. The sole target claim is
+`bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
+It remains Pending until one exact single-parent direct child of the baseline
+passes exact-source live evidence and independently anchored offline review; no
+source SHA, run, job, artifact, or digest is promoted yet. Injected boundary and
+receipt authenticity and fresh engine execution are nonclaims. Quality
+composition is deferred, and real-data, Cycle 2b authority, full quality, and
+production gates remain Blocked. See
+[ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
 Cycle 1b-a adds a disconnected operation-scoped projection contract. It has no
 database implementation. The complete synthetic fixture port is explicitly not
@@ -1120,13 +1157,24 @@ boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k's promoted target is only exact source commit
+Cycle 2k's historical target was only exact source commit
 `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`, the exact fifth single-parent
 successor of baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, for the sole claim
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-No broader source or evidence result is promoted. Exact gates and nonclaims are in
+Its security conclusion and claim are Superseded; its exact execution anchors
+remain immutable historical facts. No broader source or evidence result is
+promoted. Exact gates and nonclaims are in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
+
+Cycle 2l's target is only
+`bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`
+from exact baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It is Pending until
+the exact-source six-case v2 live artifact and independent offline review pass.
+No successor commit or evidence anchor is promoted. Exact gates and nonclaims
+are in
+[ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
+and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 
@@ -1142,8 +1190,9 @@ and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
-   Promoted Cycle 2k cross-engine agreement remains engineering preparation
-   only and does not satisfy any external authority or real-corpus prerequisite.
+   Superseded Cycle 2k and Pending Cycle 2l cross-engine agreement remain
+   engineering preparation only and do not satisfy any external authority or
+   real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

@@ -5,7 +5,10 @@ import { describe, expect, it } from "vitest";
 
 import { FILING_PARSER_NORMALIZATION_EXECUTION_CONTAINER_LABEL } from "@research-cockpit/filing-parser-normalization-execution";
 
-import { FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES } from "./filing-parser-cross-engine-execution-evidence";
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
+} from "./filing-parser-cross-engine-execution-evidence";
 
 import {
   ACCEPTANCE_PHASES,
@@ -15,6 +18,7 @@ import {
   filingParserCrossEngineExecutionAcceptanceCleanupShouldReplacePhase,
   filingParserCrossEngineExecutionAcceptanceFailureDiagnostic,
   filingParserCrossEngineExecutionEvidenceValidationPhase,
+  filingParserCrossEngineExecutionEvidenceV2ValidationPhase,
   imageIdValue,
   validateBuiltImageInspection,
   validateContainerInspection,
@@ -58,6 +62,8 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       "image_inspection",
       "audited_setup",
       "audited_success",
+      "audited_cached_replay",
+      "audited_lineage_mutation",
       "audited_replay",
       "audited_mismatch",
       "audited_tamper",
@@ -73,6 +79,8 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       "evidence_validation_root_contract",
       "evidence_validation_timestamps",
       "evidence_validation_claim_tuples",
+      "evidence_validation_historical_v1",
+      "evidence_validation_binding_validation",
       "evidence_validation_case_outcomes",
       "evidence_validation_transition",
       "evidence_validation_runtime",
@@ -100,7 +108,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       expect(diagnostic).toBe(`${DIAGNOSTIC_PREFIX}${phase}\n`);
       expect(diagnostic.match(/\n/gu)).toHaveLength(1);
       expect(diagnostic).toMatch(
-        /^filing_parser_cross_engine_execution_acceptance_failed phase=[a-z_]+\n$/u,
+        /^filing_parser_cross_engine_execution_acceptance_failed phase=[a-z0-9_]+\n$/u,
       );
       expect(diagnostic).not.toMatch(
         /sha256:|github\.com|artifact[_=:]|revision[_=:]|secret[_=:]|token[_=:]|key[_=:]/iu,
@@ -113,6 +121,17 @@ describe("filing parser cross-engine execution live Docker audit", () => {
       const phase =
         filingParserCrossEngineExecutionEvidenceValidationPhase(stage);
       expect(phase).toBe(`evidence_validation_${stage}`);
+      expect(ACCEPTANCE_PHASES).toContain(phase);
+      expect(
+        filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(phase),
+      ).toBe(`${DIAGNOSTIC_PREFIX}${phase}\n`);
+    }
+  });
+
+  it("maps every closed v2 evidence stage to one value-free acceptance phase", () => {
+    for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES) {
+      const phase =
+        filingParserCrossEngineExecutionEvidenceV2ValidationPhase(stage);
       expect(ACCEPTANCE_PHASES).toContain(phase);
       expect(
         filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(phase),
@@ -173,7 +192,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
-  it("requires the exact linear five-commit diagnostic recovery chain on both ancestry views", () => {
+  it("retains the historical exact five-commit v1 chain verifier", () => {
     expect(runnerSource).toContain('["merge-base", base, revision]');
     expect(runnerSource).toContain('["rev-list", "--count", revisionRange]');
     expect(runnerSource).toContain(
@@ -213,6 +232,19 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
+  it("requires one direct Cycle 2l successor on both ancestry views", () => {
+    expect(runnerSource).toContain(
+      "const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE",
+    );
+    expect(runnerSource).toContain('["rev-list", "--count", range]');
+    expect(runnerSource).toContain(
+      '["rev-list", "--first-parent", "--count", range]',
+    );
+    expect(runnerSource).toContain('successorCount !== "1"');
+    expect(runnerSource).toContain('firstParentCount !== "1"');
+    expect(runnerSource).toContain("parentLine !== `${revision} ${base}`");
+  });
+
   it("constructs Git transition entries in canonical path-status order", () => {
     expect(runnerSource).toMatch(
       /Object\.freeze\(\{\s*path: match\[2\],\s*status: match\[1\] as "A" \| "M",\s*\}\)/u,
@@ -221,10 +253,10 @@ describe("filing parser cross-engine execution live Docker audit", () => {
 
   it("uses the model validator once and maps only its closed stage", () => {
     const validation = runnerSource.indexOf(
-      "createFilingParserCrossEngineExecutionEvidenceForAcceptance(",
+      "createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance(",
     );
     const stageMapping = runnerSource.indexOf(
-      "filingParserCrossEngineExecutionEvidenceValidationPhase(stage)",
+      "filingParserCrossEngineExecutionEvidenceV2ValidationPhase(stage)",
       validation,
     );
     const removal = runnerSource.indexOf('markPhase("image_removal")');
@@ -235,10 +267,10 @@ describe("filing parser cross-engine execution live Docker audit", () => {
 
   it("derives the complete source-hash inventory from the exact transition", () => {
     const transition = runnerSource.indexOf(
-      "const transition = await exactCorrectiveChainTransition(revision)",
+      "const transition = await exactCycle2lTransition(revision)",
     );
     const requiredPaths = runnerSource.indexOf(
-      "filingParserCrossEngineExecutionRequiredSourcePaths(transition)",
+      "filingParserCrossEngineExecutionV2RequiredSourcePaths(transition)",
       transition,
     );
     const hashes = runnerSource.indexOf(
@@ -249,6 +281,49 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     expect(requiredPaths).toBeGreaterThan(transition);
     expect(hashes).toBeGreaterThan(requiredPaths);
     expect(runnerSource).toContain("for (const path of paths)");
+  });
+
+  it("emits only the v2 artifact rooted at the v2 fixture manifest", () => {
+    expect(runnerSource).toContain(
+      '"research-cockpit-filing-parser-cross-engine-execution-v2.json"',
+    );
+    expect(runnerSource).toContain(
+      '"fixtures/synthetic/filing-parser-cross-engine-execution/v2/manifest.json"',
+    );
+    expect(runnerSource).toContain(
+      "filing-parser-cross-engine-execution-evidence-v2-${revision}-${environment.runAttempt}",
+    );
+    expect(runnerSource).toContain(
+      "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY",
+    );
+    expect(runnerSource).not.toContain(
+      '"research-cockpit-filing-parser-cross-engine-execution-v1.json"',
+    );
+  });
+
+  it("uses genuine recorded receipts for the cached replay and common-mode lineage regressions", () => {
+    const success = runnerSource.indexOf('markPhase("audited_success")');
+    const cached = runnerSource.indexOf(
+      'markPhase("audited_cached_replay")',
+      success,
+    );
+    const lineage = runnerSource.indexOf(
+      'markPhase("audited_lineage_mutation")',
+      cached,
+    );
+    expect(cached).toBeGreaterThan(success);
+    expect(lineage).toBeGreaterThan(cached);
+    expect(runnerSource).toContain(
+      "cachedNormalizationBoundary(pythonSuccessReceipt)",
+    );
+    expect(runnerSource).toContain(
+      "commonModeLineageMutationBoundary(nodeSuccessReceipt)",
+    );
+    expect(runnerSource).toContain(
+      ".execute(Uint8Array.from([1, 2, 3]), Uint8Array.from([4, 5, 6]))",
+    );
+    expect(runnerSource).toContain("first.key = second.key");
+    expect(runnerSource).toContain("second.key = firstKey");
   });
 
   it("keeps evidence writing success-only, atomic, and after image removal", () => {

@@ -9,17 +9,31 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
   filingParserCrossEngineImplementationSha256,
   filingParserCrossEngineExecutionExpectedTransition,
   filingParserCrossEngineExecutionRequiredSourcePaths,
+  filingParserCrossEngineExecutionV2RequiredSourcePaths,
+  filingParserCrossEngineExecutionV2AgreementSha256,
+  filingParserCrossEngineExecutionV2ExecutionBindingSha256,
+  filingParserCrossEngineExecutionV2HandoffPairBindingSha256,
   type FilingParserCrossEngineExecutionEvidence,
+  type FilingParserCrossEngineExecutionEvidenceV2,
+  type FilingParserCrossEngineExecutionEvidenceV2CaseId,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
 } from "./filing-parser-cross-engine-execution-evidence";
 
 const HASH_A = `sha256:${"a".repeat(64)}` as const;
 const HASH_B = `sha256:${"b".repeat(64)}` as const;
 const HASH_C = `sha256:${"c".repeat(64)}` as const;
+const HASH_D = `sha256:${"d".repeat(64)}` as const;
 
 export function buildFilingParserCrossEngineExecutionEvidenceInput(): FilingParserCrossEngineExecutionEvidence {
   const transition = filingParserCrossEngineExecutionExpectedTransition();
@@ -161,6 +175,155 @@ export function buildFilingParserCrossEngineExecutionEvidenceInput(): FilingPars
   };
 }
 
+/** @internal Test-only additive Cycle 2l evidence carrier. */
+export function buildFilingParserCrossEngineExecutionEvidenceV2Input(): FilingParserCrossEngineExecutionEvidenceV2 {
+  const v1 = buildFilingParserCrossEngineExecutionEvidenceInput();
+  const revision = "e".repeat(40);
+  const transition = Object.freeze([
+    Object.freeze({
+      path: "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.ts",
+      status: "M" as const,
+    }),
+  ]);
+  const sourceHashes = Object.freeze(
+    filingParserCrossEngineExecutionV2RequiredSourcePaths(transition).map(
+      (path) => Object.freeze({ path, sha256: HASH_A }),
+    ),
+  );
+  const keyId = "cycle2k-ephemeral-ed25519-v1";
+  const pythonHandoffPairBindingSha256 =
+    filingParserCrossEngineExecutionV2HandoffPairBindingSha256({
+      amendmentDocumentSha256: HASH_D,
+      amendmentSourceSha256: HASH_B,
+      imageSha256: v1.engines[0].builtImageId,
+      keyId,
+      originalDocumentSha256: HASH_C,
+      originalSourceSha256: HASH_A,
+      publicKeySpkiSha256: HASH_A,
+    });
+  const nodeHandoffPairBindingSha256 =
+    filingParserCrossEngineExecutionV2HandoffPairBindingSha256({
+      amendmentDocumentSha256: HASH_D,
+      amendmentSourceSha256: HASH_B,
+      imageSha256: v1.engines[1].builtImageId,
+      keyId,
+      originalDocumentSha256: HASH_C,
+      originalSourceSha256: HASH_A,
+      publicKeySpkiSha256: HASH_A,
+    });
+  const pythonExecutionBindingSha256 =
+    filingParserCrossEngineExecutionV2ExecutionBindingSha256({
+      amendmentDocumentSha256: HASH_D,
+      handoffPairBindingSha256: pythonHandoffPairBindingSha256,
+      imageSha256: v1.engines[0].builtImageId,
+      keyId,
+      originalDocumentSha256: HASH_C,
+    });
+  const nodeExecutionBindingSha256 =
+    filingParserCrossEngineExecutionV2ExecutionBindingSha256({
+      amendmentDocumentSha256: HASH_D,
+      handoffPairBindingSha256: nodeHandoffPairBindingSha256,
+      imageSha256: v1.engines[1].builtImageId,
+      keyId,
+      originalDocumentSha256: HASH_C,
+    });
+  const agreementSha256 = filingParserCrossEngineExecutionV2AgreementSha256({
+    amendmentArchiveSha256: HASH_B,
+    engines: [
+      {
+        engineId: v1.engines[0].engineId,
+        executionBindingSha256: pythonExecutionBindingSha256,
+        imageSha256: v1.engines[0].builtImageId,
+        implementationSha256: v1.engines[0].implementationSha256,
+        role: "python-primary",
+      },
+      {
+        engineId: v1.engines[1].engineId,
+        executionBindingSha256: nodeExecutionBindingSha256,
+        imageSha256: v1.engines[1].builtImageId,
+        implementationSha256: v1.engines[1].implementationSha256,
+        role: "node-secondary",
+      },
+    ],
+    normalizationSha256: HASH_C,
+    originalArchiveSha256: HASH_A,
+  });
+  return {
+    baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+    bindingValidation: {
+      childReceiptArchiveBinding: "recomputed_exact",
+      executionBinding: "recomputed_exact",
+      handoffPairBinding: "recomputed_exact",
+      injectedBoundaryAuthenticity: "not_established",
+      inputFactRoleBinding: "validated_exact",
+      lineageReciprocity: "validated_exact",
+    },
+    caseOutcomes: [
+      {
+        amendmentArchiveSha256: HASH_B,
+        amendmentDocumentSha256: HASH_D,
+        agreementSha256,
+        caseId: "exact-original-amendment-cross-engine-bound-pair",
+        expectedStatus: "agreed",
+        factVersionCount: 20,
+        lineageCount: 10,
+        nodeAmendmentStdoutSha256: HASH_D,
+        nodeExecutionBindingSha256,
+        nodeHandoffPairBindingSha256,
+        nodeKeyId: keyId,
+        nodeOriginalStdoutSha256: HASH_C,
+        nodePublicKeySpkiSha256: HASH_A,
+        normalizationSha256: HASH_C,
+        observedStatus: "agreed",
+        originalArchiveSha256: HASH_A,
+        originalDocumentSha256: HASH_C,
+        pythonAmendmentStdoutSha256: HASH_D,
+        pythonExecutionBindingSha256,
+        pythonHandoffPairBindingSha256,
+        pythonKeyId: keyId,
+        pythonOriginalStdoutSha256: HASH_C,
+        pythonPublicKeySpkiSha256: HASH_A,
+        replayMatched: true,
+        resultSha256: HASH_C,
+      },
+      quarantineV2("cached-genuine-child-receipts-under-different-archives"),
+      quarantineV2("common-mode-lineage-mutation"),
+      quarantineV2("cross-engine-normalization-mismatch"),
+      quarantineV2("original-archive-tamper"),
+      quarantineV2("original-amendment-role-swap"),
+    ],
+    checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+    claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
+    completedAt: v1.completedAt,
+    engines: v1.engines,
+    evidenceVersion: 2,
+    fixtureManifestSha256: HASH_A,
+    historicalV1: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+    notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+    repository: v1.repository,
+    revision,
+    runtime: v1.runtime,
+    schemaVersion:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
+    sourceHashes,
+    startedAt: v1.startedAt,
+    status: "passed",
+    summary: { agreed: 1, quarantined: 5, replayMatched: true, total: 6 },
+    synthetic: true,
+    tools: v1.tools,
+    transition: { entries: transition, pathCount: transition.length },
+    workflow: {
+      artifactName: `filing-parser-cross-engine-execution-evidence-v2-${revision}-1`,
+      event: "push",
+      job: "acceptance",
+      ref: "refs/heads/main",
+      runAttempt: 1,
+      runId: "123456789",
+      workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
+    },
+  };
+}
+
 function implementationSources(
   paths: readonly string[],
 ): readonly FilingParserCrossEngineExecutionEvidenceSourceHash[] {
@@ -193,5 +356,25 @@ function quarantine(
     pythonOriginalStdoutSha256: null,
     replayMatched: false,
     resultSha256: null,
+  };
+}
+
+function quarantineV2(
+  caseId: Exclude<
+    FilingParserCrossEngineExecutionEvidenceV2CaseId,
+    "exact-original-amendment-cross-engine-bound-pair"
+  >,
+) {
+  return {
+    ...quarantine("cross-engine-normalization-mismatch"),
+    amendmentDocumentSha256: null,
+    caseId,
+    nodeHandoffPairBindingSha256: null,
+    nodeKeyId: null,
+    nodePublicKeySpkiSha256: null,
+    originalDocumentSha256: null,
+    pythonHandoffPairBindingSha256: null,
+    pythonKeyId: null,
+    pythonPublicKeySpkiSha256: null,
   };
 }

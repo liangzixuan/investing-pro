@@ -121,6 +121,225 @@ describe("filing parser cross-engine execution security", () => {
     );
   });
 
+  it("quarantines cached child successes replayed for unrelated archives", async () => {
+    const harness = await buildCrossEngineTestHarness();
+    const unrelatedOriginal = new Uint8Array([1, 2, 3]);
+    const unrelatedAmendment = new Uint8Array([4, 5, 6]);
+    const result = await createFilingParserCrossEngineExecutionBoundary(
+      harness.configuration,
+    ).execute(unrelatedOriginal, unrelatedAmendment);
+
+    assertQuarantined(result);
+    expect(harness.python.calls).toHaveLength(1);
+    expect(harness.node.calls).toHaveLength(0);
+  });
+
+  it("recomputes and rejects forged handoff-pair and execution bindings from either engine", async () => {
+    const bindingMutations: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        const provenance = value.provenance as Record<string, unknown>;
+        const handoff = provenance.handoff as Record<string, unknown>;
+        handoff.pairBindingSha256 = `sha256:${"e".repeat(64)}`;
+      },
+      (value) => {
+        const provenance = value.provenance as Record<string, unknown>;
+        provenance.executionBindingSha256 = `sha256:${"f".repeat(64)}`;
+      },
+    ];
+    for (const role of ["python", "node"] as const) {
+      for (const mutate of bindingMutations) {
+        const harness = await buildCrossEngineTestHarness();
+        const forged = structuredClone(
+          role === "python" ? harness.pythonResult : harness.nodeResult,
+        ) as unknown as Record<string, unknown>;
+        mutate(forged);
+        const target = role === "python" ? harness.python : harness.node;
+        target.outcome =
+          forged as unknown as FilingParserNormalizationExecutionResult;
+
+        assertQuarantined(
+          await createFilingParserCrossEngineExecutionBoundary(
+            harness.configuration,
+          ).execute(harness.originalArchive, harness.amendmentArchive),
+        );
+      }
+    }
+  });
+
+  it("quarantines identical cross-engine lineage and fact-contract mutations", async () => {
+    const mutations: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        const lineage = (value.normalization as Record<string, unknown>)
+          .lineage as Record<string, unknown>[];
+        const firstKey = lineage[0]?.key;
+        if (firstKey === undefined || lineage[1] === undefined)
+          throw new Error("test setup failed");
+        lineage[0]!.key = lineage[1].key;
+        lineage[1].key = firstKey;
+      },
+      (value) => {
+        const lineage = (value.normalization as Record<string, unknown>)
+          .lineage as Record<string, unknown>[];
+        if (lineage[0] === undefined || lineage[1] === undefined)
+          throw new Error("test setup failed");
+        lineage[0].successorFactId = lineage[1].successorFactId;
+      },
+      (value) => {
+        const lineage = (value.normalization as Record<string, unknown>)
+          .lineage as Record<string, unknown>[];
+        if (lineage[0] === undefined) throw new Error("test setup failed");
+        lineage[0].effectiveAt = "2099-01-01T00:00:00.000Z";
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions[0] === undefined) throw new Error("test setup failed");
+        versions[0].sourceConcept = "rc-synthetic:WrongConcept";
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions[10] === undefined) throw new Error("test setup failed");
+        versions[10].sourceDocumentSha256 = `sha256:${"9".repeat(64)}`;
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions[3] === undefined) throw new Error("test setup failed");
+        versions[3].unit = "USD";
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions[0] === undefined) throw new Error("test setup failed");
+        versions[0].value = "01";
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions.length !== 20) throw new Error("test setup failed");
+        for (let index = 0; index < 10; index += 1)
+          versions[index + 10]!.value = versions[index]!.value;
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions.length !== 20) throw new Error("test setup failed");
+        for (let index = 0; index < 10; index += 1) {
+          versions[index]!.value = "1";
+          versions[index + 10]!.value = "2";
+        }
+      },
+      (value) => {
+        const versions = (value.normalization as Record<string, unknown>)
+          .factVersions as Record<string, unknown>[];
+        if (versions.length !== 20) throw new Error("test setup failed");
+        for (const version of versions)
+          version.sourceAcceptedAt = version.sourceAvailableAt;
+      },
+    ];
+    for (const mutate of mutations) {
+      const harness = await buildCrossEngineTestHarness();
+      for (const [target, source] of [
+        [harness.python, harness.pythonResult],
+        [harness.node, harness.nodeResult],
+      ] as const) {
+        const commonModeMutation = structuredClone(source) as unknown as Record<
+          string,
+          unknown
+        >;
+        mutate(commonModeMutation);
+        target.outcome =
+          commonModeMutation as unknown as FilingParserNormalizationExecutionResult;
+      }
+
+      assertQuarantined(
+        await createFilingParserCrossEngineExecutionBoundary(
+          harness.configuration,
+        ).execute(harness.originalArchive, harness.amendmentArchive),
+      );
+    }
+  });
+
+  it("quarantines identical cross-engine period and accession-context mutations", async () => {
+    const mutations: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        const versions = mutableFactVersions(value);
+        versions[3]!.periodStart = versions[3]!.periodEnd;
+        versions[13]!.periodStart = versions[13]!.periodEnd;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        const periodEnd =
+          versions[0]!.periodEnd === "2025-12-30" ? "2025-12-29" : "2025-12-30";
+        versions[0]!.periodEnd = periodEnd;
+        versions[10]!.periodEnd = periodEnd;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        const issuer = String(versions[10]!.sourceAccession).startsWith(
+          "SYN-8888888888-",
+        )
+          ? "7777777777"
+          : "8888888888";
+        const accession = String(versions[10]!.sourceAccession).replace(
+          /^SYN-[0-9]{10}/u,
+          `SYN-${issuer}`,
+        );
+        for (let index = 10; index < 20; index += 1)
+          versions[index]!.sourceAccession = accession;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        const current = String(versions[0]!.sourceAccession);
+        const year = current.slice(15, 17) === "99" ? "98" : "99";
+        const accession = current.replace(
+          /^SYN-([0-9]{10})-[0-9]{2}-/u,
+          `SYN-$1-${year}-`,
+        );
+        for (let index = 0; index < 10; index += 1)
+          versions[index]!.sourceAccession = accession;
+      },
+    ];
+    for (const mutate of mutations)
+      await assertCommonModeMutationQuarantined(mutate);
+  });
+
+  it("binds both source roles and both lineage pointer directions", async () => {
+    const mutations: Array<(value: Record<string, unknown>) => void> = [
+      (value) => {
+        const versions = mutableFactVersions(value);
+        for (let index = 0; index < 10; index += 1)
+          versions[index]!.sourceContentSha256 = `sha256:${"7".repeat(64)}`;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        for (let index = 10; index < 20; index += 1)
+          versions[index]!.sourceContentSha256 = `sha256:${"8".repeat(64)}`;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        for (let index = 0; index < 10; index += 1)
+          versions[index]!.sourceDocumentSha256 = `sha256:${"7".repeat(64)}`;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        for (let index = 10; index < 20; index += 1)
+          versions[index]!.sourceDocumentSha256 = `sha256:${"8".repeat(64)}`;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        versions[0]!.successorFactId = versions[11]!.factId;
+      },
+      (value) => {
+        const versions = mutableFactVersions(value);
+        versions[10]!.predecessorFactId = versions[1]!.factId;
+      },
+    ];
+    for (const mutate of mutations)
+      await assertCommonModeMutationQuarantined(mutate);
+  });
+
   it("strictly rejects malformed normalization carriers", async () => {
     const mutations: Array<(value: Record<string, unknown>) => void> = [
       (value) => {
@@ -317,4 +536,36 @@ function assertQuarantined(
   });
   expect(JSON.stringify(value)).not.toMatch(/sha256:|SYN-|fact:|canary/u);
   expect(Object.isFrozen(value)).toBe(true);
+}
+
+async function assertCommonModeMutationQuarantined(
+  mutate: (value: Record<string, unknown>) => void,
+): Promise<void> {
+  const harness = await buildCrossEngineTestHarness();
+  for (const [target, source] of [
+    [harness.python, harness.pythonResult],
+    [harness.node, harness.nodeResult],
+  ] as const) {
+    const commonModeMutation = structuredClone(source) as unknown as Record<
+      string,
+      unknown
+    >;
+    mutate(commonModeMutation);
+    target.outcome =
+      commonModeMutation as unknown as FilingParserNormalizationExecutionResult;
+  }
+  assertQuarantined(
+    await createFilingParserCrossEngineExecutionBoundary(
+      harness.configuration,
+    ).execute(harness.originalArchive, harness.amendmentArchive),
+  );
+}
+
+function mutableFactVersions(
+  value: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const versions = (value.normalization as Record<string, unknown>)
+    .factVersions as Record<string, unknown>[];
+  if (versions.length !== 20) throw new Error("test setup failed");
+  return versions;
 }

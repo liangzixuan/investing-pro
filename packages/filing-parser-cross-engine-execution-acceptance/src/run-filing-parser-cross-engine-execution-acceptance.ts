@@ -33,23 +33,26 @@ import {
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
-  createFilingParserCrossEngineExecutionEvidenceForAcceptance,
-  filingParserCrossEngineExecutionRequiredSourcePaths,
+  createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance,
+  filingParserCrossEngineExecutionV2RequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
-  serializeCanonicalFilingParserCrossEngineExecutionEvidence,
-  type FilingParserCrossEngineExecutionEvidenceCaseOutcome,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
   type FilingParserCrossEngineExecutionEvidenceTransitionEntry,
+  type FilingParserCrossEngineExecutionEvidenceV2CaseOutcome,
+  type FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceValidationStage,
 } from "./filing-parser-cross-engine-execution-evidence";
 
@@ -69,7 +72,7 @@ const PYTHON_ENGINE_ID = "python-3.12-primary-v1";
 const NODE_ENGINE_ID = "node-24-secondary-v1";
 const KEY_ID = "cycle2k-ephemeral-ed25519-v1";
 const EVIDENCE_FILE =
-  "research-cockpit-filing-parser-cross-engine-execution-v1.json";
+  "research-cockpit-filing-parser-cross-engine-execution-v2.json";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const MAX_COMMAND_BYTES = 4_194_304;
@@ -99,6 +102,8 @@ export const ACCEPTANCE_PHASES = Object.freeze([
   "image_inspection",
   "audited_setup",
   "audited_success",
+  "audited_cached_replay",
+  "audited_lineage_mutation",
   "audited_replay",
   "audited_mismatch",
   "audited_tamper",
@@ -114,6 +119,8 @@ export const ACCEPTANCE_PHASES = Object.freeze([
   "evidence_validation_root_contract",
   "evidence_validation_timestamps",
   "evidence_validation_claim_tuples",
+  "evidence_validation_historical_v1",
+  "evidence_validation_binding_validation",
   "evidence_validation_case_outcomes",
   "evidence_validation_transition",
   "evidence_validation_runtime",
@@ -161,6 +168,10 @@ export function filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(
       return `${prefix}audited_setup\n`;
     case "audited_success":
       return `${prefix}audited_success\n`;
+    case "audited_cached_replay":
+      return `${prefix}audited_cached_replay\n`;
+    case "audited_lineage_mutation":
+      return `${prefix}audited_lineage_mutation\n`;
     case "audited_replay":
       return `${prefix}audited_replay\n`;
     case "audited_mismatch":
@@ -191,6 +202,10 @@ export function filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(
       return `${prefix}evidence_validation_timestamps\n`;
     case "evidence_validation_claim_tuples":
       return `${prefix}evidence_validation_claim_tuples\n`;
+    case "evidence_validation_historical_v1":
+      return `${prefix}evidence_validation_historical_v1\n`;
+    case "evidence_validation_binding_validation":
+      return `${prefix}evidence_validation_binding_validation\n`;
     case "evidence_validation_case_outcomes":
       return `${prefix}evidence_validation_case_outcomes\n`;
     case "evidence_validation_transition":
@@ -279,6 +294,43 @@ export function filingParserCrossEngineExecutionEvidenceValidationPhase(
   }
 }
 
+export function filingParserCrossEngineExecutionEvidenceV2ValidationPhase(
+  stage: FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
+): AcceptancePhase {
+  switch (stage) {
+    case "root_contract":
+      return "evidence_validation_root_contract";
+    case "timestamps":
+      return "evidence_validation_timestamps";
+    case "claim_tuples":
+      return "evidence_validation_claim_tuples";
+    case "historical_v1":
+      return "evidence_validation_historical_v1";
+    case "binding_validation":
+      return "evidence_validation_binding_validation";
+    case "case_outcomes":
+      return "evidence_validation_case_outcomes";
+    case "transition":
+      return "evidence_validation_transition";
+    case "runtime":
+      return "evidence_validation_runtime";
+    case "source_hashes":
+      return "evidence_validation_source_hashes";
+    case "engines":
+      return "evidence_validation_engines";
+    case "fixture_binding":
+      return "evidence_validation_fixture_binding";
+    case "summary":
+      return "evidence_validation_summary";
+    case "tools_contract":
+      return "evidence_validation_tools_contract";
+    case "workflow":
+      return "evidence_validation_workflow";
+    case "canonical_freeze":
+      return "evidence_validation_canonical_freeze";
+  }
+}
+
 export function filingParserCrossEngineExecutionAcceptanceCleanupShouldReplacePhase(
   hadPrimaryFailure: boolean,
 ): boolean {
@@ -303,16 +355,16 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     fail();
 
   markPhase("source_inventory");
-  const transition = await exactCorrectiveChainTransition(revision);
+  const transition = await exactCycle2lTransition(revision);
   const requiredSourcePaths =
-    filingParserCrossEngineExecutionRequiredSourcePaths(transition);
+    filingParserCrossEngineExecutionV2RequiredSourcePaths(transition);
   const sourceHashes = await committedSourceHashes(
     revision,
     requiredSourcePaths,
   );
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
-    "fixtures/synthetic/filing-parser-cross-engine-execution/v1/manifest.json",
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v2/manifest.json",
   );
   const pythonSources = implementationSources(
     sourceHashes,
@@ -376,22 +428,30 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       [0, 0, 0, 0, 0, 0],
       NODE_IMAGE_INSPECTION_PROFILE,
     );
-    const pythonBoundary = createFilingParserNormalizationExecutionBoundary({
-      imageSha256: pythonImageId,
-      processRunner: Object.freeze({
-        run: pythonRecorder.run.bind(pythonRecorder),
-      }),
-      publicKeySpki,
-      signer,
-    });
-    const nodeBoundary = createFilingParserNormalizationExecutionBoundary({
-      imageSha256: nodeImageId,
-      processRunner: Object.freeze({
-        run: nodeRecorder.run.bind(nodeRecorder),
-      }),
-      publicKeySpki,
-      signer,
-    });
+    const genuinePythonBoundary =
+      createFilingParserNormalizationExecutionBoundary({
+        imageSha256: pythonImageId,
+        processRunner: Object.freeze({
+          run: pythonRecorder.run.bind(pythonRecorder),
+        }),
+        publicKeySpki,
+        signer,
+      });
+    const genuineNodeBoundary =
+      createFilingParserNormalizationExecutionBoundary({
+        imageSha256: nodeImageId,
+        processRunner: Object.freeze({
+          run: nodeRecorder.run.bind(nodeRecorder),
+        }),
+        publicKeySpki,
+        signer,
+      });
+    const pythonBoundary = new RecordingNormalizationBoundary(
+      genuinePythonBoundary,
+    );
+    const nodeBoundary = new RecordingNormalizationBoundary(
+      genuineNodeBoundary,
+    );
     const boundary = crossBoundary(
       pythonBoundary,
       nodeBoundary,
@@ -425,6 +485,36 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       pythonImplementationSha256,
       nodeImplementationSha256,
     );
+
+    const pythonSuccessReceipt = pythonBoundary.requiredResult(0);
+    const nodeSuccessReceipt = nodeBoundary.requiredResult(0);
+    if (
+      pythonSuccessReceipt.status !== "normalized" ||
+      nodeSuccessReceipt.status !== "normalized"
+    )
+      fail();
+
+    markPhase("audited_cached_replay");
+    const cachedReplay = await crossBoundary(
+      cachedNormalizationBoundary(pythonSuccessReceipt),
+      cachedNormalizationBoundary(nodeSuccessReceipt),
+      pythonImageId,
+      nodeImageId,
+      pythonImplementationSha256,
+      nodeImplementationSha256,
+    ).execute(Uint8Array.from([1, 2, 3]), Uint8Array.from([4, 5, 6]));
+    assertCrossQuarantined(cachedReplay);
+
+    markPhase("audited_lineage_mutation");
+    const lineageMutation = await crossBoundary(
+      commonModeLineageMutationBoundary(pythonSuccessReceipt),
+      commonModeLineageMutationBoundary(nodeSuccessReceipt),
+      pythonImageId,
+      nodeImageId,
+      pythonImplementationSha256,
+      nodeImplementationSha256,
+    ).execute(fixture.originalArchive, fixture.amendmentArchive);
+    assertCrossQuarantined(lineageMutation);
 
     markPhase("audited_replay");
     const pythonReplayStart = pythonRecorder.documentOutputs.length;
@@ -551,12 +641,14 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await assertZeroResidue();
 
     markPhase("evidence_assembly");
-    const outcomes: readonly FilingParserCrossEngineExecutionEvidenceCaseOutcome[] =
+    const outcomes: readonly FilingParserCrossEngineExecutionEvidenceV2CaseOutcome[] =
       Object.freeze([
         Object.freeze({
           amendmentArchiveSha256: sha256(fixture.amendmentArchive),
+          amendmentDocumentSha256:
+            success.normalization.amendmentDocumentSha256,
           agreementSha256: success.provenance.agreementSha256,
-          caseId: "exact-original-amendment-cross-engine-pair" as const,
+          caseId: "exact-original-amendment-cross-engine-bound-pair" as const,
           expectedStatus: "agreed" as const,
           factVersionCount: 20 as const,
           lineageCount: 10 as const,
@@ -565,25 +657,41 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
           ),
           nodeExecutionBindingSha256:
             success.provenance.engines[1].executionBindingSha256,
+          nodeHandoffPairBindingSha256:
+            nodeSuccessReceipt.provenance.handoff.pairBindingSha256,
+          nodeKeyId: nodeSuccessReceipt.provenance.keyId,
           nodeOriginalStdoutSha256: sha256(
             nodeSuccessDocuments[0] as Uint8Array,
           ),
+          nodePublicKeySpkiSha256:
+            nodeSuccessReceipt.provenance.handoff.publicKeySpkiSha256,
           normalizationSha256: sha256(
-            text(canonicalJson(success.normalization)),
+            text(`${canonicalJson(success.normalization)}\n`),
           ),
           observedStatus: "agreed" as const,
           originalArchiveSha256: sha256(fixture.originalArchive),
+          originalDocumentSha256: success.normalization.originalDocumentSha256,
           pythonAmendmentStdoutSha256: sha256(
             pythonSuccessDocuments[1] as Uint8Array,
           ),
           pythonExecutionBindingSha256:
             success.provenance.engines[0].executionBindingSha256,
+          pythonHandoffPairBindingSha256:
+            pythonSuccessReceipt.provenance.handoff.pairBindingSha256,
+          pythonKeyId: pythonSuccessReceipt.provenance.keyId,
           pythonOriginalStdoutSha256: sha256(
             pythonSuccessDocuments[0] as Uint8Array,
           ),
+          pythonPublicKeySpkiSha256:
+            pythonSuccessReceipt.provenance.handoff.publicKeySpkiSha256,
           replayMatched: true,
           resultSha256: sha256(text(canonicalJson(success))),
         }),
+        crossQuarantineOutcome(
+          "cached-genuine-child-receipts-under-different-archives",
+          cachedReplay,
+        ),
+        crossQuarantineOutcome("common-mode-lineage-mutation", lineageMutation),
         crossQuarantineOutcome("cross-engine-normalization-mismatch", mismatch),
         crossQuarantineOutcome("original-archive-tamper", tampered),
         crossQuarantineOutcome("original-amendment-role-swap", swapped),
@@ -594,23 +702,25 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     const completedAt = new Date().toISOString();
     markPhase("evidence_assembly");
     const evidence =
-      createFilingParserCrossEngineExecutionEvidenceForAcceptance(
+      createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance(
         {
-          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
+          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+          bindingValidation: Object.freeze({
+            childReceiptArchiveBinding: "recomputed_exact" as const,
+            executionBinding: "recomputed_exact" as const,
+            handoffPairBinding: "recomputed_exact" as const,
+            injectedBoundaryAuthenticity: "not_established" as const,
+            inputFactRoleBinding: "validated_exact" as const,
+            lineageReciprocity: "validated_exact" as const,
+          }),
           caseOutcomes: outcomes,
-          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
-          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
+          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
           completedAt,
-          evidenceVersion: 1,
-          failedCorrectiveRevision:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
-          failedDiagnosticRevision:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
-          failedPrecursorRevision:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
-          failedRecoveryRevision:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
+          evidenceVersion: 2,
           fixtureManifestSha256,
+          historicalV1:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
           engines: Object.freeze([
             Object.freeze({
               architecture: "amd64" as const,
@@ -637,7 +747,8 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
               runtimeVersion: "Node v24.19.0",
             }),
           ]),
-          notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
+          notProven:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
           repository: environment.repository,
           revision,
           runtime: Object.freeze({
@@ -667,27 +778,27 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
             zeroResidue: true as const,
           }),
           schemaVersion:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
           sourceHashes,
           startedAt,
           status: "passed" as const,
           summary: Object.freeze({
             agreed: 1 as const,
-            quarantined: 3 as const,
+            quarantined: 5 as const,
             replayMatched: true as const,
-            total: 4 as const,
+            total: 6 as const,
           }),
           synthetic: true as const,
           tools,
           workflow: Object.freeze({
-            artifactName: `filing-parser-cross-engine-execution-evidence-v1-${revision}-${environment.runAttempt}`,
+            artifactName: `filing-parser-cross-engine-execution-evidence-v2-${revision}-${environment.runAttempt}`,
             event: environment.event,
             job: "acceptance" as const,
             ref: environment.ref,
             runAttempt: environment.runAttempt,
             runId: environment.runId,
             workflowName:
-              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
           }),
           transition: Object.freeze({
             entries: transition,
@@ -696,7 +807,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
         },
         (stage) => {
           markPhase(
-            filingParserCrossEngineExecutionEvidenceValidationPhase(stage),
+            filingParserCrossEngineExecutionEvidenceV2ValidationPhase(stage),
           );
         },
       );
@@ -710,7 +821,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await assertPathAbsent(temporaryEvidencePath);
     await writeFile(
       temporaryEvidencePath,
-      serializeCanonicalFilingParserCrossEngineExecutionEvidence(evidence),
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV2(evidence),
       { encoding: "utf8", flag: "wx", mode: 0o600 },
     );
     await assertPathAbsent(environment.evidencePath);
@@ -771,6 +882,63 @@ function crossBoundary(
       role: "node-secondary" as const,
     }),
   });
+}
+
+class RecordingNormalizationBoundary implements FilingParserNormalizationExecutionBoundary {
+  readonly #boundary: FilingParserNormalizationExecutionBoundary;
+  readonly #results: FilingParserNormalizationExecutionResult[] = [];
+
+  public constructor(boundary: FilingParserNormalizationExecutionBoundary) {
+    this.#boundary = boundary;
+  }
+
+  public async execute(
+    originalArchive: unknown,
+    amendmentArchive: unknown,
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<FilingParserNormalizationExecutionResult> {
+    const result = await this.#boundary.execute(
+      originalArchive,
+      amendmentArchive,
+      options,
+    );
+    this.#results.push(result);
+    return result;
+  }
+
+  public requiredResult(
+    index: number,
+  ): FilingParserNormalizationExecutionResult {
+    const result = this.#results[index];
+    if (result === undefined) fail();
+    return result;
+  }
+}
+
+function cachedNormalizationBoundary(
+  result: FilingParserNormalizationExecutionResult,
+): FilingParserNormalizationExecutionBoundary {
+  return Object.freeze({
+    execute: (): Promise<FilingParserNormalizationExecutionResult> =>
+      Promise.resolve(result),
+  });
+}
+
+function commonModeLineageMutationBoundary(
+  result: FilingParserNormalizationExecutionResult,
+): FilingParserNormalizationExecutionBoundary {
+  const copied = structuredClone(result);
+  if (copied.status !== "normalized") fail();
+  const lineage = copied.normalization.lineage as unknown as Array<{
+    key: string;
+  }>;
+  const first = lineage[0];
+  const second = lineage[1];
+  if (first === undefined || second === undefined) fail();
+  const firstKey = first.key;
+  first.key = second.key;
+  second.key = firstKey;
+  return cachedNormalizationBoundary(copied);
 }
 
 function mismatchingBoundary(
@@ -838,7 +1006,71 @@ function implementationSources(
   );
 }
 
-async function exactCorrectiveChainTransition(
+async function exactCycle2lTransition(
+  revision: string,
+): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
+  const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE;
+  const range = `${base}..${revision}`;
+  const mergeBase = decodeExactLine(
+    (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
+  );
+  const successorCount = decodeExactLine(
+    (await checkedCommand("git", ["rev-list", "--count", range], 5_000)).stdout,
+  );
+  const firstParentCount = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--first-parent", "--count", range],
+        5_000,
+      )
+    ).stdout,
+  );
+  const parentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", revision],
+        5_000,
+      )
+    ).stdout,
+  );
+  if (
+    mergeBase !== base ||
+    successorCount !== "1" ||
+    firstParentCount !== "1" ||
+    parentLine !== `${revision} ${base}`
+  )
+    fail();
+  const output = (
+    await checkedCommand(
+      "git",
+      ["diff", "--name-status", "--no-renames", base, revision],
+      10_000,
+      MAX_COMMAND_BYTES,
+      65_536,
+    )
+  ).stdout;
+  const decoded = new TextDecoder("utf-8", { fatal: true }).decode(output);
+  if (!decoded.endsWith("\n")) fail();
+  const entries = decoded
+    .slice(0, -1)
+    .split("\n")
+    .map((line) => {
+      const match = /^(A|M)\t([^\t\r\n]+)$/u.exec(line);
+      if (match?.[1] === undefined || match[2] === undefined) fail();
+      return Object.freeze({
+        path: match[2].replaceAll("\\", "/"),
+        status: match[1] as "A" | "M",
+      });
+    })
+    .sort((left, right) => left.path.localeCompare(right.path));
+  if (entries.length === 0) fail();
+  return Object.freeze(entries);
+}
+
+/** @internal Preserved v1 corrective-chain transition seam. */
+export async function exactCorrectiveChainTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
   const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE;
@@ -1454,14 +1686,17 @@ function assertCrossQuarantined(
 
 function crossQuarantineOutcome(
   caseId:
+    | "cached-genuine-child-receipts-under-different-archives"
+    | "common-mode-lineage-mutation"
     | "cross-engine-normalization-mismatch"
     | "original-amendment-role-swap"
     | "original-archive-tamper",
   result: FilingParserCrossEngineExecutionResult,
-): FilingParserCrossEngineExecutionEvidenceCaseOutcome {
+): FilingParserCrossEngineExecutionEvidenceV2CaseOutcome {
   assertCrossQuarantined(result);
   return Object.freeze({
     amendmentArchiveSha256: null,
+    amendmentDocumentSha256: null,
     agreementSha256: null,
     caseId,
     expectedStatus: "quarantined" as const,
@@ -1469,13 +1704,20 @@ function crossQuarantineOutcome(
     lineageCount: null,
     nodeAmendmentStdoutSha256: null,
     nodeExecutionBindingSha256: null,
+    nodeHandoffPairBindingSha256: null,
+    nodeKeyId: null,
     nodeOriginalStdoutSha256: null,
+    nodePublicKeySpkiSha256: null,
     normalizationSha256: null,
     observedStatus: "quarantined" as const,
     originalArchiveSha256: null,
+    originalDocumentSha256: null,
     pythonAmendmentStdoutSha256: null,
     pythonExecutionBindingSha256: null,
+    pythonHandoffPairBindingSha256: null,
+    pythonKeyId: null,
     pythonOriginalStdoutSha256: null,
+    pythonPublicKeySpkiSha256: null,
     replayMatched: false,
     resultSha256: null,
   });
@@ -1709,7 +1951,7 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
     process.env.GITHUB_ACTIONS !== "true" ||
     process.env.GITHUB_JOB !== "acceptance" ||
     process.env.GITHUB_WORKFLOW !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW
   )
     fail();
   const evidencePath = requiredEnvironment(
