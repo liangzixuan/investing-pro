@@ -56,37 +56,30 @@ describe("offline cross-engine evidence verifier hardening", () => {
       expect(repositoryRelativePathIsContained(value)).toBe(false);
     expect(repositoryRelativePathIsContained("packages/x.ts")).toBe(true);
   });
-  it("requires the exact two-commit corrective chain and rejects ancestry drift", () => {
+  it("requires the exact three-commit corrective chain and rejects ancestry drift", () => {
     const baseline = "962a00f65835fc6126e4da98e0e0d5998e8d59cc";
     const failedPrecursor = "14b4ecf41806dca7759a06bebf7ef8da96374f76";
+    const failedCorrective = "061944f8f770e8a08b2a38d1e2fedf8b8e2de348";
     const revision = "b".repeat(40);
     expect(
       filingParserCrossEngineExecutionCorrectiveChainAllowed(
         baseline,
-        "2",
-        "2",
+        "3",
+        "3",
         revision,
-        `${revision} ${failedPrecursor}`,
+        `${revision} ${failedCorrective}`,
+        `${failedCorrective} ${failedPrecursor}`,
         `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(true);
     expect(
       filingParserCrossEngineExecutionCorrectiveChainAllowed(
         "a".repeat(40),
-        "2",
-        "2",
+        "3",
+        "3",
         revision,
-        `${revision} ${failedPrecursor}`,
-        `${failedPrecursor} ${baseline}`,
-      ),
-    ).toBe(false);
-    expect(
-      filingParserCrossEngineExecutionCorrectiveChainAllowed(
-        baseline,
-        "1",
-        "2",
-        revision,
-        `${revision} ${failedPrecursor}`,
+        `${revision} ${failedCorrective}`,
+        `${failedCorrective} ${failedPrecursor}`,
         `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(false);
@@ -94,25 +87,55 @@ describe("offline cross-engine evidence verifier hardening", () => {
       filingParserCrossEngineExecutionCorrectiveChainAllowed(
         baseline,
         "2",
-        "1",
+        "3",
         revision,
-        `${revision} ${failedPrecursor}`,
+        `${revision} ${failedCorrective}`,
+        `${failedCorrective} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
+      ),
+    ).toBe(false);
+    expect(
+      filingParserCrossEngineExecutionCorrectiveChainAllowed(
+        baseline,
+        "3",
+        "2",
+        revision,
+        `${revision} ${failedCorrective}`,
+        `${failedCorrective} ${failedPrecursor}`,
         `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(false);
     for (const parentLine of [
       `${revision} ${"a".repeat(40)}`,
-      `${revision} ${"a".repeat(40)} ${failedPrecursor}`,
-      `${revision} ${failedPrecursor} ${"a".repeat(40)}`,
-      `${revision} ${failedPrecursor} `,
+      `${revision} ${"a".repeat(40)} ${failedCorrective}`,
+      `${revision} ${failedCorrective} ${"a".repeat(40)}`,
+      `${revision} ${failedCorrective} `,
     ])
       expect(
         filingParserCrossEngineExecutionCorrectiveChainAllowed(
           baseline,
-          "2",
-          "2",
+          "3",
+          "3",
           revision,
           parentLine,
+          `${failedCorrective} ${failedPrecursor}`,
+          `${failedPrecursor} ${baseline}`,
+        ),
+      ).toBe(false);
+    for (const failedCorrectiveParentLine of [
+      `${failedCorrective} ${"a".repeat(40)}`,
+      `${failedCorrective} ${failedPrecursor} ${"a".repeat(40)}`,
+      `${failedCorrective} ${"a".repeat(40)} ${failedPrecursor}`,
+      `${failedCorrective} ${failedPrecursor} `,
+    ])
+      expect(
+        filingParserCrossEngineExecutionCorrectiveChainAllowed(
+          baseline,
+          "3",
+          "3",
+          revision,
+          `${revision} ${failedCorrective}`,
+          failedCorrectiveParentLine,
           `${failedPrecursor} ${baseline}`,
         ),
       ).toBe(false);
@@ -125,10 +148,11 @@ describe("offline cross-engine evidence verifier hardening", () => {
       expect(
         filingParserCrossEngineExecutionCorrectiveChainAllowed(
           baseline,
-          "2",
-          "2",
+          "3",
+          "3",
           revision,
-          `${revision} ${failedPrecursor}`,
+          `${revision} ${failedCorrective}`,
+          `${failedCorrective} ${failedPrecursor}`,
           failedPrecursorParentLine,
         ),
       ).toBe(false);

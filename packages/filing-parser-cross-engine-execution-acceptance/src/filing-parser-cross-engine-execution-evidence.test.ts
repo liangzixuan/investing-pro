@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createFilingParserCrossEngineExecutionEvidence,
+  filingParserCrossEngineExecutionExpectedTransition,
+  filingParserCrossEngineExecutionRequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
   parseCanonicalFilingParserCrossEngineExecutionEvidence,
   serializeCanonicalFilingParserCrossEngineExecutionEvidence,
@@ -11,6 +13,24 @@ import { buildFilingParserCrossEngineExecutionEvidenceInput } from "./test-filin
 const HASH_Z = `sha256:${"0".repeat(64)}`;
 
 describe("filing parser cross-engine execution evidence", () => {
+  it("projects the exact sorted 66-path source union including historical routing", () => {
+    const paths = filingParserCrossEngineExecutionRequiredSourcePaths(
+      filingParserCrossEngineExecutionExpectedTransition(),
+    );
+    expect(paths).toHaveLength(66);
+    expect([...paths].sort((left, right) => left.localeCompare(right))).toEqual(
+      paths,
+    );
+    expect(new Set(paths).size).toBe(paths.length);
+    for (const path of [
+      "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    ])
+      expect(paths).toContain(path);
+  });
+
   it("round-trips exactly one canonical line", () => {
     const evidence = createFilingParserCrossEngineExecutionEvidence(
       buildFilingParserCrossEngineExecutionEvidenceInput(),
@@ -65,6 +85,8 @@ describe("filing parser cross-engine execution evidence", () => {
       (root: Record<string, unknown>) => (root.fixtureManifestSha256 = HASH_Z),
       (root: Record<string, unknown>) =>
         (root.failedPrecursorRevision = "0".repeat(40)),
+      (root: Record<string, unknown>) =>
+        (root.failedCorrectiveRevision = "0".repeat(40)),
       (root: Record<string, unknown>) =>
         (workflow(root).artifactName = "wrong"),
       (root: Record<string, unknown>) =>

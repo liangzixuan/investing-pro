@@ -6,10 +6,15 @@ Status: proposed and Pending exact recovery from baseline
 dedicated run `32910394736` attempt 1 failed closed at `image_inspection`: the
 inherited Python image ends in `/worker`, while the shared inspector applied
 the Node image's `/input` expectation to both roles. The run retained no
-artifact and has no offline-review verdict. One exact corrective child and all
-successful gates remain required. This ADR records no promoted claim. Cycle
-2b, full Cycle 2 quality, real-data admission, and production admission remain
-Blocked.
+artifact and has no offline-review verdict. Failed corrective revision
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` is its exact single-parent direct
+child. Dedicated run `32912204603` attempt 1 completed live Docker execution
+and every residue phase, then failed closed at `evidence_assembly` because the
+runner hashed a 62-path static list instead of the required 66-path
+source-transition union. That run also retained no artifact and has no
+offline-review verdict. One exact recovery child and all successful gates
+remain required. This ADR records no promoted claim. Cycle 2b, full Cycle 2
+quality, real-data admission, and production admission remain Blocked.
 
 ## Context
 
@@ -72,8 +77,9 @@ provenance, mismatch details, or canary content.
 
 The sole proposed target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It may be accepted only for one exact corrective child of failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76`, whose sole parent is baseline
+It may be accepted only for one exact recovery child of failed corrective
+revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, whose sole parent is failed
+precursor `14b4ecf41806dca7759a06bebf7ef8da96374f76`, whose sole parent is baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, and the complete evidence anchors
 defined below.
 
@@ -95,7 +101,7 @@ The proposed exact ordered checks are:
 12. `atomic_cross_engine_agreement_or_single_empty_value_free_quarantine`
 13. `engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine`
 14. `swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage`
-15. `success_only_exact_two_commit_recovery_transition_two_image_case_source_artifact_and_offline_review`
+15. `success_only_exact_three_commit_recovery_transition_two_image_case_source_artifact_and_offline_review`
 16. `historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data`
 
 ## Exact nonclaims
@@ -123,15 +129,18 @@ The proposed exact ordered nonclaims are:
 
 The proposal begins from exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, continues through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76`, and may end only at one exact
-corrective child. Before any promotion, both exact single-parent lines, the
-exact two-commit and first-parent counts, and the cumulative baseline-to-
-corrective path/status inventory must be frozen. No corrective revision is
-claimed while this ADR is Pending.
+`14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, and may end only at one exact
+recovery child. Before any promotion, all three exact single-parent lines, the
+exact three-commit and first-parent counts, and the cumulative baseline-to-
+recovery path/status inventory must be frozen. No recovery revision is claimed
+while this ADR is Pending. Failed runs `32910394736` and `32912204603`, each
+attempt 1, retained no artifact and have no offline-review verdict. They are
+non-evidence and cannot be substituted for the required successful artifact.
 
-The frozen corrective revision must pass formatting, lint, every guardrail, dependency
+The frozen recovery revision must pass formatting, lint, every guardrail, dependency
 and peer policy, all project typechecks and tests, both worker-specific test
-suites, and all builds. The same exact corrective source commit must pass Ubuntu and
+suites, and all builds. The same exact recovery source commit must pass Ubuntu and
 Windows CI and the required historical parser, custody, PostgreSQL, and Cycle
 2j live regression workflows. Those runs remain regression health only; none is
 Cycle 2k execution evidence.
@@ -150,7 +159,7 @@ disagreement, partial success, cleanup ambiguity, residue, or non-value-free
 quarantine must retain no candidate artifact and must prevent promotion.
 
 The versioned evidence record must bind the exact repository, baseline, failed
-precursor, corrective revision, cumulative transition inventory,
+precursor, failed corrective revision, recovery revision, cumulative transition inventory,
 workflow/run/job/attempt, artifact
 identity and digest, both built image digests, both exact worker source
 inventories and hashes, fixture manifest and archive hashes, tool versions,

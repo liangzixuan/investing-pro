@@ -139,7 +139,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
-  it("requires the exact linear two-commit corrective chain on both ancestry views", () => {
+  it("requires the exact linear three-commit corrective chain on both ancestry views", () => {
     expect(runnerSource).toContain('["merge-base", base, revision]');
     expect(runnerSource).toContain('["rev-list", "--count", revisionRange]');
     expect(runnerSource).toContain(
@@ -151,14 +151,38 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     expect(runnerSource).toContain(
       '["rev-list", "--parents", "--max-count=1", failedPrecursor]',
     );
-    expect(runnerSource).toContain('successorCount !== "2"');
-    expect(runnerSource).toContain('firstParentCount !== "2"');
     expect(runnerSource).toContain(
-      "parentLine !== `${revision} ${failedPrecursor}`",
+      '["rev-list", "--parents", "--max-count=1", failedCorrective]',
+    );
+    expect(runnerSource).toContain('successorCount !== "3"');
+    expect(runnerSource).toContain('firstParentCount !== "3"');
+    expect(runnerSource).toContain(
+      "parentLine !== `${revision} ${failedCorrective}`",
+    );
+    expect(runnerSource).toContain(
+      "failedCorrectiveParentLine !== `${failedCorrective} ${failedPrecursor}`",
     );
     expect(runnerSource).toContain(
       "failedPrecursorParentLine !== `${failedPrecursor} ${base}`",
     );
+  });
+
+  it("derives the complete source-hash inventory from the exact transition", () => {
+    const transition = runnerSource.indexOf(
+      "const transition = await exactCorrectiveChainTransition(revision)",
+    );
+    const requiredPaths = runnerSource.indexOf(
+      "filingParserCrossEngineExecutionRequiredSourcePaths(transition)",
+      transition,
+    );
+    const hashes = runnerSource.indexOf(
+      "await committedSourceHashes(",
+      requiredPaths,
+    );
+    expect(transition).toBeGreaterThan(0);
+    expect(requiredPaths).toBeGreaterThan(transition);
+    expect(hashes).toBeGreaterThan(requiredPaths);
+    expect(runnerSource).toContain("for (const path of paths)");
   });
 
   it("keeps evidence writing success-only, atomic, and after image removal", () => {

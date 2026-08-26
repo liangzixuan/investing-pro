@@ -2,14 +2,15 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
   filingParserCrossEngineImplementationSha256,
   filingParserCrossEngineExecutionExpectedTransition,
+  filingParserCrossEngineExecutionRequiredSourcePaths,
   type FilingParserCrossEngineExecutionEvidence,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
 } from "./filing-parser-cross-engine-execution-evidence";
@@ -20,12 +21,8 @@ const HASH_C = `sha256:${"c".repeat(64)}` as const;
 
 export function buildFilingParserCrossEngineExecutionEvidenceInput(): FilingParserCrossEngineExecutionEvidence {
   const transition = filingParserCrossEngineExecutionExpectedTransition();
-  const sourcePaths = [
-    ...new Set([
-      ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS,
-      ...transition.map((entry) => entry.path),
-    ]),
-  ].sort((left, right) => left.localeCompare(right));
+  const sourcePaths =
+    filingParserCrossEngineExecutionRequiredSourcePaths(transition);
   const sourceHashes = Object.freeze(
     sourcePaths.map((path) => Object.freeze({ path, sha256: HASH_A })),
   );
@@ -97,6 +94,8 @@ export function buildFilingParserCrossEngineExecutionEvidenceInput(): FilingPars
       },
     ],
     evidenceVersion: 1,
+    failedCorrectiveRevision:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
     failedPrecursorRevision:
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
     fixtureManifestSha256: HASH_A,

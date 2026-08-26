@@ -27,8 +27,9 @@ source commit `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
 `f17bacc6adc46851e182d260d59830652f1953bb`;
 Cycle 2k cross-engine execution agreement proposal Pending exact recovery from
 baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76`, with no canonical result or
-promoted source/evidence record;
+`14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, with no canonical result or promoted
+source/evidence record;
 synthetic data only.
 
 ## Identity
@@ -827,7 +828,8 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 Cycle 2k proposes no canonical real filing, authority, quality, tenant,
 persistence, or production entity. From exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` and one required exact corrective
+`14b4ecf41806dca7759a06bebf7ef8da96374f76`, failed corrective revision
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, and one required exact recovery
 child, it proposes to execute the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Per-role complete
@@ -837,7 +839,9 @@ quarantine. The sole proposed claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
 Dedicated run `32910394736` attempt 1 failed closed at image inspection and
-retained no artifact. No corrective revision, passing live artifact, or
+retained no artifact. Run `32912204603` attempt 1 completed live Docker
+execution and every residue phase, then failed closed at evidence assembly and
+also retained no artifact. No recovery revision, passing live artifact, or
 `offline_consistent` review exists, so no Cycle 2k agreement record is canonical
 or promoted. A future promotion must bind the exact recovery chain, both pinned images and
 both exact source inventories, pass all local/two-OS/regression/live gates, and

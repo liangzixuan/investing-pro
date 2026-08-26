@@ -35,13 +35,14 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SCHEMA_VERSION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
   createFilingParserCrossEngineExecutionEvidence,
+  filingParserCrossEngineExecutionRequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
   serializeCanonicalFilingParserCrossEngineExecutionEvidence,
   type FilingParserCrossEngineExecutionEvidenceCaseOutcome,
@@ -197,12 +198,17 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     fail();
 
   markPhase("source_inventory");
-  const sourceHashes = await committedSourceHashes(revision);
+  const transition = await exactCorrectiveChainTransition(revision);
+  const requiredSourcePaths =
+    filingParserCrossEngineExecutionRequiredSourcePaths(transition);
+  const sourceHashes = await committedSourceHashes(
+    revision,
+    requiredSourcePaths,
+  );
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
     "fixtures/synthetic/filing-parser-cross-engine-execution/v1/manifest.json",
   );
-  const transition = await exactCorrectiveChainTransition(revision);
   const pythonSources = implementationSources(
     sourceHashes,
     FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS.python,
@@ -489,6 +495,8 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
       completedAt,
       evidenceVersion: 1,
+      failedCorrectiveRevision:
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
       failedPrecursorRevision:
         FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
       fixtureManifestSha256,
@@ -718,6 +726,8 @@ async function exactCorrectiveChainTransition(
   const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE;
   const failedPrecursor =
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
+  const failedCorrective =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
   );
@@ -753,11 +763,21 @@ async function exactCorrectiveChainTransition(
       )
     ).stdout,
   );
+  const failedCorrectiveParentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", failedCorrective],
+        5_000,
+      )
+    ).stdout,
+  );
   if (
     mergeBase !== base ||
-    successorCount !== "2" ||
-    firstParentCount !== "2" ||
-    parentLine !== `${revision} ${failedPrecursor}` ||
+    successorCount !== "3" ||
+    firstParentCount !== "3" ||
+    parentLine !== `${revision} ${failedCorrective}` ||
+    failedCorrectiveParentLine !== `${failedCorrective} ${failedPrecursor}` ||
     failedPrecursorParentLine !== `${failedPrecursor} ${base}`
   )
     fail();
@@ -1318,9 +1338,10 @@ function crossQuarantineOutcome(
 
 async function committedSourceHashes(
   revision: string,
+  paths: readonly string[],
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceSourceHash[]> {
   const output: FilingParserCrossEngineExecutionEvidenceSourceHash[] = [];
-  for (const path of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_SOURCE_PATHS) {
+  for (const path of paths) {
     const source = await checkedCommand(
       "git",
       ["show", `${revision}:${path}`],
