@@ -1158,10 +1158,10 @@ and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
 ## Cycle 2l — current-input and reciprocal-lineage cross-engine agreement
 
-Status: **Pending corrective promotion from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`. The corrective source commit and
-every passing artifact, digest, and offline-review anchor remain Pending.**
+Status: **Pass only for exact source commit
+`2e3a7e33a76d19b993375958aff671707a81ef05`, the exact single-parent corrective
+child of failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`
+from baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.**
 
 Cycle 2l hardens the existing bounded cross-engine boundary before any quality
 composition. Its sole target claim is
@@ -1191,12 +1191,20 @@ archive tamper, and original/amendment role swap. Dedicated run/job
 artifact retention on failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`.
 Custody run/job `33011584059` / `98318941993` and parser-isolation run/job
 `33011584060` / `98318941736` failed at `commit_boundary`; both are regression
-non-evidence. All three failed runs retained zero artifacts. Promotion now
-requires an exact two-commit and two-first-parent chain in which
-`67af24176df3c17fd6d54498095888c9a43ebe1f` is the exact
-single-parent child of the baseline and the corrective revision is its exact
-single-parent child, followed by the exact-source local and workflow gates, a
-success-only retained v2 artifact, and independently anchored offline review.
+non-evidence. All three failed runs retained zero artifacts. The promoted exact
+source completes the required two-commit and two-first-parent chain, with 23
+cumulative transition paths and 14 paths in the corrective commit. Full local
+`pnpm verify` passed, including 51 acceptance tests. Source CI run `33013464811`
+passed Ubuntu job `98325467206` and Windows job `98325467249`. Dedicated run/job
+`33013464847` / `98325467722` retained artifact `9623531283`, named
+`filing-parser-cross-engine-execution-evidence-v2-2e3a7e33a76d19b993375958aff671707a81ef05-1`,
+size 7,581 bytes, with ZIP digest
+`sha256:bfd3eb2fabdba8b533cbbcd488fe9decd19f47cd4d73c408ac824a87717aaed8`
+and canonical evidence digest
+`sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8`.
+The artifact binds 66 source hashes, 23 transition paths, 16 ordered checks, 16
+ordered nonclaims, and six outcomes (one agreed and five quarantined); the
+independent review returned `offline_consistent` for all 66 source hashes.
 Injected boundary and receipt authenticity and fresh engine execution remain
 nonclaims. Independent real quality, representative real filings, Cycle 2b
 authority, B15/V15, full Cycle 2 exit, real-data admission, and production
@@ -1219,8 +1227,8 @@ Exit gate: at least 100 representative filings and 2,000 critical assertions mee
 Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
-Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, nor Pending
-Cycle 2l satisfies this exit gate. Cycle 2i does not establish that a parser
+Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, nor promoted
+bounded synthetic Cycle 2l satisfies this exit gate. Cycle 2i does not establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest
 validation, approved corpus inputs, real ten-fact coverage, truly independent

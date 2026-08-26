@@ -29,9 +29,10 @@ Cycle 2k bounded synthetic cross-engine execution historical evidence Pass only
 for exact source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, with its security conclusion and
 claim now Superseded; Cycle 2l current-input and reciprocal-lineage hardening
-Pending corrective promotion from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`;
+Pass only for exact source commit `2e3a7e33a76d19b993375958aff671707a81ef05`,
+the corrective child of failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`;
 synthetic data only.
 
 ## Identity
@@ -870,7 +871,7 @@ authority keys, and human review. See
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
-## Pending Cycle 2l current-input and reciprocal-lineage agreement
+## Promoted Cycle 2l current-input and reciprocal-lineage agreement
 
 Cycle 2l adds no canonical real filing, authority, quality, tenant,
 persistence, or production entity. From exact baseline
@@ -904,12 +905,20 @@ single-parent direct child of baseline
 retention. Custody run/job `33011584059` / `98318941993` and parser-isolation
 run/job `33011584060` / `98318941736` failed at `commit_boundary`; both are
 regression non-evidence. All three failed runs retained zero artifacts. The
-claim remains Pending until one exact
-single-parent corrective child of `67af24176df3c17fd6d54498095888c9a43ebe1f`
-completes the exact two-commit, two-first-parent chain, passes the six-case v2
-live matrix, retains a success-only exact-source artifact, and returns an
-independently anchored offline-consistent review. No corrective source SHA,
-passing artifact, or digest is promoted in the source state.
+claim is promoted only for exact source
+`2e3a7e33a76d19b993375958aff671707a81ef05`, its exact two-commit,
+two-first-parent, 23-path transition, and 14-path corrective commit. Full local
+`pnpm verify` passed, including 51 acceptance tests. Source CI run `33013464811`
+passed Ubuntu job `98325467206` and Windows job `98325467249`. Dedicated run/job
+`33013464847` / `98325467722` retained 7,581-byte artifact `9623531283`, named
+`filing-parser-cross-engine-execution-evidence-v2-2e3a7e33a76d19b993375958aff671707a81ef05-1`,
+with ZIP digest
+`sha256:bfd3eb2fabdba8b533cbbcd488fe9decd19f47cd4d73c408ac824a87717aaed8`
+and canonical evidence digest
+`sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8`.
+The record binds 66 source hashes, 23 transition paths, 16 ordered checks, 16
+ordered nonclaims, and six outcomes (one agreed and five quarantined); the
+independent review returned `offline_consistent` for 66 of 66 source hashes.
 
 Injected boundary or child-receipt authenticity and fresh engine execution are
 not established. Quality composition is deferred; true independence,

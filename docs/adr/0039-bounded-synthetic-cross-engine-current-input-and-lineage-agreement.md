@@ -1,13 +1,12 @@
 # ADR 0039: bounded synthetic cross-engine current-input and lineage agreement
 
-Status: Pending corrective promotion from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`. The corrective source, passing
-workflow run and job, artifact, artifact digest, evidence digest, and
-offline-review result remain Pending. Promotion requires the exact corrective
-chain, exact-source local and workflow gates, a success-only retained v2 live
-artifact, independent artifact inspection, and an independently anchored
-offline-consistent review. Cycle 2b, independent real quality, real-data
+Status: Accepted and promoted only for exact source commit
+`2e3a7e33a76d19b993375958aff671707a81ef05`, the exact single-parent corrective
+child of failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`
+from baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. The exact corrective
+chain, exact-source local and workflow gates, success-only retained v2 live
+artifact, independent artifact inspection, and independently anchored
+offline-consistent review passed. Cycle 2b, independent real quality, real-data
 admission, and production remain Blocked.
 
 ## Context
@@ -28,7 +27,7 @@ The same malformed lineage in both child results could pass byte-exact
 cross-engine agreement. These findings Supersede Cycle 2k's security conclusion
 and claim without altering its historical evidence bytes.
 
-The next repository-controlled milestone closes only those binding and lineage
+This repository-controlled milestone closes only those binding and lineage
 gaps. It does not add quality composition, a real corpus, external authority,
 or a new production trust boundary.
 
@@ -89,10 +88,10 @@ record or mismatch details.
 
 The sole target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
-It remains Pending until the complete promotion boundary below passes for one
-exact single-parent corrective child of failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`, completing the exact two-commit,
-two-first-parent chain from baseline
+It is accepted only for exact corrective source
+`2e3a7e33a76d19b993375958aff671707a81ef05`, the complete promotion record
+below, and its exact two-commit, two-first-parent chain through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
 `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.
 
 ## Required checks
@@ -147,32 +146,38 @@ mismatch, original-archive tamper, and original/amendment role swap. Exact
 replay of the successful pair remains deterministic confirmation inside the
 agreed case.
 
-Promotion requires one exact two-commit, two-first-parent transition from
-baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f` to its exact single-parent
-corrective child. The exact parent lines must be
-`<corrective> 67af24176df3c17fd6d54498095888c9a43ebe1f` and
+Exact source `2e3a7e33a76d19b993375958aff671707a81ef05` completes one exact
+two-commit, two-first-parent transition from baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`. The exact parent lines are
+`2e3a7e33a76d19b993375958aff671707a81ef05 67af24176df3c17fd6d54498095888c9a43ebe1f`
+and
 `67af24176df3c17fd6d54498095888c9a43ebe1f b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.
-Promotion also requires all local checks; required exact-source workflows; a
-successful dedicated v2 run; a retained canonical artifact binding the source
-transition, six cases, ordered checks, ordered nonclaims, images, sources, and
-workflow identity; artifact and canonical-file digest inspection; and
-independent offline review against separately supplied repository, revision,
-run, attempt, artifact, and evidence-digest anchors.
+The cumulative transition contains 23 paths, and the corrective commit contains
+14 paths. Full local `pnpm verify` passed, including 51 acceptance tests.
+Exact-source CI run `33013464811` passed Ubuntu job `98325467206` and Windows
+job `98325467249`. Dedicated run/job `33013464847` / `98325467722` succeeded and
+retained artifact `9623531283`, named
+`filing-parser-cross-engine-execution-evidence-v2-2e3a7e33a76d19b993375958aff671707a81ef05-1`,
+size 7,581 bytes. The downloaded ZIP digest is
+`sha256:bfd3eb2fabdba8b533cbbcd488fe9decd19f47cd4d73c408ac824a87717aaed8`;
+the canonical evidence digest is
+`sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8`.
+The artifact binds 66 source hashes, the exact 23-path transition, 16 ordered
+checks, 16 ordered nonclaims, and six cases producing one agreed and five
+quarantined outcomes. Independently anchored offline review returned
+`offline_consistent` for 66 of 66 source hashes.
 
-The corrective source-transition value, passing run/job numbers, artifact
-identity, digests, source-hash count, and offline verdict are Pending. They must
-be recorded only after the live artifact exists and the independent review
-passes. The failed precursor and its three zero-artifact failed workflow runs
-remain immutable non-evidence. Cycle 2k's v1 artifact and anchors remain
-immutable historical facts and cannot be relabeled as Cycle 2l evidence.
+The failed precursor and its three zero-artifact failed workflow runs remain
+immutable non-evidence. Cycle 2k's v1 artifact and anchors remain immutable
+historical facts and cannot be relabeled as Cycle 2l evidence.
 
 ## Consequences
 
-A future Pass would establish only that the bounded synthetic cross-engine
+This bounded Pass establishes only that the bounded synthetic cross-engine
 boundary rejected stale child results, internally inconsistent binding context,
 wrong roles, and common-mode lineage mutations before accepting byte-exact
-agreement for the one reviewed pair. It would not authenticate the injected
+agreement for the one reviewed pair. It does not authenticate the injected
 cross-engine boundary or child receipt, prove that every injected child result
 came from a fresh engine execution, or establish organizational, operator, key,
 host, or failure-domain independence.

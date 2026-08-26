@@ -9,49 +9,47 @@ retain one atomic empty value-free quarantine for every failure. The decision
 is recorded in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md).
 
-Current status: **Pending corrective promotion from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`.** The failed precursor is the exact
-single-parent child of the baseline. Promotion now requires its exact
-single-parent corrective child, completing a two-commit and two-first-parent
-chain, to pass the dedicated v2 live workflow, retain a success-only
-exact-source artifact, and return an independently anchored offline-consistent
-review. No corrective source SHA, passing artifact, artifact digest, evidence
-digest, or review result is recorded yet. Cycle 2b, independent real quality,
-full Cycle 2 exit, real-data admission, and production admission remain Blocked.
+Current status: **Pass only for exact source commit
+`2e3a7e33a76d19b993375958aff671707a81ef05`, the exact single-parent corrective
+child of failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`
+from baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.** The exact transition
+contains two commits, two first-parent commits, and 23 paths; the corrective
+commit contains 14 paths. Local verification, exact-source CI, the dedicated
+v2 artifact, and independent 66-of-66 offline review passed. Cycle 2b,
+independent real quality, full Cycle 2 exit, real-data admission, and production
+admission remain Blocked.
 
-| Gate                             | Required result                                                                                                                                                                                                                                | Current status                    |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Exact current inputs             | One owned synthetic original archive and one amendment archive are intrinsically snapshotted; their current-invocation SHA-256 values define the only accepted child input pair                                                                | Pending                           |
-| Current child-receipt binding    | Both child results bind their handoff receipts and all normalized facts to those exact current archive hashes and the correct original/amendment document roles                                                                                | Pending                           |
-| Recomputed pair binding          | The host recomputes each child handoff pair binding from current archive hashes, document hashes, the configured image, and receipt-declared key/public-key context and rejects every supplied mismatch                                        | Pending                           |
-| Recomputed execution binding     | The host recomputes each child execution binding from the verified pair binding and supplied execution context and rejects stale or internally inconsistent supplied bindings                                                                  | Pending                           |
-| Fixed fact partition             | Exactly 20 facts appear as ten original facts followed by ten amendment facts in frozen launch-key order; each key retains its fixed concept, unit, period, and role context                                                                   | Pending                           |
-| Reciprocal lineage               | Exactly ten per-key edges connect matching original/amendment endpoints with reciprocal predecessor/successor pointers and the same amendment effective time                                                                                   | Pending                           |
-| Chronology, periods, and values  | Accepted time precedes available time; lineage windows are half-open; duration start precedes end; all facts share one period end and duration facts share one start across roles; decimals are canonical; changed/unchanged values both exist | Pending                           |
-| Accession context                | Each accession's two-digit year matches its accepted-at year, and the original and amendment accessions carry the same ten-digit issuer segment                                                                                                | Pending                           |
-| Exact engine agreement           | Only two completely validated archive-bound child results with byte-exact equal normalization records may agree; digest, subset, repair, coercion, or semantic equivalence is insufficient                                                     | Pending                           |
-| Atomic result                    | Success exposes one immutable bounded agreement result; any input, receipt, binding, role, fact, lineage, chronology, value, engine, or comparison failure returns one empty value-free quarantine                                             | Pending                           |
-| Six-case live matrix             | One exact archive-bound pair agrees; cached replay, identical common-mode lineage mutation, cross-engine normalization mismatch, archive tamper, and role swap each quarantine                                                                 | Pending: 1 agreed / 5 quarantined |
-| Local integration                | Format, lint, guardrails, dependency policy, typechecks, security/unit suites, tests, and builds pass on the exact corrective-child bytes                                                                                                      | Pending                           |
-| Exact-source CI                  | Required Ubuntu/Windows and dedicated cross-engine workflows pass on the corrective child and exact two-commit chain without source-transition drift                                                                                           | Pending                           |
-| Dedicated v2 evidence            | A success-only retained canonical v2 artifact binds the exact source transition, current-input receipts, six live cases, ordered checks, ordered nonclaims, images, sources, and workflow identity                                             | Pending                           |
-| Independent offline review       | Independently supplied repository, revision, run, attempt, artifact, and evidence-digest anchors return offline-consistent for every frozen source hash                                                                                        | Pending                           |
-| Historical evidence immutability | Cycle 2k's exact v1 anchors remain unchanged; Cycle 2l failed precursor and failed-run records remain immutable non-evidence and cannot be relabeled as promotion evidence                                                                     | Recorded; corrective Pending      |
-| Cycle 2b authority               | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                                                                        | Blocked; outside Cycle 2l         |
-| Independent real quality         | Representative real filings and 2,000 independently adjudicated assertions pass frozen thresholds with zero silent critical failures                                                                                                           | Blocked; deferred                 |
-| Production admission             | Real-data rights, source/fetch, persistence, security, privacy, scale, and operational gates pass                                                                                                                                              | Blocked                           |
+| Gate                             | Required result                                                                                                                                                                                                                                | Current status                 |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Exact current inputs             | One owned synthetic original archive and one amendment archive are intrinsically snapshotted; their current-invocation SHA-256 values define the only accepted child input pair                                                                | Pass                           |
+| Current child-receipt binding    | Both child results bind their handoff receipts and all normalized facts to those exact current archive hashes and the correct original/amendment document roles                                                                                | Pass                           |
+| Recomputed pair binding          | The host recomputes each child handoff pair binding from current archive hashes, document hashes, the configured image, and receipt-declared key/public-key context and rejects every supplied mismatch                                        | Pass                           |
+| Recomputed execution binding     | The host recomputes each child execution binding from the verified pair binding and supplied execution context and rejects stale or internally inconsistent supplied bindings                                                                  | Pass                           |
+| Fixed fact partition             | Exactly 20 facts appear as ten original facts followed by ten amendment facts in frozen launch-key order; each key retains its fixed concept, unit, period, and role context                                                                   | Pass                           |
+| Reciprocal lineage               | Exactly ten per-key edges connect matching original/amendment endpoints with reciprocal predecessor/successor pointers and the same amendment effective time                                                                                   | Pass                           |
+| Chronology, periods, and values  | Accepted time precedes available time; lineage windows are half-open; duration start precedes end; all facts share one period end and duration facts share one start across roles; decimals are canonical; changed/unchanged values both exist | Pass                           |
+| Accession context                | Each accession's two-digit year matches its accepted-at year, and the original and amendment accessions carry the same ten-digit issuer segment                                                                                                | Pass                           |
+| Exact engine agreement           | Only two completely validated archive-bound child results with byte-exact equal normalization records may agree; digest, subset, repair, coercion, or semantic equivalence is insufficient                                                     | Pass                           |
+| Atomic result                    | Success exposes one immutable bounded agreement result; any input, receipt, binding, role, fact, lineage, chronology, value, engine, or comparison failure returns one empty value-free quarantine                                             | Pass                           |
+| Six-case live matrix             | One exact archive-bound pair agrees; cached replay, identical common-mode lineage mutation, cross-engine normalization mismatch, archive tamper, and role swap each quarantine                                                                 | Pass: 1 agreed / 5 quarantined |
+| Local integration                | Format, lint, guardrails, dependency policy, typechecks, security/unit suites, tests, and builds pass on the exact corrective-child bytes                                                                                                      | Pass: full verify; 51 tests    |
+| Exact-source CI                  | Required Ubuntu/Windows and dedicated cross-engine workflows pass on the corrective child and exact two-commit chain without source-transition drift                                                                                           | Pass: run `33013464811`        |
+| Dedicated v2 evidence            | A success-only retained canonical v2 artifact binds the exact source transition, current-input receipts, six live cases, ordered checks, ordered nonclaims, images, sources, and workflow identity                                             | Pass: artifact `9623531283`    |
+| Independent offline review       | Independently supplied repository, revision, run, attempt, artifact, and evidence-digest anchors return offline-consistent for every frozen source hash                                                                                        | Pass: 66 of 66                 |
+| Historical evidence immutability | Cycle 2k's exact v1 anchors remain unchanged; Cycle 2l failed precursor and failed-run records remain immutable non-evidence and cannot be relabeled as promotion evidence                                                                     | Pass: history preserved        |
+| Cycle 2b authority               | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                                                                        | Blocked; outside Cycle 2l      |
+| Independent real quality         | Representative real filings and 2,000 independently adjudicated assertions pass frozen thresholds with zero silent critical failures                                                                                                           | Blocked; deferred              |
+| Production admission             | Real-data rights, source/fetch, persistence, security, privacy, scale, and operational gates pass                                                                                                                                              | Blocked                        |
 
 ## Target claim and exact checks
 
 The sole bounded target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
-It is not accepted in the source state. Promotion requires an exact
-single-parent corrective child of failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`, which is itself the exact
-single-parent child of baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`, and every evidence anchor defined
-below.
+It is accepted only for exact corrective source
+`2e3a7e33a76d19b993375958aff671707a81ef05`, whose parent is failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`, itself the exact single-parent
+child of baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`, and the complete
+evidence record below.
 
 The exact ordered checks are:
 
@@ -108,20 +106,28 @@ The exact ordered nonclaims are:
 15. `database_api_web_queue_persistence_evidence_passport_or_b15_v15`
 16. `real_data_admission_full_cycle2_exit_or_production_use`
 
-## Promotion boundary
+## Promotion record
 
-The frozen source anchors are baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` and failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`. The corrective candidate must be
-the precursor's exact single-parent child. The complete chain must have exactly
-two commits and two first-parent commits with exact parent lines
-`<corrective> 67af24176df3c17fd6d54498095888c9a43ebe1f` and
+Exact source `2e3a7e33a76d19b993375958aff671707a81ef05` is the failed precursor's
+exact single-parent corrective child. The complete chain has exactly two commits
+and two first-parent commits with exact parent lines
+`2e3a7e33a76d19b993375958aff671707a81ef05 67af24176df3c17fd6d54498095888c9a43ebe1f`
+and
 `67af24176df3c17fd6d54498095888c9a43ebe1f b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.
-The corrective source, cumulative transition inventory, local counts, passing
-CI runs/jobs, dedicated passing v2 run/job, artifact identity, artifact digest,
-canonical evidence digest, source-hash count, and offline-review verdict are all
-Pending. They must be recorded only after the exact corrective source artifact
-is retained, independently inspected, and verified offline.
+The cumulative transition contains 23 paths, and the corrective commit contains
+14 paths. Full local `pnpm verify` passed, including 51 acceptance tests.
+Exact-source CI run `33013464811` passed Ubuntu job `98325467206` and Windows
+job `98325467249`. Dedicated run/job `33013464847` / `98325467722` succeeded and
+retained artifact `9623531283`, named
+`filing-parser-cross-engine-execution-evidence-v2-2e3a7e33a76d19b993375958aff671707a81ef05-1`,
+size 7,581 bytes. The downloaded ZIP digest is
+`sha256:bfd3eb2fabdba8b533cbbcd488fe9decd19f47cd4d73c408ac824a87717aaed8`;
+the canonical evidence digest is
+`sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8`.
+The record binds 66 source hashes, the exact 23-path transition, 16 ordered
+checks, 16 ordered nonclaims, and six outcomes (one agreed and five
+quarantined). Independently anchored offline review returned
+`offline_consistent` for 66 of 66 source hashes.
 
 ## Failed precursor record
 
@@ -141,7 +147,7 @@ canonical evidence digest
 remain immutable historical execution facts. They cannot substitute for Cycle
 2l v2 evidence or support Cycle 2k's Superseded security conclusion.
 
-Quality composition is explicitly deferred. A future Cycle 2l Pass could not
+Quality composition is explicitly deferred. This bounded Cycle 2l Pass cannot
 authenticate an injected child boundary or receipt, prove fresh execution,
 establish true independence or real filing quality, unblock Cycle 2b, satisfy
 the full Cycle 2 exit, admit real data, create B15/V15, or authorize production

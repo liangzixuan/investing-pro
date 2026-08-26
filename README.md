@@ -459,9 +459,11 @@ review remain historical facts, not support for the Superseded conclusion. See
 [ADR 0038](./docs/adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./docs/CYCLE_2K_EXIT_MATRIX.md).
 
-Cycle 2l is **Pending corrective promotion** from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`. Its target claim is
+Cycle 2l is **Pass only for exact source commit
+`2e3a7e33a76d19b993375958aff671707a81ef05`**, the exact single-parent
+corrective child of failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. Its target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
 The hardened boundary binds each child receipt and every normalized fact to the
 current invocation's exact archive and document role, recomputes pair and
@@ -469,19 +471,25 @@ execution bindings, freezes the original/amendment 20-fact partition, and
 validates ten reciprocal lineage edges, strict chronology, canonical decimals,
 one common period end and duration-fact start across both roles, accession-year and
 issuer-segment consistency, and changed-plus-unchanged amendment coverage
-before agreement. Promotion now requires an exact two-commit, two-first-parent
-chain: the failed precursor is the exact single-parent child of the baseline,
-and the still-Pending corrective revision must be the exact single-parent child
-of that precursor. The v2 live matrix must produce one agreed case and
-value-free quarantines for cached
-replay, identical common-mode lineage mutation, normalization mismatch, archive
-tamper, and role swap, followed by exact-source artifact and independent
-offline review. Dedicated run/job `33011584084` / `98318943081` failed at
+before agreement. The exact baseline-to-source transition contains two commits,
+two first-parent commits, and 23 paths; the corrective commit contains 14 paths.
+Full local `pnpm verify` passed, including 51 acceptance tests. Exact-source CI
+run `33013464811` passed Ubuntu job `98325467206` and Windows job
+`98325467249`. Dedicated run/job `33013464847` / `98325467722` retained
+artifact `9623531283`, named
+`filing-parser-cross-engine-execution-evidence-v2-2e3a7e33a76d19b993375958aff671707a81ef05-1`,
+size 7,581 bytes. Its ZIP digest is
+`sha256:bfd3eb2fabdba8b533cbbcd488fe9decd19f47cd4d73c408ac824a87717aaed8`;
+the canonical evidence digest is
+`sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8`.
+The record binds 66 source hashes, the 23-path transition, 16 ordered checks,
+16 ordered nonclaims, and six outcomes (one agreed and five quarantined); the
+independent review returned `offline_consistent` for 66 of 66 source hashes.
+Dedicated precursor run/job `33011584084` / `98318943081` failed at
 `evidence_validation_transition` before artifact retention. Custody run/job
 `33011584059` / `98318941993` and parser-isolation run/job `33011584060` /
 `98318941736` failed at `commit_boundary`; both are regression non-evidence. All
-three failed runs retained zero artifacts. Until the corrective source and
-passing anchors exist, no Cycle 2l claim is promoted.
+three failed runs retained zero artifacts and remain immutable non-evidence.
 Injected boundary or receipt authenticity and fresh execution are nonclaims;
 quality composition is deferred, and real quality, real data, Cycle 2b
 authority, and production remain Blocked. See [ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
@@ -951,16 +959,17 @@ blocked.
   are Superseded because child receipts were not bound to the current input
   archives and common-mode lineage mutations could pass. The immutable anchors
   remain historical facts only.
-- Cycle 2l is Pending corrective promotion from exact baseline
-  `b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-  `67af24176df3c17fd6d54498095888c9a43ebe1f`. It targets exact current-archive,
+- Cycle 2l is Pass only for exact source commit
+  `2e3a7e33a76d19b993375958aff671707a81ef05`, the exact corrective child of
+  failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
+  `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It targets exact current-archive,
   child-receipt, document-role, pair/execution-binding, 20-fact partition, and
-  reciprocal ten-edge lineage validation. Promotion requires the exact
-  two-commit, two-first-parent failed-precursor/corrective chain, the six-case
-  v2 live matrix, an exact-source retained artifact, and independent offline
-  review. The failed precursor and three zero-artifact failed workflow runs are
-  immutable non-evidence; no corrective SHA, passing artifact, or digest is
-  promoted yet. It cannot prove
+  reciprocal ten-edge lineage validation. Its exact two-commit,
+  two-first-parent, 23-path transition passed local verification, exact-source
+  Ubuntu/Windows CI, the six-case v2 live matrix, retained artifact
+  `9623531283`, and a 66-of-66 `offline_consistent` review. The failed precursor
+  and three zero-artifact failed workflow runs remain immutable non-evidence.
+  It cannot prove
   injected boundary or receipt authenticity, fresh execution, independent real
   quality, real data, Cycle 2b authority, or production.
 

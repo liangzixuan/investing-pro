@@ -1,4 +1,4 @@
-# Sprint 0 through Pending Cycle 2l threat model
+# Sprint 0 through promoted Cycle 2l threat model
 
 ## Current trust boundaries
 
@@ -465,9 +465,10 @@ In addition, byte-exact engine agreement could accept an identical common-mode
 lineage mutation because the boundary did not validate complete reciprocal
 per-key predecessor/successor relations.
 
-Cycle 2l is Pending corrective promotion from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
-`67af24176df3c17fd6d54498095888c9a43ebe1f`. It treats child results as
+Cycle 2l is Pass only for exact source commit
+`2e3a7e33a76d19b993375958aff671707a81ef05`, the exact corrective child of
+failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It treats child results as
 untrusted inputs and recomputes their pair and execution bindings against the
 current original/amendment archive hashes, exact top-level documents, the
 configured image, and receipt-declared key/public-key context. Every fact must
@@ -489,11 +490,20 @@ Dedicated run/job `33011584084` / `98318943081` failed at
 `evidence_validation_transition` before artifact retention. Custody run/job
 `33011584059` / `98318941993` and parser-isolation run/job `33011584060` /
 `98318941736` failed at `commit_boundary`; all three runs retained zero
-artifacts and are immutable non-evidence. It remains Pending until an exact
-single-parent corrective child of `67af24176df3c17fd6d54498095888c9a43ebe1f`
-completes the exact two-commit, two-first-parent chain from the baseline and
-passes exact-source live evidence and independently anchored offline review. No
-corrective source SHA, passing artifact, or digest is promoted yet. Injected
+artifacts and are immutable non-evidence. The promoted source completes the
+exact two-commit, two-first-parent chain with 23 cumulative paths and 14 paths
+in the corrective commit. Full local `pnpm verify` passed, including 51
+acceptance tests. Source CI run `33013464811` passed Ubuntu job `98325467206`
+and Windows job `98325467249`. Dedicated run/job `33013464847` / `98325467722`
+retained 7,581-byte artifact `9623531283`, named
+`filing-parser-cross-engine-execution-evidence-v2-2e3a7e33a76d19b993375958aff671707a81ef05-1`,
+with ZIP digest
+`sha256:bfd3eb2fabdba8b533cbbcd488fe9decd19f47cd4d73c408ac824a87717aaed8`
+and canonical evidence digest
+`sha256:c1d4d7c6c77bd5aa0a9a0af5de08fbbf3b823744b9cba47e3a59283dfd41f6d8`.
+It binds 66 source hashes, 23 transition paths, 16 ordered checks, 16 ordered
+nonclaims, and six outcomes (one agreed and five quarantined); independent
+review returned `offline_consistent` for 66 of 66 source hashes. Injected
 boundary and receipt authenticity and fresh engine execution are nonclaims.
 Quality composition is deferred, and real-data, Cycle 2b authority, full
 quality, and production gates remain Blocked. See
@@ -1177,11 +1187,11 @@ and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 Cycle 2l's target is only
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`
 from exact baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through exact failed
-precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`. It is Pending until an
-exact single-parent corrective child completes the two-commit, two-first-parent
-chain and the exact-source six-case v2 live artifact and independent offline
-review pass. The three failed workflow runs retained zero artifacts and remain
-non-evidence. No corrective commit or passing evidence anchor is promoted.
+precursor `67af24176df3c17fd6d54498095888c9a43ebe1f` to exact corrective source
+`2e3a7e33a76d19b993375958aff671707a81ef05`. Its exact two-commit,
+two-first-parent chain, exact-source six-case v2 live artifact, and independent
+66-of-66 `offline_consistent` review passed. The three failed workflow runs
+retained zero artifacts and remain immutable non-evidence.
 Exact gates and nonclaims are in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
@@ -1200,7 +1210,7 @@ and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
-   Superseded Cycle 2k and Pending Cycle 2l cross-engine agreement remain
+   Superseded Cycle 2k and promoted Cycle 2l cross-engine agreement remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
