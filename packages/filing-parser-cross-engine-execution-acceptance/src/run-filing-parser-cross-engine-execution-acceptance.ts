@@ -41,6 +41,8 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW,
@@ -718,6 +720,10 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
           claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM,
           completedAt,
           evidenceVersion: 2,
+          failedPrecursorRevision:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+          failedRun:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
           fixtureManifestSha256,
           historicalV1:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
@@ -1010,6 +1016,8 @@ async function exactCycle2lTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
   const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE;
+  const failedPrecursor =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION;
   const range = `${base}..${revision}`;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
@@ -1035,11 +1043,21 @@ async function exactCycle2lTransition(
       )
     ).stdout,
   );
+  const failedPrecursorParentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", failedPrecursor],
+        5_000,
+      )
+    ).stdout,
+  );
   if (
     mergeBase !== base ||
-    successorCount !== "1" ||
-    firstParentCount !== "1" ||
-    parentLine !== `${revision} ${base}`
+    successorCount !== "2" ||
+    firstParentCount !== "2" ||
+    parentLine !== `${revision} ${failedPrecursor}` ||
+    failedPrecursorParentLine !== `${failedPrecursor} ${base}`
   )
     fail();
   const output = (
@@ -1064,7 +1082,9 @@ async function exactCycle2lTransition(
         status: match[1] as "A" | "M",
       });
     })
-    .sort((left, right) => left.path.localeCompare(right.path));
+    .sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    );
   if (entries.length === 0) fail();
   return Object.freeze(entries);
 }

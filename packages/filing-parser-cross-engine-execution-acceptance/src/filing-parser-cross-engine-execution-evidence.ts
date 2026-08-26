@@ -275,6 +275,18 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VERSION =
   2 as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE =
   "b9b7dd19996f0c5bb1e073ab5522c42e06dee397" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION =
+  "67af24176df3c17fd6d54498095888c9a43ebe1f" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN =
+  Object.freeze({
+    artifactCount: 0 as const,
+    failurePhase: "evidence_validation_transition" as const,
+    jobId: "98318943081" as const,
+    runAttempt: 1 as const,
+    runId: "33011584084" as const,
+    sourceRevision:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+  });
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM =
   "bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_WORKFLOW =
@@ -302,8 +314,8 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS =
     "byte_exact_cross_engine_normalization_agreement_only_after_child_validation",
     "atomic_archive_bound_agreement_or_single_empty_value_free_quarantine",
     "cached_replay_rebound_binding_role_lineage_mutation_and_abort_coverage",
-    "success_only_exact_source_v2_workflow_artifact_and_offline_review",
-    "v1_evidence_immutability_and_no_quality_real_data_or_production_widening",
+    "success_only_exact_two_commit_failed_precursor_corrective_transition_v2_workflow_artifact_and_offline_review",
+    "v1_evidence_v2_failed_precursor_and_failed_run_immutability_and_no_quality_real_data_or_production_widening",
   ] as const);
 
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN =
@@ -397,6 +409,8 @@ export interface FilingParserCrossEngineExecutionEvidenceV2 {
   readonly completedAt: string;
   readonly engines: FilingParserCrossEngineExecutionEvidence["engines"];
   readonly evidenceVersion: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VERSION;
+  readonly failedPrecursorRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION;
+  readonly failedRun: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN;
   readonly fixtureManifestSha256: `sha256:${string}`;
   readonly historicalV1: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY;
   readonly notProven: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN;
@@ -816,7 +830,7 @@ export function filingParserCrossEngineExecutionV2RequiredSourcePaths(
         ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SOURCE_PATHS,
         ...transition.map((entry) => entry.path),
       ]),
-    ].sort((left, right) => left.localeCompare(right)),
+    ].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
   );
 }
 
@@ -834,6 +848,8 @@ function normalizeEvidenceV2(
     "completedAt",
     "engines",
     "evidenceVersion",
+    "failedPrecursorRevision",
+    "failedRun",
     "fixtureManifestSha256",
     "historicalV1",
     "notProven",
@@ -855,6 +871,8 @@ function normalizeEvidenceV2(
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE ||
     root.claim !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CLAIM ||
     root.evidenceVersion !== 2 ||
+    root.failedPrecursorRevision !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION ||
     root.schemaVersion !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_SCHEMA_VERSION ||
     root.status !== "passed" ||
@@ -863,6 +881,8 @@ function normalizeEvidenceV2(
     !COMMIT.test(string(root.revision)) ||
     root.revision ===
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE ||
+    root.revision ===
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION ||
     !HASH.test(string(root.fixtureManifestSha256))
   )
     return invalid();
@@ -886,6 +906,20 @@ function normalizeEvidenceV2(
   );
 
   markStage?.("historical_v1");
+  const failedRun = exactRecord(root.failedRun, [
+    "artifactCount",
+    "failurePhase",
+    "jobId",
+    "runAttempt",
+    "runId",
+    "sourceRevision",
+  ]);
+  if (
+    canonicalJson(failedRun) !==
+    canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN)
+  )
+    return invalid();
+
   const historicalV1 = exactRecord(root.historicalV1, [
     "artifactId",
     "claimStatus",

@@ -10,13 +10,15 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
   createFilingParserCrossEngineExecutionEvidenceV2,
   filingParserCrossEngineExecutionEvidenceV2Sha256,
@@ -56,6 +58,9 @@ describe("offline cross-engine evidence verifier hardening", () => {
     ).resolves.toMatchObject({
       baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
       evidenceVersion: 2,
+      failedPrecursorRevision:
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+      failedRun: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
       verdict: "offline_consistent",
     });
 
@@ -232,24 +237,70 @@ describe("offline cross-engine evidence verifier hardening", () => {
         false,
       );
   });
-  it("requires the exact one-commit v2 transition rooted at the Cycle 2k baseline", () => {
-    const baseline = "b9b7dd19996f0c5bb1e073ab5522c42e06dee397";
+  it("requires the exact two-commit v2 corrective chain rooted at the Cycle 2k baseline", () => {
+    const baseline = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE;
+    const failedPrecursor =
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION;
     const revision = "c".repeat(40);
     expect(
       filingParserCrossEngineExecutionV2ChainAllowed(
         baseline,
-        "1",
-        "1",
+        "2",
+        "2",
         revision,
-        `${revision} ${baseline}`,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
       ),
     ).toBe(true);
     for (const values of [
-      ["a".repeat(40), "1", "1", revision, `${revision} ${baseline}`],
-      [baseline, "2", "1", revision, `${revision} ${baseline}`],
-      [baseline, "1", "2", revision, `${revision} ${baseline}`],
-      [baseline, "1", "1", revision, `${revision} ${baseline} ${baseline}`],
-      [baseline, "1", "1", "not-a-revision", `not-a-revision ${baseline}`],
+      [
+        "a".repeat(40),
+        "2",
+        "2",
+        revision,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
+      ],
+      [
+        baseline,
+        "1",
+        "2",
+        revision,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
+      ],
+      [
+        baseline,
+        "2",
+        "1",
+        revision,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
+      ],
+      [
+        baseline,
+        "2",
+        "2",
+        revision,
+        `${revision} ${baseline}`,
+        `${failedPrecursor} ${baseline}`,
+      ],
+      [
+        baseline,
+        "2",
+        "2",
+        revision,
+        `${revision} ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline} ${baseline}`,
+      ],
+      [
+        baseline,
+        "2",
+        "2",
+        "not-a-revision",
+        `not-a-revision ${failedPrecursor}`,
+        `${failedPrecursor} ${baseline}`,
+      ],
     ] as const)
       expect(
         filingParserCrossEngineExecutionV2ChainAllowed(
@@ -283,39 +334,19 @@ async function v2RepositoryFixture() {
     "checkout",
     "--quiet",
     "--detach",
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
   ]);
-  const transition = Object.freeze(
-    [
-      {
-        path: "fixtures/synthetic/filing-parser-cross-engine-execution/v2/cases.json",
-        status: "A" as const,
-      },
-      {
-        path: "fixtures/synthetic/filing-parser-cross-engine-execution/v2/manifest.json",
-        status: "A" as const,
-      },
-      {
-        path: "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.ts",
-        status: "M" as const,
-      },
-    ].sort((left, right) => left.path.localeCompare(right.path)),
+  const correctivePath = join(
+    repository,
+    "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-execution.ts",
   );
-  for (const entry of transition) {
-    const target = join(repository, ...entry.path.split("/"));
-    await mkdir(dirname(target), { recursive: true });
-    if (entry.status === "A") await writeFile(target, `source:${entry.path}\n`);
-    else {
-      const existing = await readFile(target);
-      await writeFile(
-        target,
-        Buffer.concat([
-          existing,
-          Buffer.from("\n// Cycle 2l verifier fixture.\n", "utf8"),
-        ]),
-      );
-    }
-  }
+  await writeFile(
+    correctivePath,
+    Buffer.concat([
+      await readFile(correctivePath),
+      Buffer.from("\n// Cycle 2l verifier fixture.\n", "utf8"),
+    ]),
+  );
   runGit(git, repository, ["add", "--all"]);
   runGit(git, repository, [
     "-c",
@@ -328,6 +359,30 @@ async function v2RepositoryFixture() {
     "fixture",
   ]);
   const revision = runGit(git, repository, ["rev-parse", "HEAD"]).trim();
+  const transition = Object.freeze(
+    runGit(git, repository, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
+      revision,
+      "--",
+    ])
+      .trimEnd()
+      .split("\n")
+      .map((line) => {
+        const match = /^(A|M)\t([^\t\r\n]+)$/u.exec(line);
+        if (match?.[1] === undefined || match[2] === undefined)
+          throw new Error("fixture setup failed");
+        return Object.freeze({
+          path: match[2].replaceAll("\\", "/"),
+          status: match[1] as "A" | "M",
+        });
+      })
+      .sort((left, right) =>
+        left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+      ),
+  );
   const sourcePaths =
     filingParserCrossEngineExecutionV2RequiredSourcePaths(transition);
   const sourceHashes = Object.freeze(

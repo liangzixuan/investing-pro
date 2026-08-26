@@ -1,12 +1,14 @@
 # ADR 0039: bounded synthetic cross-engine current-input and lineage agreement
 
-Status: Pending from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. The source state records no
-candidate successor, workflow run, job, artifact, artifact digest, evidence
-digest, or offline-review result. Promotion requires exact-source local and
-workflow gates, a success-only retained v2 live artifact, independent artifact
-inspection, and an independently anchored offline-consistent review. Cycle 2b,
-independent real quality, real-data admission, and production remain Blocked.
+Status: Pending corrective promotion from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`. The corrective source, passing
+workflow run and job, artifact, artifact digest, evidence digest, and
+offline-review result remain Pending. Promotion requires the exact corrective
+chain, exact-source local and workflow gates, a success-only retained v2 live
+artifact, independent artifact inspection, and an independently anchored
+offline-consistent review. Cycle 2b, independent real quality, real-data
+admission, and production remain Blocked.
 
 ## Context
 
@@ -29,6 +31,15 @@ and claim without altering its historical evidence bytes.
 The next repository-controlled milestone closes only those binding and lineage
 gaps. It does not add quality composition, a real corpus, external authority,
 or a new production trust boundary.
+
+The first source attempt is preserved as failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`, the exact single-parent child of
+baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. Dedicated Cycle 2l run/job
+`33011584084` / `98318943081` failed at `evidence_validation_transition` before
+artifact retention. Custody run/job `33011584059` / `98318941993` and
+parser-isolation run/job `33011584060` / `98318941736` failed at
+`commit_boundary` and are regression non-evidence. All three failed runs
+retained zero artifacts and supply no Cycle 2l evidence or promotion anchor.
 
 ## Decision
 
@@ -79,7 +90,9 @@ record or mismatch details.
 The sole target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
 It remains Pending until the complete promotion boundary below passes for one
-exact single-parent direct child of baseline
+exact single-parent corrective child of failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`, completing the exact two-commit,
+two-first-parent chain from baseline
 `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.
 
 ## Required checks
@@ -100,8 +113,8 @@ The exact ordered checks are:
 12. `byte_exact_cross_engine_normalization_agreement_only_after_child_validation`
 13. `atomic_archive_bound_agreement_or_single_empty_value_free_quarantine`
 14. `cached_replay_rebound_binding_role_lineage_mutation_and_abort_coverage`
-15. `success_only_exact_source_v2_workflow_artifact_and_offline_review`
-16. `v1_evidence_immutability_and_no_quality_real_data_or_production_widening`
+15. `success_only_exact_two_commit_failed_precursor_corrective_transition_v2_workflow_artifact_and_offline_review`
+16. `v1_evidence_v2_failed_precursor_and_failed_run_immutability_and_no_quality_real_data_or_production_widening`
 
 ## Exact nonclaims
 
@@ -134,20 +147,25 @@ mismatch, original-archive tamper, and original/amendment role swap. Exact
 replay of the successful pair remains deterministic confirmation inside the
 agreed case.
 
-Promotion requires one exact single-parent direct-child transition from
-baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`, including one commit and one
-first-parent commit with the exact parent line; all local checks; required
-exact-source workflows; a successful dedicated v2 run; a retained canonical
-artifact binding the source transition, six cases, ordered checks, ordered
-nonclaims, images, sources, and workflow identity; artifact and canonical-file
-digest inspection; and independent offline review against separately supplied
-repository, revision, run, attempt, artifact, and evidence-digest anchors.
+Promotion requires one exact two-commit, two-first-parent transition from
+baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f` to its exact single-parent
+corrective child. The exact parent lines must be
+`<corrective> 67af24176df3c17fd6d54498095888c9a43ebe1f` and
+`67af24176df3c17fd6d54498095888c9a43ebe1f b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.
+Promotion also requires all local checks; required exact-source workflows; a
+successful dedicated v2 run; a retained canonical artifact binding the source
+transition, six cases, ordered checks, ordered nonclaims, images, sources, and
+workflow identity; artifact and canonical-file digest inspection; and
+independent offline review against separately supplied repository, revision,
+run, attempt, artifact, and evidence-digest anchors.
 
-Every successor/source-transition value, run/job number, artifact identity,
-digest, source-hash count, and offline verdict is Pending. It must be recorded
-only after the live artifact exists and the independent review passes. Cycle
-2k's v1 artifact and anchors remain immutable historical facts and cannot be
-relabeled as Cycle 2l evidence.
+The corrective source-transition value, passing run/job numbers, artifact
+identity, digests, source-hash count, and offline verdict are Pending. They must
+be recorded only after the live artifact exists and the independent review
+passes. The failed precursor and its three zero-artifact failed workflow runs
+remain immutable non-evidence. Cycle 2k's v1 artifact and anchors remain
+immutable historical facts and cannot be relabeled as Cycle 2l evidence.
 
 ## Consequences
 

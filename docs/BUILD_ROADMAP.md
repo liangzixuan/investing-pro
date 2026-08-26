@@ -1158,10 +1158,10 @@ and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
 ## Cycle 2l — current-input and reciprocal-lineage cross-engine agreement
 
-Status: **Pending from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. No successor source commit,
-workflow run, job, artifact, artifact digest, evidence digest, or offline-review
-result is promoted yet.**
+Status: **Pending corrective promotion from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`. The corrective source commit and
+every passing artifact, digest, and offline-review anchor remain Pending.**
 
 Cycle 2l hardens the existing bounded cross-engine boundary before any quality
 composition. Its sole target claim is
@@ -1186,14 +1186,21 @@ failure returns one atomic, empty, value-free quarantine.
 The v2 live matrix contains six cases: one exact archive-bound agreed pair and
 five quarantines for cached child-receipt replay under different archives,
 identical common-mode lineage mutation, cross-engine normalization mismatch,
-archive tamper, and original/amendment role swap. Promotion additionally
-requires one exact single-parent direct child of the baseline, the exact-source
-local and workflow gates, a success-only retained v2 artifact, and independently
-anchored offline review. Injected boundary and receipt authenticity and fresh
-engine execution remain nonclaims. Independent real quality, representative
-real filings, Cycle 2b authority, B15/V15, full Cycle 2 exit, real-data admission,
-and production remain Blocked; quality
-composition is deferred. Exact gates and nonclaims are in
+archive tamper, and original/amendment role swap. Dedicated run/job
+`33011584084` / `98318943081` failed at `evidence_validation_transition` before
+artifact retention on failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`.
+Custody run/job `33011584059` / `98318941993` and parser-isolation run/job
+`33011584060` / `98318941736` failed at `commit_boundary`; both are regression
+non-evidence. All three failed runs retained zero artifacts. Promotion now
+requires an exact two-commit and two-first-parent chain in which
+`67af24176df3c17fd6d54498095888c9a43ebe1f` is the exact
+single-parent child of the baseline and the corrective revision is its exact
+single-parent child, followed by the exact-source local and workflow gates, a
+success-only retained v2 artifact, and independently anchored offline review.
+Injected boundary and receipt authenticity and fresh engine execution remain
+nonclaims. Independent real quality, representative real filings, Cycle 2b
+authority, B15/V15, full Cycle 2 exit, real-data admission, and production
+remain Blocked; quality composition is deferred. Exact gates and nonclaims are in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 

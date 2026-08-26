@@ -7,11 +7,14 @@ import {
   createFilingParserCrossEngineExecutionEvidenceV2ForAcceptance,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
   filingParserCrossEngineExecutionExpectedTransition,
   filingParserCrossEngineExecutionRequiredSourcePaths,
+  filingParserCrossEngineExecutionV2RequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
   parseCanonicalFilingParserCrossEngineExecutionEvidence,
   parseCanonicalFilingParserCrossEngineExecutionEvidenceV2,
@@ -317,6 +320,12 @@ describe("filing parser cross-engine execution evidence v2", () => {
     ).toEqual(evidence);
     expect(evidence.schemaVersion).toBe("2.0.0");
     expect(evidence.evidenceVersion).toBe(2);
+    expect(evidence.failedPrecursorRevision).toBe(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION,
+    );
+    expect(evidence.failedRun).toEqual(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
+    );
     expect(evidence.historicalV1).toEqual(
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
     );
@@ -351,6 +360,21 @@ describe("filing parser cross-engine execution evidence v2", () => {
       pythonHandoffPairBindingSha256:
         "sha256:904c0cc1cb434d762f5fc5dd28a3bf5ce73dd90ccb994906221941d6cd825cee",
     });
+  });
+
+  it("uses locale-independent binary ordering for mixed-case v2 source paths", () => {
+    const paths = filingParserCrossEngineExecutionV2RequiredSourcePaths([
+      { path: "README.md", status: "M" },
+      { path: "packages/example.ts", status: "M" },
+    ]);
+    expect(paths).toEqual(
+      [...paths].sort((left, right) =>
+        left < right ? -1 : left > right ? 1 : 0,
+      ),
+    );
+    expect(paths.indexOf("README.md")).toBeLessThan(
+      paths.indexOf("packages/example.ts"),
+    );
   });
 
   it("validates six ordered cases with five value-free quarantines", () => {
@@ -424,6 +448,10 @@ describe("filing parser cross-engine execution evidence v2", () => {
         (root.notProven = [
           ...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_NOT_PROVEN,
         ].slice(1)),
+      (root: Record<string, unknown>) =>
+        (root.failedPrecursorRevision = "0".repeat(40)),
+      (root: Record<string, unknown>) =>
+        ((root.failedRun as Record<string, unknown>).artifactCount = 1),
     ]) {
       const value = mutableEvidenceV2();
       mutate(value);
@@ -431,6 +459,17 @@ describe("filing parser cross-engine execution evidence v2", () => {
         createFilingParserCrossEngineExecutionEvidenceV2(value as never),
       ).toThrow("Filing parser cross-engine execution evidence is invalid.");
     }
+  });
+
+  it("rejects using the failed precursor itself as the corrective revision", () => {
+    const value = mutableEvidenceV2();
+    value.revision =
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION;
+    workflow(value).artifactName =
+      `filing-parser-cross-engine-execution-evidence-v2-${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION}-1`;
+    expect(() =>
+      createFilingParserCrossEngineExecutionEvidenceV2(value as never),
+    ).toThrow("Filing parser cross-engine execution evidence is invalid.");
   });
 
   it("independently rejects archive, document, pair, execution, and agreement inconsistencies", () => {

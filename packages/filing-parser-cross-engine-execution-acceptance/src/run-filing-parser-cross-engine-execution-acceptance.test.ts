@@ -232,23 +232,38 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
-  it("requires one direct Cycle 2l successor on both ancestry views", () => {
+  it("requires the exact Cycle 2l failed-precursor corrective chain", () => {
     expect(runnerSource).toContain(
       "const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE",
+    );
+    expect(runnerSource).toContain(
+      "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_PRECURSOR_REVISION",
     );
     expect(runnerSource).toContain('["rev-list", "--count", range]');
     expect(runnerSource).toContain(
       '["rev-list", "--first-parent", "--count", range]',
     );
-    expect(runnerSource).toContain('successorCount !== "1"');
-    expect(runnerSource).toContain('firstParentCount !== "1"');
-    expect(runnerSource).toContain("parentLine !== `${revision} ${base}`");
+    expect(runnerSource).toContain(
+      '["rev-list", "--parents", "--max-count=1", failedPrecursor]',
+    );
+    expect(runnerSource).toContain('successorCount !== "2"');
+    expect(runnerSource).toContain('firstParentCount !== "2"');
+    expect(runnerSource).toContain(
+      "parentLine !== `${revision} ${failedPrecursor}`",
+    );
+    expect(runnerSource).toContain(
+      "failedPrecursorParentLine !== `${failedPrecursor} ${base}`",
+    );
   });
 
-  it("constructs Git transition entries in canonical path-status order", () => {
+  it("constructs Git transition entries in binary canonical path-status order", () => {
     expect(runnerSource).toMatch(
       /Object\.freeze\(\{\s*path: match\[2\],\s*status: match\[1\] as "A" \| "M",\s*\}\)/u,
     );
+    expect(runnerSource).toContain(
+      "left.path < right.path ? -1 : left.path > right.path ? 1 : 0",
+    );
+    expect(runnerSource).not.toContain("left.path.localeCompare(right.path)");
   });
 
   it("uses the model validator once and maps only its closed stage", () => {

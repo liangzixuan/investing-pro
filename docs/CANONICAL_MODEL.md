@@ -29,7 +29,9 @@ Cycle 2k bounded synthetic cross-engine execution historical evidence Pass only
 for exact source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, with its security conclusion and
 claim now Superseded; Cycle 2l current-input and reciprocal-lineage hardening
-Pending from exact baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`;
+Pending corrective promotion from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`;
 synthetic data only.
 
 ## Identity
@@ -895,11 +897,19 @@ one empty value-free quarantine.
 
 The sole target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
-It is Pending until an exact single-parent direct child of baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` passes the six-case v2 live matrix,
-retains a success-only exact-source artifact, and returns an independently
-anchored offline-consistent review. No candidate source SHA, run, job, artifact,
-or digest is promoted in the source state.
+Failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f` is the exact
+single-parent direct child of baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. Dedicated run/job `33011584084` /
+`98318943081` failed at `evidence_validation_transition` before artifact
+retention. Custody run/job `33011584059` / `98318941993` and parser-isolation
+run/job `33011584060` / `98318941736` failed at `commit_boundary`; both are
+regression non-evidence. All three failed runs retained zero artifacts. The
+claim remains Pending until one exact
+single-parent corrective child of `67af24176df3c17fd6d54498095888c9a43ebe1f`
+completes the exact two-commit, two-first-parent chain, passes the six-case v2
+live matrix, retains a success-only exact-source artifact, and returns an
+independently anchored offline-consistent review. No corrective source SHA,
+passing artifact, or digest is promoted in the source state.
 
 Injected boundary or child-receipt authenticity and fresh engine execution are
 not established. Quality composition is deferred; true independence,

@@ -9,14 +9,16 @@ retain one atomic empty value-free quarantine for every failure. The decision
 is recorded in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md).
 
-Current status: **Pending from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.** Source implementation and local
-verification may not be promoted until an exact single-parent direct child
-passes the dedicated v2 live workflow, retains a success-only exact-source
-artifact, and returns an independently anchored offline-consistent review. No
-successor source SHA, run, job, artifact, artifact digest, evidence digest, or
-review result is recorded yet. Cycle 2b, independent real quality, full Cycle 2
-exit, real-data admission, and production admission remain Blocked.
+Current status: **Pending corrective promotion from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`.** The failed precursor is the exact
+single-parent child of the baseline. Promotion now requires its exact
+single-parent corrective child, completing a two-commit and two-first-parent
+chain, to pass the dedicated v2 live workflow, retain a success-only
+exact-source artifact, and return an independently anchored offline-consistent
+review. No corrective source SHA, passing artifact, artifact digest, evidence
+digest, or review result is recorded yet. Cycle 2b, independent real quality,
+full Cycle 2 exit, real-data admission, and production admission remain Blocked.
 
 | Gate                             | Required result                                                                                                                                                                                                                                | Current status                    |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
@@ -31,11 +33,11 @@ exit, real-data admission, and production admission remain Blocked.
 | Exact engine agreement           | Only two completely validated archive-bound child results with byte-exact equal normalization records may agree; digest, subset, repair, coercion, or semantic equivalence is insufficient                                                     | Pending                           |
 | Atomic result                    | Success exposes one immutable bounded agreement result; any input, receipt, binding, role, fact, lineage, chronology, value, engine, or comparison failure returns one empty value-free quarantine                                             | Pending                           |
 | Six-case live matrix             | One exact archive-bound pair agrees; cached replay, identical common-mode lineage mutation, cross-engine normalization mismatch, archive tamper, and role swap each quarantine                                                                 | Pending: 1 agreed / 5 quarantined |
-| Local integration                | Format, lint, guardrails, dependency policy, typechecks, security/unit suites, tests, and builds pass on the exact direct-child bytes                                                                                                          | Pending                           |
-| Exact-source CI                  | Required Ubuntu/Windows and dedicated cross-engine workflows pass on the exact direct child without source-transition drift                                                                                                                    | Pending                           |
+| Local integration                | Format, lint, guardrails, dependency policy, typechecks, security/unit suites, tests, and builds pass on the exact corrective-child bytes                                                                                                      | Pending                           |
+| Exact-source CI                  | Required Ubuntu/Windows and dedicated cross-engine workflows pass on the corrective child and exact two-commit chain without source-transition drift                                                                                           | Pending                           |
 | Dedicated v2 evidence            | A success-only retained canonical v2 artifact binds the exact source transition, current-input receipts, six live cases, ordered checks, ordered nonclaims, images, sources, and workflow identity                                             | Pending                           |
 | Independent offline review       | Independently supplied repository, revision, run, attempt, artifact, and evidence-digest anchors return offline-consistent for every frozen source hash                                                                                        | Pending                           |
-| Historical evidence immutability | Cycle 2k's exact v1 run, job, artifact, ZIP/evidence digests, source set, checks, nonclaims, outcomes, and failed-run records remain unchanged and are identified only as historical execution facts                                           | Pending                           |
+| Historical evidence immutability | Cycle 2k's exact v1 anchors remain unchanged; Cycle 2l failed precursor and failed-run records remain immutable non-evidence and cannot be relabeled as promotion evidence                                                                     | Recorded; corrective Pending      |
 | Cycle 2b authority               | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                                                                        | Blocked; outside Cycle 2l         |
 | Independent real quality         | Representative real filings and 2,000 independently adjudicated assertions pass frozen thresholds with zero silent critical failures                                                                                                           | Blocked; deferred                 |
 | Production admission             | Real-data rights, source/fetch, persistence, security, privacy, scale, and operational gates pass                                                                                                                                              | Blocked                           |
@@ -45,8 +47,10 @@ exit, real-data admission, and production admission remain Blocked.
 The sole bounded target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
 It is not accepted in the source state. Promotion requires an exact
-single-parent direct child of baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` and every evidence anchor defined
+single-parent corrective child of failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`, which is itself the exact
+single-parent child of baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`, and every evidence anchor defined
 below.
 
 The exact ordered checks are:
@@ -65,8 +69,8 @@ The exact ordered checks are:
 12. `byte_exact_cross_engine_normalization_agreement_only_after_child_validation`
 13. `atomic_archive_bound_agreement_or_single_empty_value_free_quarantine`
 14. `cached_replay_rebound_binding_role_lineage_mutation_and_abort_coverage`
-15. `success_only_exact_source_v2_workflow_artifact_and_offline_review`
-16. `v1_evidence_immutability_and_no_quality_real_data_or_production_widening`
+15. `success_only_exact_two_commit_failed_precursor_corrective_transition_v2_workflow_artifact_and_offline_review`
+16. `v1_evidence_v2_failed_precursor_and_failed_run_immutability_and_no_quality_real_data_or_production_widening`
 
 ## Required v2 live outcomes
 
@@ -106,14 +110,28 @@ The exact ordered nonclaims are:
 
 ## Promotion boundary
 
-The only frozen source anchor is baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. The candidate must be its exact
-single-parent direct child: one commit, one first-parent commit, and the exact
-parent line. The candidate source, transition inventory, local counts, CI
-runs/jobs, dedicated v2 run/job, artifact identity, artifact digest, canonical
-evidence digest, source-hash count, and offline-review verdict are all Pending.
-They must be recorded only after the exact source artifact is retained,
-independently inspected, and verified offline.
+The frozen source anchors are baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` and failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`. The corrective candidate must be
+the precursor's exact single-parent child. The complete chain must have exactly
+two commits and two first-parent commits with exact parent lines
+`<corrective> 67af24176df3c17fd6d54498095888c9a43ebe1f` and
+`67af24176df3c17fd6d54498095888c9a43ebe1f b9b7dd19996f0c5bb1e073ab5522c42e06dee397`.
+The corrective source, cumulative transition inventory, local counts, passing
+CI runs/jobs, dedicated passing v2 run/job, artifact identity, artifact digest,
+canonical evidence digest, source-hash count, and offline-review verdict are all
+Pending. They must be recorded only after the exact corrective source artifact
+is retained, independently inspected, and verified offline.
+
+## Failed precursor record
+
+Failed precursor `67af24176df3c17fd6d54498095888c9a43ebe1f` remains immutable
+non-evidence. Dedicated Cycle 2l run/job `33011584084` / `98318943081` failed at
+`evidence_validation_transition` before artifact retention. Custody run/job
+`33011584059` / `98318941993` and parser-isolation run/job `33011584060` /
+`98318941736` failed at `commit_boundary` and are regression non-evidence. All
+three failed runs retained zero artifacts. None supplies a Cycle 2l artifact,
+digest, offline-review anchor, or promotion result.
 
 Cycle 2k's successful dedicated run `32917020041`, job `98022742591`, retained
 artifact `9588542275`, ZIP digest

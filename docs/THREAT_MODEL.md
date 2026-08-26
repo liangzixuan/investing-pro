@@ -465,8 +465,9 @@ In addition, byte-exact engine agreement could accept an identical common-mode
 lineage mutation because the boundary did not validate complete reciprocal
 per-key predecessor/successor relations.
 
-Cycle 2l is Pending from exact baseline
-`b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It treats child results as
+Cycle 2l is Pending corrective promotion from exact baseline
+`b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through failed precursor
+`67af24176df3c17fd6d54498095888c9a43ebe1f`. It treats child results as
 untrusted inputs and recomputes their pair and execution bindings against the
 current original/amendment archive hashes, exact top-level documents, the
 configured image, and receipt-declared key/public-key context. Every fact must
@@ -484,12 +485,18 @@ live matrix requires one exact archive-bound agreement and five quarantines:
 cached replay under different archives, identical common-mode lineage mutation,
 normalization mismatch, archive tamper, and role swap. The sole target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`.
-It remains Pending until one exact single-parent direct child of the baseline
-passes exact-source live evidence and independently anchored offline review; no
-source SHA, run, job, artifact, or digest is promoted yet. Injected boundary and
-receipt authenticity and fresh engine execution are nonclaims. Quality
-composition is deferred, and real-data, Cycle 2b authority, full quality, and
-production gates remain Blocked. See
+Dedicated run/job `33011584084` / `98318943081` failed at
+`evidence_validation_transition` before artifact retention. Custody run/job
+`33011584059` / `98318941993` and parser-isolation run/job `33011584060` /
+`98318941736` failed at `commit_boundary`; all three runs retained zero
+artifacts and are immutable non-evidence. It remains Pending until an exact
+single-parent corrective child of `67af24176df3c17fd6d54498095888c9a43ebe1f`
+completes the exact two-commit, two-first-parent chain from the baseline and
+passes exact-source live evidence and independently anchored offline review. No
+corrective source SHA, passing artifact, or digest is promoted yet. Injected
+boundary and receipt authenticity and fresh engine execution are nonclaims.
+Quality composition is deferred, and real-data, Cycle 2b authority, full
+quality, and production gates remain Blocked. See
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
@@ -1169,10 +1176,13 @@ and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
 Cycle 2l's target is only
 `bounded_synthetic_two_distinct_pinned_engine_executions_with_exact_archive_bound_child_receipts_and_reciprocal_ten_fact_lineage_agreement`
-from exact baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`. It is Pending until
-the exact-source six-case v2 live artifact and independent offline review pass.
-No successor commit or evidence anchor is promoted. Exact gates and nonclaims
-are in
+from exact baseline `b9b7dd19996f0c5bb1e073ab5522c42e06dee397` through exact failed
+precursor `67af24176df3c17fd6d54498095888c9a43ebe1f`. It is Pending until an
+exact single-parent corrective child completes the two-commit, two-first-parent
+chain and the exact-source six-case v2 live artifact and independent offline
+review pass. The three failed workflow runs retained zero artifacts and remain
+non-evidence. No corrective commit or passing evidence anchor is promoted.
+Exact gates and nonclaims are in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 

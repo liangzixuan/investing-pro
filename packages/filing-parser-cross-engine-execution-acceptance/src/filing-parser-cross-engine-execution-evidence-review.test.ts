@@ -79,6 +79,15 @@ describe("filing parser cross-engine execution evidence review", () => {
       baseline: "b9b7dd19996f0c5bb1e073ab5522c42e06dee397",
       evidenceSha256: `sha256:${"a".repeat(64)}`,
       evidenceVersion: 2,
+      failedPrecursorRevision: "67af24176df3c17fd6d54498095888c9a43ebe1f",
+      failedRun: {
+        artifactCount: 0,
+        failurePhase: "evidence_validation_transition",
+        jobId: "98318943081",
+        runAttempt: 1,
+        runId: "33011584084",
+        sourceRevision: "67af24176df3c17fd6d54498095888c9a43ebe1f",
+      },
       historicalV1: {
         artifactId: "9588542275",
         claimStatus: "superseded",
