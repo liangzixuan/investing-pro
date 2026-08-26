@@ -48,6 +48,23 @@ describe("filing parser cross-engine execution evidence", () => {
     ).toEqual(evidence);
   });
 
+  it("canonicalizes transition entry property order without weakening semantics", () => {
+    const value = buildFilingParserCrossEngineExecutionEvidenceInput();
+    const reversedEntries = value.transition.entries.map(({ path, status }) =>
+      Object.freeze({ status, path }),
+    );
+    const evidence = createFilingParserCrossEngineExecutionEvidence({
+      ...value,
+      transition: Object.freeze({
+        entries: Object.freeze(reversedEntries),
+        pathCount: reversedEntries.length,
+      }),
+    });
+    expect(evidence.transition.entries).toEqual(value.transition.entries);
+    for (const entry of evidence.transition.entries)
+      expect(Object.keys(entry)).toEqual(["path", "status"]);
+  });
+
   it("exposes only the closed validation stage to live acceptance", () => {
     const stages: string[] = [];
     const evidence =
@@ -204,6 +221,8 @@ describe("filing parser cross-engine execution evidence", () => {
         (root.failedPrecursorRevision = "0".repeat(40)),
       (root: Record<string, unknown>) =>
         (root.failedCorrectiveRevision = "0".repeat(40)),
+      (root: Record<string, unknown>) =>
+        (root.failedDiagnosticRevision = "0".repeat(40)),
       (root: Record<string, unknown>) =>
         (root.failedRecoveryRevision = "0".repeat(40)),
       (root: Record<string, unknown>) =>

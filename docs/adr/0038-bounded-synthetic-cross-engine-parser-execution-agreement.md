@@ -1,6 +1,6 @@
 # ADR 0038: bounded synthetic cross-engine parser execution agreement
 
-Status: proposed and Pending exact recovery from baseline
+Status: proposed and Pending exact diagnostic recovery from baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Source precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76` is its exact single-parent direct child, but
 dedicated run `32910394736` attempt 1 failed closed at `image_inspection`: the
@@ -17,8 +17,14 @@ offline-review verdict. Failed recovery revision
 child. Dedicated run `32913611954` attempt 1, job `98012515052`, completed live
 Docker execution and every residue phase, then failed closed at
 `evidence_assembly`. Its offline review and upload were skipped, it retained
-zero artifacts, and it is non-evidence. One exact recovery child and all successful gates
-remain required. This ADR records no promoted claim. Cycle 2b, full Cycle 2
+zero artifacts, and it is non-evidence. Failed diagnostic revision
+`abd65313705282dab8071f5d36c78d31b1720ee3` is the failed recovery revision's
+exact single-parent direct child. Dedicated run `32915949116` attempt 1, job
+`98019592738`, completed live Docker execution and every residue phase, then
+failed closed at `evidence_validation_transition`. Its offline review and upload
+were skipped, it retained zero artifacts, and it is non-evidence. One exact
+diagnostic recovery child and all successful gates remain required. This ADR
+records no promoted claim. Cycle 2b, full Cycle 2
 quality, real-data admission, and production admission remain Blocked.
 
 ## Context
@@ -82,8 +88,9 @@ provenance, mismatch details, or canary content.
 
 The sole proposed target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It may be accepted only for one exact recovery child of failed recovery
-revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, whose sole parent is failed
+It may be accepted only for one exact diagnostic recovery child of failed
+diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`, whose sole
+parent is failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, whose sole parent is failed
 corrective revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, whose sole parent is failed
 precursor `14b4ecf41806dca7759a06bebf7ef8da96374f76`, whose sole parent is baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, and the complete evidence anchors
@@ -107,7 +114,7 @@ The proposed exact ordered checks are:
 12. `atomic_cross_engine_agreement_or_single_empty_value_free_quarantine`
 13. `engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine`
 14. `swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage`
-15. `success_only_exact_four_commit_recovery_transition_two_image_case_source_artifact_and_offline_review`
+15. `success_only_exact_five_commit_diagnostic_recovery_transition_two_image_case_source_artifact_and_offline_review`
 16. `historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data`
 
 ## Exact nonclaims
@@ -137,13 +144,16 @@ The proposal begins from exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, continues through failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
 `061944f8f770e8a08b2a38d1e2fedf8b8e2de348` and failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, and may end only at one exact
-recovery child. Before any promotion, all four exact single-parent lines, the
-exact four-commit and first-parent counts, and the cumulative baseline-to-
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed diagnostic revision
+`abd65313705282dab8071f5d36c78d31b1720ee3`, and may end only at one exact
+diagnostic recovery child. Before any promotion, all five exact single-parent
+lines, the
+exact five-commit and first-parent counts, and the cumulative baseline-to-
 recovery path/status inventory must be frozen. No successful recovery revision
-is claimed while this ADR is Pending. Failed runs `32910394736`, `32912204603`, and
-`32913611954`, each attempt 1, retained zero artifacts and have no
-offline-review verdict. The third run's offline review and upload were skipped.
+is claimed while this ADR is Pending. Failed runs `32910394736`, `32912204603`,
+`32913611954`, and `32915949116`, each attempt 1, retained zero artifacts and
+have no offline-review verdict. The third and fourth runs' offline review and
+upload were skipped; the fourth failed at `evidence_validation_transition`.
 They are non-evidence and cannot be substituted for the required successful
 artifact.
 
@@ -168,8 +178,8 @@ disagreement, partial success, cleanup ambiguity, residue, or non-value-free
 quarantine must retain no candidate artifact and must prevent promotion.
 
 The versioned evidence record must bind the exact repository, baseline, failed
-precursor, failed corrective revision, failed recovery revision, recovery
-revision, cumulative transition inventory,
+precursor, failed corrective revision, failed recovery revision, failed
+diagnostic revision, diagnostic recovery revision, cumulative transition inventory,
 workflow/run/job/attempt, artifact
 identity and digest, both built image digests, both exact worker source
 inventories and hashes, fixture manifest and archive hashes, tool versions,

@@ -430,11 +430,12 @@ or production. Its exact promoted boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k is a proposal-only successor and is Pending exact recovery from
+Cycle 2k is a proposal-only successor and is Pending exact diagnostic recovery from
 baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
 `061944f8f770e8a08b2a38d1e2fedf8b8e2de348` to failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c`. It proposes to execute the same
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed diagnostic revision
+`abd65313705282dab8071f5d36c78d31b1720ee3`. It proposes to execute the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Each fixed role's live
 canonical stdout document and both engines' complete normalization records must
@@ -448,8 +449,12 @@ execution and every residue phase, then failed closed at evidence assembly and
 also retained no artifact. Run `32913611954` attempt 1, job `98012515052`, also
 completed live Docker execution and every residue phase, then failed closed at
 evidence assembly; its offline review and upload were skipped, and it retained
-zero artifacts. All three runs are non-evidence. One exact recovery child and its green local, CI,
-regression, live-evidence, and offline-review gates remain required. Distinct language, source,
+zero artifacts. All three runs are non-evidence. Run
+`32915949116` attempt 1, job `98019592738`, completed live Docker execution and
+every residue phase, then failed closed at `evidence_validation_transition`;
+its offline review and upload were skipped, it retained zero artifacts, and it
+is non-evidence. One exact diagnostic recovery child and its green gates remain
+required. Distinct language, source,
 image, and process identities cannot establish true organizational, operator,
 key, host, or failure-domain independence. The proposal also cannot establish
 general parser/accounting correctness, real SEC/source authority, Cycle 2b
@@ -1124,8 +1129,10 @@ boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k's successor target remains only a Pending exact recovery child of
-failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, itself
+Cycle 2k's successor target remains only a Pending exact diagnostic recovery
+child of failed diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`,
+itself an exact single-parent direct child of failed recovery revision
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, itself
 an exact single-parent direct child of failed corrective revision
 `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, itself
 an exact single-parent direct child of failed precursor

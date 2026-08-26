@@ -11,6 +11,8 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REV
   "061944f8f770e8a08b2a38d1e2fedf8b8e2de348" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION =
   "f29e39cea40e76d500df833fd8e0e94e0c86a68c" as const;
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION =
+  "abd65313705282dab8071f5d36c78d31b1720ee3" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM =
   "bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement" as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_WORKFLOW =
@@ -32,7 +34,7 @@ export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS =
     "atomic_cross_engine_agreement_or_single_empty_value_free_quarantine",
     "engine_role_mismatch_timeout_abort_process_and_cleanup_failure_quarantine",
     "swap_substitution_tamper_partial_extra_duplicate_mutation_and_replay_coverage",
-    "success_only_exact_four_commit_recovery_transition_two_image_case_source_artifact_and_offline_review",
+    "success_only_exact_five_commit_diagnostic_recovery_transition_two_image_case_source_artifact_and_offline_review",
     "historical_evidence_immutability_and_no_fetch_custody_database_api_web_queue_or_real_data",
   ] as const);
 
@@ -196,6 +198,7 @@ export interface FilingParserCrossEngineExecutionEvidence {
   ];
   readonly evidenceVersion: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VERSION;
   readonly failedCorrectiveRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
+  readonly failedDiagnosticRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION;
   readonly failedPrecursorRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   readonly failedRecoveryRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION;
   readonly fixtureManifestSha256: `sha256:${string}`;
@@ -498,6 +501,7 @@ function normalizeEvidence(
     "engines",
     "evidenceVersion",
     "failedCorrectiveRevision",
+    "failedDiagnosticRevision",
     "failedPrecursorRevision",
     "failedRecoveryRevision",
     "fixtureManifestSha256",
@@ -521,6 +525,8 @@ function normalizeEvidence(
     root.evidenceVersion !== 1 ||
     root.failedCorrectiveRevision !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION ||
+    root.failedDiagnosticRevision !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION ||
     root.failedPrecursorRevision !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION ||
     root.failedRecoveryRevision !==
@@ -849,12 +855,10 @@ function normalizeTransition(
   const transition = exactRecord(value, ["entries", "pathCount"]);
   const entries = array(transition.entries).map((entryValue) => {
     const entry = exactRecord(entryValue, ["path", "status"]);
-    if (
-      !PATH.test(string(entry.path)) ||
-      !["A", "M"].includes(string(entry.status))
-    )
-      return invalid();
-    return entry;
+    const path = string(entry.path);
+    const status = string(entry.status);
+    if (!PATH.test(path) || !["A", "M"].includes(status)) return invalid();
+    return Object.freeze({ path, status: status as "A" | "M" });
   });
   if (
     transition.pathCount !== entries.length ||
@@ -865,7 +869,10 @@ function normalizeTransition(
     JSON.stringify(entries) !== JSON.stringify(CYCLE_2K_TRANSITION)
   )
     return invalid();
-  return transition as unknown as FilingParserCrossEngineExecutionEvidence["transition"];
+  return Object.freeze({
+    entries: Object.freeze(entries),
+    pathCount: entries.length,
+  });
 }
 
 function normalizeSourceHashes(

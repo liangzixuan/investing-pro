@@ -173,7 +173,7 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
   });
 
-  it("requires the exact linear four-commit corrective chain on both ancestry views", () => {
+  it("requires the exact linear five-commit diagnostic recovery chain on both ancestry views", () => {
     expect(runnerSource).toContain('["merge-base", base, revision]');
     expect(runnerSource).toContain('["rev-list", "--count", revisionRange]');
     expect(runnerSource).toContain(
@@ -191,10 +191,16 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     expect(runnerSource).toContain(
       '["rev-list", "--parents", "--max-count=1", failedRecovery]',
     );
-    expect(runnerSource).toContain('successorCount !== "4"');
-    expect(runnerSource).toContain('firstParentCount !== "4"');
     expect(runnerSource).toContain(
-      "parentLine !== `${revision} ${failedRecovery}`",
+      '["rev-list", "--parents", "--max-count=1", failedDiagnostic]',
+    );
+    expect(runnerSource).toContain('successorCount !== "5"');
+    expect(runnerSource).toContain('firstParentCount !== "5"');
+    expect(runnerSource).toContain(
+      "parentLine !== `${revision} ${failedDiagnostic}`",
+    );
+    expect(runnerSource).toContain(
+      "failedDiagnosticParentLine !== `${failedDiagnostic} ${failedRecovery}`",
     );
     expect(runnerSource).toContain(
       "failedRecoveryParentLine !== `${failedRecovery} ${failedCorrective}`",
@@ -204,6 +210,12 @@ describe("filing parser cross-engine execution live Docker audit", () => {
     );
     expect(runnerSource).toContain(
       "failedPrecursorParentLine !== `${failedPrecursor} ${base}`",
+    );
+  });
+
+  it("constructs Git transition entries in canonical path-status order", () => {
+    expect(runnerSource).toMatch(
+      /Object\.freeze\(\{\s*path: match\[2\],\s*status: match\[1\] as "A" \| "M",\s*\}\)/u,
     );
   });
 

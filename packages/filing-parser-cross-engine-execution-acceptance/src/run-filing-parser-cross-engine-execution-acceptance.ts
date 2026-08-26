@@ -36,6 +36,7 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_NOT_PROVEN,
@@ -603,6 +604,8 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
           evidenceVersion: 1,
           failedCorrectiveRevision:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
+          failedDiagnosticRevision:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
           failedPrecursorRevision:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
           failedRecoveryRevision:
@@ -843,6 +846,8 @@ async function exactCorrectiveChainTransition(
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   const failedCorrective =
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
+  const failedDiagnostic =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION;
   const failedRecovery =
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION;
   const mergeBase = decodeExactLine(
@@ -898,11 +903,21 @@ async function exactCorrectiveChainTransition(
       )
     ).stdout,
   );
+  const failedDiagnosticParentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", failedDiagnostic],
+        5_000,
+      )
+    ).stdout,
+  );
   if (
     mergeBase !== base ||
-    successorCount !== "4" ||
-    firstParentCount !== "4" ||
-    parentLine !== `${revision} ${failedRecovery}` ||
+    successorCount !== "5" ||
+    firstParentCount !== "5" ||
+    parentLine !== `${revision} ${failedDiagnostic}` ||
+    failedDiagnosticParentLine !== `${failedDiagnostic} ${failedRecovery}` ||
     failedRecoveryParentLine !== `${failedRecovery} ${failedCorrective}` ||
     failedCorrectiveParentLine !== `${failedCorrective} ${failedPrecursor}` ||
     failedPrecursorParentLine !== `${failedPrecursor} ${base}`
@@ -925,7 +940,10 @@ async function exactCorrectiveChainTransition(
     .map((line) => {
       const match = /^(A|M)\t([^\t\r\n]+)$/u.exec(line);
       if (match?.[1] === undefined || match[2] === undefined) fail();
-      return Object.freeze({ status: match[1] as "A" | "M", path: match[2] });
+      return Object.freeze({
+        path: match[2],
+        status: match[1] as "A" | "M",
+      });
     });
   if (entries.length === 0) fail();
   return Object.freeze(entries);

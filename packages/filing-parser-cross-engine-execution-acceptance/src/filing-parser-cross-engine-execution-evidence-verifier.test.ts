@@ -56,18 +56,20 @@ describe("offline cross-engine evidence verifier hardening", () => {
       expect(repositoryRelativePathIsContained(value)).toBe(false);
     expect(repositoryRelativePathIsContained("packages/x.ts")).toBe(true);
   });
-  it("requires the exact four-commit corrective chain and rejects ancestry drift", () => {
+  it("requires the exact five-commit corrective chain and rejects ancestry drift", () => {
     const baseline = "962a00f65835fc6126e4da98e0e0d5998e8d59cc";
     const failedPrecursor = "14b4ecf41806dca7759a06bebf7ef8da96374f76";
     const failedCorrective = "061944f8f770e8a08b2a38d1e2fedf8b8e2de348";
     const failedRecovery = "f29e39cea40e76d500df833fd8e0e94e0c86a68c";
+    const failedDiagnostic = "abd65313705282dab8071f5d36c78d31b1720ee3";
     const revision = "b".repeat(40);
     const validArguments = [
       baseline,
-      "4",
-      "4",
+      "5",
+      "5",
       revision,
-      `${revision} ${failedRecovery}`,
+      `${revision} ${failedDiagnostic}`,
+      `${failedDiagnostic} ${failedRecovery}`,
       `${failedRecovery} ${failedCorrective}`,
       `${failedCorrective} ${failedPrecursor}`,
       `${failedPrecursor} ${baseline}`,
@@ -80,37 +82,55 @@ describe("offline cross-engine evidence verifier hardening", () => {
         values[0] = "a".repeat(40);
       },
       (values) => {
-        values[1] = "3";
+        values[1] = "4";
       },
       (values) => {
-        values[2] = "3";
+        values[2] = "4";
       },
       (values) => {
-        values[4] = `${revision} ${failedCorrective}`;
+        values[4] = `${revision} ${failedRecovery}`;
       },
       (values) => {
-        values[4] = `${revision} ${failedRecovery} ${failedCorrective}`;
+        values[4] = `${revision} ${failedDiagnostic} ${failedRecovery}`;
       },
       (values) => {
-        values[5] = `${failedRecovery} ${failedPrecursor}`;
+        values[4] = `${revision} ${failedRecovery} ${failedDiagnostic}`;
       },
       (values) => {
-        values[5] = `${failedRecovery} ${failedCorrective} ${failedPrecursor}`;
+        values[5] = `${failedDiagnostic} ${failedCorrective}`;
       },
       (values) => {
-        values[5] = `${failedRecovery} ${failedPrecursor} ${failedCorrective}`;
+        values[5] = `${failedDiagnostic} ${failedRecovery} ${failedCorrective}`;
       },
       (values) => {
-        values[6] = `${failedCorrective} ${baseline}`;
+        values[5] = `${failedDiagnostic} ${failedCorrective} ${failedRecovery}`;
       },
       (values) => {
-        values[6] = `${failedCorrective} ${failedPrecursor} ${baseline}`;
+        values[6] = `${failedRecovery} ${failedPrecursor}`;
       },
       (values) => {
-        values[7] = `${failedPrecursor} ${"a".repeat(40)}`;
+        values[6] = `${failedRecovery} ${failedCorrective} ${failedPrecursor}`;
       },
       (values) => {
-        values[7] = `${failedPrecursor} ${baseline} ${"a".repeat(40)}`;
+        values[6] = `${failedRecovery} ${failedPrecursor} ${failedCorrective}`;
+      },
+      (values) => {
+        values[7] = `${failedCorrective} ${baseline}`;
+      },
+      (values) => {
+        values[7] = `${failedCorrective} ${failedPrecursor} ${baseline}`;
+      },
+      (values) => {
+        values[7] = `${failedCorrective} ${baseline} ${failedPrecursor}`;
+      },
+      (values) => {
+        values[8] = `${failedPrecursor} ${"a".repeat(40)}`;
+      },
+      (values) => {
+        values[8] = `${failedPrecursor} ${baseline} ${"a".repeat(40)}`;
+      },
+      (values) => {
+        values[8] = `${failedPrecursor} ${"a".repeat(40)} ${baseline}`;
       },
       (values) => {
         values[4] += " ";
@@ -123,6 +143,9 @@ describe("offline cross-engine evidence verifier hardening", () => {
       },
       (values) => {
         values[7] += " ";
+      },
+      (values) => {
+        values[8] += " ";
       },
     ];
     for (const mutate of mutations) {

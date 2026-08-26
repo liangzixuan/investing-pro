@@ -8,6 +8,7 @@ import { types as utilTypes } from "node:util";
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION,
   filingParserCrossEngineExecutionEvidenceSha256,
@@ -31,6 +32,7 @@ export interface FilingParserCrossEngineExecutionEvidenceReview {
   readonly baseline: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE;
   readonly evidenceSha256: `sha256:${string}`;
   readonly failedCorrectiveRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION;
+  readonly failedDiagnosticRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION;
   readonly failedPrecursorRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION;
   readonly failedRecoveryRevision: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION;
   readonly repository: string;
@@ -97,6 +99,8 @@ async function verifyOffline(
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE ||
     evidence.failedCorrectiveRevision !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION ||
+    evidence.failedDiagnosticRevision !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION ||
     evidence.failedPrecursorRevision !==
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_PRECURSOR_REVISION ||
     evidence.failedRecoveryRevision !==
@@ -136,6 +140,11 @@ async function verifyOffline(
     "cat-file",
     "-e",
     `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION}^{commit}`,
+  ]);
+  await checkedCommand(repositoryPath, "git", [
+    "cat-file",
+    "-e",
+    `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION}^{commit}`,
   ]);
   const mergeBase = exactLine(
     (
@@ -205,6 +214,16 @@ async function verifyOffline(
       ])
     ).stdout,
   );
+  const failedDiagnosticParentLine = exactLine(
+    (
+      await checkedCommand(repositoryPath, "git", [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION,
+      ])
+    ).stdout,
+  );
   if (
     !filingParserCrossEngineExecutionCorrectiveChainAllowed(
       mergeBase,
@@ -212,6 +231,7 @@ async function verifyOffline(
       firstParentCount,
       options.expectedRevision,
       parentLine,
+      failedDiagnosticParentLine,
       failedRecoveryParentLine,
       failedCorrectiveParentLine,
       failedPrecursorParentLine,
@@ -275,6 +295,7 @@ async function verifyOffline(
     baseline: evidence.baseline,
     evidenceSha256: options.expectedEvidenceSha256,
     failedCorrectiveRevision: evidence.failedCorrectiveRevision,
+    failedDiagnosticRevision: evidence.failedDiagnosticRevision,
     failedPrecursorRevision: evidence.failedPrecursorRevision,
     failedRecoveryRevision: evidence.failedRecoveryRevision,
     repository: evidence.repository,
@@ -448,24 +469,27 @@ export function filingParserCrossEngineExecutionFileSizeAllowed(
   );
 }
 
-/** @internal Exact four-commit corrective-chain regression seam. */
+/** @internal Exact five-commit corrective-chain regression seam. */
 export function filingParserCrossEngineExecutionCorrectiveChainAllowed(
   mergeBase: string,
   successorCount: string,
   firstParentCount: string,
   revision: string,
   parentLine: string,
+  failedDiagnosticParentLine: string,
   failedRecoveryParentLine: string,
   failedCorrectiveParentLine: string,
   failedPrecursorParentLine: string,
 ): boolean {
   return (
     mergeBase === FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE &&
-    successorCount === "4" &&
-    firstParentCount === "4" &&
+    successorCount === "5" &&
+    firstParentCount === "5" &&
     COMMIT.test(revision) &&
     parentLine ===
-      `${revision} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION}` &&
+      `${revision} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION}` &&
+    failedDiagnosticParentLine ===
+      `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_DIAGNOSTIC_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION}` &&
     failedRecoveryParentLine ===
       `${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_RECOVERY_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_FAILED_CORRECTIVE_REVISION}` &&
     failedCorrectiveParentLine ===
