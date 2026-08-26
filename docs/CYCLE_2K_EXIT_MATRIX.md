@@ -1,69 +1,50 @@
 # Cycle 2k exit matrix
 
-Scope: one disconnected proposal to execute the same owned synthetic original
+Scope: one disconnected bounded gate that executes the same owned synthetic original
 archive and amendment archive through the existing Cycle 2j Python worker and a
 distinct zero-install pinned Node worker. For each fixed archive role, the two
 live workers must emit byte-exact equal canonical stdout documents. Each
 engine's complete original/amendment pair must separately reach the
 unchanged normalization boundary and produce one byte-exact equal complete
 Cycle 2d normalization record. Any disagreement or failure returns one atomic,
-empty, value-free quarantine. The proposed decision is recorded in
+empty, value-free quarantine. The decision is recorded in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md).
 
-Current status: **Pending exact diagnostic recovery from baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Source precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` is its exact direct child, but
-dedicated run `32910394736` attempt 1 failed closed at `image_inspection`
-because the Python image's final `/worker` directory was compared with the
-Node image's `/input` expectation. The run retained no artifact and has no
-offline-review verdict. Failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` is the precursor's exact direct
-child. Its dedicated run `32912204603` attempt 1 completed live Docker
-execution and every residue phase, then failed closed at `evidence_assembly`
-because the runner hashed a 62-path static list instead of the required
-66-path source-transition union. That run also retained no artifact and has no
-offline-review verdict. Failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c` is its exact single-parent direct
-child. Dedicated run `32913611954` attempt 1, job `98012515052`, completed live
-Docker execution and every residue phase, then failed closed at
-`evidence_assembly`. Its offline review and upload were skipped, it retained
-zero artifacts, and it is non-evidence. Failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3` is the failed recovery revision's
-exact single-parent direct child. Dedicated run `32915949116` attempt 1, job
-`98019592738`, completed live Docker execution and every residue phase, then
-failed closed at `evidence_validation_transition`. Its offline review and upload
-were skipped, it retained zero artifacts, and it is non-evidence. One exact
-diagnostic recovery child, its full green gates, and successful evidence
-anchors are still required. This proposal promotes no
-claim. Cycle 2b, full Cycle 2 quality, real-data admission, and production
-admission remain Blocked.**
+Current status: **Pass only for exact source commit
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. The exact five-commit chain and
+44-path transition (31 added, 13 modified), full local gate, Python and Node
+worker suites, every exact-source workflow, dedicated live artifact, and
+66-of-66 `offline_consistent` review passed. Cycle 2b, full Cycle 2 quality,
+real-data admission, and production admission remain Blocked.**
 
-| Gate                            | Required result                                                                                                                                                                                                       | Current status            |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| Exact input and role inventory  | The same owned synthetic original archive and amendment archive enter fixed Python and Node engine roles; no third input or role exists                                                                               | Pending                   |
-| Owned bounded inputs            | Archive, configuration, signer, and process-output carriers are intrinsically validated, bounded, and copied before use                                                                                               | Pending                   |
-| Distinct pinned engines         | The existing reviewed Cycle 2j Python worker and one separately reviewed zero-install Node worker have distinct exact source inventories and distinct pinned image digests                                            | Pending                   |
-| Fresh process isolation         | Each engine/archive execution uses a fresh numeric-nonroot container with dropped capabilities, no network or privileges, and exactly one read-only archive input                                                     | Pending                   |
-| Resource and cleanup bounds     | CPU, memory, swap, PIDs, nofile, tmpfs, stdout, stderr, control, and wall-clock limits apply; successful live paths prove zero residue; cleanup failure or ambiguity quarantines                                      | Pending                   |
-| Complete stdout documents       | Each worker emits exactly one bounded canonical complete Cycle 2d ten-fact document, exits zero, writes empty stderr, and emits no extra bytes                                                                        | Pending                   |
-| Live stdout agreement           | For each fixed original or amendment role, the Python and Node canonical stdout document bytes are exactly equal                                                                                                      | Pending                   |
-| Exact normalization agreement   | Each engine's complete pair reaches the unchanged normalization boundary without repair or remapping, and the two complete canonical normalization-record byte strings are exactly equal                              | Pending                   |
-| Atomic result                   | One immutable agreement result with bounded aggregate provenance succeeds, or one empty value-free quarantine returns                                                                                                 | Pending                   |
-| Replay and adversarial coverage | Live exact replay agrees and live mismatch, tamper, and role swap quarantine; exact-source security suites cover substitution, partial/extra/duplicate output, mutation, timeout, abort, process, and cleanup failure | Pending                   |
-| Frozen source transition        | One exact linear five-commit diagnostic recovery chain from the baseline through all four failed revisions is frozen by ancestry, path, status, and content expectation with no unreviewed widening                   | Pending                   |
-| Local integration               | Format, lint, guardrails, dependency policy, typechecks, all tests, both worker tests, and all builds pass on frozen bytes                                                                                            | Pending                   |
-| Exact-source CI and regressions | Ubuntu/Windows CI plus the required historical parser, custody, PostgreSQL, and Cycle 2j live regressions pass on the same successor commit                                                                           | Pending                   |
-| Dedicated live evidence         | A separately authorized Ubuntu real-Docker run retains a success-only canonical artifact binding both images, both source inventories, cases, checks, and nonclaims                                                   | Pending                   |
-| Independent offline review      | Independently supplied repository, revision, run, attempt, artifact, and evidence-digest anchors return `offline_consistent` for every frozen source hash                                                             | Pending                   |
-| Cycle 2b authority              | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                                               | Blocked; outside Cycle 2k |
-| Independent real quality        | Representative real filings and 2,000 independently adjudicated assertions pass frozen thresholds with zero silent critical failures                                                                                  | Blocked                   |
-| Production admission            | Real-data rights, source/fetch, persistence, security, privacy, scale, and operational gates pass                                                                                                                     | Blocked                   |
+| Gate                            | Required result                                                                                                                                                                                                       | Current status               |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Exact input and role inventory  | The same owned synthetic original archive and amendment archive enter fixed Python and Node engine roles; no third input or role exists                                                                               | Pass                         |
+| Owned bounded inputs            | Archive, configuration, signer, and process-output carriers are intrinsically validated, bounded, and copied before use                                                                                               | Pass                         |
+| Distinct pinned engines         | The existing reviewed Cycle 2j Python worker and one separately reviewed zero-install Node worker have distinct exact source inventories and distinct pinned image digests                                            | Pass                         |
+| Fresh process isolation         | Each engine/archive execution uses a fresh numeric-nonroot container with dropped capabilities, no network or privileges, and exactly one read-only archive input                                                     | Pass                         |
+| Resource and cleanup bounds     | CPU, memory, swap, PIDs, nofile, tmpfs, stdout, stderr, control, and wall-clock limits apply; successful live paths prove zero residue; cleanup failure or ambiguity quarantines                                      | Pass                         |
+| Complete stdout documents       | Each worker emits exactly one bounded canonical complete Cycle 2d ten-fact document, exits zero, writes empty stderr, and emits no extra bytes                                                                        | Pass                         |
+| Live stdout agreement           | For each fixed original or amendment role, the Python and Node canonical stdout document bytes are exactly equal                                                                                                      | Pass                         |
+| Exact normalization agreement   | Each engine's complete pair reaches the unchanged normalization boundary without repair or remapping, and the two complete canonical normalization-record byte strings are exactly equal                              | Pass                         |
+| Atomic result                   | One immutable agreement result with bounded aggregate provenance succeeds, or one empty value-free quarantine returns                                                                                                 | Pass                         |
+| Replay and adversarial coverage | Live exact replay agrees and live mismatch, tamper, and role swap quarantine; exact-source security suites cover substitution, partial/extra/duplicate output, mutation, timeout, abort, process, and cleanup failure | Pass                         |
+| Frozen source transition        | One exact linear five-commit diagnostic recovery chain from the baseline through all four failed revisions is frozen by ancestry, path, status, and content expectation with no unreviewed widening                   | Pass: 44 paths; 31 A / 13 M  |
+| Local integration               | Format, lint, guardrails, dependency policy, typechecks, all tests, both worker tests, and all builds pass on frozen bytes                                                                                            | Pass                         |
+| Exact-source CI and regressions | Ubuntu/Windows CI plus the required historical parser, custody, PostgreSQL, and Cycle 2j live regressions pass on the same successor commit                                                                           | Pass                         |
+| Dedicated live evidence         | A separately authorized Ubuntu real-Docker run retains a success-only canonical artifact binding both images, both source inventories, cases, checks, and nonclaims                                                   | Pass: run `32917020041`      |
+| Independent offline review      | Independently supplied repository, revision, run, attempt, artifact, and evidence-digest anchors return `offline_consistent` for every frozen source hash                                                             | Pass: 66 of 66 source hashes |
+| Cycle 2b authority              | Exact external inventory, rights/steward approvals, chronology, authority keys, and human review pass before real bytes                                                                                               | Blocked; outside Cycle 2k    |
+| Independent real quality        | Representative real filings and 2,000 independently adjudicated assertions pass frozen thresholds with zero silent critical failures                                                                                  | Blocked                      |
+| Production admission            | Real-data rights, source/fetch, persistence, security, privacy, scale, and operational gates pass                                                                                                                     | Blocked                      |
 
 ## Target claim and exact checks
 
-The sole proposed bounded target claim is
+The sole bounded target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It may be accepted only for one exact diagnostic recovery child of failed
+It is accepted only for exact diagnostic recovery child
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` of failed
 diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`, with that
 revision itself the exact single-parent direct child of failed recovery
 revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, with that revision itself
@@ -75,7 +56,7 @@ exact single-parent direct child of baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, and the complete evidence anchors
 required below.
 
-The proposed exact ordered checks are:
+The exact ordered checks are:
 
 1. `exact_owned_synthetic_original_and_amendment_pair_in_fixed_python_and_node_roles`
 2. `intrinsic_bounded_owned_archive_configuration_signer_and_process_output_snapshots`
@@ -96,7 +77,7 @@ The proposed exact ordered checks are:
 
 ## Exact nonclaims
 
-The proposed exact ordered nonclaims are:
+The exact ordered nonclaims are:
 
 1. `true_organizational_operator_key_host_or_failure_domain_independence`
 2. `general_parser_xbrl_ixbrl_taxonomy_plugin_or_accounting_correctness`
@@ -115,63 +96,62 @@ The proposed exact ordered nonclaims are:
 15. `production_identity_secrets_host_kernel_daemon_or_incident_recovery`
 16. `real_data_admission_full_cycle2_exit_or_production_use`
 
-## Required evidence and promotion rule
+## Promotion record
 
-Before promotion, one exact linear five-commit diagnostic recovery chain from
-baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` and failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3`, to one exact diagnostic recovery
-child must be frozen by all five exact parent lines plus the complete cumulative
-path and status inventory. The full local gate, separate Python and Node worker tests,
-exact-source Ubuntu and Windows CI, and required parser, custody, PostgreSQL,
-and Cycle 2j live regression workflows must pass on the recovery child. Those
-regression runs are health checks only and are not Cycle 2k execution evidence.
+The exact source transition begins at
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc` and ends at
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` through exact single-parent
+revisions `14b4ecf41806dca7759a06bebf7ef8da96374f76`,
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`,
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, and
+`abd65313705282dab8071f5d36c78d31b1720ee3`. The exact commit and first-parent
+counts are 5 of 5. The cumulative transition is
+exactly 44 paths: 31 additions and 13 modifications, with no rename or deletion.
+The full local gate and the separate Python and Node worker suites passed on
+the promoted bytes.
+
+CI run `32917019994` passed in Ubuntu job `98022742564` and Windows job
+`98022742361`. Normalization run/job `32917020011` / `98022742573`, custody
+run/job `32917020028` / `98022742694`, isolation run/job `32917019995` /
+`98022742614`, and PostgreSQL run/job `32917043346` / `98022816504` passed as
+regression health only. They are not Cycle 2k execution evidence.
+
+Dedicated run `32917020041`, attempt 1, passed in Ubuntu job `98022742591` and
+retained artifact `9588542275`, named
+`filing-parser-cross-engine-execution-evidence-v1-54908db1ded8193ac4ade7a3d6f38505c6b4b8e5-1`.
+The downloaded ZIP SHA-256 is
+`sha256:35084ca18d99106e080a3f1cea48f164073b5666602e6a2ff35646cbd1b8a048`,
+matching GitHub's artifact digest. The canonical evidence file SHA-256 is
+`sha256:aa45aaed5d28898fd0ea9b563792c61f5d4b908a8e2a8a4602bcb96bb9d2c965`.
+
+The schema-v1 evidence binds 66 source hashes, both pinned engine identities,
+the exact fixture and transition, 16 checks, and 16 nonclaims. Its four
+canonical live outcomes are one agreed exact original/amendment cross-engine
+pair and three value-free quarantines for normalization mismatch, original
+archive tamper, and original/amendment role swap; exact replay matched. The
+independently supplied repository, revision, run, attempt, artifact, and
+evidence-digest anchors returned `offline_consistent` with 66 of 66 source
+hashes.
+
 Failed runs `32910394736`, `32912204603`, `32913611954`, and `32915949116`, each
-attempt 1, are explicitly non-evidence. All retained zero artifacts; the third
-and fourth runs' offline review and upload were skipped, and the fourth failed
-at `evidence_validation_transition`. No missing artifact may be substituted
-for the required successful artifact; completing live execution phases in the
-second, third, or fourth run does not convert a later validation failure into
-passing evidence.
+attempt 1, remain historical non-evidence and retained zero artifacts. The
+first failed at `image_inspection`; the second and third failed at
+`evidence_assembly` after live execution and residue phases; and the fourth
+failed at `evidence_validation_transition` after those phases. The third and
+fourth runs' offline review and upload were skipped. They cannot replace or
+widen the successful evidence above.
 
-A separately authorized dedicated Ubuntu real-Docker workflow must execute the
-success and exact replay paths plus normalization-mismatch, original-archive-
-tamper, and original/amendment-role-swap quarantines. The same workflow must
-first pass the exact-source Python and Node worker suites and the cross-engine
-unit/security suites that cover stdout mismatch, substitution, partial or extra
-output, duplicate output, mutation, timeout, abort, process failure, and cleanup
-failure. Those source-suite cases are required coverage, not additional live
-evidence outcomes. The workflow may upload a canonical artifact only after
-every exact check passes.
+The `offline_consistent` verdict establishes internal offline consistency only;
+it does not authenticate GitHub, artifact custody, Docker, the host, engine
+authors or operators, supplied trust anchors, images, keys, sources, SEC data,
+or accounting truth. Cycle 2a, Cycle 2c, Cycle 2d, Cycle 2i, and Cycle 2j
+evidence, schemas, checks, nonclaims, source sets, artifacts, and historical
+anchors remain byte-exact and immutable.
+
 Failure, cancellation, source-transition drift, a different commit, a missing
-engine, an unpinned or equal image identity, any stdout or normalization
+engine, an unpinned or equal image identity, stdout or normalization
 disagreement, noncanonical output, container residue, or non-value-free
-quarantine must retain no candidate artifact and must prevent promotion.
-
-The versioned canonical evidence must bind the exact repository, baseline,
-failed precursor, failed corrective revision, failed recovery revision, failed
-diagnostic revision, and diagnostic recovery revision, cumulative
-transition inventory, workflow/run/job/attempt, artifact
-identity and digest, both built image digests, both exact worker source
-inventories and hashes, fixture manifest and archive hashes, tool versions,
-container counts, canonical case outcomes, exact checks, exact nonclaims, and
-every Cycle 2k source hash. An offline verifier must require independently
-supplied repository, revision, run, attempt, artifact, and canonical evidence
-digest anchors and return `offline_consistent` only when every internal binding
-and source hash agrees. That verdict cannot authenticate GitHub, artifact
-custody, Docker, the host, the engines' authors or operators, supplied trust
-anchors, images, keys, sources, SEC data, or accounting truth.
-
-Cycle 2a, Cycle 2c, Cycle 2d, Cycle 2i, and Cycle 2j evidence records, schemas,
-checks, nonclaims, source sets, artifacts, and historical run anchors must remain
-byte-exact and immutable. No historical run may be relabeled as Cycle 2k
-evidence or used to widen a historical claim.
-
-This document remains proposal-only until every required source and evidence
-anchor is replaced with exact successful values after independent review.
-Passing the proposed bounded gate still could not unblock Cycle 2b, establish
-true independence or real filing quality, satisfy the full Cycle 2 exit, admit
-real data, create B15/V15, or authorize production use.
+quarantine would have prevented promotion and retained no candidate artifact.
+This bounded Pass cannot unblock Cycle 2b, establish true independence or real
+filing quality, satisfy the full Cycle 2 exit, admit real data, create B15/V15,
+or authorize production use.

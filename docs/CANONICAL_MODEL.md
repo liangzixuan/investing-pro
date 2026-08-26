@@ -25,13 +25,9 @@ only for exact source commit `5a1589ede57e00d6ff60521e7b53bea2ac849b0a`;
 Cycle 2j isolated ten-fact parser execution-to-normalization Pass only for exact
 source commit `b2c7a28c2c5720253eba275b65d3313b114c3bc4` from baseline
 `f17bacc6adc46851e182d260d59830652f1953bb`;
-Cycle 2k cross-engine execution agreement proposal Pending exact diagnostic recovery from
-baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` to failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3`, with no canonical result or
-promoted source/evidence record;
+Cycle 2k bounded synthetic cross-engine execution agreement Pass only for exact
+source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`;
 synthetic data only.
 
 ## Identity
@@ -825,44 +821,36 @@ composition, B15/V15, real-data admission, or production authority. See
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-## Pending Cycle 2k cross-engine execution agreement proposal
+## Promoted Cycle 2k cross-engine execution agreement
 
-Cycle 2k proposes no canonical real filing, authority, quality, tenant,
+Cycle 2k adds no canonical real filing, authority, quality, tenant,
 persistence, or production entity. From exact baseline
 `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, through failed precursor
 `14b4ecf41806dca7759a06bebf7ef8da96374f76`, failed corrective revision
 `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, failed recovery revision
 `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3`, and one required exact diagnostic recovery
-child, it proposes to execute the same
+`abd65313705282dab8071f5d36c78d31b1720ee3`, and exact diagnostic recovery
+child `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`, it executes the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Per-role complete
 canonical stdout documents and both complete Cycle 2d normalization records
 must agree byte for byte; otherwise the result is one atomic empty value-free
-quarantine. The sole proposed claim is
+quarantine. The sole claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-Dedicated run `32910394736` attempt 1 failed closed at image inspection and
-retained no artifact. Run `32912204603` attempt 1 completed live Docker
-execution and every residue phase, then failed closed at evidence assembly and
-also retained no artifact. Run `32913611954` attempt 1, job `98012515052`, also
-completed live Docker execution and every residue phase, then failed closed at
-evidence assembly; its offline review and upload were skipped, and it retained
-zero artifacts. All three runs are non-evidence. No successful recovery
-revision exists. Run `32915949116` attempt 1, job `98019592738`, completed live
-Docker execution and every residue phase, then failed closed at
-`evidence_validation_transition`; its offline review and upload were skipped,
-it retained zero artifacts, and it is non-evidence. No successful diagnostic
-recovery revision, passing live artifact, or `offline_consistent` review exists, so no
-Cycle 2k agreement record is canonical or promoted. A future promotion must
-bind the exact recovery chain, both pinned images and
-both exact source inventories, pass all local/two-OS/regression/live gates, and
-retain a success-only artifact with independently anchored offline review.
-Every historical evidence record and anchor remains immutable.
+It is Pass only for exact source commit
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`: the exact five-commit chain,
+44-path transition, full local and exact-source workflow gates, dedicated
+run/job `32917020041` / `98022742591`, retained artifact `9588542275`, and
+66-of-66 `offline_consistent` review passed. The evidence binds both engines,
+four live outcomes, 16 checks, and 16 nonclaims. Failed runs `32910394736`,
+`32912204603`, `32913611954`, and `32915949116` remain immutable historical
+non-evidence with zero artifacts. Every historical evidence record and anchor
+remains immutable.
 
 Distinct language, source, image, and process identities do not prove true
 organizational, operator, key, host, or failure-domain independence. The
-proposal cannot establish general parser/accounting correctness, real
+promoted bounded result cannot establish general parser/accounting correctness, real
 SEC/source authority, Cycle 2b approval, independently adjudicated real quality,
 real-data admission, B15/V15, full Cycle 2 exit, or production. Cycle 2b remains
 externally Blocked on the exact inventory, rights/steward approvals, chronology,

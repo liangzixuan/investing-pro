@@ -446,29 +446,19 @@ admission, or production. See
 [ADR 0037](./docs/adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./docs/CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k is a proposal-only cross-engine successor and is **Pending exact
-diagnostic recovery** from baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through
-failed precursor `14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed
-corrective revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348` to failed
-recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed
-diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`. Its sole proposed claim is
+Cycle 2k now promotes one bounded cross-engine agreement milestone. Its sole
+claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`:
 the existing Cycle 2j Python worker and a distinct zero-install pinned Node
 worker must produce byte-exact equal complete stdout documents and complete
 normalization records for the same owned synthetic original/amendment pair, or
-return one atomic value-free quarantine. Dedicated run `32910394736` attempt 1
-failed closed at image inspection. Corrective run `32912204603` attempt 1
-completed live Docker execution and residue checks, then failed closed at
-evidence assembly. Recovery run `32913611954` attempt 1, job `98012515052`,
-also completed live Docker execution and residue checks, then failed closed at
-evidence assembly; its offline review and upload were skipped. All three runs
-retained zero artifacts and are non-evidence. Diagnostic run `32915949116`
-attempt 1, job `98019592738`, completed live Docker execution and residue
-phases, then failed closed at `evidence_validation_transition`; its offline
-review and upload were skipped, it retained zero artifacts, and it is
-non-evidence. One exact diagnostic recovery child, its frozen cumulative transition, green
-local/CI/regression gates, successful live artifact, and `offline_consistent`
-review are still required. The proposal does not establish true organizational, operator,
+return one atomic value-free quarantine. It is Pass only for exact source
+commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`: the exact five-commit,
+44-path transition; full local gate; Ubuntu/Windows CI and normalization,
+custody, isolation, and PostgreSQL regressions; dedicated run/job
+`32917020041` / `98022742591`; retained artifact `9588542275`; and 66-of-66
+`offline_consistent` review all passed. The four earlier failed runs remain
+historical non-evidence with zero artifacts. This Pass does not establish true organizational, operator,
 key, host, or failure-domain independence; general parser or accounting
 correctness; real SEC/source authority; Cycle 2b approval; independently
 adjudicated real quality; real-data admission; or production. Cycle 2b remains
@@ -930,20 +920,13 @@ blocked.
   signing, unchanged Cycle 2i handoff, exact-source workflows, retained live
   artifact, and offline review passed. External authority, independent real
   quality, full Cycle 2 exit, and production remain Blocked.
-- Cycle 2k is a proposal-only cross-engine agreement milestone and is Pending
-  an exact diagnostic recovery child of failed diagnostic revision
-  `abd65313705282dab8071f5d36c78d31b1720ee3`, itself an exact single-parent
-  direct child of failed recovery revision
-  `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, itself an exact single-parent
-  direct child of failed corrective revision
-  `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, itself an exact single-parent
-  direct child of failed precursor `14b4ecf41806dca7759a06bebf7ef8da96374f76`,
-  itself an exact single-parent direct child of baseline
-  `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Failed runs `32910394736`,
-  `32912204603`, `32913611954`, and `32915949116`, each attempt 1, retained zero
-  artifacts; the fourth run failed at `evidence_validation_transition`, and
-  its offline review and upload were skipped. No passing evidence
-  or offline verdict exists.
+- Cycle 2k is Pass only for exact source commit
+  `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from baseline
+  `962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Its exact five-commit chain,
+  44-path transition, local and exact-source workflow gates, dedicated run/job
+  `32917020041` / `98022742591`, retained artifact, and 66-of-66
+  `offline_consistent` review passed. The four earlier failed runs remain
+  immutable non-evidence with zero artifacts.
   It cannot establish true independence, correctness, real source
   authority, Cycle 2b approval, adjudicated real quality, real data, or
   production.

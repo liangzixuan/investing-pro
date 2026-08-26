@@ -1,30 +1,11 @@
 # ADR 0038: bounded synthetic cross-engine parser execution agreement
 
-Status: proposed and Pending exact diagnostic recovery from baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. Source precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` is its exact single-parent direct child, but
-dedicated run `32910394736` attempt 1 failed closed at `image_inspection`: the
-inherited Python image ends in `/worker`, while the shared inspector applied
-the Node image's `/input` expectation to both roles. The run retained no
-artifact and has no offline-review verdict. Failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` is its exact single-parent direct
-child. Dedicated run `32912204603` attempt 1 completed live Docker execution
-and every residue phase, then failed closed at `evidence_assembly` because the
-runner hashed a 62-path static list instead of the required 66-path
-source-transition union. That run also retained no artifact and has no
-offline-review verdict. Failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c` is its exact single-parent direct
-child. Dedicated run `32913611954` attempt 1, job `98012515052`, completed live
-Docker execution and every residue phase, then failed closed at
-`evidence_assembly`. Its offline review and upload were skipped, it retained
-zero artifacts, and it is non-evidence. Failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3` is the failed recovery revision's
-exact single-parent direct child. Dedicated run `32915949116` attempt 1, job
-`98019592738`, completed live Docker execution and every residue phase, then
-failed closed at `evidence_validation_transition`. Its offline review and upload
-were skipped, it retained zero artifacts, and it is non-evidence. One exact
-diagnostic recovery child and all successful gates remain required. This ADR
-records no promoted claim. Cycle 2b, full Cycle 2
+Status: accepted and promoted only for exact source commit
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. The exact five-commit chain and
+44-path transition (31 added, 13 modified), full local gate, all exact-source
+workflows, dedicated live execution, retained artifact, and independently
+anchored 66-of-66 `offline_consistent` review passed. Cycle 2b, full Cycle 2
 quality, real-data admission, and production admission remain Blocked.
 
 ## Context
@@ -44,7 +25,7 @@ every disagreement atomically. Separate language, source inventory, image, and
 process identities reduce one common-implementation risk but cannot establish
 organizational, operator, key, host, or failure-domain independence.
 
-## Proposed decision
+## Decision
 
 Add one private, disconnected cross-engine boundary and one dedicated
 success-only live acceptance domain. The boundary accepts exactly one owned
@@ -86,9 +67,10 @@ failure returns one empty value-free `agreement_quarantined` result. Quarantine
 must expose no fact values, raw bytes, hashes, image or key identifiers,
 provenance, mismatch details, or canary content.
 
-The sole proposed target claim is
+The sole target claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-It may be accepted only for one exact diagnostic recovery child of failed
+It is accepted only for exact diagnostic recovery child
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` of failed
 diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`, whose sole
 parent is failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`, whose sole parent is failed
 corrective revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, whose sole parent is failed
@@ -98,7 +80,7 @@ defined below.
 
 ## Required checks
 
-The proposed exact ordered checks are:
+The exact ordered checks are:
 
 1. `exact_owned_synthetic_original_and_amendment_pair_in_fixed_python_and_node_roles`
 2. `intrinsic_bounded_owned_archive_configuration_signer_and_process_output_snapshots`
@@ -119,7 +101,7 @@ The proposed exact ordered checks are:
 
 ## Exact nonclaims
 
-The proposed exact ordered nonclaims are:
+The exact ordered nonclaims are:
 
 1. `true_organizational_operator_key_host_or_failure_domain_independence`
 2. `general_parser_xbrl_ixbrl_taxonomy_plugin_or_accounting_correctness`
@@ -140,75 +122,59 @@ The proposed exact ordered nonclaims are:
 
 ## Evidence and promotion boundary
 
-The proposal begins from exact baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc`, continues through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` and failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3`, and may end only at one exact
-diagnostic recovery child. Before any promotion, all five exact single-parent
-lines, the
-exact five-commit and first-parent counts, and the cumulative baseline-to-
-recovery path/status inventory must be frozen. No successful recovery revision
-is claimed while this ADR is Pending. Failed runs `32910394736`, `32912204603`,
-`32913611954`, and `32915949116`, each attempt 1, retained zero artifacts and
-have no offline-review verdict. The third and fourth runs' offline review and
-upload were skipped; the fourth failed at `evidence_validation_transition`.
-They are non-evidence and cannot be substituted for the required successful
-artifact.
+The exact transition begins at
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc` and ends at
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` through exact single-parent
+revisions `14b4ecf41806dca7759a06bebf7ef8da96374f76`,
+`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`,
+`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, and
+`abd65313705282dab8071f5d36c78d31b1720ee3`. The five exact parent lines, 5-of-5
+commit and first-parent counts, and cumulative 44-path inventory (31
+additions, 13 modifications, no rename or deletion) passed. The full local
+release gate and both worker-specific suites passed on the promoted bytes.
 
-The frozen recovery revision must pass formatting, lint, every guardrail, dependency
-and peer policy, all project typechecks and tests, both worker-specific test
-suites, and all builds. The same exact recovery source commit must pass Ubuntu and
-Windows CI and the required historical parser, custody, PostgreSQL, and Cycle
-2j live regression workflows. Those runs remain regression health only; none is
-Cycle 2k execution evidence.
+CI run `32917019994` passed in Ubuntu job `98022742564` and Windows job
+`98022742361`. Normalization run/job `32917020011` / `98022742573`, custody
+run/job `32917020028` / `98022742694`, isolation run/job `32917019995` /
+`98022742614`, and PostgreSQL run/job `32917043346` / `98022816504` passed on
+the same source commit as regression health only.
 
-A separately authorized dedicated Ubuntu real-Docker workflow must execute the
-success and exact replay paths plus normalization-mismatch, original-archive-
-tamper, and original/amendment-role-swap quarantines. Before those live cases,
-the workflow must pass the exact-source Python and Node worker suites and the
-cross-engine unit/security suites covering stdout mismatch, substitution,
-partial or extra output, duplicate output, mutation, timeout, abort, process
-failure, and cleanup failure. These source-suite cases are required coverage,
-not additional live evidence outcomes. The workflow may retain one canonical
-success-only artifact only after every exact check passes. A failed or cancelled
-run, source drift, missing or equal engine identity, unpinned image, output
-disagreement, partial success, cleanup ambiguity, residue, or non-value-free
-quarantine must retain no candidate artifact and must prevent promotion.
+Dedicated run `32917020041`, attempt 1, passed in Ubuntu job `98022742591` and
+retained artifact `9588542275`, named
+`filing-parser-cross-engine-execution-evidence-v1-54908db1ded8193ac4ade7a3d6f38505c6b4b8e5-1`.
+Its ZIP digest is
+`sha256:35084ca18d99106e080a3f1cea48f164073b5666602e6a2ff35646cbd1b8a048`,
+matching GitHub's artifact digest. The canonical evidence digest is
+`sha256:aa45aaed5d28898fd0ea9b563792c61f5d4b908a8e2a8a4602bcb96bb9d2c965`.
+The record binds both engines, 66 source hashes, the 44-path transition, 16
+checks, 16 nonclaims, one agreed live case, three value-free live quarantines,
+and a matching exact replay. Independently supplied anchors returned
+`offline_consistent` with 66 of 66 source hashes.
 
-The versioned evidence record must bind the exact repository, baseline, failed
-precursor, failed corrective revision, failed recovery revision, failed
-diagnostic revision, diagnostic recovery revision, cumulative transition inventory,
-workflow/run/job/attempt, artifact
-identity and digest, both built image digests, both exact worker source
-inventories and hashes, fixture manifest and archive hashes, tool versions,
-container counts, canonical cases and outcomes, exact checks, exact nonclaims,
-and every Cycle 2k source hash. An offline verifier must require independently
-supplied repository, revision, run, attempt, artifact, and canonical evidence
-digest anchors and return `offline_consistent` only after all internal bindings
-and frozen source hashes agree.
+Failed runs `32910394736`, `32912204603`, `32913611954`, and `32915949116`, each
+attempt 1, remain historical non-evidence with zero artifacts. The first failed
+at `image_inspection`; the second and third failed at `evidence_assembly` after
+live execution and residue phases; and the fourth failed at
+`evidence_validation_transition` after those phases. The third and fourth
+offline-review and upload steps were skipped. None can substitute for or widen
+the successful evidence.
 
-`offline_consistent` would establish internal offline consistency only. It
-cannot authenticate GitHub, artifact custody, Docker, the host, the worker
-authors or operators, supplied trust anchors, source or image authority, SEC
-data, accounting truth, or engine independence.
-
-Cycle 2a, Cycle 2c, Cycle 2d, Cycle 2i, and Cycle 2j evidence records, schemas,
-checks, nonclaims, source sets, artifacts, and historical anchors must remain
-byte-exact and immutable. This successor may add its own evidence domain and
-may use historical workflows only as regressions; it must not mutate, replace,
-reinterpret, or widen a historical result.
+`offline_consistent` establishes internal offline consistency only. It cannot
+authenticate GitHub, artifact custody, Docker, the host, worker authors or
+operators, supplied trust anchors, source or image authority, SEC data,
+accounting truth, or engine independence. Historical Cycle 2a, Cycle 2c, Cycle
+2d, Cycle 2i, and Cycle 2j evidence, schemas, checks, nonclaims, source sets,
+artifacts, and anchors remain byte-exact and immutable; regression workflows
+are health checks only and are not Cycle 2k execution evidence.
 
 ## Consequences
 
-If promoted on exact future source and evidence anchors, Cycle 2k would
-establish only that two distinct pinned worker implementations produced
+Cycle 2k establishes only that two distinct pinned worker implementations produced
 byte-exact equal complete ten-fact stdout documents and byte-exact equal
 complete normalization records for the one reviewed owned synthetic
 original/amendment pair under the bounded live gate.
 
-It would not establish true organizational, operator, key, host, or
+It does not establish true organizational, operator, key, host, or
 failure-domain independence; general parser, XBRL/iXBRL, taxonomy, plugin, or
 accounting correctness; real filing or SEC/source authenticity; Cycle 2b
 authority; independently adjudicated ground truth or quality; real-data

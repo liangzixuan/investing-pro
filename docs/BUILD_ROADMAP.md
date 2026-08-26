@@ -1113,49 +1113,34 @@ and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
 ## Cycle 2k — bounded synthetic cross-engine parser execution agreement
 
-Status: **proposal-only and Pending exact diagnostic recovery from baseline
-`962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76`. Dedicated run `32910394736`
-attempt 1 failed closed at image inspection and retained no artifact. Failed
-corrective revision `061944f8f770e8a08b2a38d1e2fedf8b8e2de348` is its exact
-direct child. Run `32912204603` attempt 1 completed live Docker execution and
-residue phases, then failed closed at evidence assembly and retained no
-artifact. Failed recovery revision `f29e39cea40e76d500df833fd8e0e94e0c86a68c`
-is its exact direct child. Run `32913611954` attempt 1, job `98012515052`,
-completed live Docker execution and residue phases, then failed closed at
-evidence assembly; its offline review and upload were skipped, and it retained
-zero artifacts. All three failed runs are non-evidence. Failed diagnostic
-revision `abd65313705282dab8071f5d36c78d31b1720ee3` is the failed recovery
-revision's exact direct child. Run `32915949116` attempt 1, job `98019592738`,
-completed live Docker execution and residue phases, then failed closed at
-`evidence_validation_transition`; its offline review and upload were skipped,
-it retained zero artifacts, and it is non-evidence. One exact diagnostic
-recovery child, its green gates, retained evidence, and
-offline-review verdict remain required. Cycle 2b, full Cycle 2 quality,
-real-data admission, and production remain Blocked.**
+Status: **Pass only for exact source commit
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` from exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc`. The exact five-commit chain and
+44-path transition, full local gate, both worker suites, all exact-source
+workflows, dedicated live execution, retained artifact, and independently
+anchored 66-of-66 `offline_consistent` review passed. Cycle 2b, full Cycle 2
+quality, real-data admission, and production remain Blocked.**
 
-Cycle 2k proposes one narrow repository-controlled successor. The existing
+Cycle 2k closes one narrow repository-controlled agreement gap. The existing
 Cycle 2j Python worker and one distinct zero-install pinned Node worker execute
 the same owned synthetic original/amendment pair. Each fixed role must produce
 byte-exact equal complete canonical stdout documents, and both complete engine
 pairs must produce byte-exact equal Cycle 2d normalization records through the
 unchanged normalization path. Any disagreement or failure returns one atomic,
-empty, value-free quarantine. The sole proposed claim is
+empty, value-free quarantine. The sole bounded claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-Promotion requires one frozen exact linear five-commit diagnostic recovery
-chain from the baseline through all four failed revisions to one diagnostic
-recovery child; a full local
-gate; exact-source Ubuntu/Windows CI and required parser, custody,
-PostgreSQL, and Cycle 2j regression gates; and a separately authorized Ubuntu
-real-Docker success-only artifact. The versioned evidence and independently
-anchored `offline_consistent` review must bind the baseline, failed precursor,
-failed corrective revision, failed recovery revision, failed diagnostic
-revision, diagnostic recovery revision, both image digests, both exact
-worker source inventories and hashes, fixtures, cases, checks, nonclaims, and
-every Cycle 2k source hash. Historical evidence, schemas, checks, nonclaims,
-source sets, artifacts, and run anchors remain immutable; regressions cannot be
-relabeled as Cycle 2k evidence.
+The exact chain ends at `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5` after all
+four failed revisions and freezes 44 paths (31 additions, 13 modifications).
+CI run `32917019994`, normalization run `32917020011`, custody run
+`32917020028`, isolation run `32917019995`, PostgreSQL run `32917043346`, and
+dedicated run/job `32917020041` / `98022742591` passed on the exact source.
+Retained artifact `9588542275` binds both engines, 66 source hashes, four live
+outcomes, 16 checks, and 16 nonclaims; independently anchored review returned
+`offline_consistent`. The four earlier failed runs remain historical
+non-evidence with zero artifacts. Historical evidence, schemas, checks,
+nonclaims, source sets, artifacts, and run anchors remain immutable;
+regressions cannot be relabeled as Cycle 2k evidence.
 
 Distinct language, source, image, and process identities do not prove true
 organizational, operator, key, host, or failure-domain independence. Cycle 2k
@@ -1163,7 +1148,7 @@ also cannot establish general parser/accounting correctness, real SEC/source
 authority, Cycle 2b approval, independently adjudicated real quality, real-data
 admission, full Cycle 2 exit, or production. Cycle 2b remains externally
 Blocked on the exact 100-entry inventory, rights/steward approvals, chronology,
-authority keys, and human review. Exact proposed gates and nonclaims are in
+authority keys, and human review. Exact gates and nonclaims are in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 

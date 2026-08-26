@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2j and Pending Cycle 2k threat model
+# Sprint 0 through promoted Cycle 2k threat model
 
 ## Current trust boundaries
 
@@ -430,33 +430,24 @@ or production. Its exact promoted boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k is a proposal-only successor and is Pending exact diagnostic recovery from
-baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc` through failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76` and failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348` to failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c` and failed diagnostic revision
-`abd65313705282dab8071f5d36c78d31b1720ee3`. It proposes to execute the same
+Cycle 2k closes one bounded cross-engine agreement gap. From exact baseline
+`962a00f65835fc6126e4da98e0e0d5998e8d59cc` through four failed revisions to
+exact source commit `54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`, it executes the same
 owned synthetic original/amendment pair through the existing Cycle 2j Python
 worker and a distinct zero-install pinned Node worker. Each fixed role's live
 canonical stdout document and both engines' complete normalization records must
 agree byte for byte; any disagreement or failure returns one atomic empty
-value-free quarantine. The sole proposed claim is
+value-free quarantine. The sole claim is
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
 
-Dedicated run `32910394736` attempt 1 failed closed at image inspection and
-retained no artifact. Run `32912204603` attempt 1 completed live Docker
-execution and every residue phase, then failed closed at evidence assembly and
-also retained no artifact. Run `32913611954` attempt 1, job `98012515052`, also
-completed live Docker execution and every residue phase, then failed closed at
-evidence assembly; its offline review and upload were skipped, and it retained
-zero artifacts. All three runs are non-evidence. Run
-`32915949116` attempt 1, job `98019592738`, completed live Docker execution and
-every residue phase, then failed closed at `evidence_validation_transition`;
-its offline review and upload were skipped, it retained zero artifacts, and it
-is non-evidence. One exact diagnostic recovery child and its green gates remain
-required. Distinct language, source,
+It is Pass only for exact source commit
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`: the exact five-commit chain,
+44-path transition, full local and exact-source workflow gates, dedicated
+run/job `32917020041` / `98022742591`, retained artifact `9588542275`, and
+66-of-66 `offline_consistent` review passed. The four earlier failed runs
+remain historical non-evidence with zero artifacts. Distinct language, source,
 image, and process identities cannot establish true organizational, operator,
-key, host, or failure-domain independence. The proposal also cannot establish
+key, host, or failure-domain independence. The bounded Pass also cannot establish
 general parser/accounting correctness, real SEC/source authority, Cycle 2b
 approval, independently adjudicated real quality, real data, or production.
 Cycle 2b remains externally Blocked on the exact inventory, rights/steward
@@ -1129,17 +1120,11 @@ boundary is in
 [ADR 0037](./adr/0037-bounded-synthetic-ten-fact-parser-execution-normalization.md)
 and the [Cycle 2j exit matrix](./CYCLE_2J_EXIT_MATRIX.md).
 
-Cycle 2k's successor target remains only a Pending exact diagnostic recovery
-child of failed diagnostic revision `abd65313705282dab8071f5d36c78d31b1720ee3`,
-itself an exact single-parent direct child of failed recovery revision
-`f29e39cea40e76d500df833fd8e0e94e0c86a68c`, itself
-an exact single-parent direct child of failed corrective revision
-`061944f8f770e8a08b2a38d1e2fedf8b8e2de348`, itself
-an exact single-parent direct child of failed precursor
-`14b4ecf41806dca7759a06bebf7ef8da96374f76`, itself an exact single-parent
-direct child of baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, for the sole claim
+Cycle 2k's promoted target is only exact source commit
+`54908db1ded8193ac4ade7a3d6f38505c6b4b8e5`, the exact fifth single-parent
+successor of baseline `962a00f65835fc6126e4da98e0e0d5998e8d59cc`, for the sole claim
 `bounded_synthetic_two_distinct_pinned_engine_executions_to_exact_ten_fact_normalization_agreement`.
-No source or evidence result is promoted. Exact gates and nonclaims are in
+No broader source or evidence result is promoted. Exact gates and nonclaims are in
 [ADR 0038](./adr/0038-bounded-synthetic-cross-engine-parser-execution-agreement.md)
 and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
 
@@ -1157,8 +1142,8 @@ and the [Cycle 2k exit matrix](./CYCLE_2K_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
-   Pending Cycle 2k cross-engine agreement would remain engineering preparation
-   only and would not satisfy any external authority or real-corpus prerequisite.
+   Promoted Cycle 2k cross-engine agreement remains engineering preparation
+   only and does not satisfy any external authority or real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.
