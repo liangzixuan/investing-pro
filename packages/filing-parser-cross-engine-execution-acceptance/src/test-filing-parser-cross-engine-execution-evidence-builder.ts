@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
@@ -25,6 +27,15 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_DIRECT_EXECUTION_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
   filingParserCrossEngineImplementationSha256,
   filingParserCrossEngineExecutionExpectedTransition,
@@ -36,11 +47,19 @@ import {
   filingParserCrossEngineExecutionV3InvocationBindingSha256,
   filingParserCrossEngineExecutionV3LifecycleBindingSha256,
   filingParserCrossEngineExecutionV3RequiredSourcePaths,
+  filingParserCrossEngineExecutionV4CompositionCommitmentSha256,
+  filingParserCrossEngineExecutionV4EvaluationBindingSha256,
+  filingParserCrossEngineExecutionV4ProjectionBindingSha256,
+  filingParserCrossEngineExecutionV4QualityDocumentSha256,
+  filingParserCrossEngineExecutionV4RequiredSourcePaths,
   type FilingParserCrossEngineExecutionEvidence,
   type FilingParserCrossEngineExecutionEvidenceV3,
   type FilingParserCrossEngineExecutionEvidenceV3CaseId,
   type FilingParserCrossEngineExecutionEvidenceV3Invocation,
   type FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt,
+  type FilingParserCrossEngineExecutionEvidenceV4,
+  type FilingParserCrossEngineExecutionEvidenceV4CaseId,
+  type FilingParserCrossEngineExecutionEvidenceV4Invocation,
   type FilingParserCrossEngineExecutionEvidenceV2,
   type FilingParserCrossEngineExecutionEvidenceV2CaseId,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
@@ -455,6 +474,681 @@ export function buildFilingParserCrossEngineExecutionEvidenceV3Input(): FilingPa
       workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW,
     },
   };
+}
+
+/** @internal Test-only additive Cycle 2n evidence carrier. */
+export function buildFilingParserCrossEngineExecutionEvidenceV4Input(): FilingParserCrossEngineExecutionEvidenceV4 {
+  const v1 = buildFilingParserCrossEngineExecutionEvidenceInput();
+  const revision = "c".repeat(40);
+  const transition =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION;
+  const sourceHashes = Object.freeze(
+    filingParserCrossEngineExecutionV4RequiredSourcePaths(transition).map(
+      (path) => Object.freeze({ path, sha256: HASH_A }),
+    ),
+  );
+  return {
+    baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+    caseOutcomes: [
+      {
+        candidateCommitmentsStable: true,
+        candidateObservationsStable: true,
+        caseId: "same-input-quality-evaluation-distinct-lifecycle-invocations",
+        compositionBindingsDistinct: true,
+        expectedStatus: "evaluated_not_met",
+        invocations: [qualityInvocation(0), qualityInvocation(1)],
+        lifecycleBindingsDistinct: true,
+        measurementStable: true,
+        observedStatus: "evaluated_not_met",
+      },
+      quarantineV4("declared-reference-digest-mismatch"),
+      quarantineV4("quality-capability-replay"),
+      quarantineV4("reference-content-at-commit"),
+      quarantineV4("original-archive-tamper"),
+      quarantineV4("original-amendment-role-swap"),
+    ],
+    checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS,
+    claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM,
+    completedAt: v1.completedAt,
+    compositionValidation: {
+      callerInjectionSurface: "none",
+      candidatePopulation: "exact_two_observed_ninety_eight_omitted",
+      outerBindings: "recomputed_exact",
+      precommitment: "one_shot_reference_digest_only",
+      qualityEvaluation: "fixed_denominator_evaluated_not_met",
+      sourceExecution: "cycle2m_source_owned_direct_docker",
+    },
+    engines: v1.engines,
+    evidenceVersion: 4,
+    fixtureManifestSha256: HASH_A,
+    historicalV1: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+    historicalV2: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+    historicalV3: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+    notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
+    repository: v1.repository,
+    revision,
+    runtime: {
+      capabilitiesDropped: ["ALL"],
+      compositionCommitCount: 4,
+      engineCount: 2,
+      networkMode: "none",
+      readOnlyRootFilesystem: true,
+      successfulEvaluationCount: 3,
+      successfulLifecycleReceiptCount: 16,
+      successfulTwoDocumentObservationCount: 4,
+      zeroResidue: true,
+    },
+    schemaVersion:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION,
+    sourceHashes,
+    startedAt: v1.startedAt,
+    status: "passed",
+    summary: {
+      candidateCommitmentsStable: true,
+      candidateObservationsStable: true,
+      compositionBindingsDistinct: true,
+      evaluatedNotMet: 1,
+      lifecycleBindingsDistinct: true,
+      measurementStable: true,
+      quarantined: 5,
+      total: 6,
+    },
+    synthetic: true,
+    tools: v1.tools,
+    transition: { entries: transition, pathCount: transition.length },
+    workflow: {
+      artifactName: `filing-parser-cross-engine-execution-evidence-v4-${revision}-1`,
+      event: "push",
+      job: "acceptance",
+      ref: "refs/heads/main",
+      runAttempt: 1,
+      runId: "123456789",
+      workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
+    },
+  };
+}
+
+function qualityInvocation(
+  invocationIndex: 0 | 1,
+): FilingParserCrossEngineExecutionEvidenceV4Invocation {
+  const qualityDocuments = buildCycle2nFilingParserQualityDocuments();
+  const planSha256 = cycle2nQualitySha256(qualityDocuments.plan);
+  const declaredReferenceSha256 = qualityDocuments.declaredReferenceSha256;
+  const qualityAccounting = exactQualityAccounting();
+  const innerBindings = cycle2nInnerBindings(
+    planSha256,
+    declaredReferenceSha256,
+    qualityAccounting,
+  );
+  const lifecycleBindingSha256s = Object.freeze(
+    [0, 1, 2, 3].map((offset) =>
+      numberedHash(invocationIndex * 4 + offset + 1),
+    ),
+  ) as unknown as readonly [
+    `sha256:${string}`,
+    `sha256:${string}`,
+    `sha256:${string}`,
+    `sha256:${string}`,
+  ];
+  const sourceExecution = Object.freeze({
+    agreementSha256: numberedHash(50 + invocationIndex),
+    directExecutionClaim:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM,
+    directExecutionSchemaVersion:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_DIRECT_EXECUTION_SCHEMA_VERSION,
+    ephemeralPublicKeySpkiSha256: numberedHash(21 + invocationIndex),
+    executionMode: "source_owned_direct_docker" as const,
+    invocationBindingSha256: numberedHash(23 + invocationIndex),
+    lifecycleBindingSha256s,
+    normalizationSha256: numberedHash(25),
+  });
+  const originalPreimage = Object.freeze({
+    documentRole: "original" as const,
+    factCount: 10 as const,
+    observationSha256: cycle2nCandidateObservationSha256(0),
+    qualityDocumentId: "synthetic-filing-0001" as const,
+    qualityDocumentSha256:
+      filingParserCrossEngineExecutionV4QualityDocumentSha256(
+        "synthetic-filing-0001",
+      ),
+    sourceArchiveSha256: numberedHash(38),
+    sourceDocumentSha256: numberedHash(39),
+    sourceLifecycleBindingSha256s: Object.freeze([
+      lifecycleBindingSha256s[0],
+      lifecycleBindingSha256s[2],
+    ] as const),
+  });
+  const amendmentPreimage = Object.freeze({
+    documentRole: "amendment" as const,
+    factCount: 10 as const,
+    observationSha256: cycle2nCandidateObservationSha256(1),
+    qualityDocumentId: "synthetic-filing-0002" as const,
+    qualityDocumentSha256:
+      filingParserCrossEngineExecutionV4QualityDocumentSha256(
+        "synthetic-filing-0002",
+      ),
+    sourceArchiveSha256: numberedHash(43),
+    sourceDocumentSha256: numberedHash(44),
+    sourceLifecycleBindingSha256s: Object.freeze([
+      lifecycleBindingSha256s[1],
+      lifecycleBindingSha256s[3],
+    ] as const),
+  });
+  const projectionReceipts = Object.freeze([
+    Object.freeze({
+      ...originalPreimage,
+      projectionBindingSha256:
+        filingParserCrossEngineExecutionV4ProjectionBindingSha256(
+          originalPreimage,
+        ),
+    }),
+    Object.freeze({
+      ...amendmentPreimage,
+      projectionBindingSha256:
+        filingParserCrossEngineExecutionV4ProjectionBindingSha256(
+          amendmentPreimage,
+        ),
+    }),
+  ] as const);
+  const common = Object.freeze({
+    candidateCommitmentSha256: innerBindings.candidateCommitmentSha256,
+    candidateObservationsSha256: innerBindings.candidateObservationsSha256,
+    declaredReferenceSha256,
+    planSha256,
+    projectionReceipts,
+    sourceExecution,
+  });
+  const compositionCommitmentSha256 =
+    filingParserCrossEngineExecutionV4CompositionCommitmentSha256(common);
+  const evaluationPreimage = Object.freeze({
+    candidateCommitmentSha256: common.candidateCommitmentSha256,
+    compositionCommitmentSha256,
+    declaredReferenceSha256: common.declaredReferenceSha256,
+    measurementEvaluationSha256: innerBindings.measurementEvaluationSha256,
+    qualityEvaluationBindingSha256:
+      innerBindings.qualityEvaluationBindingSha256,
+  });
+  return Object.freeze({
+    ...common,
+    compositionCommitmentSha256,
+    evaluationBindingSha256:
+      filingParserCrossEngineExecutionV4EvaluationBindingSha256(
+        evaluationPreimage,
+      ),
+    measurementEvaluationSha256: evaluationPreimage.measurementEvaluationSha256,
+    qualityAccounting,
+    qualityEvaluationBindingSha256:
+      evaluationPreimage.qualityEvaluationBindingSha256,
+  });
+}
+
+function exactQualityAccounting(): FilingParserCrossEngineExecutionEvidenceV4Invocation["qualityAccounting"] {
+  return Object.freeze({
+    counts: Object.freeze({
+      conceptMismatchCount: 0 as const,
+      criticalAssertionCount: 2_000 as const,
+      dimensionMismatchCount: 0 as const,
+      documentCount: 100 as const,
+      emittedFactCount: 20 as const,
+      expectedFactCount: 1_000 as const,
+      falseNegativeFactCount: 980 as const,
+      falsePositiveFactCount: 0 as const,
+      missingDocumentCount: 98 as const,
+      missingFactCount: 980 as const,
+      periodMismatchCount: 0 as const,
+      quarantinedDocumentCount: 0 as const,
+      semanticAssertionPassCount: 20 as const,
+      silentCriticalFailureCount: 1_960 as const,
+      succeededDocumentCount: 2 as const,
+      truePositiveFactCount: 20 as const,
+      unitMismatchCount: 0 as const,
+      unitPeriodAssertionPassCount: 20 as const,
+      valueMismatchCount: 0 as const,
+    }),
+    failedThresholds: Object.freeze([
+      "document_success_minimum",
+      "fact_recall_minimum",
+      "maximum_silent_critical_failures",
+    ] as const),
+    metrics: Object.freeze({
+      documentSuccess: ratioMetric(2, 100, false, 95, "minimum"),
+      factPrecision: ratioMetric(20, 20, true, 99, "minimum"),
+      factRecall: ratioMetric(20, 1_000, false, 99, "minimum"),
+      quarantineRate: ratioMetric(0, 100, true, 5, "maximum"),
+      silentCriticalFailure: Object.freeze({
+        count: 1_960 as const,
+        denominator: 2_000 as const,
+        maximumCount: 0 as const,
+        met: false as const,
+      }),
+      unitDateTolerance: Object.freeze({
+        dateToleranceDays: 0 as const,
+        periodMismatchCount: 0 as const,
+        unitMismatchCount: 0 as const,
+        unitTolerancePolicy: "exact_canonical_unit.v1" as const,
+      }),
+    }),
+    syntheticPilotThresholdOutcome: "not_met" as const,
+  });
+}
+
+function cycle2nCandidateDocument(index: 0 | 1): object {
+  const documentId =
+    index === 0 ? "synthetic-filing-0001" : "synthetic-filing-0002";
+  const values =
+    index === 0 ? CYCLE2N_ORIGINAL_VALUES : CYCLE2N_AMENDMENT_VALUES;
+  return {
+    documentId,
+    documentSha256: cycle2nQualityDocumentSha256(documentId),
+    facts: CYCLE2N_FACT_KEYS.map((factKey) => {
+      const contract = CYCLE2N_FACT_CONTRACTS[factKey];
+      return {
+        concept: contract.concept,
+        dimensions: [],
+        factKey,
+        periodEnd: "2025-12-31",
+        periodStart: contract.periodStart,
+        unit: contract.unit,
+        value: values[factKey],
+      };
+    }),
+    status: "succeeded",
+  };
+}
+
+function cycle2nCandidateObservationSha256(index: 0 | 1): `sha256:${string}` {
+  return cycle2nQualitySha256(
+    new TextEncoder().encode(
+      canonicalCycle2nJson(cycle2nCandidateDocument(index)),
+    ),
+  );
+}
+
+function cycle2nInnerBindings(
+  planSha256: `sha256:${string}`,
+  declaredReferenceSha256: `sha256:${string}`,
+  qualityAccounting: FilingParserCrossEngineExecutionEvidenceV4Invocation["qualityAccounting"],
+): Readonly<{
+  candidateCommitmentSha256: `sha256:${string}`;
+  candidateObservationsSha256: `sha256:${string}`;
+  measurementEvaluationSha256: `sha256:${string}`;
+  qualityEvaluationBindingSha256: `sha256:${string}`;
+}> {
+  const documentObservations = [
+    cycle2nCandidateDocument(0),
+    cycle2nCandidateDocument(1),
+  ];
+  const commonCandidate = {
+    candidateDeclaration: CYCLE2N_DECLARED_CANDIDATE,
+    declaredReferenceSha256,
+    documentObservations,
+    planSha256,
+    populationId: "synthetic-filing-quality-reference.v1",
+    populationVersion: "1.0.0",
+    schemaVersion: "1.0.0",
+    synthetic: true,
+  };
+  const candidateObservationsSha256 = cycle2nQualitySha256(
+    canonicalCycle2nQualityDocument({
+      ...commonCandidate,
+      documentRole: "candidate_observations_precommit",
+    }),
+  );
+  const candidateCommitmentSha256 = cycle2nDomainCanonicalSha256(
+    "research-cockpit:synthetic-filing-quality-precommitment:v1\u0000",
+    {
+      candidateObservationsSha256,
+      claim:
+        "bounded_synthetic_in_process_one_shot_candidate_observation_commit_before_declared_reference_reveal_and_fail_closed_quality_evaluation",
+      declaredReferenceSha256,
+      planSha256,
+      schemaVersion: "1.0.0",
+    },
+    true,
+  );
+  const measurementCandidateSha256 = cycle2nQualitySha256(
+    canonicalCycle2nQualityDocument({
+      ...commonCandidate,
+      documentRole: "candidate_observations",
+      producedAt: "2026-01-03T00:00:00.000Z",
+    }),
+  );
+  const measurementEvaluationSha256 = cycle2nDomainCanonicalSha256(
+    "research-cockpit:synthetic-filing-quality-measurement:v1\u0000",
+    {
+      candidateSha256: measurementCandidateSha256,
+      counts: qualityAccounting.counts,
+      declaredReferenceSha256,
+      failedThresholds: qualityAccounting.failedThresholds,
+      planSha256,
+      syntheticPilotThresholdOutcome:
+        qualityAccounting.syntheticPilotThresholdOutcome,
+    },
+    false,
+  );
+  const qualityEvaluationBindingSha256 = cycle2nDomainCanonicalSha256(
+    "research-cockpit:synthetic-filing-quality-precommitment-evaluation:v1\u0000",
+    {
+      candidateCommitmentSha256,
+      candidateObservationsSha256,
+      measurementEvaluationSha256,
+      planSha256,
+    },
+    true,
+  );
+  return Object.freeze({
+    candidateCommitmentSha256,
+    candidateObservationsSha256,
+    measurementEvaluationSha256,
+    qualityEvaluationBindingSha256,
+  });
+}
+
+function cycle2nDomainCanonicalSha256(
+  domain: string,
+  value: unknown,
+  newline: boolean,
+): `sha256:${string}` {
+  const hash = createHash("sha256");
+  hash.update(domain, "utf8");
+  hash.update(`${canonicalCycle2nJson(value)}${newline ? "\n" : ""}`, "utf8");
+  return `sha256:${hash.digest("hex")}`;
+}
+
+function ratioMetric<
+  const Numerator extends number,
+  const Denominator extends number,
+  const Met extends boolean,
+  const ThresholdNumerator extends number,
+  const ThresholdKind extends "maximum" | "minimum",
+>(
+  numerator: Numerator,
+  denominator: Denominator,
+  met: Met,
+  thresholdNumerator: ThresholdNumerator,
+  thresholdKind: ThresholdKind,
+) {
+  return Object.freeze({
+    defined: true as const,
+    denominator,
+    met,
+    numerator,
+    threshold: Object.freeze({
+      denominator: 100 as const,
+      numerator: thresholdNumerator,
+    }),
+    thresholdKind,
+  });
+}
+
+function quarantineV4(
+  caseId: Exclude<
+    FilingParserCrossEngineExecutionEvidenceV4CaseId,
+    "same-input-quality-evaluation-distinct-lifecycle-invocations"
+  >,
+) {
+  return {
+    candidateCommitmentsStable: false,
+    candidateObservationsStable: false,
+    caseId,
+    compositionBindingsDistinct: false,
+    expectedStatus: "quarantined" as const,
+    invocations: null,
+    lifecycleBindingsDistinct: false,
+    measurementStable: false,
+    observedStatus: "quarantined" as const,
+  };
+}
+
+function numberedHash(value: number): `sha256:${string}` {
+  return `sha256:${value.toString(16).padStart(64, "0")}`;
+}
+
+export interface Cycle2nFilingParserQualityDocuments {
+  readonly declaredReference: Uint8Array;
+  readonly declaredReferenceSha256: `sha256:${string}`;
+  readonly plan: Uint8Array;
+}
+
+const CYCLE2N_FACT_KEYS = Object.freeze([
+  "assets",
+  "cash",
+  "debt",
+  "diluted_shares",
+  "free_cash_flow",
+  "gross_profit",
+  "net_income",
+  "operating_cash_flow",
+  "operating_income",
+  "revenue",
+] as const);
+type Cycle2nFactKey = (typeof CYCLE2N_FACT_KEYS)[number];
+const CYCLE2N_ORIGINAL_VALUES: Readonly<Record<Cycle2nFactKey, string>> =
+  Object.freeze({
+    assets: "250000000",
+    cash: "24000000",
+    debt: "40000000",
+    diluted_shares: "25000000",
+    free_cash_flow: "15000000",
+    gross_profit: "60000000",
+    net_income: "12000000",
+    operating_cash_flow: "20000000",
+    operating_income: "18000000",
+    revenue: "120000000",
+  });
+const CYCLE2N_AMENDMENT_VALUES: Readonly<Record<Cycle2nFactKey, string>> =
+  Object.freeze({
+    assets: "250000000",
+    cash: "24000000",
+    debt: "40000000",
+    diluted_shares: "25000000",
+    free_cash_flow: "14000000",
+    gross_profit: "57000000",
+    net_income: "10000000",
+    operating_cash_flow: "20000000",
+    operating_income: "16000000",
+    revenue: "116400000",
+  });
+const CYCLE2N_FACT_CONTRACTS = Object.freeze({
+  assets: Object.freeze({
+    concept: "rc-synthetic:Assets",
+    periodStart: null,
+    unit: "USD",
+  }),
+  cash: Object.freeze({
+    concept: "rc-synthetic:CashAndCashEquivalents",
+    periodStart: null,
+    unit: "USD",
+  }),
+  debt: Object.freeze({
+    concept: "rc-synthetic:Debt",
+    periodStart: null,
+    unit: "USD",
+  }),
+  diluted_shares: Object.freeze({
+    concept: "rc-synthetic:WeightedAverageDilutedShares",
+    periodStart: "2025-01-01",
+    unit: "shares",
+  }),
+  free_cash_flow: Object.freeze({
+    concept: "rc-synthetic:FreeCashFlow",
+    periodStart: "2025-01-01",
+    unit: "USD",
+  }),
+  gross_profit: Object.freeze({
+    concept: "rc-synthetic:GrossProfit",
+    periodStart: "2025-01-01",
+    unit: "USD",
+  }),
+  net_income: Object.freeze({
+    concept: "rc-synthetic:NetIncome",
+    periodStart: "2025-01-01",
+    unit: "USD",
+  }),
+  operating_cash_flow: Object.freeze({
+    concept: "rc-synthetic:OperatingCashFlow",
+    periodStart: "2025-01-01",
+    unit: "USD",
+  }),
+  operating_income: Object.freeze({
+    concept: "rc-synthetic:OperatingIncome",
+    periodStart: "2025-01-01",
+    unit: "USD",
+  }),
+  revenue: Object.freeze({
+    concept: "rc-synthetic:Revenue",
+    periodStart: "2025-01-01",
+    unit: "USD",
+  }),
+} satisfies Readonly<
+  Record<
+    Cycle2nFactKey,
+    Readonly<{ concept: string; periodStart: string | null; unit: string }>
+  >
+>);
+const CYCLE2N_DECLARED_ADJUDICATORS = Object.freeze([
+  Object.freeze({
+    declarationSha256:
+      "sha256:2e13475902f4e9a22a4b7c74b4bf07a4104fc91349909b32105f17750ce91d1c",
+    id: "synthetic-filing-quality-adjudicator-a",
+    role: "declared-adjudicator-a",
+    version: "1.0.0",
+  }),
+  Object.freeze({
+    declarationSha256:
+      "sha256:11525b220ae5b8bc1c28a8cf9398b870c210008f96835062c1ef02016ad25a47",
+    id: "synthetic-filing-quality-adjudicator-b",
+    role: "declared-adjudicator-b",
+    version: "1.0.0",
+  }),
+] as const);
+const CYCLE2N_DECLARED_CANDIDATE = Object.freeze({
+  declarationSha256:
+    "sha256:c254e5f327be470a72f9feb206a7c34341b5020cf425592199a17fb4122e4b2a",
+  id: "synthetic-filing-quality-candidate",
+  role: "declared-candidate",
+  version: "1.0.0",
+} as const);
+
+/** Source-controlled Cycle 2n plan/reference; only documents 0001/0002 match Cycle 2m. */
+export function buildCycle2nFilingParserQualityDocuments(): Cycle2nFilingParserQualityDocuments {
+  const plan = canonicalCycle2nQualityDocument({
+    assertionKinds: ["semantic_value_presence", "exact_unit_period"],
+    assertionTarget: 2_000,
+    candidateStatuses: ["quarantined", "succeeded"],
+    declaredAdjudicators: CYCLE2N_DECLARED_ADJUDICATORS,
+    declaredCandidate: CYCLE2N_DECLARED_CANDIDATE,
+    documentRole: "synthetic_pilot_plan",
+    documentTarget: 100,
+    factKeys: CYCLE2N_FACT_KEYS,
+    factTarget: 1_000,
+    frozenAt: "2026-01-01T00:00:00.000Z",
+    metrics: [
+      "document_success",
+      "fact_precision",
+      "fact_recall",
+      "unit_date_tolerance",
+      "silent_critical_failure",
+      "quarantine_rate",
+    ],
+    planId: "synthetic-filing-quality-plan.v1",
+    planVersion: "1.0.0",
+    referenceDeclaration:
+      "declared_synthetic_reference_not_independently_adjudicated",
+    schemaVersion: "1.0.0",
+    synthetic: true,
+    thresholds: {
+      dateToleranceDays: 0,
+      documentSuccessMinimum: "0.95",
+      factPrecisionMinimum: "0.99",
+      factRecallMinimum: "0.99",
+      maximumQuarantineRate: "0.05",
+      maximumSilentCriticalFailures: 0,
+      unitTolerancePolicy: "exact_canonical_unit.v1",
+    },
+  });
+  const planSha256 = cycle2nQualitySha256(plan);
+  const documents = Array.from({ length: 100 }, (_, index) => {
+    const ordinal = index + 1;
+    const documentId = `synthetic-filing-${String(ordinal).padStart(4, "0")}`;
+    const values =
+      ordinal === 1
+        ? CYCLE2N_ORIGINAL_VALUES
+        : ordinal === 2
+          ? CYCLE2N_AMENDMENT_VALUES
+          : undefined;
+    return Object.freeze({
+      documentId,
+      documentSha256: cycle2nQualityDocumentSha256(documentId),
+      facts: Object.freeze(
+        CYCLE2N_FACT_KEYS.map((factKey, factIndex) => {
+          const contract = CYCLE2N_FACT_CONTRACTS[factKey];
+          return Object.freeze({
+            concept: contract.concept,
+            dimensions: Object.freeze([] as const),
+            factKey,
+            periodEnd: "2025-12-31",
+            periodStart: contract.periodStart,
+            unit: contract.unit,
+            value:
+              values?.[factKey] ??
+              String(1_000_000 + ordinal * 100 + factIndex),
+          });
+        }),
+      ),
+    });
+  });
+  const declaredReference = canonicalCycle2nQualityDocument({
+    criticalAssertionCount: 2_000,
+    declaredAdjudicators: CYCLE2N_DECLARED_ADJUDICATORS,
+    declaredAt: "2026-01-02T00:00:00.000Z",
+    declaration: "declared_synthetic_reference_not_independently_adjudicated",
+    documentCount: 100,
+    documentRole: "declared_reference",
+    documents,
+    factCount: 1_000,
+    populationId: "synthetic-filing-quality-reference.v1",
+    populationVersion: "1.0.0",
+    planSha256,
+    schemaVersion: "1.0.0",
+    synthetic: true,
+  });
+  return Object.freeze({
+    declaredReference,
+    declaredReferenceSha256: cycle2nQualitySha256(declaredReference),
+    plan,
+  });
+}
+
+function canonicalCycle2nQualityDocument(value: unknown): Uint8Array {
+  return new TextEncoder().encode(`${canonicalCycle2nJson(value)}\n`);
+}
+
+function cycle2nQualityDocumentSha256(documentId: string): `sha256:${string}` {
+  const hash = createHash("sha256");
+  hash.update(
+    "research-cockpit:synthetic-filing-quality-document:v1\u0000",
+    "utf8",
+  );
+  hash.update(documentId, "utf8");
+  return `sha256:${hash.digest("hex")}`;
+}
+
+function cycle2nQualitySha256(value: Uint8Array): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function canonicalCycle2nJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value))
+    return `[${value.map(canonicalCycle2nJson).join(",")}]`;
+  return `{${Object.keys(value)
+    .sort()
+    .map(
+      (key) =>
+        `${JSON.stringify(key)}:${canonicalCycle2nJson((value as Record<string, unknown>)[key])}`,
+    )
+    .join(",")}}`;
 }
 
 function directInvocation(

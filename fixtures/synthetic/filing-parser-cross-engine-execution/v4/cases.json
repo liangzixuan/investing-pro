@@ -1,0 +1,36 @@
+{
+  "cases": [
+    {
+      "caseId": "same-input-quality-evaluation-distinct-lifecycle-invocations",
+      "expectedStatus": "evaluated_not_met",
+      "replay": true
+    },
+    {
+      "caseId": "declared-reference-digest-mismatch",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "quality-capability-replay",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "reference-content-at-commit",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "original-archive-tamper",
+      "expectedStatus": "quarantined",
+      "replay": false
+    },
+    {
+      "caseId": "original-amendment-role-swap",
+      "expectedStatus": "quarantined",
+      "replay": false
+    }
+  ],
+  "schemaVersion": "4.0.0",
+  "synthetic": true
+}

@@ -547,6 +547,29 @@ Cycle 2b cannot be manufactured from synthetic metadata, keys, or approvals.
 See [ADR 0040](./docs/adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./docs/CYCLE_2M_EXIT_MATRIX.md).
 
+Cycle 2n is **Pending** exact-source live execution and independent review from
+frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. Its sole claim is
+`bounded_synthetic_source_owned_direct_docker_cross_engine_two_document_observation_precommitment_and_fixed_population_quality_evaluation_binding`.
+The new package-owned protocol executes Cycle 2m internally, maps the ten
+original facts once to `synthetic-filing-0001` and the ten amendment facts once
+to `synthetic-filing-0002`, and delegates those internally derived candidate
+observations to unchanged Cycle 2g and Cycle 2f boundaries. The other 98 fixed
+population coordinates remain absent; no caller may inject an execution
+result, candidate observation, metric, weight, exclusion, or outcome.
+
+The required result is deliberately `evaluated/not_met`: 2 of 100 documents,
+20 true positives out of 1,000 expected facts, 980 missing facts, and 1,960 of
+2,000 silent critical failures. Precision and quarantine-rate gates meet their
+thresholds, while document success, recall, and zero-silent-failure gates fail.
+That closes only the source-execution-to-measurement composition gap; it is not
+a parser-quality Pass. Promotion requires one exact direct-child source,
+terminal-green local and live gates, a success-only canonical v4 artifact, and
+independently anchored offline review. Representative real filings,
+independent adjudication, Cycle 2b authority, B15/V15, real-data admission, full
+Cycle 2 exit, and production remain Blocked. See
+[ADR 0041](./docs/adr/0041-bounded-synthetic-source-owned-quality-composition.md)
+and the [Cycle 2n exit matrix](./docs/CYCLE_2N_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row

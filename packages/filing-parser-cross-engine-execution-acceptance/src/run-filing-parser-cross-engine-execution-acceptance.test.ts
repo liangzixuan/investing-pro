@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CASE_IDS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
 } from "./filing-parser-cross-engine-execution-evidence";
 
@@ -18,8 +20,10 @@ import {
   filingParserCrossEngineExecutionAcceptanceFailureDiagnostic,
   filingParserCrossEngineExecutionEvidenceV2ValidationPhase,
   filingParserCrossEngineExecutionEvidenceV3ValidationPhase,
+  filingParserCrossEngineExecutionEvidenceV4ValidationPhase,
   filingParserCrossEngineExecutionEvidenceValidationPhase,
   imageIdValue,
+  parseFilingParserCrossEngineExecutionNulTransition,
   validateBuiltImageInspection,
 } from "./run-filing-parser-cross-engine-execution-acceptance";
 
@@ -35,8 +39,17 @@ const runnerSource = readFileSync(
   ),
   "utf8",
 );
+const workflowSource = readFileSync(
+  fileURLToPath(
+    new URL(
+      "../../../.github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      import.meta.url,
+    ),
+  ),
+  "utf8",
+);
 
-describe("Cycle 2m direct Docker live acceptance", () => {
+describe("Cycle 2n quality-composition live acceptance", () => {
   it("emits only closed value-free phase diagnostics", () => {
     expect(Object.isFrozen(ACCEPTANCE_PHASES)).toBe(true);
     expect(ACCEPTANCE_PHASES).toEqual([
@@ -47,24 +60,27 @@ describe("Cycle 2m direct Docker live acceptance", () => {
       "staging",
       "image_build",
       "image_inspection",
-      "direct_setup",
-      "direct_success_first",
-      "direct_success_second",
-      "direct_success_validation",
-      "adversarial_unknown_python_image",
-      "adversarial_pre_aborted_signal",
+      "quality_setup",
+      "quality_success_first",
+      "quality_success_second",
+      "quality_success_validation",
+      "adversarial_declared_reference_digest_mismatch",
+      "adversarial_quality_capability_replay",
+      "adversarial_reference_content_at_commit",
       "adversarial_original_archive_tamper",
       "adversarial_original_amendment_role_swap",
-      "adversarial_identical_archives",
-      "direct_residue",
+      "quality_residue",
       "tool_versions",
       "evidence_assembly",
       "evidence_validation_root_contract",
       "evidence_validation_timestamps",
       "evidence_validation_claim_tuples",
       "evidence_validation_historical_evidence",
+      "evidence_validation_composition_validation",
       "evidence_validation_direct_execution_validation",
       "evidence_validation_case_outcomes",
+      "evidence_validation_source_bindings",
+      "evidence_validation_quality_bindings",
       "evidence_validation_lifecycle_bindings",
       "evidence_validation_outer_invocation_bindings",
       "evidence_validation_transition",
@@ -99,16 +115,16 @@ describe("Cycle 2m direct Docker live acceptance", () => {
     }
   });
 
-  it("maps every v3 validation stage to its closed acceptance phase", () => {
-    for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES) {
+  it("maps every v4 validation stage to its closed acceptance phase", () => {
+    for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_VALIDATION_STAGES) {
       const phase =
-        filingParserCrossEngineExecutionEvidenceV3ValidationPhase(stage);
+        filingParserCrossEngineExecutionEvidenceV4ValidationPhase(stage);
       expect(phase).toBe(`evidence_validation_${stage}`);
       expect(ACCEPTANCE_PHASES).toContain(phase);
     }
   });
 
-  it("retains the historical v1 and v2 diagnostic mappers", () => {
+  it("retains the historical v1, v2, and v3 diagnostic mappers", () => {
     for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES)
       expect(ACCEPTANCE_PHASES).toContain(
         filingParserCrossEngineExecutionEvidenceValidationPhase(stage),
@@ -116,6 +132,10 @@ describe("Cycle 2m direct Docker live acceptance", () => {
     for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES)
       expect(ACCEPTANCE_PHASES).toContain(
         filingParserCrossEngineExecutionEvidenceV2ValidationPhase(stage),
+      );
+    for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES)
+      expect(ACCEPTANCE_PHASES).toContain(
+        filingParserCrossEngineExecutionEvidenceV3ValidationPhase(stage),
       );
   });
 
@@ -158,67 +178,107 @@ describe("Cycle 2m direct Docker live acceptance", () => {
     ).toBe(true);
   });
 
-  it("uses only the public source-owned direct boundary for live executions", () => {
+  it("uses only the public exact-4 quality-composition protocol", () => {
     expect(runnerSource).toContain(
-      "createFilingParserCrossEngineDirectExecutionBoundary({",
+      "createFilingParserQualityCompositionProtocol(configuration)",
     );
     expect(runnerSource).not.toContain(
-      "createFilingParserCrossEngineDirectExecutionBoundaryForTest",
+      "createFilingParserCrossEngineDirectExecutionBoundary",
     );
+    expect(runnerSource).not.toContain("ForTest");
     expect(runnerSource).not.toContain("processRunner:");
     expect(runnerSource).not.toContain("generateKeyPairSync");
     expect(runnerSource).not.toContain(
       "createFilingParserNormalizationExecutionBoundary",
     );
-    expect(
-      runnerSource.match(/const (first|second) = await boundary\.execute\(/gu),
-    ).toHaveLength(2);
     expect(runnerSource).toContain(
-      "const containerIds = new Set(\n    receipts.map((receipt) => receipt.containerIdSha256),\n  )",
+      "const contentAtCommit = await Reflect.apply(",
     );
-    expect(runnerSource).toContain("containerIds.size !== 8");
-    expect(runnerSource).toContain("lifecycleBindings.size !== 8");
+    expect(runnerSource).toContain(
+      "archives.amendmentArchive,\n        quality.declaredReference,",
+    );
+    expect(runnerSource).toContain("compositionCommitCount: 4 as const");
+    expect(runnerSource).toContain("successfulEvaluationCount: 3 as const");
+    expect(runnerSource).toContain(
+      "successfulLifecycleReceiptCount: 16 as const",
+    );
+    expect(runnerSource).toContain(
+      "successfulTwoDocumentObservationCount: 4 as const",
+    );
+    expect(runnerSource).toContain(
+      "Object.getPrototypeOf(result.capability) !== null",
+    );
+    expect(runnerSource).toContain("!Object.isFrozen(result.measurement)");
   });
 
-  it("freezes the exact six ordered v3 outcome IDs", () => {
-    expect(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS).toEqual([
-      "same-input-direct-docker-distinct-lifecycle-invocations",
-      "unknown-python-image",
-      "pre-aborted-signal",
+  it("freezes the exact six ordered v4 outcome IDs", () => {
+    expect(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CASE_IDS).toEqual([
+      "same-input-quality-evaluation-distinct-lifecycle-invocations",
+      "declared-reference-digest-mismatch",
+      "quality-capability-replay",
+      "reference-content-at-commit",
       "original-archive-tamper",
       "original-amendment-role-swap",
-      "identical-archives",
     ]);
     expect(runnerSource).toContain(
-      "const outcomes = Object.freeze([\n      successOutcome,\n      unknownImageOutcome,\n      preAbortedOutcome,\n      tamperedOutcome,\n      swappedOutcome,\n      identicalOutcome,",
+      "const outcomes = Object.freeze([\n      successOutcome,\n      mismatchOutcome,\n      replayOutcome,\n      contentAtCommitOutcome,\n      tamperedOutcome,\n      swappedOutcome,",
     );
   });
 
-  it("requires one exact direct child of the frozen Cycle 2m baseline", () => {
+  it("requires the exact 34-path NUL-safe direct child of the Cycle 2n baseline", () => {
+    expect(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
+    ).toHaveLength(34);
     expect(runnerSource).toContain(
-      "const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE",
+      "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,\n    revision,",
     );
     expect(runnerSource).toContain('successorCount !== "1"');
     expect(runnerSource).toContain('firstParentCount !== "1"');
     expect(runnerSource).toContain("parentLine !== `${revision} ${base}`");
     expect(runnerSource).toContain(
-      '["diff", "--name-status", "--no-renames", base, revision]',
+      '["diff", "--name-status", "--no-renames", "-z", base, revision, "--"]',
     );
     expect(runnerSource).toContain(
-      "filingParserCrossEngineExecutionV3RequiredSourcePaths(transition)",
+      "filingParserCrossEngineExecutionV4RequiredSourcePaths(transition)",
+    );
+    expect(runnerSource).toContain(
+      "canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION)",
     );
   });
 
-  it("writes only canonical v3 evidence after image removal", () => {
+  it("parses only alternating A/M NUL fields without filename splitting", () => {
+    const encoded = new TextEncoder().encode(
+      "M\0line\nname.ts\0A\0tab\tname.ts\0",
+    );
+    expect(parseFilingParserCrossEngineExecutionNulTransition(encoded)).toEqual(
+      [
+        { path: "line\nname.ts", status: "M" },
+        { path: "tab\tname.ts", status: "A" },
+      ],
+    );
+    for (const malformed of [
+      new Uint8Array(),
+      new TextEncoder().encode("M\0path"),
+      new TextEncoder().encode("M\0path\0A\0"),
+      new TextEncoder().encode("M\0\0"),
+      new TextEncoder().encode("R100\0old\0new\0"),
+      Uint8Array.of(0xff, 0),
+    ])
+      expect(() =>
+        parseFilingParserCrossEngineExecutionNulTransition(malformed),
+      ).toThrow("acceptance failed");
+  });
+
+  it("writes only canonical v4 evidence after image removal", () => {
     const removal = runnerSource.indexOf('markPhase("image_removal")');
     const write = runnerSource.indexOf('markPhase("evidence_write")');
     expect(removal).toBeGreaterThan(0);
     expect(write).toBeGreaterThan(removal);
     expect(runnerSource).toContain(
-      "serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence)",
+      "serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4(evidence)",
     );
     expect(runnerSource).toContain(
-      "research-cockpit-filing-parser-cross-engine-execution-v3.json",
+      "research-cockpit-filing-parser-cross-engine-execution-v4.json",
     );
     expect(runnerSource).toContain(
       "await assertPathAbsent(environment.evidencePath)",
@@ -227,6 +287,31 @@ describe("Cycle 2m direct Docker live acceptance", () => {
       "await rename(temporaryEvidencePath, environment.evidencePath)",
     );
     expect(runnerSource).toContain("evidenceWritten = true");
+  });
+
+  it("routes only the exact Cycle 2n source to v4 and fails closed otherwise", () => {
+    expect(workflowSource.indexOf("id: cycle2n_source")).toBeLessThan(
+      workflowSource.indexOf("id: legacy_bridge"),
+    );
+    expect(workflowSource).toContain(
+      'baseline="09e76235b5683427f2dd3201aefa740bb5adb16e"',
+    );
+    expect(workflowSource).toContain(
+      'transition_sha256" == "fba65e4ad0f41de9570b7b7f79edd9f4d291337ca76c4e7d9b7b3466e042ad10"',
+    );
+    expect(workflowSource).toContain(
+      "research-cockpit-filing-parser-cross-engine-execution-v4.json",
+    );
+    expect(workflowSource).toContain(
+      "filing-parser-cross-engine-execution-evidence-v4-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}",
+    );
+    expect(workflowSource).toContain(
+      "pnpm --filter @research-cockpit/filing-parser-quality-composition test",
+    );
+    expect(workflowSource).toContain(
+      "Unrecognized evidence source route; refusing to mint or silently skip evidence.",
+    );
+    expect(workflowSource).toContain("exit 1");
   });
 
   it("accepts only exact lowercase Docker image IDs", () => {

@@ -998,6 +998,47 @@ Cycle 2b's externally reviewed authority. See
 [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
+## Pending Cycle 2n source-owned parser-quality composition
+
+Cycle 2n adds no canonical real filing, authority, adjudicator, quality, tenant,
+persistence, or production entity. It composes only the two exact synthetic
+documents already executed by Cycle 2m into the existing fixed synthetic
+quality population. The public factory accepts sealed engine descriptors; the
+protocol owns the direct-Docker boundary and exposes no injection surface for
+execution results, candidate observations, facts, metrics, weights, exclusions,
+or outcomes.
+
+The original document's ten normalized versions become the complete candidate
+observation for fixed coordinate `synthetic-filing-0001`; the amendment's ten
+versions become the complete candidate observation for
+`synthetic-filing-0002`. Their coordinate digests remain synthetic quality
+coordinates and are therefore bound separately to actual archive and source-
+document digests, document roles, observations, and lifecycles. The outer
+composition binds the normalization and complete Cycle 2m invocation. The
+remaining 98 declared coordinates stay absent.
+Nothing is repaired, duplicated, inferred, reweighted, or excluded.
+
+One asynchronous commit reserves state before validation or `await`, accepts
+only a declared-reference digest before internally committing the candidate to
+unchanged Cycle 2g, and returns an opaque instance-bound capability. Reveal
+consumes the capability before validation, first admits the declared-reference
+bytes, and delegates to unchanged Cycle 2g/Cycle 2f. Outer commitment and
+evaluation bindings cover the source execution, mappings, plan, reference
+digest, candidate commitment, and measurement evaluation. Every failure is one
+empty value-free quarantine.
+
+The canonical expected measurement is `evaluated/not_met`: 2 succeeded and 98
+missing documents, 20 true-positive and 980 missing/false-negative facts, and
+1,960 silent critical failures. Precision and quarantine-rate thresholds meet;
+document success, recall, and zero-silent-failure thresholds do not. This is a
+canonical representation of incomplete synthetic coverage, not a quality Pass.
+Promotion is Pending exact-source v4 live evidence and independent review from
+baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. Cycle 2b authority,
+representative real filings, independent adjudication, real parser quality,
+B15/V15, real-data admission, full Cycle 2 exit, and production remain Blocked.
+See [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
+and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

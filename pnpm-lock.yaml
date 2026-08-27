@@ -133,6 +133,9 @@ importers:
       '@research-cockpit/filing-parser-normalization-execution':
         specifier: workspace:*
         version: link:../filing-parser-normalization-execution
+      '@research-cockpit/filing-parser-quality-composition':
+        specifier: workspace:*
+        version: link:../filing-parser-quality-composition
 
   packages/filing-parser-normalization-execution:
     dependencies:
@@ -151,6 +154,18 @@ importers:
       '@research-cockpit/filing-fact-normalization':
         specifier: workspace:*
         version: link:../filing-fact-normalization
+
+  packages/filing-parser-quality-composition:
+    dependencies:
+      '@research-cockpit/filing-parser-cross-engine-execution':
+        specifier: workspace:*
+        version: link:../filing-parser-cross-engine-execution
+      '@research-cockpit/filing-quality-measurement':
+        specifier: workspace:*
+        version: link:../filing-quality-measurement
+      '@research-cockpit/filing-quality-precommitment':
+        specifier: workspace:*
+        version: link:../filing-quality-precommitment
 
   packages/filing-payload-custody: {}
 

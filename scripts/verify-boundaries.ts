@@ -193,6 +193,7 @@ const filingParserCrossEngineExecutionPackagePrefix =
   "packages/filing-parser-cross-engine-execution/";
 const filingParserCrossEngineExecutionAcceptancePackagePrefix =
   "packages/filing-parser-cross-engine-execution-acceptance/";
+const filingParserCrossEngineExecutionAcceptanceSourcePrefix = `${filingParserCrossEngineExecutionAcceptancePackagePrefix}src/`;
 const filingParserCrossEngineExecutionRootScriptAliases = [
   "filing-parser-cross-engine-execution:acceptance",
   "filing-parser-cross-engine-execution:evidence-review",
@@ -302,23 +303,46 @@ const filingParserCrossEngineExecutionEvidencePublicExports = [
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CASE_IDS", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VERSION", false],
   ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CASE_IDS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM", false],
+  [
+    "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_DIRECT_EXECUTION_SCHEMA_VERSION",
+    false,
+  ],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_VALIDATION_STAGES", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW", false],
   ["FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS", false],
   ["createFilingParserCrossEngineExecutionEvidence", false],
   ["createFilingParserCrossEngineExecutionEvidenceV3", false],
+  ["createFilingParserCrossEngineExecutionEvidenceV4", false],
   ["filingParserCrossEngineExecutionEvidenceV3Sha256", false],
+  ["filingParserCrossEngineExecutionEvidenceV4Sha256", false],
   ["filingParserCrossEngineExecutionEvidenceSha256", false],
   ["filingParserCrossEngineImplementationSha256", false],
   ["filingParserCrossEngineExecutionV3InvocationBindingSha256", false],
   ["filingParserCrossEngineExecutionV3LifecycleBindingSha256", false],
+  ["filingParserCrossEngineExecutionV4CompositionCommitmentSha256", false],
+  ["filingParserCrossEngineExecutionV4EvaluationBindingSha256", false],
+  ["filingParserCrossEngineExecutionV4ProjectionBindingSha256", false],
+  ["filingParserCrossEngineExecutionV4QualityDocumentSha256", false],
   ["parseCanonicalFilingParserCrossEngineExecutionEvidence", false],
   ["parseCanonicalFilingParserCrossEngineExecutionEvidenceV3", false],
+  ["parseCanonicalFilingParserCrossEngineExecutionEvidenceV4", false],
   ["serializeCanonicalFilingParserCrossEngineExecutionEvidence", false],
   ["serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3", false],
+  ["serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4", false],
   ["FilingParserCrossEngineExecutionEvidence", true],
   ["FilingParserCrossEngineExecutionEvidenceCaseOutcome", true],
   ["FilingParserCrossEngineExecutionEvidenceEngine", true],
@@ -329,8 +353,15 @@ const filingParserCrossEngineExecutionEvidencePublicExports = [
   ["FilingParserCrossEngineExecutionEvidenceV3CaseOutcome", true],
   ["FilingParserCrossEngineExecutionEvidenceV3Invocation", true],
   ["FilingParserCrossEngineExecutionEvidenceV3LifecycleReceipt", true],
+  ["FilingParserCrossEngineExecutionEvidenceV4", true],
+  ["FilingParserCrossEngineExecutionEvidenceV4CaseId", true],
+  ["FilingParserCrossEngineExecutionEvidenceV4CaseOutcome", true],
+  ["FilingParserCrossEngineExecutionEvidenceV4Invocation", true],
+  ["FilingParserCrossEngineExecutionEvidenceV4ProjectionReceipt", true],
+  ["FilingParserCrossEngineExecutionEvidenceV4SourceExecution", true],
 ] as const;
 const filingParserCrossEngineExecutionVerifierPublicExports = [
+  ["parseFilingParserCrossEngineExecutionEvidenceNulTransition", false],
   ["repositoryRelativePathIsContained", false],
   ["verifyFilingParserCrossEngineExecutionEvidenceOffline", false],
   ["FilingParserCrossEngineExecutionEvidenceReview", true],
@@ -891,6 +922,44 @@ const filingQualityPrecommitmentProductionPath = `${filingQualityPrecommitmentSo
 const filingQualityPrecommitmentBuilderPath = `${filingQualityPrecommitmentSourcePrefix}test-filing-quality-precommitment-builder.ts`;
 const filingQualityPrecommitmentUnitTestPath = `${filingQualityPrecommitmentSourcePrefix}filing-quality-precommitment.test.ts`;
 const filingQualityPrecommitmentSecurityTestPath = `${filingQualityPrecommitmentSourcePrefix}filing-quality-precommitment-security.test.ts`;
+const filingParserQualityCompositionModule =
+  "@research-cockpit/filing-parser-quality-composition";
+const filingParserQualityCompositionPackagePrefix =
+  "packages/filing-parser-quality-composition/";
+const filingParserQualityCompositionSourcePrefix = `${filingParserQualityCompositionPackagePrefix}src/`;
+const filingParserQualityCompositionIndexPath = `${filingParserQualityCompositionSourcePrefix}index.ts`;
+const filingParserQualityCompositionProductionPath = `${filingParserQualityCompositionSourcePrefix}filing-parser-quality-composition.ts`;
+const filingParserQualityCompositionBuilderPath = `${filingParserQualityCompositionSourcePrefix}test-filing-parser-quality-composition-builder.ts`;
+const filingParserQualityCompositionUnitTestPath = `${filingParserQualityCompositionSourcePrefix}filing-parser-quality-composition.test.ts`;
+const filingParserQualityCompositionSecurityTestPath = `${filingParserQualityCompositionSourcePrefix}filing-parser-quality-composition-security.test.ts`;
+const filingParserQualityCompositionPackagePaths = [
+  `${filingParserQualityCompositionPackagePrefix}package.json`,
+  `${filingParserQualityCompositionPackagePrefix}tsconfig.json`,
+  filingParserQualityCompositionBuilderPath,
+  filingParserQualityCompositionIndexPath,
+  filingParserQualityCompositionProductionPath,
+  filingParserQualityCompositionSecurityTestPath,
+  filingParserQualityCompositionUnitTestPath,
+].sort();
+const filingParserQualityCompositionPublicExports = [
+  ["FILING_PARSER_QUALITY_COMPOSITION_CHECKS", false],
+  ["FILING_PARSER_QUALITY_COMPOSITION_CLAIM", false],
+  ["FILING_PARSER_QUALITY_COMPOSITION_LIMITS", false],
+  ["FILING_PARSER_QUALITY_COMPOSITION_NOT_PROVEN", false],
+  ["FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION", false],
+  ["createFilingParserQualityCompositionProtocol", false],
+  ["FilingParserQualityCompositionAudit", true],
+  ["FilingParserQualityCompositionCapability", true],
+  ["FilingParserQualityCompositionCommitResult", true],
+  ["FilingParserQualityCompositionCommittedResult", true],
+  ["FilingParserQualityCompositionConfiguration", true],
+  ["FilingParserQualityCompositionEvaluatedResult", true],
+  ["FilingParserQualityCompositionProjectionReceipt", true],
+  ["FilingParserQualityCompositionProtocol", true],
+  ["FilingParserQualityCompositionQuarantinedResult", true],
+  ["FilingParserQualityCompositionRevealResult", true],
+  ["FilingParserQualityCompositionSourceExecution", true],
+] as const;
 const filingQualityPrecommitmentPublicExports = [
   ["FILING_QUALITY_PRECOMMITMENT_CHECKS", false],
   ["FILING_QUALITY_PRECOMMITMENT_CLAIM", false],
@@ -1281,6 +1350,7 @@ const workspacePackageNames =
   await collectWorkspacePackageNames(filesToInspect);
 violations.push(
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
+  ...(await filingParserQualityCompositionBoundaryViolations()),
 );
 
 const filingFactComparisonTreeViolation =
@@ -3353,6 +3423,39 @@ if (
   throw new Error(
     "Filing-quality-precommitment composition classifier regressed",
   );
+if (
+  !referencesFilingParserQualityCompositionPath(
+    "apps/api/src/index.ts",
+    "../../../packages/filing-parser-quality-composition/src/index",
+  ) ||
+  !hasFilingParserQualityCompositionDependency(
+    {
+      dependencies: {
+        "@research-cockpit/filing-parser-quality-composition": "workspace:*",
+      },
+    },
+    "apps/api/package.json",
+  ) ||
+  hasFilingParserQualityCompositionDependency(
+    { devDependencies: { typescript: "5.9.3" } },
+    "apps/api/package.json",
+  ) ||
+  !isAllowedFilingParserQualityCompositionExternalImport(
+    `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}evidence.ts`,
+    filingParserQualityCompositionModule,
+  ) ||
+  isAllowedFilingParserQualityCompositionExternalImport(
+    "apps/api/src/index.ts",
+    filingParserQualityCompositionModule,
+  ) ||
+  isAllowedFilingParserQualityCompositionExternalImport(
+    `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}evidence.ts`,
+    `${filingParserQualityCompositionModule}/internal`,
+  )
+)
+  throw new Error(
+    "Filing-parser quality-composition isolation classifier regressed",
+  );
 const validFilingQualityPrecommitmentManifest = {
   name: filingQualityPrecommitmentModule,
   version: "0.1.0",
@@ -4300,6 +4403,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     },
     dependencies: {
       [filingParserCrossEngineExecutionModule]: "workspace:*",
+      [filingParserQualityCompositionModule]: "workspace:*",
       [filingParserNormalizationExecutionModule]: "workspace:*",
     },
   };
@@ -4383,6 +4487,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     "node:util",
     "vitest",
     filingParserCrossEngineExecutionModule,
+    filingParserQualityCompositionModule,
     filingParserNormalizationExecutionModule,
     `${filingParserNormalizationExecutionModule}/test`,
   ]);
@@ -4627,6 +4732,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
   const externalAllow = new Set([
     ...core,
     ...acceptance,
+    ...filingParserQualityCompositionPackagePaths,
     "scripts/verify-boundaries.ts",
     "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -4664,6 +4770,146 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     if (cycle2kExternalCompositionViolation(path, content, externalAllow))
       found.push(`${path}: external Cycle 2k composition is forbidden`);
   }
+  return found;
+}
+
+async function filingParserQualityCompositionBoundaryViolations(): Promise<
+  string[]
+> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) =>
+      path.startsWith(filingParserQualityCompositionPackagePrefix),
+    )
+    .sort();
+  if (
+    JSON.stringify(actualTree) !==
+    JSON.stringify(filingParserQualityCompositionPackagePaths)
+  )
+    found.push(
+      `${filingParserQualityCompositionPackagePrefix}: Cycle 2n package tree must remain the exact manifest, tsconfig, core, index, builder, and two tests`,
+    );
+
+  const manifestPath = `${filingParserQualityCompositionPackagePrefix}package.json`;
+  const manifest = await cycle2kJson(manifestPath, found);
+  const expectedManifest = {
+    name: filingParserQualityCompositionModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      [filingParserCrossEngineExecutionModule]: "workspace:*",
+      [filingQualityMeasurementModule]: "workspace:*",
+      [filingQualityPrecommitmentModule]: "workspace:*",
+    },
+  };
+  if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest))
+    found.push("Cycle 2n quality-composition manifest must remain exact");
+
+  const tsconfigPath = `${filingParserQualityCompositionPackagePrefix}tsconfig.json`;
+  const tsconfig = await cycle2kJson(tsconfigPath, found);
+  const expectedTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts"],
+  };
+  if (JSON.stringify(tsconfig) !== JSON.stringify(expectedTsconfig))
+    found.push("Cycle 2n quality-composition tsconfig must remain exact");
+
+  const allowedModulesByPath = new Map<string, ReadonlySet<string>>([
+    [
+      filingParserQualityCompositionProductionPath,
+      new Set([
+        "node:crypto",
+        "node:util",
+        filingParserCrossEngineExecutionModule,
+        filingQualityMeasurementModule,
+        filingQualityPrecommitmentModule,
+      ]),
+    ],
+    [
+      filingParserQualityCompositionIndexPath,
+      new Set(["./filing-parser-quality-composition"]),
+    ],
+    [
+      filingParserQualityCompositionBuilderPath,
+      new Set([
+        "node:crypto",
+        filingParserCrossEngineExecutionModule,
+        filingQualityMeasurementModule,
+      ]),
+    ],
+    [
+      filingParserQualityCompositionUnitTestPath,
+      new Set([
+        "node:crypto",
+        "vitest",
+        "./filing-parser-quality-composition",
+        "./test-filing-parser-quality-composition-builder",
+      ]),
+    ],
+    [
+      filingParserQualityCompositionSecurityTestPath,
+      new Set([
+        "vitest",
+        filingParserCrossEngineExecutionModule,
+        "./filing-parser-quality-composition",
+        "./index",
+        "./test-filing-parser-quality-composition-builder",
+      ]),
+    ],
+  ]);
+  for (const path of actualTree.filter((entry) => entry.endsWith(".ts"))) {
+    const content = await cycle2kText(path, found);
+    const modules = collectModuleSpecifiers(content);
+    const allowedModules = allowedModulesByPath.get(path);
+    if (allowedModules === undefined) {
+      found.push(`${path}: unclassified Cycle 2n source`);
+      continue;
+    }
+    if (
+      new Set(modules).size !== allowedModules.size ||
+      [...allowedModules].some((module) => !modules.includes(module))
+    )
+      found.push(`${path}: Cycle 2n imports must remain exact`);
+    for (const module of modules)
+      if (!allowedModules.has(module))
+        found.push(`${path}: unreviewed Cycle 2n import ${module}`);
+    if (
+      /\b(?:import|require)\s*\(/u.test(content) ||
+      /\b(?:eval|Function)\s*\(/u.test(content)
+    )
+      found.push(`${path}: dynamic loading or evaluation is forbidden`);
+  }
+  const index = await cycle2kText(
+    filingParserQualityCompositionIndexPath,
+    found,
+  );
+  const indexSource = ts.createSourceFile(
+    filingParserQualityCompositionIndexPath,
+    index,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const indexDeclaration = indexSource.statements[0];
+  if (
+    indexSource.statements.length !== 1 ||
+    indexDeclaration === undefined ||
+    !isExactNamedReExportDeclaration(
+      indexDeclaration,
+      "./filing-parser-quality-composition",
+      filingParserQualityCompositionPublicExports,
+    )
+  )
+    found.push("Cycle 2n quality-composition public index must remain exact");
   return found;
 }
 
@@ -5055,6 +5301,7 @@ function inspectDependencies(path: string, manifest: unknown): void {
   if (
     !path.startsWith(filingQualityMeasurementPackagePrefix) &&
     path !== `${filingQualityPrecommitmentPackagePrefix}package.json` &&
+    path !== `${filingParserQualityCompositionPackagePrefix}package.json` &&
     hasFilingQualityMeasurementDependency(manifest, path)
   )
     violations.push(
@@ -5068,10 +5315,20 @@ function inspectDependencies(path: string, manifest: unknown): void {
   }
   if (
     !path.startsWith(filingQualityPrecommitmentPackagePrefix) &&
+    path !== `${filingParserQualityCompositionPackagePrefix}package.json` &&
     hasFilingQualityPrecommitmentDependency(manifest, path)
   )
     violations.push(
       `${path}: synthetic filing-quality precommitment must not be composed into another package`,
+    );
+  if (
+    path !== `${filingParserQualityCompositionPackagePrefix}package.json` &&
+    path !==
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json` &&
+    hasFilingParserQualityCompositionDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: Cycle 2n filing-parser quality composition must remain limited to its exact acceptance package`,
     );
   if (path === "packages/filing-payload-custody/package.json") {
     const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
@@ -5950,12 +6207,25 @@ function inspectCompositionBoundary(path: string, content: string): void {
     violations.push(`${path}: ${filingQualityPrecommitmentViolation}`);
   if (
     !path.startsWith(filingQualityPrecommitmentPackagePrefix) &&
-    moduleSpecifiers.some((specifier) =>
-      referencesFilingQualityPrecommitmentPath(path, specifier),
+    moduleSpecifiers.some(
+      (specifier) =>
+        referencesFilingQualityPrecommitmentPath(path, specifier) &&
+        !isAllowedFilingQualityPrecommitmentExternalImport(path, specifier),
     )
   )
     violations.push(
       `${path}: synthetic filing-quality precommitment must remain package-isolated`,
+    );
+  if (
+    !path.startsWith(filingParserQualityCompositionPackagePrefix) &&
+    moduleSpecifiers.some(
+      (specifier) =>
+        referencesFilingParserQualityCompositionPath(path, specifier) &&
+        !isAllowedFilingParserQualityCompositionExternalImport(path, specifier),
+    )
+  )
+    violations.push(
+      `${path}: Cycle 2n filing-parser quality composition must remain package-isolated`,
     );
   const corpusAdmissionViolation = corpusAdmissionImportViolation(
     path,
@@ -10061,6 +10331,35 @@ function hasFilingQualityPrecommitmentDependency(
   });
 }
 
+function hasFilingParserQualityCompositionDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingParserQualityCompositionModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingParserQualityCompositionModule))
+        return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingParserQualityCompositionPath(manifestPath, pathValue)
+      );
+    });
+  });
+}
+
 function hasFilingPayloadCustodyDependency(
   manifest: unknown,
   manifestPath: string,
@@ -10217,8 +10516,19 @@ function isAllowedFilingQualityMeasurementExternalImport(
 ): boolean {
   return (
     (sourcePath === filingQualityPrecommitmentProductionPath ||
-      sourcePath === filingQualityPrecommitmentBuilderPath) &&
+      sourcePath === filingQualityPrecommitmentBuilderPath ||
+      sourcePath.startsWith(filingParserQualityCompositionSourcePrefix)) &&
     specifier === filingQualityMeasurementModule
+  );
+}
+
+function isAllowedFilingQualityPrecommitmentExternalImport(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  return (
+    sourcePath.startsWith(filingParserQualityCompositionSourcePrefix) &&
+    specifier === filingQualityPrecommitmentModule
   );
 }
 
@@ -10239,6 +10549,37 @@ function referencesFilingQualityPrecommitmentPath(
     resolved === "packages/filing-quality-precommitment" ||
     resolved.startsWith(filingQualityPrecommitmentPackagePrefix) ||
     resolved.includes("/packages/filing-quality-precommitment/")
+  );
+}
+
+function referencesFilingParserQualityCompositionPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingParserQualityCompositionModule ||
+    specifier.startsWith(`${filingParserQualityCompositionModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-parser-quality-composition" ||
+    resolved.startsWith(filingParserQualityCompositionPackagePrefix) ||
+    resolved.includes("/packages/filing-parser-quality-composition/")
+  );
+}
+
+function isAllowedFilingParserQualityCompositionExternalImport(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  return (
+    sourcePath.startsWith(
+      filingParserCrossEngineExecutionAcceptanceSourcePrefix,
+    ) && specifier === filingParserQualityCompositionModule
   );
 }
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+} from "./filing-parser-cross-engine-execution-evidence";
+
+import {
   filingParserCrossEngineExecutionEvidenceReviewOptionsFromArguments,
   filingParserCrossEngineExecutionEvidenceReviewStdout,
 } from "./filing-parser-cross-engine-execution-evidence-review";
@@ -153,5 +160,33 @@ describe("filing parser cross-engine execution evidence review", () => {
     expect(filingParserCrossEngineExecutionEvidenceReviewStdout(review)).toBe(
       `${JSON.stringify(review)}\n`,
     );
+  });
+
+  it("emits the v4 review with the immutable v1 through v3 anchors", () => {
+    const review = {
+      artifactName: "artifact-v4",
+      baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+      evidenceSha256: `sha256:${"a".repeat(64)}` as const,
+      evidenceVersion: 4 as const,
+      historicalV1: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+      historicalV2: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+      historicalV3: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+      repository: "owner/repo",
+      revision: "b".repeat(40),
+      runAttempt: 1,
+      runId: "123",
+      sourceCount: 95,
+      transitionPathCount: 34,
+      verdict: "offline_consistent" as const,
+    };
+    expect(filingParserCrossEngineExecutionEvidenceReviewStdout(review)).toBe(
+      `${JSON.stringify(review)}\n`,
+    );
+    expect(() =>
+      filingParserCrossEngineExecutionEvidenceReviewStdout({
+        ...review,
+        transitionPathCount: 33,
+      }),
+    ).toThrow();
   });
 });

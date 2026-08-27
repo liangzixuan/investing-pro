@@ -21,6 +21,7 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_FAILED_RUN,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
   createFilingParserCrossEngineExecutionEvidenceV2,
   createFilingParserCrossEngineExecutionEvidenceV3,
@@ -46,6 +47,8 @@ import {
   filingParserCrossEngineExecutionGitArguments,
   filingParserCrossEngineExecutionV2ChainAllowed,
   filingParserCrossEngineExecutionV3ChainAllowed,
+  filingParserCrossEngineExecutionV4ChainAllowed,
+  parseFilingParserCrossEngineExecutionEvidenceNulTransition,
   repositoryRelativePathIsContained,
   verifyFilingParserCrossEngineExecutionEvidenceOffline,
 } from "./filing-parser-cross-engine-execution-evidence-verifier";
@@ -65,6 +68,31 @@ afterEach(async () => {
 });
 
 describe("offline cross-engine evidence verifier hardening", () => {
+  it("parses transition output only as alternating NUL-terminated A/M fields", () => {
+    const valid = new TextEncoder().encode(
+      "M\0line\nname.ts\0A\0tab\tname.ts\0",
+    );
+    expect(
+      parseFilingParserCrossEngineExecutionEvidenceNulTransition(valid),
+    ).toEqual([
+      { path: "line\nname.ts", status: "M" },
+      { path: "tab\tname.ts", status: "A" },
+    ]);
+    for (const malformed of [
+      new Uint8Array(),
+      new TextEncoder().encode("M\0path"),
+      new TextEncoder().encode("M\0path\0A\0"),
+      new TextEncoder().encode("M\0\0"),
+      new TextEncoder().encode("D\0path\0"),
+      Uint8Array.of(0xff, 0),
+    ])
+      expect(() =>
+        parseFilingParserCrossEngineExecutionEvidenceNulTransition(malformed),
+      ).toThrow(
+        "Offline filing parser cross-engine execution evidence review failed.",
+      );
+  });
+
   it("reviews a canonical v3 direct-child artifact end to end and rejects local drift", async () => {
     const fixture = await v3RepositoryFixture();
     await expect(
@@ -392,6 +420,55 @@ describe("offline cross-engine evidence verifier hardening", () => {
         filingParserCrossEngineExecutionV3ChainAllowed(
           ...(values as Parameters<
             typeof filingParserCrossEngineExecutionV3ChainAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("requires the exact one-commit v4 direct child of the Cycle 2n baseline", () => {
+    const baseline = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE;
+    const revision = "e".repeat(40);
+    const valid = [
+      baseline,
+      "1",
+      "1",
+      revision,
+      `${revision} ${baseline}`,
+    ] as const;
+    expect(filingParserCrossEngineExecutionV4ChainAllowed(...valid)).toBe(true);
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "a".repeat(40);
+      },
+      (values: string[]) => {
+        values[1] = "2";
+      },
+      (values: string[]) => {
+        values[2] = "2";
+      },
+      (values: string[]) => {
+        values[3] = baseline;
+      },
+      (values: string[]) => {
+        values[3] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[4] = `${revision} ${"a".repeat(40)}`;
+      },
+      (values: string[]) => {
+        values[4] = `${revision} ${baseline} ${baseline}`;
+      },
+      (values: string[]) => {
+        values[4] += " ";
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        filingParserCrossEngineExecutionV4ChainAllowed(
+          ...(values as Parameters<
+            typeof filingParserCrossEngineExecutionV4ChainAllowed
           >),
         ),
       ).toBe(false);

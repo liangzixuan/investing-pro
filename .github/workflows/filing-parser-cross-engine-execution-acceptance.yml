@@ -11,12 +11,15 @@ on:
       - LICENSE_POLICY.md
       - package.json
       - packages/filing-fact-normalization/**
+      - packages/filing-quality-measurement/**
+      - packages/filing-quality-precommitment/**
       - packages/filing-parser/**
       - packages/filing-parser-cross-engine-execution/**
       - packages/filing-parser-cross-engine-execution-acceptance/**
       - packages/filing-parser-normalization-execution/**
       - packages/filing-parser-normalization-execution-acceptance/**
       - packages/filing-parser-normalization-handoff/**
+      - packages/filing-parser-quality-composition/**
       - packages/filing-payload-custody/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -42,9 +45,40 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Classify exact Cycle 2n evidence source before inherited routes
+        id: cycle2n_source
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          exact=false
+          baseline="09e76235b5683427f2dd3201aefa740bb5adb16e"
+          read -r -a topology <<< "$(git rev-list --parents -n 1 HEAD)"
+          if [[ "${#topology[@]}" == "2" ]] && \
+             [[ "${topology[1]}" == "$baseline" ]]; then
+            mapfile -d '' -t actual < <(git diff --name-status --no-renames -z "$baseline" HEAD --)
+            has_exit_matrix=false
+            has_v4_cases=false
+            has_composition_package=false
+            for ((index=1; index<${#actual[@]}; index+=2)); do
+              case "${actual[$index]}" in
+                docs/CYCLE_2N_EXIT_MATRIX.md) has_exit_matrix=true ;;
+                fixtures/synthetic/filing-parser-cross-engine-execution/v4/cases.json) has_v4_cases=true ;;
+                packages/filing-parser-quality-composition/package.json) has_composition_package=true ;;
+              esac
+            done
+            transition_sha256="$(git diff --name-status --no-renames -z "$baseline" HEAD -- | sha256sum | cut -d ' ' -f 1)"
+            if [[ "${#actual[@]}" == "68" ]] && \
+               [[ "$has_exit_matrix" == "true" ]] && \
+               [[ "$has_v4_cases" == "true" ]] && \
+               [[ "$has_composition_package" == "true" ]] && \
+               [[ "$transition_sha256" == "fba65e4ad0f41de9570b7b7f79edd9f4d291337ca76c4e7d9b7b3466e042ad10" ]]; then
+              exact=true
+            fi
+          fi
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
       - name: Classify exact post-evidence legacy bridge
         id: legacy_bridge
-        if: ${{ success() }}
+        if: ${{ success() && steps.cycle2n_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -96,25 +130,31 @@ jobs:
           pnpm --filter @research-cockpit/filing-parser-cross-engine-execution typecheck
           pnpm --filter @research-cockpit/filing-parser-cross-engine-execution test
           pnpm --filter @research-cockpit/filing-parser-cross-engine-execution test:worker
+          pnpm --filter @research-cockpit/filing-quality-measurement typecheck
+          pnpm --filter @research-cockpit/filing-quality-measurement test
+          pnpm --filter @research-cockpit/filing-quality-precommitment typecheck
+          pnpm --filter @research-cockpit/filing-quality-precommitment test
+          pnpm --filter @research-cockpit/filing-parser-quality-composition typecheck
+          pnpm --filter @research-cockpit/filing-parser-quality-composition test
           pnpm --filter @research-cockpit/filing-parser-cross-engine-execution-acceptance typecheck
           pnpm --filter @research-cockpit/filing-parser-cross-engine-execution-acceptance test
           pnpm guardrails:boundaries
           pnpm guardrails:filing-parser-cross-engine-execution-fixtures
       - name: Run cross-engine parser execution acceptance
-        if: ${{ steps.legacy_bridge.outputs.exact != 'true' }}
+        if: ${{ steps.cycle2n_source.outputs.exact == 'true' }}
         env:
           CI: "true"
-          FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v3.json
+          FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v4.json
         run: pnpm filing-parser-cross-engine-execution:acceptance
       - name: Independently review canonical evidence against the exact commit
-        if: ${{ steps.legacy_bridge.outputs.exact != 'true' }}
+        if: ${{ steps.cycle2n_source.outputs.exact == 'true' }}
         shell: bash
         env:
-          EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v3.json
+          EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v4.json
         run: |
           evidence_sha256="sha256:$(sha256sum "$EVIDENCE_PATH" | cut -d ' ' -f 1)"
           pnpm filing-parser-cross-engine-execution:evidence-review -- \
-            --artifact "filing-parser-cross-engine-execution-evidence-v3-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}" \
+            --artifact "filing-parser-cross-engine-execution-evidence-v4-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}" \
             --evidence "$EVIDENCE_PATH" \
             --evidence-sha256 "$evidence_sha256" \
             --repo "$GITHUB_WORKSPACE" \
@@ -122,16 +162,22 @@ jobs:
             --revision "$GITHUB_SHA" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --run-id "$GITHUB_RUN_ID"
-      - name: Record exact post-evidence legacy bridge
-        if: ${{ steps.legacy_bridge.outputs.exact == 'true' }}
+      - name: Record exact legacy bridge or reject an unrecognized route
+        if: ${{ steps.cycle2n_source.outputs.exact != 'true' }}
         run: |
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v3.json"
-          echo "Cycle 2m canonical v3 evidence remains anchored at 5d61868e6075865b32640ddaceb845ac9dbc69f3; no replacement artifact was generated."
+          test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v4.json"
+          if [[ "${{ steps.legacy_bridge.outputs.exact }}" == "true" ]]; then
+            echo "Cycle 2m canonical v3 evidence remains anchored at 5d61868e6075865b32640ddaceb845ac9dbc69f3; no replacement artifact was generated."
+          else
+            echo "Unrecognized evidence source route; refusing to mint or silently skip evidence." >&2
+            exit 1
+          fi
       - name: Upload filing parser cross-engine execution evidence
-        if: ${{ success() && steps.legacy_bridge.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2n_source.outputs.exact == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: filing-parser-cross-engine-execution-evidence-v3-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v3.json
+          name: filing-parser-cross-engine-execution-evidence-v4-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v4.json
           if-no-files-found: error
           retention-days: 30

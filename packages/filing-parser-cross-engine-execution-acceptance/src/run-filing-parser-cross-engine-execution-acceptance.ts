@@ -19,37 +19,44 @@ import {
 import { buildSyntheticFilingParserNormalizationExecutionFixture } from "@research-cockpit/filing-parser-normalization-execution/test";
 
 import {
-  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS,
-  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CLAIM,
-  FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN,
-  createFilingParserCrossEngineDirectExecutionBoundary,
-  type FilingParserCrossEngineDirectExecutionResult,
-  type FilingParserCrossEngineDirectExecutionSuccess,
-} from "@research-cockpit/filing-parser-cross-engine-execution";
+  FILING_PARSER_QUALITY_COMPOSITION_CHECKS,
+  FILING_PARSER_QUALITY_COMPOSITION_CLAIM,
+  FILING_PARSER_QUALITY_COMPOSITION_NOT_PROVEN,
+  FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION,
+  createFilingParserQualityCompositionProtocol,
+  type FilingParserQualityCompositionCommittedResult,
+  type FilingParserQualityCompositionConfiguration,
+  type FilingParserQualityCompositionEvaluatedResult,
+  type FilingParserQualityCompositionQuarantinedResult,
+} from "@research-cockpit/filing-parser-quality-composition";
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
-  createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance,
-  filingParserCrossEngineExecutionV3RequiredSourcePaths,
+  createFilingParserCrossEngineExecutionEvidenceV4ForAcceptance,
+  filingParserCrossEngineExecutionV4RequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
-  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
   type FilingParserCrossEngineExecutionEvidenceTransitionEntry,
-  type FilingParserCrossEngineExecutionEvidenceV3CaseId,
-  type FilingParserCrossEngineExecutionEvidenceV3CaseOutcome,
-  type FilingParserCrossEngineExecutionEvidenceV3Invocation,
+  type FilingParserCrossEngineExecutionEvidenceV4CaseId,
+  type FilingParserCrossEngineExecutionEvidenceV4CaseOutcome,
+  type FilingParserCrossEngineExecutionEvidenceV4Invocation,
+  type FilingParserCrossEngineExecutionEvidenceV4ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceV3ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceValidationStage,
 } from "./filing-parser-cross-engine-execution-evidence";
+import { buildCycle2nFilingParserQualityDocuments } from "./test-filing-parser-cross-engine-execution-evidence-builder";
 
 const PYTHON_BASE_INDEX_DIGEST =
   "sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2" as const;
@@ -66,8 +73,7 @@ const NODE_BASE_IMAGE =
 const PYTHON_ENGINE_ID = "python-3.12-primary-v1";
 const NODE_ENGINE_ID = "node-24-secondary-v1";
 const EVIDENCE_FILE =
-  "research-cockpit-filing-parser-cross-engine-execution-v3.json";
-const UNKNOWN_IMAGE = `sha256:${"0".repeat(64)}` as const;
+  "research-cockpit-filing-parser-cross-engine-execution-v4.json";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const MAX_COMMAND_BYTES = 4_194_304;
@@ -91,13 +97,16 @@ export const NODE_IMAGE_INSPECTION_PROFILE = Object.freeze({
   workingDirectory: "/input" as const,
 });
 
-const V3_VALIDATION_PHASES = Object.freeze([
+const VALIDATION_PHASES = Object.freeze([
   "evidence_validation_root_contract",
   "evidence_validation_timestamps",
   "evidence_validation_claim_tuples",
   "evidence_validation_historical_evidence",
+  "evidence_validation_composition_validation",
   "evidence_validation_direct_execution_validation",
   "evidence_validation_case_outcomes",
+  "evidence_validation_source_bindings",
+  "evidence_validation_quality_bindings",
   "evidence_validation_lifecycle_bindings",
   "evidence_validation_outer_invocation_bindings",
   "evidence_validation_transition",
@@ -109,8 +118,6 @@ const V3_VALIDATION_PHASES = Object.freeze([
   "evidence_validation_tools_contract",
   "evidence_validation_workflow",
   "evidence_validation_canonical_freeze",
-] as const);
-const LEGACY_VALIDATION_PHASES = Object.freeze([
   "evidence_validation_historical_v1",
   "evidence_validation_binding_validation",
   "evidence_validation_tool_docker_client",
@@ -129,20 +136,19 @@ export const ACCEPTANCE_PHASES = Object.freeze([
   "staging",
   "image_build",
   "image_inspection",
-  "direct_setup",
-  "direct_success_first",
-  "direct_success_second",
-  "direct_success_validation",
-  "adversarial_unknown_python_image",
-  "adversarial_pre_aborted_signal",
+  "quality_setup",
+  "quality_success_first",
+  "quality_success_second",
+  "quality_success_validation",
+  "adversarial_declared_reference_digest_mismatch",
+  "adversarial_quality_capability_replay",
+  "adversarial_reference_content_at_commit",
   "adversarial_original_archive_tamper",
   "adversarial_original_amendment_role_swap",
-  "adversarial_identical_archives",
-  "direct_residue",
+  "quality_residue",
   "tool_versions",
   "evidence_assembly",
-  ...V3_VALIDATION_PHASES,
-  ...LEGACY_VALIDATION_PHASES,
+  ...VALIDATION_PHASES,
   "image_removal",
   "evidence_write",
   "cleanup",
@@ -162,6 +168,47 @@ export function filingParserCrossEngineExecutionAcceptanceFailureDiagnostic(
   )
     return `${prefix}${phase}\n`;
   return `${prefix}internal\n`;
+}
+
+export function filingParserCrossEngineExecutionEvidenceV4ValidationPhase(
+  stage: FilingParserCrossEngineExecutionEvidenceV4ValidationStage,
+): AcceptancePhase {
+  switch (stage) {
+    case "root_contract":
+      return "evidence_validation_root_contract";
+    case "timestamps":
+      return "evidence_validation_timestamps";
+    case "claim_tuples":
+      return "evidence_validation_claim_tuples";
+    case "historical_evidence":
+      return "evidence_validation_historical_evidence";
+    case "composition_validation":
+      return "evidence_validation_composition_validation";
+    case "case_outcomes":
+      return "evidence_validation_case_outcomes";
+    case "transition":
+      return "evidence_validation_transition";
+    case "runtime":
+      return "evidence_validation_runtime";
+    case "source_hashes":
+      return "evidence_validation_source_hashes";
+    case "engines":
+      return "evidence_validation_engines";
+    case "source_bindings":
+      return "evidence_validation_source_bindings";
+    case "quality_bindings":
+      return "evidence_validation_quality_bindings";
+    case "fixture_binding":
+      return "evidence_validation_fixture_binding";
+    case "summary":
+      return "evidence_validation_summary";
+    case "tools_contract":
+      return "evidence_validation_tools_contract";
+    case "workflow":
+      return "evidence_validation_workflow";
+    case "canonical_freeze":
+      return "evidence_validation_canonical_freeze";
+  }
 }
 
 export function filingParserCrossEngineExecutionEvidenceV3ValidationPhase(
@@ -313,16 +360,16 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     fail();
 
   markPhase("source_inventory");
-  const transition = await exactCycle2mTransition(revision);
+  const transition = await exactCycle2nTransition(revision);
   const requiredSourcePaths =
-    filingParserCrossEngineExecutionV3RequiredSourcePaths(transition);
+    filingParserCrossEngineExecutionV4RequiredSourcePaths(transition);
   const sourceHashes = await committedSourceHashes(
     revision,
     requiredSourcePaths,
   );
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
-    "fixtures/synthetic/filing-parser-cross-engine-execution/v3/manifest.json",
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v4/manifest.json",
   );
   const pythonSources = implementationSources(
     sourceHashes,
@@ -342,7 +389,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
   const nodeMetadata = await readPinnedImageMetadata("node");
   markPhase("staging");
   const temporaryDirectory = await mkdtemp(
-    join(environment.runnerTemp, "filing-cross-engine-direct-execution-"),
+    join(environment.runnerTemp, "filing-quality-composition-"),
   );
   const pythonImageIdFile = join(temporaryDirectory, "python-image-id.txt");
   const nodeImageIdFile = join(temporaryDirectory, "node-image-id.txt");
@@ -366,92 +413,164 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await verifyBuiltImage(nodeImageId, NODE_IMAGE_INSPECTION_PROFILE);
     await assertZeroResidue();
 
-    markPhase("direct_setup");
-    assertDirectEvidenceConstants();
-    const fixture = buildSyntheticFilingParserNormalizationExecutionFixture();
-    const boundary = createDirectBoundary(
-      pythonImageId,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
+    markPhase("quality_setup");
+    assertQualityCompositionEvidenceConstants();
+    const archives = buildSyntheticFilingParserNormalizationExecutionFixture();
+    const quality = buildCycle2nFilingParserQualityDocuments();
+    const configuration = Object.freeze({
+      nodeSecondary: Object.freeze({
+        engineId: NODE_ENGINE_ID,
+        imageSha256: nodeImageId,
+        implementationSha256: nodeImplementationSha256,
+        role: "node-secondary" as const,
+      }),
+      pythonPrimary: Object.freeze({
+        engineId: PYTHON_ENGINE_ID,
+        imageSha256: pythonImageId,
+        implementationSha256: pythonImplementationSha256,
+        role: "python-primary" as const,
+      }),
+    });
+
+    markPhase("quality_success_first");
+    const firstRun = await runQualityEvaluation(
+      configuration,
+      quality.plan,
+      quality.declaredReferenceSha256,
+      quality.declaredReference,
+      archives.originalArchive,
+      archives.amendmentArchive,
     );
-    markPhase("direct_success_first");
-    const first = await boundary.execute(
-      fixture.originalArchive,
-      fixture.amendmentArchive,
+    markPhase("quality_success_second");
+    const secondRun = await runQualityEvaluation(
+      configuration,
+      quality.plan,
+      quality.declaredReferenceSha256,
+      quality.declaredReference,
+      archives.originalArchive,
+      archives.amendmentArchive,
     );
-    assertDirectAgreed(first);
-    markPhase("direct_success_second");
-    const second = await boundary.execute(
-      fixture.originalArchive,
-      fixture.amendmentArchive,
-    );
-    assertDirectAgreed(second);
-    markPhase("direct_success_validation");
-    const successOutcome = directSuccessOutcome(
-      first,
-      second,
-      fixture.originalArchive,
-      fixture.amendmentArchive,
-      pythonImageId,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
+    markPhase("quality_success_validation");
+    const successOutcome = qualitySuccessOutcome(
+      firstRun.evaluated,
+      secondRun.evaluated,
     );
 
-    markPhase("adversarial_unknown_python_image");
-    const unknownImage = await createDirectBoundary(
-      UNKNOWN_IMAGE,
-      nodeImageId,
-      pythonImplementationSha256,
-      nodeImplementationSha256,
-    ).execute(fixture.originalArchive, fixture.amendmentArchive);
-    const unknownImageOutcome = directQuarantineOutcome(
-      "unknown-python-image",
-      unknownImage,
+    markPhase("adversarial_declared_reference_digest_mismatch");
+    const mismatchProtocol =
+      createFilingParserQualityCompositionProtocol(configuration);
+    const mismatchCommitted = await mismatchProtocol.commit(
+      quality.plan,
+      quality.declaredReferenceSha256,
+      archives.originalArchive,
+      archives.amendmentArchive,
     );
-    markPhase("adversarial_pre_aborted_signal");
-    const abortController = new AbortController();
-    abortController.abort();
-    const preAborted = await boundary.execute(
-      fixture.originalArchive,
-      fixture.amendmentArchive,
-      Object.freeze({ signal: abortController.signal }),
+    assertQualityCommitted(mismatchCommitted);
+    const mismatchedReference = Uint8Array.from(quality.declaredReference);
+    const mismatchedIndex = mismatchedReference.length - 1;
+    mismatchedReference[mismatchedIndex] =
+      (mismatchedReference[mismatchedIndex] ?? 0) ^ 0xff;
+    const mismatchResult = mismatchProtocol.reveal(
+      mismatchCommitted.capability,
+      mismatchedReference,
     );
-    const preAbortedOutcome = directQuarantineOutcome(
-      "pre-aborted-signal",
-      preAborted,
+    const mismatchOutcome = qualityQuarantineOutcome(
+      "declared-reference-digest-mismatch",
+      mismatchResult,
     );
+
+    markPhase("adversarial_quality_capability_replay");
+    const replayProtocol =
+      createFilingParserQualityCompositionProtocol(configuration);
+    const replayCommitted = await replayProtocol.commit(
+      quality.plan,
+      quality.declaredReferenceSha256,
+      archives.originalArchive,
+      archives.amendmentArchive,
+    );
+    assertQualityCommitted(replayCommitted);
+    const replayFirst = replayProtocol.reveal(
+      replayCommitted.capability,
+      quality.declaredReference,
+    );
+    assertQualityEvaluated(replayFirst);
+    const replayResult = replayProtocol.reveal(
+      replayCommitted.capability,
+      quality.declaredReference,
+    );
+    const replayOutcome = qualityQuarantineOutcome(
+      "quality-capability-replay",
+      replayResult,
+    );
+
+    markPhase("adversarial_reference_content_at_commit");
+    const contentAtCommitProtocol =
+      createFilingParserQualityCompositionProtocol(configuration);
+    const commitWithUnexpectedArguments: (
+      ...values: readonly unknown[]
+    ) => ReturnType<typeof contentAtCommitProtocol.commit> =
+      contentAtCommitProtocol.commit;
+    const contentAtCommit = await Reflect.apply(
+      commitWithUnexpectedArguments,
+      contentAtCommitProtocol,
+      [
+        quality.plan,
+        quality.declaredReferenceSha256,
+        archives.originalArchive,
+        archives.amendmentArchive,
+        quality.declaredReference,
+      ],
+    );
+    const contentAtCommitOutcome = qualityQuarantineOutcome(
+      "reference-content-at-commit",
+      contentAtCommit,
+    );
+
     markPhase("adversarial_original_archive_tamper");
-    const tamperedOriginal = Uint8Array.from(fixture.originalArchive);
+    const tamperedOriginal = Uint8Array.from(archives.originalArchive);
     tamperedOriginal[0] = (tamperedOriginal[0] ?? 0) ^ 0xff;
-    const tampered = await boundary.execute(
+    const tampered = await createFilingParserQualityCompositionProtocol(
+      configuration,
+    ).commit(
+      quality.plan,
+      quality.declaredReferenceSha256,
       tamperedOriginal,
-      fixture.amendmentArchive,
+      archives.amendmentArchive,
     );
-    const tamperedOutcome = directQuarantineOutcome(
+    const tamperedOutcome = qualityQuarantineOutcome(
       "original-archive-tamper",
       tampered,
     );
+
     markPhase("adversarial_original_amendment_role_swap");
-    const swapped = await boundary.execute(
-      fixture.amendmentArchive,
-      fixture.originalArchive,
+    const swapped = await createFilingParserQualityCompositionProtocol(
+      configuration,
+    ).commit(
+      quality.plan,
+      quality.declaredReferenceSha256,
+      archives.amendmentArchive,
+      archives.originalArchive,
     );
-    const swappedOutcome = directQuarantineOutcome(
+    const swappedOutcome = qualityQuarantineOutcome(
       "original-amendment-role-swap",
       swapped,
     );
-    markPhase("adversarial_identical_archives");
-    const identical = await boundary.execute(
-      fixture.originalArchive,
-      fixture.originalArchive,
-    );
-    const identicalOutcome = directQuarantineOutcome(
-      "identical-archives",
-      identical,
-    );
-    markPhase("direct_residue");
+
+    if (
+      [
+        firstRun.committed,
+        secondRun.committed,
+        mismatchCommitted,
+        replayCommitted,
+      ].some(
+        (result) =>
+          result.audit.directExecutionCount !== 1 ||
+          result.audit.documentObservationCount !== 2 ||
+          result.audit.emittedFactCount !== 20,
+      )
+    )
+      fail();
+    markPhase("quality_residue");
     await assertZeroResidue();
 
     markPhase("tool_versions");
@@ -460,27 +579,28 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     markPhase("evidence_assembly");
     const outcomes = Object.freeze([
       successOutcome,
-      unknownImageOutcome,
-      preAbortedOutcome,
+      mismatchOutcome,
+      replayOutcome,
+      contentAtCommitOutcome,
       tamperedOutcome,
       swappedOutcome,
-      identicalOutcome,
     ] as const);
     const evidence =
-      createFilingParserCrossEngineExecutionEvidenceV3ForAcceptance(
+      createFilingParserCrossEngineExecutionEvidenceV4ForAcceptance(
         {
-          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
+          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
           caseOutcomes: outcomes,
-          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS,
-          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM,
+          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS,
+          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM,
           completedAt,
-          directExecutionValidation: Object.freeze({
+          compositionValidation: Object.freeze({
             callerInjectionSurface: "none" as const,
-            configurationSnapshot: "intrinsic_closed_exact" as const,
-            lifecycleBinding: "recomputed_exact" as const,
-            outerInvocationBinding: "recomputed_exact" as const,
-            processExecution: "package_owned_bounded_shell_false" as const,
-            signer: "internally_generated_ephemeral_ed25519" as const,
+            candidatePopulation:
+              "exact_two_observed_ninety_eight_omitted" as const,
+            outerBindings: "recomputed_exact" as const,
+            precommitment: "one_shot_reference_digest_only" as const,
+            qualityEvaluation: "fixed_denominator_evaluated_not_met" as const,
+            sourceExecution: "cycle2m_source_owned_direct_docker" as const,
           }),
           engines: Object.freeze([
             Object.freeze({
@@ -508,53 +628,41 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
               runtimeVersion: "Node v24.19.0",
             }),
           ] as const),
-          evidenceVersion: 3 as const,
+          evidenceVersion: 4 as const,
           fixtureManifestSha256,
           historicalV1:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
           historicalV2:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+          historicalV3:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
           notProven:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
           repository: environment.repository,
           revision,
           runtime: Object.freeze({
             capabilitiesDropped: Object.freeze(["ALL"] as const),
-            containerControlMilliseconds: 5_000 as const,
-            containerUser: "65532:65532" as const,
-            cpuCount: 0.5 as const,
+            compositionCommitCount: 4 as const,
             engineCount: 2 as const,
-            inputMount: "/input/filing.zip:ro" as const,
-            memoryBytes: 134_217_728 as const,
             networkMode: "none" as const,
-            noNewPrivileges: true as const,
-            noPublishedPorts: true as const,
-            openFiles: 64 as const,
-            pids: 32 as const,
-            processTerminationMilliseconds: 250 as const,
             readOnlyRootFilesystem: true as const,
-            signerMilliseconds: 5_000 as const,
-            stderrLimitBytes: 4_096 as const,
-            stdoutLimitBytes: 262_144 as const,
-            successfulContainerCount: 8 as const,
-            successfulInvocationCount: 2 as const,
-            successfulLifecycleReceiptCount: 8 as const,
-            temporaryFilesystem:
-              "/tmp:rw,noexec,nosuid,nodev,size=8388608" as const,
-            uniqueContainerIdSha256Count: 8 as const,
-            wallClockMilliseconds: 5_000 as const,
+            successfulEvaluationCount: 3 as const,
+            successfulLifecycleReceiptCount: 16 as const,
+            successfulTwoDocumentObservationCount: 4 as const,
             zeroResidue: true as const,
           }),
           schemaVersion:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_SCHEMA_VERSION,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION,
           sourceHashes,
           startedAt,
           status: "passed" as const,
           summary: Object.freeze({
-            agreed: 1 as const,
-            invocationBindingsDistinct: true as const,
+            candidateCommitmentsStable: true as const,
+            candidateObservationsStable: true as const,
+            compositionBindingsDistinct: true as const,
+            evaluatedNotMet: 1 as const,
             lifecycleBindingsDistinct: true as const,
-            normalizationStable: true as const,
+            measurementStable: true as const,
             quarantined: 5 as const,
             total: 6 as const,
           }),
@@ -565,19 +673,19 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
             pathCount: transition.length,
           }),
           workflow: Object.freeze({
-            artifactName: `filing-parser-cross-engine-execution-evidence-v3-${revision}-${environment.runAttempt}`,
+            artifactName: `filing-parser-cross-engine-execution-evidence-v4-${revision}-${environment.runAttempt}`,
             event: environment.event,
             job: "acceptance" as const,
             ref: environment.ref,
             runAttempt: environment.runAttempt,
             runId: environment.runId,
             workflowName:
-              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW,
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
           }),
         },
         (stage) => {
           markPhase(
-            filingParserCrossEngineExecutionEvidenceV3ValidationPhase(stage),
+            filingParserCrossEngineExecutionEvidenceV4ValidationPhase(stage),
           );
         },
       );
@@ -592,7 +700,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await assertPathAbsent(temporaryEvidencePath);
     await writeFile(
       temporaryEvidencePath,
-      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence),
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4(evidence),
       { encoding: "utf8", flag: "wx", mode: 0o600 },
     );
     await assertPathAbsent(environment.evidencePath);
@@ -629,37 +737,16 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
   }
 }
 
-function createDirectBoundary(
-  pythonImageSha256: `sha256:${string}`,
-  nodeImageSha256: `sha256:${string}`,
-  pythonImplementationSha256: `sha256:${string}`,
-  nodeImplementationSha256: `sha256:${string}`,
-) {
-  return createFilingParserCrossEngineDirectExecutionBoundary({
-    nodeSecondary: Object.freeze({
-      engineId: NODE_ENGINE_ID,
-      imageSha256: nodeImageSha256,
-      implementationSha256: nodeImplementationSha256,
-      role: "node-secondary" as const,
-    }),
-    pythonPrimary: Object.freeze({
-      engineId: PYTHON_ENGINE_ID,
-      imageSha256: pythonImageSha256,
-      implementationSha256: pythonImplementationSha256,
-      role: "python-primary" as const,
-    }),
-  });
-}
-
-function assertDirectEvidenceConstants(): void {
+function assertQualityCompositionEvidenceConstants(): void {
   if (
-    FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CLAIM !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM ||
-    canonicalJson(FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_CHECKS) !==
-      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CHECKS) ||
-    canonicalJson(FILING_PARSER_CROSS_ENGINE_DIRECT_EXECUTION_NOT_PROVEN) !==
+    FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION !== "1.0.0" ||
+    FILING_PARSER_QUALITY_COMPOSITION_CLAIM !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM ||
+    canonicalJson(FILING_PARSER_QUALITY_COMPOSITION_CHECKS) !==
+      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS) ||
+    canonicalJson(FILING_PARSER_QUALITY_COMPOSITION_NOT_PROVEN) !==
       canonicalJson(
-        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_NOT_PROVEN,
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
       ) ||
     FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.containerControlMilliseconds !==
       5_000 ||
@@ -674,156 +761,318 @@ function assertDirectEvidenceConstants(): void {
     fail();
 }
 
-function assertDirectAgreed(
-  result: FilingParserCrossEngineDirectExecutionResult,
-): asserts result is FilingParserCrossEngineDirectExecutionSuccess {
+async function runQualityEvaluation(
+  configuration: FilingParserQualityCompositionConfiguration,
+  plan: Uint8Array,
+  declaredReferenceSha256: `sha256:${string}`,
+  declaredReference: Uint8Array,
+  originalArchive: Uint8Array,
+  amendmentArchive: Uint8Array,
+): Promise<{
+  readonly committed: FilingParserQualityCompositionCommittedResult;
+  readonly evaluated: FilingParserQualityCompositionEvaluatedResult;
+}> {
+  const protocol = createFilingParserQualityCompositionProtocol(configuration);
+  const committed = await protocol.commit(
+    plan,
+    declaredReferenceSha256,
+    originalArchive,
+    amendmentArchive,
+  );
+  assertQualityCommitted(committed);
+  const evaluated = protocol.reveal(committed.capability, declaredReference);
+  assertQualityEvaluated(evaluated);
+  return Object.freeze({ committed, evaluated });
+}
+
+function assertQualityCommitted(
+  result:
+    | FilingParserQualityCompositionCommittedResult
+    | FilingParserQualityCompositionQuarantinedResult,
+): asserts result is FilingParserQualityCompositionCommittedResult {
   if (
-    result.status !== "agreed" ||
-    result.claim !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_CLAIM ||
-    result.normalization.factVersions.length !== 20 ||
-    result.normalization.lineage.length !== 10 ||
-    result.provenance.engineLifecycles[0].role !== "python-primary" ||
-    result.provenance.engineLifecycles[1].role !== "node-secondary" ||
-    result.provenance.engineLifecycles.some(
-      ({ lifecycles }) => lifecycles.length !== 2,
-    )
+    result.status !== "candidate_committed" ||
+    result.claim !== FILING_PARSER_QUALITY_COMPOSITION_CLAIM ||
+    result.schemaVersion !== FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION ||
+    result.synthetic !== true ||
+    Object.keys(result).sort().join("|") !==
+      "audit|candidateCommitmentSha256|candidateObservationsSha256|capability|claim|compositionCommitmentSha256|declaredReferenceSha256|planSha256|projectionReceipts|schemaVersion|sourceExecution|status|synthetic" ||
+    result.audit.directExecutionCount !== 1 ||
+    result.audit.documentObservationCount !== 2 ||
+    result.audit.emittedFactCount !== 20 ||
+    result.audit.outcome !== "candidate_committed" ||
+    !Object.isFrozen(result) ||
+    !Object.isFrozen(result.audit) ||
+    !Object.isFrozen(result.capability) ||
+    Object.getPrototypeOf(result.capability) !== null ||
+    !Object.isFrozen(result.projectionReceipts) ||
+    result.projectionReceipts.some(
+      (receipt) =>
+        !Object.isFrozen(receipt) ||
+        !Object.isFrozen(receipt.sourceLifecycleBindingSha256s),
+    ) ||
+    !Object.isFrozen(result.sourceExecution) ||
+    !Object.isFrozen(result.sourceExecution.lifecycleBindingSha256s) ||
+    result.projectionReceipts.length !== 2 ||
+    result.sourceExecution.lifecycleBindingSha256s.length !== 4 ||
+    [
+      result.candidateCommitmentSha256,
+      result.candidateObservationsSha256,
+      result.compositionCommitmentSha256,
+      result.declaredReferenceSha256,
+      result.planSha256,
+      result.sourceExecution.agreementSha256,
+      result.sourceExecution.ephemeralPublicKeySpkiSha256,
+      result.sourceExecution.invocationBindingSha256,
+      result.sourceExecution.normalizationSha256,
+      ...result.sourceExecution.lifecycleBindingSha256s,
+      ...result.projectionReceipts.flatMap((receipt) => [
+        receipt.observationSha256,
+        receipt.projectionBindingSha256,
+        receipt.qualityDocumentSha256,
+        receipt.sourceArchiveSha256,
+        receipt.sourceDocumentSha256,
+        ...receipt.sourceLifecycleBindingSha256s,
+      ]),
+    ].some((value) => !HASH.test(value))
   )
     fail();
 }
 
-function directSuccessOutcome(
-  first: FilingParserCrossEngineDirectExecutionSuccess,
-  second: FilingParserCrossEngineDirectExecutionSuccess,
-  originalArchive: Uint8Array,
-  amendmentArchive: Uint8Array,
-  pythonImageSha256: `sha256:${string}`,
-  nodeImageSha256: `sha256:${string}`,
-  pythonImplementationSha256: `sha256:${string}`,
-  nodeImplementationSha256: `sha256:${string}`,
-): FilingParserCrossEngineExecutionEvidenceV3CaseOutcome {
-  const invocations = Object.freeze([
-    directInvocation(first),
-    directInvocation(second),
-  ] as const);
-  const receipts = invocations.flatMap(
-    (invocation) => invocation.lifecycleReceipts,
-  );
-  const containerIds = new Set(
-    receipts.map((receipt) => receipt.containerIdSha256),
-  );
-  const lifecycleBindings = new Set(
-    receipts.map((receipt) => receipt.lifecycleBindingSha256),
-  );
+function assertQualityEvaluated(
+  result:
+    | FilingParserQualityCompositionEvaluatedResult
+    | FilingParserQualityCompositionQuarantinedResult,
+): asserts result is FilingParserQualityCompositionEvaluatedResult {
   if (
-    canonicalJson(first.normalization) !==
-      canonicalJson(second.normalization) ||
-    first.provenance.normalizationSha256 !==
-      second.provenance.normalizationSha256 ||
-    first.provenance.ephemeralPublicKeySpkiSha256 ===
-      second.provenance.ephemeralPublicKeySpkiSha256 ||
-    first.provenance.invocationBindingSha256 ===
-      second.provenance.invocationBindingSha256 ||
-    invocations[0].resultSha256 === invocations[1].resultSha256 ||
-    containerIds.size !== 8 ||
-    lifecycleBindings.size !== 8
+    result.status !== "evaluated" ||
+    result.claim !== FILING_PARSER_QUALITY_COMPOSITION_CLAIM ||
+    result.schemaVersion !== FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION ||
+    result.synthetic !== true ||
+    Object.keys(result).sort().join("|") !==
+      "candidateCommitmentSha256|candidateObservationsSha256|claim|compositionCommitmentSha256|declaredReferenceSha256|evaluationBindingSha256|measurement|planSha256|projectionReceipts|qualityEvaluationBindingSha256|schemaVersion|sourceExecution|status|synthetic" ||
+    !Object.isFrozen(result) ||
+    !Object.isFrozen(result.measurement) ||
+    !Object.isFrozen(result.projectionReceipts) ||
+    result.projectionReceipts.some(
+      (receipt) =>
+        !Object.isFrozen(receipt) ||
+        !Object.isFrozen(receipt.sourceLifecycleBindingSha256s),
+    ) ||
+    !Object.isFrozen(result.sourceExecution) ||
+    !Object.isFrozen(result.sourceExecution.lifecycleBindingSha256s) ||
+    !exactQualityMeasurement(result) ||
+    [
+      result.candidateCommitmentSha256,
+      result.candidateObservationsSha256,
+      result.compositionCommitmentSha256,
+      result.declaredReferenceSha256,
+      result.evaluationBindingSha256,
+      result.planSha256,
+      result.qualityEvaluationBindingSha256,
+      result.measurement.evaluationSha256,
+    ].some((value) => !HASH.test(value))
   )
     fail();
-  for (const success of [first, second]) {
-    const agreement = success.provenance.agreement;
+}
+
+function exactQualityMeasurement(
+  result: FilingParserQualityCompositionEvaluatedResult,
+): boolean {
+  return (
+    result.measurement.status === "evaluated" &&
+    result.measurement.synthetic === true &&
+    result.measurement.syntheticPilotThresholdOutcome === "not_met" &&
+    canonicalJson(result.measurement.counts) ===
+      canonicalJson({
+        conceptMismatchCount: 0,
+        criticalAssertionCount: 2_000,
+        dimensionMismatchCount: 0,
+        documentCount: 100,
+        emittedFactCount: 20,
+        expectedFactCount: 1_000,
+        falseNegativeFactCount: 980,
+        falsePositiveFactCount: 0,
+        missingDocumentCount: 98,
+        missingFactCount: 980,
+        periodMismatchCount: 0,
+        quarantinedDocumentCount: 0,
+        semanticAssertionPassCount: 20,
+        silentCriticalFailureCount: 1_960,
+        succeededDocumentCount: 2,
+        truePositiveFactCount: 20,
+        unitMismatchCount: 0,
+        unitPeriodAssertionPassCount: 20,
+        valueMismatchCount: 0,
+      }) &&
+    canonicalJson(result.measurement.metrics) ===
+      canonicalJson({
+        documentSuccess: qualityRatio(2, 100, false, 95, "minimum"),
+        factPrecision: qualityRatio(20, 20, true, 99, "minimum"),
+        factRecall: qualityRatio(20, 1_000, false, 99, "minimum"),
+        quarantineRate: qualityRatio(0, 100, true, 5, "maximum"),
+        silentCriticalFailure: {
+          count: 1_960,
+          denominator: 2_000,
+          maximumCount: 0,
+          met: false,
+        },
+        unitDateTolerance: {
+          dateToleranceDays: 0,
+          periodMismatchCount: 0,
+          unitMismatchCount: 0,
+          unitTolerancePolicy: "exact_canonical_unit.v1",
+        },
+      }) &&
+    canonicalJson(result.measurement.failedThresholds) ===
+      canonicalJson([
+        "document_success_minimum",
+        "fact_recall_minimum",
+        "maximum_silent_critical_failures",
+      ])
+  );
+}
+
+function qualityRatio(
+  numerator: number,
+  denominator: number,
+  met: boolean,
+  thresholdNumerator: number,
+  thresholdKind: "maximum" | "minimum",
+): object {
+  return {
+    defined: true,
+    denominator,
+    met,
+    numerator,
+    threshold: { denominator: 100, numerator: thresholdNumerator },
+    thresholdKind,
+  };
+}
+
+function qualitySuccessOutcome(
+  first: FilingParserQualityCompositionEvaluatedResult,
+  second: FilingParserQualityCompositionEvaluatedResult,
+): FilingParserCrossEngineExecutionEvidenceV4CaseOutcome {
+  assertQualityEvaluated(first);
+  assertQualityEvaluated(second);
+  const invocations = Object.freeze([
+    qualityInvocation(first),
+    qualityInvocation(second),
+  ] as const);
+  if (
+    first.candidateCommitmentSha256 !== second.candidateCommitmentSha256 ||
+    first.candidateObservationsSha256 !== second.candidateObservationsSha256 ||
+    first.measurement.evaluationSha256 !==
+      second.measurement.evaluationSha256 ||
+    first.qualityEvaluationBindingSha256 !==
+      second.qualityEvaluationBindingSha256 ||
+    first.planSha256 !== second.planSha256 ||
+    first.declaredReferenceSha256 !== second.declaredReferenceSha256 ||
+    canonicalJson(first.measurement) !== canonicalJson(second.measurement) ||
+    first.sourceExecution.normalizationSha256 !==
+      second.sourceExecution.normalizationSha256 ||
+    first.sourceExecution.agreementSha256 ===
+      second.sourceExecution.agreementSha256 ||
+    first.sourceExecution.ephemeralPublicKeySpkiSha256 ===
+      second.sourceExecution.ephemeralPublicKeySpkiSha256 ||
+    first.sourceExecution.invocationBindingSha256 ===
+      second.sourceExecution.invocationBindingSha256 ||
+    first.compositionCommitmentSha256 === second.compositionCommitmentSha256 ||
+    first.evaluationBindingSha256 === second.evaluationBindingSha256 ||
+    new Set([
+      ...first.sourceExecution.lifecycleBindingSha256s,
+      ...second.sourceExecution.lifecycleBindingSha256s,
+    ]).size !== 8
+  )
+    fail();
+  for (let index = 0; index < 2; index += 1) {
+    const left = first.projectionReceipts[index];
+    const right = second.projectionReceipts[index];
     if (
-      agreement.originalArchiveSha256 !== sha256(originalArchive) ||
-      agreement.amendmentArchiveSha256 !== sha256(amendmentArchive) ||
-      agreement.engines[0]?.role !== "python-primary" ||
-      agreement.engines[0].imageSha256 !== pythonImageSha256 ||
-      agreement.engines[0].implementationSha256 !==
-        pythonImplementationSha256 ||
-      agreement.engines[1]?.role !== "node-secondary" ||
-      agreement.engines[1].imageSha256 !== nodeImageSha256 ||
-      agreement.engines[1].implementationSha256 !== nodeImplementationSha256
+      left === undefined ||
+      right === undefined ||
+      left.documentRole !== right.documentRole ||
+      left.factCount !== 10 ||
+      left.factCount !== right.factCount ||
+      left.qualityDocumentId !== right.qualityDocumentId ||
+      left.qualityDocumentSha256 !== right.qualityDocumentSha256 ||
+      left.observationSha256 !== right.observationSha256 ||
+      left.sourceArchiveSha256 !== right.sourceArchiveSha256 ||
+      left.sourceDocumentSha256 !== right.sourceDocumentSha256 ||
+      left.projectionBindingSha256 === right.projectionBindingSha256
     )
       fail();
   }
   return Object.freeze({
-    amendmentArchiveSha256: sha256(amendmentArchive),
-    caseId: "same-input-direct-docker-distinct-lifecycle-invocations" as const,
-    expectedStatus: "agreed" as const,
-    factVersionCount: 20 as const,
-    invocationBindingsDistinct: true,
+    candidateCommitmentsStable: true,
+    candidateObservationsStable: true,
+    caseId:
+      "same-input-quality-evaluation-distinct-lifecycle-invocations" as const,
+    compositionBindingsDistinct: true,
+    expectedStatus: "evaluated_not_met" as const,
     invocations,
     lifecycleBindingsDistinct: true,
-    lineageCount: 10 as const,
-    normalizationStable: true,
-    observedStatus: "agreed" as const,
-    originalArchiveSha256: sha256(originalArchive),
+    measurementStable: true,
+    observedStatus: "evaluated_not_met" as const,
   });
 }
 
-function directInvocation(
-  success: FilingParserCrossEngineDirectExecutionSuccess,
-): FilingParserCrossEngineExecutionEvidenceV3Invocation {
-  const agreement = success.provenance.agreement;
-  const python = success.provenance.engineLifecycles[0];
-  const node = success.provenance.engineLifecycles[1];
-  if (
-    python.role !== "python-primary" ||
-    node.role !== "node-secondary" ||
-    agreement.engines[0]?.role !== "python-primary" ||
-    agreement.engines[1]?.role !== "node-secondary"
-  )
-    fail();
+function qualityInvocation(
+  result: FilingParserQualityCompositionEvaluatedResult,
+): FilingParserCrossEngineExecutionEvidenceV4Invocation {
   return Object.freeze({
-    agreementEngines: Object.freeze([
-      Object.freeze({
-        ...agreement.engines[0],
-        role: "python-primary" as const,
-      }),
-      Object.freeze({
-        ...agreement.engines[1],
-        role: "node-secondary" as const,
-      }),
-    ] as const),
-    agreementSha256: agreement.agreementSha256,
-    executionMode: success.provenance.executionMode,
-    invocationBindingSha256: success.provenance.invocationBindingSha256,
-    keyId: success.provenance.keyId,
-    lifecycleReceipts: Object.freeze([
-      Object.freeze({ ...python.lifecycles[0] }),
-      Object.freeze({ ...python.lifecycles[1] }),
-      Object.freeze({ ...node.lifecycles[0] }),
-      Object.freeze({ ...node.lifecycles[1] }),
-    ] as const),
-    normalizationSha256: success.provenance.normalizationSha256,
-    publicKeySpkiSha256: success.provenance.ephemeralPublicKeySpkiSha256,
-    resultSha256: sha256(text(canonicalJson(success))),
-  });
+    candidateCommitmentSha256: result.candidateCommitmentSha256,
+    candidateObservationsSha256: result.candidateObservationsSha256,
+    compositionCommitmentSha256: result.compositionCommitmentSha256,
+    declaredReferenceSha256: result.declaredReferenceSha256,
+    evaluationBindingSha256: result.evaluationBindingSha256,
+    measurementEvaluationSha256: result.measurement.evaluationSha256,
+    planSha256: result.planSha256,
+    projectionReceipts: result.projectionReceipts,
+    qualityAccounting: Object.freeze({
+      counts: result.measurement.counts,
+      failedThresholds: result.measurement.failedThresholds,
+      metrics: result.measurement.metrics,
+      syntheticPilotThresholdOutcome:
+        result.measurement.syntheticPilotThresholdOutcome,
+    }),
+    qualityEvaluationBindingSha256: result.qualityEvaluationBindingSha256,
+    sourceExecution: result.sourceExecution,
+  }) as unknown as FilingParserCrossEngineExecutionEvidenceV4Invocation;
 }
 
-function directQuarantineOutcome(
+function qualityQuarantineOutcome(
   caseId: Exclude<
-    FilingParserCrossEngineExecutionEvidenceV3CaseId,
-    "same-input-direct-docker-distinct-lifecycle-invocations"
+    FilingParserCrossEngineExecutionEvidenceV4CaseId,
+    "same-input-quality-evaluation-distinct-lifecycle-invocations"
   >,
-  result: FilingParserCrossEngineDirectExecutionResult,
-): FilingParserCrossEngineExecutionEvidenceV3CaseOutcome {
+  result:
+    | FilingParserQualityCompositionCommittedResult
+    | FilingParserQualityCompositionEvaluatedResult
+    | FilingParserQualityCompositionQuarantinedResult,
+): FilingParserCrossEngineExecutionEvidenceV4CaseOutcome {
   if (
     result.status !== "quarantined" ||
-    result.code !== "direct_execution_quarantined" ||
+    result.claim !== FILING_PARSER_QUALITY_COMPOSITION_CLAIM ||
+    result.code !== "quality_composition_quarantined" ||
+    result.schemaVersion !== FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION ||
+    result.synthetic !== true ||
+    !Object.isFrozen(result) ||
     Object.keys(result).sort().join("|") !==
       "claim|code|schemaVersion|status|synthetic"
   )
     fail();
   return Object.freeze({
-    amendmentArchiveSha256: null,
+    candidateCommitmentsStable: false,
+    candidateObservationsStable: false,
     caseId,
+    compositionBindingsDistinct: false,
     expectedStatus: "quarantined" as const,
-    factVersionCount: null,
-    invocationBindingsDistinct: false,
     invocations: null,
     lifecycleBindingsDistinct: false,
-    lineageCount: null,
-    normalizationStable: false,
+    measurementStable: false,
     observedStatus: "quarantined" as const,
-    originalArchiveSha256: null,
   });
 }
 
@@ -865,10 +1114,19 @@ function implementationSources(
   );
 }
 
-async function exactCycle2mTransition(
+async function exactCycle2nTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
-  const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE;
+  return exactOneCommitTransition(
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+    revision,
+  );
+}
+
+async function exactOneCommitTransition(
+  base: string,
+  revision: string,
+): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
   const range = `${base}..${revision}`;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
@@ -904,29 +1162,44 @@ async function exactCycle2mTransition(
   const output = (
     await checkedCommand(
       "git",
-      ["diff", "--name-status", "--no-renames", base, revision],
+      ["diff", "--name-status", "--no-renames", "-z", base, revision, "--"],
       10_000,
       MAX_COMMAND_BYTES,
       65_536,
     )
   ).stdout;
-  const decoded = new TextDecoder("utf-8", { fatal: true }).decode(output);
-  if (!decoded.endsWith("\n")) fail();
-  const entries = decoded
-    .slice(0, -1)
-    .split("\n")
-    .map((line) => {
-      const match = /^(A|M)\t([^\t\r\n]+)$/u.exec(line);
-      if (match?.[1] === undefined || match[2] === undefined) fail();
-      return Object.freeze({
-        path: match[2].replaceAll("\\", "/"),
-        status: match[1] as "A" | "M",
-      });
-    })
-    .sort((left, right) =>
-      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
-    );
-  if (entries.length === 0) fail();
+  const entries = parseFilingParserCrossEngineExecutionNulTransition(output);
+  if (
+    canonicalJson(entries) !==
+    canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION)
+  )
+    fail();
+  return entries;
+}
+
+export function parseFilingParserCrossEngineExecutionNulTransition(
+  bytes: Uint8Array,
+): readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[] {
+  let decoded: string;
+  try {
+    decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    fail();
+  }
+  if (decoded.length === 0 || !decoded.endsWith("\0")) fail();
+  const fields = decoded.slice(0, -1).split("\0");
+  if (fields.length % 2 !== 0 || fields.some((field) => field.length === 0))
+    fail();
+  const entries: FilingParserCrossEngineExecutionEvidenceTransitionEntry[] = [];
+  for (let index = 0; index < fields.length; index += 2) {
+    const status = fields[index];
+    const path = fields[index + 1];
+    if ((status !== "A" && status !== "M") || path === undefined) fail();
+    entries.push(Object.freeze({ path, status }));
+  }
+  entries.sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  );
   return Object.freeze(entries);
 }
 
@@ -1375,7 +1648,7 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
     process.env.GITHUB_ACTIONS !== "true" ||
     process.env.GITHUB_JOB !== "acceptance" ||
     process.env.GITHUB_WORKFLOW !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_WORKFLOW
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW
   )
     fail();
   const evidencePath = requiredEnvironment(
@@ -1553,10 +1826,6 @@ function canonicalJson(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
     .join(",")}}`;
-}
-
-function text(value: string): Uint8Array {
-  return new TextEncoder().encode(value);
 }
 
 function sha256(value: Uint8Array): `sha256:${string}` {

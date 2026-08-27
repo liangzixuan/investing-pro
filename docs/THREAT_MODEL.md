@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2m threat model
+# Sprint 0 through pending Cycle 2n threat model
 
 ## Current trust boundaries
 
@@ -1268,6 +1268,39 @@ production boundary. Exact gates and nonclaims are in
 [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
+Cycle 2n's pending target is only
+`bounded_synthetic_source_owned_direct_docker_cross_engine_two_document_observation_precommitment_and_fixed_population_quality_evaluation_binding`
+from frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. The public
+factory accepts only sealed Cycle 2m descriptors and owns the direct-Docker
+boundary. Callers cannot inject execution results, candidate observations,
+facts, measurements, weights, exclusions, outcomes, callbacks, or options.
+
+Commit reserves its one-shot state before validation or asynchronous execution.
+It snapshots the exact plan, predeclared reference digest, and both archives,
+then accepts only a complete Cycle 2m result. Ten original facts map once to
+fixed coordinate 0001 and ten amendment facts map once to coordinate 0002;
+source role/archive/document, lifecycle, observation, and quality-coordinate
+hashes are bound by each mapping; the outer composition additionally binds the
+complete invocation. The other 98 documents remain absent.
+Reference content first enters after the same-instance capability is revealed,
+and unchanged Cycle 2g/Cycle 2f perform the commitment and fixed-denominator
+evaluation. Any mutation, concurrency, replay, substitution, mapping, execution,
+reference, measurement, or dependency failure collapses to one empty value-free
+quarantine.
+
+The required successful protocol result is deliberately `evaluated/not_met`,
+with 2/100 documents, 20/1,000 true-positive facts, 980 missing facts, and
+1,960/2,000 silent critical failures. Treating that result as a parser-quality
+Pass, hiding the missing population, or converting it to a quarantine would be
+a security failure. Promotion remains Pending exact-source v4 execution,
+artifact inspection, and offline review. Docker/host authenticity, worker
+supply-chain attestation, external signer identity, actual blinding, correct
+independent adjudication, representative real filings, real parser quality,
+Cycle 2b authority, B15/V15, real-data admission, full Cycle 2 exit, and
+production remain nonclaims or Blocked. See
+[ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
+and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1282,8 +1315,8 @@ and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
-   Superseded Cycle 2k and promoted Cycle 2l and Cycle 2m cross-engine
-   lifecycle agreement remain
+   Superseded Cycle 2k, promoted Cycle 2l and Cycle 2m lifecycle agreements,
+   and pending Cycle 2n quality composition remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

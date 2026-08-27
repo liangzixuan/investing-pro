@@ -1273,6 +1273,47 @@ Exact checks and nonclaims are in
 [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
+## Cycle 2n — source-owned execution to fixed-population quality composition
+
+Status: **Pending** exact-source live execution, canonical version 4 evidence,
+artifact inspection, and independent offline review. The frozen baseline is
+`09e76235b5683427f2dd3201aefa740bb5adb16e`.
+
+Cycle 2n closes the next repository-controlled composition gap without widening
+the population or quality claim. A new package-owned protocol accepts only
+sealed Cycle 2m engine descriptors, the frozen Cycle 2f plan, a predeclared
+reference digest, and the exact original/amendment archives. It owns Cycle 2m
+execution, reserves one-shot state before its first `await`, and provides no
+public boundary, runner, signer, execution-result, candidate, measurement,
+callback, or options injection surface.
+
+The complete ten original facts map exactly once to
+`synthetic-filing-0001`; the complete ten amendment facts map exactly once to
+`synthetic-filing-0002`. Each coordinate is separately bound to the actual
+source archive, source document, role, lifecycle, and observation; the outer
+composition binds the complete source invocation. Coordinates 0003 through
+0100 remain missing. Internally derived candidate
+bytes pass through unchanged Cycle 2g precommit/reveal and unchanged Cycle 2f
+fixed-denominator measurement.
+
+The expected honest result is protocol status `evaluated` and threshold outcome
+`not_met`: 2 succeeded and 98 missing documents; 20 emitted/true-positive and
+980 missing/false-negative facts; zero false positives or mismatches; and 1,960
+silent failures. Precision `20/20` and quarantine rate `0/100` pass, while
+document success `2/100`, recall `20/1000`, and maximum silent failures fail.
+Any invalid path returns one atomic empty value-free quarantine.
+
+Promotion requires an exact clean single-parent child of the frozen baseline,
+full local verification, terminal-green two-OS CI and every triggered dedicated
+workflow, a success-only version 4 / schema `4.0.0` artifact, independent ZIP
+and JSON inspection, and an `offline_consistent` review against the exact
+source. Versions 1 through 3 remain immutable history. This result will not
+establish representative real filings, independently adjudicated truth, real
+quality, Cycle 2b authority, B15/V15, real-data admission, full Cycle 2 exit,
+or production. Exact gates are in
+[ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
+and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -1289,8 +1330,9 @@ Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
-bounded synthetic Cycle 2l, nor promoted bounded synthetic Cycle 2m satisfies
-this exit gate. Cycle 2i does not establish that a parser
+bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor pending
+bounded synthetic Cycle 2n satisfies this exit gate. Cycle 2i does not
+establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest
 validation, approved corpus inputs, real ten-fact coverage, truly independent

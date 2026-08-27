@@ -1,5 +1,5 @@
 {
-  "name": "@research-cockpit/filing-parser-cross-engine-execution-acceptance",
+  "name": "@research-cockpit/filing-parser-quality-composition",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@research-cockpit/filing-parser-cross-engine-execution": "workspace:*",
-    "@research-cockpit/filing-parser-quality-composition": "workspace:*",
-    "@research-cockpit/filing-parser-normalization-execution": "workspace:*"
+    "@research-cockpit/filing-quality-measurement": "workspace:*",
+    "@research-cockpit/filing-quality-precommitment": "workspace:*"
   }
 }
