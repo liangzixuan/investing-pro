@@ -42,7 +42,10 @@ parser-archive custody-to-quality composition Pass only for exact revision
 `472cc10b8df90bee01925b2efd4fbcb614d7590c`; and promoted Cycle 2p
 repository-controlled admission-validity boundary Pass only for exact revision
 `d642e534b8911b58a32d50f8dfb976ae2900cadc`;
-synthetic data only.
+and Cycle 2q personal single-user local manifest verification Pass only for
+exact source revision `398bb280593b6de125c5561ac9dd1b1c0fe254bd`.
+The running application remains synthetic-only; Cycle 2q adds disconnected
+manifest metadata, not admitted raw filing data.
 
 ## Identity
 
@@ -1156,13 +1159,62 @@ Cycle 2p creates no canonical evidence version. Cross-engine acceptance emits
 no artifact for this route, the parser/custody/normalization artifacts are
 regression anchors only, and Cycle 2o version 5 remains immutable history at
 `472cc10b8df90bee01925b2efd4fbcb614d7590c`. The supplied authority registry and
-`evaluatedAt` remain unauthenticated until external human/host review. Exact
-external inventory, independent rights/steward approval, trusted time,
-authenticated authority identity, real filing bytes, independent adjudication,
-real quality, B15/V15, real-data admission, full Cycle 2 exit, and production
-remain Blocked. See
+`evaluatedAt` remain unauthenticated until external human/host review. For the
+historical Cycle 2b/2p enterprise-admission track, exact external inventory,
+independent rights/steward approval, trusted time, authenticated authority
+identity, real filing bytes, independent adjudication, real quality, B15/V15,
+real-data admission, full Cycle 2 exit, and production remain Blocked. See
 [ADR 0043](./adr/0043-admission-validity-corrective-chain-promotion.md) and the
 [Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md).
+
+## Cycle 2q personal single-user local manifest boundary
+
+Cycle 2q adds one canonical profile identity,
+`personal_single_user_local`, and one bounded verification result. The profile
+means exactly one owner, local-only offline filing research, no commercial use,
+no redistribution, bounded declared retention, delete-on-request, and
+user-managed local deletion. It is not a tenant, organization, role,
+authorization, legal approval, production deployment, or filing-admission
+object.
+
+The input is two separately owned canonical JSON byte snapshots:
+
+- a declaration that binds the profile, corpus ID/version, retention policy,
+  and exact manifest SHA-256; and
+- a manifest containing 1–100 sorted unique entries with closed accession,
+  CIK, form, chronology, media type, taxonomy, SEC locator, declared-digest
+  syntax/uniqueness, declared byte length, and amendment lineage.
+
+Success returns an immutable aggregate record containing only claim, profile,
+schema/corpus identity, declaration and manifest digests, frozen time, filing
+count, total declared bytes, retention days, and status
+`verified_for_personal_use`. No entry array or payload content crosses the
+result boundary. Any whole-input failure returns no record and exposes only a
+closed public error code and generic message.
+
+The exact successful claim is
+`bounded_content_addressed_manifest_verified_for_personal_single_user_local_use`.
+
+The status is deliberately not `admitted`. A declared content digest remains
+metadata until a later local-payload verifier reads the expected file and
+proves byte equality. Cycle 2q does not prove payload presence, source
+authenticity, complete provenance, parser correctness, fact quality, enforced
+deletion, or cryptographic erasure.
+
+For this profile only, organizational rights-authority/data-steward approval,
+shared-service identity and tenancy, B15/V15, and production readiness are Out
+of scope. Historical Cycle 2b/2p objects and semantics are unchanged; they
+become applicable if the use adds users, commercial or redistributed data,
+shared service, or production operation.
+
+The exact source revision is
+`398bb280593b6de125c5561ac9dd1b1c0fe254bd`, a direct child of
+`2f0534d2a5b4206221cc66ece5e03cf529e5d373`. Its exact 13-path transition
+routes before Cycle 2p/2o, creates no canonical evidence version or artifact,
+and leaves Cycle 2o version 5 anchored at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. See
+[ADR 0044](./adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
+and the [Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

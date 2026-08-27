@@ -2,6 +2,16 @@
 
 An evidence-first investment research workspace being built from the audited product plan. `Research Cockpit` is an internal working name and is not trademark-cleared.
 
+## Active profile
+
+The active filing-corpus path is `personal_single_user_local`: one owner,
+local-only offline research, no customers or tenants, no commercial use, no
+payload redistribution, and no production service. Organizational
+rights-authority/data-steward approvals, multi-user controls, B15/V15, and
+production-readiness gates are therefore **Out of scope for this profile**,
+not Pass and not current Blockers. Historical enterprise Cycle 2b/2p work is
+preserved and becomes applicable only if that scope widens.
+
 ## Current slice
 
 Sprint 0 is a zero-infrastructure demo that proves:
@@ -657,12 +667,46 @@ normalization execution, and cross-engine acceptance runs `33118609943`,
 Cycle 2p creates no new canonical evidence version. Cross-engine acceptance
 emitted no artifact by design, the three standard workflow artifacts are
 regression anchors only, and Cycle 2o version 5 remains immutable history at
-`472cc10b8df90bee01925b2efd4fbcb614d7590c`. Exact external inventory,
-rights/steward approval, trusted time and human authority, real filing data,
-independent adjudication, real quality, B15/V15, real-data admission, full
-Cycle 2 exit, and production remain Blocked. See
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. For the historical Cycle 2b/2p
+enterprise-admission track, exact external inventory, rights/steward approval,
+trusted time and human authority, real filing data, independent adjudication,
+real quality, B15/V15, real-data admission, full Cycle 2 exit, and production
+remain Blocked. See
 [ADR 0043](./docs/adr/0043-admission-validity-corrective-chain-promotion.md)
 and the [Cycle 2p exit matrix](./docs/CYCLE_2P_EXIT_MATRIX.md).
+
+Cycle 2q is **Pass only for exact source revision
+`398bb280593b6de125c5561ac9dd1b1c0fe254bd`**, the direct child of baseline
+`2f0534d2a5b4206221cc66ece5e03cf529e5d373`. It adds the isolated,
+zero-production-dependency `@research-cockpit/personal-filing-corpus` package
+for the active `personal_single_user_local` profile. The verifier snapshots
+bounded canonical declaration and manifest bytes, binds the declaration to the
+exact manifest SHA-256, validates 1–100 sorted unique filing metadata entries,
+and returns only an immutable aggregate record with status
+`verified_for_personal_use`.
+
+This is manifest verification, not filing admission. It does not open a raw
+payload, prove payload presence or digest equality, authenticate SEC as the
+source, evaluate parser output, or enforce deletion. Its exact direct-child
+transition has 13 paths; the protected surface adds unchanged enterprise
+`corpus-admission.ts`. The cross-engine route runs the package checks, emits no
+Cycle 2q artifact, and preserves Cycle 2o version 5 at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. Full local verification passed
+1,330 tests with 4 intentional skips; the focused package suite passed all 17
+tests. CI `33125521900` passed Ubuntu and Windows; normalization, cross-engine,
+parser-isolation, PostgreSQL, payload-custody, and Dependabot runs
+`33125521872`, `33125521890`, `33125521898`, `33125521899`, `33125521910`, and
+`33125607844` also reached terminal success.
+
+Enterprise rights/steward approval, multi-user identity and tenancy, B15/V15,
+and production operations are Out of scope for this personal profile only.
+They are not being claimed as satisfied, and Cycle 2b/2p remains unchanged.
+The next blocker is a bounded streaming local-payload verifier. It must first
+define and validate one deterministic accession-to-relative-path mapping (or a
+separately manifest-bound local path map), then prove actual file presence,
+size, and SHA-256 equality without exposing file contents. See
+[ADR 0044](./docs/adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
+and the [Cycle 2q exit matrix](./docs/CYCLE_2Q_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1227,4 +1271,12 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md),
 [Cycle 2m exit matrix](./docs/CYCLE_2M_EXIT_MATRIX.md),
 [ADR 0040](./docs/adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md),
+[Cycle 2n exit matrix](./docs/CYCLE_2N_EXIT_MATRIX.md),
+[ADR 0041](./docs/adr/0041-bounded-synthetic-source-owned-quality-composition.md),
+[Cycle 2o exit matrix](./docs/CYCLE_2O_EXIT_MATRIX.md),
+[ADR 0042](./docs/adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md),
+[Cycle 2p exit matrix](./docs/CYCLE_2P_EXIT_MATRIX.md),
+[ADR 0043](./docs/adr/0043-admission-validity-corrective-chain-promotion.md),
+[Cycle 2q exit matrix](./docs/CYCLE_2Q_EXIT_MATRIX.md),
+[ADR 0044](./docs/adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md),
 and [architecture decisions](./docs/adr/).

@@ -117,6 +117,15 @@ payload data, independent adjudication, real quality, B15/V15, real-data
 admission, full Cycle 2 exit, or production authorization. Cycle 2b and all
 those downstream gates remain Blocked.
 
+## Personal-profile follow-on
+
+ADR 0044 leaves this decision, its exact promotion chain, immutable blob, and
+enterprise nonclaims unchanged. It establishes a separate active
+`personal_single_user_local` profile for one owner's local, offline,
+noncommercial, nonredistributed use. The enterprise rights/steward/authority,
+multi-user, B15/V15, and production gates above are inactive and Out of scope
+only while that profile holds; widening the use reopens the applicable gates.
+
 ## References
 
 - [Cycle 2p exit matrix](../CYCLE_2P_EXIT_MATRIX.md)
@@ -124,6 +133,8 @@ those downstream gates remain Blocked.
 - [ADR 0029](./0029-fixed-public-filing-candidate-manifest-admission.md)
 - [Cycle 2o exit matrix](../CYCLE_2O_EXIT_MATRIX.md)
 - [ADR 0042](./0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
+- [ADR 0044](./0044-personal-single-user-local-filing-corpus-manifest-verification.md)
+- [Cycle 2q exit matrix](../CYCLE_2Q_EXIT_MATRIX.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [Canonical model](../CANONICAL_MODEL.md)

@@ -138,3 +138,15 @@ independent rights-authority or data-steward approval, trusted evaluation time,
 authenticated human authority or review, real filing bytes, real quality or
 adjudication, B15/V15, real-data admission, full Cycle 2 exit, or production
 authorization. Those requirements remain Blocked.
+
+## Personal-profile follow-on
+
+Cycle 2q does not alter this matrix, its exact revisions, or any Pass/Blocked
+row above. It establishes a separate active `personal_single_user_local`
+profile for one owner's local, offline, noncommercial, nonredistributed use.
+The enterprise inventory, rights/steward/authority, multi-user, B15/V15, and
+production requirements recorded here are inactive and Out of scope only for
+that profile. Any additional user, shared or customer-facing service,
+commercial use, payload redistribution, or production deployment ends that
+classification and reopens the applicable gates. See the
+[Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).

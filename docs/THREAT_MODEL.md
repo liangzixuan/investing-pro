@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2p threat model
+# Sprint 0 through promoted Cycle 2q threat model
 
 ## Current trust boundaries
 
@@ -10,6 +10,14 @@ loopback peer and a fixed public fixture persona selector; the selector is not
 a credential. There is no authentication, customer tenant data, live database,
 file upload, external fetch, email, broker, payment, model, or filing-parser
 boundary in the running profile.
+
+The active filing-corpus profile is separately
+`personal_single_user_local`: one owner, local-only offline research, no
+commercial use or payload redistribution, and no production/shared service.
+Cycle 2q is disconnected from the running API and web application and accepts
+only declaration and manifest metadata. Enterprise approval, tenancy, B15/V15,
+and production controls are not trust boundaries for this profile unless its
+scope widens.
 
 Cycle 1a added an isolated synthetic authorization harness and PostgreSQL
 migration contract. At that historical exit neither component was imported by
@@ -1415,20 +1423,69 @@ artifact, standard workflow artifacts are regression anchors only, and Cycle
 2o version 5 remains immutable history at
 `472cc10b8df90bee01925b2efd4fbcb614d7590c`.
 
-Exact external inventory, rights/steward approval, trusted time, authenticated
-human authority, real filing data, independent adjudication, real quality,
-B15/V15, real-data admission, full Cycle 2 exit, and production remain
-nonclaims or Blocked. Exact gates are in
+For the historical Cycle 2b/2p enterprise-admission track, exact external
+inventory, rights/steward approval, trusted time, authenticated human authority,
+real filing data, independent adjudication, real quality, B15/V15, real-data
+admission, full Cycle 2 exit, and production remain nonclaims or Blocked. Exact
+gates are in
 [ADR 0043](./adr/0043-admission-validity-corrective-chain-promotion.md) and the
 [Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md).
+
+Cycle 2q is Pass only for exact source revision
+`398bb280593b6de125c5561ac9dd1b1c0fe254bd`, the direct child of baseline
+`2f0534d2a5b4206221cc66ece5e03cf529e5d373`. It introduces a disconnected,
+zero-production-dependency manifest boundary for the explicit
+`personal_single_user_local` profile. It neither imports the enterprise
+Cycle 2b admission operation nor changes the immutable Cycle 2p implementation.
+
+Assets at risk are profile integrity, manifest identity, corpus metadata,
+bounded resource use, and error confidentiality. Primary threats are scope
+confusion; open or ambiguous JSON; duplicate properties; mutation before
+snapshot; hostile proxies or typed-array carriers; oversized or deeply nested
+documents; duplicate accession or content identity; invalid chronology or
+amendment lineage; declaration/manifest substitution; partial result leakage;
+and forgery of public error details.
+
+Controls are intrinsic owned byte snapshots, fatal UTF-8 decoding, exact
+canonical JSON replay, closed schemas, bounded document budgets, exact
+declaration-to-manifest SHA-256 binding, 1–100 sorted unique entries, closed
+metadata and chronology checks, aggregate declared-byte limits, aggregate-only
+immutable success, and a fresh generic public error on every failure. The
+package has no production dependencies or composition into a fetcher, parser,
+database, API, web app, or queue.
+
+The largest remaining threat is payload substitution or absence. Cycle 2q
+validates declared digest syntax and uniqueness but never opens the referenced
+file; an attacker or accidental local edit could leave valid metadata alongside
+missing or different bytes. The next boundary must define and validate one
+deterministic accession-to-relative-path mapping (or a separately manifest-bound
+local path map), then stream expected files from one caller-selected local root,
+reject links and path escape, enforce byte limits while reading, recompute
+SHA-256, and publish no payload content.
+
+Rights-authority/data-steward/key-authority approval, end-user identity,
+tenancy, multi-user privacy operations, B15/V15, production KMS/queues/load/
+SLOs, incident response, and production authorization are Out of scope for the
+declared personal profile. They are not claimed as Pass. They become applicable
+before any shared, customer-facing, commercial, redistributed-payload, or
+production use. External law and source terms remain outside this internal
+scope decision.
+
+The exact source has a 13-path transition and a 14-path protected surface. It
+routes before inherited Cycle 2p/2o evidence, creates no evidence version or
+artifact, and preserves historical Cycle 2p blob
+`e456cae97cf9eb377e3b3e8aabc156fdb377e2c7` plus Cycle 2o version 5 at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. Exact gates are in
+[ADR 0044](./adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
+and the [Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
-2. **Filing ingestion:** retain Cycle 2a's one-shot isolation controls; before
-   any real corpus use, independently review the exact candidate metadata,
-   rights/steward approvals and authority keys, then prove raw-byte identity,
-   custody/retention, parser quality, conflict quarantine, and provenance.
+2. **Personal filing ingestion:** retain Cycle 2a's one-shot isolation controls;
+   after Cycle 2q manifest verification, first prove each expected local
+   payload's presence, bounded size, and exact digest equality, then add local
+   custody/deletion, parser quality, conflict quarantine, and provenance.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1439,11 +1496,15 @@ nonclaims or Blocked. Exact gates are in
    Superseded Cycle 2k, promoted Cycle 2l and Cycle 2m lifecycle agreements,
    promoted Cycle 2n quality composition, promoted Cycle 2o archive-custody
    composition, and promoted Cycle 2p admission-validity correction remain
-   engineering preparation only and do not satisfy any external authority or
-   real-corpus prerequisite.
+   engineering preparation. Cycle 2q closes the personal declaration and
+   manifest boundary only; it does not prove payload identity. Organizational
+   rights/steward approval and authority keys are separate enterprise-profile
+   gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.
 6. **AI:** keep it outside deterministic calculations; require a rights-safe evidence ledger, prompt-injection isolation, numeric-claim evaluation, cost limits, and unsupported-claim fail-closed behavior.
 
-These are release blockers, not optional backlog items.
+These are blockers when their corresponding trust boundary is introduced.
+Enterprise-only items are not blockers for the current
+`personal_single_user_local` profile.
