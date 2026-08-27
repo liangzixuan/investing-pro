@@ -46,6 +46,8 @@ const CYCLE_2N_BASELINE_REVISION =
   "09e76235b5683427f2dd3201aefa740bb5adb16e" as const;
 const CYCLE_2O_BASELINE_REVISION =
   "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
+const CYCLE_2O_SOURCE_REVISION =
+  "46408ec875755ef531c124846143e9b619c1961f" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const MAX_GIT_PATH_BYTES = 32_768;
@@ -1305,6 +1307,26 @@ const CYCLE_2O_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2O_CORRECTIVE_TRANSITION = Object.freeze(
+  [
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+    "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+    "scripts/verify-boundaries.ts",
+  ]
+    .sort()
+    .map((path) => Object.freeze({ path, status: "M" })),
+);
 const CYCLE_2M_PRE_BASELINE_CUMULATIVE_ENTRIES = Object.freeze([
   { path: ".github/workflows/ci.yml", status: "M" },
   { path: "docs/CYCLE_2L_EXIT_MATRIX.md", status: "A" },
@@ -2265,8 +2287,28 @@ export function isCycle2oDirectChildAllowed(
     successorCount === "1" &&
     firstParentCount === "1" &&
     COMMIT.test(revision) &&
+    revision === CYCLE_2O_SOURCE_REVISION &&
+    parentLine === `${CYCLE_2O_SOURCE_REVISION} ${CYCLE_2O_BASELINE_REVISION}`
+  );
+}
+
+/** @internal Exact single-parent Cycle 2o corrective-child topology seam. */
+export function isCycle2oCorrectiveTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "2" &&
+    firstParentCount === "2" &&
+    COMMIT.test(revision) &&
     revision !== CYCLE_2O_BASELINE_REVISION &&
-    parentLine === `${revision} ${CYCLE_2O_BASELINE_REVISION}`
+    revision !== CYCLE_2O_SOURCE_REVISION &&
+    parentLine === `${revision} ${CYCLE_2O_SOURCE_REVISION}` &&
+    sourceParentLine ===
+      `${CYCLE_2O_SOURCE_REVISION} ${CYCLE_2O_BASELINE_REVISION}`
   );
 }
 
@@ -2782,6 +2824,27 @@ export function isCycle2oCommitDiffSetAllowed(
     new Set(entries.map((entry) => entry.path)).size === entries.length &&
     entries.every((entry, index) => {
       const expected = CYCLE_2O_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+/** @internal Exact Cycle 2o corrective-child transition regression seam. */
+export function isCycle2oCorrectiveCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return (
+    entries.length === CYCLE_2O_CORRECTIVE_TRANSITION.length &&
+    new Set(entries.map((entry) => entry.path)).size === entries.length &&
+    entries.every((entry, index) => {
+      const expected = CYCLE_2O_CORRECTIVE_TRANSITION[index];
       return (
         expected !== undefined &&
         entry.path === expected.path &&
@@ -3604,11 +3667,15 @@ async function verifyCycle2oTransition(
   repositoryPath: string,
   revision: string,
 ): Promise<void> {
-  await git(
-    repositoryPath,
-    ["cat-file", "-e", `${CYCLE_2O_BASELINE_REVISION}^{commit}`],
-    0,
-  );
+  for (const requiredRevision of [
+    CYCLE_2O_BASELINE_REVISION,
+    CYCLE_2O_SOURCE_REVISION,
+  ])
+    await git(
+      repositoryPath,
+      ["cat-file", "-e", `${requiredRevision}^{commit}`],
+      0,
+    );
   const mergeBase = decodeGitRevisionLine(
     await git(
       repositoryPath,
@@ -3635,15 +3702,53 @@ async function verifyCycle2oTransition(
       128,
     ),
   ).join(" ");
-  if (
-    !isCycle2oDirectChildAllowed(
-      String(successorCount),
-      String(firstParentCount),
-      revision,
-      parentLine,
-    )
-  )
-    invalid();
+  const sourceParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_2O_SOURCE_REVISION],
+      128,
+    ),
+  ).join(" ");
+  const directSource = isCycle2oDirectChildAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+  );
+  const correctiveChild = isCycle2oCorrectiveTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    sourceParentLine,
+  );
+  if (!directSource && !correctiveChild) invalid();
+
+  if (correctiveChild) {
+    const correctiveDiff = splitNul(
+      await git(repositoryPath, [
+        "diff",
+        "--name-status",
+        "--no-renames",
+        "-z",
+        CYCLE_2O_SOURCE_REVISION,
+        revision,
+        "--",
+      ]),
+    );
+    if (correctiveDiff.length % 2 !== 0) invalid();
+    const correctiveEntries: Array<{
+      readonly path: string;
+      readonly status: string;
+    }> = [];
+    for (let index = 0; index < correctiveDiff.length; index += 2) {
+      const status = correctiveDiff[index];
+      const path = correctiveDiff[index + 1];
+      if (status === undefined || path === undefined) invalid();
+      correctiveEntries.push(Object.freeze({ path, status }));
+    }
+    if (!isCycle2oCorrectiveCommitDiffSetAllowed(correctiveEntries)) invalid();
+  }
 
   const diff = splitNul(
     await git(repositoryPath, [

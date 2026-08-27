@@ -18,7 +18,7 @@ import {
   rm,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import { types as utilTypes } from "node:util";
 
 export const FILING_PARSER_ARCHIVE_PAIR_CUSTODY_SCHEMA_VERSION =
@@ -838,11 +838,33 @@ function entropy(runtime: Runtime, length: number): Uint8Array {
 
 async function canonicalDirectory(value: string): Promise<string> {
   const absolute = resolve(value);
-  const metadata = await lstat(absolute);
-  if (!metadata.isDirectory() || metadata.isSymbolicLink()) fail();
+  const before = await requireLexicalDirectoryChain(absolute);
   const canonical = resolve(await realpath(absolute));
-  if (canonical !== absolute) fail();
+  const after = await requireLexicalDirectoryChain(absolute);
+  const canonicalMetadata = await requireLexicalDirectoryChain(canonical);
+  if (
+    after.dev !== before.dev ||
+    after.ino !== before.ino ||
+    canonicalMetadata.dev !== before.dev ||
+    canonicalMetadata.ino !== before.ino
+  )
+    fail();
   return canonical;
+}
+
+async function requireLexicalDirectoryChain(value: string): Promise<Stats> {
+  const absolute = resolve(value);
+  const root = parse(absolute).root;
+  let current = root;
+  let metadata = await lstat(current);
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) fail();
+  const remainder = relative(root, absolute);
+  for (const component of remainder === "" ? [] : remainder.split(sep)) {
+    current = join(current, component);
+    metadata = await lstat(current);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) fail();
+  }
+  return metadata;
 }
 
 async function requireDirectory(value: string): Promise<void> {

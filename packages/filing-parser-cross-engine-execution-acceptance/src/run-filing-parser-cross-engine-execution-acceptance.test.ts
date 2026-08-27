@@ -22,6 +22,7 @@ import {
   PYTHON_IMAGE_INSPECTION_PROFILE,
   filingParserCrossEngineExecutionAcceptanceCleanupShouldReplacePhase,
   filingParserCrossEngineExecutionAcceptanceFailureDiagnostic,
+  filingParserCrossEngineExecutionCycle2oTopologyAllowed,
   filingParserCrossEngineExecutionEvidenceV2ValidationPhase,
   filingParserCrossEngineExecutionEvidenceV3ValidationPhase,
   filingParserCrossEngineExecutionEvidenceV4ValidationPhase,
@@ -247,13 +248,64 @@ describe("Cycle 2o custody-quality-composition live acceptance", () => {
     ]);
   });
 
-  it("requires the NUL-safe direct child of the Cycle 2o baseline", () => {
+  it("requires the exact NUL-safe Cycle 2o source or corrective child", () => {
+    const source = "46408ec875755ef531c124846143e9b619c1961f";
+    const correction = "a".repeat(40);
+    const sourceParent = `${source} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`;
+    expect(
+      filingParserCrossEngineExecutionCycle2oTopologyAllowed(
+        "1",
+        "1",
+        source,
+        sourceParent,
+        sourceParent,
+      ),
+    ).toBe(true);
+    expect(
+      filingParserCrossEngineExecutionCycle2oTopologyAllowed(
+        "2",
+        "2",
+        correction,
+        `${correction} ${source}`,
+        sourceParent,
+      ),
+    ).toBe(true);
+    for (const values of [
+      [
+        "1",
+        "1",
+        correction,
+        `${correction} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`,
+        sourceParent,
+      ],
+      ["2", "1", correction, `${correction} ${source}`, sourceParent],
+      [
+        "2",
+        "2",
+        correction,
+        `${correction} ${source}`,
+        `${source} ${"b".repeat(40)}`,
+      ],
+      [
+        "2",
+        "2",
+        correction,
+        `${correction} ${source} ${"b".repeat(40)}`,
+        sourceParent,
+      ],
+    ] as const)
+      expect(
+        filingParserCrossEngineExecutionCycle2oTopologyAllowed(
+          values[0],
+          values[1],
+          values[2],
+          values[3],
+          values[4],
+        ),
+      ).toBe(false);
     expect(runnerSource).toContain(
-      "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,\n    revision,",
+      '"46408ec875755ef531c124846143e9b619c1961f" as const',
     );
-    expect(runnerSource).toContain('successorCount !== "1"');
-    expect(runnerSource).toContain('firstParentCount !== "1"');
-    expect(runnerSource).toContain("parentLine !== `${revision} ${base}`");
     expect(runnerSource).toContain(
       '["diff", "--name-status", "--no-renames", "-z", base, revision, "--"]',
     );
@@ -269,6 +321,18 @@ describe("Cycle 2o custody-quality-composition live acceptance", () => {
     );
     expect(runnerSource).toContain(
       "sha256(output) !== CYCLE_2O_TRANSITION_SHA256",
+    );
+    expect(runnerSource).toContain(
+      "const CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT = 14",
+    );
+    expect(runnerSource).toContain(
+      '"sha256:5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63" as const',
+    );
+    expect(runnerSource).toContain(
+      "correctiveEntries.length !== CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT",
+    );
+    expect(runnerSource).toContain(
+      "sha256(correctiveOutput) !== CYCLE_2O_CORRECTIVE_TRANSITION_SHA256",
     );
     expect(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE).toBe(
       "711fe866594d5e20a657a24c0a0c72fd78ab90be",
@@ -318,7 +382,7 @@ describe("Cycle 2o custody-quality-composition live acceptance", () => {
     expect(runnerSource).toContain("evidenceWritten = true");
   });
 
-  it("routes only the Cycle 2o source to v5 and preserves inherited routes", () => {
+  it("routes only the exact Cycle 2o source or corrective child to v5", () => {
     expect(workflowSource.indexOf("id: cycle2o_source")).toBeLessThan(
       workflowSource.indexOf("id: admission_validity_bridge"),
     );
@@ -334,6 +398,15 @@ describe("Cycle 2o custody-quality-composition live acceptance", () => {
     expect(workflowSource).toContain('"${#actual[@]}" == "78"');
     expect(workflowSource).toContain(
       'transition_sha256" == "d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212"',
+    );
+    expect(workflowSource).toContain(
+      'source="46408ec875755ef531c124846143e9b619c1961f"',
+    );
+    expect(workflowSource).toContain(
+      "matches_exactly expected_corrective actual_corrective",
+    );
+    expect(workflowSource).toContain(
+      'corrective_sha256" == "5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63"',
     );
     expect(workflowSource).toContain(
       "research-cockpit-filing-parser-cross-engine-execution-v5.json",

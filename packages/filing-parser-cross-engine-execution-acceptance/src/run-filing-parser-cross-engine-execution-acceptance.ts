@@ -82,6 +82,11 @@ const MAX_COMMAND_BYTES = 4_194_304;
 const CYCLE_2O_TRANSITION_PATH_COUNT = 39;
 const CYCLE_2O_TRANSITION_SHA256 =
   "sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" as const;
+const CYCLE_2O_SOURCE_REVISION =
+  "46408ec875755ef531c124846143e9b619c1961f" as const;
+const CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT = 14;
+const CYCLE_2O_CORRECTIVE_TRANSITION_SHA256 =
+  "sha256:5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63" as const;
 
 export interface FilingParserCrossEngineImageInspectionProfile {
   readonly entrypoint: readonly string[];
@@ -1159,16 +1164,7 @@ function implementationSources(
 async function exactCycle2oTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
-  return exactOneCommitTransition(
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
-    revision,
-  );
-}
-
-async function exactOneCommitTransition(
-  base: string,
-  revision: string,
-): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
+  const base = FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE;
   const range = `${base}..${revision}`;
   const mergeBase = decodeExactLine(
     (await checkedCommand("git", ["merge-base", base, revision], 5_000)).stdout,
@@ -1194,11 +1190,24 @@ async function exactOneCommitTransition(
       )
     ).stdout,
   );
+  const sourceParentLine = decodeExactLine(
+    (
+      await checkedCommand(
+        "git",
+        ["rev-list", "--parents", "--max-count=1", CYCLE_2O_SOURCE_REVISION],
+        5_000,
+      )
+    ).stdout,
+  );
   if (
     mergeBase !== base ||
-    successorCount !== "1" ||
-    firstParentCount !== "1" ||
-    parentLine !== `${revision} ${base}`
+    !filingParserCrossEngineExecutionCycle2oTopologyAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+      sourceParentLine,
+    )
   )
     fail();
   const output = (
@@ -1216,7 +1225,61 @@ async function exactOneCommitTransition(
     sha256(output) !== CYCLE_2O_TRANSITION_SHA256
   )
     fail();
+  if (revision !== CYCLE_2O_SOURCE_REVISION) {
+    const correctiveOutput = (
+      await checkedCommand(
+        "git",
+        [
+          "diff",
+          "--name-status",
+          "--no-renames",
+          "-z",
+          CYCLE_2O_SOURCE_REVISION,
+          revision,
+          "--",
+        ],
+        10_000,
+        MAX_COMMAND_BYTES,
+        65_536,
+      )
+    ).stdout;
+    const correctiveEntries =
+      parseFilingParserCrossEngineExecutionNulTransition(correctiveOutput);
+    if (
+      correctiveEntries.length !== CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT ||
+      sha256(correctiveOutput) !== CYCLE_2O_CORRECTIVE_TRANSITION_SHA256
+    )
+      fail();
+  }
   return entries;
+}
+
+/** @internal Exact source-or-single-corrective-child regression seam. */
+export function filingParserCrossEngineExecutionCycle2oTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  sourceParentLine: string,
+): boolean {
+  if (
+    sourceParentLine !==
+    `${CYCLE_2O_SOURCE_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`
+  )
+    return false;
+  if (revision === CYCLE_2O_SOURCE_REVISION)
+    return (
+      successorCount === "1" &&
+      firstParentCount === "1" &&
+      parentLine ===
+        `${CYCLE_2O_SOURCE_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`
+    );
+  return (
+    COMMIT.test(revision) &&
+    successorCount === "2" &&
+    firstParentCount === "2" &&
+    parentLine === `${revision} ${CYCLE_2O_SOURCE_REVISION}`
+  );
 }
 
 export function parseFilingParserCrossEngineExecutionNulTransition(

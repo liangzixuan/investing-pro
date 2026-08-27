@@ -73,6 +73,8 @@ import {
   isCycle2oBaselineMergeBaseAllowed,
   isCycle2oCommitDiffSetAllowed,
   isCycle2oCompositionTreeAllowed,
+  isCycle2oCorrectiveCommitDiffSetAllowed,
+  isCycle2oCorrectiveTopologyAllowed,
   isCycle2oCustodyTreeAllowed,
   isCycle2oDirectChildAllowed,
   isCycle2oTransitionRoutingRequired,
@@ -141,6 +143,8 @@ const CYCLE_2N_BASELINE_REVISION =
   "09e76235b5683427f2dd3201aefa740bb5adb16e" as const;
 const CYCLE_2O_BASELINE_REVISION =
   "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
+const CYCLE_2O_SOURCE_REVISION =
+  "46408ec875755ef531c124846143e9b619c1961f" as const;
 const CYCLE_2N_COMPOSITION_TREE = [
   "packages/filing-parser-quality-composition/package.json",
   "packages/filing-parser-quality-composition/src/filing-parser-quality-composition-security.test.ts",
@@ -699,6 +703,24 @@ const CYCLE_2O_TRANSITION = [
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
+const CYCLE_2O_CORRECTIVE_TRANSITION = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+  "scripts/verify-boundaries.ts",
+]
+  .sort()
+  .map((path) => ({ path, status: "M" }));
 const CYCLE_2G_TRANSITION = [
   { path: "LICENSE_POLICY.md", status: "M" },
   { path: "README.md", status: "M" },
@@ -1573,8 +1595,9 @@ describe("Cycle 2o exact source-successor routing", () => {
     ).toBe(false);
   });
 
-  it("requires the exact baseline and single-parent topology", () => {
-    const revision = "a".repeat(40);
+  it("requires the exact baseline, source, and corrective-child topology", () => {
+    const revision = CYCLE_2O_SOURCE_REVISION;
+    const correction = "a".repeat(40);
     expect(isCycle2oBaselineMergeBaseAllowed(CYCLE_2O_BASELINE_REVISION)).toBe(
       true,
     );
@@ -1619,6 +1642,58 @@ describe("Cycle 2o exact source-successor routing", () => {
         `${revision} ${"b".repeat(40)}`,
       ),
     ).toBe(false);
+    expect(
+      isCycle2oDirectChildAllowed(
+        "1",
+        "1",
+        correction,
+        `${correction} ${CYCLE_2O_BASELINE_REVISION}`,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2oCorrectiveTopologyAllowed(
+        "2",
+        "2",
+        correction,
+        `${correction} ${CYCLE_2O_SOURCE_REVISION}`,
+        `${CYCLE_2O_SOURCE_REVISION} ${CYCLE_2O_BASELINE_REVISION}`,
+      ),
+    ).toBe(true);
+    for (const values of [
+      [
+        "1",
+        "2",
+        `${correction} ${CYCLE_2O_SOURCE_REVISION}`,
+        `${CYCLE_2O_SOURCE_REVISION} ${CYCLE_2O_BASELINE_REVISION}`,
+      ],
+      [
+        "2",
+        "1",
+        `${correction} ${CYCLE_2O_SOURCE_REVISION}`,
+        `${CYCLE_2O_SOURCE_REVISION} ${CYCLE_2O_BASELINE_REVISION}`,
+      ],
+      [
+        "2",
+        "2",
+        `${correction} ${CYCLE_2O_BASELINE_REVISION}`,
+        `${CYCLE_2O_SOURCE_REVISION} ${CYCLE_2O_BASELINE_REVISION}`,
+      ],
+      [
+        "2",
+        "2",
+        `${correction} ${CYCLE_2O_SOURCE_REVISION}`,
+        `${CYCLE_2O_SOURCE_REVISION} ${"b".repeat(40)}`,
+      ],
+    ] as const)
+      expect(
+        isCycle2oCorrectiveTopologyAllowed(
+          values[0],
+          values[1],
+          correction,
+          values[2],
+          values[3],
+        ),
+      ).toBe(false);
   });
 
   it("requires the exact sorted Cycle 2o transition", () => {
@@ -1640,6 +1715,19 @@ describe("Cycle 2o exact source-successor routing", () => {
         CYCLE_2O_TRANSITION.map((entry, index) =>
           index === 0 ? { ...entry, status: "D" } : entry,
         ),
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2oCorrectiveCommitDiffSetAllowed(CYCLE_2O_CORRECTIVE_TRANSITION),
+    ).toBe(true);
+    expect(
+      isCycle2oCorrectiveCommitDiffSetAllowed(
+        [...CYCLE_2O_CORRECTIVE_TRANSITION].reverse(),
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2oCorrectiveCommitDiffSetAllowed(
+        CYCLE_2O_CORRECTIVE_TRANSITION.slice(1),
       ),
     ).toBe(false);
   });

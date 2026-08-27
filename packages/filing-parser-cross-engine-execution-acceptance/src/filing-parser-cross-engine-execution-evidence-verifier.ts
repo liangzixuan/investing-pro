@@ -131,6 +131,8 @@ const MAX_COMMAND_BYTES = 8_388_608;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_SOURCE_BYTES = 4_194_304;
 const isProxy = utilTypes.isProxy;
+const CYCLE_2O_SOURCE_REVISION =
+  "46408ec875755ef531c124846143e9b619c1961f" as const;
 
 export async function verifyFilingParserCrossEngineExecutionEvidenceOffline(
   options: FilingParserCrossEngineExecutionEvidenceReviewOptions,
@@ -224,6 +226,7 @@ async function verifyOfflineV5(
   if (!samePath(await realpath(topLevel), repositoryPath)) return invalid();
   for (const revision of [
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+    CYCLE_2O_SOURCE_REVISION,
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY.sourceRevision,
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY.sourceRevision,
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY.maintenance
@@ -275,6 +278,16 @@ async function verifyOfflineV5(
       ])
     ).stdout,
   );
+  const sourceParentLine = exactLine(
+    (
+      await checkedCommand(repositoryPath, "git", [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_2O_SOURCE_REVISION,
+      ])
+    ).stdout,
+  );
   if (
     !filingParserCrossEngineExecutionV5ChainAllowed(
       mergeBase,
@@ -282,6 +295,7 @@ async function verifyOfflineV5(
       firstParentCount,
       options.expectedRevision,
       parentLine,
+      sourceParentLine,
     )
   )
     return invalid();
@@ -341,6 +355,27 @@ async function verifyOfflineV5(
     )
   )
     return invalid();
+  if (options.expectedRevision !== CYCLE_2O_SOURCE_REVISION) {
+    const correctiveBytes = (
+      await checkedCommand(repositoryPath, "git", [
+        "diff",
+        "--name-status",
+        "--no-renames",
+        "-z",
+        CYCLE_2O_SOURCE_REVISION,
+        options.expectedRevision,
+        "--",
+      ])
+    ).stdout;
+    const correctiveTransition = parseTransition(correctiveBytes);
+    if (
+      !filingParserCrossEngineExecutionV5CorrectiveTransitionAllowed(
+        correctiveTransition.length,
+        sha256(correctiveBytes),
+      )
+    )
+      return invalid();
+  }
 
   return Object.freeze({
     artifactName: evidence.workflow.artifactName,
@@ -1458,30 +1493,47 @@ export function filingParserCrossEngineExecutionV4ChainAllowed(
   );
 }
 
-/** @internal Exact one-commit Cycle 2o direct-child transition seam. */
+/** @internal Exact Cycle 2o source-or-single-corrective-child chain seam. */
 export function filingParserCrossEngineExecutionV5ChainAllowed(
   mergeBase: string,
   successorCount: string,
   firstParentCount: string,
   revision: string,
   parentLine: string,
+  sourceParentLine: string,
 ): boolean {
+  if (
+    mergeBase !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE ||
+    sourceParentLine !==
+      `${CYCLE_2O_SOURCE_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`
+  )
+    return false;
+  if (revision === CYCLE_2O_SOURCE_REVISION)
+    return (
+      successorCount === "1" &&
+      firstParentCount === "1" &&
+      parentLine ===
+        `${CYCLE_2O_SOURCE_REVISION} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`
+    );
   return (
-    mergeBase === FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE &&
-    successorCount === "1" &&
-    firstParentCount === "1" &&
+    successorCount === "2" &&
+    firstParentCount === "2" &&
     COMMIT.test(revision) &&
-    revision !== FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE &&
-    parentLine ===
-      `${revision} ${FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE}`
+    parentLine === `${revision} ${CYCLE_2O_SOURCE_REVISION}`
   );
 }
 
-// Root replaces both exact-source placeholders after the final staged tree is frozen.
+// The cumulative source tuple remains exact across the pinned corrective child.
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_PATH_COUNT =
   39 as const;
 export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_SHA256 =
   "sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" as const;
+/** @internal Exact Cycle 2o corrective-child NUL transition path count. */
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_PATH_COUNT =
+  14 as const;
+/** @internal Exact Cycle 2o corrective-child NUL transition digest. */
+export const FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_SHA256 =
+  "sha256:5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63" as const;
 
 /** @internal Exact final NUL-safe Cycle 2o path-count/digest seam. */
 export function filingParserCrossEngineExecutionV5TransitionAllowed(
@@ -1493,6 +1545,19 @@ export function filingParserCrossEngineExecutionV5TransitionAllowed(
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_PATH_COUNT &&
     transitionSha256 ===
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_SHA256
+  );
+}
+
+/** @internal Exact final NUL-safe Cycle 2o corrective-child tuple seam. */
+export function filingParserCrossEngineExecutionV5CorrectiveTransitionAllowed(
+  pathCount: number,
+  transitionSha256: string,
+): boolean {
+  return (
+    pathCount ===
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_PATH_COUNT &&
+    transitionSha256 ===
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_SHA256
   );
 }
 

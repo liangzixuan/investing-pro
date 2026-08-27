@@ -46,20 +46,83 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 2o evidence source before inherited routes
+      - name: Classify exact Cycle 2o evidence source or corrective child before inherited routes
         id: cycle2o_source
         if: ${{ success() }}
         shell: bash
         run: |
           exact=false
           baseline="711fe866594d5e20a657a24c0a0c72fd78ab90be"
+          source="46408ec875755ef531c124846143e9b619c1961f"
+          expected_corrective=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.test.ts"
+            "M"
+            "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.ts"
+            "M"
+            "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts"
+            "M"
+            "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.ts"
+            "M"
+            "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.test.ts"
+            "M"
+            "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.ts"
+            "M"
+            "scripts/verify-boundaries.ts"
+          )
+          matches_exactly() {
+            local -n expected_values="$1"
+            local -n actual_values="$2"
+            if [[ "${#actual_values[@]}" != "${#expected_values[@]}" ]]; then
+              return 1
+            fi
+            for index in "${!expected_values[@]}"; do
+              if [[ "${actual_values[$index]}" != "${expected_values[$index]}" ]]; then
+                return 1
+              fi
+            done
+          }
+          head_revision="$(git rev-parse HEAD)"
           read -r -a topology <<< "$(git rev-list --parents -n 1 HEAD)"
-          if [[ "${#topology[@]}" == "2" ]] && \
-             [[ "${topology[1]}" == "$baseline" ]]; then
-            mapfile -d '' -t actual < <(git diff --name-status --no-renames -z "$baseline" HEAD --)
-            transition_sha256="$(git diff --name-status --no-renames -z "$baseline" HEAD -- | sha256sum | cut -d ' ' -f 1)"
-            if [[ "${#actual[@]}" == "78" ]] && \
-               [[ "$transition_sha256" == "d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" ]]; then
+          read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
+          merge_base="$(git merge-base "$baseline" HEAD)"
+          successor_count="$(git rev-list --count "$baseline"..HEAD)"
+          first_parent_count="$(git rev-list --first-parent --count "$baseline"..HEAD)"
+          mapfile -d '' -t actual < <(git diff --name-status --no-renames -z "$baseline" HEAD --)
+          transition_sha256="$(git diff --name-status --no-renames -z "$baseline" HEAD -- | sha256sum | cut -d ' ' -f 1)"
+          mapfile -d '' -t actual_corrective < <(git diff --name-status --no-renames -z "$source" HEAD --)
+          corrective_sha256="$(git diff --name-status --no-renames -z "$source" HEAD -- | sha256sum | cut -d ' ' -f 1)"
+          if [[ "$merge_base" == "$baseline" ]] && \
+             [[ "${#source_topology[@]}" == "2" ]] && \
+             [[ "${source_topology[1]}" == "$baseline" ]] && \
+             [[ "${#actual[@]}" == "78" ]] && \
+             [[ "$transition_sha256" == "d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" ]]; then
+            if [[ "$head_revision" == "$source" ]] && \
+               [[ "$successor_count" == "1" ]] && \
+               [[ "$first_parent_count" == "1" ]] && \
+               [[ "${#topology[@]}" == "2" ]] && \
+               [[ "${topology[1]}" == "$baseline" ]]; then
+              exact=true
+            elif [[ "$successor_count" == "2" ]] && \
+                 [[ "$first_parent_count" == "2" ]] && \
+                 [[ "${#topology[@]}" == "2" ]] && \
+                 [[ "${topology[1]}" == "$source" ]] && \
+                 matches_exactly expected_corrective actual_corrective && \
+                 [[ "$corrective_sha256" == "5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63" ]]; then
               exact=true
             fi
           fi

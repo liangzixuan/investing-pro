@@ -21,6 +21,7 @@ import {
   FILING_PARSER_ARCHIVE_PAIR_CUSTODY_NOT_PROVEN,
   FILING_PARSER_ARCHIVE_PAIR_CUSTODY_SCHEMA_VERSION,
   createFilingParserArchivePairCustodyProtocolForTest,
+  type FilingParserArchivePairCustodyPhase,
 } from "./parser-archive-pair-custody";
 import { createSyntheticFilingParserArchivePairFixture } from "./parser-archive-pair-fixture";
 
@@ -305,6 +306,66 @@ describe("filing parser archive pair custody", () => {
     expect(await readdir(parent)).toEqual(["unrelated-residue"]);
   });
 
+  it.runIf(process.platform === "win32")(
+    "accepts a Windows alias spelling only when realpath proves the same directory identity",
+    async () => {
+      const parent = await testParent();
+      const fixture = createSyntheticFilingParserArchivePairFixture();
+      let firstPhase: FilingParserArchivePairCustodyPhase | undefined;
+      const result = await createFilingParserArchivePairCustodyProtocolForTest({
+        afterPhase: (phase) => {
+          firstPhase ??= phase;
+        },
+        entropy: deterministicEntropy(),
+        workspaceParentDirectory: parent.toUpperCase(),
+      }).custodyAndRead(
+        SOURCE_CONTEXT,
+        fixture.originalArchive,
+        fixture.amendmentArchive,
+      );
+      expect(firstPhase).toBe("workspace_created");
+      expect(result.status).toBe("readback");
+      expect(await readdir(parent)).toEqual([]);
+    },
+  );
+
+  it("rejects an ancestor directory link before creating a workspace", async ({
+    skip,
+  }) => {
+    const root = await testParent();
+    const targetRoot = join(root, "target");
+    const realParent = join(targetRoot, "parent");
+    const ancestorAlias = join(root, "ancestor-alias");
+    await mkdir(realParent, { recursive: true });
+    try {
+      await symlink(
+        targetRoot,
+        ancestorAlias,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch (error) {
+      if (isLinkCapabilityError(error))
+        skip("directory links are unavailable in this environment");
+      throw error;
+    }
+    const fixture = createSyntheticFilingParserArchivePairFixture();
+    let firstPhase: FilingParserArchivePairCustodyPhase | undefined;
+    const result = await createFilingParserArchivePairCustodyProtocolForTest({
+      afterPhase: (phase) => {
+        firstPhase ??= phase;
+      },
+      entropy: deterministicEntropy(),
+      workspaceParentDirectory: join(ancestorAlias, "parent"),
+    }).custodyAndRead(
+      SOURCE_CONTEXT,
+      fixture.originalArchive,
+      fixture.amendmentArchive,
+    );
+    expect(firstPhase).toBeUndefined();
+    expect(result.status).toBe("quarantined");
+    expect(await readdir(realParent)).toEqual([]);
+  });
+
   it("reserves one-shot state before await so concurrency invalidates both calls", async () => {
     const parent = await testParent();
     const fixture = createSyntheticFilingParserArchivePairFixture();
@@ -424,4 +485,15 @@ function tamper(value: Uint8Array): Uint8Array {
   const result = Uint8Array.from(value);
   result[0] = (result[0] ?? 0) ^ 0xff;
   return result;
+}
+
+function isLinkCapabilityError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    ["EACCES", "EINVAL", "ENOSYS", "EPERM"].includes(
+      String((error as { readonly code?: unknown }).code),
+    )
+  );
 }

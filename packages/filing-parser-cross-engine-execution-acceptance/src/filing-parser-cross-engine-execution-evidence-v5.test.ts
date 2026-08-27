@@ -8,6 +8,7 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
   createFilingParserCrossEngineExecutionEvidenceV5,
+  createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance,
   filingParserCrossEngineExecutionEvidenceV5Sha256,
   parseCanonicalFilingParserCrossEngineExecutionEvidenceV5,
   serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5,
@@ -184,6 +185,64 @@ describe("Cycle 2o v5 custody-quality evidence", () => {
       createFilingParserCrossEngineExecutionEvidenceV5(sparse),
     ).toThrow("FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_INVALID");
   });
+
+  it("accepts the recursively frozen null-prototype measurement shape emitted live", () => {
+    const value = clone(buildFilingParserCrossEngineExecutionEvidenceV5Input());
+    const invocation = value.caseOutcomes[0]?.invocations?.[0];
+    if (invocation === undefined) throw new TypeError();
+    const liveMeasurement = frozenNullPrototypeRecords(invocation.measurement);
+    expect(Object.getPrototypeOf(liveMeasurement)).toBeNull();
+    (
+      invocation as unknown as {
+        measurement: unknown;
+      }
+    ).measurement = liveMeasurement;
+    const stages: string[] = [];
+
+    const normalized =
+      createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance(
+        value,
+        (stage) => stages.push(stage),
+      );
+
+    const normalizedMeasurement =
+      normalized.caseOutcomes[0]?.invocations?.[0].measurement;
+    expect(normalizedMeasurement).toEqual(invocation.measurement);
+    expect(Object.getPrototypeOf(normalizedMeasurement)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(normalizedMeasurement?.counts)).toBe(
+      Object.prototype,
+    );
+    expect(Object.getPrototypeOf(normalizedMeasurement?.metrics)).toBe(
+      Object.prototype,
+    );
+    expect(stages[0]).toBe("root_contract");
+    expect(stages.at(-1)).toBe("canonical_freeze");
+  });
+
+  it("rejects an own enumerable __proto__ extra on a null-prototype live measurement", () => {
+    const value = clone(buildFilingParserCrossEngineExecutionEvidenceV5Input());
+    const invocation = value.caseOutcomes[0]?.invocations?.[0];
+    if (invocation === undefined) throw new TypeError();
+    const liveMeasurement = frozenNullPrototypeRecordsWithExtra(
+      invocation.measurement,
+      "__proto__",
+      "hidden-extra",
+    );
+    expect(Object.getPrototypeOf(liveMeasurement)).toBeNull();
+    expect(Object.hasOwn(liveMeasurement, "__proto__")).toBe(true);
+    (
+      invocation as unknown as {
+        measurement: unknown;
+      }
+    ).measurement = liveMeasurement;
+
+    expect(() =>
+      createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance(
+        value,
+        () => undefined,
+      ),
+    ).toThrow("FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_INVALID");
+  });
 });
 
 function clone(
@@ -207,6 +266,45 @@ function mutable(
   value: FilingParserCrossEngineExecutionEvidenceV5,
 ): MutableEvidence {
   return structuredClone(value) as unknown as MutableEvidence;
+}
+
+function frozenNullPrototypeRecords(value: unknown): unknown {
+  if (Array.isArray(value))
+    return Object.freeze(value.map(frozenNullPrototypeRecords));
+  if (typeof value !== "object" || value === null) return value;
+  const record = Object.create(null) as Record<string, unknown>;
+  for (const [key, entry] of Object.entries(value))
+    record[key] = frozenNullPrototypeRecords(entry);
+  return Object.freeze(record);
+}
+
+function frozenNullPrototypeRecordsWithExtra(
+  value: unknown,
+  key: string,
+  extra: unknown,
+): object {
+  const snapshot = frozenNullPrototypeRecords(value);
+  if (
+    typeof snapshot !== "object" ||
+    snapshot === null ||
+    Array.isArray(snapshot)
+  )
+    throw new TypeError();
+  const record = Object.create(null) as Record<string, unknown>;
+  for (const [entryKey, entry] of Object.entries(snapshot))
+    Object.defineProperty(record, entryKey, {
+      configurable: true,
+      enumerable: true,
+      value: entry,
+      writable: true,
+    });
+  Object.defineProperty(record, key, {
+    configurable: true,
+    enumerable: true,
+    value: extra,
+    writable: true,
+  });
+  return Object.freeze(record);
 }
 
 function rebindReceipts(invocation: MutableInvocation): void {

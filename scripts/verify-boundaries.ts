@@ -205,6 +205,30 @@ const filingParserCycle2oTransitionBareSha256 =
   "d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" as const;
 const filingParserCycle2oTransitionSha256 =
   `sha256:${filingParserCycle2oTransitionBareSha256}` as const;
+const filingParserCycle2oSourceRevision =
+  "46408ec875755ef531c124846143e9b619c1961f" as const;
+const filingParserCycle2oCorrectiveTransitionPaths = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/run-filing-parser-cross-engine-execution-acceptance.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+  "scripts/verify-boundaries.ts",
+] as const;
+const filingParserCycle2oCorrectiveTransitionPathCount = 14 as const;
+const filingParserCycle2oCorrectiveTransitionNulFieldCount = 28 as const;
+const filingParserCycle2oCorrectiveTransitionBareSha256 =
+  "5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63" as const;
+const filingParserCycle2oCorrectiveTransitionSha256 =
+  `sha256:${filingParserCycle2oCorrectiveTransitionBareSha256}` as const;
 const filingParserCrossEngineExecutionCorePaths = [
   "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
   "packages/filing-parser-cross-engine-execution/package.json",
@@ -5072,6 +5096,30 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
       workflow,
     ) === null ||
     filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier.replace(
+        "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_PATH_COUNT =\n  14 as const;",
+        "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_PATH_COUNT =\n  0 as const;",
+      ),
+      cycle2oRunner,
+      workflow,
+    ) === null ||
+    filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier,
+      cycle2oRunner.replace(
+        "const CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT = 14;",
+        "const CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT = 0;",
+      ),
+      workflow,
+    ) === null ||
+    filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier,
+      cycle2oRunner,
+      workflow.replace(
+        "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+        "packages/filing-payload-custody/src/unreviewed.ts",
+      ),
+    ) === null ||
+    filingParserCycle2oTransitionTupleViolation(
       cycle2oVerifier,
       cycle2oRunner,
       'run: |\n  if git diff --quiet "$baseline" HEAD -- transition-marker; then exact=true; fi\n',
@@ -5581,12 +5629,32 @@ function filingParserCycle2oTransitionTupleViolation(
     "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_PATH_COUNT",
     "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_SHA256",
     true,
+    filingParserCycle2oTransitionPathCount,
+    filingParserCycle2oTransitionSha256,
   );
   const runnerTuple = filingParserCycle2oLiteralTuple(
     runner,
     "CYCLE_2O_TRANSITION_PATH_COUNT",
     "CYCLE_2O_TRANSITION_SHA256",
     false,
+    filingParserCycle2oTransitionPathCount,
+    filingParserCycle2oTransitionSha256,
+  );
+  const correctiveVerifierTuple = filingParserCycle2oLiteralTuple(
+    verifier,
+    "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_PATH_COUNT",
+    "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CORRECTIVE_TRANSITION_SHA256",
+    true,
+    filingParserCycle2oCorrectiveTransitionPathCount,
+    filingParserCycle2oCorrectiveTransitionSha256,
+  );
+  const correctiveRunnerTuple = filingParserCycle2oLiteralTuple(
+    runner,
+    "CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT",
+    "CYCLE_2O_CORRECTIVE_TRANSITION_SHA256",
+    false,
+    filingParserCycle2oCorrectiveTransitionPathCount,
+    filingParserCycle2oCorrectiveTransitionSha256,
   );
   const workflowHasExactClassifier =
     filingParserCycle2oTransitionNulFieldCount ===
@@ -5604,13 +5672,62 @@ function filingParserCycle2oTransitionTupleViolation(
       `[[ "$transition_sha256" == "${filingParserCycle2oTransitionBareSha256}" ]]`,
     ) &&
     !workflow.includes(`sha256:${filingParserCycle2oTransitionBareSha256}`);
+  const expectedCorrectiveFields = filingParserCycle2oCorrectiveTransitionPaths
+    .flatMap((path) => ['            "M"', `            "${path}"`])
+    .join("\n");
+  const workflowHasExactCorrectiveClassifier =
+    filingParserCycle2oCorrectiveTransitionNulFieldCount ===
+      filingParserCycle2oCorrectiveTransitionPathCount * 2 &&
+    filingParserCycle2oCorrectiveTransitionPaths.length ===
+      filingParserCycle2oCorrectiveTransitionPathCount &&
+    workflow.includes(`source="${filingParserCycle2oSourceRevision}"`) &&
+    workflow.includes(
+      `expected_corrective=(\n${expectedCorrectiveFields}\n          )`,
+    ) &&
+    workflow.includes(
+      `mapfile -d '' -t actual_corrective < <(git diff --name-status --no-renames -z "$source" HEAD --)`,
+    ) &&
+    workflow.includes(
+      `corrective_sha256="$(git diff --name-status --no-renames -z "$source" HEAD -- | sha256sum | cut -d ' ' -f 1)"`,
+    ) &&
+    workflow.includes(
+      "matches_exactly expected_corrective actual_corrective",
+    ) &&
+    workflow.includes('[[ "$successor_count" == "2" ]]') &&
+    workflow.includes('[[ "$first_parent_count" == "2" ]]') &&
+    workflow.includes('[[ "${topology[1]}" == "$source" ]]') &&
+    workflow.includes(
+      `[[ "$corrective_sha256" == "${filingParserCycle2oCorrectiveTransitionBareSha256}" ]]`,
+    ) &&
+    !workflow.includes(
+      `sha256:${filingParserCycle2oCorrectiveTransitionBareSha256}`,
+    );
   if (
     !verifierTuple ||
     !runnerTuple ||
-    !filingParserCycle2oRunnerChecksTuple(runner) ||
-    !workflowHasExactClassifier
+    !correctiveVerifierTuple ||
+    !correctiveRunnerTuple ||
+    !filingParserCycle2oRunnerChecksTuple(
+      runner,
+      "entries.length",
+      "sha256(output)",
+      "CYCLE_2O_TRANSITION_PATH_COUNT",
+      "CYCLE_2O_TRANSITION_SHA256",
+    ) ||
+    !filingParserCycle2oRunnerChecksTuple(
+      runner,
+      "correctiveEntries.length",
+      "sha256(correctiveOutput)",
+      "CYCLE_2O_CORRECTIVE_TRANSITION_PATH_COUNT",
+      "CYCLE_2O_CORRECTIVE_TRANSITION_SHA256",
+    ) ||
+    !verifier.includes(
+      "filingParserCrossEngineExecutionV5CorrectiveTransitionAllowed(\n        correctiveTransition.length,\n        sha256(correctiveBytes),",
+    ) ||
+    !workflowHasExactClassifier ||
+    !workflowHasExactCorrectiveClassifier
   )
-    return "Cycle 2o transition classifiers must agree on the exact 39-path/78-NUL-field/d830b547 tuple and reject zero or marker-only placeholders";
+    return "Cycle 2o transition classifiers must agree on the exact source and corrective-child NUL tuples and reject zero, drifted, or marker-only placeholders";
   return null;
 }
 
@@ -5619,6 +5736,8 @@ function filingParserCycle2oLiteralTuple(
   countName: string,
   digestName: string,
   exported: boolean,
+  expectedPathCount: number,
+  expectedSha256: string,
 ): boolean {
   const sourceFile = ts.createSourceFile(
     "cycle2o-transition-tuple.ts",
@@ -5650,13 +5769,13 @@ function filingParserCycle2oLiteralTuple(
       if (
         declaration.name.text === countName &&
         ts.isNumericLiteral(initializer) &&
-        Number(initializer.text) === filingParserCycle2oTransitionPathCount
+        Number(initializer.text) === expectedPathCount
       )
         countMatches += 1;
       if (
         declaration.name.text === digestName &&
         ts.isStringLiteralLike(initializer) &&
-        initializer.text === filingParserCycle2oTransitionSha256
+        initializer.text === expectedSha256
       )
         digestMatches += 1;
     }
@@ -5664,7 +5783,13 @@ function filingParserCycle2oLiteralTuple(
   return countMatches === 1 && digestMatches === 1;
 }
 
-function filingParserCycle2oRunnerChecksTuple(content: string): boolean {
+function filingParserCycle2oRunnerChecksTuple(
+  content: string,
+  entriesExpression: string,
+  digestExpression: string,
+  countName: string,
+  digestName: string,
+): boolean {
   const sourceFile = ts.createSourceFile(
     "cycle2o-transition-runner.ts",
     content,
@@ -5686,15 +5811,9 @@ function filingParserCycle2oRunnerChecksTuple(content: string): boolean {
         ) {
           const left = condition.left.getText(sourceFile);
           const right = condition.right.getText(sourceFile);
-          if (
-            left === "entries.length" &&
-            right === "CYCLE_2O_TRANSITION_PATH_COUNT"
-          )
+          if (left === entriesExpression && right === countName)
             checksPathCount = true;
-          if (
-            left === "sha256(output)" &&
-            right === "CYCLE_2O_TRANSITION_SHA256"
-          )
+          if (left === digestExpression && right === digestName)
             checksDigest = true;
         }
         ts.forEachChild(condition, inspectCondition);
@@ -9932,6 +10051,7 @@ function filingParserArchivePairCustodyProductionViolation(
     !isExactFilingPayloadCustodyImport(imports[4], "node:path", [
       ["isAbsolute", "isAbsolute"],
       ["join", "join"],
+      ["parse", "parse"],
       ["relative", "relative"],
       ["resolve", "resolve"],
       ["sep", "sep"],

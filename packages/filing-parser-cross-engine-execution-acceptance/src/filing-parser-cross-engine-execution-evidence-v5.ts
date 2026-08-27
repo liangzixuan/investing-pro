@@ -1302,7 +1302,11 @@ function safeSnapshot(
     }
     return result;
   }
-  if (Object.getPrototypeOf(value) !== Object.prototype) fail();
+  if (
+    Object.getPrototypeOf(value) !== Object.prototype &&
+    Object.getPrototypeOf(value) !== null
+  )
+    fail();
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (Reflect.ownKeys(descriptors).some((key) => typeof key !== "string"))
     fail();
@@ -1315,7 +1319,12 @@ function safeSnapshot(
       descriptor.enumerable !== true
     )
       fail();
-    result[key] = safeSnapshot(descriptor.value, budget, depth + 1);
+    Object.defineProperty(result, key, {
+      configurable: true,
+      enumerable: true,
+      value: safeSnapshot(descriptor.value, budget, depth + 1),
+      writable: true,
+    });
   }
   return result;
 }
