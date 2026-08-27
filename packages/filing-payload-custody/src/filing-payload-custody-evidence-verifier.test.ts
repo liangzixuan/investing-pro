@@ -65,6 +65,14 @@ import {
   isCycle2oCustodyTreeAllowed,
   isCycle2oDirectChildAllowed,
   isCycle2oTransitionRoutingRequired,
+  isCycle2pBaselineMergeBaseAllowed,
+  isCycle2pCommitDiffSetAllowed,
+  isCycle2pDirectChildAllowed,
+  isCycle2pHistoricalChainAllowed,
+  isCycle2pHistoricalCorrectiveDiffSetAllowed,
+  isCycle2pHistoricalDiffSetAllowed,
+  isCycle2pHistoricalSourceDiffSetAllowed,
+  isCycle2pTransitionRoutingRequired,
   isCiTestSerializationBaselineMergeBaseAllowed,
   isCiTestSerializationCommitDiffSetAllowed,
   isCiTestSerializationSurfaceRoutingRequired,
@@ -96,6 +104,41 @@ const CYCLE_2O_BASELINE_REVISION =
   "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
 const CYCLE_2O_SOURCE_REVISION =
   "46408ec875755ef531c124846143e9b619c1961f" as const;
+const CYCLE_2P_BASELINE_REVISION =
+  "e21408acf70a28909136cc3eb0c10bbbd48b8266" as const;
+const CYCLE_2P_HISTORICAL_BASELINE_REVISION =
+  "7243f16df0c4bd8691ff11fa037085e3beb3447e" as const;
+const CYCLE_2P_HISTORICAL_SOURCE_REVISION =
+  "96b042669edc6cb4a876bb0c061fa5e18732c1ca" as const;
+const CYCLE_2P_HISTORICAL_CORRECTIVE_REVISION =
+  "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
+const CYCLE_2P_TRANSITION = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  "packages/filing-parser/src/corpus-admission-security.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+]
+  .sort()
+  .map((path) => ({ path, status: "M" }));
+const CYCLE_2P_HISTORICAL_SOURCE_TRANSITION = [
+  "packages/filing-parser/src/corpus-admission-security.test.ts",
+  "packages/filing-parser/src/corpus-admission.ts",
+]
+  .sort()
+  .map((path) => ({ path, status: "M" }));
+const CYCLE_2P_HISTORICAL_CORRECTIVE_TRANSITION = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+]
+  .sort()
+  .map((path) => ({ path, status: "M" }));
+const CYCLE_2P_HISTORICAL_TRANSITION = [
+  ...CYCLE_2P_HISTORICAL_SOURCE_TRANSITION,
+  ...CYCLE_2P_HISTORICAL_CORRECTIVE_TRANSITION,
+].sort((left, right) => left.path.localeCompare(right.path));
 const CYCLE_2N_COMPOSITION_TREE = [
   "packages/filing-parser-quality-composition/package.json",
   "packages/filing-parser-quality-composition/src/filing-parser-quality-composition-security.test.ts",
@@ -1537,6 +1580,133 @@ afterEach(async () => {
       .splice(0)
       .map((directory) => rm(directory, { force: true, recursive: true })),
   );
+});
+
+describe("Cycle 2p admission-validity custody closure", () => {
+  it("requires one exact direct child of the promoted Cycle 2o documentation", () => {
+    const revision = "a".repeat(40);
+    expect(isCycle2pBaselineMergeBaseAllowed(CYCLE_2P_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2pBaselineMergeBaseAllowed("0".repeat(40))).toBe(false);
+    expect(isCycle2pBaselineMergeBaseAllowed(undefined)).toBe(false);
+
+    expect(
+      isCycle2pDirectChildAllowed(
+        "1",
+        "1",
+        revision,
+        `${revision} ${CYCLE_2P_BASELINE_REVISION}`,
+      ),
+    ).toBe(true);
+    for (const values of [
+      ["2", "1", revision, `${revision} ${CYCLE_2P_BASELINE_REVISION}`],
+      ["1", "2", revision, `${revision} ${CYCLE_2P_BASELINE_REVISION}`],
+      [
+        "1",
+        "1",
+        CYCLE_2P_BASELINE_REVISION,
+        `${CYCLE_2P_BASELINE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`,
+      ],
+      [
+        "1",
+        "1",
+        "not-a-revision",
+        `not-a-revision ${CYCLE_2P_BASELINE_REVISION}`,
+      ],
+      ["1", "1", revision, `${revision} ${"b".repeat(40)}`],
+      [
+        "1",
+        "1",
+        revision,
+        `${revision} ${CYCLE_2P_BASELINE_REVISION} ${"b".repeat(40)}`,
+      ],
+    ] as const)
+      expect(
+        isCycle2pDirectChildAllowed(values[0], values[1], values[2], values[3]),
+      ).toBe(false);
+  });
+
+  it("freezes the historical P1 source and corrective-child ancestry", () => {
+    const valid = [
+      CYCLE_2P_HISTORICAL_BASELINE_REVISION,
+      "2",
+      "2",
+      `${CYCLE_2P_HISTORICAL_CORRECTIVE_REVISION} ${CYCLE_2P_HISTORICAL_SOURCE_REVISION}`,
+      `${CYCLE_2P_HISTORICAL_SOURCE_REVISION} ${CYCLE_2P_HISTORICAL_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle2pHistoricalChainAllowed(...valid)).toBe(true);
+    for (let index = 0; index < valid.length; index += 1) {
+      const mutated: string[] = [...valid];
+      mutated[index] = index === 1 || index === 2 ? "1" : "0".repeat(40);
+      expect(
+        isCycle2pHistoricalChainAllowed(
+          ...(mutated as Parameters<typeof isCycle2pHistoricalChainAllowed>),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("routes every protected-surface intersection before Cycle 2o", () => {
+    const transitionPaths = CYCLE_2P_TRANSITION.map((entry) => entry.path);
+    expect(isCycle2pTransitionRoutingRequired(transitionPaths)).toBe(true);
+    for (const path of [
+      ...transitionPaths,
+      "packages/filing-parser/src/corpus-admission.ts",
+    ])
+      expect(isCycle2pTransitionRoutingRequired([path])).toBe(true);
+    expect(
+      isCycle2pTransitionRoutingRequired([...transitionPaths].reverse()),
+    ).toBe(false);
+    expect(
+      isCycle2pTransitionRoutingRequired([
+        transitionPaths[0] as string,
+        transitionPaths[0] as string,
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2pTransitionRoutingRequired([
+        "packages/filing-payload-custody/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+    expect(isCycle2pTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle2pTransitionRoutingRequired(undefined)).toBe(false);
+  });
+
+  it("requires the exact current and historical transition tuples", () => {
+    const cases = [
+      [CYCLE_2P_TRANSITION, isCycle2pCommitDiffSetAllowed],
+      [
+        CYCLE_2P_HISTORICAL_SOURCE_TRANSITION,
+        isCycle2pHistoricalSourceDiffSetAllowed,
+      ],
+      [
+        CYCLE_2P_HISTORICAL_CORRECTIVE_TRANSITION,
+        isCycle2pHistoricalCorrectiveDiffSetAllowed,
+      ],
+      [CYCLE_2P_HISTORICAL_TRANSITION, isCycle2pHistoricalDiffSetAllowed],
+    ] as const;
+    for (const [expected, isAllowed] of cases) {
+      expect(isAllowed(expected)).toBe(true);
+      expect(isAllowed([...expected].reverse())).toBe(false);
+      for (const entry of expected) {
+        expect(
+          isAllowed(expected.filter((candidate) => candidate !== entry)),
+        ).toBe(false);
+        expect(isAllowed([...expected, entry])).toBe(false);
+        expect(
+          isAllowed(
+            expected.map((candidate) =>
+              candidate === entry ? { ...candidate, status: "A" } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+      expect(
+        isAllowed([...expected, { path: "unreviewed", status: "M" }]),
+      ).toBe(false);
+    }
+  });
 });
 
 describe("Cycle 2o exact source-successor routing", () => {

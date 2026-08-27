@@ -672,6 +672,46 @@ describe("Cycle 2b filing corpus admission security boundary", () => {
     }
   });
 
+  it("orders both authority revocations into the exact earliest validity cutoff", () => {
+    const early = "2026-08-20T12:00:00.001Z";
+    const late = "2026-08-20T12:00:00.010Z";
+    for (const options of [
+      { rightsRevokedAt: early, stewardRevokedAt: late },
+      { rightsRevokedAt: late, stewardRevokedAt: early },
+    ] as const) {
+      const harness = buildHarness(options);
+      expect(verifyFilingCorpusAdmission(harness.input)).toMatchObject({
+        evaluatedAt: EVALUATED_AT,
+        status: "admitted",
+        validUntil: early,
+      });
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            evaluatedAt: early,
+          }),
+        "FILING_CORPUS_APPROVAL_INACTIVE",
+      );
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...harness.input,
+            evaluatedAt: late,
+          }),
+        "FILING_CORPUS_APPROVAL_INACTIVE",
+      );
+    }
+
+    const afterApprovalExpiry = buildHarness({
+      rightsRevokedAt: "2026-12-31T00:00:00.001Z",
+      stewardRevokedAt: null,
+    });
+    expect(
+      verifyFilingCorpusAdmission(afterApprovalExpiry.input),
+    ).toMatchObject({ validUntil: "2026-12-31T00:00:00.000Z" });
+  });
+
   it("binds approvals to authority validity, every scope digest, and canonical signatures", () => {
     const harness = buildHarness();
     for (const field of [

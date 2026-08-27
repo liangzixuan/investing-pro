@@ -64,6 +64,14 @@ const ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION =
   "7243f16df0c4bd8691ff11fa037085e3beb3447e" as const;
 const ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION =
   "96b042669edc6cb4a876bb0c061fa5e18732c1ca" as const;
+const ADMISSION_VALIDITY_BRIDGE_CORRECTIVE_REVISION =
+  "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
+const CYCLE_2P_BASELINE_REVISION =
+  "e21408acf70a28909136cc3eb0c10bbbd48b8266" as const;
+const CYCLE_2P_CORPUS_ADMISSION_PATH =
+  "packages/filing-parser/src/corpus-admission.ts" as const;
+const CYCLE_2P_CORPUS_ADMISSION_BLOB =
+  "e456cae97cf9eb377e3b3e8aabc156fdb377e2c7" as const;
 const CYCLE_2A_DISCONNECTED_SUCCESSOR_SOURCE_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
   "packages/filing-parser/src/corpus-admission.test.ts",
@@ -1330,6 +1338,18 @@ const ADMISSION_VALIDITY_BRIDGE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2P_TRANSITION = Object.freeze(
+  [
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    "packages/filing-parser/src/corpus-admission-security.test.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  ]
+    .sort()
+    .map((path) => Object.freeze({ path, status: "M" })),
+);
 const CYCLE_2M_PRE_BASELINE_CUMULATIVE_ENTRIES = Object.freeze([
   { path: ".github/workflows/ci.yml", status: "M" },
   { path: "docs/CYCLE_2L_EXIT_MATRIX.md", status: "A" },
@@ -1358,6 +1378,10 @@ const CYCLE_2O_TRANSITION_PATHS = new Set(
 const ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS = new Set(
   ADMISSION_VALIDITY_BRIDGE_TRANSITION.map((entry) => entry.path),
 );
+const CYCLE_2P_PROTECTED_SURFACE_PATHS = new Set([
+  ...CYCLE_2P_TRANSITION.map((entry) => entry.path),
+  CYCLE_2P_CORPUS_ADMISSION_PATH,
+]);
 const CYCLE_2K_TRANSITION_PATHS = new Set(
   CYCLE_2K_TRANSITION.map((entry) => entry.path),
 );
@@ -2102,6 +2126,10 @@ export async function verifyCycle2aCommitBoundary(
   )
     invalidReview();
 
+  const cycle2pBaselineDiffPaths = await cycle2pTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
   const admissionValidityBridgeBaselineDiffPaths =
     await admissionValidityBridgeTransitionSurfaceDiffPaths(
       repositoryPath,
@@ -2156,7 +2184,9 @@ export async function verifyCycle2aCommitBoundary(
     revision,
   );
   const cycle2nDiffPaths = diffEntries.map((entry) => entry.path);
-  if (isCycle2oTransitionRoutingRequired(cycle2nDiffPaths)) {
+  if (isCycle2pTransitionRoutingRequired(cycle2pBaselineDiffPaths)) {
+    await verifyCycle2pTransition(repositoryPath, revision);
+  } else if (isCycle2oTransitionRoutingRequired(cycle2nDiffPaths)) {
     await verifyCycle2oTransition(repositoryPath, revision);
   } else if (
     isAdmissionValidityBridgeTransitionRoutingRequired(
@@ -2446,6 +2476,50 @@ export function isCycle2mTransitionRoutingRequired(
         CYCLE_2M_TRANSITION_PATHS.has(path) &&
         (index === 0 || (baselineDiffPaths[index - 1] as string) < path),
     )
+  );
+}
+
+/** @internal Exact Cycle 2p source baseline regression seam. */
+export function isCycle2pBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CYCLE_2P_BASELINE_REVISION;
+}
+
+/** @internal Exact single-parent Cycle 2p source topology regression seam. */
+export function isCycle2pDirectChildAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+): boolean {
+  return (
+    successorCount === "1" &&
+    firstParentCount === "1" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_2P_BASELINE_REVISION &&
+    parentLine === `${revision} ${CYCLE_2P_BASELINE_REVISION}`
+  );
+}
+
+/** @internal Cycle 2p must route on any protected surface before Cycle 2o. */
+export function isCycle2pTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.some((path) => CYCLE_2P_PROTECTED_SURFACE_PATHS.has(path))
+  );
+}
+
+/** @internal Exact Cycle 2p immutable corpus-admission blob regression seam. */
+export function isCycle2pCorpusAdmissionBlobAllowed(
+  currentBlob: string | undefined,
+  historicalBlob: string | undefined,
+): boolean {
+  return (
+    currentBlob === CYCLE_2P_CORPUS_ADMISSION_BLOB &&
+    historicalBlob === CYCLE_2P_CORPUS_ADMISSION_BLOB
   );
 }
 
@@ -3171,6 +3245,16 @@ function exactAdmissionValidityBridgeDiffSet(
   );
 }
 
+/** @internal Exact Cycle 2p source transition regression seam. */
+export function isCycle2pCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(entries, CYCLE_2P_TRANSITION);
+}
+
 /** @internal Exact admission-validity source transition regression seam. */
 export function isAdmissionValidityBridgeSourceCommitDiffSetAllowed(
   entries: readonly {
@@ -3333,6 +3417,32 @@ export function isCycle2iCommitDiffSetAllowed(
         entry.status === expected.status
       );
     })
+  );
+}
+
+async function cycle2pTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2P_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2pBaselineMergeBaseAllowed(mergeBase)) return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2P_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CYCLE_2P_PROTECTED_SURFACE_PATHS,
+    ]),
   );
 }
 
@@ -3947,6 +4057,105 @@ async function cycle2oTreePaths(
     const match = /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entry);
     return match?.[1] ?? invalidReview();
   });
+}
+
+async function verifyCycle2pTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  for (const requiredRevision of [
+    CYCLE_2P_BASELINE_REVISION,
+    ADMISSION_VALIDITY_BRIDGE_CORRECTIVE_REVISION,
+  ])
+    await git(
+      repositoryPath,
+      ["cat-file", "-e", `${requiredRevision}^{commit}`],
+      0,
+    );
+
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2P_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2pBaselineMergeBaseAllowed(mergeBase)) invalidReview();
+  const range = `${CYCLE_2P_BASELINE_REVISION}..${revision}`;
+  const successorCount = decodeGitCountLine(
+    await git(repositoryPath, ["rev-list", "--count", range], 64),
+  );
+  const firstParentCount = decodeGitCountLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--first-parent", "--count", range],
+      64,
+    ),
+  );
+  const parentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", revision],
+      128,
+    ),
+  );
+  if (
+    !isCycle2pDirectChildAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+    )
+  )
+    invalidReview();
+
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CYCLE_2P_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalidReview();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2pCommitDiffSetAllowed(entries)) invalidReview();
+
+  await verifyAdmissionValidityBridgeTransition(
+    repositoryPath,
+    ADMISSION_VALIDITY_BRIDGE_CORRECTIVE_REVISION,
+  );
+  const [currentBlob, historicalBlob] = await Promise.all([
+    git(
+      repositoryPath,
+      ["rev-parse", `${revision}:${CYCLE_2P_CORPUS_ADMISSION_PATH}`],
+      64,
+    ),
+    git(
+      repositoryPath,
+      [
+        "rev-parse",
+        `${ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION}:${CYCLE_2P_CORPUS_ADMISSION_PATH}`,
+      ],
+      64,
+    ),
+  ]);
+  if (
+    !isCycle2pCorpusAdmissionBlobAllowed(
+      decodeGitRevisionLine(currentBlob),
+      decodeGitRevisionLine(historicalBlob),
+    )
+  )
+    invalidReview();
 }
 
 async function verifyCycle2oTransition(
