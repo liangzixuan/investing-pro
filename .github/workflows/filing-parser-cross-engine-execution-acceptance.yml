@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 2p admission-validity closure before evidence routes
+      - name: Classify exact Cycle 2p source or Windows identity corrective before evidence routes
         id: cycle2p_source
         if: ${{ success() }}
         shell: bash
@@ -54,6 +54,7 @@ jobs:
           exact=false
           required=false
           baseline="e21408acf70a28909136cc3eb0c10bbbd48b8266"
+          source="bc4b371784711102462ad28a9c9eb7cb567f1072"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission-security.test.ts"
@@ -62,8 +63,11 @@ jobs:
             "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.ts"
+            "scripts/verify-boundaries.ts"
           )
-          expected=(
+          expected_source=(
             "M"
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "M"
@@ -76,6 +80,44 @@ jobs:
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
+          expected_corrective=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.ts"
+            "M"
+            "scripts/verify-boundaries.ts"
+          )
+          expected_cumulative=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/corpus-admission-security.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/parser-archive-pair-custody.ts"
+            "M"
+            "scripts/verify-boundaries.ts"
           )
           matches_exactly() {
             local -n expected_values="$1"
@@ -95,27 +137,55 @@ jobs:
             )
             if [[ "${#protected_actual[@]}" != "0" ]]; then
               required=true
-              read -r -a topology <<< "$(git rev-list --parents -n 1 HEAD)"
-              merge_base="$(git merge-base "$baseline" HEAD)"
-              successor_count="$(git rev-list --count "$baseline"..HEAD)"
-              first_parent_count="$(git rev-list --first-parent --count "$baseline"..HEAD)"
-              mapfile -d '' -t actual < <(
-                git diff --name-status --no-renames -z "$baseline" HEAD --
-              )
-              if [[ "$merge_base" == "$baseline" ]] && \
-                 [[ "$successor_count" == "1" ]] && \
-                 [[ "$first_parent_count" == "1" ]] && \
-                 [[ "${#topology[@]}" == "2" ]] && \
-                 [[ "${topology[1]}" == "$baseline" ]] && \
-                 matches_exactly expected actual; then
+              source_exact=false
+              if git cat-file -e "${source}^{commit}" 2>/dev/null; then
+                read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
+                source_merge_base="$(git merge-base "$baseline" "$source")"
+                source_successor_count="$(git rev-list --count "$baseline".."$source")"
+                source_first_parent_count="$(git rev-list --first-parent --count "$baseline".."$source")"
+                mapfile -d '' -t source_actual < <(
+                  git diff --name-status --no-renames -z "$baseline" "$source" --
+                )
+                if [[ "$source_merge_base" == "$baseline" ]] && \
+                   [[ "$source_successor_count" == "1" ]] && \
+                   [[ "$source_first_parent_count" == "1" ]] && \
+                   [[ "${#source_topology[@]}" == "2" ]] && \
+                   [[ "${source_topology[0]}" == "$source" ]] && \
+                   [[ "${source_topology[1]}" == "$baseline" ]] && \
+                   matches_exactly expected_source source_actual; then
+                  source_exact=true
+                fi
+              fi
+              if [[ "$source_exact" == "true" && "$GITHUB_SHA" == "$source" ]]; then
                 exact=true
+              elif [[ "$source_exact" == "true" ]] && git merge-base --is-ancestor "$source" HEAD; then
+                read -r -a topology <<< "$(git rev-list --parents -n 1 HEAD)"
+                merge_base="$(git merge-base "$baseline" HEAD)"
+                successor_count="$(git rev-list --count "$baseline"..HEAD)"
+                first_parent_count="$(git rev-list --first-parent --count "$baseline"..HEAD)"
+                mapfile -d '' -t corrective_actual < <(
+                  git diff --name-status --no-renames -z "$source" HEAD --
+                )
+                mapfile -d '' -t cumulative_actual < <(
+                  git diff --name-status --no-renames -z "$baseline" HEAD --
+                )
+                if [[ "$merge_base" == "$baseline" ]] && \
+                   [[ "$successor_count" == "2" ]] && \
+                   [[ "$first_parent_count" == "2" ]] && \
+                   [[ "${#topology[@]}" == "2" ]] && \
+                   [[ "${topology[0]}" == "$GITHUB_SHA" ]] && \
+                   [[ "${topology[1]}" == "$source" ]] && \
+                   matches_exactly expected_corrective corrective_actual && \
+                   matches_exactly expected_cumulative cumulative_actual; then
+                  exact=true
+                fi
               fi
             fi
           fi
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Cycle 2p protected surfaces changed outside the exact direct-child transition; refusing inherited evidence routing." >&2
+            echo "Cycle 2p protected surfaces changed outside the exact source or Windows identity corrective chain; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2o evidence source or corrective child before inherited routes

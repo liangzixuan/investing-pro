@@ -50,6 +50,8 @@ const CYCLE_2O_SOURCE_REVISION =
   "46408ec875755ef531c124846143e9b619c1961f" as const;
 const CYCLE_2P_BASELINE_REVISION =
   "e21408acf70a28909136cc3eb0c10bbbd48b8266" as const;
+const CYCLE_2P_SOURCE_REVISION =
+  "bc4b371784711102462ad28a9c9eb7cb567f1072" as const;
 const CYCLE_2P_HISTORICAL_BASELINE_REVISION =
   "7243f16df0c4bd8691ff11fa037085e3beb3447e" as const;
 const CYCLE_2P_HISTORICAL_SOURCE_REVISION =
@@ -1347,6 +1349,30 @@ const CYCLE_2P_TRANSITION = Object.freeze(
     .sort()
     .map((path) => Object.freeze({ path, status: "M" })),
 );
+const CYCLE_2P_CORRECTIVE_TRANSITION = Object.freeze(
+  [
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+    "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+    "scripts/verify-boundaries.ts",
+  ]
+    .sort()
+    .map((path) => Object.freeze({ path, status: "M" })),
+);
+const CYCLE_2P_CUMULATIVE_TRANSITION = Object.freeze(
+  [
+    ...new Set([
+      ...CYCLE_2P_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_2P_CORRECTIVE_TRANSITION.map((entry) => entry.path),
+    ]),
+  ]
+    .sort()
+    .map((path) => Object.freeze({ path, status: "M" })),
+);
 const CYCLE_2P_HISTORICAL_SOURCE_TRANSITION = Object.freeze(
   [
     "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -1407,11 +1433,8 @@ const CYCLE_2N_TRANSITION_PATHS = new Set(
 const CYCLE_2O_TRANSITION_PATHS = new Set(
   CYCLE_2O_TRANSITION.map((entry) => entry.path),
 );
-const CYCLE_2P_TRANSITION_PATHS = new Set(
-  CYCLE_2P_TRANSITION.map((entry) => entry.path),
-);
 const CYCLE_2P_PROTECTED_SURFACE_PATHS = new Set([
-  ...CYCLE_2P_TRANSITION_PATHS,
+  ...CYCLE_2P_CUMULATIVE_TRANSITION.map((entry) => entry.path),
   "packages/filing-parser/src/corpus-admission.ts",
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
@@ -2313,7 +2336,7 @@ export function isCycle2pBaselineMergeBaseAllowed(
   return mergeBase === CYCLE_2P_BASELINE_REVISION;
 }
 
-/** @internal Cycle 2p is one exact direct child of the promoted Cycle 2o docs. */
+/** @internal Cycle 2p source is the exact direct child of the promoted Cycle 2o docs. */
 export function isCycle2pDirectChildAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -2324,8 +2347,28 @@ export function isCycle2pDirectChildAllowed(
     successorCount === "1" &&
     firstParentCount === "1" &&
     COMMIT.test(revision) &&
-    revision !== CYCLE_2P_BASELINE_REVISION &&
+    revision === CYCLE_2P_SOURCE_REVISION &&
     parentLine === `${revision} ${CYCLE_2P_BASELINE_REVISION}`
+  );
+}
+
+/** @internal Cycle 2p corrective promotion is one exact child of the frozen source. */
+export function isCycle2pCorrectiveTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "2" &&
+    firstParentCount === "2" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_2P_BASELINE_REVISION &&
+    revision !== CYCLE_2P_SOURCE_REVISION &&
+    parentLine === `${revision} ${CYCLE_2P_SOURCE_REVISION}` &&
+    sourceParentLine ===
+      `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`
   );
 }
 
@@ -2354,13 +2397,7 @@ export function isCycle2pTransitionRoutingRequired(
 ): boolean {
   return (
     baselineDiffPaths !== undefined &&
-    baselineDiffPaths.length > 0 &&
-    new Set(baselineDiffPaths).size === baselineDiffPaths.length &&
-    baselineDiffPaths.every(
-      (path, index) =>
-        CYCLE_2P_PROTECTED_SURFACE_PATHS.has(path) &&
-        (index === 0 || (baselineDiffPaths[index - 1] as string) < path),
-    )
+    baselineDiffPaths.some((path) => CYCLE_2P_PROTECTED_SURFACE_PATHS.has(path))
   );
 }
 
@@ -2958,6 +2995,26 @@ export function isCycle2pCommitDiffSetAllowed(
   }[],
 ): boolean {
   return exactCycle2pDiffSet(entries, CYCLE_2P_TRANSITION);
+}
+
+/** @internal Exact Cycle 2p Windows-identity corrective-child transition. */
+export function isCycle2pCorrectiveCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2P_CORRECTIVE_TRANSITION);
+}
+
+/** @internal Exact Cycle 2p source-through-corrective cumulative transition. */
+export function isCycle2pCumulativeDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2P_CUMULATIVE_TRANSITION);
 }
 
 /** @internal Exact historical P1 source transition regression seam. */
@@ -3903,6 +3960,7 @@ async function verifyCycle2pTransition(
 ): Promise<void> {
   for (const requiredRevision of [
     CYCLE_2P_BASELINE_REVISION,
+    CYCLE_2P_SOURCE_REVISION,
     CYCLE_2P_HISTORICAL_BASELINE_REVISION,
     CYCLE_2P_HISTORICAL_SOURCE_REVISION,
     CYCLE_2P_HISTORICAL_CORRECTIVE_REVISION,
@@ -3912,6 +3970,48 @@ async function verifyCycle2pTransition(
       ["cat-file", "-e", `${requiredRevision}^{commit}`],
       0,
     );
+
+  const sourceMergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2P_BASELINE_REVISION, CYCLE_2P_SOURCE_REVISION],
+      64,
+    ),
+  );
+  if (!isCycle2pBaselineMergeBaseAllowed(sourceMergeBase)) invalid();
+  const sourceRange = `${CYCLE_2P_BASELINE_REVISION}..${CYCLE_2P_SOURCE_REVISION}`;
+  const sourceSuccessorCount = decodeGitCountLine(
+    await git(repositoryPath, ["rev-list", "--count", sourceRange], 32),
+  );
+  const sourceFirstParentCount = decodeGitCountLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--first-parent", "--count", sourceRange],
+      32,
+    ),
+  );
+  const cycle2pSourceParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_2P_SOURCE_REVISION],
+      128,
+    ),
+  ).join(" ");
+  if (
+    !isCycle2pDirectChildAllowed(
+      String(sourceSuccessorCount),
+      String(sourceFirstParentCount),
+      CYCLE_2P_SOURCE_REVISION,
+      cycle2pSourceParentLine,
+    )
+  )
+    invalid();
+  const sourceEntries = await cycle2pDiffEntries(
+    repositoryPath,
+    CYCLE_2P_BASELINE_REVISION,
+    CYCLE_2P_SOURCE_REVISION,
+  );
+  if (!isCycle2pCommitDiffSetAllowed(sourceEntries)) invalid();
 
   const mergeBase = decodeGitRevisionLine(
     await git(
@@ -3939,21 +4039,36 @@ async function verifyCycle2pTransition(
       128,
     ),
   ).join(" ");
-  if (
-    !isCycle2pDirectChildAllowed(
-      String(successorCount),
-      String(firstParentCount),
-      revision,
-      parentLine,
-    )
-  )
-    invalid();
+  const directSource = isCycle2pDirectChildAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+  );
+  const correctiveChild = isCycle2pCorrectiveTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    cycle2pSourceParentLine,
+  );
+  if (!directSource && !correctiveChild) invalid();
   const currentEntries = await cycle2pDiffEntries(
     repositoryPath,
     CYCLE_2P_BASELINE_REVISION,
     revision,
   );
-  if (!isCycle2pCommitDiffSetAllowed(currentEntries)) invalid();
+  if (directSource) {
+    if (!isCycle2pCommitDiffSetAllowed(currentEntries)) invalid();
+  } else {
+    const correctiveEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2P_SOURCE_REVISION,
+      revision,
+    );
+    if (!isCycle2pCorrectiveCommitDiffSetAllowed(correctiveEntries)) invalid();
+    if (!isCycle2pCumulativeDiffSetAllowed(currentEntries)) invalid();
+  }
 
   const historicalMergeBase = decodeGitRevisionLine(
     await git(

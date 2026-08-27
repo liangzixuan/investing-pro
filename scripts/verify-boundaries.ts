@@ -5114,7 +5114,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     filingParserCycle2oTransitionTupleViolation(
       cycle2oVerifier,
       cycle2oRunner,
-      workflow.replace(
+      workflow.replaceAll(
         "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
         "packages/filing-payload-custody/src/unreviewed.ts",
       ),
@@ -10030,7 +10030,7 @@ function filingParserArchivePairCustodyProductionViolation(
     !isExactFilingPayloadCustodyImport(
       imports[1],
       "node:fs",
-      [["Stats", "Stats"]],
+      [["BigIntStats", "BigIntStats"]],
       true,
     ) ||
     !isExactFilingPayloadCustodyImport(imports[2], "node:fs/promises", [

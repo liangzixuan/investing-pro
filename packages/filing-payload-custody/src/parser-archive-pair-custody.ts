@@ -4,7 +4,7 @@ import {
   createHash,
   randomBytes,
 } from "node:crypto";
-import type { Stats } from "node:fs";
+import type { BigIntStats } from "node:fs";
 import {
   chmod,
   lstat,
@@ -191,8 +191,8 @@ interface PersistedAudit {
 
 interface WorkspaceIdentity {
   readonly canonicalPath: string;
-  readonly device: number;
-  readonly inode: number;
+  readonly dev: bigint;
+  readonly ino: bigint;
   readonly parentDirectory: string;
 }
 
@@ -234,6 +234,19 @@ export function createFilingParserArchivePairCustodyProtocolForTest(
   runtime: TestRuntime,
 ): FilingParserArchivePairCustodyProtocol {
   return createProtocol(normalizeRuntime(runtime));
+}
+
+/** @internal Deterministic regression seam for exact 64-bit file identity. */
+export function exactFileIdentityMatchesForTest(
+  leftDevice: bigint,
+  leftInode: bigint,
+  rightDevice: bigint,
+  rightInode: bigint,
+): boolean {
+  return sameExactFileIdentity(
+    { dev: leftDevice, ino: leftInode },
+    { dev: rightDevice, ino: rightInode },
+  );
 }
 
 function createProtocol(
@@ -468,22 +481,21 @@ async function captureWorkspaceIdentity(
   workspaceDirectory: string,
 ): Promise<WorkspaceIdentity> {
   requireContained(parentDirectory, workspaceDirectory);
-  const before = await lstat(workspaceDirectory);
+  const before = await lstat(workspaceDirectory, { bigint: true });
   if (!before.isDirectory() || before.isSymbolicLink()) fail();
   const canonicalPath = resolve(await realpath(workspaceDirectory));
   if (canonicalPath !== resolve(workspaceDirectory)) fail();
-  const after = await lstat(workspaceDirectory);
+  const after = await lstat(workspaceDirectory, { bigint: true });
   if (
     !after.isDirectory() ||
     after.isSymbolicLink() ||
-    after.dev !== before.dev ||
-    after.ino !== before.ino
+    !sameExactFileIdentity(after, before)
   )
     fail();
   return Object.freeze({
     canonicalPath,
-    device: before.dev,
-    inode: before.ino,
+    dev: before.dev,
+    ino: before.ino,
     parentDirectory,
   });
 }
@@ -499,9 +511,9 @@ async function findWorkspaceIdentity(
   for (const name of names) {
     const candidate = join(identity.parentDirectory, name);
     requireContained(identity.parentDirectory, candidate);
-    let metadata: Stats;
+    let metadata: BigIntStats;
     try {
-      metadata = await lstat(candidate);
+      metadata = await lstat(candidate, { bigint: true });
     } catch (error) {
       if (isFileSystemCode(error, "ENOENT")) continue;
       throw error;
@@ -509,8 +521,7 @@ async function findWorkspaceIdentity(
     if (
       metadata.isDirectory() &&
       !metadata.isSymbolicLink() &&
-      metadata.dev === identity.device &&
-      metadata.ino === identity.inode
+      sameExactFileIdentity(metadata, identity)
     )
       matches.push(resolve(candidate));
   }
@@ -522,12 +533,11 @@ async function requireWorkspaceIdentity(
   identity: WorkspaceIdentity,
 ): Promise<void> {
   requireContained(identity.parentDirectory, path);
-  const metadata = await lstat(path);
+  const metadata = await lstat(path, { bigint: true });
   if (
     !metadata.isDirectory() ||
     metadata.isSymbolicLink() ||
-    metadata.dev !== identity.device ||
-    metadata.ino !== identity.inode
+    !sameExactFileIdentity(metadata, identity)
   )
     fail();
 }
@@ -843,25 +853,25 @@ async function canonicalDirectory(value: string): Promise<string> {
   const after = await requireLexicalDirectoryChain(absolute);
   const canonicalMetadata = await requireLexicalDirectoryChain(canonical);
   if (
-    after.dev !== before.dev ||
-    after.ino !== before.ino ||
-    canonicalMetadata.dev !== before.dev ||
-    canonicalMetadata.ino !== before.ino
+    !sameExactFileIdentity(after, before) ||
+    !sameExactFileIdentity(canonicalMetadata, before)
   )
     fail();
   return canonical;
 }
 
-async function requireLexicalDirectoryChain(value: string): Promise<Stats> {
+async function requireLexicalDirectoryChain(
+  value: string,
+): Promise<BigIntStats> {
   const absolute = resolve(value);
   const root = parse(absolute).root;
   let current = root;
-  let metadata = await lstat(current);
+  let metadata = await lstat(current, { bigint: true });
   if (!metadata.isDirectory() || metadata.isSymbolicLink()) fail();
   const remainder = relative(root, absolute);
   for (const component of remainder === "" ? [] : remainder.split(sep)) {
     current = join(current, component);
-    metadata = await lstat(current);
+    metadata = await lstat(current, { bigint: true });
     if (!metadata.isDirectory() || metadata.isSymbolicLink()) fail();
   }
   return metadata;
@@ -918,23 +928,23 @@ async function boundedRegularFile(
   maximumBytes: number,
   exactLength = false,
 ): Promise<Uint8Array> {
-  const metadata = await lstat(path);
+  const metadata = await lstat(path, { bigint: true });
+  const maximumBytesBigInt = BigInt(maximumBytes);
   if (
     !metadata.isFile() ||
     metadata.isSymbolicLink() ||
-    metadata.nlink !== 1 ||
-    metadata.size <= 0 ||
-    metadata.size > maximumBytes ||
-    (exactLength && metadata.size !== maximumBytes)
+    metadata.nlink !== 1n ||
+    metadata.size <= 0n ||
+    metadata.size > maximumBytesBigInt ||
+    (exactLength && metadata.size !== maximumBytesBigInt)
   )
     fail();
   const bytes = Uint8Array.from(await readFile(path));
-  const finalMetadata = await lstat(path);
+  const finalMetadata = await lstat(path, { bigint: true });
   if (
-    finalMetadata.dev !== metadata.dev ||
-    finalMetadata.ino !== metadata.ino ||
+    !sameExactFileIdentity(finalMetadata, metadata) ||
     finalMetadata.size !== metadata.size ||
-    bytes.byteLength !== metadata.size
+    BigInt(bytes.byteLength) !== metadata.size
   )
     fail();
   return bytes;
@@ -1128,6 +1138,13 @@ function requireContained(parent: string, child: string): void {
 
 function isSha256(value: unknown): value is Sha256 {
   return typeof value === "string" && HASH.test(value);
+}
+
+function sameExactFileIdentity(
+  left: Readonly<{ readonly dev: bigint; readonly ino: bigint }>,
+  right: Readonly<{ readonly dev: bigint; readonly ino: bigint }>,
+): boolean {
+  return left.dev === right.dev && left.ino === right.ino;
 }
 
 function isFileSystemCode(error: unknown, code: string): boolean {

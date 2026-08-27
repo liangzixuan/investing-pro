@@ -67,6 +67,9 @@ import {
   isCycle2oTransitionRoutingRequired,
   isCycle2pBaselineMergeBaseAllowed,
   isCycle2pCommitDiffSetAllowed,
+  isCycle2pCorrectiveCommitDiffSetAllowed,
+  isCycle2pCorrectiveTopologyAllowed,
+  isCycle2pCumulativeDiffSetAllowed,
   isCycle2pDirectChildAllowed,
   isCycle2pHistoricalChainAllowed,
   isCycle2pHistoricalCorrectiveDiffSetAllowed,
@@ -106,6 +109,8 @@ const CYCLE_2O_SOURCE_REVISION =
   "46408ec875755ef531c124846143e9b619c1961f" as const;
 const CYCLE_2P_BASELINE_REVISION =
   "e21408acf70a28909136cc3eb0c10bbbd48b8266" as const;
+const CYCLE_2P_SOURCE_REVISION =
+  "bc4b371784711102462ad28a9c9eb7cb567f1072" as const;
 const CYCLE_2P_HISTORICAL_BASELINE_REVISION =
   "7243f16df0c4bd8691ff11fa037085e3beb3447e" as const;
 const CYCLE_2P_HISTORICAL_SOURCE_REVISION =
@@ -119,6 +124,26 @@ const CYCLE_2P_TRANSITION = [
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+]
+  .sort()
+  .map((path) => ({ path, status: "M" }));
+const CYCLE_2P_CORRECTIVE_TRANSITION = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+  "scripts/verify-boundaries.ts",
+]
+  .sort()
+  .map((path) => ({ path, status: "M" }));
+const CYCLE_2P_CUMULATIVE_TRANSITION = [
+  ...new Set([
+    ...CYCLE_2P_TRANSITION.map((entry) => entry.path),
+    ...CYCLE_2P_CORRECTIVE_TRANSITION.map((entry) => entry.path),
+  ]),
 ]
   .sort()
   .map((path) => ({ path, status: "M" }));
@@ -1583,8 +1608,8 @@ afterEach(async () => {
 });
 
 describe("Cycle 2p admission-validity custody closure", () => {
-  it("requires one exact direct child of the promoted Cycle 2o documentation", () => {
-    const revision = "a".repeat(40);
+  it("anchors the exact source and one exact Windows-identity corrective child", () => {
+    const correction = "a".repeat(40);
     expect(isCycle2pBaselineMergeBaseAllowed(CYCLE_2P_BASELINE_REVISION)).toBe(
       true,
     );
@@ -1595,13 +1620,24 @@ describe("Cycle 2p admission-validity custody closure", () => {
       isCycle2pDirectChildAllowed(
         "1",
         "1",
-        revision,
-        `${revision} ${CYCLE_2P_BASELINE_REVISION}`,
+        CYCLE_2P_SOURCE_REVISION,
+        `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`,
       ),
     ).toBe(true);
     for (const values of [
-      ["2", "1", revision, `${revision} ${CYCLE_2P_BASELINE_REVISION}`],
-      ["1", "2", revision, `${revision} ${CYCLE_2P_BASELINE_REVISION}`],
+      [
+        "2",
+        "1",
+        CYCLE_2P_SOURCE_REVISION,
+        `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`,
+      ],
+      [
+        "1",
+        "2",
+        CYCLE_2P_SOURCE_REVISION,
+        `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`,
+      ],
+      ["1", "1", correction, `${correction} ${CYCLE_2P_BASELINE_REVISION}`],
       [
         "1",
         "1",
@@ -1614,17 +1650,54 @@ describe("Cycle 2p admission-validity custody closure", () => {
         "not-a-revision",
         `not-a-revision ${CYCLE_2P_BASELINE_REVISION}`,
       ],
-      ["1", "1", revision, `${revision} ${"b".repeat(40)}`],
       [
         "1",
         "1",
-        revision,
-        `${revision} ${CYCLE_2P_BASELINE_REVISION} ${"b".repeat(40)}`,
+        CYCLE_2P_SOURCE_REVISION,
+        `${CYCLE_2P_SOURCE_REVISION} ${"b".repeat(40)}`,
+      ],
+      [
+        "1",
+        "1",
+        CYCLE_2P_SOURCE_REVISION,
+        `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION} ${"b".repeat(40)}`,
       ],
     ] as const)
       expect(
         isCycle2pDirectChildAllowed(values[0], values[1], values[2], values[3]),
       ).toBe(false);
+
+    const validCorrection = [
+      "2",
+      "2",
+      correction,
+      `${correction} ${CYCLE_2P_SOURCE_REVISION}`,
+      `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle2pCorrectiveTopologyAllowed(...validCorrection)).toBe(true);
+    for (let index = 0; index < validCorrection.length; index += 1) {
+      const mutated: string[] = [...validCorrection];
+      mutated[index] =
+        index < 2
+          ? "1"
+          : index === 2
+            ? CYCLE_2P_SOURCE_REVISION
+            : "0".repeat(40);
+      expect(
+        isCycle2pCorrectiveTopologyAllowed(
+          ...(mutated as Parameters<typeof isCycle2pCorrectiveTopologyAllowed>),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      isCycle2pCorrectiveTopologyAllowed(
+        "2",
+        "2",
+        "not-a-revision",
+        `not-a-revision ${CYCLE_2P_SOURCE_REVISION}`,
+        `${CYCLE_2P_SOURCE_REVISION} ${CYCLE_2P_BASELINE_REVISION}`,
+      ),
+    ).toBe(false);
   });
 
   it("freezes the historical P1 source and corrective-child ancestry", () => {
@@ -1648,7 +1721,9 @@ describe("Cycle 2p admission-validity custody closure", () => {
   });
 
   it("routes every protected-surface intersection before Cycle 2o", () => {
-    const transitionPaths = CYCLE_2P_TRANSITION.map((entry) => entry.path);
+    const transitionPaths = CYCLE_2P_CUMULATIVE_TRANSITION.map(
+      (entry) => entry.path,
+    );
     expect(isCycle2pTransitionRoutingRequired(transitionPaths)).toBe(true);
     for (const path of [
       ...transitionPaths,
@@ -1657,13 +1732,20 @@ describe("Cycle 2p admission-validity custody closure", () => {
       expect(isCycle2pTransitionRoutingRequired([path])).toBe(true);
     expect(
       isCycle2pTransitionRoutingRequired([...transitionPaths].reverse()),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isCycle2pTransitionRoutingRequired([
         transitionPaths[0] as string,
         transitionPaths[0] as string,
       ]),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      isCycle2pTransitionRoutingRequired([
+        "packages/unreviewed-before.ts",
+        transitionPaths[0] as string,
+        "packages/unreviewed-after.ts",
+      ]),
+    ).toBe(true);
     expect(
       isCycle2pTransitionRoutingRequired([
         "packages/filing-payload-custody/src/unreviewed.ts",
@@ -1676,6 +1758,8 @@ describe("Cycle 2p admission-validity custody closure", () => {
   it("requires the exact current and historical transition tuples", () => {
     const cases = [
       [CYCLE_2P_TRANSITION, isCycle2pCommitDiffSetAllowed],
+      [CYCLE_2P_CORRECTIVE_TRANSITION, isCycle2pCorrectiveCommitDiffSetAllowed],
+      [CYCLE_2P_CUMULATIVE_TRANSITION, isCycle2pCumulativeDiffSetAllowed],
       [
         CYCLE_2P_HISTORICAL_SOURCE_TRANSITION,
         isCycle2pHistoricalSourceDiffSetAllowed,

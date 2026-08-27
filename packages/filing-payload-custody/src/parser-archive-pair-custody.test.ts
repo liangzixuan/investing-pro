@@ -21,6 +21,7 @@ import {
   FILING_PARSER_ARCHIVE_PAIR_CUSTODY_NOT_PROVEN,
   FILING_PARSER_ARCHIVE_PAIR_CUSTODY_SCHEMA_VERSION,
   createFilingParserArchivePairCustodyProtocolForTest,
+  exactFileIdentityMatchesForTest,
   type FilingParserArchivePairCustodyPhase,
 } from "./parser-archive-pair-custody";
 import { createSyntheticFilingParserArchivePairFixture } from "./parser-archive-pair-fixture";
@@ -328,6 +329,21 @@ describe("filing parser archive pair custody", () => {
       expect(await readdir(parent)).toEqual([]);
     },
   );
+
+  it("compares device and inode identities without 64-bit precision loss", () => {
+    const leftInode = 9_007_199_254_740_992n;
+    const rightInode = leftInode + 1n;
+    expect(Number(leftInode)).toBe(Number(rightInode));
+    expect(exactFileIdentityMatchesForTest(7n, leftInode, 7n, rightInode)).toBe(
+      false,
+    );
+    expect(exactFileIdentityMatchesForTest(7n, leftInode, 7n, leftInode)).toBe(
+      true,
+    );
+    expect(exactFileIdentityMatchesForTest(7n, leftInode, 8n, leftInode)).toBe(
+      false,
+    );
+  });
 
   it("rejects an ancestor directory link before creating a workspace", async ({
     skip,
