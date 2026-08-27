@@ -37,9 +37,9 @@ Cycle 2m source-owned direct-Docker lifecycle binding Pass only for exact source
 commit `5d61868e6075865b32640ddaceb845ac9dbc69f3` from exact baseline
 `1cb7d3ce024cbd29665af7ec4e010da0c380b726`; promoted Cycle 2n source-owned
 parser-quality composition Pass only for exact source commit
-`1d7dee56c66c1ad0f5d612603567adf2589e0930`; and proposed Cycle 2o exact
-parser-archive custody-to-quality composition with source, evidence, review,
-and promotion Pending;
+`1d7dee56c66c1ad0f5d612603567adf2589e0930`; and promoted Cycle 2o exact
+parser-archive custody-to-quality composition Pass only for exact revision
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`;
 synthetic data only.
 
 ## Identity
@@ -1059,14 +1059,14 @@ production remain Blocked. See
 [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
-## Pending Cycle 2o parser-archive custody-to-quality composition
+## Promoted Cycle 2o parser-archive custody-to-quality composition
 
-Cycle 2o proposes no canonical real filing, authority, adjudicator, quality,
+Cycle 2o adds no canonical real filing, authority, adjudicator, quality,
 tenant, durable-retention, persistence, or production entity. Its only new
 canonical objects are an ephemeral exact synthetic archive-pair custody
 operation, two role-bound custody receipts, one custody-pair binding, and outer
 commitment/evaluation bindings over unchanged Cycle 2n.
-Its sole proposed claim is
+Its sole claim is
 `bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
 
 The original role is fixed to the 2,306-byte archive with content digest
@@ -1087,7 +1087,7 @@ coordinates. The unchanged Cycle 2n mapping still supplies only
 
 The expected quality result remains exactly `evaluated/not_met`: 2/100
 documents, 20/1,000 true-positive facts, 980 missing facts, and 1,960/2,000
-silent critical failures. Cycle 2o must preserve all exact Cycle 2n nonclaims.
+silent critical failures. Cycle 2o preserves all exact Cycle 2n nonclaims.
 They remain the ordered prefix and six custody-specific limitations are
 appended. Temporary AES-256-GCM staging, authenticated readback, attempted
 buffer wiping, and verified owned-workspace cleanup do not create durable 24-hour retention,
@@ -1095,9 +1095,32 @@ physical or cryptographic erasure, crash recovery, trusted host entropy,
 external rights/authority, real filing custody, representativeness, or real
 quality.
 
-Source completion, exact-source gates, workflows, evidence, independent review,
-and promotion remain Pending. There is no target source SHA, run, job, artifact,
-or evidence digest. See
+The canonical objects and sole claim are Pass only for exact promoted revision
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`, the exact corrective child of
+source precursor `46408ec875755ef531c124846143e9b619c1961f` from frozen
+baseline `711fe866594d5e20a657a24c0a0c72fd78ab90be`. The cumulative baseline-to-
+revision transition contains exactly 39 paths and 78 NUL fields with digest
+`sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212`.
+The exact corrective child contains 14 paths, 28 NUL fields, and 1,274 bytes
+with digest
+`sha256:5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63`.
+
+Dedicated version 5 run/job `33060480847` / `98477728062` retained 12,449-byte
+artifact `9641519947`, named
+`filing-parser-cross-engine-execution-evidence-v5-472cc10b8df90bee01925b2efd4fbcb614d7590c-1`.
+Its ZIP digest is
+`sha256:82916aa3b53112b8cc29b0e3bc5e575213757ca70a7d623a87d0167c89ecf419`;
+the canonical 45,312-byte status `passed`, version `5`, schema `5.0.0` evidence
+digest is
+`sha256:1f53136f1811b19de0ba63ae1c1ec6d70cf2d5f86f578214e884069d137e5581`.
+It binds 105 source hashes and 39 transition paths. The artifact expires on
+2026-09-26.
+Its independently supplied repository, revision, run, attempt, artifact, and
+evidence-digest anchors returned `offline_consistent`.
+These anchors promote only the bounded synthetic objects above. Cycle 2b
+authority, representative real filings, independent adjudication, real parser
+quality, B15/V15, real-data admission, full Cycle 2 exit, and production remain
+Blocked. See
 [ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
 

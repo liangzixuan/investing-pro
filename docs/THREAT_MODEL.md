@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2n and pending Cycle 2o threat model
+# Sprint 0 through promoted Cycle 2o threat model
 
 ## Current trust boundaries
 
@@ -1314,15 +1314,18 @@ production remain nonclaims or Blocked. See
 [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
-Cycle 2o is a proposed source milestone only. Its target is the exact synthetic
-archive-input bypass left outside Cycle 2n: callers currently supply the
-original/amendment bytes directly, while historical Cycle 2c covers a different
-single generated custody fixture. The proposed outer protocol must encrypt the
-fixed original and amendment archives separately with fresh AES-256-GCM
-key/nonce pairs, bind role/content/source into closed AAD and canonical audit
-records, authenticate exact readback, and allow only owned readback snapshots
+Cycle 2o is Pass only for exact promoted revision
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`, the exact corrective child of
+source precursor `46408ec875755ef531c124846143e9b619c1961f` from frozen
+baseline `711fe866594d5e20a657a24c0a0c72fd78ab90be`. It closes the bounded
+synthetic archive-input bypass left outside Cycle 2n: callers previously
+supplied the original/amendment bytes directly, while historical Cycle 2c
+covers a different single generated custody fixture. The outer protocol
+encrypts the fixed original and amendment archives separately with fresh
+AES-256-GCM key/nonce pairs, binds role/content/source into closed AAD and
+canonical audit records, authenticates exact readback, and allows only owned readback snapshots
 to enter unchanged Cycle 2n.
-The sole proposed claim is
+The sole claim is
 `bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
 
 The primary threats are direct-input bypass; original/amendment role swap;
@@ -1349,10 +1352,24 @@ cryptographic erasure, backup deletion, crash/multi-host recovery, Docker/image
 authenticity, independent adjudication, representativeness, B15/V15, real data,
 and production remain nonclaims or Blocked.
 
-Source completion, exact-source local/workflow gates, success-only evidence,
-artifact inspection, independent review, and promotion remain Pending. No
-target source SHA, run, job, artifact, or digest is asserted. Exact proposed
-gates are in
+The exact cumulative baseline-to-promoted transition contains 39 paths and 78
+NUL fields with digest
+`sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212`;
+the exact 14-path, 28-NUL-field, 1,274-byte corrective transition has digest
+`sha256:5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63`.
+Full local verification passed 1,295 tests with 4 intentional skips, and all
+five triggered workflows reached terminal green. CI run `33060480830` passed
+Ubuntu/Windows jobs `98477727410` / `98477727517`; dedicated version 5 run/job
+`33060480847` / `98477728062` retained success-only artifact `9641519947`.
+Its ZIP digest is
+`sha256:82916aa3b53112b8cc29b0e3bc5e575213757ca70a7d623a87d0167c89ecf419`;
+the canonical evidence digest is
+`sha256:1f53136f1811b19de0ba63ae1c1ec6d70cf2d5f86f578214e884069d137e5581`.
+Independent artifact inspection and anchored review returned
+`offline_consistent` for the 105-source, 39-transition-path record. These facts
+do not authenticate the GitHub control plane, Docker host, worker image, or
+external filing source, and do not change any external blocker. Exact gates are
+in
 [ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
 
@@ -1371,7 +1388,7 @@ and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
    Superseded Cycle 2k, promoted Cycle 2l and Cycle 2m lifecycle agreements,
-   promoted Cycle 2n quality composition, and pending Cycle 2o archive-custody
+   promoted Cycle 2n quality composition and promoted Cycle 2o archive-custody
    composition remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.

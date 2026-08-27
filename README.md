@@ -587,12 +587,14 @@ See
 [ADR 0041](./docs/adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./docs/CYCLE_2N_EXIT_MATRIX.md).
 
-Cycle 2o is a **Pending source milestone**, not a promoted result. Its proposed
-sole claim is
+Cycle 2o is **Pass only for exact promoted revision
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`**, the exact corrective child of
+source precursor `46408ec875755ef531c124846143e9b619c1961f` from frozen
+baseline `711fe866594d5e20a657a24c0a0c72fd78ab90be`. Its sole claim is
 `bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
-The package-owned outer protocol must encrypt the exact 2,306-byte original and
+The package-owned outer protocol encrypts the exact 2,306-byte original and
 2,330-byte amendment synthetic archives as separate role-bound AES-256-GCM
-records, authenticate closed audit and ciphertext readback, and pass only owned
+records, authenticates closed audit and ciphertext readback, and passes only owned
 readback snapshots into a fresh unchanged Cycle 2n protocol. Callers may not
 inject a custody/execution boundary, clock, entropy source, key, nonce,
 workspace path, digest, receipt, readback, result, callback, or options seam.
@@ -604,10 +606,24 @@ coordinates remain absent. All exact Cycle 2n nonclaims remain frozen;
 they are the ordered prefix and six custody-specific limitations are appended.
 Encrypted staging and cleanup do not establish real filing custody, durable
 retention, cryptographic erasure, external authority, representative data, or
-real quality. Source completion, exact-source verification, workflows,
-success-only evidence, independent review, and promotion are Pending; no
-target source SHA, run, job, artifact, or evidence digest is claimed. Cycle 2b,
-B15/V15, real-data admission, full Cycle 2 exit, and production remain Blocked.
+real quality.
+
+Full local verification passed 1,295 tests with 4 intentional skips. All five
+triggered workflows reached terminal green: CI run `33060480830` passed Ubuntu
+job `98477727410` and Windows job `98477727517`; parser isolation run/job
+`33060480816` / `98477727240`, payload custody `33060480845` / `98477727017`,
+normalization execution `33060480837` / `98477728031`, and dedicated version 5
+`33060480847` / `98477728062` passed. The dedicated run retained 12,449-byte
+artifact `9641519947`, named
+`filing-parser-cross-engine-execution-evidence-v5-472cc10b8df90bee01925b2efd4fbcb614d7590c-1`.
+Its ZIP digest is
+`sha256:82916aa3b53112b8cc29b0e3bc5e575213757ca70a7d623a87d0167c89ecf419`;
+the 45,312-byte canonical version `5` / schema `5.0.0` evidence digest is
+`sha256:1f53136f1811b19de0ba63ae1c1ec6d70cf2d5f86f578214e884069d137e5581`.
+It binds 105 source hashes and the exact cumulative 39-path transition;
+independently anchored review returned `offline_consistent`. Versions 1 through
+4 and failed-run history remain immutable. Cycle 2b, B15/V15, real-data
+admission, full Cycle 2 exit, and production remain Blocked.
 See
 [ADR 0042](./docs/adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./docs/CYCLE_2O_EXIT_MATRIX.md).

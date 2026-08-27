@@ -1332,21 +1332,23 @@ and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
 ## Cycle 2o — exact parser-archive custody to quality composition
 
-Status: **Proposed source milestone; source completion, exact-source local and
-workflow verification, retained evidence, independent review, and promotion
-are Pending.** No target source commit, run, job, artifact, digest, or Pass
-claim exists.
+Status: **Pass only for exact promoted revision
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`, the exact corrective child of
+source precursor `46408ec875755ef531c124846143e9b619c1961f` from frozen
+baseline `711fe866594d5e20a657a24c0a0c72fd78ab90be`.** The result remains
+`evaluated/not_met`; Cycle 2b authority, real quality, B15/V15, real-data
+admission, full Cycle 2 exit, and production remain Blocked.
 
-Cycle 2o targets the remaining repository-controlled disconnect between the
-exact parser archives and Cycle 2n. A package-owned outer protocol must stage
-the fixed 2,306-byte original and 2,330-byte amendment synthetic archives as
-separate role-bound AES-256-GCM records with fresh keys and nonces, atomically
-publish their ciphertext and closed audit records, authenticate exact readback,
-and pass only owned readback snapshots into a fresh unchanged Cycle 2n
+Cycle 2o closes the bounded repository-controlled disconnect between the exact
+parser archives and Cycle 2n. A package-owned outer protocol stages the fixed
+2,306-byte original and 2,330-byte amendment synthetic archives as separate
+role-bound AES-256-GCM records with fresh keys and nonces, atomically publishes
+their ciphertext and closed audit records, authenticates exact readback, and
+passes only owned readback snapshots into a fresh unchanged Cycle 2n
 protocol. It must reserve one-shot state before validation or I/O and expose no
 public injection seam for custody/execution boundaries, clocks, entropy, keys,
 nonces, paths, digests, receipts, readbacks, results, callbacks, or options.
-Its sole proposed claim is
+Its sole claim is
 `bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
 
 The outer commitment/evaluation must bind both custody receipts and their pair
@@ -1367,12 +1369,30 @@ retention, scheduled expiry, physical or cryptographic erasure, backup
 deletion, crash recovery, trusted host entropy, external authority,
 representativeness, or real quality.
 
+Full local verification passed 1,295 tests with 4 intentional skips. All five
+triggered workflows reached terminal green: CI run `33060480830` passed Ubuntu
+job `98477727410` and Windows job `98477727517`; parser isolation run/job
+`33060480816` / `98477727240`, payload custody `33060480845` / `98477727017`,
+normalization execution `33060480837` / `98477728031`, and dedicated version 5
+`33060480847` / `98477728062` passed. No separate PostgreSQL workflow was
+triggered by the exact 14-path corrective transition.
+
+The dedicated run retained 12,449-byte artifact `9641519947`, named
+`filing-parser-cross-engine-execution-evidence-v5-472cc10b8df90bee01925b2efd4fbcb614d7590c-1`,
+with ZIP digest
+`sha256:82916aa3b53112b8cc29b0e3bc5e575213757ca70a7d623a87d0167c89ecf419`.
+The 45,312-byte canonical version `5` / schema `5.0.0` record has digest
+`sha256:1f53136f1811b19de0ba63ae1c1ec6d70cf2d5f86f578214e884069d137e5581`,
+binds 105 source hashes and the exact cumulative 39-path transition, and
+returned `offline_consistent` under independently anchored review. Versions 1
+through 4 and failed-run history remain immutable.
+
 The current baseline contains separate P1 source
 `96b042669edc6cb4a876bb0c061fa5e18732c1ca`, which caps Phase-A corpus
 admission `validUntil` at scheduled revocation. Its corrective closure and
 promotion remain Pending and are not Cycle 2o evidence. They supply no
 external inventory, rights/steward approval, authority identity, trusted clock,
-or human review, so Cycle 2b remains Blocked. Exact proposed gates and
+or human review, so Cycle 2b remains Blocked. Exact gates and
 nonclaims are in
 [ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
@@ -1394,7 +1414,7 @@ Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
 bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
-bounded synthetic Cycle 2n, nor pending bounded synthetic Cycle 2o satisfies
+bounded synthetic Cycle 2n, nor promoted bounded synthetic Cycle 2o satisfies
 this exit gate. Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only

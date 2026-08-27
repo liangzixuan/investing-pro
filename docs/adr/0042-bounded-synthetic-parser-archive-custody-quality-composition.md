@@ -1,9 +1,13 @@
 # ADR 0042: bounded synthetic parser-archive custody and quality composition
 
-Status: Proposed source milestone. **Source completion, exact-source
-verification, workflow evidence, independent review, and promotion are
-Pending.** No target source commit, run, job, artifact, or evidence digest has
-been accepted.
+Status: Accepted and **Promoted only for exact revision
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`, the exact corrective child of
+source precursor `46408ec875755ef531c124846143e9b619c1961f` from frozen
+baseline `711fe866594d5e20a657a24c0a0c72fd78ab90be`.** Full local verification,
+all five exact-source workflows, success-only version 5 evidence retention,
+independent artifact inspection, and anchored offline review passed. Cycle 2b
+authority, real quality, B15/V15, real-data admission, full Cycle 2 exit, and
+production remain Blocked.
 
 ## Context
 
@@ -15,7 +19,7 @@ observation into unchanged Cycle 2g/Cycle 2f quality evaluation. Cycle 2n does
 not establish that its parser inputs came from an encrypted custody record and
 authenticated readback.
 
-The next repository-controlled blocker is therefore the missing adapter
+The next repository-controlled blocker was therefore the missing adapter
 between those exact parser archives and the promoted Cycle 2n boundary. This
 decision must not relabel Cycle 2c evidence, invent a real filing or approval,
 fill any of the 98 absent quality coordinates, or turn the honest Cycle 2n
@@ -66,14 +70,14 @@ archive identities, normalization, candidate observation, and measurement
 stable while fresh custody keys/nonces/ciphertexts, Docker lifecycles, and outer
 bindings remain distinct.
 
-The sole proposed target claim is
+The sole target claim is
 `bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
-It can be accepted only for a future exact source and success-only evidence
-boundary. Until every gate passes, its status remains Pending.
+It is accepted only for the exact source chain and success-only evidence
+boundary below.
 
 ## Required checks
 
-The proposed exact ordered checks are:
+The exact ordered checks are:
 
 1. `exact_sealed_cycle2m_engine_configuration_and_frozen_archive_pair_profile`
 2. `no_caller_injected_custody_path_clock_entropy_key_store_receipt_readback_boundary_runner_signer_result_or_callback`
@@ -141,14 +145,38 @@ The exact custody-specific limitations are appended in this order:
 
 ## Evidence and promotion boundary
 
-Source completion is not promotion. A future promotion requires one clean
-exact-source transition, full local verification, terminal-green Ubuntu and
-Windows CI plus every triggered dedicated workflow, a success-only successor
-record that preserves evidence versions 1 through 4, retained artifact and
-digest inspection, and independently anchored offline review against the full
-source inventory. Failed runs must retain no artifact and remain non-evidence.
-No target source SHA, run/job ID, artifact ID, source count, transition count,
-runtime count, or digest is known yet.
+Source completion alone is not promotion. Promotion was restricted to the
+exact source chain from frozen baseline
+`711fe866594d5e20a657a24c0a0c72fd78ab90be` through source precursor
+`46408ec875755ef531c124846143e9b619c1961f` to its exact corrective child
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. The cumulative transition contains
+exactly 39 paths and 78 NUL fields with digest
+`sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212`.
+The corrective transition contains exactly 14 paths, 28 NUL fields, and 1,274
+bytes with digest
+`sha256:5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63`.
+
+Full local verification passed 1,295 tests with 4 intentional skips. All five
+triggered workflows reached terminal green. CI run `33060480830` passed Ubuntu
+job `98477727410` and Windows job `98477727517`; parser isolation run/job
+`33060480816` / `98477727240`, payload custody `33060480845` / `98477727017`,
+normalization execution `33060480837` / `98477728031`, and dedicated version 5
+run/job `33060480847` / `98477728062` passed. No separate PostgreSQL workflow
+was triggered by the exact 14-path corrective transition.
+
+The dedicated attempt 1 run retained 12,449-byte artifact `9641519947`, named
+`filing-parser-cross-engine-execution-evidence-v5-472cc10b8df90bee01925b2efd4fbcb614d7590c-1`.
+Its ZIP digest is
+`sha256:82916aa3b53112b8cc29b0e3bc5e575213757ca70a7d623a87d0167c89ecf419`.
+The canonical entry
+`research-cockpit-filing-parser-cross-engine-execution-v5.json` is 45,312
+bytes, status `passed`, version `5`, schema `5.0.0`, and has digest
+`sha256:1f53136f1811b19de0ba63ae1c1ec6d70cf2d5f86f578214e884069d137e5581`.
+It binds `sourceCount: 105`, `transitionPathCount: 39`, the exact ordered
+checks/nonclaims, outcomes, engines, custody/runtime accounting, and prior
+history. Independently anchored review returned `offline_consistent`. Artifact
+expiry is 2026-09-26. Versions 1 through 4 and failed-run facts remain
+immutable history and are not replaced, widened, or relabeled.
 
 The current baseline also contains separate P1 corrective source
 `96b042669edc6cb4a876bb0c061fa5e18732c1ca`, which caps Phase-A corpus
@@ -159,8 +187,8 @@ or human review, and does not change Cycle 2b's Blocked status.
 
 ## Consequences
 
-If promoted, Cycle 2o would close only the exact synthetic parser-archive
-custody-readback-to-Cycle 2n composition gap. It would prove neither real
+Cycle 2o closes only the exact synthetic parser-archive custody-readback-to-
+Cycle 2n composition gap. It proves neither real
 filing custody nor retention. The honest quality result remains
 `evaluated/not_met`; representative real filings, independently adjudicated
 truth, real parser quality, Cycle 2b authority, B15/V15, real-data admission,
