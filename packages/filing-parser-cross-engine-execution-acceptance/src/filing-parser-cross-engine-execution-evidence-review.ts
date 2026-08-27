@@ -10,6 +10,10 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
 } from "./filing-parser-cross-engine-execution-evidence";
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+} from "./filing-parser-cross-engine-execution-evidence-v5";
 
 export async function reviewFilingParserCrossEngineExecutionEvidence(
   options: FilingParserCrossEngineExecutionEvidenceReviewOptions,
@@ -82,6 +86,26 @@ export function filingParserCrossEngineExecutionEvidenceReviewStdout(
   try {
     if (
       review.verdict !== "offline_consistent" ||
+      ("evidenceVersion" in review &&
+        review.evidenceVersion === 5 &&
+        (review.baseline !==
+          FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE ||
+          JSON.stringify(review.historicalV1) !==
+            JSON.stringify(
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+            ) ||
+          JSON.stringify(review.historicalV2) !==
+            JSON.stringify(
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+            ) ||
+          JSON.stringify(review.historicalV3) !==
+            JSON.stringify(
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+            ) ||
+          JSON.stringify(review.historicalV4) !==
+            JSON.stringify(
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+            ))) ||
       ("evidenceVersion" in review &&
         review.evidenceVersion === 4 &&
         (review.baseline !==

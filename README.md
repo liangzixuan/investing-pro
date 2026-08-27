@@ -587,6 +587,31 @@ See
 [ADR 0041](./docs/adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./docs/CYCLE_2N_EXIT_MATRIX.md).
 
+Cycle 2o is a **Pending source milestone**, not a promoted result. Its proposed
+sole claim is
+`bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
+The package-owned outer protocol must encrypt the exact 2,306-byte original and
+2,330-byte amendment synthetic archives as separate role-bound AES-256-GCM
+records, authenticate closed audit and ciphertext readback, and pass only owned
+readback snapshots into a fresh unchanged Cycle 2n protocol. Callers may not
+inject a custody/execution boundary, clock, entropy source, key, nonce,
+workspace path, digest, receipt, readback, result, callback, or options seam.
+
+The quality accounting cannot improve: the required successful result remains
+`evaluated/not_met`, with 2/100 documents, 20/1,000 true-positive facts, 980
+missing facts, and 1,960/2,000 silent critical failures. The other 98
+coordinates remain absent. All exact Cycle 2n nonclaims remain frozen;
+they are the ordered prefix and six custody-specific limitations are appended.
+Encrypted staging and cleanup do not establish real filing custody, durable
+retention, cryptographic erasure, external authority, representative data, or
+real quality. Source completion, exact-source verification, workflows,
+success-only evidence, independent review, and promotion are Pending; no
+target source SHA, run, job, artifact, or evidence digest is claimed. Cycle 2b,
+B15/V15, real-data admission, full Cycle 2 exit, and production remain Blocked.
+See
+[ADR 0042](./docs/adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
+and the [Cycle 2o exit matrix](./docs/CYCLE_2O_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row

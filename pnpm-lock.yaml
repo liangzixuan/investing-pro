@@ -130,12 +130,24 @@ importers:
       '@research-cockpit/filing-parser-cross-engine-execution':
         specifier: workspace:*
         version: link:../filing-parser-cross-engine-execution
+      '@research-cockpit/filing-parser-custody-quality-composition':
+        specifier: workspace:*
+        version: link:../filing-parser-custody-quality-composition
       '@research-cockpit/filing-parser-normalization-execution':
         specifier: workspace:*
         version: link:../filing-parser-normalization-execution
       '@research-cockpit/filing-parser-quality-composition':
         specifier: workspace:*
         version: link:../filing-parser-quality-composition
+
+  packages/filing-parser-custody-quality-composition:
+    dependencies:
+      '@research-cockpit/filing-parser-quality-composition':
+        specifier: workspace:*
+        version: link:../filing-parser-quality-composition
+      '@research-cockpit/filing-payload-custody':
+        specifier: workspace:*
+        version: link:../filing-payload-custody
 
   packages/filing-parser-normalization-execution:
     dependencies:

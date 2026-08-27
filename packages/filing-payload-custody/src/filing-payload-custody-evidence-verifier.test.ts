@@ -56,6 +56,13 @@ import {
   isCycle2nCompositionTreeAllowed,
   isCycle2nDirectChildAllowed,
   isCycle2nTransitionRoutingRequired,
+  isCycle2oAcceptanceTreeAllowed,
+  isCycle2oBaselineMergeBaseAllowed,
+  isCycle2oCommitDiffSetAllowed,
+  isCycle2oCompositionTreeAllowed,
+  isCycle2oCustodyTreeAllowed,
+  isCycle2oDirectChildAllowed,
+  isCycle2oTransitionRoutingRequired,
   isCiTestSerializationBaselineMergeBaseAllowed,
   isCiTestSerializationCommitDiffSetAllowed,
   isCiTestSerializationSurfaceRoutingRequired,
@@ -83,6 +90,8 @@ const temporaryDirectories: string[] = [];
 const HASH = `sha256:${"a".repeat(64)}` as const;
 const CYCLE_2N_BASELINE_REVISION =
   "09e76235b5683427f2dd3201aefa740bb5adb16e" as const;
+const CYCLE_2O_BASELINE_REVISION =
+  "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
 const CYCLE_2N_COMPOSITION_TREE = [
   "packages/filing-parser-quality-composition/package.json",
   "packages/filing-parser-quality-composition/src/filing-parser-quality-composition-security.test.ts",
@@ -542,6 +551,114 @@ const CYCLE_2M_CORE_TREE = [
   "packages/filing-parser-cross-engine-execution/worker/taxonomy-v1.json",
 ].sort();
 const CYCLE_2M_ACCEPTANCE_TREE = [...CYCLE_2K_ACCEPTANCE_TREE];
+const CYCLE_2O_COMPOSITION_TREE = [
+  "packages/filing-parser-custody-quality-composition/package.json",
+  "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition-security.test.ts",
+  "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition.test.ts",
+  "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition.ts",
+  "packages/filing-parser-custody-quality-composition/src/index.ts",
+  "packages/filing-parser-custody-quality-composition/src/test-filing-parser-custody-quality-composition-builder.ts",
+  "packages/filing-parser-custody-quality-composition/tsconfig.json",
+].sort();
+const CYCLE_2O_CUSTODY_TREE = [
+  ...PACKAGE_TREE,
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+  "packages/filing-payload-custody/src/parser-archive-pair-fixture.ts",
+].sort();
+const CYCLE_2O_ACCEPTANCE_TREE = [
+  ...CYCLE_2K_ACCEPTANCE_TREE,
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+  "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.ts",
+].sort();
+const CYCLE_2O_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2O_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-parser-cross-engine-execution/v5/cases.json",
+    status: "A",
+  },
+  {
+    path: "fixtures/synthetic/filing-parser-cross-engine-execution/v5/manifest.json",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser-cross-engine-execution-acceptance/package.json",
+    status: "M",
+  },
+  ...[
+    "filing-parser-cross-engine-execution-evidence-review.ts",
+    "filing-parser-cross-engine-execution-evidence-verifier.ts",
+    "filing-parser-cross-engine-execution-evidence.ts",
+    "index.ts",
+    "run-filing-parser-cross-engine-execution-acceptance.test.ts",
+    "run-filing-parser-cross-engine-execution-acceptance.ts",
+    "test-filing-parser-cross-engine-execution-evidence-builder.ts",
+  ].map((name) => ({
+    path: `packages/filing-parser-cross-engine-execution-acceptance/src/${name}`,
+    status: "M",
+  })),
+  ...[
+    "filing-parser-cross-engine-execution-evidence-v5.test.ts",
+    "filing-parser-cross-engine-execution-evidence-v5.ts",
+    "filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+    "filing-parser-cross-engine-execution-evidence-verifier-v5.ts",
+  ].map((name) => ({
+    path: `packages/filing-parser-cross-engine-execution-acceptance/src/${name}`,
+    status: "A",
+  })),
+  ...CYCLE_2O_COMPOSITION_TREE.map((path) => ({ path, status: "A" })),
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "packages/filing-payload-custody/src/index.ts", status: "M" },
+  {
+    path: "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+    status: "A",
+  },
+  {
+    path: "packages/filing-payload-custody/src/parser-archive-pair-fixture.ts",
+    status: "A",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+  {
+    path: "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
 const CYCLE_2G_TRANSITION = [
   { path: "LICENSE_POLICY.md", status: "M" },
   { path: "README.md", status: "M" },
@@ -1398,6 +1515,175 @@ afterEach(async () => {
       .splice(0)
       .map((directory) => rm(directory, { force: true, recursive: true })),
   );
+});
+
+describe("Cycle 2o exact source-successor routing", () => {
+  it("freezes all three expanded trees", () => {
+    expect(isCycle2oCompositionTreeAllowed(CYCLE_2O_COMPOSITION_TREE)).toBe(
+      true,
+    );
+    expect(
+      isCycle2oCompositionTreeAllowed([...CYCLE_2O_COMPOSITION_TREE].reverse()),
+    ).toBe(false);
+    expect(
+      isCycle2oCompositionTreeAllowed(CYCLE_2O_COMPOSITION_TREE.slice(1)),
+    ).toBe(false);
+    expect(
+      isCycle2oCompositionTreeAllowed([
+        ...CYCLE_2O_COMPOSITION_TREE,
+        "packages/filing-parser-custody-quality-composition/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+
+    expect(isCycle2oCustodyTreeAllowed(CYCLE_2O_CUSTODY_TREE)).toBe(true);
+    expect(
+      isCycle2oCustodyTreeAllowed([...CYCLE_2O_CUSTODY_TREE].reverse()),
+    ).toBe(false);
+    expect(isCycle2oCustodyTreeAllowed(CYCLE_2O_CUSTODY_TREE.slice(1))).toBe(
+      false,
+    );
+    expect(
+      isCycle2oCustodyTreeAllowed([
+        ...CYCLE_2O_CUSTODY_TREE,
+        "packages/filing-payload-custody/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+
+    expect(isCycle2oAcceptanceTreeAllowed(CYCLE_2O_ACCEPTANCE_TREE)).toBe(true);
+    expect(
+      isCycle2oAcceptanceTreeAllowed([...CYCLE_2O_ACCEPTANCE_TREE].reverse()),
+    ).toBe(false);
+    expect(
+      isCycle2oAcceptanceTreeAllowed(CYCLE_2O_ACCEPTANCE_TREE.slice(1)),
+    ).toBe(false);
+    expect(
+      isCycle2oAcceptanceTreeAllowed([
+        ...CYCLE_2O_ACCEPTANCE_TREE,
+        "packages/filing-parser-cross-engine-execution-acceptance/src/unreviewed.ts",
+      ]),
+    ).toBe(false);
+  });
+
+  it("requires the exact baseline and single-parent topology", () => {
+    const revision = "a".repeat(40);
+    expect(isCycle2oBaselineMergeBaseAllowed(CYCLE_2O_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2oBaselineMergeBaseAllowed(revision)).toBe(false);
+    expect(
+      isCycle2oDirectChildAllowed(
+        "1",
+        "1",
+        revision,
+        `${revision} ${CYCLE_2O_BASELINE_REVISION}`,
+      ),
+    ).toBe(true);
+    expect(
+      isCycle2oDirectChildAllowed(
+        "2",
+        "1",
+        revision,
+        `${revision} ${CYCLE_2O_BASELINE_REVISION}`,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2oDirectChildAllowed(
+        "1",
+        "2",
+        revision,
+        `${revision} ${CYCLE_2O_BASELINE_REVISION}`,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2oDirectChildAllowed(
+        "1",
+        "1",
+        revision,
+        `${revision} ${CYCLE_2O_BASELINE_REVISION} ${"b".repeat(40)}`,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2oDirectChildAllowed(
+        "1",
+        "1",
+        revision,
+        `${revision} ${"b".repeat(40)}`,
+      ),
+    ).toBe(false);
+  });
+
+  it("requires the exact sorted Cycle 2o transition", () => {
+    expect(isCycle2oCommitDiffSetAllowed(CYCLE_2O_TRANSITION)).toBe(true);
+    expect(
+      isCycle2oCommitDiffSetAllowed([...CYCLE_2O_TRANSITION].reverse()),
+    ).toBe(false);
+    expect(isCycle2oCommitDiffSetAllowed(CYCLE_2O_TRANSITION.slice(1))).toBe(
+      false,
+    );
+    expect(
+      isCycle2oCommitDiffSetAllowed([
+        ...CYCLE_2O_TRANSITION,
+        { path: "unreviewed", status: "A" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCycle2oCommitDiffSetAllowed(
+        CYCLE_2O_TRANSITION.map((entry, index) =>
+          index === 0 ? { ...entry, status: "D" } : entry,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("admits the exact cumulative corpus-validity bridge and Cycle 2o paths", () => {
+    const cycle2oCumulativePaths = [
+      ...new Set([
+        ...CYCLE_2N_CUMULATIVE_DIFF_PATHS,
+        "packages/filing-parser/src/corpus-admission-security.test.ts",
+        "packages/filing-parser/src/corpus-admission.ts",
+        ...CYCLE_2O_TRANSITION.map((entry) => entry.path),
+      ]),
+    ].sort();
+    const cumulativeEntries = cycle2oCumulativePaths.map((path) => {
+      const preBaseline = CYCLE_2M_PRE_BASELINE_CUMULATIVE_ENTRIES.find(
+        (entry) => entry.path === path,
+      );
+      return {
+        path,
+        status:
+          path === ".npmrc"
+            ? "D"
+            : (preBaseline?.status ??
+              (CYCLE_2M_CUMULATIVE_DIFF_PATHS.includes(path) ||
+              path ===
+                "packages/filing-parser/src/corpus-admission-security.test.ts" ||
+              path === "packages/filing-parser/src/corpus-admission.ts"
+                ? "M"
+                : "A")),
+      };
+    });
+    expect(isCycle2cCommitDiffSetAllowed(cumulativeEntries)).toBe(true);
+    expect(isCycle2cCommitDiffSetAllowed(cumulativeEntries.slice(1))).toBe(
+      false,
+    );
+  });
+
+  it("routes Cycle 2o markers before the older milestone surfaces", () => {
+    for (const path of [
+      "docs/CYCLE_2O_EXIT_MATRIX.md",
+      "fixtures/synthetic/filing-parser-cross-engine-execution/v5/cases.json",
+      "packages/filing-parser-custody-quality-composition/src/index.ts",
+      "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+    ])
+      expect(isCycle2oTransitionRoutingRequired([path])).toBe(true);
+    expect(isCycle2oTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle2oTransitionRoutingRequired([])).toBe(false);
+    expect(
+      isCycle2oTransitionRoutingRequired([
+        "packages/filing-parser-quality-composition/src/index.ts",
+      ]),
+    ).toBe(false);
+  });
 });
 
 describe("Cycle 2n exact source-successor routing", () => {

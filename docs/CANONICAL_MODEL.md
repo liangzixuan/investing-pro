@@ -35,7 +35,11 @@ the corrective child of failed precursor
 `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`;
 Cycle 2m source-owned direct-Docker lifecycle binding Pass only for exact source
 commit `5d61868e6075865b32640ddaceb845ac9dbc69f3` from exact baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`;
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`; promoted Cycle 2n source-owned
+parser-quality composition Pass only for exact source commit
+`1d7dee56c66c1ad0f5d612603567adf2589e0930`; and proposed Cycle 2o exact
+parser-archive custody-to-quality composition with source, evidence, review,
+and promotion Pending;
 synthetic data only.
 
 ## Identity
@@ -1054,6 +1058,48 @@ real parser quality, B15/V15, real-data admission, full Cycle 2 exit, and
 production remain Blocked. See
 [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
+
+## Pending Cycle 2o parser-archive custody-to-quality composition
+
+Cycle 2o proposes no canonical real filing, authority, adjudicator, quality,
+tenant, durable-retention, persistence, or production entity. Its only new
+canonical objects are an ephemeral exact synthetic archive-pair custody
+operation, two role-bound custody receipts, one custody-pair binding, and outer
+commitment/evaluation bindings over unchanged Cycle 2n.
+Its sole proposed claim is
+`bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
+
+The original role is fixed to the 2,306-byte archive with content digest
+`sha256:f331ff51540c11aca55a5d1d81d2c1daeaf4354acdea45530faed5275a5322ba`.
+The amendment role is fixed to the 2,330-byte archive with content digest
+`sha256:df7f1ff416b60168b09902bd7714fa47bf0453ef9732c8c5b476988bb70f47a8`.
+Each receipt binds role, byte length, content, ciphertext, AAD, readback, and an
+internally derived role-specific source binding. The pair binding binds both
+receipts and their common source context. Neither ciphertext identity nor fresh
+nonce/key material is a filing identity.
+
+Only owned authenticated readback snapshots may become Cycle 2n archive
+inputs. The direct caller snapshots, persisted audit fields, ciphertext, keys,
+nonces, paths, and cleanup observations cannot become facts or quality
+coordinates. The unchanged Cycle 2n mapping still supplies only
+`synthetic-filing-0001` and `synthetic-filing-0002`; coordinates 0003 through
+0100 remain absent.
+
+The expected quality result remains exactly `evaluated/not_met`: 2/100
+documents, 20/1,000 true-positive facts, 980 missing facts, and 1,960/2,000
+silent critical failures. Cycle 2o must preserve all exact Cycle 2n nonclaims.
+They remain the ordered prefix and six custody-specific limitations are
+appended. Temporary AES-256-GCM staging, authenticated readback, attempted
+buffer wiping, and verified owned-workspace cleanup do not create durable 24-hour retention,
+physical or cryptographic erasure, crash recovery, trusted host entropy,
+external rights/authority, real filing custody, representativeness, or real
+quality.
+
+Source completion, exact-source gates, workflows, evidence, independent review,
+and promotion remain Pending. There is no target source SHA, run, job, artifact,
+or evidence digest. See
+[ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
+and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

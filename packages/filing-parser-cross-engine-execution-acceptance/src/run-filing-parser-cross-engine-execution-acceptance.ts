@@ -17,45 +17,47 @@ import {
   type FilingParserNormalizationExecutionProcessRequest,
 } from "@research-cockpit/filing-parser-normalization-execution";
 import { buildSyntheticFilingParserNormalizationExecutionFixture } from "@research-cockpit/filing-parser-normalization-execution/test";
-
 import {
-  FILING_PARSER_QUALITY_COMPOSITION_CHECKS,
-  FILING_PARSER_QUALITY_COMPOSITION_CLAIM,
-  FILING_PARSER_QUALITY_COMPOSITION_NOT_PROVEN,
-  FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION,
-  createFilingParserQualityCompositionProtocol,
-  type FilingParserQualityCompositionCommittedResult,
-  type FilingParserQualityCompositionConfiguration,
-  type FilingParserQualityCompositionEvaluatedResult,
-  type FilingParserQualityCompositionQuarantinedResult,
-} from "@research-cockpit/filing-parser-quality-composition";
+  FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CHECKS,
+  FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CLAIM,
+  FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_NOT_PROVEN,
+  FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION,
+  createFilingParserCustodyQualityCompositionProtocol,
+  type FilingParserCustodyQualityCompositionCommittedResult,
+  type FilingParserCustodyQualityCompositionConfiguration,
+  type FilingParserCustodyQualityCompositionEvaluatedResult,
+  type FilingParserCustodyQualityCompositionQuarantinedResult,
+} from "@research-cockpit/filing-parser-custody-quality-composition";
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
   FILING_PARSER_CROSS_ENGINE_IMPLEMENTATION_PATHS,
-  createFilingParserCrossEngineExecutionEvidenceV4ForAcceptance,
-  filingParserCrossEngineExecutionV4RequiredSourcePaths,
   filingParserCrossEngineImplementationSha256,
-  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
   type FilingParserCrossEngineExecutionEvidenceTransitionEntry,
-  type FilingParserCrossEngineExecutionEvidenceV4CaseId,
-  type FilingParserCrossEngineExecutionEvidenceV4CaseOutcome,
-  type FilingParserCrossEngineExecutionEvidenceV4Invocation,
   type FilingParserCrossEngineExecutionEvidenceV4ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceV3ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceV2ValidationStage,
   type FilingParserCrossEngineExecutionEvidenceValidationStage,
 } from "./filing-parser-cross-engine-execution-evidence";
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW,
+  createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance,
+  filingParserCrossEngineExecutionV5RequiredSourcePaths,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5,
+  type FilingParserCrossEngineExecutionEvidenceV5CaseId,
+  type FilingParserCrossEngineExecutionEvidenceV5CaseOutcome,
+  type FilingParserCrossEngineExecutionEvidenceV5Invocation,
+  type FilingParserCrossEngineExecutionEvidenceV5ValidationStage,
+} from "./filing-parser-cross-engine-execution-evidence-v5";
 import { buildCycle2nFilingParserQualityDocuments } from "./test-filing-parser-cross-engine-execution-evidence-builder";
 
 const PYTHON_BASE_INDEX_DIGEST =
@@ -73,10 +75,13 @@ const NODE_BASE_IMAGE =
 const PYTHON_ENGINE_ID = "python-3.12-primary-v1";
 const NODE_ENGINE_ID = "node-24-secondary-v1";
 const EVIDENCE_FILE =
-  "research-cockpit-filing-parser-cross-engine-execution-v4.json";
+  "research-cockpit-filing-parser-cross-engine-execution-v5.json";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const MAX_COMMAND_BYTES = 4_194_304;
+const CYCLE_2O_TRANSITION_PATH_COUNT = 39;
+const CYCLE_2O_TRANSITION_SHA256 =
+  "sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" as const;
 
 export interface FilingParserCrossEngineImageInspectionProfile {
   readonly entrypoint: readonly string[];
@@ -198,6 +203,45 @@ export function filingParserCrossEngineExecutionEvidenceV4ValidationPhase(
       return "evidence_validation_source_bindings";
     case "quality_bindings":
       return "evidence_validation_quality_bindings";
+    case "fixture_binding":
+      return "evidence_validation_fixture_binding";
+    case "summary":
+      return "evidence_validation_summary";
+    case "tools_contract":
+      return "evidence_validation_tools_contract";
+    case "workflow":
+      return "evidence_validation_workflow";
+    case "canonical_freeze":
+      return "evidence_validation_canonical_freeze";
+  }
+}
+
+export function filingParserCrossEngineExecutionEvidenceV5ValidationPhase(
+  stage: FilingParserCrossEngineExecutionEvidenceV5ValidationStage,
+): AcceptancePhase {
+  switch (stage) {
+    case "root_contract":
+      return "evidence_validation_root_contract";
+    case "timestamps":
+      return "evidence_validation_timestamps";
+    case "claim_tuples":
+      return "evidence_validation_claim_tuples";
+    case "historical_evidence":
+      return "evidence_validation_historical_evidence";
+    case "case_outcomes":
+      return "evidence_validation_case_outcomes";
+    case "custody_bindings":
+      return "evidence_validation_composition_validation";
+    case "quality_bindings":
+      return "evidence_validation_quality_bindings";
+    case "transition":
+      return "evidence_validation_transition";
+    case "runtime":
+      return "evidence_validation_runtime";
+    case "source_hashes":
+      return "evidence_validation_source_hashes";
+    case "engines":
+      return "evidence_validation_engines";
     case "fixture_binding":
       return "evidence_validation_fixture_binding";
     case "summary":
@@ -360,16 +404,16 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     fail();
 
   markPhase("source_inventory");
-  const transition = await exactCycle2nTransition(revision);
+  const transition = await exactCycle2oTransition(revision);
   const requiredSourcePaths =
-    filingParserCrossEngineExecutionV4RequiredSourcePaths(transition);
+    filingParserCrossEngineExecutionV5RequiredSourcePaths(transition);
   const sourceHashes = await committedSourceHashes(
     revision,
     requiredSourcePaths,
   );
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
-    "fixtures/synthetic/filing-parser-cross-engine-execution/v4/manifest.json",
+    "fixtures/synthetic/filing-parser-cross-engine-execution/v5/manifest.json",
   );
   const pythonSources = implementationSources(
     sourceHashes,
@@ -414,7 +458,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await assertZeroResidue();
 
     markPhase("quality_setup");
-    assertQualityCompositionEvidenceConstants();
+    assertCustodyQualityCompositionEvidenceConstants();
     const archives = buildSyntheticFilingParserNormalizationExecutionFixture();
     const quality = buildCycle2nFilingParserQualityDocuments();
     const configuration = Object.freeze({
@@ -458,7 +502,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
 
     markPhase("adversarial_declared_reference_digest_mismatch");
     const mismatchProtocol =
-      createFilingParserQualityCompositionProtocol(configuration);
+      createFilingParserCustodyQualityCompositionProtocol(configuration);
     const mismatchCommitted = await mismatchProtocol.commit(
       quality.plan,
       quality.declaredReferenceSha256,
@@ -481,7 +525,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
 
     markPhase("adversarial_quality_capability_replay");
     const replayProtocol =
-      createFilingParserQualityCompositionProtocol(configuration);
+      createFilingParserCustodyQualityCompositionProtocol(configuration);
     const replayCommitted = await replayProtocol.commit(
       quality.plan,
       quality.declaredReferenceSha256,
@@ -499,13 +543,13 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       quality.declaredReference,
     );
     const replayOutcome = qualityQuarantineOutcome(
-      "quality-capability-replay",
+      "custody-quality-capability-replay",
       replayResult,
     );
 
     markPhase("adversarial_reference_content_at_commit");
     const contentAtCommitProtocol =
-      createFilingParserQualityCompositionProtocol(configuration);
+      createFilingParserCustodyQualityCompositionProtocol(configuration);
     const commitWithUnexpectedArguments: (
       ...values: readonly unknown[]
     ) => ReturnType<typeof contentAtCommitProtocol.commit> =
@@ -529,7 +573,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     markPhase("adversarial_original_archive_tamper");
     const tamperedOriginal = Uint8Array.from(archives.originalArchive);
     tamperedOriginal[0] = (tamperedOriginal[0] ?? 0) ^ 0xff;
-    const tampered = await createFilingParserQualityCompositionProtocol(
+    const tampered = await createFilingParserCustodyQualityCompositionProtocol(
       configuration,
     ).commit(
       quality.plan,
@@ -543,7 +587,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     );
 
     markPhase("adversarial_original_amendment_role_swap");
-    const swapped = await createFilingParserQualityCompositionProtocol(
+    const swapped = await createFilingParserCustodyQualityCompositionProtocol(
       configuration,
     ).commit(
       quality.plan,
@@ -565,8 +609,11 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       ].some(
         (result) =>
           result.audit.directExecutionCount !== 1 ||
-          result.audit.documentObservationCount !== 2 ||
-          result.audit.emittedFactCount !== 20,
+          result.audit.authenticatedReadbackCount !== 2 ||
+          result.audit.stagedArchiveCount !== 2 ||
+          result.audit.cleanupCount !== 1 ||
+          result.audit.emittedFactCount !== 20 ||
+          result.audit.zeroResidue !== true,
       )
     )
       fail();
@@ -586,21 +633,19 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       swappedOutcome,
     ] as const);
     const evidence =
-      createFilingParserCrossEngineExecutionEvidenceV4ForAcceptance(
+      createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance(
         {
-          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
           caseOutcomes: outcomes,
-          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS,
-          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM,
+          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
+          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
           completedAt,
-          compositionValidation: Object.freeze({
-            callerInjectionSurface: "none" as const,
-            candidatePopulation:
-              "exact_two_observed_ninety_eight_omitted" as const,
-            outerBindings: "recomputed_exact" as const,
-            precommitment: "one_shot_reference_digest_only" as const,
-            qualityEvaluation: "fixed_denominator_evaluated_not_met" as const,
-            sourceExecution: "cycle2m_source_owned_direct_docker" as const,
+          custodyValidation: Object.freeze({
+            archivePair: "exact_frozen_original_amendment_pair" as const,
+            authenticatedReadback:
+              "only_owned_readback_enters_cycle2n" as const,
+            cleanup: "complete_before_publication" as const,
+            outerBindings: "custody_pair_and_unchanged_cycle2n_bound" as const,
           }),
           engines: Object.freeze([
             Object.freeze({
@@ -628,7 +673,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
               runtimeVersion: "Node v24.19.0",
             }),
           ] as const),
-          evidenceVersion: 4 as const,
+          evidenceVersion: 5 as const,
           fixtureManifestSha256,
           historicalV1:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
@@ -636,34 +681,38 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
           historicalV3:
             FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+          historicalV4:
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
           notProven:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
           repository: environment.repository,
           revision,
           runtime: Object.freeze({
+            authenticatedReadbackCount: 8 as const,
             capabilitiesDropped: Object.freeze(["ALL"] as const),
-            compositionCommitCount: 4 as const,
+            custodyCommitCount: 4 as const,
+            custodyCleanupCount: 4 as const,
+            directExecutionCount: 4 as const,
             engineCount: 2 as const,
             networkMode: "none" as const,
             readOnlyRootFilesystem: true as const,
             successfulEvaluationCount: 3 as const,
             successfulLifecycleReceiptCount: 16 as const,
-            successfulTwoDocumentObservationCount: 4 as const,
             zeroResidue: true as const,
           }),
           schemaVersion:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_SCHEMA_VERSION,
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
           sourceHashes,
           startedAt,
           status: "passed" as const,
           summary: Object.freeze({
             candidateCommitmentsStable: true as const,
             candidateObservationsStable: true as const,
-            compositionBindingsDistinct: true as const,
+            custodyBindingsDistinct: true as const,
             evaluatedNotMet: 1 as const,
-            lifecycleBindingsDistinct: true as const,
             measurementStable: true as const,
             quarantined: 5 as const,
+            sourceBindingsStable: true as const,
             total: 6 as const,
           }),
           synthetic: true as const,
@@ -673,19 +722,19 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
             pathCount: transition.length,
           }),
           workflow: Object.freeze({
-            artifactName: `filing-parser-cross-engine-execution-evidence-v4-${revision}-${environment.runAttempt}`,
+            artifactName: `filing-parser-cross-engine-execution-evidence-v5-${revision}-${environment.runAttempt}`,
             event: environment.event,
             job: "acceptance" as const,
             ref: environment.ref,
             runAttempt: environment.runAttempt,
             runId: environment.runId,
             workflowName:
-              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW,
           }),
         },
         (stage) => {
           markPhase(
-            filingParserCrossEngineExecutionEvidenceV4ValidationPhase(stage),
+            filingParserCrossEngineExecutionEvidenceV5ValidationPhase(stage),
           );
         },
       );
@@ -700,7 +749,7 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     await assertPathAbsent(temporaryEvidencePath);
     await writeFile(
       temporaryEvidencePath,
-      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4(evidence),
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5(evidence),
       { encoding: "utf8", flag: "wx", mode: 0o600 },
     );
     await assertPathAbsent(environment.evidencePath);
@@ -737,16 +786,16 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
   }
 }
 
-function assertQualityCompositionEvidenceConstants(): void {
+function assertCustodyQualityCompositionEvidenceConstants(): void {
   if (
-    FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION !== "1.0.0" ||
-    FILING_PARSER_QUALITY_COMPOSITION_CLAIM !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CLAIM ||
-    canonicalJson(FILING_PARSER_QUALITY_COMPOSITION_CHECKS) !==
-      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CHECKS) ||
-    canonicalJson(FILING_PARSER_QUALITY_COMPOSITION_NOT_PROVEN) !==
+    FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION !== "1.0.0" ||
+    FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CLAIM !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM ||
+    canonicalJson(FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CHECKS) !==
+      canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS) ||
+    canonicalJson(FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_NOT_PROVEN) !==
       canonicalJson(
-        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_NOT_PROVEN,
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
       ) ||
     FILING_PARSER_NORMALIZATION_EXECUTION_LIMITS.containerControlMilliseconds !==
       5_000 ||
@@ -762,17 +811,18 @@ function assertQualityCompositionEvidenceConstants(): void {
 }
 
 async function runQualityEvaluation(
-  configuration: FilingParserQualityCompositionConfiguration,
+  configuration: FilingParserCustodyQualityCompositionConfiguration,
   plan: Uint8Array,
   declaredReferenceSha256: `sha256:${string}`,
   declaredReference: Uint8Array,
   originalArchive: Uint8Array,
   amendmentArchive: Uint8Array,
 ): Promise<{
-  readonly committed: FilingParserQualityCompositionCommittedResult;
-  readonly evaluated: FilingParserQualityCompositionEvaluatedResult;
+  readonly committed: FilingParserCustodyQualityCompositionCommittedResult;
+  readonly evaluated: FilingParserCustodyQualityCompositionEvaluatedResult;
 }> {
-  const protocol = createFilingParserQualityCompositionProtocol(configuration);
+  const protocol =
+    createFilingParserCustodyQualityCompositionProtocol(configuration);
   const committed = await protocol.commit(
     plan,
     declaredReferenceSha256,
@@ -787,52 +837,49 @@ async function runQualityEvaluation(
 
 function assertQualityCommitted(
   result:
-    | FilingParserQualityCompositionCommittedResult
-    | FilingParserQualityCompositionQuarantinedResult,
-): asserts result is FilingParserQualityCompositionCommittedResult {
+    | FilingParserCustodyQualityCompositionCommittedResult
+    | FilingParserCustodyQualityCompositionQuarantinedResult,
+): asserts result is FilingParserCustodyQualityCompositionCommittedResult {
   if (
     result.status !== "candidate_committed" ||
-    result.claim !== FILING_PARSER_QUALITY_COMPOSITION_CLAIM ||
-    result.schemaVersion !== FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION ||
+    result.claim !== FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CLAIM ||
+    result.schemaVersion !==
+      FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION ||
     result.synthetic !== true ||
     Object.keys(result).sort().join("|") !==
-      "audit|candidateCommitmentSha256|candidateObservationsSha256|capability|claim|compositionCommitmentSha256|declaredReferenceSha256|planSha256|projectionReceipts|schemaVersion|sourceExecution|status|synthetic" ||
+      "audit|candidateCommitmentSha256|candidateObservationsSha256|capability|claim|custody|custodyCompositionCommitmentSha256|declaredReferenceSha256|planSha256|quality|qualityCompositionCommitmentSha256|schemaVersion|status|synthetic" ||
     result.audit.directExecutionCount !== 1 ||
-    result.audit.documentObservationCount !== 2 ||
+    result.audit.authenticatedReadbackCount !== 2 ||
+    result.audit.cleanupCount !== 1 ||
     result.audit.emittedFactCount !== 20 ||
-    result.audit.outcome !== "candidate_committed" ||
+    result.audit.stagedArchiveCount !== 2 ||
+    result.audit.zeroResidue !== true ||
     !Object.isFrozen(result) ||
     !Object.isFrozen(result.audit) ||
     !Object.isFrozen(result.capability) ||
     Object.getPrototypeOf(result.capability) !== null ||
-    !Object.isFrozen(result.projectionReceipts) ||
-    result.projectionReceipts.some(
-      (receipt) =>
-        !Object.isFrozen(receipt) ||
-        !Object.isFrozen(receipt.sourceLifecycleBindingSha256s),
-    ) ||
-    !Object.isFrozen(result.sourceExecution) ||
-    !Object.isFrozen(result.sourceExecution.lifecycleBindingSha256s) ||
-    result.projectionReceipts.length !== 2 ||
-    result.sourceExecution.lifecycleBindingSha256s.length !== 4 ||
+    !Object.isFrozen(result.custody) ||
+    !Object.isFrozen(result.custody.receipts) ||
+    !Object.isFrozen(result.quality) ||
+    !Object.isFrozen(result.quality.projectionReceipts) ||
+    !Object.isFrozen(result.quality.sourceExecution) ||
+    result.custody.receipts.length !== 2 ||
     [
       result.candidateCommitmentSha256,
       result.candidateObservationsSha256,
-      result.compositionCommitmentSha256,
+      result.custody.custodyPairBindingSha256,
+      result.custody.sourceContextSha256,
+      result.custodyCompositionCommitmentSha256,
       result.declaredReferenceSha256,
       result.planSha256,
-      result.sourceExecution.agreementSha256,
-      result.sourceExecution.ephemeralPublicKeySpkiSha256,
-      result.sourceExecution.invocationBindingSha256,
-      result.sourceExecution.normalizationSha256,
-      ...result.sourceExecution.lifecycleBindingSha256s,
-      ...result.projectionReceipts.flatMap((receipt) => [
-        receipt.observationSha256,
-        receipt.projectionBindingSha256,
-        receipt.qualityDocumentSha256,
-        receipt.sourceArchiveSha256,
-        receipt.sourceDocumentSha256,
-        ...receipt.sourceLifecycleBindingSha256s,
+      result.qualityCompositionCommitmentSha256,
+      ...result.custody.receipts.flatMap((receipt) => [
+        receipt.aadSha256,
+        receipt.ciphertextSha256,
+        receipt.contentSha256,
+        receipt.readbackSha256,
+        receipt.receiptSha256,
+        receipt.sourceBindingSha256,
       ]),
     ].some((value) => !HASH.test(value))
   )
@@ -841,34 +888,36 @@ function assertQualityCommitted(
 
 function assertQualityEvaluated(
   result:
-    | FilingParserQualityCompositionEvaluatedResult
-    | FilingParserQualityCompositionQuarantinedResult,
-): asserts result is FilingParserQualityCompositionEvaluatedResult {
+    | FilingParserCustodyQualityCompositionEvaluatedResult
+    | FilingParserCustodyQualityCompositionQuarantinedResult,
+): asserts result is FilingParserCustodyQualityCompositionEvaluatedResult {
   if (
     result.status !== "evaluated" ||
-    result.claim !== FILING_PARSER_QUALITY_COMPOSITION_CLAIM ||
-    result.schemaVersion !== FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION ||
+    result.claim !== FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CLAIM ||
+    result.schemaVersion !==
+      FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION ||
     result.synthetic !== true ||
     Object.keys(result).sort().join("|") !==
-      "candidateCommitmentSha256|candidateObservationsSha256|claim|compositionCommitmentSha256|declaredReferenceSha256|evaluationBindingSha256|measurement|planSha256|projectionReceipts|qualityEvaluationBindingSha256|schemaVersion|sourceExecution|status|synthetic" ||
+      "candidateCommitmentSha256|candidateObservationsSha256|claim|custody|custodyCompositionCommitmentSha256|custodyCompositionEvaluationBindingSha256|declaredReferenceSha256|measurement|planSha256|quality|qualityCompositionCommitmentSha256|qualityCompositionEvaluationBindingSha256|qualityEvaluationBindingSha256|schemaVersion|status|synthetic" ||
     !Object.isFrozen(result) ||
     !Object.isFrozen(result.measurement) ||
-    !Object.isFrozen(result.projectionReceipts) ||
-    result.projectionReceipts.some(
-      (receipt) =>
-        !Object.isFrozen(receipt) ||
-        !Object.isFrozen(receipt.sourceLifecycleBindingSha256s),
-    ) ||
-    !Object.isFrozen(result.sourceExecution) ||
-    !Object.isFrozen(result.sourceExecution.lifecycleBindingSha256s) ||
+    !Object.isFrozen(result.custody) ||
+    !Object.isFrozen(result.custody.receipts) ||
+    !Object.isFrozen(result.quality) ||
+    !Object.isFrozen(result.quality.projectionReceipts) ||
+    !Object.isFrozen(result.quality.sourceExecution) ||
     !exactQualityMeasurement(result) ||
     [
       result.candidateCommitmentSha256,
       result.candidateObservationsSha256,
-      result.compositionCommitmentSha256,
+      result.custody.custodyPairBindingSha256,
+      result.custody.sourceContextSha256,
+      result.custodyCompositionCommitmentSha256,
+      result.custodyCompositionEvaluationBindingSha256,
       result.declaredReferenceSha256,
-      result.evaluationBindingSha256,
       result.planSha256,
+      result.qualityCompositionCommitmentSha256,
+      result.qualityCompositionEvaluationBindingSha256,
       result.qualityEvaluationBindingSha256,
       result.measurement.evaluationSha256,
     ].some((value) => !HASH.test(value))
@@ -877,7 +926,7 @@ function assertQualityEvaluated(
 }
 
 function exactQualityMeasurement(
-  result: FilingParserQualityCompositionEvaluatedResult,
+  result: FilingParserCustodyQualityCompositionEvaluatedResult,
 ): boolean {
   return (
     result.measurement.status === "evaluated" &&
@@ -951,9 +1000,9 @@ function qualityRatio(
 }
 
 function qualitySuccessOutcome(
-  first: FilingParserQualityCompositionEvaluatedResult,
-  second: FilingParserQualityCompositionEvaluatedResult,
-): FilingParserCrossEngineExecutionEvidenceV4CaseOutcome {
+  first: FilingParserCustodyQualityCompositionEvaluatedResult,
+  second: FilingParserCustodyQualityCompositionEvaluatedResult,
+): FilingParserCrossEngineExecutionEvidenceV5CaseOutcome {
   assertQualityEvaluated(first);
   assertQualityEvaluated(second);
   const invocations = Object.freeze([
@@ -970,93 +1019,91 @@ function qualitySuccessOutcome(
     first.planSha256 !== second.planSha256 ||
     first.declaredReferenceSha256 !== second.declaredReferenceSha256 ||
     canonicalJson(first.measurement) !== canonicalJson(second.measurement) ||
-    first.sourceExecution.normalizationSha256 !==
-      second.sourceExecution.normalizationSha256 ||
-    first.sourceExecution.agreementSha256 ===
-      second.sourceExecution.agreementSha256 ||
-    first.sourceExecution.ephemeralPublicKeySpkiSha256 ===
-      second.sourceExecution.ephemeralPublicKeySpkiSha256 ||
-    first.sourceExecution.invocationBindingSha256 ===
-      second.sourceExecution.invocationBindingSha256 ||
-    first.compositionCommitmentSha256 === second.compositionCommitmentSha256 ||
-    first.evaluationBindingSha256 === second.evaluationBindingSha256 ||
-    new Set([
-      ...first.sourceExecution.lifecycleBindingSha256s,
-      ...second.sourceExecution.lifecycleBindingSha256s,
-    ]).size !== 8
+    first.custody.sourceContextSha256 !== second.custody.sourceContextSha256 ||
+    first.custody.custodyPairBindingSha256 ===
+      second.custody.custodyPairBindingSha256 ||
+    first.custodyCompositionCommitmentSha256 ===
+      second.custodyCompositionCommitmentSha256 ||
+    first.custodyCompositionEvaluationBindingSha256 ===
+      second.custodyCompositionEvaluationBindingSha256 ||
+    first.qualityCompositionCommitmentSha256 ===
+      second.qualityCompositionCommitmentSha256 ||
+    first.qualityCompositionEvaluationBindingSha256 ===
+      second.qualityCompositionEvaluationBindingSha256
   )
     fail();
   for (let index = 0; index < 2; index += 1) {
-    const left = first.projectionReceipts[index];
-    const right = second.projectionReceipts[index];
+    const left = first.custody.receipts[index];
+    const right = second.custody.receipts[index];
     if (
       left === undefined ||
       right === undefined ||
-      left.documentRole !== right.documentRole ||
-      left.factCount !== 10 ||
-      left.factCount !== right.factCount ||
-      left.qualityDocumentId !== right.qualityDocumentId ||
-      left.qualityDocumentSha256 !== right.qualityDocumentSha256 ||
-      left.observationSha256 !== right.observationSha256 ||
-      left.sourceArchiveSha256 !== right.sourceArchiveSha256 ||
-      left.sourceDocumentSha256 !== right.sourceDocumentSha256 ||
-      left.projectionBindingSha256 === right.projectionBindingSha256
+      left.role !== right.role ||
+      left.contentSha256 !== right.contentSha256 ||
+      left.readbackSha256 !== right.readbackSha256 ||
+      left.sourceBindingSha256 !== right.sourceBindingSha256 ||
+      left.aadSha256 !== right.aadSha256 ||
+      left.ciphertextSha256 === right.ciphertextSha256 ||
+      left.receiptSha256 === right.receiptSha256
     )
       fail();
   }
   return Object.freeze({
-    candidateCommitmentsStable: true,
-    candidateObservationsStable: true,
     caseId:
-      "same-input-quality-evaluation-distinct-lifecycle-invocations" as const,
-    compositionBindingsDistinct: true,
+      "same-input-custody-quality-evaluation-distinct-custody-invocations" as const,
     expectedStatus: "evaluated_not_met" as const,
     invocations,
-    lifecycleBindingsDistinct: true,
-    measurementStable: true,
     observedStatus: "evaluated_not_met" as const,
   });
 }
 
 function qualityInvocation(
-  result: FilingParserQualityCompositionEvaluatedResult,
-): FilingParserCrossEngineExecutionEvidenceV4Invocation {
+  result: FilingParserCustodyQualityCompositionEvaluatedResult,
+): FilingParserCrossEngineExecutionEvidenceV5Invocation {
   return Object.freeze({
+    audit: Object.freeze({
+      authenticatedReadbackCount: 2 as const,
+      cleanupCount: 1 as const,
+      directExecutionCount: 1 as const,
+      emittedFactCount: 20 as const,
+      stagedArchiveCount: 2 as const,
+      zeroResidue: true as const,
+    }),
     candidateCommitmentSha256: result.candidateCommitmentSha256,
     candidateObservationsSha256: result.candidateObservationsSha256,
-    compositionCommitmentSha256: result.compositionCommitmentSha256,
+    custody: result.custody,
+    custodyCompositionCommitmentSha256:
+      result.custodyCompositionCommitmentSha256,
+    custodyCompositionEvaluationBindingSha256:
+      result.custodyCompositionEvaluationBindingSha256,
     declaredReferenceSha256: result.declaredReferenceSha256,
-    evaluationBindingSha256: result.evaluationBindingSha256,
-    measurementEvaluationSha256: result.measurement.evaluationSha256,
+    measurement: result.measurement,
     planSha256: result.planSha256,
-    projectionReceipts: result.projectionReceipts,
-    qualityAccounting: Object.freeze({
-      counts: result.measurement.counts,
-      failedThresholds: result.measurement.failedThresholds,
-      metrics: result.measurement.metrics,
-      syntheticPilotThresholdOutcome:
-        result.measurement.syntheticPilotThresholdOutcome,
-    }),
+    quality: result.quality,
+    qualityCompositionCommitmentSha256:
+      result.qualityCompositionCommitmentSha256,
+    qualityCompositionEvaluationBindingSha256:
+      result.qualityCompositionEvaluationBindingSha256,
     qualityEvaluationBindingSha256: result.qualityEvaluationBindingSha256,
-    sourceExecution: result.sourceExecution,
-  }) as unknown as FilingParserCrossEngineExecutionEvidenceV4Invocation;
+  });
 }
 
 function qualityQuarantineOutcome(
   caseId: Exclude<
-    FilingParserCrossEngineExecutionEvidenceV4CaseId,
-    "same-input-quality-evaluation-distinct-lifecycle-invocations"
+    FilingParserCrossEngineExecutionEvidenceV5CaseId,
+    "same-input-custody-quality-evaluation-distinct-custody-invocations"
   >,
   result:
-    | FilingParserQualityCompositionCommittedResult
-    | FilingParserQualityCompositionEvaluatedResult
-    | FilingParserQualityCompositionQuarantinedResult,
-): FilingParserCrossEngineExecutionEvidenceV4CaseOutcome {
+    | FilingParserCustodyQualityCompositionCommittedResult
+    | FilingParserCustodyQualityCompositionEvaluatedResult
+    | FilingParserCustodyQualityCompositionQuarantinedResult,
+): FilingParserCrossEngineExecutionEvidenceV5CaseOutcome {
   if (
     result.status !== "quarantined" ||
-    result.claim !== FILING_PARSER_QUALITY_COMPOSITION_CLAIM ||
-    result.code !== "quality_composition_quarantined" ||
-    result.schemaVersion !== FILING_PARSER_QUALITY_COMPOSITION_SCHEMA_VERSION ||
+    result.claim !== FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CLAIM ||
+    result.code !== "custody_quality_composition_quarantined" ||
+    result.schemaVersion !==
+      FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION ||
     result.synthetic !== true ||
     !Object.isFrozen(result) ||
     Object.keys(result).sort().join("|") !==
@@ -1064,14 +1111,9 @@ function qualityQuarantineOutcome(
   )
     fail();
   return Object.freeze({
-    candidateCommitmentsStable: false,
-    candidateObservationsStable: false,
     caseId,
-    compositionBindingsDistinct: false,
     expectedStatus: "quarantined" as const,
     invocations: null,
-    lifecycleBindingsDistinct: false,
-    measurementStable: false,
     observedStatus: "quarantined" as const,
   });
 }
@@ -1114,11 +1156,11 @@ function implementationSources(
   );
 }
 
-async function exactCycle2nTransition(
+async function exactCycle2oTransition(
   revision: string,
 ): Promise<readonly FilingParserCrossEngineExecutionEvidenceTransitionEntry[]> {
   return exactOneCommitTransition(
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
     revision,
   );
 }
@@ -1170,8 +1212,8 @@ async function exactOneCommitTransition(
   ).stdout;
   const entries = parseFilingParserCrossEngineExecutionNulTransition(output);
   if (
-    canonicalJson(entries) !==
-    canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION)
+    entries.length !== CYCLE_2O_TRANSITION_PATH_COUNT ||
+    sha256(output) !== CYCLE_2O_TRANSITION_SHA256
   )
     fail();
   return entries;
@@ -1648,7 +1690,7 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
     process.env.GITHUB_ACTIONS !== "true" ||
     process.env.GITHUB_JOB !== "acceptance" ||
     process.env.GITHUB_WORKFLOW !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW
   )
     fail();
   const evidencePath = requiredEnvironment(

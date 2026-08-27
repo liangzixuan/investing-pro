@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2n threat model
+# Sprint 0 through promoted Cycle 2n and pending Cycle 2o threat model
 
 ## Current trust boundaries
 
@@ -1314,6 +1314,48 @@ production remain nonclaims or Blocked. See
 [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
+Cycle 2o is a proposed source milestone only. Its target is the exact synthetic
+archive-input bypass left outside Cycle 2n: callers currently supply the
+original/amendment bytes directly, while historical Cycle 2c covers a different
+single generated custody fixture. The proposed outer protocol must encrypt the
+fixed original and amendment archives separately with fresh AES-256-GCM
+key/nonce pairs, bind role/content/source into closed AAD and canonical audit
+records, authenticate exact readback, and allow only owned readback snapshots
+to enter unchanged Cycle 2n.
+The sole proposed claim is
+`bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
+
+The primary threats are direct-input bypass; original/amendment role swap;
+caller-injected custody, clock, entropy, key, nonce, path, digest, receipt, or
+readback; mutation across asynchronous I/O; partial pair publication; audit,
+AAD, ciphertext, tag, or key substitution; replay and concurrent reuse;
+unbound custody-to-Cycle 2n results; and cleanup failure. One-shot reservation
+must precede validation and I/O. Both records must complete before publication;
+readback must recompute every binding; outer hashes must bind custody, complete
+Cycle 2n commitment/evaluation, plan, and declared-reference digest; and every
+failure must collapse to one empty value-free quarantine. Key/plaintext wipe
+attempts and removal of the verified owned workspace are required, but neither
+is a JavaScript memory-erasure or physical-media guarantee.
+
+The quality security invariant is unchanged: a successful protocol operation
+must still report `evaluated/not_met`, with 2/100 documents, 20/1,000
+true-positive facts, 980 missing facts, and 1,960/2,000 silent failures.
+Changing that accounting, populating the other 98 coordinates, or presenting
+the custody round trip as real quality is a security failure. All exact Cycle
+2n nonclaims remain the frozen ordered prefix and six custody-specific
+limitations are appended. Real filing/source authenticity, Cycle 2b external
+rights/authority, production KMS/HSM, durable retention/expiry, physical or
+cryptographic erasure, backup deletion, crash/multi-host recovery, Docker/image
+authenticity, independent adjudication, representativeness, B15/V15, real data,
+and production remain nonclaims or Blocked.
+
+Source completion, exact-source local/workflow gates, success-only evidence,
+artifact inspection, independent review, and promotion remain Pending. No
+target source SHA, run, job, artifact, or digest is asserted. Exact proposed
+gates are in
+[ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
+and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1329,7 +1371,8 @@ and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
    Superseded Cycle 2k, promoted Cycle 2l and Cycle 2m lifecycle agreements,
-   and promoted Cycle 2n quality composition remain
+   promoted Cycle 2n quality composition, and pending Cycle 2o archive-custody
+   composition remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

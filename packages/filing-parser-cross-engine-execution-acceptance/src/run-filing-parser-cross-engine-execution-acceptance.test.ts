@@ -7,10 +7,14 @@ import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_CASE_IDS,
-  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_VALIDATION_STAGES,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES,
 } from "./filing-parser-cross-engine-execution-evidence";
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CASE_IDS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_VALIDATION_STAGES,
+} from "./filing-parser-cross-engine-execution-evidence-v5";
 
 import {
   ACCEPTANCE_PHASES,
@@ -21,6 +25,7 @@ import {
   filingParserCrossEngineExecutionEvidenceV2ValidationPhase,
   filingParserCrossEngineExecutionEvidenceV3ValidationPhase,
   filingParserCrossEngineExecutionEvidenceV4ValidationPhase,
+  filingParserCrossEngineExecutionEvidenceV5ValidationPhase,
   filingParserCrossEngineExecutionEvidenceValidationPhase,
   imageIdValue,
   parseFilingParserCrossEngineExecutionNulTransition,
@@ -49,7 +54,7 @@ const workflowSource = readFileSync(
   "utf8",
 );
 
-describe("Cycle 2n quality-composition live acceptance", () => {
+describe("Cycle 2o custody-quality-composition live acceptance", () => {
   it("emits only closed value-free phase diagnostics", () => {
     expect(Object.isFrozen(ACCEPTANCE_PHASES)).toBe(true);
     expect(ACCEPTANCE_PHASES).toEqual([
@@ -124,6 +129,13 @@ describe("Cycle 2n quality-composition live acceptance", () => {
     }
   });
 
+  it("maps every v5 validation stage to its closed acceptance phase", () => {
+    for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_VALIDATION_STAGES)
+      expect(ACCEPTANCE_PHASES).toContain(
+        filingParserCrossEngineExecutionEvidenceV5ValidationPhase(stage),
+      );
+  });
+
   it("retains the historical v1, v2, and v3 diagnostic mappers", () => {
     for (const stage of FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_VALIDATION_STAGES)
       expect(ACCEPTANCE_PHASES).toContain(
@@ -178,9 +190,9 @@ describe("Cycle 2n quality-composition live acceptance", () => {
     ).toBe(true);
   });
 
-  it("uses only the public exact-4 quality-composition protocol", () => {
+  it("uses only the public exact-5 custody-quality protocol", () => {
     expect(runnerSource).toContain(
-      "createFilingParserQualityCompositionProtocol(configuration)",
+      "createFilingParserCustodyQualityCompositionProtocol(configuration)",
     );
     expect(runnerSource).not.toContain(
       "createFilingParserCrossEngineDirectExecutionBoundary",
@@ -197,14 +209,13 @@ describe("Cycle 2n quality-composition live acceptance", () => {
     expect(runnerSource).toContain(
       "archives.amendmentArchive,\n        quality.declaredReference,",
     );
-    expect(runnerSource).toContain("compositionCommitCount: 4 as const");
+    expect(runnerSource).toContain("custodyCommitCount: 4 as const");
+    expect(runnerSource).toContain("authenticatedReadbackCount: 8 as const");
     expect(runnerSource).toContain("successfulEvaluationCount: 3 as const");
     expect(runnerSource).toContain(
       "successfulLifecycleReceiptCount: 16 as const",
     );
-    expect(runnerSource).toContain(
-      "successfulTwoDocumentObservationCount: 4 as const",
-    );
+    expect(runnerSource).toContain("custodyCleanupCount: 4 as const");
     expect(runnerSource).toContain(
       "Object.getPrototypeOf(result.capability) !== null",
     );
@@ -225,12 +236,20 @@ describe("Cycle 2n quality-composition live acceptance", () => {
     );
   });
 
-  it("requires the exact 34-path NUL-safe direct child of the Cycle 2n baseline", () => {
-    expect(
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION,
-    ).toHaveLength(34);
+  it("freezes the exact six ordered v5 outcome IDs", () => {
+    expect(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CASE_IDS).toEqual([
+      "same-input-custody-quality-evaluation-distinct-custody-invocations",
+      "declared-reference-digest-mismatch",
+      "custody-quality-capability-replay",
+      "reference-content-at-commit",
+      "original-archive-tamper",
+      "original-amendment-role-swap",
+    ]);
+  });
+
+  it("requires the NUL-safe direct child of the Cycle 2o baseline", () => {
     expect(runnerSource).toContain(
-      "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_BASELINE,\n    revision,",
+      "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,\n    revision,",
     );
     expect(runnerSource).toContain('successorCount !== "1"');
     expect(runnerSource).toContain('firstParentCount !== "1"');
@@ -239,10 +258,20 @@ describe("Cycle 2n quality-composition live acceptance", () => {
       '["diff", "--name-status", "--no-renames", "-z", base, revision, "--"]',
     );
     expect(runnerSource).toContain(
-      "filingParserCrossEngineExecutionV4RequiredSourcePaths(transition)",
+      "filingParserCrossEngineExecutionV5RequiredSourcePaths(transition)",
+    );
+    expect(runnerSource).toContain("const CYCLE_2O_TRANSITION_PATH_COUNT = 39");
+    expect(runnerSource).toContain(
+      '"sha256:d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212"',
     );
     expect(runnerSource).toContain(
-      "canonicalJson(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_TRANSITION)",
+      "entries.length !== CYCLE_2O_TRANSITION_PATH_COUNT",
+    );
+    expect(runnerSource).toContain(
+      "sha256(output) !== CYCLE_2O_TRANSITION_SHA256",
+    );
+    expect(FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE).toBe(
+      "711fe866594d5e20a657a24c0a0c72fd78ab90be",
     );
   });
 
@@ -269,16 +298,16 @@ describe("Cycle 2n quality-composition live acceptance", () => {
       ).toThrow("acceptance failed");
   });
 
-  it("writes only canonical v4 evidence after image removal", () => {
+  it("writes only canonical v5 evidence after image removal", () => {
     const removal = runnerSource.indexOf('markPhase("image_removal")');
     const write = runnerSource.indexOf('markPhase("evidence_write")');
     expect(removal).toBeGreaterThan(0);
     expect(write).toBeGreaterThan(removal);
     expect(runnerSource).toContain(
-      "serializeCanonicalFilingParserCrossEngineExecutionEvidenceV4(evidence)",
+      "serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5(evidence)",
     );
     expect(runnerSource).toContain(
-      "research-cockpit-filing-parser-cross-engine-execution-v4.json",
+      "research-cockpit-filing-parser-cross-engine-execution-v5.json",
     );
     expect(runnerSource).toContain(
       "await assertPathAbsent(environment.evidencePath)",
@@ -289,7 +318,10 @@ describe("Cycle 2n quality-composition live acceptance", () => {
     expect(runnerSource).toContain("evidenceWritten = true");
   });
 
-  it("routes only the exact Cycle 2n source to v4 and fails closed otherwise", () => {
+  it("routes only the Cycle 2o source to v5 and preserves inherited routes", () => {
+    expect(workflowSource.indexOf("id: cycle2o_source")).toBeLessThan(
+      workflowSource.indexOf("id: admission_validity_bridge"),
+    );
     expect(workflowSource.indexOf("id: cycle2n_source")).toBeLessThan(
       workflowSource.indexOf("id: legacy_bridge"),
     );
@@ -299,14 +331,21 @@ describe("Cycle 2n quality-composition live acceptance", () => {
     expect(workflowSource).toContain(
       'transition_sha256" == "fba65e4ad0f41de9570b7b7f79edd9f4d291337ca76c4e7d9b7b3466e042ad10"',
     );
+    expect(workflowSource).toContain('"${#actual[@]}" == "78"');
     expect(workflowSource).toContain(
-      "research-cockpit-filing-parser-cross-engine-execution-v4.json",
+      'transition_sha256" == "d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212"',
     );
     expect(workflowSource).toContain(
-      "filing-parser-cross-engine-execution-evidence-v4-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}",
+      "research-cockpit-filing-parser-cross-engine-execution-v5.json",
+    );
+    expect(workflowSource).toContain(
+      "filing-parser-cross-engine-execution-evidence-v5-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}",
     );
     expect(workflowSource).toContain(
       "pnpm --filter @research-cockpit/filing-parser-quality-composition test",
+    );
+    expect(workflowSource).toContain(
+      "pnpm --filter @research-cockpit/filing-parser-custody-quality-composition test",
     );
     expect(workflowSource).toContain(
       "Unrecognized evidence source route; refusing to mint or silently skip evidence.",

@@ -44,6 +44,8 @@ const CYCLE_2M_SOURCE_REVISION =
   "5d61868e6075865b32640ddaceb845ac9dbc69f3" as const;
 const CYCLE_2N_BASELINE_REVISION =
   "09e76235b5683427f2dd3201aefa740bb5adb16e" as const;
+const CYCLE_2O_BASELINE_REVISION =
+  "711fe866594d5e20a657a24c0a0c72fd78ab90be" as const;
 const MAX_EVIDENCE_BYTES = 1_048_576;
 const MAX_GIT_BYTES = 4_194_304;
 const MAX_GIT_PATH_BYTES = 32_768;
@@ -208,6 +210,26 @@ const CYCLE_2N_COMPOSITION_PACKAGE_TREE = Object.freeze(
     "packages/filing-parser-quality-composition/src/index.ts",
     "packages/filing-parser-quality-composition/src/test-filing-parser-quality-composition-builder.ts",
     "packages/filing-parser-quality-composition/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2O_COMPOSITION_PACKAGE_TREE = Object.freeze(
+  [
+    "packages/filing-parser-custody-quality-composition/package.json",
+    "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition-security.test.ts",
+    "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition.test.ts",
+    "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition.ts",
+    "packages/filing-parser-custody-quality-composition/src/index.ts",
+    "packages/filing-parser-custody-quality-composition/src/test-filing-parser-custody-quality-composition-builder.ts",
+    "packages/filing-parser-custody-quality-composition/tsconfig.json",
+  ].sort(),
+);
+const CYCLE_2O_ACCEPTANCE_PACKAGE_TREE = Object.freeze(
+  [
+    ...CYCLE_2K_ACCEPTANCE_PACKAGE_TREE,
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v5.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier-v5.ts",
   ].sort(),
 );
 const CYCLE_2D_TRANSITION = Object.freeze(
@@ -1192,6 +1214,97 @@ const CYCLE_2N_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2O_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2O_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md",
+      status: "A",
+    },
+    {
+      path: "fixtures/synthetic/filing-parser-cross-engine-execution/v5/cases.json",
+      status: "A",
+    },
+    {
+      path: "fixtures/synthetic/filing-parser-cross-engine-execution/v5/manifest.json",
+      status: "A",
+    },
+    {
+      path: "packages/filing-parser-cross-engine-execution-acceptance/package.json",
+      status: "M",
+    },
+    ...[
+      "filing-parser-cross-engine-execution-evidence-review.ts",
+      "filing-parser-cross-engine-execution-evidence-verifier.ts",
+      "filing-parser-cross-engine-execution-evidence.ts",
+      "index.ts",
+      "run-filing-parser-cross-engine-execution-acceptance.test.ts",
+      "run-filing-parser-cross-engine-execution-acceptance.ts",
+      "test-filing-parser-cross-engine-execution-evidence-builder.ts",
+    ].map((name) => ({
+      path: `packages/filing-parser-cross-engine-execution-acceptance/src/${name}`,
+      status: "M",
+    })),
+    ...[
+      "filing-parser-cross-engine-execution-evidence-v5.test.ts",
+      "filing-parser-cross-engine-execution-evidence-v5.ts",
+      "filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+      "filing-parser-cross-engine-execution-evidence-verifier-v5.ts",
+    ].map((name) => ({
+      path: `packages/filing-parser-cross-engine-execution-acceptance/src/${name}`,
+      status: "A",
+    })),
+    ...CYCLE_2O_COMPOSITION_PACKAGE_TREE.map((path) => ({
+      path,
+      status: "A",
+    })),
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "packages/filing-payload-custody/src/index.ts", status: "M" },
+    {
+      path: "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+      status: "A",
+    },
+    {
+      path: "packages/filing-payload-custody/src/parser-archive-pair-fixture.ts",
+      status: "A",
+    },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+    {
+      path: "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 const CYCLE_2M_PRE_BASELINE_CUMULATIVE_ENTRIES = Object.freeze([
   { path: ".github/workflows/ci.yml", status: "M" },
   { path: "docs/CYCLE_2L_EXIT_MATRIX.md", status: "A" },
@@ -1226,6 +1339,13 @@ const CYCLE_2M_TRANSITION_PATHS = new Set(
 const CYCLE_2N_TRANSITION_PATHS = new Set(
   CYCLE_2N_TRANSITION.map((entry) => entry.path),
 );
+const CYCLE_2O_TRANSITION_PATHS = new Set(
+  CYCLE_2O_TRANSITION.map((entry) => entry.path),
+);
+const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
+  "packages/filing-parser/src/corpus-admission-security.test.ts",
+  "packages/filing-parser/src/corpus-admission.ts",
+]);
 const CYCLE_2H_PRE_BASELINE_CUMULATIVE_PATHS = Object.freeze([
   "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
 ]);
@@ -1435,10 +1555,27 @@ const CYCLE_2N_CUMULATIVE_DIFF_PATHS = Object.freeze(
     ]),
   ].sort(),
 );
+const CYCLE_2O_CUMULATIVE_DIFF_PATHS = Object.freeze(
+  [
+    ...new Set([
+      ...CYCLE_2N_CUMULATIVE_DIFF_PATHS,
+      ...CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS,
+      ...CYCLE_2O_TRANSITION.map((entry) => entry.path),
+    ]),
+  ].sort(),
+);
 
 const EXPECTED_PACKAGE_TREE = [...CYCLE_2C_DIFF_ALLOWLIST]
   .filter((path) => path.startsWith("packages/filing-payload-custody/"))
   .sort();
+const CYCLE_2O_CUSTODY_PACKAGE_TREE = Object.freeze(
+  [
+    ...EXPECTED_PACKAGE_TREE,
+    "packages/filing-payload-custody/src/parser-archive-pair-custody.test.ts",
+    "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
+    "packages/filing-payload-custody/src/parser-archive-pair-fixture.ts",
+  ].sort(),
+);
 const EXPECTED_FIXTURE_TREE = [...CYCLE_2C_DIFF_ALLOWLIST]
   .filter((path) =>
     path.startsWith("fixtures/synthetic/filing-payload-custody/v1/"),
@@ -1641,7 +1778,8 @@ export async function verifyCycle2cCommitBoundary(
     "packages/filing-parser-cross-engine-execution-acceptance",
   );
   if (
-    !exactList(packageTree, EXPECTED_PACKAGE_TREE) ||
+    (!exactList(packageTree, EXPECTED_PACKAGE_TREE) &&
+      !isCycle2oCustodyTreeAllowed(packageTree)) ||
     !exactList(fixtureTree, EXPECTED_FIXTURE_TREE) ||
     !isCycle2dNormalizationTreeAllowed(normalizationTree) ||
     !isCycle2eComparisonTreeAllowed(comparisonTree) ||
@@ -1653,7 +1791,8 @@ export async function verifyCycle2cCommitBoundary(
     (!isCycle2kCoreTreeAllowed(cycle2kCoreTree) &&
       !isCycle2mCoreTreeAllowed(cycle2kCoreTree)) ||
     (!isCycle2kAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
-      !isCycle2mAcceptanceTreeAllowed(cycle2kAcceptanceTree))
+      !isCycle2mAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
+      !isCycle2oAcceptanceTreeAllowed(cycle2kAcceptanceTree))
   )
     invalid();
   const cycle2hBaselineDiffPaths = await cycle2hTransitionSurfaceDiffPaths(
@@ -1705,7 +1844,9 @@ export async function verifyCycle2cCommitBoundary(
       revision,
     );
   const cycle2nDiffPaths = entries.map((entry) => entry.path);
-  if (isCycle2nTransitionRoutingRequired(cycle2nDiffPaths))
+  if (isCycle2oTransitionRoutingRequired(cycle2nDiffPaths))
+    await verifyCycle2oTransition(repositoryPath, revision);
+  else if (isCycle2nTransitionRoutingRequired(cycle2nDiffPaths))
     await verifyCycle2nTransition(repositoryPath, revision);
   else if (isCycle2mTransitionRoutingRequired(cycle2mBaselineDiffPaths))
     await verifyCycle2mTransition(repositoryPath, revision);
@@ -1792,7 +1933,9 @@ export function isCycle2cCommitDiffEntryAllowed(
       CYCLE_2I_TRANSITION_PATHS.has(path) ||
       CYCLE_2J_TRANSITION_PATHS.has(path) ||
       CYCLE_2K_TRANSITION_PATHS.has(path) ||
+      CYCLE_2O_TRANSITION_PATHS.has(path) ||
       CYCLE_2N_TRANSITION_PATHS.has(path) ||
+      CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS.includes(path) ||
       CYCLE_2M_TRANSITION_PATHS.has(path) ||
       FASTIFY_5_12_1_MAINTENANCE_TRANSITION_PATHS.has(path) ||
       PNPM_DEPENDENCY_POLICY_MAINTENANCE_TRANSITION_PATHS.has(path))
@@ -1831,7 +1974,8 @@ export function isCycle2cCommitDiffSetAllowed(
       exactList(paths, CYCLE_2J_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2K_CUMULATIVE_DIFF_PATHS) ||
       exactList(paths, CYCLE_2M_CUMULATIVE_DIFF_PATHS) ||
-      exactList(paths, CYCLE_2N_CUMULATIVE_DIFF_PATHS))
+      exactList(paths, CYCLE_2N_CUMULATIVE_DIFF_PATHS) ||
+      exactList(paths, CYCLE_2O_CUMULATIVE_DIFF_PATHS))
   );
 }
 
@@ -2080,6 +2224,68 @@ export function isCycle2mTransitionRoutingRequired(
       (path, index) =>
         CYCLE_2M_TRANSITION_PATHS.has(path) &&
         (index === 0 || (baselineDiffPaths[index - 1] as string) < path),
+    )
+  );
+}
+
+/** @internal Exact Cycle 2o custody-quality composition tree regression seam. */
+export function isCycle2oCompositionTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return exactList(paths, CYCLE_2O_COMPOSITION_PACKAGE_TREE);
+}
+
+/** @internal Exact Cycle 2o expanded custody tree regression seam. */
+export function isCycle2oCustodyTreeAllowed(paths: readonly string[]): boolean {
+  return exactList(paths, CYCLE_2O_CUSTODY_PACKAGE_TREE);
+}
+
+/** @internal Exact Cycle 2o expanded acceptance tree regression seam. */
+export function isCycle2oAcceptanceTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return exactList(paths, CYCLE_2O_ACCEPTANCE_PACKAGE_TREE);
+}
+
+/** @internal Exact Cycle 2o source baseline regression seam. */
+export function isCycle2oBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CYCLE_2O_BASELINE_REVISION;
+}
+
+/** @internal Exact single-parent Cycle 2o source topology regression seam. */
+export function isCycle2oDirectChildAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+): boolean {
+  return (
+    successorCount === "1" &&
+    firstParentCount === "1" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_2O_BASELINE_REVISION &&
+    parentLine === `${revision} ${CYCLE_2O_BASELINE_REVISION}`
+  );
+}
+
+/** @internal Cycle 2o must route before cumulative Cycle 2n. */
+export function isCycle2oTransitionRoutingRequired(
+  diffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    diffPaths !== undefined &&
+    diffPaths.some(
+      (path) =>
+        path === "docs/CYCLE_2O_EXIT_MATRIX.md" ||
+        path ===
+          "fixtures/synthetic/filing-parser-cross-engine-execution/v5/cases.json" ||
+        path.startsWith(
+          "packages/filing-parser-custody-quality-composition/",
+        ) ||
+        path ===
+          "packages/filing-payload-custody/src/parser-archive-pair-custody.ts",
     )
   );
 }
@@ -2555,6 +2761,27 @@ export function isCycle2mCommitDiffSetAllowed(
     new Set(entries.map((entry) => entry.path)).size === entries.length &&
     entries.every((entry, index) => {
       const expected = CYCLE_2M_TRANSITION[index];
+      return (
+        expected !== undefined &&
+        entry.path === expected.path &&
+        entry.status === expected.status
+      );
+    })
+  );
+}
+
+/** @internal Exact Cycle 2o source-transition regression seam. */
+export function isCycle2oCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return (
+    entries.length === CYCLE_2O_TRANSITION.length &&
+    new Set(entries.map((entry) => entry.path)).size === entries.length &&
+    entries.every((entry, index) => {
+      const expected = CYCLE_2O_TRANSITION[index];
       return (
         expected !== undefined &&
         entry.path === expected.path &&
@@ -3371,6 +3598,93 @@ async function verifyCycle2iTransition(
     entries.push(Object.freeze({ path, status }));
   }
   if (!isCycle2iCommitDiffSetAllowed(entries)) invalid();
+}
+
+async function verifyCycle2oTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2O_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2O_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2oBaselineMergeBaseAllowed(mergeBase)) invalid();
+  const range = `${CYCLE_2O_BASELINE_REVISION}..${revision}`;
+  const successorCount = decodeGitCountLine(
+    await git(repositoryPath, ["rev-list", "--count", range], 32),
+  );
+  const firstParentCount = decodeGitCountLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--first-parent", "--count", range],
+      32,
+    ),
+  );
+  const parentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", revision],
+      128,
+    ),
+  ).join(" ");
+  if (
+    !isCycle2oDirectChildAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+    )
+  )
+    invalid();
+
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CYCLE_2O_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalid();
+  const entries: Array<{ readonly path: string; readonly status: string }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (status === undefined || path === undefined) invalid();
+    entries.push(Object.freeze({ path, status }));
+  }
+  if (!isCycle2oCommitDiffSetAllowed(entries)) invalid();
+
+  const [compositionTree, custodyTree, acceptanceTree] = await Promise.all([
+    tree(
+      repositoryPath,
+      revision,
+      "packages/filing-parser-custody-quality-composition",
+    ),
+    tree(repositoryPath, revision, "packages/filing-payload-custody"),
+    tree(
+      repositoryPath,
+      revision,
+      "packages/filing-parser-cross-engine-execution-acceptance",
+    ),
+  ]);
+  if (
+    !isCycle2oCompositionTreeAllowed(compositionTree) ||
+    !isCycle2oCustodyTreeAllowed(custodyTree) ||
+    !isCycle2oAcceptanceTreeAllowed(acceptanceTree)
+  )
+    invalid();
 }
 
 async function verifyCycle2nTransition(

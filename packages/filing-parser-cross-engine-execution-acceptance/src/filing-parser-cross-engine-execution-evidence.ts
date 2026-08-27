@@ -1812,12 +1812,15 @@ function v4CandidateObservationSha256(index: 0 | 1): `sha256:${string}` {
   );
 }
 
-function v4ExpectedInnerBindings(
+export function filingParserCrossEngineExecutionV4ExpectedInnerBindings(
   qualityAccounting: FilingParserCrossEngineExecutionEvidenceV4Invocation["qualityAccounting"],
 ): Readonly<{
   candidateCommitmentSha256: `sha256:${string}`;
   candidateObservationsSha256: `sha256:${string}`;
+  declaredReferenceSha256: `sha256:${string}`;
+  measurementCandidateSha256: `sha256:${string}`;
   measurementEvaluationSha256: `sha256:${string}`;
+  planSha256: `sha256:${string}`;
   qualityEvaluationBindingSha256: `sha256:${string}`;
 }> {
   const documentObservations = [
@@ -1880,7 +1883,10 @@ function v4ExpectedInnerBindings(
   return Object.freeze({
     candidateCommitmentSha256,
     candidateObservationsSha256,
+    declaredReferenceSha256: V4_DECLARED_REFERENCE_SHA256,
+    measurementCandidateSha256,
     measurementEvaluationSha256,
+    planSha256: V4_PLAN_SHA256,
     qualityEvaluationBindingSha256,
   });
 }
@@ -2434,7 +2440,8 @@ function normalizeInvocationV4(
   const qualityAccounting = normalizeQualityAccountingV4(
     invocation.qualityAccounting,
   );
-  const expectedInnerBindings = v4ExpectedInnerBindings(qualityAccounting);
+  const expectedInnerBindings =
+    filingParserCrossEngineExecutionV4ExpectedInnerBindings(qualityAccounting);
   const normalized = Object.freeze({
     ...invocation,
     projectionReceipts: Object.freeze(projectionReceipts),
@@ -2461,6 +2468,13 @@ function normalizeInvocationV4(
   )
     return invalid();
   return normalized;
+}
+
+/** @internal Reuses the frozen Cycle 2n invocation verifier for additive carriers. */
+export function verifyFilingParserCrossEngineExecutionV4Invocation(
+  value: unknown,
+): FilingParserCrossEngineExecutionEvidenceV4Invocation {
+  return normalizeInvocationV4(value);
 }
 
 function normalizeSourceExecutionV4(

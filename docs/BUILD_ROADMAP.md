@@ -1330,6 +1330,53 @@ production. Exact gates are in
 [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
+## Cycle 2o — exact parser-archive custody to quality composition
+
+Status: **Proposed source milestone; source completion, exact-source local and
+workflow verification, retained evidence, independent review, and promotion
+are Pending.** No target source commit, run, job, artifact, digest, or Pass
+claim exists.
+
+Cycle 2o targets the remaining repository-controlled disconnect between the
+exact parser archives and Cycle 2n. A package-owned outer protocol must stage
+the fixed 2,306-byte original and 2,330-byte amendment synthetic archives as
+separate role-bound AES-256-GCM records with fresh keys and nonces, atomically
+publish their ciphertext and closed audit records, authenticate exact readback,
+and pass only owned readback snapshots into a fresh unchanged Cycle 2n
+protocol. It must reserve one-shot state before validation or I/O and expose no
+public injection seam for custody/execution boundaries, clocks, entropy, keys,
+nonces, paths, digests, receipts, readbacks, results, callbacks, or options.
+Its sole proposed claim is
+`bounded_synthetic_source_owned_exact_pair_encrypted_custody_authenticated_readback_to_direct_docker_cross_engine_quality_evaluation_binding`.
+
+The outer commitment/evaluation must bind both custody receipts and their pair
+binding, the internally derived source context, and the complete Cycle 2n
+commitment/evaluation. Tamper, role swap, key loss, audit/ciphertext drift,
+partial publication, concurrency, replay, or cleanup failure must return one
+atomic empty value-free quarantine with no accepted residue. Same inputs keep
+archive, normalization, candidate, and measurement identities stable while
+fresh custody material, Docker lifecycles, and outer bindings remain distinct.
+
+Cycle 2o is not allowed to change the quality population or outcome. The exact
+successful accounting remains `evaluated/not_met`: 2 succeeded and 98 missing
+documents; 20 emitted/true-positive and 980 missing/false-negative facts; and
+1,960 silent critical failures. All exact Cycle 2n nonclaims remain frozen.
+They remain the ordered prefix and six custody-specific limitations are
+appended. This temporary encrypted round trip is not real filing custody, durable
+retention, scheduled expiry, physical or cryptographic erasure, backup
+deletion, crash recovery, trusted host entropy, external authority,
+representativeness, or real quality.
+
+The current baseline contains separate P1 source
+`96b042669edc6cb4a876bb0c061fa5e18732c1ca`, which caps Phase-A corpus
+admission `validUntil` at scheduled revocation. Its corrective closure and
+promotion remain Pending and are not Cycle 2o evidence. They supply no
+external inventory, rights/steward approval, authority identity, trusted clock,
+or human review, so Cycle 2b remains Blocked. Exact proposed gates and
+nonclaims are in
+[ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
+and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
+
 ## Cycle 2 — filing ingestion proof
 
 Target: 3–4 weeks after the parser threat-model gate is implemented.
@@ -1347,7 +1394,8 @@ Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
 bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
-bounded synthetic Cycle 2n satisfies this exit gate. Cycle 2i does not
+bounded synthetic Cycle 2n, nor pending bounded synthetic Cycle 2o satisfies
+this exit gate. Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest

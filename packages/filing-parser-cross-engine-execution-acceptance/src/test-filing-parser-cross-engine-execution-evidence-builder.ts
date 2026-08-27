@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 
 import {
+  FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CUSTODY_PROFILE,
+  FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION,
+} from "@research-cockpit/filing-parser-custody-quality-composition";
+
+import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_BASELINE,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CHECKS,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_CLAIM,
@@ -49,6 +54,7 @@ import {
   filingParserCrossEngineExecutionV3RequiredSourcePaths,
   filingParserCrossEngineExecutionV4CompositionCommitmentSha256,
   filingParserCrossEngineExecutionV4EvaluationBindingSha256,
+  filingParserCrossEngineExecutionV4ExpectedInnerBindings,
   filingParserCrossEngineExecutionV4ProjectionBindingSha256,
   filingParserCrossEngineExecutionV4QualityDocumentSha256,
   filingParserCrossEngineExecutionV4RequiredSourcePaths,
@@ -64,6 +70,18 @@ import {
   type FilingParserCrossEngineExecutionEvidenceV2CaseId,
   type FilingParserCrossEngineExecutionEvidenceSourceHash,
 } from "./filing-parser-cross-engine-execution-evidence";
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW,
+  filingParserCrossEngineExecutionV5RequiredSourcePaths,
+  type FilingParserCrossEngineExecutionEvidenceV5,
+  type FilingParserCrossEngineExecutionEvidenceV5Invocation,
+} from "./filing-parser-cross-engine-execution-evidence-v5";
 
 const HASH_A = `sha256:${"a".repeat(64)}` as const;
 const HASH_B = `sha256:${"b".repeat(64)}` as const;
@@ -566,6 +584,293 @@ export function buildFilingParserCrossEngineExecutionEvidenceV4Input(): FilingPa
       workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_WORKFLOW,
     },
   };
+}
+
+/** @internal Test-only additive Cycle 2o custody-quality evidence carrier. */
+export function buildFilingParserCrossEngineExecutionEvidenceV5Input(): FilingParserCrossEngineExecutionEvidenceV5 {
+  const v1 = buildFilingParserCrossEngineExecutionEvidenceInput();
+  const v4 = buildFilingParserCrossEngineExecutionEvidenceV4Input();
+  const revision = "d".repeat(40);
+  const transition = Object.freeze([
+    Object.freeze({
+      path: "fixtures/synthetic/filing-parser-cross-engine-execution/v5/manifest.json",
+      status: "A" as const,
+    }),
+  ]);
+  const sourceHashes = Object.freeze(
+    filingParserCrossEngineExecutionV5RequiredSourcePaths(transition).map(
+      (path) => Object.freeze({ path, sha256: HASH_A }),
+    ),
+  );
+  const successV4 = v4.caseOutcomes[0];
+  if (successV4?.invocations === null || successV4?.invocations === undefined)
+    throw new TypeError();
+  const first = custodyQualityInvocation(successV4.invocations[0], 0);
+  const second = custodyQualityInvocation(successV4.invocations[1], 1);
+  return {
+    baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+    caseOutcomes: [
+      {
+        caseId:
+          "same-input-custody-quality-evaluation-distinct-custody-invocations",
+        expectedStatus: "evaluated_not_met",
+        invocations: [first, second],
+        observedStatus: "evaluated_not_met",
+      },
+      ...(
+        [
+          "declared-reference-digest-mismatch",
+          "custody-quality-capability-replay",
+          "reference-content-at-commit",
+          "original-archive-tamper",
+          "original-amendment-role-swap",
+        ] as const
+      ).map((caseId) => ({
+        caseId,
+        expectedStatus: "quarantined" as const,
+        invocations: null,
+        observedStatus: "quarantined" as const,
+      })),
+    ],
+    checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
+    claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+    completedAt: v1.completedAt,
+    custodyValidation: {
+      archivePair: "exact_frozen_original_amendment_pair",
+      authenticatedReadback: "only_owned_readback_enters_cycle2n",
+      cleanup: "complete_before_publication",
+      outerBindings: "custody_pair_and_unchanged_cycle2n_bound",
+    },
+    engines: v4.engines,
+    evidenceVersion: 5,
+    fixtureManifestSha256: HASH_A,
+    historicalV1: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+    historicalV2: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+    historicalV3: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+    historicalV4: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+    notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
+    repository: v1.repository,
+    revision,
+    runtime: {
+      authenticatedReadbackCount: 8,
+      capabilitiesDropped: ["ALL"],
+      custodyCommitCount: 4,
+      custodyCleanupCount: 4,
+      directExecutionCount: 4,
+      engineCount: 2,
+      networkMode: "none",
+      readOnlyRootFilesystem: true,
+      successfulEvaluationCount: 3,
+      successfulLifecycleReceiptCount: 16,
+      zeroResidue: true,
+    },
+    schemaVersion:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
+    sourceHashes,
+    startedAt: v1.startedAt,
+    status: "passed",
+    summary: {
+      candidateCommitmentsStable: true,
+      candidateObservationsStable: true,
+      custodyBindingsDistinct: true,
+      evaluatedNotMet: 1,
+      measurementStable: true,
+      quarantined: 5,
+      sourceBindingsStable: true,
+      total: 6,
+    },
+    synthetic: true,
+    tools: v1.tools,
+    transition: { entries: transition, pathCount: transition.length },
+    workflow: {
+      artifactName: `filing-parser-cross-engine-execution-evidence-v5-${revision}-1`,
+      event: "push",
+      job: "acceptance",
+      ref: "refs/heads/main",
+      runAttempt: 1,
+      runId: "123456789",
+      workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW,
+    },
+  };
+}
+
+function custodyQualityInvocation(
+  qualityInvocation: FilingParserCrossEngineExecutionEvidenceV4Invocation,
+  invocationIndex: 0 | 1,
+): FilingParserCrossEngineExecutionEvidenceV5Invocation {
+  const profile = FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CUSTODY_PROFILE;
+  const sourceContextSha256 = testDomainSha256(
+    "research-cockpit:synthetic-filing-parser-custody-quality-source-context:v1\u0000",
+    {
+      amendmentArchiveSha256: profile.fixtures.amendment.contentSha256,
+      claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+      declaredReferenceSha256: qualityInvocation.declaredReferenceSha256,
+      originalArchiveSha256: profile.fixtures.original.contentSha256,
+      planSha256: qualityInvocation.planSha256,
+      schemaVersion: FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION,
+    },
+  );
+  const receipts = Object.freeze(
+    (["original", "amendment"] as const).map((role, roleIndex) => {
+      const fixture = profile.fixtures[role];
+      const sourceBindingSha256 = testDomainSha256(
+        "research-cockpit:synthetic-filing-parser-archive-custody-role-source:v1\u0000",
+        {
+          amendmentArchiveSha256: profile.fixtures.amendment.contentSha256,
+          claim: profile.claim,
+          originalArchiveSha256: profile.fixtures.original.contentSha256,
+          role,
+          schemaVersion: profile.schemaVersion,
+          sourceContextSha256,
+        },
+      );
+      const aadSha256 = testSha256(
+        new Uint8Array([
+          ...new TextEncoder().encode(profile.algorithm.aadDomain),
+          ...testCanonicalBytes({
+            algorithm: profile.algorithm.name,
+            byteLength: fixture.byteLength,
+            claim: profile.claim,
+            contentSha256: fixture.contentSha256,
+            role,
+            schemaVersion: profile.schemaVersion,
+            sourceBindingSha256,
+          }),
+        ]),
+      );
+      const preimage = {
+        aadSha256,
+        byteLength: fixture.byteLength,
+        ciphertextSha256: numberedHash(40 + invocationIndex * 2 + roleIndex),
+        contentSha256: fixture.contentSha256,
+        readbackSha256: fixture.contentSha256,
+        role,
+        sourceBindingSha256,
+      };
+      return Object.freeze({
+        ...preimage,
+        receiptSha256: testDomainSha256(
+          "research-cockpit:synthetic-filing-parser-archive-custody-receipt:v1\u0000",
+          preimage,
+        ),
+      });
+    }),
+  ) as unknown as FilingParserCrossEngineExecutionEvidenceV5Invocation["custody"]["receipts"];
+  const custody = Object.freeze({
+    custodyPairBindingSha256: testDomainSha256(
+      "research-cockpit:synthetic-filing-parser-archive-custody-pair:v1\u0000",
+      {
+        claim: profile.claim,
+        receipts,
+        schemaVersion: profile.schemaVersion,
+        sourceContextSha256,
+      },
+    ),
+    receipts,
+    sourceContextSha256,
+  });
+  const quality = Object.freeze({
+    projectionReceipts: qualityInvocation.projectionReceipts,
+    sourceExecution: qualityInvocation.sourceExecution,
+  });
+  const custodyCompositionCommitmentSha256 = testDomainSha256(
+    "research-cockpit:synthetic-filing-parser-custody-quality-commitment:v1\u0000",
+    {
+      candidateCommitmentSha256: qualityInvocation.candidateCommitmentSha256,
+      candidateObservationsSha256:
+        qualityInvocation.candidateObservationsSha256,
+      claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+      custody,
+      declaredReferenceSha256: qualityInvocation.declaredReferenceSha256,
+      planSha256: qualityInvocation.planSha256,
+      quality,
+      qualityCompositionCommitmentSha256:
+        qualityInvocation.compositionCommitmentSha256,
+      schemaVersion: FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION,
+    },
+  );
+  const inner = filingParserCrossEngineExecutionV4ExpectedInnerBindings(
+    qualityInvocation.qualityAccounting,
+  );
+  const measurement = Object.freeze({
+    candidateSha256: inner.measurementCandidateSha256,
+    claim:
+      "bounded_synthetic_fixed_population_declared_reference_quality_metric_accounting_and_fail_closed_threshold_evaluation" as const,
+    counts: qualityInvocation.qualityAccounting.counts,
+    declaredReferenceSha256: qualityInvocation.declaredReferenceSha256,
+    evaluationSha256: qualityInvocation.measurementEvaluationSha256,
+    failedThresholds: qualityInvocation.qualityAccounting.failedThresholds,
+    metrics: qualityInvocation.qualityAccounting.metrics,
+    planSha256: qualityInvocation.planSha256,
+    schemaVersion: "1.0.0" as const,
+    status: "evaluated" as const,
+    synthetic: true as const,
+    syntheticPilotThresholdOutcome: "not_met" as const,
+  });
+  const custodyCompositionEvaluationBindingSha256 = testDomainSha256(
+    "research-cockpit:synthetic-filing-parser-custody-quality-evaluation:v1\u0000",
+    {
+      candidateCommitmentSha256: qualityInvocation.candidateCommitmentSha256,
+      candidateObservationsSha256:
+        qualityInvocation.candidateObservationsSha256,
+      claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+      custody,
+      custodyCompositionCommitmentSha256,
+      declaredReferenceSha256: qualityInvocation.declaredReferenceSha256,
+      measurementEvaluationSha256: measurement.evaluationSha256,
+      planSha256: qualityInvocation.planSha256,
+      quality,
+      qualityCompositionCommitmentSha256:
+        qualityInvocation.compositionCommitmentSha256,
+      qualityCompositionEvaluationBindingSha256:
+        qualityInvocation.evaluationBindingSha256,
+      qualityEvaluationBindingSha256:
+        qualityInvocation.qualityEvaluationBindingSha256,
+      schemaVersion: FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION,
+    },
+  );
+  return Object.freeze({
+    audit: Object.freeze({
+      authenticatedReadbackCount: 2 as const,
+      cleanupCount: 1 as const,
+      directExecutionCount: 1 as const,
+      emittedFactCount: 20 as const,
+      stagedArchiveCount: 2 as const,
+      zeroResidue: true as const,
+    }),
+    candidateCommitmentSha256: qualityInvocation.candidateCommitmentSha256,
+    candidateObservationsSha256: qualityInvocation.candidateObservationsSha256,
+    custody,
+    custodyCompositionCommitmentSha256,
+    custodyCompositionEvaluationBindingSha256,
+    declaredReferenceSha256: qualityInvocation.declaredReferenceSha256,
+    measurement,
+    planSha256: qualityInvocation.planSha256,
+    quality,
+    qualityCompositionCommitmentSha256:
+      qualityInvocation.compositionCommitmentSha256,
+    qualityCompositionEvaluationBindingSha256:
+      qualityInvocation.evaluationBindingSha256,
+    qualityEvaluationBindingSha256:
+      qualityInvocation.qualityEvaluationBindingSha256,
+  });
+}
+
+function testDomainSha256(domain: string, value: unknown): `sha256:${string}` {
+  return testSha256(
+    new Uint8Array([
+      ...new TextEncoder().encode(domain),
+      ...testCanonicalBytes(value),
+    ]),
+  );
+}
+
+function testCanonicalBytes(value: unknown): Uint8Array {
+  return new TextEncoder().encode(`${canonicalCycle2nJson(value)}\n`);
+}
+
+function testSha256(value: Uint8Array): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 function qualityInvocation(

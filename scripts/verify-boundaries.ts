@@ -199,6 +199,12 @@ const filingParserCrossEngineExecutionRootScriptAliases = [
   "filing-parser-cross-engine-execution:evidence-review",
   "guardrails:filing-parser-cross-engine-execution-fixtures",
 ] as const;
+const filingParserCycle2oTransitionPathCount = 39 as const;
+const filingParserCycle2oTransitionNulFieldCount = 78 as const;
+const filingParserCycle2oTransitionBareSha256 =
+  "d830b547c4c0727bd948267819a01e8beba575e2d80d8a5e89fd1d8542b30212" as const;
+const filingParserCycle2oTransitionSha256 =
+  `sha256:${filingParserCycle2oTransitionBareSha256}` as const;
 const filingParserCrossEngineExecutionCorePaths = [
   "packages/filing-parser-cross-engine-execution/acceptance/node-image.json",
   "packages/filing-parser-cross-engine-execution/package.json",
@@ -219,6 +225,10 @@ const filingParserCrossEngineExecutionCorePaths = [
 const filingParserCrossEngineExecutionAcceptanceSourceNames = [
   "filing-parser-cross-engine-execution-evidence-review.test.ts",
   "filing-parser-cross-engine-execution-evidence-review.ts",
+  "filing-parser-cross-engine-execution-evidence-v5.test.ts",
+  "filing-parser-cross-engine-execution-evidence-v5.ts",
+  "filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
+  "filing-parser-cross-engine-execution-evidence-verifier-v5.ts",
   "filing-parser-cross-engine-execution-evidence-verifier.test.ts",
   "filing-parser-cross-engine-execution-evidence-verifier.ts",
   "filing-parser-cross-engine-execution-evidence.test.ts",
@@ -361,11 +371,40 @@ const filingParserCrossEngineExecutionEvidencePublicExports = [
   ["FilingParserCrossEngineExecutionEvidenceV4SourceExecution", true],
 ] as const;
 const filingParserCrossEngineExecutionVerifierPublicExports = [
+  [
+    "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_PATH_COUNT",
+    false,
+  ],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_SHA256", false],
+  ["filingParserCrossEngineExecutionV5ChainAllowed", false],
+  ["filingParserCrossEngineExecutionV5TransitionAllowed", false],
   ["parseFilingParserCrossEngineExecutionEvidenceNulTransition", false],
   ["repositoryRelativePathIsContained", false],
   ["verifyFilingParserCrossEngineExecutionEvidenceOffline", false],
   ["FilingParserCrossEngineExecutionEvidenceReview", true],
   ["FilingParserCrossEngineExecutionEvidenceReviewOptions", true],
+] as const;
+const filingParserCrossEngineExecutionEvidenceV5PublicExports = [
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CASE_IDS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_VALIDATION_STAGES", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_VERSION", false],
+  ["FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW", false],
+  ["createFilingParserCrossEngineExecutionEvidenceV5", false],
+  ["filingParserCrossEngineExecutionEvidenceV5Sha256", false],
+  ["filingParserCrossEngineExecutionV5RequiredSourcePaths", false],
+  ["parseCanonicalFilingParserCrossEngineExecutionEvidenceV5", false],
+  ["serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5", false],
+  ["FilingParserCrossEngineExecutionEvidenceV5", true],
+  ["FilingParserCrossEngineExecutionEvidenceV5CaseId", true],
+  ["FilingParserCrossEngineExecutionEvidenceV5CaseOutcome", true],
+  ["FilingParserCrossEngineExecutionEvidenceV5Invocation", true],
+  ["FilingParserCrossEngineExecutionEvidenceV5ValidationStage", true],
 ] as const;
 const filingParserNormalizationExecutionRootScriptAliases = new Set([
   "filing-parser-normalization-execution:acceptance",
@@ -932,6 +971,44 @@ const filingParserQualityCompositionProductionPath = `${filingParserQualityCompo
 const filingParserQualityCompositionBuilderPath = `${filingParserQualityCompositionSourcePrefix}test-filing-parser-quality-composition-builder.ts`;
 const filingParserQualityCompositionUnitTestPath = `${filingParserQualityCompositionSourcePrefix}filing-parser-quality-composition.test.ts`;
 const filingParserQualityCompositionSecurityTestPath = `${filingParserQualityCompositionSourcePrefix}filing-parser-quality-composition-security.test.ts`;
+const filingParserCustodyQualityCompositionModule =
+  "@research-cockpit/filing-parser-custody-quality-composition";
+const filingParserCustodyQualityCompositionPackagePrefix =
+  "packages/filing-parser-custody-quality-composition/";
+const filingParserCustodyQualityCompositionSourcePrefix = `${filingParserCustodyQualityCompositionPackagePrefix}src/`;
+const filingParserCustodyQualityCompositionIndexPath = `${filingParserCustodyQualityCompositionSourcePrefix}index.ts`;
+const filingParserCustodyQualityCompositionProductionPath = `${filingParserCustodyQualityCompositionSourcePrefix}filing-parser-custody-quality-composition.ts`;
+const filingParserCustodyQualityCompositionBuilderPath = `${filingParserCustodyQualityCompositionSourcePrefix}test-filing-parser-custody-quality-composition-builder.ts`;
+const filingParserCustodyQualityCompositionUnitTestPath = `${filingParserCustodyQualityCompositionSourcePrefix}filing-parser-custody-quality-composition.test.ts`;
+const filingParserCustodyQualityCompositionSecurityTestPath = `${filingParserCustodyQualityCompositionSourcePrefix}filing-parser-custody-quality-composition-security.test.ts`;
+const filingParserCustodyQualityCompositionPackagePaths = [
+  `${filingParserCustodyQualityCompositionPackagePrefix}package.json`,
+  `${filingParserCustodyQualityCompositionPackagePrefix}tsconfig.json`,
+  filingParserCustodyQualityCompositionBuilderPath,
+  filingParserCustodyQualityCompositionIndexPath,
+  filingParserCustodyQualityCompositionProductionPath,
+  filingParserCustodyQualityCompositionSecurityTestPath,
+  filingParserCustodyQualityCompositionUnitTestPath,
+].sort();
+const filingParserCustodyQualityCompositionPublicExports = [
+  ["FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CHECKS", false],
+  ["FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CLAIM", false],
+  ["FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_CUSTODY_PROFILE", false],
+  ["FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_NOT_PROVEN", false],
+  ["FILING_PARSER_CUSTODY_QUALITY_COMPOSITION_SCHEMA_VERSION", false],
+  ["createFilingParserCustodyQualityCompositionProtocol", false],
+  ["FilingParserCustodyQualityCompositionAudit", true],
+  ["FilingParserCustodyQualityCompositionCapability", true],
+  ["FilingParserCustodyQualityCompositionCommitResult", true],
+  ["FilingParserCustodyQualityCompositionCommittedResult", true],
+  ["FilingParserCustodyQualityCompositionConfiguration", true],
+  ["FilingParserCustodyQualityCompositionCustody", true],
+  ["FilingParserCustodyQualityCompositionEvaluatedResult", true],
+  ["FilingParserCustodyQualityCompositionProtocol", true],
+  ["FilingParserCustodyQualityCompositionQuality", true],
+  ["FilingParserCustodyQualityCompositionQuarantinedResult", true],
+  ["FilingParserCustodyQualityCompositionRevealResult", true],
+] as const;
 const filingParserQualityCompositionPackagePaths = [
   `${filingParserQualityCompositionPackagePrefix}package.json`,
   `${filingParserQualityCompositionPackagePrefix}tsconfig.json`,
@@ -960,6 +1037,76 @@ const filingParserQualityCompositionPublicExports = [
   ["FilingParserQualityCompositionRevealResult", true],
   ["FilingParserQualityCompositionSourceExecution", true],
 ] as const;
+const filingParserCustodyQualityCompositionModules = new Map<
+  string,
+  readonly string[]
+>([
+  [
+    filingParserCustodyQualityCompositionProductionPath,
+    [
+      "node:crypto",
+      "node:util",
+      filingPayloadCustodyModule,
+      filingParserQualityCompositionModule,
+    ],
+  ],
+  [
+    filingParserCustodyQualityCompositionIndexPath,
+    ["./filing-parser-custody-quality-composition"],
+  ],
+  [
+    filingParserCustodyQualityCompositionBuilderPath,
+    [
+      "node:crypto",
+      filingPayloadCustodyModule,
+      filingParserQualityCompositionModule,
+      "../../filing-parser-quality-composition/src/filing-parser-quality-composition",
+      "../../filing-parser-quality-composition/src/test-filing-parser-quality-composition-builder",
+      "./filing-parser-custody-quality-composition",
+    ],
+  ],
+  [
+    filingParserCustodyQualityCompositionUnitTestPath,
+    [
+      "vitest",
+      filingParserQualityCompositionModule,
+      "./filing-parser-custody-quality-composition",
+      "./test-filing-parser-custody-quality-composition-builder",
+    ],
+  ],
+  [
+    filingParserCustodyQualityCompositionSecurityTestPath,
+    [
+      "vitest",
+      filingPayloadCustodyModule,
+      filingParserQualityCompositionModule,
+      "../../filing-payload-custody/src/parser-archive-pair-custody",
+      "./filing-parser-custody-quality-composition",
+      "./index",
+      "./test-filing-parser-custody-quality-composition-builder",
+    ],
+  ],
+]);
+const forbiddenFilingParserCustodyQualityCompositionGlobals = new Set([
+  "Bun",
+  "Deno",
+  "EventSource",
+  "Function",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "XMLHttpRequest",
+  "console",
+  "crypto",
+  "eval",
+  "fetch",
+  "global",
+  "globalThis",
+  "module",
+  "navigator",
+  "process",
+  "require",
+]);
 const filingQualityPrecommitmentPublicExports = [
   ["FILING_QUALITY_PRECOMMITMENT_CHECKS", false],
   ["FILING_QUALITY_PRECOMMITMENT_CLAIM", false],
@@ -1051,6 +1198,29 @@ const forbiddenFilingQualityPrecommitmentGlobals = new Set([
 const filingPayloadCustodySourcePrefix = "packages/filing-payload-custody/src/";
 const filingPayloadCustodyIndexPath = `${filingPayloadCustodySourcePrefix}index.ts`;
 const filingPayloadCustodyProductionPath = `${filingPayloadCustodySourcePrefix}payload-custody.ts`;
+const filingParserArchivePairCustodyProductionPath = `${filingPayloadCustodySourcePrefix}parser-archive-pair-custody.ts`;
+const filingParserArchivePairCustodyUnitTestPath = `${filingPayloadCustodySourcePrefix}parser-archive-pair-custody.test.ts`;
+const filingParserArchivePairFixturePath = `${filingPayloadCustodySourcePrefix}parser-archive-pair-fixture.ts`;
+const filingPayloadCustodyPackagePaths = [
+  "packages/filing-payload-custody/package.json",
+  "packages/filing-payload-custody/tsconfig.json",
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-review.test.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-review.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.test.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-verifier.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence.test.ts`,
+  `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence.ts`,
+  filingPayloadCustodyIndexPath,
+  filingParserArchivePairCustodyProductionPath,
+  filingParserArchivePairCustodyUnitTestPath,
+  filingParserArchivePairFixturePath,
+  `${filingPayloadCustodySourcePrefix}payload-custody-security.test.ts`,
+  `${filingPayloadCustodySourcePrefix}payload-custody.test.ts`,
+  filingPayloadCustodyProductionPath,
+  `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-acceptance.ts`,
+  `${filingPayloadCustodySourcePrefix}run-filing-payload-custody-evidence-review.ts`,
+  `${filingPayloadCustodySourcePrefix}test-payload-builder.ts`,
+].sort();
 const filingPayloadCustodyFixtureGuardPath =
   "scripts/verify-filing-payload-custody-fixtures.ts";
 const filingPayloadCustodyFixtureGuardModules = [
@@ -1087,6 +1257,24 @@ const filingPayloadCustodyPublicExports = [
   ["FilingPayloadKeyStore", true],
   ["FilingPayloadReadCommand", true],
   ["FilingPayloadStageCommand", true],
+] as const;
+const filingParserArchivePairCustodyPublicExports = [
+  ["FILING_PARSER_ARCHIVE_PAIR_CUSTODY_ALGORITHM", false],
+  ["FILING_PARSER_ARCHIVE_PAIR_CUSTODY_CHECKS", false],
+  ["FILING_PARSER_ARCHIVE_PAIR_CUSTODY_CLAIM", false],
+  ["FILING_PARSER_ARCHIVE_PAIR_CUSTODY_FIXTURES", false],
+  ["FILING_PARSER_ARCHIVE_PAIR_CUSTODY_NOT_PROVEN", false],
+  ["FILING_PARSER_ARCHIVE_PAIR_CUSTODY_SCHEMA_VERSION", false],
+  ["createFilingParserArchivePairCustodyProtocol", false],
+  ["FilingParserArchivePairCustodyProtocol", true],
+  ["FilingParserArchivePairCustodyQuarantinedResult", true],
+  ["FilingParserArchivePairCustodyReadbackResult", true],
+  ["FilingParserArchivePairCustodyReceipt", true],
+  ["FilingParserArchivePairCustodyResult", true],
+] as const;
+const filingParserArchivePairFixturePublicExports = [
+  ["createSyntheticFilingParserArchivePairFixture", false],
+  ["SyntheticFilingParserArchivePairFixture", true],
 ] as const;
 const filingPayloadCustodyToolPaths = new Set([
   `${filingPayloadCustodySourcePrefix}filing-payload-custody-evidence-review.ts`,
@@ -1150,9 +1338,31 @@ const filingPayloadCustodyTestModules = new Set([
   "./filing-payload-custody-evidence",
   "./filing-payload-custody-evidence-review",
   "./filing-payload-custody-evidence-verifier",
+  "./parser-archive-pair-custody",
+  "./parser-archive-pair-fixture",
   "./payload-custody",
   "./test-payload-builder",
 ]);
+const filingParserArchivePairCustodyModules = [
+  "node:crypto",
+  "node:fs",
+  "node:fs/promises",
+  "node:os",
+  "node:path",
+  "node:util",
+] as const;
+const filingParserArchivePairFixtureModules = [
+  "node:crypto",
+  "./parser-archive-pair-custody",
+] as const;
+const filingParserArchivePairCustodyTestModules = [
+  "node:fs/promises",
+  "node:os",
+  "node:path",
+  "vitest",
+  "./parser-archive-pair-custody",
+  "./parser-archive-pair-fixture",
+] as const;
 const forbiddenFilingPayloadCustodyGlobals = new Set([
   "Bun",
   "Deno",
@@ -1351,6 +1561,8 @@ const workspacePackageNames =
 violations.push(
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
   ...(await filingParserQualityCompositionBoundaryViolations()),
+  ...(await filingPayloadCustodyReviewedSurfaceBoundaryViolations()),
+  ...(await filingParserCustodyQualityCompositionBoundaryViolations()),
 );
 
 const filingFactComparisonTreeViolation =
@@ -3825,6 +4037,26 @@ const validFilingPayloadCustodyIndexSource = `export {
   type FilingPayloadReadCommand,
   type FilingPayloadStageCommand,
 } from "./payload-custody";
+
+export {
+  FILING_PARSER_ARCHIVE_PAIR_CUSTODY_ALGORITHM,
+  FILING_PARSER_ARCHIVE_PAIR_CUSTODY_CHECKS,
+  FILING_PARSER_ARCHIVE_PAIR_CUSTODY_CLAIM,
+  FILING_PARSER_ARCHIVE_PAIR_CUSTODY_FIXTURES,
+  FILING_PARSER_ARCHIVE_PAIR_CUSTODY_NOT_PROVEN,
+  FILING_PARSER_ARCHIVE_PAIR_CUSTODY_SCHEMA_VERSION,
+  createFilingParserArchivePairCustodyProtocol,
+  type FilingParserArchivePairCustodyProtocol,
+  type FilingParserArchivePairCustodyQuarantinedResult,
+  type FilingParserArchivePairCustodyReadbackResult,
+  type FilingParserArchivePairCustodyReceipt,
+  type FilingParserArchivePairCustodyResult,
+} from "./parser-archive-pair-custody";
+
+export {
+  createSyntheticFilingParserArchivePairFixture,
+  type SyntheticFilingParserArchivePairFixture,
+} from "./parser-archive-pair-fixture";
 `;
 if (
   filingPayloadCustodyImportViolation(
@@ -4403,6 +4635,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     },
     dependencies: {
       [filingParserCrossEngineExecutionModule]: "workspace:*",
+      [filingParserCustodyQualityCompositionModule]: "workspace:*",
       [filingParserQualityCompositionModule]: "workspace:*",
       [filingParserNormalizationExecutionModule]: "workspace:*",
     },
@@ -4476,20 +4709,148 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     )
   )
     found.push("Cycle 2k core public export surface must remain exact");
-  const allowedAcceptanceModules = new Set([
-    "node:child_process",
-    "node:crypto",
-    "node:fs",
-    "node:fs/promises",
-    "node:os",
-    "node:path",
-    "node:url",
-    "node:util",
-    "vitest",
-    filingParserCrossEngineExecutionModule,
-    filingParserQualityCompositionModule,
-    filingParserNormalizationExecutionModule,
-    `${filingParserNormalizationExecutionModule}/test`,
+  const acceptanceModulesByPath = new Map<string, readonly string[]>([
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-review.test.ts`,
+      [
+        "vitest",
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-review",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-review.ts`,
+      [
+        "./filing-parser-cross-engine-execution-evidence-verifier",
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-v5.test.ts`,
+      [
+        "node:crypto",
+        "vitest",
+        filingParserCustodyQualityCompositionModule,
+        "./filing-parser-cross-engine-execution-evidence-v5",
+        "./test-filing-parser-cross-engine-execution-evidence-builder",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-v5.ts`,
+      [
+        "node:crypto",
+        "node:util",
+        filingParserCustodyQualityCompositionModule,
+        "./filing-parser-cross-engine-execution-evidence",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts`,
+      [
+        "vitest",
+        "./filing-parser-cross-engine-execution-evidence-verifier",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier-v5.ts`,
+      [
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier.test.ts`,
+      [
+        "node:child_process",
+        "node:crypto",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:url",
+        "vitest",
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-verifier",
+        "./test-filing-parser-cross-engine-execution-evidence-builder",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier.ts`,
+      [
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:fs/promises",
+        "node:path",
+        "node:util",
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-verifier-v5",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence.test.ts`,
+      [
+        "node:crypto",
+        "vitest",
+        filingParserCrossEngineExecutionModule,
+        "./filing-parser-cross-engine-execution-evidence",
+        "./test-filing-parser-cross-engine-execution-evidence-builder",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence.ts`,
+      ["node:crypto"],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}index.ts`,
+      [
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+        "./filing-parser-cross-engine-execution-evidence-verifier",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}run-filing-parser-cross-engine-execution-acceptance.test.ts`,
+      [
+        "node:fs",
+        "node:url",
+        "vitest",
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+        "./run-filing-parser-cross-engine-execution-acceptance",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}run-filing-parser-cross-engine-execution-acceptance.ts`,
+      [
+        "node:child_process",
+        "node:crypto",
+        "node:fs/promises",
+        "node:path",
+        "node:url",
+        filingParserNormalizationExecutionModule,
+        `${filingParserNormalizationExecutionModule}/test`,
+        filingParserCustodyQualityCompositionModule,
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+        "./test-filing-parser-cross-engine-execution-evidence-builder",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}run-filing-parser-cross-engine-execution-evidence-review.ts`,
+      ["./filing-parser-cross-engine-execution-evidence-review"],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}test-filing-parser-cross-engine-execution-evidence-builder.ts`,
+      [
+        "node:crypto",
+        filingParserCustodyQualityCompositionModule,
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
+      ],
+    ],
   ]);
   const acceptanceIndexPath = `${filingParserCrossEngineExecutionAcceptancePackagePrefix}src/index.ts`;
   const acceptanceIndex = ts.createSourceFile(
@@ -4500,7 +4861,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     ts.ScriptKind.TS,
   );
   if (
-    acceptanceIndex.statements.length !== 2 ||
+    acceptanceIndex.statements.length !== 3 ||
     !isExactNamedReExportDeclaration(
       acceptanceIndex.statements[0],
       "./filing-parser-cross-engine-execution-evidence",
@@ -4508,6 +4869,11 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     ) ||
     !isExactNamedReExportDeclaration(
       acceptanceIndex.statements[1],
+      "./filing-parser-cross-engine-execution-evidence-v5",
+      filingParserCrossEngineExecutionEvidenceV5PublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      acceptanceIndex.statements[2],
       "./filing-parser-cross-engine-execution-evidence-verifier",
       filingParserCrossEngineExecutionVerifierPublicExports,
     )
@@ -4517,21 +4883,19 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     path.endsWith(".ts"),
   )) {
     const content = await readFile(join(root, path), "utf8");
-    const allowed = path.startsWith(
-      filingParserCrossEngineExecutionAcceptancePackagePrefix,
-    )
-      ? allowedAcceptanceModules
-      : allowedCoreModules;
-    for (const module of collectModuleSpecifiers(content)) {
-      if (
-        module.startsWith("./") &&
-        path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix)
-      ) {
-        const target = `${posixDirname(path)}/${module.slice(2)}.ts`;
-        if (!filingParserCrossEngineExecutionAcceptancePaths.includes(target))
-          found.push(`${path}: unreviewed Cycle 2k local import ${module}`);
-      } else if (!allowed.has(module))
-        found.push(`${path}: unreviewed Cycle 2k import ${module}`);
+    const modules = collectModuleSpecifiers(content);
+    if (
+      path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix)
+    ) {
+      const expectedModules = acceptanceModulesByPath.get(path);
+      if (expectedModules === undefined)
+        found.push(`${path}: unclassified Cycle 2k/v5 acceptance source`);
+      else if (JSON.stringify(modules) !== JSON.stringify(expectedModules))
+        found.push(`${path}: Cycle 2k/v5 acceptance imports must remain exact`);
+    } else {
+      for (const module of modules)
+        if (!allowedCoreModules.has(module))
+          found.push(`${path}: unreviewed Cycle 2k import ${module}`);
     }
     if (
       /\b(?:import|require)\s*\(/u.test(content) ||
@@ -4677,6 +5041,43 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
     found,
   );
+  const cycle2oVerifier = await cycle2kText(
+    `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier.ts`,
+    found,
+  );
+  const cycle2oRunner = await cycle2kText(
+    `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}run-filing-parser-cross-engine-execution-acceptance.ts`,
+    found,
+  );
+  const cycle2oTransitionTupleViolation =
+    filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier,
+      cycle2oRunner,
+      workflow,
+    );
+  if (cycle2oTransitionTupleViolation !== null)
+    found.push(cycle2oTransitionTupleViolation);
+  if (
+    filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier.replace("  39 as const;", "  0 as const;"),
+      cycle2oRunner,
+      workflow,
+    ) === null ||
+    filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier,
+      cycle2oRunner.replace(
+        "const CYCLE_2O_TRANSITION_PATH_COUNT = 39;",
+        "const CYCLE_2O_TRANSITION_PATH_COUNT = 0;",
+      ),
+      workflow,
+    ) === null ||
+    filingParserCycle2oTransitionTupleViolation(
+      cycle2oVerifier,
+      cycle2oRunner,
+      'run: |\n  if git diff --quiet "$baseline" HEAD -- transition-marker; then exact=true; fi\n',
+    ) === null
+  )
+    throw new Error("Cycle 2o transition tuple classifier regressed");
   if (
     !workflow.startsWith(
       "name: Filing parser cross-engine execution acceptance\n\non:\n  workflow_dispatch:\n  push:\n",
@@ -4913,6 +5314,230 @@ async function filingParserQualityCompositionBoundaryViolations(): Promise<
   return found;
 }
 
+function filingPayloadCustodyReviewedSurfaceBoundaryViolations(): Promise<
+  string[]
+> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) => path.startsWith("packages/filing-payload-custody/"))
+    .sort();
+  if (
+    JSON.stringify(actualTree) !==
+    JSON.stringify(filingPayloadCustodyPackagePaths)
+  )
+    found.push(
+      "packages/filing-payload-custody/: custody package tree must remain the exact reviewed Cycle 2c v1 surfaces plus the three Cycle 2o exact-pair files",
+    );
+  return Promise.resolve(found);
+}
+
+async function filingParserCustodyQualityCompositionBoundaryViolations(): Promise<
+  string[]
+> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) =>
+      path.startsWith(filingParserCustodyQualityCompositionPackagePrefix),
+    )
+    .sort();
+  if (
+    JSON.stringify(actualTree) !==
+    JSON.stringify(filingParserCustodyQualityCompositionPackagePaths)
+  )
+    found.push(
+      `${filingParserCustodyQualityCompositionPackagePrefix}: Cycle 2o package tree must remain the exact seven-file manifest, tsconfig, core, index, builder, and two-test surface`,
+    );
+
+  const manifestPath = `${filingParserCustodyQualityCompositionPackagePrefix}package.json`;
+  const manifest = await cycle2kJson(manifestPath, found);
+  const expectedManifest = {
+    name: filingParserCustodyQualityCompositionModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      [filingParserQualityCompositionModule]: "workspace:*",
+      [filingPayloadCustodyModule]: "workspace:*",
+    },
+  };
+  if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest))
+    found.push(
+      "Cycle 2o custody-quality composition manifest must retain exactly its two reviewed workspace dependencies and index-only export surface",
+    );
+
+  const tsconfigPath = `${filingParserCustodyQualityCompositionPackagePrefix}tsconfig.json`;
+  const tsconfig = await cycle2kJson(tsconfigPath, found);
+  const expectedTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts"],
+  };
+  if (JSON.stringify(tsconfig) !== JSON.stringify(expectedTsconfig))
+    found.push(
+      "Cycle 2o custody-quality composition tsconfig must remain exact",
+    );
+
+  for (const path of actualTree.filter((entry) => entry.endsWith(".ts"))) {
+    const content = await cycle2kText(path, found);
+    const violation = filingParserCustodyQualityCompositionImportViolation(
+      path,
+      content,
+    );
+    if (violation !== null) found.push(`${path}: ${violation}`);
+  }
+
+  const index = await cycle2kText(
+    filingParserCustodyQualityCompositionIndexPath,
+    found,
+  );
+  const indexSource = ts.createSourceFile(
+    filingParserCustodyQualityCompositionIndexPath,
+    index,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const indexDeclaration = indexSource.statements[0];
+  if (
+    indexSource.statements.length !== 1 ||
+    indexDeclaration === undefined ||
+    !isExactNamedReExportDeclaration(
+      indexDeclaration,
+      "./filing-parser-custody-quality-composition",
+      filingParserCustodyQualityCompositionPublicExports,
+    )
+  )
+    found.push(
+      "Cycle 2o custody-quality composition public index must remain exact",
+    );
+
+  const externalAllow = new Set([
+    ...filingParserCustodyQualityCompositionPackagePaths,
+    "scripts/verify-boundaries.ts",
+    "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  ]);
+  if (
+    filingParserCustodyQualityCompositionExternalViolation(
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}evidence.ts`,
+      `import ${JSON.stringify(filingParserCustodyQualityCompositionModule)};`,
+      externalAllow,
+    ) ||
+    !filingParserCustodyQualityCompositionExternalViolation(
+      "apps/api/src/cycle2o.ts",
+      `import ${JSON.stringify(filingParserCustodyQualityCompositionModule)};`,
+      externalAllow,
+    ) ||
+    !filingParserCustodyQualityCompositionExternalViolation(
+      ".github/workflows/unrelated.yml",
+      `run: pnpm --filter ${filingParserCustodyQualityCompositionModule} test`,
+      externalAllow,
+    )
+  )
+    throw new Error("Cycle 2o external-composition classifier regressed");
+  const externalFiles = new Set([
+    ...externalCompositionFilesToInspect,
+    ...[...filesToInspect].filter((file) => {
+      const name = basename(file).toLowerCase();
+      return name === "package.json" || isTypeScriptConfigFileName(name);
+    }),
+  ]);
+  for (const file of externalFiles) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    const content = await readFile(file, "utf8");
+    if (
+      filingParserCustodyQualityCompositionExternalViolation(
+        path,
+        content,
+        externalAllow,
+      )
+    )
+      found.push(
+        `${path}: Cycle 2o custody-quality composition is outside the exact reviewed acceptance/evidence boundary`,
+      );
+  }
+  return found;
+}
+
+function filingParserCustodyQualityCompositionImportViolation(
+  path: string,
+  content: string,
+): string | null {
+  const expectedModules =
+    filingParserCustodyQualityCompositionModules.get(path);
+  if (expectedModules === undefined)
+    return "unclassified Cycle 2o custody-quality composition source";
+  const actualModules = collectModuleSpecifiers(content);
+  if (JSON.stringify(actualModules) !== JSON.stringify(expectedModules))
+    return "Cycle 2o imports must remain the exact reviewed per-file allowlist";
+  if (
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  )
+    return "Cycle 2o runtime module loading and dynamic code are forbidden";
+
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingParserCustodyQualityCompositionGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbiddenGlobal === null
+    ? null
+    : "Cycle 2o network, process, global crypto, logging, and dynamic-code globals are forbidden";
+}
+
+function filingParserCustodyQualityCompositionExternalViolation(
+  path: string,
+  content: string,
+  allowedPaths: ReadonlySet<string>,
+): boolean {
+  if (
+    allowedPaths.has(path) ||
+    path.startsWith(filingParserCustodyQualityCompositionPackagePrefix) ||
+    path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix)
+  )
+    return false;
+  const normalizedContent = content.replaceAll("\\", "/");
+  return (
+    normalizedContent.includes(filingParserCustodyQualityCompositionModule) ||
+    normalizedContent.includes(
+      filingParserCustodyQualityCompositionPackagePrefix,
+    ) ||
+    collectModuleSpecifiers(content).some((specifier) =>
+      referencesFilingParserCustodyQualityCompositionPath(path, specifier),
+    )
+  );
+}
+
 async function cycle2kText(path: string, found: string[]): Promise<string> {
   try {
     return await readFile(join(root, path), "utf8");
@@ -4944,6 +5569,146 @@ function cycle2kExternalCompositionViolation(
       content.includes(alias),
     )
   );
+}
+
+function filingParserCycle2oTransitionTupleViolation(
+  verifier: string,
+  runner: string,
+  workflow: string,
+): string | null {
+  const verifierTuple = filingParserCycle2oLiteralTuple(
+    verifier,
+    "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_PATH_COUNT",
+    "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_TRANSITION_SHA256",
+    true,
+  );
+  const runnerTuple = filingParserCycle2oLiteralTuple(
+    runner,
+    "CYCLE_2O_TRANSITION_PATH_COUNT",
+    "CYCLE_2O_TRANSITION_SHA256",
+    false,
+  );
+  const workflowHasExactClassifier =
+    filingParserCycle2oTransitionNulFieldCount ===
+      filingParserCycle2oTransitionPathCount * 2 &&
+    workflow.includes(
+      `mapfile -d '' -t actual < <(git diff --name-status --no-renames -z "$baseline" HEAD --)`,
+    ) &&
+    workflow.includes(
+      `transition_sha256="$(git diff --name-status --no-renames -z "$baseline" HEAD -- | sha256sum | cut -d ' ' -f 1)"`,
+    ) &&
+    workflow.includes(
+      `[[ "\${#actual[@]}" == "${filingParserCycle2oTransitionNulFieldCount}" ]]`,
+    ) &&
+    workflow.includes(
+      `[[ "$transition_sha256" == "${filingParserCycle2oTransitionBareSha256}" ]]`,
+    ) &&
+    !workflow.includes(`sha256:${filingParserCycle2oTransitionBareSha256}`);
+  if (
+    !verifierTuple ||
+    !runnerTuple ||
+    !filingParserCycle2oRunnerChecksTuple(runner) ||
+    !workflowHasExactClassifier
+  )
+    return "Cycle 2o transition classifiers must agree on the exact 39-path/78-NUL-field/d830b547 tuple and reject zero or marker-only placeholders";
+  return null;
+}
+
+function filingParserCycle2oLiteralTuple(
+  content: string,
+  countName: string,
+  digestName: string,
+  exported: boolean,
+): boolean {
+  const sourceFile = ts.createSourceFile(
+    "cycle2o-transition-tuple.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let countMatches = 0;
+  let digestMatches = 0;
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    const isExported =
+      statement.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+      ) ?? false;
+    if (
+      isExported !== exported ||
+      (statement.declarationList.flags & ts.NodeFlags.Const) === 0
+    )
+      continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        !ts.isIdentifier(declaration.name) ||
+        declaration.initializer === undefined
+      )
+        continue;
+      const initializer = unwrapBoundaryExpression(declaration.initializer);
+      if (
+        declaration.name.text === countName &&
+        ts.isNumericLiteral(initializer) &&
+        Number(initializer.text) === filingParserCycle2oTransitionPathCount
+      )
+        countMatches += 1;
+      if (
+        declaration.name.text === digestName &&
+        ts.isStringLiteralLike(initializer) &&
+        initializer.text === filingParserCycle2oTransitionSha256
+      )
+        digestMatches += 1;
+    }
+  }
+  return countMatches === 1 && digestMatches === 1;
+}
+
+function filingParserCycle2oRunnerChecksTuple(content: string): boolean {
+  const sourceFile = ts.createSourceFile(
+    "cycle2o-transition-runner.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isIfStatement(node)) {
+      let checksPathCount = false;
+      let checksDigest = false;
+      const inspectCondition = (condition: ts.Node): void => {
+        if (
+          ts.isBinaryExpression(condition) &&
+          condition.operatorToken.kind ===
+            ts.SyntaxKind.ExclamationEqualsEqualsToken
+        ) {
+          const left = condition.left.getText(sourceFile);
+          const right = condition.right.getText(sourceFile);
+          if (
+            left === "entries.length" &&
+            right === "CYCLE_2O_TRANSITION_PATH_COUNT"
+          )
+            checksPathCount = true;
+          if (
+            left === "sha256(output)" &&
+            right === "CYCLE_2O_TRANSITION_SHA256"
+          )
+            checksDigest = true;
+        }
+        ts.forEachChild(condition, inspectCondition);
+      };
+      inspectCondition(node.expression);
+      if (checksPathCount && checksDigest) {
+        found = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
 }
 
 function cycle2kWorkerModuleViolation(
@@ -5324,11 +6089,23 @@ function inspectDependencies(path: string, manifest: unknown): void {
   if (
     path !== `${filingParserQualityCompositionPackagePrefix}package.json` &&
     path !==
+      `${filingParserCustodyQualityCompositionPackagePrefix}package.json` &&
+    path !==
       `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json` &&
     hasFilingParserQualityCompositionDependency(manifest, path)
   )
     violations.push(
       `${path}: Cycle 2n filing-parser quality composition must remain limited to its exact acceptance package`,
+    );
+  if (
+    path !==
+      `${filingParserCustodyQualityCompositionPackagePrefix}package.json` &&
+    path !==
+      `${filingParserCrossEngineExecutionAcceptancePackagePrefix}package.json` &&
+    hasFilingParserCustodyQualityCompositionDependency(manifest, path)
+  )
+    violations.push(
+      `${path}: Cycle 2o filing-parser custody-quality composition must remain limited to its exact acceptance package`,
     );
   if (path === "packages/filing-payload-custody/package.json") {
     const manifestViolation = filingPayloadCustodyManifestViolation(manifest);
@@ -5337,6 +6114,8 @@ function inspectDependencies(path: string, manifest: unknown): void {
   }
   if (
     !path.startsWith("packages/filing-payload-custody/") &&
+    path !==
+      `${filingParserCustodyQualityCompositionPackagePrefix}package.json` &&
     hasFilingPayloadCustodyDependency(manifest, path)
   )
     violations.push(
@@ -6226,6 +7005,20 @@ function inspectCompositionBoundary(path: string, content: string): void {
   )
     violations.push(
       `${path}: Cycle 2n filing-parser quality composition must remain package-isolated`,
+    );
+  if (
+    !path.startsWith(filingParserCustodyQualityCompositionPackagePrefix) &&
+    moduleSpecifiers.some(
+      (specifier) =>
+        referencesFilingParserCustodyQualityCompositionPath(path, specifier) &&
+        !isAllowedFilingParserCustodyQualityCompositionExternalImport(
+          path,
+          specifier,
+        ),
+    )
+  )
+    violations.push(
+      `${path}: Cycle 2o filing-parser custody-quality composition must remain package-isolated`,
     );
   const corpusAdmissionViolation = corpusAdmissionImportViolation(
     path,
@@ -8968,6 +9761,14 @@ function filingPayloadCustodyImportViolation(
   content: string,
 ): string | null {
   if (!path.startsWith(filingPayloadCustodySourcePrefix)) return null;
+  if (path === filingParserArchivePairCustodyUnitTestPath) {
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify(filingParserArchivePairCustodyTestModules)
+    )
+      return "exact-pair custody tests must retain their exact reviewed filesystem, local, and Vitest imports";
+    return filingPayloadCustodyTestViolation(path, content);
+  }
   if (path.endsWith(".test.ts"))
     return filingPayloadCustodyTestViolation(path, content);
   if (filingPayloadCustodyToolPaths.has(path)) {
@@ -8987,6 +9788,10 @@ function filingPayloadCustodyImportViolation(
     if (globalViolation !== null) return globalViolation;
     return filingPayloadCustodyChildProcessViolation(path, content);
   }
+  if (path === filingParserArchivePairCustodyProductionPath)
+    return filingParserArchivePairCustodyProductionViolation(path, content);
+  if (path === filingParserArchivePairFixturePath)
+    return filingParserArchivePairFixtureViolation(path, content);
   if (
     path !== filingPayloadCustodyProductionPath &&
     path !== filingPayloadCustodyIndexPath
@@ -9078,6 +9883,140 @@ function filingPayloadCustodyImportViolation(
   return null;
 }
 
+function filingParserArchivePairCustodyProductionViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(filingParserArchivePairCustodyModules)
+  )
+    return "exact-pair custody may import only its exact reviewed crypto, filesystem, temp-directory, path, and util surfaces";
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  if (
+    imports.length !== 6 ||
+    !isExactFilingPayloadCustodyImport(imports[0], "node:crypto", [
+      ["createCipheriv", "createCipheriv"],
+      ["createDecipheriv", "createDecipheriv"],
+      ["createHash", "createHash"],
+      ["randomBytes", "randomBytes"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(
+      imports[1],
+      "node:fs",
+      [["Stats", "Stats"]],
+      true,
+    ) ||
+    !isExactFilingPayloadCustodyImport(imports[2], "node:fs/promises", [
+      ["chmod", "chmod"],
+      ["lstat", "lstat"],
+      ["mkdir", "mkdir"],
+      ["mkdtemp", "mkdtemp"],
+      ["open", "open"],
+      ["readFile", "readFile"],
+      ["readdir", "readdir"],
+      ["realpath", "realpath"],
+      ["rename", "rename"],
+      ["rm", "rm"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(imports[3], "node:os", [
+      ["tmpdir", "tmpdir"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(imports[4], "node:path", [
+      ["isAbsolute", "isAbsolute"],
+      ["join", "join"],
+      ["relative", "relative"],
+      ["resolve", "resolve"],
+      ["sep", "sep"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(imports[5], "node:util", [
+      ["types", "utilTypes"],
+    ])
+  )
+    return "exact-pair custody must retain the exact encryption, owned-workspace, path, and native-type import bindings";
+  return filingPayloadCustodyClosedSourceViolation(path, content);
+}
+
+function filingParserArchivePairFixtureViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(filingParserArchivePairFixtureModules)
+  )
+    return "exact-pair fixture may import only createHash and the local custody contract";
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  if (
+    imports.length !== 2 ||
+    !isExactFilingPayloadCustodyImport(imports[0], "node:crypto", [
+      ["createHash", "createHash"],
+    ]) ||
+    !isExactFilingPayloadCustodyImport(
+      imports[1],
+      "./parser-archive-pair-custody",
+      [
+        [
+          "FILING_PARSER_ARCHIVE_PAIR_CUSTODY_FIXTURES",
+          "FILING_PARSER_ARCHIVE_PAIR_CUSTODY_FIXTURES",
+        ],
+      ],
+    )
+  )
+    return "exact-pair fixture must retain the exact digest and custody-profile import bindings";
+  return filingPayloadCustodyClosedSourceViolation(path, content);
+}
+
+function filingPayloadCustodyClosedSourceViolation(
+  path: string,
+  content: string,
+): string | null {
+  if (
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  )
+    return "exact-pair custody sources must not use runtime module loading or dynamic code";
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let forbiddenGlobal: string | null = null;
+  const visit = (node: ts.Node): void => {
+    if (
+      forbiddenGlobal === null &&
+      ts.isIdentifier(node) &&
+      forbiddenFilingPayloadCustodyGlobals.has(node.text)
+    ) {
+      forbiddenGlobal = node.text;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return forbiddenGlobal === null
+    ? null
+    : "exact-pair custody sources must not use network, process, logging, global-crypto, or worker globals";
+}
+
 function isExactFilingPayloadCustodyIndex(content: string): boolean {
   const sourceFile = ts.createSourceFile(
     filingPayloadCustodyIndexPath,
@@ -9086,30 +10025,29 @@ function isExactFilingPayloadCustodyIndex(content: string): boolean {
     true,
     ts.ScriptKind.TS,
   );
-  if (sourceFile.statements.length !== 1) return false;
-  const declaration = sourceFile.statements[0];
-  if (
-    declaration === undefined ||
-    !ts.isExportDeclaration(declaration) ||
-    declaration.isTypeOnly ||
-    declaration.moduleSpecifier === undefined ||
-    !ts.isStringLiteral(declaration.moduleSpecifier) ||
-    declaration.moduleSpecifier.text !== "./payload-custody" ||
-    declaration.exportClause === undefined ||
-    !ts.isNamedExports(declaration.exportClause)
-  )
-    return false;
-  const actual = declaration.exportClause.elements.map((specifier) => [
-    specifier.propertyName?.text ?? specifier.name.text,
-    specifier.name.text,
-    specifier.isTypeOnly,
-  ]);
-  const expected = filingPayloadCustodyPublicExports.map(([name, typeOnly]) => [
-    name,
-    name,
-    typeOnly,
-  ]);
-  return JSON.stringify(actual) === JSON.stringify(expected);
+  const [cycle2cDeclaration, custodyDeclaration, fixtureDeclaration] =
+    sourceFile.statements;
+  return (
+    sourceFile.statements.length === 3 &&
+    cycle2cDeclaration !== undefined &&
+    custodyDeclaration !== undefined &&
+    fixtureDeclaration !== undefined &&
+    isExactNamedReExportDeclaration(
+      cycle2cDeclaration,
+      "./payload-custody",
+      filingPayloadCustodyPublicExports,
+    ) &&
+    isExactNamedReExportDeclaration(
+      custodyDeclaration,
+      "./parser-archive-pair-custody",
+      filingParserArchivePairCustodyPublicExports,
+    ) &&
+    isExactNamedReExportDeclaration(
+      fixtureDeclaration,
+      "./parser-archive-pair-fixture",
+      filingParserArchivePairFixturePublicExports,
+    )
+  );
 }
 
 function isExactFilingPayloadCustodyImport(
@@ -10360,6 +11298,38 @@ function hasFilingParserQualityCompositionDependency(
   });
 }
 
+function hasFilingParserCustodyQualityCompositionDependency(
+  manifest: unknown,
+  manifestPath: string,
+): boolean {
+  if (!isRecord(manifest)) return false;
+  return [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ].some((group) => {
+    if (!isRecord(group)) return false;
+    return Object.entries(group).some(([name, value]) => {
+      if (name === filingParserCustodyQualityCompositionModule) return true;
+      if (typeof value !== "string") return false;
+      const normalizedValue = value.replaceAll("\\", "/");
+      if (normalizedValue.includes(filingParserCustodyQualityCompositionModule))
+        return true;
+      const pathValue = /^(?:file|link|workspace):(.+)$/u.exec(
+        normalizedValue,
+      )?.[1];
+      return (
+        pathValue !== undefined &&
+        referencesFilingParserCustodyQualityCompositionPath(
+          manifestPath,
+          pathValue,
+        )
+      );
+    });
+  });
+}
+
 function hasFilingPayloadCustodyDependency(
   manifest: unknown,
   manifestPath: string,
@@ -10577,9 +11547,49 @@ function isAllowedFilingParserQualityCompositionExternalImport(
   specifier: string,
 ): boolean {
   return (
+    (sourcePath.startsWith(
+      filingParserCrossEngineExecutionAcceptanceSourcePrefix,
+    ) ||
+      sourcePath.startsWith(
+        filingParserCustodyQualityCompositionSourcePrefix,
+      )) &&
+    (specifier === filingParserQualityCompositionModule ||
+      (sourcePath === filingParserCustodyQualityCompositionBuilderPath &&
+        [
+          "../../filing-parser-quality-composition/src/filing-parser-quality-composition",
+          "../../filing-parser-quality-composition/src/test-filing-parser-quality-composition-builder",
+        ].includes(specifier)))
+  );
+}
+
+function referencesFilingParserCustodyQualityCompositionPath(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  if (
+    specifier === filingParserCustodyQualityCompositionModule ||
+    specifier.startsWith(`${filingParserCustodyQualityCompositionModule}/`)
+  )
+    return true;
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  const resolved = normalizedSpecifier.startsWith(".")
+    ? posixNormalize(`${posixDirname(sourcePath)}/${normalizedSpecifier}`)
+    : posixNormalize(normalizedSpecifier);
+  return (
+    resolved === "packages/filing-parser-custody-quality-composition" ||
+    resolved.startsWith(filingParserCustodyQualityCompositionPackagePrefix) ||
+    resolved.includes("/packages/filing-parser-custody-quality-composition/")
+  );
+}
+
+function isAllowedFilingParserCustodyQualityCompositionExternalImport(
+  sourcePath: string,
+  specifier: string,
+): boolean {
+  return (
     sourcePath.startsWith(
       filingParserCrossEngineExecutionAcceptanceSourcePrefix,
-    ) && specifier === filingParserQualityCompositionModule
+    ) && specifier === filingParserCustodyQualityCompositionModule
   );
 }
 
@@ -10607,6 +11617,16 @@ function isAllowedFilingPayloadCustodyExternalImport(
   sourcePath: string,
   specifier: string,
 ): boolean {
+  if (
+    sourcePath.startsWith(filingParserCustodyQualityCompositionSourcePrefix)
+  ) {
+    if (specifier === filingPayloadCustodyModule) return true;
+    return (
+      sourcePath === filingParserCustodyQualityCompositionSecurityTestPath &&
+      specifier ===
+        "../../filing-payload-custody/src/parser-archive-pair-custody"
+    );
+  }
   if (sourcePath !== filingPayloadCustodyFixtureGuardPath) return false;
   const normalizedSpecifier = specifier.replaceAll("\\", "/");
   const resolved = normalizedSpecifier.startsWith(".")
