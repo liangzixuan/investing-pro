@@ -136,6 +136,7 @@ interface ApprovalRecord {
   readonly corpusId: string;
   readonly corpusVersion: typeof FILING_CORPUS_ADMISSION_SCHEMA_VERSION;
   readonly derivedUse: "quality_metrics_only";
+  readonly effectiveUntil: string;
   readonly expiresAt: string;
   readonly issuedAt: string;
   readonly keyId: string;
@@ -327,9 +328,9 @@ export function verifyFilingCorpusAdmission(
       status: "admitted",
       stewardApprovalSha256: hashes.stewardApproval,
       validUntil:
-        rightsApproval.expiresAt < stewardApproval.expiresAt
-          ? rightsApproval.expiresAt
-          : stewardApproval.expiresAt,
+        rightsApproval.effectiveUntil < stewardApproval.effectiveUntil
+          ? rightsApproval.effectiveUntil
+          : stewardApproval.effectiveUntil,
     });
   } catch (error) {
     if (error instanceof FilingCorpusAdmissionError) throw error;
@@ -979,6 +980,14 @@ function validateApproval(
     record.signature,
   );
   if (!valid) fail("FILING_CORPUS_SIGNATURE_INVALID");
+  let effectiveUntil = record.expiresAt;
+  if (
+    authority.revokedAt !== null &&
+    revokedAt !== null &&
+    revokedAt < expiresAt
+  ) {
+    effectiveUntil = authority.revokedAt;
+  }
   return Object.freeze({
     adjudicationProtocolSha256: record.adjudicationProtocolSha256,
     aiUse: "prohibited",
@@ -988,6 +997,7 @@ function validateApproval(
     corpusId: record.corpusId,
     corpusVersion: FILING_CORPUS_ADMISSION_SCHEMA_VERSION,
     derivedUse: "quality_metrics_only",
+    effectiveUntil,
     expiresAt: record.expiresAt,
     issuedAt: record.issuedAt,
     keyId: record.keyId,

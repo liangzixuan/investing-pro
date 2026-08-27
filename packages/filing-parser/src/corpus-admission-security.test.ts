@@ -646,6 +646,30 @@ describe("Cycle 2b filing corpus admission security boundary", () => {
       () => verifyFilingCorpusAdmission(revoked.input),
       "FILING_CORPUS_APPROVAL_INACTIVE",
     );
+
+    for (const role of ["rights", "steward"] as const) {
+      const revokedAt = "2026-08-20T12:00:00.001Z";
+      const scheduled = buildHarness(
+        role === "rights"
+          ? { rightsRevokedAt: revokedAt }
+          : { stewardRevokedAt: revokedAt },
+      );
+      expect(
+        verifyFilingCorpusAdmission({
+          ...scheduled.input,
+          evaluatedAt: "2026-08-20T12:00:00.000Z",
+        }),
+        `${role}: one millisecond before revocation`,
+      ).toMatchObject({ status: "admitted", validUntil: revokedAt });
+      expectAdmissionFailure(
+        () =>
+          verifyFilingCorpusAdmission({
+            ...scheduled.input,
+            evaluatedAt: revokedAt,
+          }),
+        "FILING_CORPUS_APPROVAL_INACTIVE",
+      );
+    }
   });
 
   it("binds approvals to authority validity, every scope digest, and canonical signatures", () => {
