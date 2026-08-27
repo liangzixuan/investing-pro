@@ -998,7 +998,7 @@ Cycle 2b's externally reviewed authority. See
 [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
-## Pending Cycle 2n source-owned parser-quality composition
+## Promoted Cycle 2n source-owned parser-quality composition
 
 Cycle 2n adds no canonical real filing, authority, adjudicator, quality, tenant,
 persistence, or production entity. It composes only the two exact synthetic
@@ -1032,11 +1032,27 @@ missing documents, 20 true-positive and 980 missing/false-negative facts, and
 1,960 silent critical failures. Precision and quarantine-rate thresholds meet;
 document success, recall, and zero-silent-failure thresholds do not. This is a
 canonical representation of incomplete synthetic coverage, not a quality Pass.
-Promotion is Pending exact-source v4 live evidence and independent review from
-baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. Cycle 2b authority,
-representative real filings, independent adjudication, real parser quality,
-B15/V15, real-data admission, full Cycle 2 exit, and production remain Blocked.
-See [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
+Promotion is limited to exact source
+`1d7dee56c66c1ad0f5d612603567adf2589e0930`, the direct single-parent child of
+baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. Full local verification and
+all exact-source workflows passed, including Dependabot dynamic-scan run/job
+`33036162143` / `98399193694`. Dedicated run/job `33036093863` / `98398989554`
+retained 10,765-byte artifact `9632073116`, named
+`filing-parser-cross-engine-execution-evidence-v4-1d7dee56c66c1ad0f5d612603567adf2589e0930-1`.
+Its ZIP digest is
+`sha256:12c5d5aeca103d693b5c0b761eb16a5ed5af24cc55402f4a6d7c976b994a3522`;
+the 38,827-byte canonical version `4` / schema `4.0.0` evidence digest is
+`sha256:4fdbb860468413929968c56cf72037a0f72b65669b3ae9c46844476bddf12c5c`.
+The record binds 95 source hashes and the exact 34-path transition, preserves
+all 16 ordered checks and 16 ordered nonclaims, and records one
+`evaluated_not_met` plus five `quarantined` outcomes. Runtime accounting is four
+composition commits, three quality evaluations, 16 successful lifecycle receipts,
+four two-document observation pairs, and zero residue. Independent review
+returned `offline_consistent`; versions 1 through 3 remain immutable history.
+Cycle 2b authority, representative real filings, independent adjudication,
+real parser quality, B15/V15, real-data admission, full Cycle 2 exit, and
+production remain Blocked. See
+[ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external

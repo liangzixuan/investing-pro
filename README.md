@@ -547,8 +547,9 @@ Cycle 2b cannot be manufactured from synthetic metadata, keys, or approvals.
 See [ADR 0040](./docs/adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./docs/CYCLE_2M_EXIT_MATRIX.md).
 
-Cycle 2n is **Pending** exact-source live execution and independent review from
-frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. Its sole claim is
+Cycle 2n is **Promoted only for exact source commit
+`1d7dee56c66c1ad0f5d612603567adf2589e0930`, the direct single-parent child of
+frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`.** Its sole claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_two_document_observation_precommitment_and_fixed_population_quality_evaluation_binding`.
 The new package-owned protocol executes Cycle 2m internally, maps the ten
 original facts once to `synthetic-filing-0001` and the ten amendment facts once
@@ -562,11 +563,27 @@ The required result is deliberately `evaluated/not_met`: 2 of 100 documents,
 2,000 silent critical failures. Precision and quarantine-rate gates meet their
 thresholds, while document success, recall, and zero-silent-failure gates fail.
 That closes only the source-execution-to-measurement composition gap; it is not
-a parser-quality Pass. Promotion requires one exact direct-child source,
-terminal-green local and live gates, a success-only canonical v4 artifact, and
-independently anchored offline review. Representative real filings,
-independent adjudication, Cycle 2b authority, B15/V15, real-data admission, full
-Cycle 2 exit, and production remain Blocked. See
+a parser-quality Pass. Full local verification passed with 1,232 passed tests
+and 4 intentional skips. Exact-source CI run `33036093870`, parser-isolation run
+`33036093898`, custody run `33036093896`, normalization run `33036093852`,
+PostgreSQL run `33036093864`, dedicated run/job `33036093863` /
+`98398989554`, and Dependabot dynamic-scan run/job `33036162143` /
+`98399193694` all passed. The dedicated run retained 10,765-byte artifact
+`9632073116`, named
+`filing-parser-cross-engine-execution-evidence-v4-1d7dee56c66c1ad0f5d612603567adf2589e0930-1`.
+Its ZIP digest is
+`sha256:12c5d5aeca103d693b5c0b761eb16a5ed5af24cc55402f4a6d7c976b994a3522`;
+the 38,827-byte canonical version `4` / schema `4.0.0` evidence digest is
+`sha256:4fdbb860468413929968c56cf72037a0f72b65669b3ae9c46844476bddf12c5c`.
+It binds 95 source hashes, the exact 34-path transition, 16 ordered checks, 16
+ordered nonclaims, and six outcomes: one `evaluated_not_met` and five
+`quarantined`. Runtime accounting records four composition commits, three quality
+evaluations, 16 successful lifecycle receipts, four two-document observation
+pairs, and zero residue. Independently anchored review returned
+`offline_consistent`; versions 1 through 3 remain immutable history.
+Representative real filings, independent adjudication, Cycle 2b authority,
+B15/V15, real-data admission, full Cycle 2 exit, and production remain Blocked.
+See
 [ADR 0041](./docs/adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./docs/CYCLE_2N_EXIT_MATRIX.md).
 

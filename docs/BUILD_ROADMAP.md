@@ -1275,9 +1275,11 @@ and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
 ## Cycle 2n — source-owned execution to fixed-population quality composition
 
-Status: **Pending** exact-source live execution, canonical version 4 evidence,
-artifact inspection, and independent offline review. The frozen baseline is
-`09e76235b5683427f2dd3201aefa740bb5adb16e`.
+Status: **Promoted only for exact source commit
+`1d7dee56c66c1ad0f5d612603567adf2589e0930`, the direct single-parent child of
+frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`.** Full local
+verification, every exact-source workflow, canonical version 4 evidence,
+artifact inspection, and independent offline review passed.
 
 Cycle 2n closes the next repository-controlled composition gap without widening
 the population or quality claim. A new package-owned protocol accepts only
@@ -1303,14 +1305,28 @@ silent failures. Precision `20/20` and quarantine rate `0/100` pass, while
 document success `2/100`, recall `20/1000`, and maximum silent failures fail.
 Any invalid path returns one atomic empty value-free quarantine.
 
-Promotion requires an exact clean single-parent child of the frozen baseline,
-full local verification, terminal-green two-OS CI and every triggered dedicated
-workflow, a success-only version 4 / schema `4.0.0` artifact, independent ZIP
-and JSON inspection, and an `offline_consistent` review against the exact
-source. Versions 1 through 3 remain immutable history. This result will not
-establish representative real filings, independently adjudicated truth, real
-quality, Cycle 2b authority, B15/V15, real-data admission, full Cycle 2 exit,
-or production. Exact gates are in
+Full local verification passed with 1,232 passed tests and 4 intentional skips.
+Exact-source CI run/job anchors were `33036093870` / Ubuntu `98398983676` /
+Windows `98398983801`; parser-isolation `33036093898` / `98398983760`, custody
+`33036093896` / `98398983789`, normalization `33036093852` / `98398983588`,
+PostgreSQL `33036093864` / `98398983520`, dedicated v4 `33036093863` /
+`98398989554`, and Dependabot dynamic scan `33036162143` / `98399193694` all
+reached terminal green. The dedicated run retained
+10,765-byte artifact `9632073116`, named
+`filing-parser-cross-engine-execution-evidence-v4-1d7dee56c66c1ad0f5d612603567adf2589e0930-1`.
+Its ZIP digest is
+`sha256:12c5d5aeca103d693b5c0b761eb16a5ed5af24cc55402f4a6d7c976b994a3522`;
+the 38,827-byte canonical version `4` / schema `4.0.0` evidence digest is
+`sha256:4fdbb860468413929968c56cf72037a0f72b65669b3ae9c46844476bddf12c5c`.
+The record binds `sourceCount: 95`, `transitionPathCount: 34`, all 16 ordered
+checks, all 16 ordered nonclaims, and six outcomes: one `evaluated_not_met` and
+five `quarantined`. Runtime counts are four composition commits, three quality
+evaluations, 16 successful lifecycle receipts, four two-document observation
+pairs, and zero residue. Independent review returned `offline_consistent`.
+Versions 1 through 3 remain immutable history. This result does not establish
+representative real filings, independently adjudicated truth, real quality,
+Cycle 2b authority, B15/V15, real-data admission, full Cycle 2 exit, or
+production. Exact gates are in
 [ADR 0041](./adr/0041-bounded-synthetic-source-owned-quality-composition.md)
 and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
 
@@ -1330,7 +1346,7 @@ Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
-bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor pending
+bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
 bounded synthetic Cycle 2n satisfies this exit gate. Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only

@@ -1,10 +1,12 @@
 # ADR 0041: bounded synthetic source-owned parser-quality composition
 
-Status: Accepted in source and **Pending** exact-source live execution,
-success-only version 4 evidence retention, independent artifact inspection, and
-offline review. Promotion requires one clean single-parent child of frozen
-baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. Cycle 2b authority, real
-quality, B15/V15, real-data admission, and production remain Blocked.
+Status: Accepted and **Promoted only for exact source commit
+`1d7dee56c66c1ad0f5d612603567adf2589e0930`, the clean direct single-parent
+child of frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`.** Full
+local verification, exact-source workflows, success-only version 4 evidence
+retention, independent artifact inspection, and offline review passed. Cycle
+2b authority, real quality, B15/V15, real-data admission, and production remain
+Blocked.
 
 ## Context
 
@@ -75,7 +77,7 @@ digest, count, fact, mapping, lifecycle, or diagnostic detail.
 
 The sole target claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_two_document_observation_precommitment_and_fixed_population_quality_evaluation_binding`.
-It may be promoted only under the evidence boundary below.
+It is accepted only for the exact source and evidence boundary below.
 
 ## Required checks
 
@@ -141,8 +143,8 @@ outcomes:
    coordinate roles and returns one atomic empty value-free quarantine.
 
 The frozen baseline is `09e76235b5683427f2dd3201aefa740bb5adb16e`.
-Promotion requires exactly one clean single-parent/direct child, an exact
-NUL-safe A/M-only transition with no rename or deletion, full local
+Promotion was restricted to exactly one clean single-parent/direct child, an
+exact NUL-safe A/M-only transition with no rename or deletion, full local
 verification, exact-source Ubuntu/Windows and every triggered dedicated
 workflow, success-only canonical version 4 artifact retention, artifact and
 evidence digest inspection, and independently anchored offline review against
@@ -158,6 +160,32 @@ It also records maintenance source
 `09e76235b5683427f2dd3201aefa740bb5adb16e`. Cycle 2l version 2 and Cycle 2k
 version 1 remain immutable historical evidence. Failed runs remain
 non-evidence.
+
+Exact source `1d7dee56c66c1ad0f5d612603567adf2589e0930` has parent
+`09e76235b5683427f2dd3201aefa740bb5adb16e` and the exact 34-path A/M-only
+transition. Full local verification passed with 1,232 passed tests and 4
+intentional skips, including 13 of 13 composition tests and 63 of 63 version 4 acceptance
+tests. Exact-source CI run `33036093870` passed Ubuntu job `98398983676` and
+Windows job `98398983801`. Parser-isolation run/job `33036093898` /
+`98398983760`, custody `33036093896` / `98398983789`, normalization
+`33036093852` / `98398983588`, PostgreSQL `33036093864` / `98398983520`,
+dedicated version 4 `33036093863` / `98398989554`, and Dependabot dynamic scan
+`33036162143` / `98399193694` all reached terminal green.
+
+The dedicated run retained 10,765-byte artifact `9632073116`, named
+`filing-parser-cross-engine-execution-evidence-v4-1d7dee56c66c1ad0f5d612603567adf2589e0930-1`.
+Its ZIP digest is
+`sha256:12c5d5aeca103d693b5c0b761eb16a5ed5af24cc55402f4a6d7c976b994a3522`.
+The 38,827-byte canonical evidence is version `4`, schema `4.0.0`, and digest
+`sha256:4fdbb860468413929968c56cf72037a0f72b65669b3ae9c46844476bddf12c5c`.
+It binds `sourceCount: 95`, `transitionPathCount: 34`, the exact 16 ordered
+checks, 16 ordered nonclaims, and six ordered outcomes: one
+`evaluated_not_met` and five `quarantined`. Runtime accounting records four
+composition commits, three quality evaluations, 16 successful lifecycle receipts,
+four two-document observation pairs, and zero residue. Independently anchored
+review returned `offline_consistent` for the complete frozen source inventory.
+The version 4 record is additive: versions 1 through 3 and their historical
+anchors remain immutable and are not replaced, widened, or relabeled.
 
 ## Consequences
 

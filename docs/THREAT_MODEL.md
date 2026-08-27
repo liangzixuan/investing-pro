@@ -1,4 +1,4 @@
-# Sprint 0 through pending Cycle 2n threat model
+# Sprint 0 through promoted Cycle 2n threat model
 
 ## Current trust boundaries
 
@@ -1268,9 +1268,11 @@ production boundary. Exact gates and nonclaims are in
 [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
-Cycle 2n's pending target is only
+Cycle 2n's promoted target is only
 `bounded_synthetic_source_owned_direct_docker_cross_engine_two_document_observation_precommitment_and_fixed_population_quality_evaluation_binding`
-from frozen baseline `09e76235b5683427f2dd3201aefa740bb5adb16e`. The public
+for exact source `1d7dee56c66c1ad0f5d612603567adf2589e0930`, the direct
+single-parent child of frozen baseline
+`09e76235b5683427f2dd3201aefa740bb5adb16e`. The public
 factory accepts only sealed Cycle 2m descriptors and owns the direct-Docker
 boundary. Callers cannot inject execution results, candidate observations,
 facts, measurements, weights, exclusions, outcomes, callbacks, or options.
@@ -1292,8 +1294,19 @@ The required successful protocol result is deliberately `evaluated/not_met`,
 with 2/100 documents, 20/1,000 true-positive facts, 980 missing facts, and
 1,960/2,000 silent critical failures. Treating that result as a parser-quality
 Pass, hiding the missing population, or converting it to a quarantine would be
-a security failure. Promotion remains Pending exact-source v4 execution,
-artifact inspection, and offline review. Docker/host authenticity, worker
+a security failure. Full local verification and all exact-source workflows
+passed. CI run `33036093870` passed Ubuntu job `98398983676` and Windows job
+`98398983801`; parser-isolation run/job `33036093898` / `98398983760`, custody
+`33036093896` / `98398983789`, normalization `33036093852` / `98398983588`,
+PostgreSQL `33036093864` / `98398983520`, and dedicated v4 `33036093863` /
+`98398989554` also passed. Dependabot dynamic-scan run/job `33036162143` /
+`98399193694` reached terminal green. The dedicated run retained canonical artifact
+`9632073116`; ZIP digest
+`sha256:12c5d5aeca103d693b5c0b761eb16a5ed5af24cc55402f4a6d7c976b994a3522`
+and evidence digest
+`sha256:4fdbb860468413929968c56cf72037a0f72b65669b3ae9c46844476bddf12c5c`
+passed independent inspection, and review returned `offline_consistent`.
+Versions 1 through 3 remain immutable history. Docker/host authenticity, worker
 supply-chain attestation, external signer identity, actual blinding, correct
 independent adjudication, representative real filings, real parser quality,
 Cycle 2b authority, B15/V15, real-data admission, full Cycle 2 exit, and
@@ -1316,7 +1329,7 @@ and the [Cycle 2n exit matrix](./CYCLE_2N_EXIT_MATRIX.md).
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
    Superseded Cycle 2k, promoted Cycle 2l and Cycle 2m lifecycle agreements,
-   and pending Cycle 2n quality composition remain
+   and promoted Cycle 2n quality composition remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
