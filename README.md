@@ -495,11 +495,12 @@ quality composition is deferred, and real quality, real data, Cycle 2b
 authority, and production remain Blocked. See [ADR 0039](./docs/adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./docs/CYCLE_2L_EXIT_MATRIX.md).
 
-Cycle 2m is **Pending source implementation** from exact baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Its sole target claim is
+Cycle 2m is **Pass only for exact source commit
+`5d61868e6075865b32640ddaceb845ac9dbc69f3`**, the exact single-parent child of
+baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Its sole claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
 The public configuration exposes only sealed engine descriptors. An internal
-ephemeral Ed25519 signer and package-owned audited Docker runners must perform
+ephemeral Ed25519 signer and package-owned audited Docker runners perform
 exactly four fresh create/start/attach/remove lifecycles per invocation, leave
 zero container residue, and bind every lifecycle receipt with the Cycle 2l
 agreement, normalization record, and key context into a distinct invocation
@@ -507,10 +508,35 @@ binding. Two invocations over the same inputs must normalize identically while
 producing eight unique container-ID digests and distinct lifecycle and
 invocation hashes. Any configuration, lifecycle, receipt, binding, agreement,
 or cleanup failure must return one atomic empty value-free quarantine.
-Promotion requires one exact single-parent source child of the baseline, full
-local and exact-source CI, a success-only retained v3 artifact, and independent
-offline review. The source SHA, run/job, artifact, digests, and offline verdict
-remain Pending. Cycle 2l v2 and Cycle 2k v1 evidence remain immutable history.
+
+Full local verification passed, including 27 core Vitest tests, 10 worker tests,
+and 50 of 50 acceptance tests. Exact-source CI run `33022797756` passed Ubuntu
+job `98356972324` and Windows job `98356973090`. Dedicated run/job
+`33022797708` / `98356972412` retained 8,858-byte artifact `9627207288`, named
+`filing-parser-cross-engine-execution-evidence-v3-5d61868e6075865b32640ddaceb845ac9dbc69f3-1`.
+Its ZIP digest is
+`sha256:dfd56f1564a55f1c37fc6f0fdab33e390f5530662b96107c47602e03008ecd9b`;
+the 32,961-byte canonical evidence digest is
+`sha256:25dfd0dd5c36d24656de9eda85a34940a40f50e11cd02535bae1fb8f24c05c6e`.
+Version 3, schema `3.0.0` evidence has status `passed` and binds 71 source
+hashes, 24 transition paths, 16 ordered checks, 16 ordered nonclaims, and six
+outcomes: one agreed and five quarantined. The repeated agreed case has stable
+normalization, distinct lifecycle and invocation bindings, eight receipts,
+eight unique container-ID digests, eight unique lifecycle-binding hashes, and
+the exact Python-original, Python-amendment, Node-original, Node-amendment role
+partition twice. Independent review returned `offline_consistent`.
+
+Source-triggered parser-isolation run `33022798055` and custody run
+`33022797729` failed only at their legacy commit-boundary routing and retained
+zero artifacts, so they remain non-evidence. Exact five-file maintenance child
+`1860bb367afdb6d725e41880ebb121dda4a04f39` restored that historical routing
+without replacing or reminting the v3 evidence. Custody run/job `33024664186` /
+`98363073966`, parser-isolation run/job `33024664197` / `98363074166`, and CI run
+`33024664292` with Ubuntu job `98363074101` and Windows job `98363074221` all
+passed. Dedicated bridge run/job `33024664259` / `98363074109` also passed and
+retained zero artifacts, as required. Cycle 2l v2 and Cycle 2k v1 evidence
+remain immutable history.
+
 Docker daemon/host/kernel/container-ID authenticity, image supply-chain
 attestation, semantic absence of nonce/cache behavior inside workers, external
 signer identity/KMS, quality composition, real parser quality, Cycle 2b
@@ -998,17 +1024,22 @@ blocked.
   It cannot prove
   injected boundary or receipt authenticity, fresh execution, independent real
   quality, real data, Cycle 2b authority, or production.
-- Cycle 2m is Pending source implementation from exact baseline
-  `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It targets a sealed
-  source-owned direct-Docker boundary with an internal ephemeral signer, exactly
-  four fresh zero-residue container lifecycles per invocation, lifecycle and
-  invocation binding, and repeat-run normalization agreement with eight unique
-  container-ID digests. Promotion requires an exact single-parent child, full
-  local/two-OS CI, a success-only v3 artifact, and independent offline review;
-  all live anchors remain Pending. Cycle 2l v2 and Cycle 2k v1 history remain
-  immutable. Docker/host authenticity, image attestation, worker-internal
-  nonce/cache semantics, external signer/KMS identity, quality, Cycle 2b, real
-  data, B15/V15, and production remain nonclaims or Blocked.
+- Cycle 2m is Pass only for exact source commit
+  `5d61868e6075865b32640ddaceb845ac9dbc69f3`, the single-parent child of baseline
+  `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Full local verification,
+  exact-source two-OS CI, six-case success-only v3 artifact `9627207288`, and
+  independently anchored `offline_consistent` review passed. The record binds
+  71 source hashes, 24 transition paths, 16 checks, 16 nonclaims, one agreed and
+  five quarantined outcomes, and two identical normalizations with eight unique
+  container-ID and lifecycle-binding hashes. Source-triggered legacy failures
+  `33022798055` and `33022797729` retained zero artifacts and remain
+  non-evidence; exact five-file maintenance child
+  `1860bb367afdb6d725e41880ebb121dda4a04f39` restored their historical routing,
+  and its custody, parser-isolation, dedicated zero-artifact bridge, and two-OS
+  CI runs all passed. Cycle 2l v2 and Cycle 2k v1 history remain immutable.
+  Docker/host authenticity, image attestation, worker-internal nonce/cache
+  semantics, external signer/KMS identity, quality, Cycle 2b, real data,
+  B15/V15, and production remain nonclaims or Blocked.
 
 See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [threat model](./docs/THREAT_MODEL.md), [next build cycles](./docs/BUILD_ROADMAP.md),

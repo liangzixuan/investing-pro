@@ -1,12 +1,11 @@
 # ADR 0040: bounded synthetic source-owned direct-Docker cross-engine lifecycle agreement
 
-Status: Pending source implementation from exact baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. The source commit, exact-source CI
-and dedicated run/job, retained canonical v3 artifact, artifact and evidence
-digests, and independent offline-review verdict remain Pending. Promotion
-requires one exact single-parent source child, the full local and remote gates,
-success-only artifact retention, independent inspection, and independently
-anchored offline review. Cycle 2b, real quality, B15/V15, real-data admission,
+Status: Accepted and promoted only for exact source commit
+`5d61868e6075865b32640ddaceb845ac9dbc69f3`, the single-parent child of frozen
+baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Full local verification,
+exact-source Ubuntu/Windows CI, the dedicated workflow, success-only canonical
+v3 artifact retention, independent inspection, and independently anchored
+offline review passed. Cycle 2b, real quality, B15/V15, real-data admission,
 and production remain Blocked.
 
 ## Context
@@ -59,9 +58,10 @@ exposed on failure.
 
 The sole target claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
-It remains Pending until the promotion boundary below passes for one exact
-single-parent child of baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`.
+It is accepted only for exact source
+`5d61868e6075865b32640ddaceb845ac9dbc69f3`, the single-parent child of baseline
+`1cb7d3ce024cbd29665af7ec4e010da0c380b726`, under the promotion boundary
+below.
 
 ## Required checks
 
@@ -127,18 +127,50 @@ identity; artifact and evidence digest inspection; and independent offline
 review against separately supplied repository, revision, run, attempt,
 artifact, and evidence-digest anchors.
 
-The source SHA, transition inventory, local counts, passing run/job numbers,
-artifact identity and size, digests, source-hash count, and offline verdict are
-Pending. They may be recorded only after the live artifact exists and the
-independent review passes. Cycle 2l v2 and Cycle 2k v1 artifacts, anchors, and
-source history remain immutable. Failed-run records remain immutable
-non-evidence. Cycle 2m v3 is additive and cannot rewrite or relabel them.
+Exact source `5d61868e6075865b32640ddaceb845ac9dbc69f3` has parent line
+`5d61868e6075865b32640ddaceb845ac9dbc69f3 1cb7d3ce024cbd29665af7ec4e010da0c380b726`
+and an exact 24-path transition. Full local verification passed, including 27
+core Vitest tests, 10 worker tests, and 50 of 50 acceptance tests. Exact-source
+CI run `33022797756` passed Ubuntu job `98356972324` and Windows job
+`98356973090`. Dedicated run/job `33022797708` / `98356972412` passed and
+retained 8,858-byte artifact `9627207288`, named
+`filing-parser-cross-engine-execution-evidence-v3-5d61868e6075865b32640ddaceb845ac9dbc69f3-1`.
+Its ZIP digest is
+`sha256:dfd56f1564a55f1c37fc6f0fdab33e390f5530662b96107c47602e03008ecd9b`.
+The 32,961-byte canonical evidence digest is
+`sha256:25dfd0dd5c36d24656de9eda85a34940a40f50e11cd02535bae1fb8f24c05c6e`.
+
+The retained record is version `3`, schema version `3.0.0`, status `passed`,
+with `sourceCount: 71` and `transitionPathCount: 24`. It records all 16 ordered
+checks, all 16 ordered nonclaims, exactly one agreed outcome, and five
+value-free quarantines. The agreed case has `normalizationStable: true`,
+`lifecycleBindingsDistinct: true`, and `invocationBindingsDistinct: true`, with
+eight receipts, eight unique container-ID digests, eight unique lifecycle
+binding hashes, and the exact `python-original`, `python-amendment`,
+`node-original`, and `node-amendment` receipt partition in each invocation.
+Independent review returned `offline_consistent` for the complete frozen source
+inventory.
+
+Source-triggered parser-isolation run `33022798055` and payload-custody run
+`33022797729` failed only at their historical `commit_boundary` and retained
+zero artifacts. They remain immutable non-evidence. Exact five-file maintenance
+child `1860bb367afdb6d725e41880ebb121dda4a04f39` restored strict legacy routing
+without replacing or widening the v3 evidence. Custody run/job `33024664186` /
+`98363073966`, parser-isolation run/job `33024664197` / `98363074166`, and
+maintenance CI run `33024664292` passed; CI passed Ubuntu job `98363074101` and
+Windows job `98363074221`. Cycle 2m maintenance run/job `33024664259` /
+`98363074109` passed and retained zero artifacts by design because the child is
+maintenance, not a second evidence source.
+
+Cycle 2l v2 and Cycle 2k v1 artifacts, anchors, and source history remain
+immutable. Failed-run records remain immutable non-evidence. Cycle 2m v3 is
+additive and does not rewrite or relabel them.
 
 ## Consequences
 
-A future Pass would establish only the bounded source-owned synthetic direct-
-Docker lifecycle, cleanup, repeat freshness, and invocation-binding claim. It
-would not authenticate the Docker daemon, host, kernel, or container IDs;
+This Pass establishes only the bounded source-owned synthetic direct-Docker
+lifecycle, cleanup, repeat freshness, and invocation-binding claim. It does not
+authenticate the Docker daemon, host, kernel, or container IDs;
 attest the worker-image supply chain; semantically prove the absence of worker-
 internal nonce or cache behavior; establish an external signer identity or
 KMS/HSM custody; prove real parser quality; establish Cycle 2b authority; cover

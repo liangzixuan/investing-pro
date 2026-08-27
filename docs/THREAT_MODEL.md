@@ -1,4 +1,4 @@
-# Sprint 0 through Pending Cycle 2m threat model
+# Sprint 0 through promoted Cycle 2m threat model
 
 ## Current trust boundaries
 
@@ -510,25 +510,53 @@ quality, and production gates remain Blocked. See
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
-Cycle 2m is Pending source implementation from exact baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It removes injected child
+Cycle 2m is promoted only for exact source commit
+`5d61868e6075865b32640ddaceb845ac9dbc69f3`, the single-parent child of frozen
+baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It removes injected child
 factories, runners, and signers from the public configuration: callers may
-supply only sealed engine descriptors. The package must own audited direct-
-Docker runners and an internal ephemeral Ed25519 signer. Each invocation must
-create, start, attach to, and remove exactly four fresh containers, verify zero
-residue, and bind every lifecycle receipt with the Cycle 2l agreement, complete
-normalization record, and key context into one distinct invocation binding.
-Two invocations over the same inputs must normalize identically but yield eight
-unique container-ID digests and distinct lifecycle and invocation hashes. Any
+supply only sealed engine descriptors. The package owns audited direct-Docker
+runners and creates one internal ephemeral Ed25519 signer per invocation. Each
+invocation creates, starts, attaches to, and removes exactly four fresh
+containers, verifies zero residue, and binds every independently recomputable
+lifecycle receipt with the Cycle 2l agreement, complete normalization record,
+and key context into one distinct invocation binding. Two invocations over the
+same inputs normalized byte-identically while producing eight unique
+container-ID digests, eight unique lifecycle-binding hashes, and two distinct
+invocation bindings. Their receipts contained the exact `python-original`,
+`python-amendment`, `node-original`, and `node-amendment` partition twice. Any
 descriptor, Docker operation, receipt, binding, agreement, uniqueness, or
 cleanup failure returns one atomic empty value-free quarantine.
 
-The sole target claim is
+The sole promoted target claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
-Promotion requires one exact single-parent child of the baseline, full local
-and exact-source CI, a success-only retained canonical v3 artifact, digest
-inspection, and independently anchored offline review. All source and live
-anchors remain Pending. Cycle 2l v2 and Cycle 2k v1 evidence remain immutable.
+Full local verification passed, including 27 core Vitest tests, 10 worker tests,
+and 50 of 50 acceptance tests. Exact-source CI run `33022797756` passed Ubuntu
+job `98356972324` and Windows job `98356973090`. Dedicated run/job
+`33022797708` / `98356972412` passed and retained 8,858-byte artifact
+`9627207288`, named
+`filing-parser-cross-engine-execution-evidence-v3-5d61868e6075865b32640ddaceb845ac9dbc69f3-1`.
+Its ZIP digest is
+`sha256:dfd56f1564a55f1c37fc6f0fdab33e390f5530662b96107c47602e03008ecd9b`;
+the 32,961-byte canonical evidence digest is
+`sha256:25dfd0dd5c36d24656de9eda85a34940a40f50e11cd02535bae1fb8f24c05c6e`.
+The version `3` / schema `3.0.0` record has status `passed`, `sourceCount: 71`,
+and `transitionPathCount: 24`. It preserves all 16 ordered checks and 16 ordered
+nonclaims and records exactly one agreement and five quarantines, with
+`normalizationStable: true`, `lifecycleBindingsDistinct: true`, and
+`invocationBindingsDistinct: true`. Independent review returned
+`offline_consistent` for the complete frozen source inventory.
+
+Source-triggered parser-isolation run `33022798055` and payload-custody run
+`33022797729` failed only at their historical `commit_boundary`, retained zero
+artifacts, and remain immutable non-evidence. Exact five-file maintenance child
+`1860bb367afdb6d725e41880ebb121dda4a04f39` restored strict legacy routing
+without replacing the v3 evidence. Custody run/job `33024664186` /
+`98363073966`, parser-isolation run/job `33024664197` / `98363074166`, and
+maintenance CI run `33024664292` passed; CI passed Ubuntu job `98363074101`
+and Windows job `98363074221`. Cycle 2m maintenance run/job `33024664259` /
+`98363074109` also passed and deliberately retained zero artifacts because the
+child is routing maintenance, not a second v3 evidence source. Cycle 2l v2 and
+Cycle 2k v1 evidence remain immutable.
 This boundary does not authenticate the Docker daemon, host, kernel, or
 container IDs; attest the worker-image supply chain; semantically prove the
 absence of nonce/cache behavior inside workers; establish an external signer,
@@ -1226,14 +1254,18 @@ Exact gates and nonclaims are in
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
-Cycle 2m's target is only
+Cycle 2m's promoted target is only
 `bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`
-from baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. It is Pending until one
-exact single-parent child passes the full local, two-OS CI, success-only v3
-artifact, digest-inspection, and independent offline-review gates. It preserves
-Cycle 2l v2 and Cycle 2k v1 history and does not widen any external-authority,
-real-quality, real-data, or production boundary. Exact gates and nonclaims are
-in [ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
+for exact source `5d61868e6075865b32640ddaceb845ac9dbc69f3`, the single-parent child of
+baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Its full local, two-OS CI,
+success-only v3 artifact, digest-inspection, and independent offline-review
+gates passed. Exact five-file maintenance child
+`1860bb367afdb6d725e41880ebb121dda4a04f39` restored legacy routing and passed
+its custody, parser-isolation, Cycle 2m, and two-OS CI workflows without minting
+a replacement v3 artifact. Cycle 2m preserves Cycle 2l v2 and Cycle 2k v1
+history and does not widen any external-authority, real-quality, real-data, or
+production boundary. Exact gates and nonclaims are in
+[ADR 0040](./adr/0040-bounded-synthetic-source-owned-direct-docker-cross-engine-lifecycle-agreement.md)
 and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
@@ -1250,7 +1282,7 @@ and the [Cycle 2m exit matrix](./CYCLE_2M_EXIT_MATRIX.md).
    Cycle 2i's promoted authenticated synthetic parser-result-to-normalizer
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
-   Superseded Cycle 2k, promoted Cycle 2l, and Pending Cycle 2m cross-engine
+   Superseded Cycle 2k and promoted Cycle 2l and Cycle 2m cross-engine
    lifecycle agreement remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.

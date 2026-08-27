@@ -1214,17 +1214,16 @@ and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
 ## Cycle 2m — source-owned direct-Docker lifecycle-bound agreement
 
-Status: **Pending source implementation from exact baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`. The source SHA, passing CI and
-dedicated run/job, retained v3 artifact, digests, and offline-review verdict
-remain Pending.**
+Status: **Pass only for exact source commit
+`5d61868e6075865b32640ddaceb845ac9dbc69f3`, the exact single-parent child of
+baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`.**
 
 Cycle 2m closes only the next repository-controlled execution-lifecycle gap.
 Its sole target claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
 Public configuration exposes only sealed engine descriptors. The package owns
 the audited direct-Docker runners and an internal ephemeral Ed25519 signer.
-Each invocation must perform exactly four fresh create/start/attach/remove
+Each invocation performs exactly four fresh create/start/attach/remove
 lifecycles, verify removal and zero container residue, and bind the lifecycle
 receipts with the Cycle 2l agreement, normalization record, and key context into
 one distinct invocation binding. Repeating the same inputs must produce
@@ -1232,12 +1231,34 @@ byte-identical normalization while yielding eight unique container-ID digests
 and distinct lifecycle and invocation hashes. Any failure returns one atomic,
 empty, value-free quarantine.
 
-Promotion requires one exact single-parent source child of baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726`, full local verification,
-exact-source Ubuntu and Windows CI, a success-only retained canonical v3
-artifact, artifact and evidence digest inspection, and independently anchored
-offline review. Cycle 2l v2 and Cycle 2k v1 evidence remain immutable historical
-facts.
+Full local verification passed, including 27 core Vitest tests, 10 worker tests,
+and 50 of 50 acceptance tests. Exact-source CI run `33022797756` passed Ubuntu
+job `98356972324` and Windows job `98356973090`. Dedicated run/job
+`33022797708` / `98356972412` retained artifact `9627207288`, named
+`filing-parser-cross-engine-execution-evidence-v3-5d61868e6075865b32640ddaceb845ac9dbc69f3-1`,
+size 8,858 bytes. Its ZIP digest is
+`sha256:dfd56f1564a55f1c37fc6f0fdab33e390f5530662b96107c47602e03008ecd9b`;
+the 32,961-byte canonical evidence digest is
+`sha256:25dfd0dd5c36d24656de9eda85a34940a40f50e11cd02535bae1fb8f24c05c6e`.
+The version 3, schema `3.0.0` evidence has status `passed` and binds 71 source
+hashes, 24 transition paths, 16 ordered checks, 16 ordered nonclaims, and six
+outcomes: one agreed and five quarantined. The repeated agreed case preserves
+byte-identical normalization while producing distinct lifecycle and invocation
+bindings, eight receipts, eight unique container-ID digests, eight unique
+lifecycle-binding hashes, and the exact Python-original, Python-amendment,
+Node-original, Node-amendment role partition twice. Independent review returned
+`offline_consistent`.
+
+Source-triggered parser-isolation run `33022798055` and custody run
+`33022797729` failed only at their legacy commit-boundary routing and retained
+zero artifacts, so they remain non-evidence. Exact five-file maintenance child
+`1860bb367afdb6d725e41880ebb121dda4a04f39` restored that historical routing
+without replacing or reminting the v3 evidence. Custody run/job `33024664186` /
+`98363073966`, parser-isolation run/job `33024664197` / `98363074166`, and CI run
+`33024664292` with Ubuntu job `98363074101` and Windows job `98363074221` all
+passed. Dedicated bridge run/job `33024664259` / `98363074109` passed while
+retaining zero artifacts, as required. Cycle 2l v2 and Cycle 2k v1 evidence
+remain immutable historical facts.
 
 Docker daemon, host, kernel, and container-ID authenticity; worker-image supply
 chain or attestation; semantic proof that workers contain no nonce or cache;
@@ -1268,7 +1289,8 @@ Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
-bounded synthetic Cycle 2l, nor Pending Cycle 2m satisfies this exit gate. Cycle 2i does not establish that a parser
+bounded synthetic Cycle 2l, nor promoted bounded synthetic Cycle 2m satisfies
+this exit gate. Cycle 2i does not establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest
 validation, approved corpus inputs, real ten-fact coverage, truly independent

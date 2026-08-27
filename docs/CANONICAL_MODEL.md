@@ -33,8 +33,8 @@ Pass only for exact source commit `2e3a7e33a76d19b993375958aff671707a81ef05`,
 the corrective child of failed precursor
 `67af24176df3c17fd6d54498095888c9a43ebe1f` from baseline
 `b9b7dd19996f0c5bb1e073ab5522c42e06dee397`;
-Cycle 2m source-owned direct-Docker lifecycle binding Pending source
-implementation from exact baseline
+Cycle 2m source-owned direct-Docker lifecycle binding Pass only for exact source
+commit `5d61868e6075865b32640ddaceb845ac9dbc69f3` from exact baseline
 `1cb7d3ce024cbd29665af7ec4e010da0c380b726`;
 synthetic data only.
 
@@ -931,12 +931,12 @@ remain Blocked. See
 [ADR 0039](./adr/0039-bounded-synthetic-cross-engine-current-input-and-lineage-agreement.md)
 and the [Cycle 2l exit matrix](./CYCLE_2L_EXIT_MATRIX.md).
 
-## Pending Cycle 2m source-owned Docker lifecycle agreement
+## Promoted Cycle 2m source-owned Docker lifecycle agreement
 
 Cycle 2m adds no canonical real filing, authority, quality, tenant,
 persistence, or production entity. Public configuration contains only sealed
 engine descriptors. An internal ephemeral Ed25519 signer and package-owned
-audited direct-Docker runners must perform exactly four fresh
+audited direct-Docker runners perform exactly four fresh
 create/start/attach/remove lifecycles per invocation and prove removal with zero
 container residue.
 
@@ -956,12 +956,37 @@ value-free quarantine.
 
 The sole target claim is
 `bounded_synthetic_source_owned_direct_docker_cross_engine_current_input_and_lineage_agreement_with_lifecycle_binding`.
-It remains Pending until one exact single-parent child of baseline
-`1cb7d3ce024cbd29665af7ec4e010da0c380b726` passes full local and exact-source
-CI, retains a success-only canonical v3 artifact, and returns an independently
-anchored offline-consistent review. The source SHA, runs/jobs, artifact,
-digests, and offline verdict remain Pending. Cycle 2l v2 and Cycle 2k v1
-evidence and their source history remain immutable.
+It is Pass only for exact source commit
+`5d61868e6075865b32640ddaceb845ac9dbc69f3`, the exact single-parent child of
+baseline `1cb7d3ce024cbd29665af7ec4e010da0c380b726`. Full local verification passed,
+including 27 core Vitest tests, 10 worker tests, and 50 of 50 acceptance tests.
+Exact-source CI run `33022797756` passed Ubuntu job `98356972324` and Windows job
+`98356973090`. Dedicated run/job `33022797708` / `98356972412` retained
+8,858-byte artifact `9627207288`, named
+`filing-parser-cross-engine-execution-evidence-v3-5d61868e6075865b32640ddaceb845ac9dbc69f3-1`.
+Its ZIP digest is
+`sha256:dfd56f1564a55f1c37fc6f0fdab33e390f5530662b96107c47602e03008ecd9b`;
+the 32,961-byte canonical evidence digest is
+`sha256:25dfd0dd5c36d24656de9eda85a34940a40f50e11cd02535bae1fb8f24c05c6e`.
+Version 3, schema `3.0.0` evidence has status `passed` and binds 71 source hashes,
+24 transition paths, 16 ordered checks, 16 ordered nonclaims, and six outcomes:
+one agreed and five quarantined. The repeated agreed case produces
+byte-identical normalization, distinct lifecycle and invocation bindings, eight
+receipts, eight unique container-ID digests, eight unique lifecycle-binding
+hashes, and the exact Python-original, Python-amendment, Node-original,
+Node-amendment role partition twice. Independent review returned
+`offline_consistent`.
+
+Source-triggered parser-isolation run `33022798055` and custody run
+`33022797729` failed only at their legacy commit-boundary routing and retained
+zero artifacts, so they remain non-evidence. Exact five-file maintenance child
+`1860bb367afdb6d725e41880ebb121dda4a04f39` restored that historical routing
+without replacing or reminting the v3 evidence. Custody run/job `33024664186` /
+`98363073966`, parser-isolation run/job `33024664197` / `98363074166`, and CI run
+`33024664292` with Ubuntu job `98363074101` and Windows job `98363074221` all
+passed. Dedicated bridge run/job `33024664259` / `98363074109` passed and
+retained zero artifacts, as required. Cycle 2l v2 and Cycle 2k v1 evidence and
+their source history remain immutable.
 
 Docker daemon/host/kernel/container-ID authenticity, worker-image supply-chain
 attestation, semantic absence of nonce/cache behavior inside workers, external
