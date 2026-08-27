@@ -108,6 +108,74 @@ const forbiddenApiWriteDependencies = [
 ];
 const filingParserModule = "@research-cockpit/filing-parser";
 const filingPayloadCustodyModule = "@research-cockpit/filing-payload-custody";
+const personalFilingCorpusModule =
+  "@research-cockpit/personal-filing-corpus" as const;
+const personalFilingCorpusPackagePrefix =
+  "packages/personal-filing-corpus/" as const;
+const personalFilingCorpusPackagePaths = [
+  `${personalFilingCorpusPackagePrefix}package.json`,
+  `${personalFilingCorpusPackagePrefix}src/index.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus-security.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus.ts`,
+  `${personalFilingCorpusPackagePrefix}tsconfig.json`,
+].sort();
+const cycle2qBaselineRevision =
+  "2f0534d2a5b4206221cc66ece5e03cf529e5d373" as const;
+const cycle2qCorpusAdmissionPath =
+  "packages/filing-parser/src/corpus-admission.ts" as const;
+const cycle2qCorpusAdmissionBlob =
+  "e456cae97cf9eb377e3b3e8aabc156fdb377e2c7" as const;
+const cycle2qTransition = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: `${personalFilingCorpusPackagePrefix}package.json`, status: "A" },
+  { path: `${personalFilingCorpusPackagePrefix}src/index.ts`, status: "A" },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus-security.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus.ts`,
+    status: "A",
+  },
+  { path: `${personalFilingCorpusPackagePrefix}tsconfig.json`, status: "A" },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2qProtectedPaths = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  cycle2qCorpusAdmissionPath,
+  ...cycle2qTransition
+    .map(({ path }) => path)
+    .filter(
+      (path) =>
+        path !==
+        ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    ),
+];
 const filingFactNormalizationModule =
   "@research-cockpit/filing-fact-normalization";
 const filingFactNormalizationSourcePrefix =
@@ -1583,6 +1651,7 @@ const typeScriptConfigContents = typeScriptConfigDiscovery.contents;
 const workspacePackageNames =
   await collectWorkspacePackageNames(filesToInspect);
 violations.push(
+  ...(await personalFilingCorpusBoundaryViolations()),
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
   ...(await filingParserQualityCompositionBoundaryViolations()),
   ...(await filingPayloadCustodyReviewedSurfaceBoundaryViolations()),
@@ -4567,6 +4636,256 @@ if (violations.length > 0) {
   );
 }
 console.log("Clean-room source and dependency boundary verified.");
+
+function doubleQuotedShellArray(
+  source: string,
+  name: string,
+): readonly string[] | null {
+  const match = new RegExp(
+    `(?:^|\\n)\\s*${name}=\\(\\r?\\n([\\s\\S]*?)\\r?\\n\\s*\\)`,
+    "u",
+  ).exec(source);
+  if (match?.[1] === undefined) return null;
+  const values: string[] = [];
+  for (const rawLine of match[1].split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    const value = /^"([^"\\]*)"$/u.exec(line)?.[1];
+    if (value === undefined) return null;
+    values.push(value);
+  }
+  return values;
+}
+
+async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) => path.startsWith(personalFilingCorpusPackagePrefix))
+    .sort();
+  if (
+    JSON.stringify(actualTree) !==
+    JSON.stringify(personalFilingCorpusPackagePaths)
+  )
+    found.push(
+      `${personalFilingCorpusPackagePrefix}: Cycle 2q package tree must remain the exact six-file manifest, tsconfig, implementation, index, and two-test surface`,
+    );
+
+  const manifest = await cycle2kJson(
+    `${personalFilingCorpusPackagePrefix}package.json`,
+    found,
+  );
+  if (
+    JSON.stringify(manifest) !==
+    JSON.stringify({
+      name: personalFilingCorpusModule,
+      version: "0.1.0",
+      private: true,
+      type: "module",
+      exports: { ".": "./src/index.ts" },
+      scripts: {
+        build: "tsc --noEmit",
+        typecheck: "tsc --noEmit",
+        test: "vitest run",
+      },
+    })
+  )
+    found.push(
+      `${personalFilingCorpusPackagePrefix}package.json: exact zero-production-dependency personal-use manifest is required`,
+    );
+
+  const tsconfig = await cycle2kJson(
+    `${personalFilingCorpusPackagePrefix}tsconfig.json`,
+    found,
+  );
+  if (
+    JSON.stringify(tsconfig) !==
+    JSON.stringify({
+      extends: "../../tsconfig.base.json",
+      compilerOptions: { noEmit: true, types: ["node"] },
+      include: ["src/**/*.ts"],
+    })
+  )
+    found.push(
+      `${personalFilingCorpusPackagePrefix}tsconfig.json: exact bounded TypeScript configuration is required`,
+    );
+
+  const implementationPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus.ts`;
+  const indexPath = `${personalFilingCorpusPackagePrefix}src/index.ts`;
+  const unitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus.test.ts`;
+  const securityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus-security.test.ts`;
+  const implementation = await cycle2kText(implementationPath, found);
+  const index = await cycle2kText(indexPath, found);
+  const unitTest = await cycle2kText(unitTestPath, found);
+  const securityTest = await cycle2kText(securityTestPath, found);
+  const expectedImports = new Map<string, readonly string[]>([
+    [implementationPath, ["node:crypto"]],
+    [indexPath, ["./personal-filing-corpus"]],
+    [unitTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
+    [securityTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
+  ]);
+  for (const [path, content] of [
+    [implementationPath, implementation],
+    [indexPath, index],
+    [unitTestPath, unitTest],
+    [securityTestPath, securityTest],
+  ] as const) {
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify(expectedImports.get(path))
+    )
+      found.push(`${path}: Cycle 2q imports must remain exact`);
+    if (
+      hasRuntimeDynamicImport(content) ||
+      hasForbiddenDynamicCodeCapability(content) ||
+      hasUnresolvedRuntimeModuleLoad(content) ||
+      hasIndirectRuntimeModuleLoad(content)
+    )
+      found.push(
+        `${path}: runtime module loading and dynamic code are forbidden`,
+      );
+  }
+  for (const required of [
+    '"personal_single_user_local" as const',
+    'readonly status: "verified_for_personal_use"',
+    '"raw_payload_presence_or_declared_content_sha256_byte_equality"',
+    '"legal_opinion_rights_authority_data_steward_or_external_approval"',
+    '"multi_user_identity_tenancy_authorization_or_shared_service_safety"',
+    '"database_api_web_composition_or_b15_v15"',
+  ])
+    if (!implementation.includes(required))
+      found.push(
+        `${implementationPath}: missing exact personal-use claim or nonclaim ${required}`,
+      );
+  if (
+    implementation.includes('status: "admitted"') ||
+    implementation.includes("rights_and_steward_approved")
+  )
+    found.push(
+      `${implementationPath}: personal-use verification must not reuse enterprise admission claims`,
+    );
+
+  const workflowPath =
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml";
+  const workflow = await cycle2kText(workflowPath, found);
+  const cycle2qStart = workflow.indexOf("        id: cycle2q_source");
+  const cycle2pStart = workflow.indexOf("        id: cycle2p_source");
+  const cycle2qSection =
+    cycle2qStart >= 0 && cycle2pStart > cycle2qStart
+      ? workflow.slice(cycle2qStart, cycle2pStart)
+      : "";
+  if (
+    cycle2qSection === "" ||
+    !cycle2qSection.includes(`baseline="${cycle2qBaselineRevision}"`) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2qSection, "protected")) !==
+      JSON.stringify(cycle2qProtectedPaths) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2qSection, "expected")) !==
+      JSON.stringify(
+        cycle2qTransition.flatMap(({ path, status }) => [status, path]),
+      ) ||
+    !cycle2qSection.includes(
+      'git diff --name-status --no-renames -z "$baseline" HEAD --',
+    ) ||
+    !cycle2qSection.includes('[[ "$successor_count" == "1" ]]') ||
+    !cycle2qSection.includes('[[ "$first_parent_count" == "1" ]]') ||
+    !cycle2qSection.includes('[[ "${#topology[@]}" == "2" ]]') ||
+    !cycle2qSection.includes('[[ "${topology[1]}" == "$baseline" ]]') ||
+    !cycle2qSection.includes("matches_exactly expected actual") ||
+    !cycle2qSection.includes(
+      'if [[ "$required" == "true" && "$exact" != "true" ]]; then',
+    )
+  )
+    found.push(
+      `${workflowPath}: exact fail-closed Cycle 2q baseline, protected set, full tuple, and 1/1 topology are required before Cycle 2p`,
+    );
+
+  for (const classifier of [
+    "cycle2p_source",
+    "cycle2o_source",
+    "admission_validity_bridge",
+    "cycle2n_source",
+    "legacy_bridge",
+  ]) {
+    const start = workflow.indexOf(`        id: ${classifier}`);
+    const shell = start >= 0 ? workflow.indexOf("        shell:", start) : -1;
+    const prelude =
+      start >= 0 && shell > start ? workflow.slice(start, shell) : "";
+    if (!prelude.includes("steps.cycle2q_source.outputs.exact != 'true'"))
+      found.push(
+        `${workflowPath}: inherited classifier ${classifier} must exclude exact Cycle 2q`,
+      );
+  }
+  for (const required of [
+    "      - packages/personal-filing-corpus/**",
+    `pnpm --filter ${personalFilingCorpusModule} typecheck`,
+    `pnpm --filter ${personalFilingCorpusModule} test`,
+    'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v1.json"',
+    'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"',
+    'if [[ "${{ steps.cycle2q_source.outputs.exact }}" == "true" ]]; then',
+    "Cycle 2q is a personal-use profile route only.",
+    "if: ${{ success() && steps.cycle2o_source.outputs.exact == 'true' }}",
+  ])
+    if (!workflow.includes(required))
+      found.push(
+        `${workflowPath}: missing exact Cycle 2q no-evidence control ${required}`,
+      );
+
+  for (const path of [
+    "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  ]) {
+    const verifier = await cycle2kText(path, found);
+    for (const required of [
+      cycle2qBaselineRevision,
+      cycle2qCorpusAdmissionBlob,
+      "CYCLE_2Q_SOURCE_TRANSITION",
+      "CYCLE_2Q_PROTECTED_SURFACE_PATHS",
+      "isCycle2qDirectChildAllowed",
+      "isCycle2qCommitDiffSetAllowed",
+      "isCycle2qTransitionRoutingRequired",
+      "await verifyCycle2qTransition(repositoryPath, revision)",
+      "CYCLE_2P_CORRECTIVE_REVISION",
+    ])
+      if (!verifier.includes(required))
+        found.push(
+          `${path}: missing exact Cycle 2q routing control ${required}`,
+        );
+    for (const { path: transitionPath } of cycle2qTransition)
+      if (!verifier.includes(transitionPath))
+        found.push(
+          `${path}: missing Cycle 2q transition path ${transitionPath}`,
+        );
+    const cycle2qRoute = verifier.indexOf("if (cycle2qRoutingRequired)");
+    const inheritedRoute = verifier.indexOf(
+      "else if (isCycle2pTransitionRoutingRequired",
+      cycle2qRoute,
+    );
+    if (cycle2qRoute < 0 || inheritedRoute <= cycle2qRoute)
+      found.push(`${path}: Cycle 2q must route before inherited Cycle 2p`);
+  }
+  for (const path of [
+    "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  ]) {
+    const test = await cycle2kText(path, found);
+    for (const required of [
+      'describe("Cycle 2q personal-use profile routing"',
+      "isCycle2qBaselineMergeBaseAllowed",
+      "isCycle2qDirectChildAllowed",
+      "isCycle2qCommitDiffSetAllowed",
+      "isCycle2qTransitionRoutingRequired",
+    ])
+      if (!test.includes(required))
+        found.push(`${path}: missing Cycle 2q regression ${required}`);
+  }
+
+  if (
+    JSON.stringify(doubleQuotedShellArray('x=(\n  "a"\n  "b"\n)', "x")) !==
+      JSON.stringify(["a", "b"]) ||
+    doubleQuotedShellArray('x=(\n  "b" extra\n)', "x") !== null
+  )
+    throw new Error("Cycle 2q shell-array classifier regressed");
+  return found;
+}
 
 async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
   string[]

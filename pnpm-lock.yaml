@@ -189,6 +189,8 @@ importers:
         specifier: workspace:*
         version: link:../filing-quality-measurement
 
+  packages/personal-filing-corpus: {}
+
 packages:
 
   '@esbuild/aix-ppc64@0.27.7':
