@@ -94,6 +94,7 @@ const REPOSITORY_ID = "123456789";
 const RUN_ID = "9876543210";
 const RUN_ATTEMPT = 2;
 const GIT_INTEGRATION_TEST_TIMEOUT_MILLISECONDS = 30_000;
+const V10_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const V13_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const TRUST_ANCHOR_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const TEMP_DIRECTORIES: string[] = [];
@@ -878,29 +879,36 @@ function evidenceAdapterTests(): void {
     }
   });
 
-  it("rejects changed v10 adapter, contract, package, and lockfile sources at the anchored commit", async () => {
-    for (const path of [
-      "packages/db/src/postgres-projection-adapter.ts",
-      "modules/research-core/src/projection-contract.ts",
-      "packages/db/package.json",
-      "pnpm-lock.yaml",
-    ]) {
-      const fixture = await createFixture();
-      await writeFile(
-        join(fixture.repositoryPath, path),
-        "changed v10 source\n",
-      );
-      git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
-      const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+  it(
+    "rejects changed v10 adapter, contract, package, and lockfile sources at the anchored commit",
+    { timeout: V10_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS },
+    async () => {
+      for (const path of [
+        "packages/db/src/postgres-projection-adapter.ts",
+        "modules/research-core/src/projection-contract.ts",
+        "packages/db/package.json",
+        "pnpm-lock.yaml",
+      ]) {
+        const fixture = await createFixture();
+        await writeFile(
+          join(fixture.repositoryPath, path),
+          "changed v10 source\n",
+        );
+        git(fixture.repositoryPath, ["add", "--all"]);
+        git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
+        const changedCommit = git(fixture.repositoryPath, [
+          "rev-parse",
+          "HEAD",
+        ]);
 
-      await expect(
-        reviewPostgresAcceptanceEvidence(
-          await inputAtCommit(fixture, changedCommit),
-        ),
-      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
-    }
-  });
+        await expect(
+          reviewPostgresAcceptanceEvidence(
+            await inputAtCommit(fixture, changedCommit),
+          ),
+        ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+      }
+    },
+  );
 
   it("rejects a changed or missing v10 pool source at the anchored commit", async () => {
     const changed = await createFixture();
