@@ -13,6 +13,12 @@ import {
   decodeFilingParserAbsoluteGitPath,
   filingParserGitArgumentsWithoutReplacementObjects,
   filingParserGitEnvironmentWithoutGrafts,
+  isAdmissionValidityBridgeBaselineMergeBaseAllowed,
+  isAdmissionValidityBridgeCommitDiffSetAllowed,
+  isAdmissionValidityBridgeCorrectiveChainAllowed,
+  isAdmissionValidityBridgeCorrectiveCommitDiffSetAllowed,
+  isAdmissionValidityBridgeSourceCommitDiffSetAllowed,
+  isAdmissionValidityBridgeTransitionRoutingRequired,
   isAuthenticatedReplayMaintenanceBaselineMergeBaseAllowed,
   isAuthenticatedReplayMaintenanceCommitDiffSetAllowed,
   isAuthenticatedReplayMaintenanceSurfaceRoutingRequired,
@@ -84,6 +90,46 @@ import {
 
 const temporaryDirectories: string[] = [];
 const HASH = `sha256:${"a".repeat(64)}` as const;
+const ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION =
+  "7243f16df0c4bd8691ff11fa037085e3beb3447e" as const;
+const ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION =
+  "96b042669edc6cb4a876bb0c061fa5e18732c1ca" as const;
+const ADMISSION_VALIDITY_BRIDGE_SOURCE_TRANSITION = [
+  {
+    path: "packages/filing-parser/src/corpus-admission-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/corpus-admission.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const ADMISSION_VALIDITY_BRIDGE_CORRECTIVE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const ADMISSION_VALIDITY_BRIDGE_TRANSITION = [
+  ...ADMISSION_VALIDITY_BRIDGE_SOURCE_TRANSITION,
+  ...ADMISSION_VALIDITY_BRIDGE_CORRECTIVE_TRANSITION,
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS =
+  ADMISSION_VALIDITY_BRIDGE_TRANSITION.map(({ path }) => path);
 const CYCLE_2N_BASELINE_REVISION =
   "09e76235b5683427f2dd3201aefa740bb5adb16e" as const;
 const CYCLE_2N_COMPOSITION_TREE = [
@@ -1222,6 +1268,143 @@ afterEach(async () => {
       .splice(0)
       .map((directory) => rm(directory, { recursive: true, force: true })),
   );
+});
+
+describe("admission-validity exact corrective-successor routing", () => {
+  it("freezes the exact baseline and two-commit linear ancestry", () => {
+    expect(
+      isAdmissionValidityBridgeBaselineMergeBaseAllowed(
+        ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION,
+      ),
+    ).toBe(true);
+    expect(
+      isAdmissionValidityBridgeBaselineMergeBaseAllowed(
+        ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION,
+      ),
+    ).toBe(false);
+    expect(isAdmissionValidityBridgeBaselineMergeBaseAllowed(undefined)).toBe(
+      false,
+    );
+
+    const revision = "d".repeat(40);
+    const valid = [
+      "2",
+      "2",
+      revision,
+      `${revision} ${ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION}`,
+      `${ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION} ${ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION}`,
+    ] as const;
+    expect(isAdmissionValidityBridgeCorrectiveChainAllowed(...valid)).toBe(
+      true,
+    );
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "1";
+      },
+      (values: string[]) => {
+        values[1] = "1";
+      },
+      (values: string[]) => {
+        values[2] = ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION;
+      },
+      (values: string[]) => {
+        values[2] = ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION;
+      },
+      (values: string[]) => {
+        values[2] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[3] = `${revision} ${ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] = `${ADMISSION_VALIDITY_BRIDGE_SOURCE_REVISION} ${"a".repeat(40)}`;
+      },
+      (values: string[]) => {
+        values[4] += ` ${"b".repeat(40)}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isAdmissionValidityBridgeCorrectiveChainAllowed(
+          ...(values as Parameters<
+            typeof isAdmissionValidityBridgeCorrectiveChainAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("requires the exact source, cumulative, and corrective diff sets", () => {
+    const cases = [
+      [
+        ADMISSION_VALIDITY_BRIDGE_SOURCE_TRANSITION,
+        isAdmissionValidityBridgeSourceCommitDiffSetAllowed,
+      ],
+      [
+        ADMISSION_VALIDITY_BRIDGE_TRANSITION,
+        isAdmissionValidityBridgeCommitDiffSetAllowed,
+      ],
+      [
+        ADMISSION_VALIDITY_BRIDGE_CORRECTIVE_TRANSITION,
+        isAdmissionValidityBridgeCorrectiveCommitDiffSetAllowed,
+      ],
+    ] as const;
+    for (const [expected, isAllowed] of cases) {
+      expect(isAllowed(expected)).toBe(true);
+      expect(isAllowed([...expected].reverse())).toBe(false);
+      for (const entry of expected) {
+        expect(
+          isAllowed(expected.filter((candidate) => candidate !== entry)),
+        ).toBe(false);
+        expect(isAllowed([...expected, entry])).toBe(false);
+        expect(
+          isAllowed(
+            expected.map((candidate) =>
+              candidate === entry ? { ...candidate, status: "A" } : candidate,
+            ),
+          ),
+        ).toBe(false);
+      }
+      expect(
+        isAllowed([...expected, { path: "unexpected", status: "M" }]),
+      ).toBe(false);
+    }
+  });
+
+  it("routes only the complete ordered five-path bridge surface", () => {
+    expect(
+      isAdmissionValidityBridgeTransitionRoutingRequired(
+        ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS,
+      ),
+    ).toBe(true);
+    expect(isAdmissionValidityBridgeTransitionRoutingRequired(undefined)).toBe(
+      false,
+    );
+    expect(isAdmissionValidityBridgeTransitionRoutingRequired([])).toBe(false);
+    expect(
+      isAdmissionValidityBridgeTransitionRoutingRequired(
+        [...ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS].reverse(),
+      ),
+    ).toBe(false);
+    for (const path of ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS)
+      expect(
+        isAdmissionValidityBridgeTransitionRoutingRequired(
+          ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS.filter(
+            (candidate) => candidate !== path,
+          ),
+        ),
+      ).toBe(false);
+    expect(
+      isAdmissionValidityBridgeTransitionRoutingRequired([
+        ...ADMISSION_VALIDITY_BRIDGE_TRANSITION_PATHS,
+        "unexpected",
+      ]),
+    ).toBe(false);
+  });
 });
 
 describe("Cycle 2n exact source-successor routing", () => {

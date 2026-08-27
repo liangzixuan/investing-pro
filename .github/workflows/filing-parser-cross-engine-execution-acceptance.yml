@@ -45,9 +45,76 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Classify exact admission validity bridge before evidence routes
+        id: admission_validity_bridge
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          exact=false
+          baseline="7243f16df0c4bd8691ff11fa037085e3beb3447e"
+          source="96b042669edc6cb4a876bb0c061fa5e18732c1ca"
+          expected_source=(
+            "M"
+            "packages/filing-parser/src/corpus-admission-security.test.ts"
+            "M"
+            "packages/filing-parser/src/corpus-admission.ts"
+          )
+          expected_corrective=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+          )
+          expected_cumulative=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/corpus-admission-security.test.ts"
+            "M"
+            "packages/filing-parser/src/corpus-admission.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+          )
+          matches_exactly() {
+            local -n expected_values="$1"
+            local -n actual_values="$2"
+            if [[ "${#actual_values[@]}" != "${#expected_values[@]}" ]]; then
+              return 1
+            fi
+            for index in "${!expected_values[@]}"; do
+              if [[ "${actual_values[$index]}" != "${expected_values[$index]}" ]]; then
+                return 1
+              fi
+            done
+          }
+          read -r -a topology <<< "$(git rev-list --parents -n 1 HEAD)"
+          read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
+          merge_base="$(git merge-base "$baseline" HEAD)"
+          successor_count="$(git rev-list --count "$baseline"..HEAD)"
+          first_parent_count="$(git rev-list --first-parent --count "$baseline"..HEAD)"
+          mapfile -d '' -t actual_source < <(git diff --name-status --no-renames -z "$baseline" "$source" --)
+          mapfile -d '' -t actual_corrective < <(git diff --name-status --no-renames -z "$source" HEAD --)
+          mapfile -d '' -t actual_cumulative < <(git diff --name-status --no-renames -z "$baseline" HEAD --)
+          if [[ "$merge_base" == "$baseline" ]] && \
+             [[ "$successor_count" == "2" ]] && \
+             [[ "$first_parent_count" == "2" ]] && \
+             [[ "${#topology[@]}" == "2" ]] && \
+             [[ "${topology[1]}" == "$source" ]] && \
+             [[ "${#source_topology[@]}" == "2" ]] && \
+             [[ "${source_topology[1]}" == "$baseline" ]] && \
+             matches_exactly expected_source actual_source && \
+             matches_exactly expected_corrective actual_corrective && \
+             matches_exactly expected_cumulative actual_cumulative; then
+            exact=true
+          fi
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
       - name: Classify exact Cycle 2n evidence source before inherited routes
         id: cycle2n_source
-        if: ${{ success() }}
+        if: ${{ success() && steps.admission_validity_bridge.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -78,7 +145,7 @@ jobs:
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
       - name: Classify exact post-evidence legacy bridge
         id: legacy_bridge
-        if: ${{ success() && steps.cycle2n_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.admission_validity_bridge.outputs.exact != 'true' && steps.cycle2n_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -141,13 +208,13 @@ jobs:
           pnpm guardrails:boundaries
           pnpm guardrails:filing-parser-cross-engine-execution-fixtures
       - name: Run cross-engine parser execution acceptance
-        if: ${{ steps.cycle2n_source.outputs.exact == 'true' }}
+        if: ${{ steps.admission_validity_bridge.outputs.exact != 'true' && steps.cycle2n_source.outputs.exact == 'true' }}
         env:
           CI: "true"
           FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v4.json
         run: pnpm filing-parser-cross-engine-execution:acceptance
       - name: Independently review canonical evidence against the exact commit
-        if: ${{ steps.cycle2n_source.outputs.exact == 'true' }}
+        if: ${{ steps.admission_validity_bridge.outputs.exact != 'true' && steps.cycle2n_source.outputs.exact == 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-cross-engine-execution-v4.json
@@ -162,19 +229,21 @@ jobs:
             --revision "$GITHUB_SHA" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --run-id "$GITHUB_RUN_ID"
-      - name: Record exact legacy bridge or reject an unrecognized route
+      - name: Record exact bridge or reject an unrecognized route
         if: ${{ steps.cycle2n_source.outputs.exact != 'true' }}
         run: |
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v3.json"
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v4.json"
-          if [[ "${{ steps.legacy_bridge.outputs.exact }}" == "true" ]]; then
+          if [[ "${{ steps.admission_validity_bridge.outputs.exact }}" == "true" ]]; then
+            echo "Cycle 2n canonical v4 evidence remains anchored at 1d7dee56c66c1ad0f5d612603567adf2589e0930; no replacement artifact was generated."
+          elif [[ "${{ steps.legacy_bridge.outputs.exact }}" == "true" ]]; then
             echo "Cycle 2m canonical v3 evidence remains anchored at 5d61868e6075865b32640ddaceb845ac9dbc69f3; no replacement artifact was generated."
           else
             echo "Unrecognized evidence source route; refusing to mint or silently skip evidence." >&2
             exit 1
           fi
       - name: Upload filing parser cross-engine execution evidence
-        if: ${{ success() && steps.cycle2n_source.outputs.exact == 'true' }}
+        if: ${{ success() && steps.admission_validity_bridge.outputs.exact != 'true' && steps.cycle2n_source.outputs.exact == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-parser-cross-engine-execution-evidence-v4-${{ github.sha }}-${{ github.run_attempt }}
