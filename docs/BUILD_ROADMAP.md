@@ -1387,15 +1387,61 @@ binds 105 source hashes and the exact cumulative 39-path transition, and
 returned `offline_consistent` under independently anchored review. Versions 1
 through 4 and failed-run history remain immutable.
 
-The current baseline contains separate P1 source
-`96b042669edc6cb4a876bb0c061fa5e18732c1ca`, which caps Phase-A corpus
-admission `validUntil` at scheduled revocation. Its corrective closure and
-promotion remain Pending and are not Cycle 2o evidence. They supply no
-external inventory, rights/steward approval, authority identity, trusted clock,
-or human review, so Cycle 2b remains Blocked. Exact gates and
-nonclaims are in
+The separate P1 validity correction is now promoted only through Cycle 2p. It
+is not Cycle 2o evidence and does not change Cycle 2o's claim, version 5
+artifact, or historical anchors. Exact gates and nonclaims are in
 [ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
+
+## Cycle 2p — Phase-A admission-validity corrective-chain promotion
+
+Status: **Pass only for exact promoted revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc`, the exact corrective child of
+source `bc4b371784711102462ad28a9c9eb7cb567f1072` from frozen documentation
+baseline `e21408acf70a28909136cc3eb0c10bbbd48b8266`. Cycle 2b remains
+Blocked.**
+
+Cycle 2p closes only repository-controlled validity semantics and exact
+evidence routing for the Phase-A corpus-admission verifier. The immutable
+implementation blob `e456cae97cf9eb377e3b3e8aabc156fdb377e2c7`, introduced on
+the exact historical `7243f16` → `96b0426` → `711fe86` chain, caps each
+approval at any earlier supplied scheduled revocation and publishes the
+earliest effective end across the rights and steward roles as `validUntil`.
+Evaluation at or after that cutoff fails closed.
+
+Both independent evidence verifiers and the cross-engine workflow now classify
+Cycle 2p before Cycle 2o. They admit only the exact six-path source or one exact
+eight-path corrective child; the cumulative transition has nine paths. Any
+other intersection with those paths or the immutable corpus-admission source
+fails closed. The baseline-to-source, source-to-corrective, and cumulative NUL
+records contain 12, 16, and 18 fields with respective digests
+`sha256:50f2ea0f8c6050a7e126955f959eb1249a535861280c6002b5b4c84323d5d2dd`,
+`sha256:79ab5ad85d90a1f130a497a1c3d7c58ecb0ff4e39f82c492373b5c29b69c64c9`,
+and
+`sha256:7b7887c43ff5df6c969f45842d34a6e04783d9bfcedd276daaed3477544ff4e6`.
+
+The source revision's focused workflows passed, but its Windows CI job exposed
+lossy numeric `dev`/`ino` comparison for 64-bit NTFS identities. The promoted
+corrective uses bigint metadata throughout custody workspace and bounded-file
+identity checks and adds a deterministic above-`2^53` alias regression. Full
+local verification passed 1,306 tests with 4 intentional skips. CI run
+`33118610052` passed Ubuntu/Windows jobs `98679559915` / `98679560385`;
+parser isolation, custody, normalization, and cross-engine runs `33118609943`,
+`33118610058`, `33118609968`, and `33118610020` also passed.
+
+Cycle 2p creates no new evidence schema, evidence version, or canonical
+artifact. Cross-engine acceptance emitted no artifact by design. The parser,
+custody, and normalization artifacts are regression anchors only and have no
+claimed independent offline review. Cycle 2o version 5 remains historical only
+at `472cc10b8df90bee01925b2efd4fbcb614d7590c`.
+
+No exact external 100-filing inventory, independent rights/steward approval,
+authenticated authority identity, trusted clock, human review, real filing
+bytes, independent adjudication, or real quality exists. Cycle 2b, B15/V15,
+real-data admission, full Cycle 2 exit, and production remain Blocked. Exact
+gates and nonclaims are in
+[ADR 0043](./adr/0043-admission-validity-corrective-chain-promotion.md) and the
+[Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md).
 
 ## Cycle 2 — filing ingestion proof
 
@@ -1414,8 +1460,8 @@ Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
 bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
-bounded synthetic Cycle 2n, nor promoted bounded synthetic Cycle 2o satisfies
-this exit gate. Cycle 2i does not
+bounded synthetic Cycle 2n, promoted bounded synthetic Cycle 2o, nor promoted
+repository-controlled Cycle 2p satisfies this exit gate. Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot admit real filings. Real payload bytes and digest

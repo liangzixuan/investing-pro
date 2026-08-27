@@ -180,10 +180,15 @@ immutable history and are not replaced, widened, or relabeled.
 
 The current baseline also contains separate P1 corrective source
 `96b042669edc6cb4a876bb0c061fa5e18732c1ca`, which caps Phase-A corpus
-admission `validUntil` at a scheduled authority revocation. Corrective closure
-and promotion remain Pending. That chain is not Cycle 2o evidence, supplies no
-external inventory, rights/steward approval, authority identity, trusted clock,
-or human review, and does not change Cycle 2b's Blocked status.
+admission `validUntil` at a scheduled authority revocation. Its exact
+historical chain, immutable implementation blob, independent verifier routing,
+and Windows identity corrective are promoted separately by Cycle 2p only at
+revision `d642e534b8911b58a32d50f8dfb976ae2900cadc`. That chain is not Cycle 2o
+evidence and does not replace or reinterpret version 5. It supplies no external
+inventory, rights/steward approval, authority identity, trusted clock, or human
+review and does not change Cycle 2b's Blocked status. See
+[ADR 0043](./0043-admission-validity-corrective-chain-promotion.md) and the
+[Cycle 2p exit matrix](../CYCLE_2P_EXIT_MATRIX.md).
 
 ## Consequences
 

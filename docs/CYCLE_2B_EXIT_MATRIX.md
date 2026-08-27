@@ -21,6 +21,13 @@ workflow, run, evidence schema, artifact, or evidence note. The target claim
 `fixed_rights_and_steward_approved_content_addressed_100_filing_corpus_admission`
 has not been established.
 
+Cycle 2p promotes one narrower repository-controlled conclusion only at exact
+revision `d642e534b8911b58a32d50f8dfb976ae2900cadc`: an otherwise valid record's
+`validUntil` cannot exceed either approval expiry or either supplied scheduled
+authority revocation, and protected changes cannot inherit older evidence
+routing. This does not authenticate the registry, time, authorities, approvals,
+or candidate corpus and therefore does not change Cycle 2b's Blocked status.
+
 Every Pass entry below records the historical exact-source result. The
 successor owned-byte restoration is limited to the exact Cycle 2h commit above
 and does not establish the blocked Cycle 2b target.
@@ -34,6 +41,8 @@ and does not establish the blocked Cycle 2b target.
 | Steward approval         | A distinct Ed25519 `data_steward` approval binds the same exact inputs and `authorityKeysSha256`                                                                        | Blocked — no steward approval exists                                                                                             |
 | Key authority and time   | Human review authenticates the out-of-band authority/revocation registry; trusted out-of-band `evaluatedAt` supplies current time                                       | Blocked — no real authority configuration, clock review, or human review exists                                                  |
 | Verifier protocol        | Exact canonical parsing, closed schemas, atomic failure, signature/scope/expiry checks, replay, and mutation rejection exist in source                                  | Pass — locally verified                                                                                                          |
+| Validity-window bound    | `validUntil` is the earliest rights/steward approval expiry or supplied scheduled revocation; evaluation at the cutoff fails closed                                     | Pass only for the exact promoted Cycle 2p revision                                                                               |
+| Promotion-chain routing  | Exact historical implementation blob, source/corrective topology, transition path sets, and protected-surface fail-closed precedence are independently enforced         | Pass only for the exact promoted Cycle 2p revision                                                                               |
 | Local integration        | Format, lint, guardrails, all project typechecks/tests, and builds pass on frozen bytes                                                                                 | Pass — 34 files / 810 tests; all builds and 86 production-license checks                                                         |
 | Regression CI            | The same frozen source gate passes on the reviewed CI matrix                                                                                                            | Pass — commit `b9a9edf680b4c3a7373cd6d96210a24544ba0bbe`; run `32447542432`; Ubuntu job `96669820813`; Windows job `96669820914` |
 | Dedicated evidence       | A separately authorized success-only workflow and evidence domain bind the exact commit, inputs, source hashes, checks, and nonclaims                                   | Not created in Phase A                                                                                                           |
@@ -73,7 +82,10 @@ The exact ordered checks for a future exit are:
 Check 10 proves rejection only against the exact supplied revocation snapshot;
 it does not establish that the snapshot is current. `evaluatedAt` is a trusted
 out-of-band input, never approval- or candidate-supplied; Phase A does not prove
-the clock's authenticity.
+the clock's authenticity. Cycle 2p additionally proves that an admitted
+record's `validUntil` is capped by the earliest applicable scheduled revocation
+in that same supplied snapshot. It does not prove the schedule's freshness or
+authority.
 
 Check 5 proves only signed timestamp/hash consistency. The absence of prior
 parser or adjudication results is externally attested chronology. Even
@@ -156,3 +168,22 @@ gates pass only for exact source commit
 regression and historical-boundary anchors rather than a new evidence domain;
 the [Cycle 2h exit matrix](./CYCLE_2H_EXIT_MATRIX.md) records their exact remote
 anchors.
+
+Cycle 2p promotes the repository-controlled validity correction only for exact
+revision `d642e534b8911b58a32d50f8dfb976ae2900cadc`, the exact corrective child
+of source `bc4b371784711102462ad28a9c9eb7cb567f1072`. The immutable Phase-A
+implementation caps `validUntil` at the earliest approval expiry or supplied
+scheduled rights/steward revocation. Independent parser and custody verifiers
+anchor the historical implementation blob and chain. Those verifiers and the
+cross-engine workflow independently enforce the exact promotion transition,
+route any protected-surface touch before Cycle 2o, and fail closed outside the
+one allowed source/corrective topology. The corrective child also replaces
+lossy numeric Windows custody identity checks with exact bigint metadata.
+
+Cycle 2p creates no external inventory, approval, authority identity, trusted
+clock, human review, Cycle 2b workflow, canonical evidence version, or
+independent offline review. Its standard workflow artifacts are regression
+anchors only, and Cycle 2o version 5 remains unchanged. It therefore does not
+establish the Cycle 2b target claim or alter this matrix's Blocked status. See
+the [Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md) and
+[ADR 0043](./adr/0043-admission-validity-corrective-chain-promotion.md).

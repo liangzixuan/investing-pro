@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2o threat model
+# Sprint 0 through promoted Cycle 2p threat model
 
 ## Current trust boundaries
 
@@ -1373,6 +1373,55 @@ in
 [ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
 
+Cycle 2p is Pass only for exact promoted revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc`, the exact corrective child of
+source `bc4b371784711102462ad28a9c9eb7cb567f1072` from frozen documentation
+baseline `e21408acf70a28909136cc3eb0c10bbbd48b8266`. It closes two bounded
+repository-controlled failure modes without adding an external trust boundary.
+
+First, a Phase-A admission could previously remain marked valid until approval
+expiry even when its supplied authority registry scheduled an earlier rights or
+steward revocation. The immutable corrected implementation computes each
+role's effective end and publishes the earliest end across both roles. The
+half-open cutoff is tested in both role orderings and against an earlier
+approval expiry. This prevents a stale advertised validity window, but the
+registry, authority identities, revocation freshness, `evaluatedAt`, and clock
+remain unauthenticated caller/out-of-band inputs.
+
+Second, the source revision's Windows CI run exposed a false-quarantine path in
+custody cleanup. Numeric `fs.Stats.dev` and `ino` cannot preserve every 64-bit
+NTFS identity above `2^53`; distinct concurrent workspaces could therefore
+appear identical. The corrective revision obtains bigint metadata throughout
+workspace discovery and revalidation plus bounded regular-file link-count and
+size checks. A deterministic alias regression proves that numeric equality does
+not substitute for exact bigint identity. This prevents the observed collision
+without claiming host, kernel, filesystem, disk, cleanup durability, or
+physical erasure attestation.
+
+Both independent evidence verifiers and the cross-engine workflow route Cycle
+2p before Cycle 2o. All three accept only the exact six-path source or its one
+exact eight-path corrective child, require the exact nine-path cumulative
+transition, and fail closed on any other intersection with the ten protected
+paths. Separately, the two verifiers replay the exact `7243f16` → `96b0426` →
+`711fe86` historical chain and compare the current corpus-admission blob with
+historical blob `e456cae97cf9eb377e3b3e8aabc156fdb377e2c7`.
+
+Full local verification passed 1,306 tests with 4 intentional skips. CI run
+`33118610052` passed Ubuntu/Windows jobs `98679559915` / `98679560385`; parser
+isolation, custody, normalization, and cross-engine runs `33118609943`,
+`33118610058`, `33118609968`, and `33118610020` reached terminal green. Cycle
+2p creates no canonical evidence version; cross-engine acceptance emitted no
+artifact, standard workflow artifacts are regression anchors only, and Cycle
+2o version 5 remains immutable history at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`.
+
+Exact external inventory, rights/steward approval, trusted time, authenticated
+human authority, real filing data, independent adjudication, real quality,
+B15/V15, real-data admission, full Cycle 2 exit, and production remain
+nonclaims or Blocked. Exact gates are in
+[ADR 0043](./adr/0043-admission-validity-corrective-chain-promotion.md) and the
+[Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1388,8 +1437,8 @@ and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
    handoff, and Cycle 2j's promoted bounded synthetic execution are
    engineering preparation only and do not satisfy any real-corpus prerequisite.
    Superseded Cycle 2k, promoted Cycle 2l and Cycle 2m lifecycle agreements,
-   promoted Cycle 2n quality composition and promoted Cycle 2o archive-custody
-   composition remain
+   promoted Cycle 2n quality composition, promoted Cycle 2o archive-custody
+   composition, and promoted Cycle 2p admission-validity correction remain
    engineering preparation only and do not satisfy any external authority or
    real-corpus prerequisite.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

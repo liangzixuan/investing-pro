@@ -628,6 +628,42 @@ See
 [ADR 0042](./docs/adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./docs/CYCLE_2O_EXIT_MATRIX.md).
 
+Cycle 2p is **Pass only for exact promoted revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc`**, the exact corrective child of
+source `bc4b371784711102462ad28a9c9eb7cb567f1072` from frozen documentation
+baseline `e21408acf70a28909136cc3eb0c10bbbd48b8266`. It promotes only the
+repository-controlled Phase-A admission-validity correction and its exact
+evidence routing. For an otherwise valid record, `validUntil` is the earliest
+of both approval expiries and any scheduled rights-authority or data-steward
+revocation. Evaluation at or after that cutoff fails closed.
+
+The immutable corpus-admission implementation remains historical blob
+`e456cae97cf9eb377e3b3e8aabc156fdb377e2c7` from the exact
+`7243f16` → `96b0426` → `711fe86` chain. Both independent evidence verifiers
+and the cross-engine workflow accept only the exact six-path Cycle 2p source or
+its one exact eight-path corrective child; the cumulative transition has nine
+paths, and any other touch to the ten-path protected surface fails before Cycle
+2o routing.
+
+The corrective child also closes the source revision's Windows CI blocker.
+Custody workspace identity, link-count, and file-size checks now use exact
+bigint metadata, preventing distinct 64-bit NTFS identities from aliasing after
+lossy number conversion. Full local verification passed 1,306 tests with 4
+intentional skips. CI run `33118610052` passed Ubuntu/Windows jobs
+`98679559915` / `98679560385`; parser isolation, payload custody,
+normalization execution, and cross-engine acceptance runs `33118609943`,
+`33118610058`, `33118609968`, and `33118610020` also reached terminal green.
+
+Cycle 2p creates no new canonical evidence version. Cross-engine acceptance
+emitted no artifact by design, the three standard workflow artifacts are
+regression anchors only, and Cycle 2o version 5 remains immutable history at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. Exact external inventory,
+rights/steward approval, trusted time and human authority, real filing data,
+independent adjudication, real quality, B15/V15, real-data admission, full
+Cycle 2 exit, and production remain Blocked. See
+[ADR 0043](./docs/adr/0043-admission-validity-corrective-chain-promotion.md)
+and the [Cycle 2p exit matrix](./docs/CYCLE_2P_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row

@@ -39,7 +39,9 @@ commit `5d61868e6075865b32640ddaceb845ac9dbc69f3` from exact baseline
 parser-quality composition Pass only for exact source commit
 `1d7dee56c66c1ad0f5d612603567adf2589e0930`; and promoted Cycle 2o exact
 parser-archive custody-to-quality composition Pass only for exact revision
-`472cc10b8df90bee01925b2efd4fbcb614d7590c`;
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`; and promoted Cycle 2p
+repository-controlled admission-validity boundary Pass only for exact revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc`;
 synthetic data only.
 
 ## Identity
@@ -1123,6 +1125,44 @@ quality, B15/V15, real-data admission, full Cycle 2 exit, and production remain
 Blocked. See
 [ADR 0042](./adr/0042-bounded-synthetic-parser-archive-custody-quality-composition.md)
 and the [Cycle 2o exit matrix](./CYCLE_2O_EXIT_MATRIX.md).
+
+## Promoted Cycle 2p admission-validity boundary
+
+Cycle 2p adds no canonical filing, corpus, approval, authority, clock,
+adjudication, evidence-version, tenant, or production object. It promotes one
+repository-controlled field invariant on the existing Phase-A admission record:
+`validUntil` is the earliest applicable cutoff among the rights approval
+expiry, steward approval expiry, supplied scheduled rights-authority
+revocation, and supplied scheduled data-steward revocation. A null revocation
+does not add a cutoff. Evaluation at a cutoff is inactive; the validity interval
+is half-open.
+
+This invariant is frozen by corpus-admission blob
+`e456cae97cf9eb377e3b3e8aabc156fdb377e2c7`, originally introduced on the exact
+historical `7243f16` → `96b0426` → `711fe86` chain. The exact promoted revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc` is the corrective child of
+`bc4b371784711102462ad28a9c9eb7cb567f1072` from documentation baseline
+`e21408acf70a28909136cc3eb0c10bbbd48b8266`. Independent parser and custody
+verifiers and the cross-engine workflow accept only that source or its one
+exact corrective child and reject any other touch to the ten protected paths
+before Cycle 2o evidence routing.
+
+The corrective child's bigint filesystem identity is implementation integrity,
+not canonical model identity. It preserves exact 64-bit workspace and file
+metadata during custody cleanup and readback; it does not create a filing,
+custody, host, filesystem, or storage attestation object.
+
+Cycle 2p creates no canonical evidence version. Cross-engine acceptance emits
+no artifact for this route, the parser/custody/normalization artifacts are
+regression anchors only, and Cycle 2o version 5 remains immutable history at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`. The supplied authority registry and
+`evaluatedAt` remain unauthenticated until external human/host review. Exact
+external inventory, independent rights/steward approval, trusted time,
+authenticated authority identity, real filing bytes, independent adjudication,
+real quality, B15/V15, real-data admission, full Cycle 2 exit, and production
+remain Blocked. See
+[ADR 0043](./adr/0043-admission-validity-corrective-chain-promotion.md) and the
+[Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

@@ -76,6 +76,13 @@ to the reviewed out-of-band anchor. Clock authenticity, authority/counsel/
 steward identity, legal validity, and revocation freshness remain external
 requirements.
 
+For an otherwise valid approval, its effective end is the earlier of its
+approval expiry and any scheduled revocation in the supplied registry. The
+aggregate admission `validUntil` is the earlier effective end across the
+rights-authority and data-steward roles. Evaluation at or after that half-open
+cutoff fails closed. This repository-controlled rule does not authenticate the
+registry, prove revocation freshness, or establish clock authority.
+
 Success returns one closed aggregate record containing schema, claim, corpus,
 version, `evaluatedAt`, and `status: "admitted"` identifiers plus exact input
 hashes, the admitted count, and `validUntil`. Failure is atomic and value-free.
@@ -113,6 +120,11 @@ and artifact `9434590292` are regression health only; they do not create Cycle
 4. human review of the authority keys and the supplied revocation snapshot;
 5. a separately authorized success-only workflow, retained canonical artifact,
    authenticated logs, and independent offline review.
+
+The validity calculation and exact source-routing closure were promoted
+separately by Cycle 2p only for exact revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc`. That result is not Cycle 2b
+admission evidence and satisfies none of the five external requirements above.
 
 There is no Cycle 2b workflow, run, evidence schema, artifact, or evidence note
 in Phase A. Any future evidence must use a separate filing-corpus admission
@@ -219,6 +231,16 @@ regression and historical-boundary anchors, not a new Cycle 2h evidence domain.
 This supplies no external metadata, rights/steward approval, chronology, key
 authority, workflow, artifact, or evidence and leaves Cycle 2b Blocked.
 
+Cycle 2p preserves the immutable Phase-A corpus-admission implementation blob
+and promotes its scheduled-revocation validity bound only for one exact
+source/corrective chain. It also enforces protected-surface routing before
+Cycle 2o and corrects lossy numeric Windows custody identity comparisons with
+bigint metadata. It creates no real candidate manifest, approval, authority
+identity, trusted time, human review, Cycle 2b evidence version, or production
+authorization and leaves Cycle 2b Blocked. Exact boundaries are recorded in
+the [Cycle 2p exit matrix](../CYCLE_2P_EXIT_MATRIX.md) and
+[ADR 0043](./0043-admission-validity-corrective-chain-promotion.md).
+
 ## References
 
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
@@ -227,7 +249,9 @@ authority, workflow, artifact, or evidence and leaves Cycle 2b Blocked.
 - [Cycle 2f exit matrix](../CYCLE_2F_EXIT_MATRIX.md)
 - [Cycle 2g exit matrix](../CYCLE_2G_EXIT_MATRIX.md)
 - [Cycle 2h exit matrix](../CYCLE_2H_EXIT_MATRIX.md)
+- [Cycle 2p exit matrix](../CYCLE_2P_EXIT_MATRIX.md)
 - [ADR 0035](./0035-cross-boundary-intrinsic-byte-snapshot-hardening.md)
+- [ADR 0043](./0043-admission-validity-corrective-chain-promotion.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)
 - [Canonical model](../CANONICAL_MODEL.md)

@@ -102,10 +102,14 @@ digest or widen the claim.
 ## Corrective baseline chain
 
 Separate P1 source `96b042669edc6cb4a876bb0c061fa5e18732c1ca` caps Phase-A
-corpus-admission `validUntil` at scheduled revocation. Its corrective closure
-and promotion remain Pending. It is not Cycle 2o evidence and cannot supply the
+corpus-admission `validUntil` at scheduled revocation. Its exact historical
+chain, immutable implementation blob, independent verifier routing, and Windows
+identity corrective are promoted separately by Cycle 2p only at revision
+`d642e534b8911b58a32d50f8dfb976ae2900cadc`. That result is not Cycle 2o
+evidence and does not replace or reinterpret version 5. It cannot supply the
 external inventory, rights/steward approvals, authority identity, trusted
-clock, or human review required by Cycle 2b.
+clock, or human review required by Cycle 2b. See the
+[Cycle 2p exit matrix](./CYCLE_2P_EXIT_MATRIX.md).
 
 ## Exit rule
 
