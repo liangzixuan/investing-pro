@@ -12,3 +12,20 @@ export {
   type PersonalFilingCorpusInput,
   type PersonalFilingCorpusRecord,
 } from "./personal-filing-corpus";
+
+export {
+  PERSONAL_FILING_PAYLOAD_IDENTITY_CHECKS,
+  PERSONAL_FILING_PAYLOAD_IDENTITY_CLAIM,
+  PERSONAL_FILING_PAYLOAD_IDENTITY_FAILURE_CODES,
+  PERSONAL_FILING_PAYLOAD_IDENTITY_LIMITS,
+  PERSONAL_FILING_PAYLOAD_IDENTITY_NOT_PROVEN,
+  PERSONAL_FILING_PAYLOAD_IDENTITY_SCHEMA_VERSION,
+  PERSONAL_FILING_PAYLOAD_PATH_MAPPING,
+  PersonalFilingPayloadIdentityError,
+  personalFilingPayloadRelativePath,
+  verifyPersonalFilingCorpusPayloadIdentity,
+  type PersonalFilingPayloadIdentityFailureCode,
+  type PersonalFilingPayloadIdentityInput,
+  type PersonalFilingPayloadIdentityRecord,
+  type PersonalFilingPayloadLinkAssurance,
+} from "./personal-filing-payload-identity";
