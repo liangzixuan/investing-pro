@@ -701,12 +701,57 @@ parser-isolation, PostgreSQL, payload-custody, and Dependabot runs
 Enterprise rights/steward approval, multi-user identity and tenancy, B15/V15,
 and production operations are Out of scope for this personal profile only.
 They are not being claimed as satisfied, and Cycle 2b/2p remains unchanged.
-The next blocker is a bounded streaming local-payload verifier. It must first
-define and validate one deterministic accession-to-relative-path mapping (or a
-separately manifest-bound local path map), then prove actual file presence,
-size, and SHA-256 equality without exposing file contents. See
+At the Cycle 2q exit, the next blocker was a bounded streaming local-payload
+verifier. Cycle 2r closes that source-capability boundary without changing the
+manifest-only Cycle 2q claim. See
 [ADR 0044](./docs/adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
 and the [Cycle 2q exit matrix](./docs/CYCLE_2Q_EXIT_MATRIX.md).
+
+Cycle 2r is **Pass only for exact source revision
+`e15ddd8aa923a43fdca730e233abfbe684101e78`**, the direct child of promoted
+Cycle 2q documentation baseline
+`436f7fed6af9efaec21a26e5709b90073610384e`. It extends the isolated personal
+package with `verifyPersonalFilingCorpusPayloadIdentity`. On a successful
+invocation, the verifier re-verifies owned declaration and manifest snapshots,
+maps every accession to the fixed direct child `<accession>.payload`, observes
+the exact bounded root inventory before and after reading, and streams every
+expected regular, single-link, same-device file through one descriptor in
+positional chunks of at most 65,536 bytes plus an EOF probe. The bytes read
+during that invocation must have the declared length and SHA-256 while the
+root, path, and descriptor identities match at the verifier's pre/open/post
+observations.
+
+Success returns only an immutable aggregate record with status
+`payload_identity_verified_for_personal_use`; the exact claim is
+`bounded_streamed_local_payload_presence_length_and_sha256_verified_for_personal_single_user_local_use`.
+No root path, accession, per-file digest, or payload bytes cross the result
+boundary. On supported non-Windows runtimes with `O_NOFOLLOW`, `linkAssurance`
+is `kernel_final_component_nofollow_plus_observed_snapshots`; on Windows it is
+`observed_snapshots_only`. The Windows claim rejects Node-visible links and
+observed multi-link files but does not promise universal reparse-point
+rejection, namespace race freedom, or protection against every active
+same-machine attacker.
+
+The exact ten-path transition has 20 NUL fields, 693 bytes, and digest
+`sha256:46e497134b8cae95acc6211503a636b559064fdcf0dc95924d793f2d5dbaf4fb`;
+both offline boundaries accept it. Full local verification passed 1,364 tests
+with 4 intentional skips, and the focused personal-package suite passed 45
+tests with one capability-based Windows skip. CI `33207340001` passed Ubuntu
+and Windows jobs `98971624813` / `98971625033`; cross-engine, parser-isolation,
+normalization, and payload-custody runs `33207340045`, `33207340114`,
+`33207340070`, and `33207340021` also reached terminal success. No Cycle 2r
+artifact is emitted, and Cycle 2o version 5 remains anchored at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`.
+
+This promotion proves the verifier with generated temporary fixtures; it adds
+no owner corpus, payload-root configuration, filing payloads, or successful
+owner-corpus operation record. Enterprise approvals, shared-user controls,
+B15/V15, and production operations remain Out of scope for this personal
+profile only. The next blocker is bounded local custody, audit metadata,
+retention, and explicit owner-managed deletion with an aggregate receipt—not
+enterprise stewardship. See
+[ADR 0045](./docs/adr/0045-personal-local-filing-payload-identity-verification.md)
+and the [Cycle 2r exit matrix](./docs/CYCLE_2R_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1279,4 +1324,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0043](./docs/adr/0043-admission-validity-corrective-chain-promotion.md),
 [Cycle 2q exit matrix](./docs/CYCLE_2Q_EXIT_MATRIX.md),
 [ADR 0044](./docs/adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md),
+[Cycle 2r exit matrix](./docs/CYCLE_2R_EXIT_MATRIX.md),
+[ADR 0045](./docs/adr/0045-personal-local-filing-payload-identity-verification.md),
 and [architecture decisions](./docs/adr/).

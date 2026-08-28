@@ -109,13 +109,31 @@ removes inapplicable internal enterprise approval machinery.
 
 ## Next blocker
 
-Build a bounded streaming local-payload verifier. First define and validate one
-deterministic accession-to-relative-path mapping (or a separately manifest-bound
-local path map). Then accept an exact manifest record plus a caller-selected
-local root, reject links and path escape, read each expected payload once,
-enforce declared and aggregate byte limits while streaming, recompute SHA-256,
-and return an aggregate-only result. Until that exists, real payload presence
-and digest equality remain unverified.
+At the Cycle 2q exit, the next blocker was a bounded streaming local-payload
+verifier: define and validate one deterministic accession-to-relative-path
+mapping (or a separately manifest-bound local path map), accept an exact
+manifest record plus a caller-selected local root, reject links and path escape,
+stream each expected payload within declared and aggregate byte limits,
+recompute SHA-256, and return an aggregate-only result. Until Cycle 2r supplied
+that later capability, real payload presence and digest equality remained
+unverified.
+
+## Payload-identity follow-on
+
+Cycle 2r later adds that bounded verifier capability at exact source revision
+`e15ddd8aa923a43fdca730e233abfbe684101e78`. It reuses and re-verifies the
+Cycle 2q declaration and manifest inputs, fixes the direct-root
+`<accession>.payload` mapping, and can establish presence, declared length, and
+SHA-256 equality for the bytes observed during one successful invocation.
+
+This follow-on does not revise Cycle 2q's source, status, claim, or historical
+conclusion. `verified_for_personal_use` remains a manifest-only Cycle 2q
+record. Cycle 2r has its own
+`payload_identity_verified_for_personal_use` status and does not prove any
+specific owner corpus without a successful invocation over that corpus. The
+next source milestone is bounded local custody, audit metadata, retention, and
+owner-managed deletion. See [ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
+and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
 
 ## Exit rule
 

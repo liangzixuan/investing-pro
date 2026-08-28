@@ -43,9 +43,12 @@ parser-archive custody-to-quality composition Pass only for exact revision
 repository-controlled admission-validity boundary Pass only for exact revision
 `d642e534b8911b58a32d50f8dfb976ae2900cadc`;
 and Cycle 2q personal single-user local manifest verification Pass only for
-exact source revision `398bb280593b6de125c5561ac9dd1b1c0fe254bd`.
-The running application remains synthetic-only; Cycle 2q adds disconnected
-manifest metadata, not admitted raw filing data.
+exact source revision `398bb280593b6de125c5561ac9dd1b1c0fe254bd`;
+and Cycle 2r personal local payload-identity verification capability Pass only
+for exact source revision `e15ddd8aa923a43fdca730e233abfbe684101e78`.
+The running application remains synthetic-only; Cycle 2q/2r add disconnected
+manifest and local-file verification boundaries, not admitted raw filing data
+or an owner-corpus verification record.
 
 ## Identity
 
@@ -1215,6 +1218,71 @@ and leaves Cycle 2o version 5 anchored at
 `472cc10b8df90bee01925b2efd4fbcb614d7590c`. See
 [ADR 0044](./adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
 and the [Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).
+
+## Cycle 2r personal local payload-identity boundary
+
+Cycle 2r adds one operation over the existing personal manifest model:
+`verifyPersonalFilingCorpusPayloadIdentity({ declaration, manifest,
+payloadRootPath })`. The operation re-verifies owned declaration and manifest
+snapshots before filesystem access and derives every payload path from the
+closed `direct_root_accession_payload_v1` mapping. The mapping has exactly one
+form: the direct child `<accession>.payload` beneath the caller-selected local
+root. No manifest-supplied path becomes canonical model data.
+
+The root inventory must contain exactly the 1–100 expected names both before
+and after reading. Each expected object must be observed as a regular,
+single-link, same-device file with the declared length. One descriptor per
+file performs positional reads through one reusable buffer of at most 65,536
+bytes, followed by an extra-byte probe. Incremental SHA-256 must equal the
+manifest digest. Bigint root, path, and descriptor identities must match at
+the verifier's pre/open/post observations.
+
+Success returns an immutable aggregate-only
+`PersonalFilingPayloadIdentityRecord`. Its exact claim is
+`bounded_streamed_local_payload_presence_length_and_sha256_verified_for_personal_single_user_local_use`
+and its status is `payload_identity_verified_for_personal_use`. The record
+contains corpus and schema identity, declaration/manifest digests, frozen time,
+filing count, retention days, verified-byte total, fixed path mapping, and
+`linkAssurance`. It contains no root path, accession, per-file digest, or
+payload bytes. Any whole-set failure returns no record and exposes only a
+closed public error code and generic message.
+
+`linkAssurance` is part of the bounded model. Supported non-Windows runtimes
+where Node exposes `O_NOFOLLOW` report
+`kernel_final_component_nofollow_plus_observed_snapshots`. Windows reports
+`observed_snapshots_only`: Node-visible symlinks/junctions and observed
+multi-link files are rejected and bigint identities are compared, but this is
+not a claim of kernel final-component no-follow, universal Windows
+reparse/cloud-placeholder/filter-driver rejection, adversarial namespace ABA
+elimination, race freedom, or absence of transient out-of-root reads against
+an active same-machine attacker.
+
+The record proves only the bytes and identities observed during one successful
+invocation. It does not prove future or post-return immutability, hard-link
+history, complete filesystem/ACL/storage attestation, SEC authenticity or
+complete provenance, MIME/archive/malware safety, parser correctness, fact
+quality, retention enforcement, backup deletion, or cryptographic erasure.
+The source promotion uses generated temporary fixtures and adds no owner
+corpus, payload-root configuration, filing payload, or successful
+owner-corpus invocation. Consequently no particular personal corpus is yet
+represented as verified canonical state.
+
+The exact source is `e15ddd8aa923a43fdca730e233abfbe684101e78`, the
+direct child of promoted Cycle 2q documentation baseline
+`436f7fed6af9efaec21a26e5709b90073610384e`. Its exact ten-path transition has
+20 NUL fields, 693 bytes, and digest
+`sha256:46e497134b8cae95acc6211503a636b559064fdcf0dc95924d793f2d5dbaf4fb`.
+The 16-path protected surface routes before Cycle 2q/2p/2o; no Cycle 2r
+artifact or evidence version is created, and historical Cycle 2o version 5
+remains anchored at `472cc10b8df90bee01925b2efd4fbcb614d7590c`.
+
+For `personal_single_user_local` only, organizational approval, tenant and
+multi-user controls, B15/V15, and production operations remain Out of scope.
+The next canonical boundary is local custody and audit metadata bound to a
+successful payload-identity result, plus explicit owner-managed
+retention/deletion and an aggregate receipt. See
+[ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
+and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

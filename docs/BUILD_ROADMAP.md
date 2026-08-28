@@ -1481,22 +1481,77 @@ are Out of scope rather than active blockers. Historical Cycle 2b and Cycle 2p
 remain unchanged and become applicable if use expands beyond the declared
 profile.
 
-Cycle 2q does not read a filing payload. Raw payload presence, byte length, and
-equality with each declared SHA-256 remain the highest-priority blocker. The
-next milestone is a bounded streaming local-payload verifier. It must define
-and validate one deterministic accession-to-relative-path mapping (or a
-separately manifest-bound local path map), then enforce exact-root containment,
-link rejection, single-pass hashing, per-file and aggregate sizes, atomic
-failure, and aggregate-only output. See
+Cycle 2q does not read a filing payload. At its exit, raw payload presence,
+byte length, and equality with each declared SHA-256 were the highest-priority
+blocker. Cycle 2r closes that later source-capability boundary without changing
+the manifest-only Cycle 2q claim. See
 [ADR 0044](./adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
 and the [Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).
+
+## Cycle 2r — personal local filing-payload identity verification
+
+Status: **Pass only for exact source revision
+`e15ddd8aa923a43fdca730e233abfbe684101e78`, the direct child of promoted
+Cycle 2q documentation baseline
+`436f7fed6af9efaec21a26e5709b90073610384e`.**
+
+Cycle 2r extends `@research-cockpit/personal-filing-corpus` with the bounded
+`verifyPersonalFilingCorpusPayloadIdentity` capability. It first re-verifies
+owned declaration and manifest snapshots. It then maps every accession to the
+fixed direct-root `<accession>.payload` child, requires the exact bounded root
+inventory before and after reading, and streams each expected regular,
+single-link, same-device file through one descriptor in positional chunks of
+at most 65,536 bytes plus an EOF probe. Declared length and SHA-256 must match,
+and bigint root, path, and descriptor identities must agree at the verifier's
+pre/open/post observations.
+
+Success is aggregate-only and immutable. Its status is
+`payload_identity_verified_for_personal_use`, and its exact claim is
+`bounded_streamed_local_payload_presence_length_and_sha256_verified_for_personal_single_user_local_use`.
+The result exposes no root path, accession, per-file digest, or payload bytes.
+All failures are atomic and value-free.
+
+The platform claim is explicit. Supported non-Windows runtimes with
+`O_NOFOLLOW` report
+`kernel_final_component_nofollow_plus_observed_snapshots`; Windows reports
+`observed_snapshots_only`. The latter rejects Node-visible symlinks/junctions
+and observed multi-link files and compares bigint identities, but it does not
+claim universal Windows reparse/cloud-placeholder/filter-driver rejection,
+adversarial namespace ABA elimination, race freedom, or absence of transient
+out-of-root reads against an active same-machine attacker.
+
+The exact ten-path transition has 20 NUL fields, 693 bytes, digest
+`sha256:46e497134b8cae95acc6211503a636b559064fdcf0dc95924d793f2d5dbaf4fb`,
+and a 16-path protected surface. Both independent offline boundaries accept
+the committed source. The route emits no Cycle 2r artifact and preserves Cycle
+2q, Cycle 2p, and Cycle 2o history, including Cycle 2o version 5 at
+`472cc10b8df90bee01925b2efd4fbcb614d7590c`.
+
+Full local verification passed 1,364 tests with 4 intentional skips. The
+focused personal-package suite passed 45 tests with one capability-based
+Windows skip. Exact-source CI run `33207340001` passed Ubuntu/Windows jobs
+`98971624813` / `98971625033`; cross-engine, parser-isolation, normalization,
+and payload-custody runs/jobs were `33207340045` / `98971625271`,
+`33207340114` / `98971625367`, `33207340070` / `98971625207`, and
+`33207340021` / `98971625062`.
+
+This promotion proves verifier behavior with generated temporary fixtures. It
+adds no owner-selected corpus, manifest, filing payload, payload-root
+configuration, or successful owner-corpus operation record. Therefore no
+specific personal corpus is yet verified by this source promotion. The next
+highest-priority blocker is bounded local custody, audit metadata, retention,
+and owner-triggered deletion with an aggregate receipt. Enterprise approvals,
+multi-user controls, B15/V15, and production operations remain Out of scope
+for `personal_single_user_local` unless the profile widens. See
+[ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
+and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
 
 ## Cycle 2 — personal local filing ingestion proof
 
 Target: continue incrementally behind the declared personal profile.
 
-1. Define one deterministic accession-to-relative-path mapping (or manifest-bound local path map), then stream each selected local payload once, reject path escape and links, enforce byte limits, and prove SHA-256 equality with the verified manifest.
-2. Preserve local raw payload and audit metadata in separate bounded locations and provide explicit user-managed deletion.
+1. Cycle 2r defines the fixed direct-root `<accession>.payload` mapping and a bounded streaming verifier capability. A specific corpus becomes verified only after a successful invocation over that corpus.
+2. Preserve local raw payload and audit metadata in separate bounded locations, bind custody metadata to the manifest and successful payload-identity result, and provide explicit user-managed retention/deletion with an aggregate receipt.
 3. Normalize ten launch facts with source accession, accepted/available time, parser version, taxonomy, unit, dimensions, and supersession lineage.
 4. Compare two independent parsers/validators, quarantine conflicts, and forbid silent repair.
 5. Measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
@@ -1512,15 +1567,16 @@ at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stag
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
 bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
 bounded synthetic Cycle 2n, promoted bounded synthetic Cycle 2o, promoted
-repository-controlled Cycle 2p, nor personal manifest-only Cycle 2q satisfies
-this exit gate. Cycle 2i does not
+repository-controlled Cycle 2p, personal manifest-only Cycle 2q, nor Cycle 2r's
+disconnected payload-identity verifier capability satisfies this exit gate.
+Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot verify personal filing payloads.
-Actual payload presence and digest equality, local source provenance, real
-ten-fact coverage, owner-reviewed quality measurement, supported XBRL/iXBRL
-and taxonomy handling, correction lineage, and user-managed deletion remain
-pending for the personal path.
+A successful payload-identity invocation over an owner-selected corpus, local
+custody/audit/deletion, local source provenance, real ten-fact coverage,
+owner-reviewed quality measurement, supported XBRL/iXBRL and taxonomy
+handling, and correction lineage remain pending for the personal path.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

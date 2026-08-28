@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2q threat model
+# Sprint 0 through promoted Cycle 2r threat model
 
 ## Current trust boundaries
 
@@ -14,10 +14,11 @@ boundary in the running profile.
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q is disconnected from the running API and web application and accepts
-only declaration and manifest metadata. Enterprise approval, tenancy, B15/V15,
-and production controls are not trust boundaries for this profile unless its
-scope widens.
+Cycle 2q/2r are disconnected from the running API and web application. Cycle
+2q accepts declaration and manifest metadata; the Cycle 2r verifier can also
+read a caller-selected local payload root during an explicit invocation.
+Enterprise approval, tenancy, B15/V15, and production controls are not trust
+boundaries for this profile unless its scope widens.
 
 Cycle 1a added an isolated synthetic authorization harness and PostgreSQL
 migration contract. At that historical exit neither component was imported by
@@ -1454,14 +1455,12 @@ immutable success, and a fresh generic public error on every failure. The
 package has no production dependencies or composition into a fetcher, parser,
 database, API, web app, or queue.
 
-The largest remaining threat is payload substitution or absence. Cycle 2q
-validates declared digest syntax and uniqueness but never opens the referenced
-file; an attacker or accidental local edit could leave valid metadata alongside
-missing or different bytes. The next boundary must define and validate one
-deterministic accession-to-relative-path mapping (or a separately manifest-bound
-local path map), then stream expected files from one caller-selected local root,
-reject links and path escape, enforce byte limits while reading, recompute
-SHA-256, and publish no payload content.
+At the Cycle 2q exit, the largest remaining threat was payload substitution or
+absence. Cycle 2q validates declared digest syntax and uniqueness but never
+opens the referenced file; an attacker or accidental local edit could leave
+valid metadata alongside missing or different bytes. Cycle 2r closes a bounded
+source-capability form of that threat without changing Cycle 2q's historical
+manifest-only claim.
 
 Rights-authority/data-steward/key-authority approval, end-user identity,
 tenancy, multi-user privacy operations, B15/V15, production KMS/queues/load/
@@ -1479,13 +1478,69 @@ artifact, and preserves historical Cycle 2p blob
 [ADR 0044](./adr/0044-personal-single-user-local-filing-corpus-manifest-verification.md)
 and the [Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).
 
+Cycle 2r is Pass only for exact source revision
+`e15ddd8aa923a43fdca730e233abfbe684101e78`, the direct child of promoted
+Cycle 2q documentation baseline
+`436f7fed6af9efaec21a26e5709b90073610384e`. It adds the disconnected
+`verifyPersonalFilingCorpusPayloadIdentity` operation to the isolated personal
+package. No API, web, database, queue, fetcher, parser, or owner corpus invokes
+it in this promotion.
+
+The new assets at risk are local-root/path identity, the manifest-to-payload
+binding, bounded streaming behavior, aggregate-result confidentiality, and
+honest platform assurance. Primary threats are hostile declaration/manifest
+carriers, manifest substitution, accession path escape, root aliasing, links
+or junctions, unexpected directory entries, file substitution between path
+checks and descriptor use, truncation or extension while reading, oversized
+reads, digest mismatch, mutation during verification, partial-result leakage,
+and overclaiming Windows link/race guarantees.
+
+Controls are owned document snapshots followed by full Cycle 2q
+reverification; the fixed direct-root `<accession>.payload` mapping; canonical
+direct-child containment; exact 1–100-name inventories before and after reads;
+Node-visible root-chain link/junction rejection; regular, single-link,
+same-device bigint identity checks; one descriptor per file; one reusable
+65,536-byte buffer with positional reads; declared-length early-EOF and
+extra-byte probes; incremental SHA-256; pre/open/post root, path, and descriptor
+observations; atomic value-free failure; and an aggregate-only immutable
+result.
+
+The residual filesystem race is explicit. On supported non-Windows runtimes
+where Node exposes `O_NOFOLLOW`, success reports
+`kernel_final_component_nofollow_plus_observed_snapshots`. On Windows it
+reports `observed_snapshots_only`. Windows success rejects Node-visible
+symlinks/junctions and observed multi-link files, but does not claim kernel
+final-component no-follow, rejection of every reparse/cloud-placeholder/
+filter-driver behavior, adversarial namespace ABA elimination, race freedom,
+or absence of transient out-of-root reads against an active same-machine
+attacker. It also does not attest kernel device ownership, ACLs, storage,
+hard-link history, future links, or post-return immutability.
+
+Success means the bytes read during that invocation had the declared length
+and SHA-256 and the observed identities matched. The exact claim is
+`bounded_streamed_local_payload_presence_length_and_sha256_verified_for_personal_single_user_local_use`;
+the status is `payload_identity_verified_for_personal_use`. No path,
+accession, per-file digest, or payload content crosses the result boundary.
+Generated temporary fixtures prove verifier behavior only: this promotion
+adds no owner-selected corpus, payload-root configuration, filing payload, or
+successful owner-corpus invocation, so no specific corpus is yet verified.
+
+The exact ten-path transition has 20 NUL fields, 693 bytes, digest
+`sha256:46e497134b8cae95acc6211503a636b559064fdcf0dc95924d793f2d5dbaf4fb`,
+and a 16-path protected surface. Both offline boundaries accept the committed
+source. The route emits no artifact and preserves Cycle 2q/2p and Cycle 2o
+version 5 history. Exact gates are in
+[ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
+and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
 2. **Personal filing ingestion:** retain Cycle 2a's one-shot isolation controls;
-   after Cycle 2q manifest verification, first prove each expected local
-   payload's presence, bounded size, and exact digest equality, then add local
-   custody/deletion, parser quality, conflict quarantine, and provenance.
+   after Cycle 2r's disconnected verifier capability, require a successful
+   invocation over the selected owner corpus, then add bounded local custody,
+   audit metadata, retention/deletion receipts, parser quality, conflict
+   quarantine, and provenance.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1497,9 +1552,11 @@ and the [Cycle 2q exit matrix](./CYCLE_2Q_EXIT_MATRIX.md).
    promoted Cycle 2n quality composition, promoted Cycle 2o archive-custody
    composition, and promoted Cycle 2p admission-validity correction remain
    engineering preparation. Cycle 2q closes the personal declaration and
-   manifest boundary only; it does not prove payload identity. Organizational
-   rights/steward approval and authority keys are separate enterprise-profile
-   gates, not personal-profile prerequisites.
+   manifest boundary only. Cycle 2r adds a payload-identity verifier capability
+   but no successful owner-corpus invocation; local custody, audit, and
+   owner-managed deletion are next. Organizational rights/steward approval and
+   authority keys are separate enterprise-profile gates, not personal-profile
+   prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

@@ -103,8 +103,8 @@ The project now has an explicit, testable personal-use scope and a fail-closed
 manifest-verification boundary. Enterprise-only approvals no longer block work
 on that active profile.
 
-The highest-priority remaining blocker is local payload identity. The next
-milestone should first define and validate one deterministic
+When this decision was accepted, the highest-priority remaining blocker was
+local payload identity. The next milestone needed to define and validate one deterministic
 accession-to-relative-path mapping (or a separately manifest-bound local path
 map), then stream the expected files from a caller-selected local root, reject
 path escape and links, enforce size limits during reading, recompute SHA-256,
@@ -115,9 +115,29 @@ authenticity or complete provenance, fetch/archive safety, parser correctness,
 fact quality, enforced backup deletion or cryptographic erasure, or fitness for
 any wider profile.
 
+## Payload-identity follow-on
+
+Cycle 2r later closes the source-capability blocker identified above at exact
+revision `e15ddd8aa923a43fdca730e233abfbe684101e78`. Its payload-identity operation
+consumes and re-verifies the declaration and manifest defined here, maps each
+accession to the fixed direct-root `<accession>.payload` child, and can verify
+presence, declared length, and SHA-256 for the bytes observed during one
+successful invocation.
+
+That follow-on does not alter this ADR's exact revision, decision, claim, or
+`verified_for_personal_use` status. Cycle 2q remains manifest-only. Cycle 2r
+uses the distinct `payload_identity_verified_for_personal_use` status, creates
+no evidence artifact, and does not prove a specific owner corpus unless the
+operation successfully runs over that corpus. Its next blocker is local
+custody, audit metadata, retention, and owner-managed deletion rather than
+enterprise stewardship. See [ADR 0045](./0045-personal-local-filing-payload-identity-verification.md)
+and the [Cycle 2r exit matrix](../CYCLE_2R_EXIT_MATRIX.md).
+
 ## References
 
 - [Cycle 2q exit matrix](../CYCLE_2Q_EXIT_MATRIX.md)
+- [Cycle 2r exit matrix](../CYCLE_2R_EXIT_MATRIX.md)
+- [ADR 0045](./0045-personal-local-filing-payload-identity-verification.md)
 - [Cycle 2p exit matrix](../CYCLE_2P_EXIT_MATRIX.md)
 - [ADR 0043](./0043-admission-validity-corrective-chain-promotion.md)
 - [Cycle 2b exit matrix](../CYCLE_2B_EXIT_MATRIX.md)
