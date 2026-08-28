@@ -112,7 +112,7 @@ const personalFilingCorpusModule =
   "@research-cockpit/personal-filing-corpus" as const;
 const personalFilingCorpusPackagePrefix =
   "packages/personal-filing-corpus/" as const;
-const personalFilingCorpusPackagePaths = [
+const cycle2rPersonalFilingCorpusPackagePaths = [
   `${personalFilingCorpusPackagePrefix}package.json`,
   `${personalFilingCorpusPackagePrefix}src/index.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-corpus-security.test.ts`,
@@ -122,6 +122,12 @@ const personalFilingCorpusPackagePaths = [
   `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity.ts`,
   `${personalFilingCorpusPackagePrefix}tsconfig.json`,
+].sort();
+const personalFilingCorpusPackagePaths = [
+  ...cycle2rPersonalFilingCorpusPackagePaths,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody-security.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.ts`,
 ].sort();
 const cycle2qBaselineRevision =
   "2f0534d2a5b4206221cc66ece5e03cf529e5d373" as const;
@@ -133,6 +139,10 @@ const cycle2qSourceRevision =
   "398bb280593b6de125c5561ac9dd1b1c0fe254bd" as const;
 const cycle2rBaselineRevision =
   "436f7fed6af9efaec21a26e5709b90073610384e" as const;
+const cycle2rSourceRevision =
+  "e15ddd8aa923a43fdca730e233abfbe684101e78" as const;
+const cycle2sBaselineRevision =
+  "a13b51d2cd6862029aa598829e40209ce178c7be" as const;
 const cycle2qTransition = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -220,6 +230,56 @@ const cycle2rTransition = [
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ].sort((left, right) => left.path.localeCompare(right.path));
 const cycle2rProtectedPaths = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  cycle2qCorpusAdmissionPath,
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  ...cycle2rPersonalFilingCorpusPackagePaths,
+  "scripts/verify-boundaries.ts",
+];
+const cycle2sTransition = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: `${personalFilingCorpusPackagePrefix}src/index.ts`, status: "M" },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody-security.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity-security.test.ts`,
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2sProtectedPaths = [
   ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
   cycle2qCorpusAdmissionPath,
   "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
@@ -4720,7 +4780,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     JSON.stringify(personalFilingCorpusPackagePaths)
   )
     found.push(
-      `${personalFilingCorpusPackagePrefix}: Cycle 2r package tree must remain the exact nine-file manifest, payload-identity, tsconfig, index, and four-test surface`,
+      `${personalFilingCorpusPackagePrefix}: Cycle 2s package tree must remain the exact twelve-file manifest, payload-identity, payload-custody, tsconfig, index, and six-test surface`,
     );
 
   const manifest = await cycle2kJson(
@@ -4769,6 +4829,9 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   const payloadIdentityPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity.ts`;
   const payloadIdentityUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity.test.ts`;
   const payloadIdentitySecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity-security.test.ts`;
+  const payloadCustodyPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.ts`;
+  const payloadCustodyUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.test.ts`;
+  const payloadCustodySecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody-security.test.ts`;
   const implementation = await cycle2kText(implementationPath, found);
   const index = await cycle2kText(indexPath, found);
   const unitTest = await cycle2kText(unitTestPath, found);
@@ -4780,6 +4843,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   );
   const payloadIdentitySecurityTest = await cycle2kText(
     payloadIdentitySecurityTestPath,
+    found,
+  );
+  const payloadCustody = await cycle2kText(payloadCustodyPath, found);
+  const payloadCustodyUnitTest = await cycle2kText(
+    payloadCustodyUnitTestPath,
+    found,
+  );
+  const payloadCustodySecurityTest = await cycle2kText(
+    payloadCustodySecurityTestPath,
     found,
   );
   const manifestPublicExports = [
@@ -4812,6 +4884,26 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ["PersonalFilingPayloadIdentityRecord", true],
     ["PersonalFilingPayloadLinkAssurance", true],
   ] as const;
+  const payloadCustodyPublicExports = [
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_AUDIT_FILES", false],
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_CHECKS", false],
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_CLAIM", false],
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_FAILURE_CODES", false],
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_LIMITS", false],
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_NOT_PROVEN", false],
+    ["PERSONAL_FILING_PAYLOAD_CUSTODY_SCHEMA_VERSION", false],
+    ["PERSONAL_FILING_PAYLOAD_DELETE_CONFIRMATION", false],
+    ["PERSONAL_FILING_PAYLOAD_DELETION_CLAIM", false],
+    ["PersonalFilingPayloadCustodyError", false],
+    ["deletePersonalFilingPayloadCustody", false],
+    ["recordPersonalFilingPayloadCustody", false],
+    ["PersonalFilingPayloadCustodyFailureCode", true],
+    ["PersonalFilingPayloadCustodyInput", true],
+    ["PersonalFilingPayloadCustodyRecord", true],
+    ["PersonalFilingPayloadDeletionAssurance", true],
+    ["PersonalFilingPayloadDeletionInput", true],
+    ["PersonalFilingPayloadDeletionRecord", true],
+  ] as const;
   const indexSource = ts.createSourceFile(
     indexPath,
     index,
@@ -4820,7 +4912,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ts.ScriptKind.TS,
   );
   if (
-    indexSource.statements.length !== 2 ||
+    indexSource.statements.length !== 3 ||
     !isExactNamedReExportDeclaration(
       indexSource.statements[0],
       "./personal-filing-corpus",
@@ -4830,16 +4922,25 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       indexSource.statements[1],
       "./personal-filing-payload-identity",
       payloadIdentityPublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[2],
+      "./personal-filing-payload-custody",
+      payloadCustodyPublicExports,
     )
   )
     found.push(
-      `${indexPath}: Cycle 2r personal corpus public export surface must remain exact`,
+      `${indexPath}: Cycle 2s personal corpus public export surface must remain exact`,
     );
   const expectedImports = new Map<string, readonly string[]>([
     [implementationPath, ["node:crypto"]],
     [
       indexPath,
-      ["./personal-filing-corpus", "./personal-filing-payload-identity"],
+      [
+        "./personal-filing-corpus",
+        "./personal-filing-payload-identity",
+        "./personal-filing-payload-custody",
+      ],
     ],
     [unitTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
     [securityTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
@@ -4877,6 +4978,41 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./personal-filing-payload-identity",
       ],
     ],
+    [
+      payloadCustodyPath,
+      [
+        "node:crypto",
+        "node:fs",
+        "node:fs/promises",
+        "node:path",
+        "./personal-filing-corpus",
+        "./personal-filing-payload-identity",
+      ],
+    ],
+    [
+      payloadCustodyUnitTestPath,
+      [
+        "node:crypto",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "vitest",
+        "./personal-filing-payload-custody",
+        "./personal-filing-payload-identity",
+      ],
+    ],
+    [
+      payloadCustodySecurityTestPath,
+      [
+        "node:crypto",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "vitest",
+        "./personal-filing-payload-custody",
+        "./personal-filing-payload-identity",
+      ],
+    ],
   ]);
   for (const [path, content] of [
     [implementationPath, implementation],
@@ -4886,12 +5022,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     [payloadIdentityPath, payloadIdentity],
     [payloadIdentityUnitTestPath, payloadIdentityUnitTest],
     [payloadIdentitySecurityTestPath, payloadIdentitySecurityTest],
+    [payloadCustodyPath, payloadCustody],
+    [payloadCustodyUnitTestPath, payloadCustodyUnitTest],
+    [payloadCustodySecurityTestPath, payloadCustodySecurityTest],
   ] as const) {
     if (
       JSON.stringify(collectModuleSpecifiers(content)) !==
       JSON.stringify(expectedImports.get(path))
     )
-      found.push(`${path}: Cycle 2q/2r imports must remain exact`);
+      found.push(`${path}: Cycle 2q/2r/2s imports must remain exact`);
     if (
       hasRuntimeDynamicImport(content) ||
       hasForbiddenDynamicCodeCapability(content) ||
@@ -4946,12 +5085,43 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       `${payloadIdentityPath}: payload identity must remain aggregate-only and must not reuse enterprise admission claims`,
     );
 
+  for (const required of [
+    '"bounded_separate_local_payload_and_audit_custody_recorded_for_personal_single_user_local_use" as const',
+    '"bounded_owner_triggered_selected_live_payload_paths_observed_absent_for_personal_single_user_local_use" as const',
+    'readonly status: "local_payload_custody_recorded_for_personal_use"',
+    'readonly status: "live_payload_names_absent_after_explicit_personal_delete"',
+    "verifyPersonalFilingCorpusPayloadIdentity",
+    '"append_only_deletion_intent_published_before_any_payload_unlink"',
+    '"transactional_atomicity_between_payload_and_audit_roots_or_rollback"',
+    '"backup_cloud_sync_replica_snapshot_cache_temp_log_swap_recycle_bin_or_third_party_deletion"',
+    '"filesystem_journal_history_recovery_tool_physical_media_overwrite_or_cryptographic_erasure"',
+    '"enterprise_rights_steward_approval_database_b15_or_v15"',
+  ])
+    if (!payloadCustody.includes(required))
+      found.push(
+        `${payloadCustodyPath}: missing exact Cycle 2s custody/deletion claim, binding, sequencing, or nonclaim ${required}`,
+      );
+  if (
+    payloadCustody.includes('status: "admitted"') ||
+    payloadCustody.includes("rights_and_steward_approved") ||
+    payloadCustody.includes("rawPayload:") ||
+    payloadCustody.includes("payloadBytes:")
+  )
+    found.push(
+      `${payloadCustodyPath}: personal custody/deletion must remain aggregate-only and must not reuse enterprise admission claims`,
+    );
+
   const workflowPath =
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml";
   const workflow = await cycle2kText(workflowPath, found);
+  const cycle2sStart = workflow.indexOf("        id: cycle2s_source");
   const cycle2rStart = workflow.indexOf("        id: cycle2r_source");
   const cycle2qStart = workflow.indexOf("        id: cycle2q_source");
   const cycle2pStart = workflow.indexOf("        id: cycle2p_source");
+  const cycle2sSection =
+    cycle2sStart >= 0 && cycle2rStart > cycle2sStart
+      ? workflow.slice(cycle2sStart, cycle2rStart)
+      : "";
   const cycle2rSection =
     cycle2rStart >= 0 && cycle2qStart > cycle2rStart
       ? workflow.slice(cycle2rStart, cycle2qStart)
@@ -4960,6 +5130,32 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     cycle2qStart >= 0 && cycle2pStart > cycle2qStart
       ? workflow.slice(cycle2qStart, cycle2pStart)
       : "";
+  if (
+    cycle2sSection === "" ||
+    !cycle2sSection.includes(`baseline="${cycle2sBaselineRevision}"`) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2sSection, "protected")) !==
+      JSON.stringify(cycle2sProtectedPaths) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2sSection, "expected")) !==
+      JSON.stringify(
+        cycle2sTransition.flatMap(({ path, status }) => [status, path]),
+      ) ||
+    !cycle2sSection.includes(
+      'git diff --name-status --no-renames -z "$baseline" HEAD --',
+    ) ||
+    !cycle2sSection.includes('[[ "$head_revision" == "$GITHUB_SHA" ]]') ||
+    !cycle2sSection.includes('[[ "$successor_count" == "1" ]]') ||
+    !cycle2sSection.includes('[[ "$first_parent_count" == "1" ]]') ||
+    !cycle2sSection.includes('[[ "${#topology[@]}" == "2" ]]') ||
+    !cycle2sSection.includes('[[ "${topology[0]}" == "$GITHUB_SHA" ]]') ||
+    !cycle2sSection.includes('[[ "${topology[1]}" == "$baseline" ]]') ||
+    !cycle2sSection.includes("matches_exactly expected actual") ||
+    !cycle2sSection.includes(
+      'if [[ "$required" == "true" && "$exact" != "true" ]]; then',
+    )
+  )
+    found.push(
+      `${workflowPath}: exact fail-closed Cycle 2s baseline, protected set, full tuple, and 1/1 topology are required before Cycle 2r`,
+    );
   if (
     cycle2rSection === "" ||
     !cycle2rSection.includes(`baseline="${cycle2rBaselineRevision}"`) ||
@@ -5044,12 +5240,32 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         `${workflowPath}: inherited classifier ${classifier} must exclude exact Cycle 2r`,
       );
   }
+  for (const classifier of [
+    "cycle2r_source",
+    "cycle2q_source",
+    "cycle2p_source",
+    "cycle2o_source",
+    "admission_validity_bridge",
+    "cycle2n_source",
+    "legacy_bridge",
+  ]) {
+    const start = workflow.indexOf(`        id: ${classifier}`);
+    const shell = start >= 0 ? workflow.indexOf("        shell:", start) : -1;
+    const prelude =
+      start >= 0 && shell > start ? workflow.slice(start, shell) : "";
+    if (!prelude.includes("steps.cycle2s_source.outputs.exact != 'true'"))
+      found.push(
+        `${workflowPath}: inherited classifier ${classifier} must exclude exact Cycle 2s`,
+      );
+  }
   for (const required of [
     "      - packages/personal-filing-corpus/**",
     `pnpm --filter ${personalFilingCorpusModule} typecheck`,
     `pnpm --filter ${personalFilingCorpusModule} test`,
     'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v1.json"',
     'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"',
+    'if [[ "${{ steps.cycle2s_source.outputs.exact }}" == "true" ]]; then',
+    "Cycle 2s is a personal local payload-custody route only.",
     'if [[ "${{ steps.cycle2r_source.outputs.exact }}" == "true" ]]; then',
     "Cycle 2r is a personal local payload-identity route only.",
     'if [[ "${{ steps.cycle2q_source.outputs.exact }}" == "true" ]]; then',
@@ -5058,7 +5274,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ])
     if (!workflow.includes(required))
       found.push(
-        `${workflowPath}: missing exact Cycle 2q no-evidence control ${required}`,
+        `${workflowPath}: missing exact Cycle 2q/2r/2s no-evidence control ${required}`,
       );
 
   for (const path of [
@@ -5067,17 +5283,27 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ]) {
     const verifier = await cycle2kText(path, found);
     for (const required of [
+      cycle2sBaselineRevision,
+      cycle2rSourceRevision,
       cycle2rBaselineRevision,
       cycle2qSourceRevision,
       cycle2qBaselineRevision,
       cycle2qCorpusAdmissionBlob,
+      "CYCLE_2S_SOURCE_TRANSITION",
+      "CYCLE_2S_PROTECTED_SURFACE_PATHS",
+      "isCycle2sDirectChildAllowed",
+      "isCycle2sCommitDiffSetAllowed",
+      "isCycle2sTransitionRoutingRequired",
+      "await verifyCycle2sTransition(repositoryPath, revision)",
+      "!cycle2sRoutingRequired &&",
+      "await verifyCycle2rTransition(repositoryPath, CYCLE_2R_SOURCE_REVISION)",
       "CYCLE_2R_SOURCE_TRANSITION",
       "CYCLE_2R_PROTECTED_SURFACE_PATHS",
       "isCycle2rDirectChildAllowed",
       "isCycle2rCommitDiffSetAllowed",
       "isCycle2rTransitionRoutingRequired",
       "await verifyCycle2rTransition(repositoryPath, revision)",
-      "if (!cycle2rRoutingRequired && cycle2qRoutingRequired)",
+      "!cycle2rRoutingRequired &&",
       "await verifyCycle2qTransition(repositoryPath, CYCLE_2Q_SOURCE_REVISION)",
       "CYCLE_2Q_SOURCE_TRANSITION",
       "CYCLE_2Q_PROTECTED_SURFACE_PATHS",
@@ -5089,7 +5315,12 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ])
       if (!verifier.includes(required))
         found.push(
-          `${path}: missing exact Cycle 2q routing control ${required}`,
+          `${path}: missing exact Cycle 2q/2r/2s routing control ${required}`,
+        );
+    for (const { path: transitionPath } of cycle2sTransition)
+      if (!verifier.includes(transitionPath))
+        found.push(
+          `${path}: missing Cycle 2s transition path ${transitionPath}`,
         );
     for (const { path: transitionPath } of cycle2rTransition)
       if (!verifier.includes(transitionPath))
@@ -5101,7 +5332,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         found.push(
           `${path}: missing Cycle 2q transition path ${transitionPath}`,
         );
-    const cycle2rRoute = verifier.indexOf("if (cycle2rRoutingRequired)");
+    const cycle2sRoute = verifier.indexOf("if (cycle2sRoutingRequired) {");
+    const cycle2rRoute = verifier.indexOf(
+      "if (cycle2rRoutingRequired)",
+      cycle2sRoute,
+    );
     const cycle2qRoute = verifier.indexOf(
       "if (cycle2qRoutingRequired)",
       cycle2rRoute,
@@ -5111,11 +5346,14 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       cycle2qRoute,
     );
     if (
-      cycle2rRoute < 0 ||
+      cycle2sRoute < 0 ||
+      cycle2rRoute <= cycle2sRoute ||
       cycle2qRoute <= cycle2rRoute ||
       inheritedRoute <= cycle2qRoute
     )
-      found.push(`${path}: Cycle 2r must route before Cycle 2q and Cycle 2p`);
+      found.push(
+        `${path}: Cycle 2s must route before Cycle 2r, Cycle 2q, and Cycle 2p`,
+      );
   }
   for (const path of [
     "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
@@ -5123,6 +5361,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ]) {
     const test = await cycle2kText(path, found);
     for (const required of [
+      'describe("Cycle 2s personal payload-custody routing"',
+      "isCycle2sBaselineMergeBaseAllowed",
+      "isCycle2sDirectChildAllowed",
+      "isCycle2sCommitDiffSetAllowed",
+      "isCycle2sTransitionRoutingRequired",
       'describe("Cycle 2r personal payload-identity routing"',
       "isCycle2rBaselineMergeBaseAllowed",
       "isCycle2rDirectChildAllowed",
@@ -5135,7 +5378,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       "isCycle2qTransitionRoutingRequired",
     ])
       if (!test.includes(required))
-        found.push(`${path}: missing Cycle 2q/2r regression ${required}`);
+        found.push(`${path}: missing Cycle 2q/2r/2s regression ${required}`);
   }
 
   if (

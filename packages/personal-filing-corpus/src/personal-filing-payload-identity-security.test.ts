@@ -61,6 +61,15 @@ describe("personal filing payload identity security boundary", () => {
         "PERSONAL_FILING_CORPUS_NOT_PROVEN",
         "PERSONAL_FILING_CORPUS_PROFILE",
         "PERSONAL_FILING_CORPUS_SCHEMA_VERSION",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_AUDIT_FILES",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_CHECKS",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_CLAIM",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_FAILURE_CODES",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_LIMITS",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_NOT_PROVEN",
+        "PERSONAL_FILING_PAYLOAD_CUSTODY_SCHEMA_VERSION",
+        "PERSONAL_FILING_PAYLOAD_DELETE_CONFIRMATION",
+        "PERSONAL_FILING_PAYLOAD_DELETION_CLAIM",
         "PERSONAL_FILING_PAYLOAD_IDENTITY_CHECKS",
         "PERSONAL_FILING_PAYLOAD_IDENTITY_CLAIM",
         "PERSONAL_FILING_PAYLOAD_IDENTITY_FAILURE_CODES",
@@ -69,13 +78,22 @@ describe("personal filing payload identity security boundary", () => {
         "PERSONAL_FILING_PAYLOAD_IDENTITY_SCHEMA_VERSION",
         "PERSONAL_FILING_PAYLOAD_PATH_MAPPING",
         "PersonalFilingCorpusError",
+        "PersonalFilingPayloadCustodyError",
         "PersonalFilingPayloadIdentityError",
+        "deletePersonalFilingPayloadCustody",
         "personalFilingPayloadRelativePath",
+        "recordPersonalFilingPayloadCustody",
         "verifyPersonalFilingCorpusManifest",
         "verifyPersonalFilingCorpusPayloadIdentity",
       ].sort(),
     );
     expect("isPersonalFilingPayloadFileIdentityStable" in publicApi).toBe(
+      false,
+    );
+    expect("deletePersonalFilingPayloadCustodyWithRuntime" in publicApi).toBe(
+      false,
+    );
+    expect("recordPersonalFilingPayloadCustodyWithRuntime" in publicApi).toBe(
       false,
     );
   });

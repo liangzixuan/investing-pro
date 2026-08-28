@@ -85,6 +85,10 @@ import {
   isCycle2rCommitDiffSetAllowed,
   isCycle2rDirectChildAllowed,
   isCycle2rTransitionRoutingRequired,
+  isCycle2sBaselineMergeBaseAllowed,
+  isCycle2sCommitDiffSetAllowed,
+  isCycle2sDirectChildAllowed,
+  isCycle2sTransitionRoutingRequired,
   isCiTestSerializationBaselineMergeBaseAllowed,
   isCiTestSerializationCommitDiffSetAllowed,
   isCiTestSerializationSurfaceRoutingRequired,
@@ -267,6 +271,59 @@ const CYCLE_2R_PROTECTED_SURFACE_PATHS = [
   "packages/personal-filing-corpus/src/personal-filing-corpus-security.test.ts",
   "packages/personal-filing-corpus/src/personal-filing-corpus.test.ts",
   "packages/personal-filing-corpus/src/personal-filing-corpus.ts",
+  "packages/personal-filing-corpus/tsconfig.json",
+];
+const CYCLE_2S_BASELINE_REVISION =
+  "a13b51d2cd6862029aa598829e40209ce178c7be" as const;
+const CYCLE_2S_SOURCE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "packages/personal-filing-corpus/src/index.ts", status: "M" },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-payload-custody-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-payload-custody.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-payload-custody.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts",
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const CYCLE_2S_PROTECTED_SURFACE_PATHS = [
+  ...CYCLE_2S_SOURCE_TRANSITION.map(({ path }) => path),
+  CYCLE_2P_CORPUS_ADMISSION_PATH,
+  "packages/personal-filing-corpus/package.json",
+  "packages/personal-filing-corpus/src/personal-filing-corpus-security.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-corpus.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-corpus.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-identity.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-identity.ts",
   "packages/personal-filing-corpus/tsconfig.json",
 ];
 const CYCLE_2N_COMPOSITION_TREE = [
@@ -2023,6 +2080,111 @@ describe("Cycle 2q personal-use profile routing", () => {
     expect(isCycle2qTransitionRoutingRequired(undefined)).toBe(false);
     expect(isCycle2qTransitionRoutingRequired([])).toBe(false);
     expect(isCycle2qTransitionRoutingRequired(["unreviewed"])).toBe(false);
+  });
+});
+
+describe("Cycle 2s personal payload-custody routing", () => {
+  it("accepts only one direct child of the promoted Cycle 2r documentation", () => {
+    expect(isCycle2sBaselineMergeBaseAllowed(CYCLE_2S_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2sBaselineMergeBaseAllowed("a".repeat(40))).toBe(false);
+    expect(isCycle2sBaselineMergeBaseAllowed(undefined)).toBe(false);
+
+    const revision = "c".repeat(40);
+    const valid = [
+      "1",
+      "1",
+      revision,
+      `${revision} ${CYCLE_2S_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle2sDirectChildAllowed(...valid)).toBe(true);
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "2";
+      },
+      (values: string[]) => {
+        values[1] = "2";
+      },
+      (values: string[]) => {
+        values[2] = CYCLE_2S_BASELINE_REVISION;
+      },
+      (values: string[]) => {
+        values[2] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[3] = `${revision} ${"e".repeat(40)}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${"f".repeat(40)}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle2sDirectChildAllowed(
+          ...(values as Parameters<typeof isCycle2sDirectChildAllowed>),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("requires the exact sorted payload-custody source transition", () => {
+    expect(CYCLE_2S_SOURCE_TRANSITION).toHaveLength(11);
+    expect(isCycle2sCommitDiffSetAllowed(CYCLE_2S_SOURCE_TRANSITION)).toBe(
+      true,
+    );
+    expect(
+      isCycle2sCommitDiffSetAllowed([...CYCLE_2S_SOURCE_TRANSITION].reverse()),
+    ).toBe(false);
+    for (const [index, entry] of CYCLE_2S_SOURCE_TRANSITION.entries()) {
+      expect(
+        isCycle2sCommitDiffSetAllowed(
+          CYCLE_2S_SOURCE_TRANSITION.filter(
+            (_, candidate) => candidate !== index,
+          ),
+        ),
+        `missing:${entry.path}`,
+      ).toBe(false);
+      expect(
+        isCycle2sCommitDiffSetAllowed([...CYCLE_2S_SOURCE_TRANSITION, entry]),
+        `duplicate:${entry.path}`,
+      ).toBe(false);
+      expect(
+        isCycle2sCommitDiffSetAllowed(
+          CYCLE_2S_SOURCE_TRANSITION.map((candidate, candidateIndex) =>
+            candidateIndex === index
+              ? {
+                  ...candidate,
+                  status: candidate.status === "M" ? "A" : "M",
+                }
+              : candidate,
+          ),
+        ),
+        `status:${entry.path}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle2sCommitDiffSetAllowed([
+        ...CYCLE_2S_SOURCE_TRANSITION,
+        { path: "unexpected", status: "A" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("routes all personal, verifier, workflow, and enterprise surfaces first", () => {
+    expect(CYCLE_2S_PROTECTED_SURFACE_PATHS).toHaveLength(19);
+    expect(new Set(CYCLE_2S_PROTECTED_SURFACE_PATHS).size).toBe(19);
+    for (const path of CYCLE_2S_PROTECTED_SURFACE_PATHS) {
+      expect(isCycle2sTransitionRoutingRequired([path]), path).toBe(true);
+      expect(
+        isCycle2sTransitionRoutingRequired(["unexpected", path]),
+        path,
+      ).toBe(true);
+    }
+    expect(isCycle2sTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle2sTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle2sTransitionRoutingRequired(["unexpected"])).toBe(false);
   });
 });
 
