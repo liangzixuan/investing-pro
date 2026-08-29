@@ -123,11 +123,18 @@ const cycle2rPersonalFilingCorpusPackagePaths = [
   `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity.ts`,
   `${personalFilingCorpusPackagePrefix}tsconfig.json`,
 ].sort();
-const personalFilingCorpusPackagePaths = [
+const cycle2sPersonalFilingCorpusPackagePaths = [
   ...cycle2rPersonalFilingCorpusPackagePaths,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody-security.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.ts`,
+].sort();
+const personalFilingCorpusPackagePaths = [
+  ...cycle2sPersonalFilingCorpusPackagePaths,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization-security.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.ts`,
+  `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-builder.ts`,
 ].sort();
 const cycle2qBaselineRevision =
   "2f0534d2a5b4206221cc66ece5e03cf529e5d373" as const;
@@ -143,6 +150,10 @@ const cycle2rSourceRevision =
   "e15ddd8aa923a43fdca730e233abfbe684101e78" as const;
 const cycle2sBaselineRevision =
   "a13b51d2cd6862029aa598829e40209ce178c7be" as const;
+const cycle2sSourceRevision =
+  "78b3880632ff7e54ac493e9c208ee1d93a275aa1" as const;
+const cycle2uBaselineRevision =
+  "39f0ce974f84e278ec9d12193b284876c928110e" as const;
 const cycle2qTransition = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -280,6 +291,60 @@ const cycle2sTransition = [
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ].sort((left, right) => left.path.localeCompare(right.path));
 const cycle2sProtectedPaths = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  cycle2qCorpusAdmissionPath,
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  ...cycle2sPersonalFilingCorpusPackagePaths,
+  "scripts/verify-boundaries.ts",
+];
+const cycle2uTransition = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: `${personalFilingCorpusPackagePrefix}src/index.ts`, status: "M" },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization-security.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity-security.test.ts`,
+    status: "M",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-builder.ts`,
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2uProtectedPaths = [
   ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
   cycle2qCorpusAdmissionPath,
   "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
@@ -4780,7 +4845,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     JSON.stringify(personalFilingCorpusPackagePaths)
   )
     found.push(
-      `${personalFilingCorpusPackagePrefix}: Cycle 2s package tree must remain the exact twelve-file manifest, payload-identity, payload-custody, tsconfig, index, and six-test surface`,
+      `${personalFilingCorpusPackagePrefix}: Cycle 2u package tree must remain the exact sixteen-file manifest, payload-identity, payload-custody, fact-normalization, tsconfig, index, builder, and eight-test surface`,
     );
 
   const manifest = await cycle2kJson(
@@ -4832,6 +4897,10 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   const payloadCustodyPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.ts`;
   const payloadCustodyUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody.test.ts`;
   const payloadCustodySecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-custody-security.test.ts`;
+  const factNormalizationPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.ts`;
+  const factNormalizationUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.test.ts`;
+  const factNormalizationSecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization-security.test.ts`;
+  const factNormalizationBuilderPath = `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-builder.ts`;
   const implementation = await cycle2kText(implementationPath, found);
   const index = await cycle2kText(indexPath, found);
   const unitTest = await cycle2kText(unitTestPath, found);
@@ -4852,6 +4921,19 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   );
   const payloadCustodySecurityTest = await cycle2kText(
     payloadCustodySecurityTestPath,
+    found,
+  );
+  const factNormalization = await cycle2kText(factNormalizationPath, found);
+  const factNormalizationUnitTest = await cycle2kText(
+    factNormalizationUnitTestPath,
+    found,
+  );
+  const factNormalizationSecurityTest = await cycle2kText(
+    factNormalizationSecurityTestPath,
+    found,
+  );
+  const factNormalizationBuilder = await cycle2kText(
+    factNormalizationBuilderPath,
     found,
   );
   const manifestPublicExports = [
@@ -4904,6 +4986,33 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ["PersonalFilingPayloadDeletionInput", true],
     ["PersonalFilingPayloadDeletionRecord", true],
   ] as const;
+  const factNormalizationPublicExports = [
+    ["PERSONAL_FILING_FACT_CONTRACTS", false],
+    ["PERSONAL_FILING_FACT_FREE_CASH_FLOW_FORMULA", false],
+    ["PERSONAL_FILING_FACT_KEYS", false],
+    ["PERSONAL_FILING_FACT_NORMALIZATION_CHECKS", false],
+    ["PERSONAL_FILING_FACT_NORMALIZATION_CLAIM", false],
+    ["PERSONAL_FILING_FACT_NORMALIZATION_LIMITS", false],
+    ["PERSONAL_FILING_FACT_NORMALIZATION_NOT_PROVEN", false],
+    ["PERSONAL_FILING_FACT_NORMALIZATION_QUARANTINE_CODES", false],
+    ["PERSONAL_FILING_FACT_NORMALIZATION_SCHEMA_VERSION", false],
+    ["normalizePersonalFilingFacts", false],
+    ["PersonalFilingFactContract", true],
+    ["PersonalFilingFactDerivationOperand", true],
+    ["PersonalFilingFactKey", true],
+    ["PersonalFilingFactLineageStatus", true],
+    ["PersonalFilingFactNormalizationAudit", true],
+    ["PersonalFilingFactNormalizationInput", true],
+    ["PersonalFilingFactNormalizationQuarantineCode", true],
+    ["PersonalFilingFactNormalizationQuarantinedResult", true],
+    ["PersonalFilingFactNormalizationRecord", true],
+    ["PersonalFilingFactNormalizationResult", true],
+    ["PersonalFilingFactPeriodKind", true],
+    ["PersonalFilingFactSubtractionDerivation", true],
+    ["PersonalFilingFactSupersession", true],
+    ["PersonalFilingFactUnit", true],
+    ["PersonalNormalizedFilingFactVersion", true],
+  ] as const;
   const indexSource = ts.createSourceFile(
     indexPath,
     index,
@@ -4912,7 +5021,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ts.ScriptKind.TS,
   );
   if (
-    indexSource.statements.length !== 3 ||
+    indexSource.statements.length !== 4 ||
     !isExactNamedReExportDeclaration(
       indexSource.statements[0],
       "./personal-filing-corpus",
@@ -4927,10 +5036,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       indexSource.statements[2],
       "./personal-filing-payload-custody",
       payloadCustodyPublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[3],
+      "./personal-filing-fact-normalization",
+      factNormalizationPublicExports,
     )
   )
     found.push(
-      `${indexPath}: Cycle 2s personal corpus public export surface must remain exact`,
+      `${indexPath}: Cycle 2u personal corpus public export surface must remain exact`,
     );
   const expectedImports = new Map<string, readonly string[]>([
     [implementationPath, ["node:crypto"]],
@@ -4940,6 +5054,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./personal-filing-corpus",
         "./personal-filing-payload-identity",
         "./personal-filing-payload-custody",
+        "./personal-filing-fact-normalization",
       ],
     ],
     [unitTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
@@ -5013,6 +5128,30 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./personal-filing-payload-identity",
       ],
     ],
+    [
+      factNormalizationPath,
+      ["node:crypto", "node:util/types", "./personal-filing-corpus"],
+    ],
+    [
+      factNormalizationUnitTestPath,
+      [
+        "vitest",
+        "./personal-filing-fact-normalization",
+        "./test-personal-filing-fact-builder",
+      ],
+    ],
+    [
+      factNormalizationSecurityTestPath,
+      [
+        "vitest",
+        "./personal-filing-fact-normalization",
+        "./test-personal-filing-fact-builder",
+      ],
+    ],
+    [
+      factNormalizationBuilderPath,
+      ["node:crypto", "./personal-filing-fact-normalization"],
+    ],
   ]);
   for (const [path, content] of [
     [implementationPath, implementation],
@@ -5025,6 +5164,10 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     [payloadCustodyPath, payloadCustody],
     [payloadCustodyUnitTestPath, payloadCustodyUnitTest],
     [payloadCustodySecurityTestPath, payloadCustodySecurityTest],
+    [factNormalizationPath, factNormalization],
+    [factNormalizationUnitTestPath, factNormalizationUnitTest],
+    [factNormalizationSecurityTestPath, factNormalizationSecurityTest],
+    [factNormalizationBuilderPath, factNormalizationBuilder],
   ] as const) {
     if (
       JSON.stringify(collectModuleSpecifiers(content)) !==
@@ -5111,17 +5254,103 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       `${payloadCustodyPath}: personal custody/deletion must remain aggregate-only and must not reuse enterprise admission claims`,
     );
 
+  for (const required of [
+    '"bounded_private_ten_fact_normalization_and_manifest_linked_lineage_for_personal_single_user_local_use" as const',
+    '"exact_one_10k_or_manifest_linked_10k_and_10k_amendment_closed_source_set"',
+    '"exact_ten_fixed_fact_keys_once_per_parser_result"',
+    '"free_cash_flow_only_fixed_subtraction_with_exact_qname_operands"',
+    '"strict_decimal_numeric_38_12_without_binary_float_or_unit_conversion"',
+    '"root_only_no_in_corpus_amendment" | "amendment_supersession_observed"',
+    'readonly status: "normalized_for_personal_use"',
+    "readonly synthetic: false",
+    "readonly factVersions: readonly []",
+    "readonly lineage: readonly []",
+    '"raw_payload_presence_identity_or_declared_content_digest_byte_equality"',
+    '"ixbrl_xbrl_parser_extraction_or_taxonomy_mapping_correctness"',
+    '"independent_parser_validator_comparison_or_conflict_adjudication"',
+    '"absence_of_amendments_or_corrections_outside_the_exact_frozen_manifest"',
+    '"multi_user_shared_service_database_api_web_queue_or_production_readiness"',
+    "verifyPersonalFilingCorpusManifest",
+    "isProxy",
+    "PERSONAL_FILING_FACT_FREE_CASH_FLOW_FORMULA",
+    "sourceDocumentSha256",
+    "knownToExclusive",
+    "predecessorFactId",
+    "successorFactId",
+  ])
+    if (!factNormalization.includes(required))
+      found.push(
+        `${factNormalizationPath}: missing exact Cycle 2u fact, lineage, quarantine, or nonclaim control ${required}`,
+      );
+  for (const key of [
+    '"assets"',
+    '"cash"',
+    '"debt"',
+    '"diluted_shares"',
+    '"free_cash_flow"',
+    '"gross_profit"',
+    '"net_income"',
+    '"operating_cash_flow"',
+    '"operating_income"',
+    '"revenue"',
+  ])
+    if (!factNormalization.includes(key))
+      found.push(
+        `${factNormalizationPath}: missing fixed Cycle 2u fact key ${key}`,
+      );
+  if (
+    factNormalization.includes('status: "admitted"') ||
+    factNormalization.includes("rights_and_steward_approved") ||
+    factNormalization.includes("rawPayload:") ||
+    factNormalization.includes("payloadBytes:") ||
+    factNormalization.includes("synthetic: true")
+  )
+    found.push(
+      `${factNormalizationPath}: personal normalization must remain parser-result-only, non-enterprise, and non-synthetic`,
+    );
+
   const workflowPath =
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml";
   const workflow = await cycle2kText(workflowPath, found);
+  const cycle2uStart = workflow.indexOf("        id: cycle2u_source");
   const cycle2sStart = workflow.indexOf("        id: cycle2s_source");
   const cycle2rStart = workflow.indexOf("        id: cycle2r_source");
   const cycle2qStart = workflow.indexOf("        id: cycle2q_source");
   const cycle2pStart = workflow.indexOf("        id: cycle2p_source");
+  const cycle2uSection =
+    cycle2uStart >= 0 && cycle2sStart > cycle2uStart
+      ? workflow.slice(cycle2uStart, cycle2sStart)
+      : "";
   const cycle2sSection =
     cycle2sStart >= 0 && cycle2rStart > cycle2sStart
       ? workflow.slice(cycle2sStart, cycle2rStart)
       : "";
+  if (
+    cycle2uSection === "" ||
+    !cycle2uSection.includes(`baseline="${cycle2uBaselineRevision}"`) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2uSection, "protected")) !==
+      JSON.stringify(cycle2uProtectedPaths) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2uSection, "expected")) !==
+      JSON.stringify(
+        cycle2uTransition.flatMap(({ path, status }) => [status, path]),
+      ) ||
+    !cycle2uSection.includes(
+      'git diff --name-status --no-renames -z "$baseline" HEAD --',
+    ) ||
+    !cycle2uSection.includes('[[ "$head_revision" == "$GITHUB_SHA" ]]') ||
+    !cycle2uSection.includes('[[ "$successor_count" == "1" ]]') ||
+    !cycle2uSection.includes('[[ "$first_parent_count" == "1" ]]') ||
+    !cycle2uSection.includes('[[ "${#topology[@]}" == "2" ]]') ||
+    !cycle2uSection.includes('[[ "${topology[0]}" == "$GITHUB_SHA" ]]') ||
+    !cycle2uSection.includes('[[ "${topology[1]}" == "$baseline" ]]') ||
+    !cycle2uSection.includes("matches_exactly expected actual") ||
+    !cycle2uSection.includes(
+      'if [[ "$required" == "true" && "$exact" != "true" ]]; then',
+    )
+  )
+    found.push(
+      `${workflowPath}: exact fail-closed Cycle 2u baseline, protected set, full tuple, and 1/1 topology are required before Cycle 2s`,
+    );
   const cycle2rSection =
     cycle2rStart >= 0 && cycle2qStart > cycle2rStart
       ? workflow.slice(cycle2rStart, cycle2qStart)
@@ -5224,6 +5453,25 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       );
   }
   for (const classifier of [
+    "cycle2s_source",
+    "cycle2r_source",
+    "cycle2q_source",
+    "cycle2p_source",
+    "cycle2o_source",
+    "admission_validity_bridge",
+    "cycle2n_source",
+    "legacy_bridge",
+  ]) {
+    const start = workflow.indexOf(`        id: ${classifier}`);
+    const shell = start >= 0 ? workflow.indexOf("        shell:", start) : -1;
+    const prelude =
+      start >= 0 && shell > start ? workflow.slice(start, shell) : "";
+    if (!prelude.includes("steps.cycle2u_source.outputs.exact != 'true'"))
+      found.push(
+        `${workflowPath}: inherited classifier ${classifier} must exclude exact Cycle 2u`,
+      );
+  }
+  for (const classifier of [
     "cycle2q_source",
     "cycle2p_source",
     "cycle2o_source",
@@ -5264,6 +5512,8 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     `pnpm --filter ${personalFilingCorpusModule} test`,
     'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v1.json"',
     'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"',
+    'if [[ "${{ steps.cycle2u_source.outputs.exact }}" == "true" ]]; then',
+    "Cycle 2u is a personal local fact-normalization route only.",
     'if [[ "${{ steps.cycle2s_source.outputs.exact }}" == "true" ]]; then',
     "Cycle 2s is a personal local payload-custody route only.",
     'if [[ "${{ steps.cycle2r_source.outputs.exact }}" == "true" ]]; then',
@@ -5274,7 +5524,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ])
     if (!workflow.includes(required))
       found.push(
-        `${workflowPath}: missing exact Cycle 2q/2r/2s no-evidence control ${required}`,
+        `${workflowPath}: missing exact Cycle 2q/2r/2s/2u no-evidence control ${required}`,
       );
 
   for (const path of [
@@ -5283,6 +5533,16 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ]) {
     const verifier = await cycle2kText(path, found);
     for (const required of [
+      cycle2uBaselineRevision,
+      cycle2sSourceRevision,
+      "CYCLE_2U_SOURCE_TRANSITION",
+      "CYCLE_2U_PROTECTED_SURFACE_PATHS",
+      "isCycle2uDirectChildAllowed",
+      "isCycle2uCommitDiffSetAllowed",
+      "isCycle2uTransitionRoutingRequired",
+      "await verifyCycle2uTransition(repositoryPath, revision)",
+      "!cycle2uRoutingRequired &&",
+      "await verifyCycle2sTransition(repositoryPath, CYCLE_2S_SOURCE_REVISION)",
       cycle2sBaselineRevision,
       cycle2rSourceRevision,
       cycle2rBaselineRevision,
@@ -5315,7 +5575,12 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ])
       if (!verifier.includes(required))
         found.push(
-          `${path}: missing exact Cycle 2q/2r/2s routing control ${required}`,
+          `${path}: missing exact Cycle 2q/2r/2s/2u routing control ${required}`,
+        );
+    for (const { path: transitionPath } of cycle2uTransition)
+      if (!verifier.includes(transitionPath))
+        found.push(
+          `${path}: missing Cycle 2u transition path ${transitionPath}`,
         );
     for (const { path: transitionPath } of cycle2sTransition)
       if (!verifier.includes(transitionPath))
@@ -5332,7 +5597,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         found.push(
           `${path}: missing Cycle 2q transition path ${transitionPath}`,
         );
-    const cycle2sRoute = verifier.indexOf("if (cycle2sRoutingRequired) {");
+    const cycle2uRoute = verifier.indexOf("if (cycle2uRoutingRequired) {");
+    const cycle2sRoute = verifier.indexOf(
+      "else if (cycle2sRoutingRequired) {",
+      cycle2uRoute,
+    );
     const cycle2rRoute = verifier.indexOf(
       "if (cycle2rRoutingRequired)",
       cycle2sRoute,
@@ -5346,13 +5615,14 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       cycle2qRoute,
     );
     if (
-      cycle2sRoute < 0 ||
+      cycle2uRoute < 0 ||
+      cycle2sRoute <= cycle2uRoute ||
       cycle2rRoute <= cycle2sRoute ||
       cycle2qRoute <= cycle2rRoute ||
       inheritedRoute <= cycle2qRoute
     )
       found.push(
-        `${path}: Cycle 2s must route before Cycle 2r, Cycle 2q, and Cycle 2p`,
+        `${path}: Cycle 2u must route before Cycle 2s, Cycle 2r, Cycle 2q, and Cycle 2p`,
       );
   }
   for (const path of [
@@ -5361,6 +5631,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ]) {
     const test = await cycle2kText(path, found);
     for (const required of [
+      'describe("Cycle 2u personal fact-normalization routing"',
+      "isCycle2uBaselineMergeBaseAllowed",
+      "isCycle2uDirectChildAllowed",
+      "isCycle2uCommitDiffSetAllowed",
+      "isCycle2uTransitionRoutingRequired",
       'describe("Cycle 2s personal payload-custody routing"',
       "isCycle2sBaselineMergeBaseAllowed",
       "isCycle2sDirectChildAllowed",
@@ -5378,7 +5653,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       "isCycle2qTransitionRoutingRequired",
     ])
       if (!test.includes(required))
-        found.push(`${path}: missing Cycle 2q/2r/2s regression ${required}`);
+        found.push(`${path}: missing Cycle 2q/2r/2s/2u regression ${required}`);
   }
 
   if (

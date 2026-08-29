@@ -64,6 +64,10 @@ const CYCLE_2R_SOURCE_REVISION =
   "e15ddd8aa923a43fdca730e233abfbe684101e78" as const;
 const CYCLE_2S_BASELINE_REVISION =
   "a13b51d2cd6862029aa598829e40209ce178c7be" as const;
+const CYCLE_2S_SOURCE_REVISION =
+  "78b3880632ff7e54ac493e9c208ee1d93a275aa1" as const;
+const CYCLE_2U_BASELINE_REVISION =
+  "39f0ce974f84e278ec9d12193b284876c928110e" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -1533,6 +1537,52 @@ const CYCLE_2S_SOURCE_TRANSITION = Object.freeze(
     { path: "scripts/verify-boundaries.ts", status: "M" },
   ].sort((left, right) => left.path.localeCompare(right.path)),
 );
+const CYCLE_2U_SOURCE_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "packages/personal-filing-corpus/src/index.ts", status: "M" },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-normalization-security.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-normalization.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-normalization.ts",
+      status: "A",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/test-personal-filing-fact-builder.ts",
+      status: "A",
+    },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) => left.path.localeCompare(right.path)),
+);
 const CYCLE_2M_PRE_BASELINE_CUMULATIVE_ENTRIES = Object.freeze([
   { path: ".github/workflows/ci.yml", status: "M" },
   { path: "docs/CYCLE_2L_EXIT_MATRIX.md", status: "A" },
@@ -1603,6 +1653,24 @@ const CYCLE_2S_PROTECTED_SURFACE_PATHS = new Set([
   "packages/personal-filing-corpus/src/personal-filing-corpus-security.test.ts",
   "packages/personal-filing-corpus/src/personal-filing-corpus.test.ts",
   "packages/personal-filing-corpus/src/personal-filing-corpus.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-identity.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-identity.ts",
+  "packages/personal-filing-corpus/tsconfig.json",
+]);
+const CYCLE_2U_TRANSITION_PATHS = new Set(
+  CYCLE_2U_SOURCE_TRANSITION.map((entry) => entry.path),
+);
+const CYCLE_2U_PROTECTED_SURFACE_PATHS = new Set([
+  ...CYCLE_2U_TRANSITION_PATHS,
+  CYCLE_2P_CORPUS_ADMISSION_PATH,
+  "packages/personal-filing-corpus/package.json",
+  "packages/personal-filing-corpus/src/personal-filing-corpus-security.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-corpus.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-corpus.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-custody-security.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-custody.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-custody.ts",
+  "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts",
   "packages/personal-filing-corpus/src/personal-filing-payload-identity.test.ts",
   "packages/personal-filing-corpus/src/personal-filing-payload-identity.ts",
   "packages/personal-filing-corpus/tsconfig.json",
@@ -1968,6 +2036,15 @@ export async function verifyCycle2cCommitBoundary(
     ["merge-base", "--is-ancestor", BASELINE_REVISION, revision],
     0,
   );
+  const cycle2uBaselineDiffPaths = await cycle2uTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2uRoutingRequired = isCycle2uTransitionRoutingRequired(
+    cycle2uBaselineDiffPaths,
+  );
+  if (cycle2uRoutingRequired)
+    await verifyCycle2uTransition(repositoryPath, revision);
   const cycle2sBaselineDiffPaths = await cycle2sTransitionSurfaceDiffPaths(
     repositoryPath,
     revision,
@@ -1975,7 +2052,7 @@ export async function verifyCycle2cCommitBoundary(
   const cycle2sRoutingRequired = isCycle2sTransitionRoutingRequired(
     cycle2sBaselineDiffPaths,
   );
-  if (cycle2sRoutingRequired)
+  if (!cycle2uRoutingRequired && cycle2sRoutingRequired)
     await verifyCycle2sTransition(repositoryPath, revision);
   const cycle2rBaselineDiffPaths = await cycle2rTransitionSurfaceDiffPaths(
     repositoryPath,
@@ -1984,7 +2061,11 @@ export async function verifyCycle2cCommitBoundary(
   const cycle2rRoutingRequired = isCycle2rTransitionRoutingRequired(
     cycle2rBaselineDiffPaths,
   );
-  if (!cycle2sRoutingRequired && cycle2rRoutingRequired)
+  if (
+    !cycle2uRoutingRequired &&
+    !cycle2sRoutingRequired &&
+    cycle2rRoutingRequired
+  )
     await verifyCycle2rTransition(repositoryPath, revision);
   const cycle2qBaselineDiffPaths = await cycle2qTransitionSurfaceDiffPaths(
     repositoryPath,
@@ -1994,6 +2075,7 @@ export async function verifyCycle2cCommitBoundary(
     cycle2qBaselineDiffPaths,
   );
   if (
+    !cycle2uRoutingRequired &&
     !cycle2sRoutingRequired &&
     !cycle2rRoutingRequired &&
     cycle2qRoutingRequired
@@ -2018,6 +2100,7 @@ export async function verifyCycle2cCommitBoundary(
     entries.push(Object.freeze({ path, status }));
   }
   if (
+    !cycle2uRoutingRequired &&
     !cycle2sRoutingRequired &&
     !cycle2rRoutingRequired &&
     !cycle2qRoutingRequired &&
@@ -2150,7 +2233,10 @@ export async function verifyCycle2cCommitBoundary(
       revision,
     );
   const cycle2nDiffPaths = entries.map((entry) => entry.path);
-  if (cycle2sRoutingRequired) {
+  if (cycle2uRoutingRequired) {
+    // The exact non-evidence Cycle 2u transition was verified before Cycle 2s
+    // and all inherited evidence and cumulative allowlists.
+  } else if (cycle2sRoutingRequired) {
     // The exact non-evidence Cycle 2s transition was verified before Cycle 2r
     // and all inherited evidence and cumulative allowlists.
   } else if (cycle2rRoutingRequired) {
@@ -2658,6 +2744,39 @@ export function isCycle2qTransitionRoutingRequired(
   return (
     baselineDiffPaths !== undefined &&
     baselineDiffPaths.some((path) => CYCLE_2Q_PROTECTED_SURFACE_PATHS.has(path))
+  );
+}
+
+/** @internal Exact Cycle 2u personal fact-normalization baseline seam. */
+export function isCycle2uBaselineMergeBaseAllowed(
+  mergeBase: string | undefined,
+): boolean {
+  return mergeBase === CYCLE_2U_BASELINE_REVISION;
+}
+
+/** @internal Cycle 2u source is one exact direct child of promoted Cycle 2s docs. */
+export function isCycle2uDirectChildAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+): boolean {
+  return (
+    successorCount === "1" &&
+    firstParentCount === "1" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_2U_BASELINE_REVISION &&
+    parentLine === `${revision} ${CYCLE_2U_BASELINE_REVISION}`
+  );
+}
+
+/** @internal Any Cycle 2u protected-surface touch must route and fail closed. */
+export function isCycle2uTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return (
+    baselineDiffPaths !== undefined &&
+    baselineDiffPaths.some((path) => CYCLE_2U_PROTECTED_SURFACE_PATHS.has(path))
   );
 }
 
@@ -3386,6 +3505,16 @@ export function isCycle2qCommitDiffSetAllowed(
   return exactCycle2pDiffSet(entries, CYCLE_2Q_SOURCE_TRANSITION);
 }
 
+/** @internal Exact Cycle 2u personal fact-normalization transition seam. */
+export function isCycle2uCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2U_SOURCE_TRANSITION);
+}
+
 /** @internal Exact Cycle 2s personal payload-custody source transition seam. */
 export function isCycle2sCommitDiffSetAllowed(
   entries: readonly {
@@ -3665,6 +3794,32 @@ export async function verifyNoEffectiveGitGrafts(
   } catch {
     return invalid();
   }
+}
+
+async function cycle2uTransitionSurfaceDiffPaths(
+  repositoryPath: string,
+  revision: string,
+): Promise<readonly string[] | undefined> {
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2U_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2uBaselineMergeBaseAllowed(mergeBase)) return undefined;
+  return splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2U_BASELINE_REVISION,
+      revision,
+      "--",
+      ...CYCLE_2U_PROTECTED_SURFACE_PATHS,
+    ]),
+  );
 }
 
 async function cycle2sTransitionSurfaceDiffPaths(
@@ -4386,6 +4541,94 @@ async function cycle2pDiffEntries(
     entries.push(Object.freeze({ path, status }));
   }
   return Object.freeze(entries);
+}
+
+async function verifyCycle2uTransition(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  for (const requiredRevision of [
+    CYCLE_2U_BASELINE_REVISION,
+    CYCLE_2S_SOURCE_REVISION,
+    CYCLE_2R_SOURCE_REVISION,
+    CYCLE_2Q_SOURCE_REVISION,
+    CYCLE_2P_CORRECTIVE_REVISION,
+    CYCLE_2P_HISTORICAL_SOURCE_REVISION,
+  ])
+    await git(
+      repositoryPath,
+      ["cat-file", "-e", `${requiredRevision}^{commit}`],
+      0,
+    );
+
+  const mergeBase = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["merge-base", CYCLE_2U_BASELINE_REVISION, revision],
+      64,
+    ),
+  );
+  if (!isCycle2uBaselineMergeBaseAllowed(mergeBase)) invalid();
+  const range = `${CYCLE_2U_BASELINE_REVISION}..${revision}`;
+  const successorCount = decodeGitCountLine(
+    await git(repositoryPath, ["rev-list", "--count", range], 32),
+  );
+  const firstParentCount = decodeGitCountLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--first-parent", "--count", range],
+      32,
+    ),
+  );
+  const parentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", revision],
+      128,
+    ),
+  ).join(" ");
+  if (
+    !isCycle2uDirectChildAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+    )
+  )
+    invalid();
+
+  const entries = await cycle2pDiffEntries(
+    repositoryPath,
+    CYCLE_2U_BASELINE_REVISION,
+    revision,
+  );
+  if (!isCycle2uCommitDiffSetAllowed(entries)) invalid();
+
+  await verifyCycle2sTransition(repositoryPath, CYCLE_2S_SOURCE_REVISION);
+  const historicalCorpusAdmissionBlob = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-parse",
+        `${CYCLE_2P_HISTORICAL_SOURCE_REVISION}:${CYCLE_2P_CORPUS_ADMISSION_PATH}`,
+      ],
+      64,
+    ),
+  );
+  const currentCorpusAdmissionBlob = decodeGitRevisionLine(
+    await git(
+      repositoryPath,
+      ["rev-parse", `${revision}:${CYCLE_2P_CORPUS_ADMISSION_PATH}`],
+      64,
+    ),
+  );
+  if (
+    !isCycle2pCorpusAdmissionBlobAllowed(
+      currentCorpusAdmissionBlob,
+      historicalCorpusAdmissionBlob,
+    )
+  )
+    invalid();
 }
 
 async function verifyCycle2sTransition(
