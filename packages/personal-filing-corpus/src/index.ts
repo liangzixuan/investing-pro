@@ -78,3 +78,25 @@ export {
   type PersonalFilingFactUnit,
   type PersonalNormalizedFilingFactVersion,
 } from "./personal-filing-fact-normalization";
+
+export {
+  PERSONAL_FILING_FACT_COMPARISON_ASSURANCE,
+  PERSONAL_FILING_FACT_COMPARISON_CHECKS,
+  PERSONAL_FILING_FACT_COMPARISON_CLAIM,
+  PERSONAL_FILING_FACT_COMPARISON_IMPLEMENTATIONS,
+  PERSONAL_FILING_FACT_COMPARISON_LIMITS,
+  PERSONAL_FILING_FACT_COMPARISON_NOT_PROVEN,
+  PERSONAL_FILING_FACT_COMPARISON_QUARANTINE_CODES,
+  PERSONAL_FILING_FACT_COMPARISON_SCHEMA_VERSION,
+  comparePersonalFilingFactValidation,
+  type PersonalFilingFactComparisonAgreementReceipt,
+  type PersonalFilingFactComparisonAudit,
+  type PersonalFilingFactComparisonImplementationBinding,
+  type PersonalFilingFactComparisonInput,
+  type PersonalFilingFactComparisonQuarantineCode,
+  type PersonalFilingFactComparisonQuarantinedResult,
+  type PersonalFilingFactComparisonReceiptBinding,
+  type PersonalFilingFactComparisonResult,
+  type PersonalFilingFactComparisonRuntimeFamily,
+  type PersonalFilingFactComparisonValidatorRole,
+} from "./personal-filing-fact-comparison";
