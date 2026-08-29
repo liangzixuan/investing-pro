@@ -137,13 +137,21 @@ const cycle2uPersonalFilingCorpusPackagePaths = [
   `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-normalization.ts`,
   `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-builder.ts`,
 ].sort();
-const personalFilingCorpusPackagePaths = [
+const cycle2vPersonalFilingCorpusPackagePaths = [
   ...cycle2uPersonalFilingCorpusPackagePaths,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-comparison-security.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-comparison.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-comparison.ts`,
   `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-comparison-builder.ts`,
   `${personalFilingCorpusPackagePrefix}validator/personal_filing_fact_validator.py`,
+].sort();
+const personalFilingCorpusPackagePaths = [
+  ...cycle2vPersonalFilingCorpusPackagePaths,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction-security.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction.ts`,
+  `${personalFilingCorpusPackagePrefix}src/test-personal-filing-raw-fact-extraction-builder.ts`,
+  `${personalFilingCorpusPackagePrefix}validator/personal_filing_raw_fact_extractor.py`,
 ].sort();
 const cycle2qBaselineRevision =
   "2f0534d2a5b4206221cc66ece5e03cf529e5d373" as const;
@@ -167,6 +175,8 @@ const cycle2uSourceRevision =
   "4df5549087660b5b5d473c478b03b17576fd4784" as const;
 const cycle2vBaselineRevision =
   "90c20e6eeb6c387015af81f74ba4b8e7aebc444b" as const;
+const cycle2wBaselineRevision =
+  "ad5e3003d3670c84021dabe47c4fb3976274bb23" as const;
 const cycle2qTransition = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -367,6 +377,65 @@ const cycle2uProtectedPaths = [
   ...cycle2uPersonalFilingCorpusPackagePaths,
   "scripts/verify-boundaries.ts",
 ];
+const cycle2wTransition = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: `${personalFilingCorpusPackagePrefix}src/index.ts`, status: "M" },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-payload-identity-security.test.ts`,
+    status: "M",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction-security.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction.test.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/test-personal-filing-raw-fact-extraction-builder.ts`,
+    status: "A",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}validator/personal_filing_raw_fact_extractor.py`,
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2wProtectedPaths = [
+  ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+  cycle2qCorpusAdmissionPath,
+  "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+  "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+  "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+  ...personalFilingCorpusPackagePaths,
+  "scripts/verify-boundaries.ts",
+];
+
 const cycle2vTransition = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -422,7 +491,7 @@ const cycle2vProtectedPaths = [
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
-  ...personalFilingCorpusPackagePaths,
+  ...cycle2vPersonalFilingCorpusPackagePaths,
   "scripts/verify-boundaries.ts",
 ];
 const filingFactNormalizationModule =
@@ -4916,7 +4985,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     JSON.stringify(personalFilingCorpusPackagePaths)
   )
     found.push(
-      `${personalFilingCorpusPackagePrefix}: Cycle 2v package tree must remain the exact twenty-one-file manifest, payload-identity, payload-custody, fact-normalization, fact-comparison, Python validator, tsconfig, index, two-builder, and ten-test surface`,
+      `${personalFilingCorpusPackagePrefix}: Cycle 2w package tree must remain the exact twenty-six-file manifest, payload-identity, payload-custody, fact-normalization, fact-comparison, raw-fact-extraction, two Python validators, tsconfig, index, three-builder, and twelve-test surface`,
     );
 
   const manifest = await cycle2kJson(
@@ -4977,6 +5046,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   const factComparisonSecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-comparison-security.test.ts`;
   const factComparisonBuilderPath = `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-comparison-builder.ts`;
   const factComparisonPythonValidatorPath = `${personalFilingCorpusPackagePrefix}validator/personal_filing_fact_validator.py`;
+  const rawFactExtractionPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction.ts`;
+  const rawFactExtractionUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction.test.ts`;
+  const rawFactExtractionSecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-raw-fact-extraction-security.test.ts`;
+  const rawFactExtractionBuilderPath = `${personalFilingCorpusPackagePrefix}src/test-personal-filing-raw-fact-extraction-builder.ts`;
+  const rawFactExtractionPythonPath = `${personalFilingCorpusPackagePrefix}validator/personal_filing_raw_fact_extractor.py`;
   const implementation = await cycle2kText(implementationPath, found);
   const index = await cycle2kText(indexPath, found);
   const unitTest = await cycle2kText(unitTestPath, found);
@@ -5027,6 +5101,23 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   );
   const factComparisonPythonValidator = await cycle2kText(
     factComparisonPythonValidatorPath,
+    found,
+  );
+  const rawFactExtraction = await cycle2kText(rawFactExtractionPath, found);
+  const rawFactExtractionUnitTest = await cycle2kText(
+    rawFactExtractionUnitTestPath,
+    found,
+  );
+  const rawFactExtractionSecurityTest = await cycle2kText(
+    rawFactExtractionSecurityTestPath,
+    found,
+  );
+  const rawFactExtractionBuilder = await cycle2kText(
+    rawFactExtractionBuilderPath,
+    found,
+  );
+  const rawFactExtractionPython = await cycle2kText(
+    rawFactExtractionPythonPath,
     found,
   );
   const manifestPublicExports = [
@@ -5127,6 +5218,25 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ["PersonalFilingFactComparisonRuntimeFamily", true],
     ["PersonalFilingFactComparisonValidatorRole", true],
   ] as const;
+  const rawFactExtractionPublicExports = [
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_ASSURANCE", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_CHECKS", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_CLAIM", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_LIMITS", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_NOT_PROVEN", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_QUARANTINE_CODES", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTION_SCHEMA_VERSION", false],
+    ["PERSONAL_FILING_RAW_FACT_EXTRACTOR_BINDING", false],
+    ["comparePersonalFilingRawFactExtraction", false],
+    ["PersonalFilingRawFactExtractionAgreementReceipt", true],
+    ["PersonalFilingRawFactExtractionAudit", true],
+    ["PersonalFilingRawFactExtractionInput", true],
+    ["PersonalFilingRawFactExtractionQuarantineCode", true],
+    ["PersonalFilingRawFactExtractionQuarantinedResult", true],
+    ["PersonalFilingRawFactExtractionResult", true],
+    ["PersonalFilingRawFactExtractorBinding", true],
+  ] as const;
+
   const indexSource = ts.createSourceFile(
     indexPath,
     index,
@@ -5135,7 +5245,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ts.ScriptKind.TS,
   );
   if (
-    indexSource.statements.length !== 5 ||
+    indexSource.statements.length !== 6 ||
     !isExactNamedReExportDeclaration(
       indexSource.statements[0],
       "./personal-filing-corpus",
@@ -5160,10 +5270,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       indexSource.statements[4],
       "./personal-filing-fact-comparison",
       factComparisonPublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[5],
+      "./personal-filing-raw-fact-extraction",
+      rawFactExtractionPublicExports,
     )
   )
     found.push(
-      `${indexPath}: Cycle 2v personal corpus public export surface must remain exact`,
+      `${indexPath}: Cycle 2w personal corpus public export surface must remain exact`,
     );
   const expectedImports = new Map<string, readonly string[]>([
     [implementationPath, ["node:crypto"]],
@@ -5175,6 +5290,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./personal-filing-payload-custody",
         "./personal-filing-fact-normalization",
         "./personal-filing-fact-comparison",
+        "./personal-filing-raw-fact-extraction",
       ],
     ],
     [unitTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
@@ -5312,6 +5428,47 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./test-personal-filing-fact-builder",
       ],
     ],
+    [
+      rawFactExtractionPath,
+      [
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:url",
+        "node:util/types",
+        "./personal-filing-corpus",
+        "./personal-filing-fact-comparison",
+        "./personal-filing-fact-normalization",
+      ],
+    ],
+    [
+      rawFactExtractionUnitTestPath,
+      [
+        "vitest",
+        "./personal-filing-raw-fact-extraction",
+        "./test-personal-filing-raw-fact-extraction-builder",
+        "./test-personal-filing-fact-builder",
+      ],
+    ],
+    [
+      rawFactExtractionSecurityTestPath,
+      [
+        "node:crypto",
+        "vitest",
+        "./personal-filing-raw-fact-extraction",
+        "./test-personal-filing-raw-fact-extraction-builder",
+        "./test-personal-filing-fact-builder",
+      ],
+    ],
+    [
+      rawFactExtractionBuilderPath,
+      [
+        "node:child_process",
+        "node:url",
+        "./personal-filing-raw-fact-extraction",
+        "./test-personal-filing-fact-builder",
+      ],
+    ],
   ]);
   for (const [path, content] of [
     [implementationPath, implementation],
@@ -5332,6 +5489,10 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     [factComparisonUnitTestPath, factComparisonUnitTest],
     [factComparisonSecurityTestPath, factComparisonSecurityTest],
     [factComparisonBuilderPath, factComparisonBuilder],
+    [rawFactExtractionPath, rawFactExtraction],
+    [rawFactExtractionUnitTestPath, rawFactExtractionUnitTest],
+    [rawFactExtractionSecurityTestPath, rawFactExtractionSecurityTest],
+    [rawFactExtractionBuilderPath, rawFactExtractionBuilder],
   ] as const) {
     if (
       JSON.stringify(collectModuleSpecifiers(content)) !==
@@ -5547,16 +5708,142 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     found.push(
       `${factComparisonPath}: repository-pinned Python implementation digest must match canonical LF source bytes`,
     );
+  for (const required of [
+    '"bounded_repository_pinned_python_raw_ixbrl_ten_fact_projection_agreement_with_frozen_primary_parser_result_and_atomic_value_free_conflict_quarantine_for_personal_single_user_local_use" as const',
+    '"secondary_raw_extractor_receives_no_primary_parser_result_normalized_record_or_digest" as const',
+    '"extractor_stdin_contains_only_raw_filing_documents_and_target_qnames"',
+    '"no_primary_parser_result_normalized_record_or_digest_crosses_extractor_boundary"',
+    '"correctness_of_the_shared_normalization_plan_qname_mapping_or_fact_selection_specification"',
+    'readonly status: "raw_extraction_agreed_for_personal_use"',
+    'readonly status: "quarantined"',
+    "readonly facts: readonly []",
+    "readonly extractorBindings: readonly []",
+    "comparePersonalFilingRawFactExtraction",
+    "comparePersonalFilingFactValidation",
+    "runPinnedPythonExtractor",
+    "spawnSync(",
+    '["-I", "-B", PYTHON_EXTRACTOR_PATH]',
+  ])
+    if (!rawFactExtraction.includes(required))
+      found.push(
+        `${rawFactExtractionPath}: missing exact Cycle 2w raw extraction, isolation, quarantine, or nonclaim control ${required}`,
+      );
+  if (
+    rawFactExtraction.includes('status: "admitted"') ||
+    rawFactExtraction.includes("rights_and_steward_approved") ||
+    rawFactExtraction.includes("synthetic: true")
+  )
+    found.push(
+      `${rawFactExtractionPath}: personal raw extraction must remain value-free on conflict, non-enterprise, and non-synthetic`,
+    );
+
+  const extractorStart = rawFactExtraction.indexOf(
+    "function runPinnedPythonExtractor(",
+  );
+  const extractorEnd = rawFactExtraction.indexOf(
+    "\nfunction ",
+    extractorStart + 1,
+  );
+  const extractorSource =
+    extractorStart >= 0 && extractorEnd > extractorStart
+      ? rawFactExtraction.slice(extractorStart, extractorEnd)
+      : "";
+  for (const required of [
+    "rawFilingDocuments: snapshot.rawFilingDocuments.map(base64)",
+    "targetConcepts,",
+  ])
+    if (!extractorSource.includes(required))
+      found.push(
+        `${rawFactExtractionPath}: Python extractor stdin must contain exact rawFilingDocuments and targetConcepts source ${required}`,
+      );
+  for (const forbidden of [
+    "snapshot.declaration",
+    "snapshot.manifest",
+    "snapshot.normalizationPlan",
+    "snapshot.sourceDocuments",
+    "normalizedRecord",
+    "primaryRecord",
+    "primaryBytes",
+    "agreementSha256",
+    "projectionSha256",
+    "inputSetSha256",
+  ])
+    if (extractorSource.includes(forbidden))
+      found.push(
+        `${rawFactExtractionPath}: forbidden parser-result, normalized-record, plan, manifest, or digest material crosses Python extractor stdin: ${forbidden}`,
+      );
+
+  if (
+    !rawFactExtractionPython.includes(
+      'REQUEST_KEYS = frozenset(("rawFilingDocuments", "targetConcepts"))',
+    )
+  )
+    found.push(
+      `${rawFactExtractionPythonPath}: Python request contract must accept exactly rawFilingDocuments and targetConcepts`,
+    );
+  for (const forbidden of [
+    "normalizationPlan",
+    "sourceDocuments",
+    "parserResult",
+    "normalizedRecord",
+    "primaryRecord",
+    "primaryDigest",
+    "recordSha256",
+  ])
+    if (rawFactExtractionPython.includes(forbidden))
+      found.push(
+        `${rawFactExtractionPythonPath}: forbidden plan, parser-result, normalized-record, or digest request material ${forbidden}`,
+      );
+
+  const expectedRawExtractor = `sha256:${createHash("sha256")
+    .update(rawFactExtractionPython.replace(/\r\n/gu, "\n"), "utf8")
+    .digest("hex")}`;
+  if (!rawFactExtraction.includes(`"${expectedRawExtractor}"`))
+    found.push(
+      `${rawFactExtractionPath}: repository-pinned Python raw extractor digest must match canonical LF source bytes`,
+    );
 
   const workflowPath =
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml";
   const workflow = await cycle2kText(workflowPath, found);
+  const cycle2wStart = workflow.indexOf("        id: cycle2w_source");
   const cycle2vStart = workflow.indexOf("        id: cycle2v_source");
   const cycle2uStart = workflow.indexOf("        id: cycle2u_source");
   const cycle2sStart = workflow.indexOf("        id: cycle2s_source");
   const cycle2rStart = workflow.indexOf("        id: cycle2r_source");
   const cycle2qStart = workflow.indexOf("        id: cycle2q_source");
   const cycle2pStart = workflow.indexOf("        id: cycle2p_source");
+  const cycle2wSection =
+    cycle2wStart >= 0 && cycle2vStart > cycle2wStart
+      ? workflow.slice(cycle2wStart, cycle2vStart)
+      : "";
+  if (
+    cycle2wSection === "" ||
+    !cycle2wSection.includes(`baseline="${cycle2wBaselineRevision}"`) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2wSection, "protected")) !==
+      JSON.stringify(cycle2wProtectedPaths) ||
+    JSON.stringify(doubleQuotedShellArray(cycle2wSection, "expected")) !==
+      JSON.stringify(
+        cycle2wTransition.flatMap(({ path, status }) => [status, path]),
+      ) ||
+    !cycle2wSection.includes(
+      'git diff --name-status --no-renames -z "$baseline" HEAD --',
+    ) ||
+    !cycle2wSection.includes('[[ "$head_revision" == "$GITHUB_SHA" ]]') ||
+    !cycle2wSection.includes('[[ "$successor_count" == "1" ]]') ||
+    !cycle2wSection.includes('[[ "$first_parent_count" == "1" ]]') ||
+    !cycle2wSection.includes('[[ "${#topology[@]}" == "2" ]]') ||
+    !cycle2wSection.includes('[[ "${topology[0]}" == "$GITHUB_SHA" ]]') ||
+    !cycle2wSection.includes('[[ "${topology[1]}" == "$baseline" ]]') ||
+    !cycle2wSection.includes("matches_exactly expected actual") ||
+    !cycle2wSection.includes(
+      'if [[ "$required" == "true" && "$exact" != "true" ]]; then',
+    )
+  )
+    found.push(
+      `${workflowPath}: exact fail-closed Cycle 2w baseline, protected set, full tuple, and 1/1 topology are required before Cycle 2v`,
+    );
+
   const cycle2vSection =
     cycle2vStart >= 0 && cycle2uStart > cycle2vStart
       ? workflow.slice(cycle2vStart, cycle2uStart)
@@ -5707,6 +5994,28 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     );
 
   for (const classifier of [
+    "cycle2v_source",
+    "cycle2u_source",
+    "cycle2s_source",
+    "cycle2r_source",
+    "cycle2q_source",
+    "cycle2p_source",
+    "cycle2o_source",
+    "admission_validity_bridge",
+    "cycle2n_source",
+    "legacy_bridge",
+  ]) {
+    const start = workflow.indexOf(`        id: ${classifier}`);
+    const shell = start >= 0 ? workflow.indexOf("        shell:", start) : -1;
+    const prelude =
+      start >= 0 && shell > start ? workflow.slice(start, shell) : "";
+    if (!prelude.includes("steps.cycle2w_source.outputs.exact != 'true'"))
+      found.push(
+        `${workflowPath}: inherited classifier ${classifier} must exclude exact Cycle 2w`,
+      );
+  }
+
+  for (const classifier of [
     "cycle2p_source",
     "cycle2o_source",
     "admission_validity_bridge",
@@ -5802,6 +6111,8 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     `pnpm --filter ${personalFilingCorpusModule} test`,
     'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v1.json"',
     'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"',
+    'if [[ "${{ steps.cycle2w_source.outputs.exact }}" == "true" ]]; then',
+    "Cycle 2w is a personal local raw fact-extraction route only.",
     'if [[ "${{ steps.cycle2v_source.outputs.exact }}" == "true" ]]; then',
     "Cycle 2v is a personal local fact-comparison route only.",
     'if [[ "${{ steps.cycle2u_source.outputs.exact }}" == "true" ]]; then',
@@ -5825,6 +6136,16 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ]) {
     const verifier = await cycle2kText(path, found);
     for (const required of [
+      cycle2wBaselineRevision,
+      "76bd8a1319d6b5feb05da412ca30fe6507c5bdbb",
+      "CYCLE_2W_SOURCE_TRANSITION",
+      "CYCLE_2W_PROTECTED_SURFACE_PATHS",
+      "isCycle2wDirectChildAllowed",
+      "isCycle2wCommitDiffSetAllowed",
+      "isCycle2wTransitionRoutingRequired",
+      "await verifyCycle2wTransition(repositoryPath, revision)",
+      "!cycle2wRoutingRequired &&",
+      "await verifyCycle2vTransition(repositoryPath, CYCLE_2V_SOURCE_REVISION)",
       cycle2vBaselineRevision,
       cycle2uSourceRevision,
       "CYCLE_2V_SOURCE_TRANSITION",
@@ -5877,7 +6198,12 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ])
       if (!verifier.includes(required))
         found.push(
-          `${path}: missing exact Cycle 2q/2r/2s/2u/2v routing control ${required}`,
+          `${path}: missing exact Cycle 2q/2r/2s/2u/2v/2w routing control ${required}`,
+        );
+    for (const { path: transitionPath } of cycle2wTransition)
+      if (!verifier.includes(transitionPath))
+        found.push(
+          `${path}: missing Cycle 2w transition path ${transitionPath}`,
         );
     for (const { path: transitionPath } of cycle2vTransition)
       if (!verifier.includes(transitionPath))
@@ -5904,7 +6230,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         found.push(
           `${path}: missing Cycle 2q transition path ${transitionPath}`,
         );
-    const cycle2vRoute = verifier.indexOf("if (cycle2vRoutingRequired) {");
+    const cycle2wRoute = verifier.indexOf("if (cycle2wRoutingRequired) {");
+    const cycle2vRoute = verifier.indexOf(
+      "else if (cycle2vRoutingRequired) {",
+      cycle2wRoute,
+    );
     const cycle2uRoute = verifier.indexOf(
       "else if (cycle2uRoutingRequired) {",
       cycle2vRoute,
@@ -5926,7 +6256,8 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       cycle2qRoute,
     );
     if (
-      cycle2vRoute < 0 ||
+      cycle2wRoute < 0 ||
+      cycle2vRoute <= cycle2wRoute ||
       cycle2uRoute <= cycle2vRoute ||
       cycle2sRoute <= cycle2uRoute ||
       cycle2rRoute <= cycle2sRoute ||
@@ -5934,7 +6265,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       inheritedRoute <= cycle2qRoute
     )
       found.push(
-        `${path}: Cycle 2v must route before Cycle 2u, Cycle 2s, Cycle 2r, Cycle 2q, and Cycle 2p`,
+        `${path}: Cycle 2w must route before Cycle 2v, Cycle 2u, Cycle 2s, Cycle 2r, Cycle 2q, and Cycle 2p`,
       );
   }
   for (const path of [
@@ -5943,6 +6274,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   ]) {
     const test = await cycle2kText(path, found);
     for (const required of [
+      'describe("Cycle 2w personal raw fact-extraction routing"',
+      "isCycle2wBaselineMergeBaseAllowed",
+      "isCycle2wDirectChildAllowed",
+      "isCycle2wCommitDiffSetAllowed",
+      "isCycle2wTransitionRoutingRequired",
       'describe("Cycle 2v personal fact-comparison routing"',
       "isCycle2vBaselineMergeBaseAllowed",
       "isCycle2vDirectChildAllowed",
@@ -5971,7 +6307,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ])
       if (!test.includes(required))
         found.push(
-          `${path}: missing Cycle 2q/2r/2s/2u/2v regression ${required}`,
+          `${path}: missing Cycle 2q/2r/2s/2u/2v/2w regression ${required}`,
         );
   }
 

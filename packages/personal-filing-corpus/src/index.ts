@@ -100,3 +100,22 @@ export {
   type PersonalFilingFactComparisonRuntimeFamily,
   type PersonalFilingFactComparisonValidatorRole,
 } from "./personal-filing-fact-comparison";
+
+export {
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_ASSURANCE,
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_CHECKS,
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_CLAIM,
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_LIMITS,
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_NOT_PROVEN,
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_QUARANTINE_CODES,
+  PERSONAL_FILING_RAW_FACT_EXTRACTION_SCHEMA_VERSION,
+  PERSONAL_FILING_RAW_FACT_EXTRACTOR_BINDING,
+  comparePersonalFilingRawFactExtraction,
+  type PersonalFilingRawFactExtractionAgreementReceipt,
+  type PersonalFilingRawFactExtractionAudit,
+  type PersonalFilingRawFactExtractionInput,
+  type PersonalFilingRawFactExtractionQuarantineCode,
+  type PersonalFilingRawFactExtractionQuarantinedResult,
+  type PersonalFilingRawFactExtractionResult,
+  type PersonalFilingRawFactExtractorBinding,
+} from "./personal-filing-raw-fact-extraction";

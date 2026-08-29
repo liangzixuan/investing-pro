@@ -93,6 +93,10 @@ import {
   isCycle2uCommitDiffSetAllowed,
   isCycle2uDirectChildAllowed,
   isCycle2uTransitionRoutingRequired,
+  isCycle2wBaselineMergeBaseAllowed,
+  isCycle2wCommitDiffSetAllowed,
+  isCycle2wDirectChildAllowed,
+  isCycle2wTransitionRoutingRequired,
   isCycle2vBaselineMergeBaseAllowed,
   isCycle2vCommitDiffSetAllowed,
   isCycle2vDirectChildAllowed,
@@ -461,6 +465,66 @@ const CYCLE_2V_PROTECTED_SURFACE_PATHS = [
   "packages/personal-filing-corpus/src/personal-filing-payload-identity.ts",
   "packages/personal-filing-corpus/src/test-personal-filing-fact-builder.ts",
   "packages/personal-filing-corpus/tsconfig.json",
+];
+const CYCLE_2W_BASELINE_REVISION =
+  "ad5e3003d3670c84021dabe47c4fb3976274bb23" as const;
+const CYCLE_2W_SOURCE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "packages/personal-filing-corpus/src/index.ts", status: "M" },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/test-personal-filing-raw-fact-extraction-builder.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-filing-corpus/validator/personal_filing_raw_fact_extractor.py",
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2W_PROTECTED_SURFACE_PATHS = [
+  ...CYCLE_2V_PROTECTED_SURFACE_PATHS,
+  "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction-security.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction.test.ts",
+  "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction.ts",
+  "packages/personal-filing-corpus/src/test-personal-filing-raw-fact-extraction-builder.ts",
+  "packages/personal-filing-corpus/validator/personal_filing_raw_fact_extractor.py",
 ];
 
 const CYCLE_2N_COMPOSITION_TREE = [
@@ -2220,6 +2284,110 @@ describe("Cycle 2q personal-use profile routing", () => {
   });
 });
 
+describe("Cycle 2w personal raw fact-extraction routing", () => {
+  it("accepts only one direct child of the promoted Cycle 2v documentation", () => {
+    expect(isCycle2wBaselineMergeBaseAllowed(CYCLE_2W_BASELINE_REVISION)).toBe(
+      true,
+    );
+    expect(isCycle2wBaselineMergeBaseAllowed("a".repeat(40))).toBe(false);
+    expect(isCycle2wBaselineMergeBaseAllowed(undefined)).toBe(false);
+
+    const revision = "e".repeat(40);
+    const valid = [
+      "1",
+      "1",
+      revision,
+      `${revision} ${CYCLE_2W_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle2wDirectChildAllowed(...valid)).toBe(true);
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "2";
+      },
+      (values: string[]) => {
+        values[1] = "2";
+      },
+      (values: string[]) => {
+        values[2] = CYCLE_2W_BASELINE_REVISION;
+      },
+      (values: string[]) => {
+        values[2] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[3] = `${revision} ${"d".repeat(40)}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${"f".repeat(40)}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle2wDirectChildAllowed(
+          ...(values as Parameters<typeof isCycle2wDirectChildAllowed>),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("requires the exact sorted personal raw fact-extraction source transition", () => {
+    expect(CYCLE_2W_SOURCE_TRANSITION).toHaveLength(13);
+    expect(isCycle2wCommitDiffSetAllowed(CYCLE_2W_SOURCE_TRANSITION)).toBe(
+      true,
+    );
+    expect(
+      isCycle2wCommitDiffSetAllowed([...CYCLE_2W_SOURCE_TRANSITION].reverse()),
+    ).toBe(false);
+    for (const [index, entry] of CYCLE_2W_SOURCE_TRANSITION.entries()) {
+      expect(
+        isCycle2wCommitDiffSetAllowed(
+          CYCLE_2W_SOURCE_TRANSITION.filter(
+            (_, candidate) => candidate !== index,
+          ),
+        ),
+        `missing:${entry.path}`,
+      ).toBe(false);
+      expect(
+        isCycle2wCommitDiffSetAllowed([...CYCLE_2W_SOURCE_TRANSITION, entry]),
+        `duplicate:${entry.path}`,
+      ).toBe(false);
+      expect(
+        isCycle2wCommitDiffSetAllowed(
+          CYCLE_2W_SOURCE_TRANSITION.map((candidate, candidateIndex) =>
+            candidateIndex === index
+              ? {
+                  ...candidate,
+                  status: candidate.status === "M" ? "A" : "M",
+                }
+              : candidate,
+          ),
+        ),
+        `status:${entry.path}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle2wCommitDiffSetAllowed([
+        ...CYCLE_2W_SOURCE_TRANSITION,
+        { path: "unreviewed", status: "A" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("routes every protected personal-corpus or admission surface", () => {
+    expect(CYCLE_2W_PROTECTED_SURFACE_PATHS).toHaveLength(33);
+    expect(new Set(CYCLE_2W_PROTECTED_SURFACE_PATHS).size).toBe(33);
+    for (const path of CYCLE_2W_PROTECTED_SURFACE_PATHS) {
+      expect(isCycle2wTransitionRoutingRequired([path]), path).toBe(true);
+      expect(
+        isCycle2wTransitionRoutingRequired(["unreviewed", path]),
+        path,
+      ).toBe(true);
+    }
+    expect(isCycle2wTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle2wTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle2wTransitionRoutingRequired(["unreviewed"])).toBe(false);
+  });
+});
 describe("Cycle 2v personal fact-comparison routing", () => {
   it("accepts only one direct child of the promoted Cycle 2u documentation", () => {
     expect(isCycle2vBaselineMergeBaseAllowed(CYCLE_2V_BASELINE_REVISION)).toBe(
