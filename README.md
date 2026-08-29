@@ -882,11 +882,54 @@ parsing or extraction. Shared-input/specification correctness, accounting
 truth, operator/host/key/failure-domain independence, common error or
 collusion, runtime attestation, SEC authenticity, amendment discovery, global
 currentness, owner-reviewed quality, application composition, and production
-remain unproven. Independent raw parsing/extraction is next, followed by
-owner-reviewed quality. Enterprise/shared-service requirements remain Out of
-scope for the personal profile. See
+remain unproven. Cycle 2w narrows the next step to a separate raw extraction
+path for the primary-selected dimensionless coordinates. Enterprise/shared-
+service requirements remain Out of scope for the personal profile. See
 [ADR 0048](./docs/adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
 and the [Cycle 2v exit matrix](./docs/CYCLE_2V_EXIT_MATRIX.md).
+
+Cycle 2w is **Pass only for exact source revision
+`1f7ff096c9187386cad9ae60e1e44861e6e5f842`, the direct child of promoted
+Cycle 2v documentation baseline
+`ad5e3003d3670c84021dabe47c4fb3976274bb23`.** It first requires the same
+owned declaration, manifest, plan, and parser-result snapshot to pass Cycle
+2v, then rebinds the raw filing documents to the manifest's exact count, order,
+byte lengths, and SHA-256 values. A repository-pinned zero-dependency Python
+worker receives only those raw document bytes and the ten sorted target QNames;
+the primary parser results, normalized record, expected values, and their
+digests do not cross that worker boundary.
+
+The Python structural HTML/iXBRL path independently reconstructs contexts,
+periods, empty/nonempty dimension classification, bounded simple USD or shares
+units, and allowlisted transform/sign/scale decimal values. The comparator
+requires exact value agreement without tolerance at the ten primary-selected
+dimensionless raw coordinates per document, including the two free-cash-flow
+operands with the operating-cash-flow coordinate reused. Equivalent duplicates
+collapse and conflicting duplicates quarantine. Additional distinct raw
+coordinates are outside this projection, as are the unit, transform, and value
+semantics of excluded dimensional target facts.
+
+Success is an immutable metadata-only receipt with status
+`raw_extraction_agreed_for_personal_use`; every invalid input, missing Cycle 2v
+agreement, raw-scope mismatch, worker failure, malformed output, or selected-
+coordinate conflict becomes one atomic value-free quarantine. The private run
+is recorded only as **owner-approved private raw-extraction comparison Pass for
+one owner-selected corpus**. No selected-corpus characteristic, private input,
+fact, value, mapping, digest, timestamp, receipt, or execution mode is
+repository-visible.
+
+Cycle 2w removes the shared parser-result document from the secondary selected-
+value path; it does not prove the shared QName mapping or primary selection,
+completeness among additional coordinates, excluded dimensional semantics,
+primary parser identity or code lineage, general XBRL coverage, SEC
+authenticity, accounting truth, amendment discovery, runtime independence,
+owner-reviewed quality, application composition, or production. The next
+blocker is a frozen owner-reviewed reference set with predeclared document
+success, fact precision/recall, unit/date tolerance, silent-failure, and
+quarantine thresholds. Enterprise/shared-service requirements remain Out of
+scope. See
+[ADR 0049](./docs/adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
+and the [Cycle 2w exit matrix](./docs/CYCLE_2W_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1467,4 +1510,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0047](./docs/adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md),
 [Cycle 2v exit matrix](./docs/CYCLE_2V_EXIT_MATRIX.md),
 [ADR 0048](./docs/adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md),
+[Cycle 2w exit matrix](./docs/CYCLE_2W_EXIT_MATRIX.md),
+[ADR 0049](./docs/adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md),
 and [architecture decisions](./docs/adr/).

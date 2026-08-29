@@ -1698,10 +1698,57 @@ extraction, shared-input/spec correctness, accounting truth,
 operator/host/key/failure-domain independence, common-error or collusion
 resistance, runtime attestation, SEC authenticity, amendment discovery, global
 currentness, owner-reviewed quality, application composition, or production.
-Independent raw parsing/extraction is next, followed by owner-reviewed quality.
-Enterprise/shared-service gates remain Out of scope. See
+Cycle 2w narrows the next step to a separate raw extraction path for the
+primary-selected dimensionless coordinates. Enterprise/shared-service gates
+remain Out of scope. See
 [ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
 and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
+
+## Cycle 2w — bounded personal raw selected-fact extraction agreement
+
+Status: **Pass only for exact source revision
+`1f7ff096c9187386cad9ae60e1e44861e6e5f842`, the direct child of promoted
+Cycle 2v documentation baseline
+`ad5e3003d3670c84021dabe47c4fb3976274bb23`.**
+
+Cycle 2w requires the exact owned snapshot to pass Cycle 2v before comparing
+raw extraction. It rebinds each raw filing document to the manifest's exact
+count, order, byte length, and SHA-256 value, then derives ten primary-selected
+dimensionless raw coordinates per source document from the agreed normalized
+record. The repository-pinned zero-dependency Python structural HTML/iXBRL
+worker receives only raw filing bytes and sorted target QNames over standard
+input. It receives no normalization plan, parser-result document, normalized
+record, expected value, or digest.
+
+The worker independently reconstructs contexts, periods, empty/nonempty
+dimension classification, bounded simple USD/shares units, and allowlisted
+transform, sign, scale, and canonical decimal values. Exact values must agree
+at every selected coordinate without tolerance. The projection includes both
+free-cash-flow operands while reusing the operating-cash-flow coordinate.
+Equivalent duplicates collapse; conflicting duplicates quarantine. Additional
+distinct raw coordinates are allowed outside the selected projection, and the
+unit, transform, and value semantics of excluded dimensional target facts are
+not adjudicated.
+
+Success returns only an immutable metadata receipt; every input, prerequisite,
+raw-scope, worker, output, extraction, or comparison failure becomes one
+value-free aggregate quarantine with no preferred side, diff, fallback, merge,
+repair, or partial success. The private operation is recorded only as
+**owner-approved private raw-extraction comparison Pass for one owner-selected
+corpus**; the selected mode, corpus characteristics, private inputs, facts,
+values, mappings, digests, timestamps, and receipt remain outside Git and logs.
+
+The supported claim is exact value agreement for the ten primary-selected
+dimensionless raw coordinates per document, with no primary parser-result or
+normalized material crossing the secondary worker boundary. It does not prove
+the shared QName mapping or primary selection, completeness among additional
+coordinates, excluded dimensional semantics, primary parser implementation
+identity or source lineage, general XBRL/iXBRL coverage, SEC authenticity,
+accounting truth, amendment discovery, host/runtime independence, or quality.
+The next blocker is owner-reviewed quality measurement over a frozen reference
+set. Enterprise/shared-service gates remain Out of scope. See
+[ADR 0049](./adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
+and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
 
 ## Cycle 2 — personal local filing ingestion proof
 
@@ -1712,8 +1759,8 @@ Target: continue incrementally behind the declared personal profile.
 3. Cycle 2t is recorded only as owner-approved private operation Pass for one owner-selected corpus; no selected-corpus characteristic or private operation material is repository-visible.
 4. Cycle 2u normalizes ten launch facts under an exact private plan, binds manifest source metadata, and produces root-only or manifest-linked amendment lineage with atomic value-free quarantine.
 5. Cycle 2v compares the exact complete Cycle 2u record reconstructed by the repository-pinned TypeScript normalizer and distinct zero-dependency Python validator, quarantines every conflict, and forbids silent repair.
-6. A later boundary must independently parse/extract the raw filing bytes rather than share parser-result documents.
-7. The following boundary must measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
+6. Cycle 2w compares exact values at ten primary-selected dimensionless raw coordinates per document against a repository-pinned Python extractor that receives only raw bytes and target QNames, not primary parser results or normalized material.
+7. The next boundary must freeze an owner-reviewed reference set and labels before measuring document success, fact precision/recall, declared unit/date tolerance, silent-failure rate, and quarantine rate against predeclared thresholds.
 
 Personal-profile exit gate: every selected local payload matches its manifest,
 all supported documents produce bounded deterministic outcomes, and the frozen
@@ -1735,11 +1782,12 @@ establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot verify personal filing payloads.
 Cycle 2t and Cycle 2u close only bounded private activation and exact-plan
-normalization/manifest-scoped lineage. Cycle 2v can close distinct
-TypeScript/Python complete-record reconstruction agreement, not independent raw
-parsing. Raw XBRL/iXBRL extraction and taxonomy correctness, amendment
-discovery, owner-reviewed quality measurement, and the complete personal exit
-gate remain pending.
+normalization/manifest-scoped lineage. Cycle 2v closes distinct
+TypeScript/Python complete-record reconstruction agreement. Cycle 2w closes
+only a secondary raw path's exact values at the primary-selected dimensionless
+coordinates. Shared selection and mapping correctness, general XBRL/iXBRL
+extraction and taxonomy correctness, amendment discovery, owner-reviewed
+quality measurement, and the complete personal exit gate remain pending.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

@@ -1,4 +1,4 @@
-# Sprint 0 through staged Cycle 2v threat model
+# Sprint 0 through staged Cycle 2w threat model
 
 ## Current trust boundaries
 
@@ -14,7 +14,8 @@ boundary in the running profile.
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q/2r/2s/2u/2v are disconnected from the running API and web application.
+Cycle 2q/2r/2s/2u/2v/2w are disconnected from the running API and web
+application.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -24,7 +25,10 @@ normalizer over caller-supplied owned byte snapshots. Cycle 2t records only
 introduces no repository-visible input or runtime route. Cycle 2v compares the
 complete private normalization record reconstructed by pinned TypeScript and
 Python implementations and returns only metadata agreement or a value-free
-quarantine.
+quarantine. Cycle 2w separately compares exact values at primary-selected
+dimensionless coordinates against a pinned Python worker that receives only
+raw filing bytes and target QNames, returning only metadata agreement or a
+value-free quarantine.
 Enterprise approval, tenancy, B15/V15, and production controls are not trust
 boundaries for this profile unless its scope widens.
 
@@ -1743,6 +1747,81 @@ Exact gates are in
 [ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
 and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
 
+Cycle 2w is Pass only for source revision
+`1f7ff096c9187386cad9ae60e1e44861e6e5f842`, the direct child of promoted Cycle
+2v documentation baseline
+`ad5e3003d3670c84021dabe47c4fb3976274bb23`. The outer operation snapshots one
+exact declaration, manifest, plan, primary parser-result array, and raw filing
+array. It requires the primary scope to pass Cycle 2v and rebinds every raw
+document to the manifest's exact count, order, length, and SHA-256 before
+launching the repository-pinned zero-dependency Python structural HTML/iXBRL
+worker. The worker standard input contains only raw document bytes and sorted
+target QNames; no plan, primary parser result, normalized record, expected
+coordinate, expected value, or digest crosses that process boundary.
+
+Assets at risk are equality between the manifest-bound raw scope and the
+primary source scope; separation of the secondary raw-value path; integrity of
+context, period, dimension classification, simple unit, transform, sign, scale,
+and canonical decimal reconstruction; exact selected-coordinate comparison;
+determinism; aggregate conflict handling; and confidentiality of the private
+filing, source mapping, extracted facts, values, and differences.
+
+Primary threats are caller mutation or aliased backing buffers; raw payload
+substitution or reordering; bypassing the Cycle 2v prerequisite; passing the
+primary plan, result, record, values, or digests to the worker; hostile or
+oversized HTML/iXBRL; namespace, context, period, dimension, or unit smuggling;
+unbound prefixes; nested or complex units; unsupported or ambiguous numeric
+transforms; binary-float or tolerant comparison; sign or scale errors;
+equivalent and conflicting duplicate confusion; treating additional raw
+coordinates as selected; applying unvalidated semantics to excluded
+dimensional facts; malformed or noncanonical worker output; preferred-side
+acceptance, fallback, merge, coercion, repair, or partial success; preflight-
+to-launch substitution; and leakage through errors, logs, or receipts.
+
+Controls are intrinsic bounded ownership of disjoint byte snapshots; exact
+Cycle 2v prerequisite agreement; raw manifest count/order/length/digest
+rebinding; a canonical-LF digest pin for the zero-dependency Python source;
+isolated bounded standard input/output and execution time; a request schema
+limited to raw documents and exactly ten target QNames; structural namespace,
+direct-context-period, dimension, and simple-unit classification; exact
+decimal transform/sign/scale reconstruction without binary floating point;
+ten unique primary-selected dimensionless coordinates per document, including
+the free-cash-flow operands with operating cash flow reused; equivalent-
+duplicate collapse and conflicting-duplicate quarantine; and exact value
+agreement without tolerance. Additional distinct coordinates stay outside the
+projection. Dimensional target facts are excluded before unit, transform, and
+value semantics; those semantics remain a nonclaim. There is no network,
+database, API, web, queue, temporary-file, or running-application composition.
+
+Every invalid input, missing primary agreement, raw-scope mismatch, source or
+execution failure, malformed output, extraction conflict, or comparison
+failure returns one immutable value-free quarantine with zero facts and
+extractor bindings. It discloses no private coordinate, value, mapping,
+identifier, digest, timestamp, preferred side, or diff and cannot retry into
+acceptance. Success returns only an immutable metadata receipt binding the
+input set, prerequisite agreement, selected projection, result, and pinned
+worker.
+
+Residuals are deliberate. The worker receives target QNames derived from the
+primary-selected projection and shares the repository, written contract,
+operator, host, and failure domain. Cycle 2w therefore does not prove the
+shared plan QName mapping or primary fact selection; completeness or
+correctness among additional raw coordinates; unit, transform, or value
+semantics for excluded dimensional target facts; primary parser identity,
+source binding, or code lineage; general XBRL/iXBRL/HTML, taxonomy, transform,
+dimension, or unit coverage; SEC authenticity or complete provenance;
+accounting/fact/free-cash-flow/taxonomy truth; amendment discovery or global
+currentness; operator, host, key, process, failure-domain, or runtime
+independence; resistance to common-specification error, coordinated defects,
+collusion, or malicious code; Python runtime identity, preflight-to-launch
+atomicity, or attestation; owner-reviewed precision/recall or quality
+thresholds; or application/production composition. The private operation is
+recorded only as **owner-approved private raw-extraction comparison Pass for
+one owner-selected corpus**; no selected-corpus or private-run detail is
+repository evidence. Exact gates are in
+[ADR 0049](./adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
+and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1750,11 +1829,13 @@ and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
    Cycle 2t now records **owner-approved private operation Pass for one
    owner-selected corpus**, and Cycle 2u adds bounded exact-plan ten-fact
    normalization plus manifest-scoped
-   root/amendment lineage. Cycle 2v next adds byte-exact complete-record
+   root/amendment lineage. Cycle 2v adds byte-exact complete-record
    agreement between distinct pinned TypeScript and Python normalization
-   validators with atomic conflict quarantine and no silent repair. It does not
-   independently parse raw bytes; require that separate parser/extraction path
-   next, followed by owner-reviewed quality and provenance evidence.
+   validators with atomic conflict quarantine and no silent repair. Cycle 2w
+   then adds a secondary raw path for exact values at ten primary-selected
+   dimensionless coordinates per document without passing primary parser-result
+   or normalized material to that worker. Require a frozen owner-reviewed
+   quality reference set and thresholds next.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1769,8 +1850,10 @@ and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
    manifest boundary, Cycle 2r adds payload identity, Cycle 2s adds custody and
    selected-live-root deletion, Cycle 2t records coarse private activation,
    and Cycle 2u adds bounded personal normalization/lineage. Cycle 2v adds only
-   cross-language record reconstruction agreement. None proves the pending
-   independent raw parser/extraction or owner-reviewed quality boundary.
+   cross-language record reconstruction agreement, and Cycle 2w adds only the
+   narrow secondary raw selected-coordinate value comparison. None proves the
+   pending shared selection/mapping correctness, general parser coverage, or
+   owner-reviewed quality boundary.
    Organizational rights/steward approval and authority keys are separate
    enterprise-profile gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

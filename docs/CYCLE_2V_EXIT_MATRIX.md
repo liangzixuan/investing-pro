@@ -20,24 +20,24 @@ characteristic, private input, comparison output, conflict detail, path,
 identifier, value, mapping, digest, timestamp, or record belongs in Git or
 logs.
 
-| Gate                         | Required result                                                                                                                                                         | Current status                        |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Cycle 2u prerequisite        | The repository-pinned TypeScript normalizer retains the exact complete Cycle 2u record contract                                                                         | Pass at promoted baseline             |
-| One owned input snapshot     | Both implementations receive the same bounded declaration, manifest, plan, and parser-result bytes                                                                      | Pass at exact source revision         |
-| Distinct implementation      | A repository-pinned zero-dependency Python validator reconstructs the record without calling the TypeScript normalizer                                                  | Pass at exact source revision         |
-| Local TypeScript result      | The comparator calls the Cycle 2u TypeScript normalizer over the owned snapshots                                                                                        | Pass at exact source revision         |
-| Complete-record agreement    | Canonical bytes for the entire TypeScript and Python Cycle 2u records are identical, not merely digests or selected fields                                              | Pass at exact source revision         |
-| Exact record coverage        | Status, claim, schema, bindings, parser/taxonomy metadata, fact identities, fact versions, operands, lineage, scopes, and correction status all agree                   | Pass at exact source revision         |
-| Root-only shape              | The complete agreed record has 10 versions and 0 edges, with the manifest-qualified open end                                                                            | Pass at exact source revision         |
-| Optional linked-pair shape   | The complete agreed record has 20 versions and 10 key-matched edges                                                                                                     | Pass at exact source revision         |
-| Fixed free-cash-flow rule    | Both paths independently enforce exact OCF-minus-capex derivation and preserve both operands                                                                            | Pass at exact source revision         |
-| Atomic conflict boundary     | Invalid input, normalization quarantine, Python source/execution failure, invalid secondary record, or any byte difference produces one immutable value-free quarantine | Pass at exact source revision         |
-| No preference or repair      | A disagreement does not select a winner, expose a detailed diff, tolerate a mismatch, or repair either result                                                           | Pass at exact source revision         |
-| Determinism and immutability | Exact replay yields the same metadata-only success or quarantine record and nested output is frozen                                                                     | Pass at exact source revision         |
-| Private operation            | Only the coarse owner-approved comparison status may become repository-visible                                                                                          | Owner-approved private Pass           |
-| Independent raw parsing      | A second parser independently extracts facts from raw filing bytes                                                                                                      | Next blocker after Cycle 2v           |
-| Quality evidence             | Owner-reviewed fact and document quality thresholds over a frozen reference set                                                                                         | Pending after independent raw parsing |
-| Enterprise/shared service    | Organizational approval, tenancy, B15/V15, commercial redistribution, and production controls                                                                           | Out of scope                          |
+| Gate                         | Required result                                                                                                                                                                                        | Current status                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
+| Cycle 2u prerequisite        | The repository-pinned TypeScript normalizer retains the exact complete Cycle 2u record contract                                                                                                        | Pass at promoted baseline     |
+| One owned input snapshot     | Both implementations receive the same bounded declaration, manifest, plan, and parser-result bytes                                                                                                     | Pass at exact source revision |
+| Distinct implementation      | A repository-pinned zero-dependency Python validator reconstructs the record without calling the TypeScript normalizer                                                                                 | Pass at exact source revision |
+| Local TypeScript result      | The comparator calls the Cycle 2u TypeScript normalizer over the owned snapshots                                                                                                                       | Pass at exact source revision |
+| Complete-record agreement    | Canonical bytes for the entire TypeScript and Python Cycle 2u records are identical, not merely digests or selected fields                                                                             | Pass at exact source revision |
+| Exact record coverage        | Status, claim, schema, bindings, parser/taxonomy metadata, fact identities, fact versions, operands, lineage, scopes, and correction status all agree                                                  | Pass at exact source revision |
+| Root-only shape              | The complete agreed record has 10 versions and 0 edges, with the manifest-qualified open end                                                                                                           | Pass at exact source revision |
+| Optional linked-pair shape   | The complete agreed record has 20 versions and 10 key-matched edges                                                                                                                                    | Pass at exact source revision |
+| Fixed free-cash-flow rule    | Both paths independently enforce exact OCF-minus-capex derivation and preserve both operands                                                                                                           | Pass at exact source revision |
+| Atomic conflict boundary     | Invalid input, normalization quarantine, Python source/execution failure, invalid secondary record, or any byte difference produces one immutable value-free quarantine                                | Pass at exact source revision |
+| No preference or repair      | A disagreement does not select a winner, expose a detailed diff, tolerate a mismatch, or repair either result                                                                                          | Pass at exact source revision |
+| Determinism and immutability | Exact replay yields the same metadata-only success or quarantine record and nested output is frozen                                                                                                    | Pass at exact source revision |
+| Private operation            | Only the coarse owner-approved comparison status may become repository-visible                                                                                                                         | Owner-approved private Pass   |
+| Independent raw extraction   | A repository-pinned secondary worker reconstructs exact values from raw filing bytes for ten primary-selected dimensionless coordinates without receiving primary parser-result or normalized material | Staged as Cycle 2w            |
+| Quality evidence             | Owner-reviewed fact and document quality thresholds over a frozen reference set                                                                                                                        | Next blocker after Cycle 2w   |
+| Enterprise/shared service    | Organizational approval, tenancy, B15/V15, commercial redistribution, and production controls                                                                                                          | Out of scope                  |
 
 ## Comparison boundary
 
@@ -144,10 +144,16 @@ scope—not Pass and not current blockers. They reopen if the profile widens.
 
 ## Next blocker
 
-The next blocker is independent reconstruction from raw filing bytes by a
-separate parser/extraction path. After that boundary, a frozen owner-reviewed
+Cycle 2w next requires the exact Cycle 2v agreement, rebinds the corresponding
+raw documents to the manifest, and launches a repository-pinned secondary
+Python extractor with only raw filing bytes and target QNames. It compares
+exact values at the ten primary-selected dimensionless raw coordinates per
+document. This removes the shared parser-result document from the secondary
+selected-value path, but it does not independently establish the shared QName
+mapping, the primary selection, completeness among additional coordinates, or
+general raw-parser correctness. After Cycle 2w, a frozen owner-reviewed
 reference set must establish bounded fact and document quality. Cycle 2v does
-not allow record-level agreement to stand in for either requirement.
+not allow record-level agreement to stand in for either boundary.
 
 ## Exit rule
 

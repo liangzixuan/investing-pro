@@ -104,9 +104,16 @@ repository-pinned normalization validators and atomic value-free conflict
 quarantine. It cannot close raw parser/extraction independence because both
 paths consume the same parser-result bytes.
 
-The next blocker is an independent raw filing parser/extraction path. The
-following blocker is owner-reviewed quality measurement over a frozen
-reference set. Neither is pre-accepted by a Cycle 2v agreement.
+Cycle 2w next requires this exact agreement and adds a repository-pinned
+secondary worker that receives raw filing bytes and target QNames, but no
+primary parser result, normalized record, expected value, or digest. It
+compares exact values only at the ten primary-selected dimensionless raw
+coordinates per document. This does not establish the shared QName mapping or
+primary fact selection, completeness among additional coordinates, excluded
+dimensional semantics, primary parser identity or code lineage, general raw-
+parser correctness, or quality. Owner-reviewed quality measurement over a
+frozen reference set remains the following blocker and is not pre-accepted by
+either agreement.
 
 ## References
 

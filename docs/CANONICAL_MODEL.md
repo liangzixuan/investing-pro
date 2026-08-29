@@ -59,13 +59,18 @@ promoted Cycle 2s documentation baseline
 TypeScript/Python complete normalization-record agreement Pass only for exact
 source revision `76bd8a1319d6b5feb05da412ca30fe6507c5bdbb`, the direct child of
 promoted Cycle 2u documentation baseline
-`90c20e6eeb6c387015af81f74ba4b8e7aebc444b`.
+`90c20e6eeb6c387015af81f74ba4b8e7aebc444b`; and Cycle 2w bounded personal
+raw selected-fact extraction agreement Pass only for exact source revision
+`1f7ff096c9187386cad9ae60e1e44861e6e5f842`, the direct child of promoted
+Cycle 2v documentation baseline
+`ad5e3003d3670c84021dabe47c4fb3976274bb23`.
 The running application remains synthetic-only. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
 normalization boundary; Cycle 2v adds a disconnected cross-language
-normalization-record comparison boundary. None is database/API/web application
-composition.
+normalization-record comparison boundary; and Cycle 2w adds a disconnected raw
+selected-fact extraction comparison boundary. None is database/API/web
+application composition.
 
 ## Identity
 
@@ -1516,11 +1521,97 @@ failure domain. Cycle 2v therefore does not prove independent raw parsing or
 extraction, shared-input/spec correctness, accounting truth, operator/host/key/
 failure-domain independence, common error or collusion resistance, runtime
 attestation, SEC authenticity, amendment discovery, global currentness,
-owner-reviewed quality, application composition, or production. Independent
-raw parsing/extraction is next, followed by owner-reviewed quality.
+owner-reviewed quality, application composition, or production. Cycle 2w
+narrows the next step to a secondary raw selected-fact extraction path.
 Enterprise/shared-service gates remain Out of scope for the personal profile.
-See [ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
+See
+[ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
 and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
+
+## Cycle 2w bounded raw selected-fact extraction-agreement model
+
+The Cycle 2w operation owns one exact declaration, manifest, normalization
+plan, parser-result source-document array, and raw-filing-document array. It
+requires the declaration/manifest/plan/parser-result snapshot to produce the
+exact Cycle 2v agreement first, reconstructs the local Cycle 2u record, and
+requires that record to bind to the Cycle 2v normalized-record digest. Raw
+documents must then match the manifest entry count, order, byte length, and
+SHA-256 values exactly. The arrays and their backing buffers are disjoint and
+snapshotted before parsing or hashing.
+
+For each admitted source document, the local operation derives exactly ten
+unique primary-selected dimensionless raw coordinates from the normalized
+record: the nine direct source coordinates plus the free-cash-flow subtrahend,
+with the free-cash-flow minuend deliberately reusing the mapped operating-cash-
+flow coordinate. A coordinate consists of source QName, instant or duration
+period, simple USD or shares unit, and empty dimension scope. This derivation
+does not independently select facts or validate the shared QName mapping.
+
+After verifying the canonical-LF source digest, the operation launches the
+repository-pinned zero-dependency Python structural HTML/iXBRL extractor. Its
+standard input contains only base64 raw filing documents and the sorted ten
+target QNames. The worker receives no declaration, manifest, normalization
+plan, parser result, normalized record, expected coordinate, expected value,
+or digest. It independently resolves namespace-qualified concepts, direct
+context periods, empty/nonempty dimension classification, bounded simple
+units, and allowlisted transform/sign/scale decimal values. It emits a bounded
+canonical result over standard output and uses no network, database, API, web,
+queue, temporary-file, or running-application path.
+
+Comparison is exact canonical decimal value agreement without tolerance at
+each of the ten primary-selected dimensionless coordinates per document.
+Equivalent duplicate facts collapse; conflicting duplicates quarantine.
+Additional distinct coordinates for a target QName may remain in the worker
+output and are outside the selected projection. Dimensional target facts are
+classified and excluded before their unit, transform, or value semantics are
+evaluated; those semantics are not part of the claim. A selected dimensionless
+fact with an unsupported or complex unit, context, transform, or value fails
+closed.
+
+Success has status `raw_extraction_agreed_for_personal_use`, assurance
+`secondary_raw_extractor_receives_no_primary_parser_result_normalized_record_or_digest`,
+and claim
+`bounded_repository_pinned_python_raw_ixbrl_ten_fact_projection_agreement_with_frozen_primary_parser_result_and_atomic_value_free_conflict_quarantine_for_personal_single_user_local_use`.
+Its frozen metadata-only receipt binds the exact input set, prerequisite
+normalization agreement, selected projection, agreement, and Python source.
+The complete primary and secondary records and extracted facts are not
+returned through the public receipt.
+
+Every invalid input, missing prerequisite agreement, raw payload scope
+mismatch, extractor source or execution failure, malformed or noncanonical
+output, selected-coordinate conflict, or comparison failure returns one frozen
+aggregate quarantine. It has zero facts and extractor bindings and reveals no
+private value, coordinate, mapping, identifier, digest, timestamp, preferred
+side, or diff. There is no tolerance, fallback acceptance, merge, coercion,
+repair, retry into acceptance, or partial success.
+
+Cycle 2w is Pass only for source revision
+`1f7ff096c9187386cad9ae60e1e44861e6e5f842`, directly after promoted Cycle 2v
+documentation baseline `ad5e3003d3670c84021dabe47c4fb3976274bb23`.
+The private operation is recorded only as
+**owner-approved private raw-extraction comparison Pass for one owner-selected
+corpus**. No selected-corpus characteristic, selected mode, private input,
+extracted fact, value, mapping, digest, timestamp, receipt, or execution detail
+is repository evidence.
+
+The supported independence claim ends at a repository-pinned secondary worker
+reconstructing exact values from raw filing bytes without primary parser-result
+or normalized material. Cycle 2w does not prove the shared plan QName mapping
+or primary fact selection; completeness or correctness among additional raw
+coordinates; unit, transform, or value semantics for excluded dimensional
+facts; primary parser implementation identity, source binding, or code lineage;
+general XBRL/iXBRL/HTML, taxonomy, transform, dimension, or unit coverage; SEC
+authenticity or complete provenance; accounting/fact/free-cash-flow/taxonomy
+truth; amendment discovery or global currentness; operator, host, key,
+repository, process, failure-domain, or runtime independence; resistance to
+common-specification error, coordinated defects, collusion, or malicious code;
+Python runtime identity or attestation; owner-reviewed precision/recall or
+quality thresholds; application composition; or production. The next blocker
+is quality measurement over a frozen owner-reviewed reference set.
+Enterprise/shared-service gates remain Out of scope for the personal profile.
+See
+[ADR 0049](./adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
+and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
