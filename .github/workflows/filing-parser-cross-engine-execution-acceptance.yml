@@ -47,9 +47,126 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Classify exact Cycle 2x personal quality measurement before inherited routes
+        id: cycle2x_source
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          exact=false
+          required=false
+          baseline="716a3f6b7ad5a43c48a6a61d18b59c2cd5645018"
+          protected=(
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "packages/filing-parser/src/corpus-admission.ts"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "packages/personal-filing-corpus/package.json"
+            "packages/personal-filing-corpus/src/index.ts"
+            "packages/personal-filing-corpus/src/personal-filing-corpus-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-corpus.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-corpus.ts"
+            "packages/personal-filing-corpus/src/personal-filing-fact-comparison-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-fact-comparison.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-fact-comparison.ts"
+            "packages/personal-filing-corpus/src/personal-filing-fact-normalization-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-fact-normalization.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-fact-normalization.ts"
+            "packages/personal-filing-corpus/src/personal-filing-payload-custody-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-payload-custody.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-payload-custody.ts"
+            "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-payload-identity.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-payload-identity.ts"
+            "packages/personal-filing-corpus/src/personal-filing-quality-measurement-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-quality-measurement.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-quality-measurement.ts"
+            "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction-security.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction.test.ts"
+            "packages/personal-filing-corpus/src/personal-filing-raw-fact-extraction.ts"
+            "packages/personal-filing-corpus/src/test-personal-filing-fact-builder.ts"
+            "packages/personal-filing-corpus/src/test-personal-filing-fact-comparison-builder.ts"
+            "packages/personal-filing-corpus/src/test-personal-filing-quality-measurement-builder.ts"
+            "packages/personal-filing-corpus/src/test-personal-filing-raw-fact-extraction-builder.ts"
+            "packages/personal-filing-corpus/tsconfig.json"
+            "packages/personal-filing-corpus/validator/personal_filing_fact_validator.py"
+            "packages/personal-filing-corpus/validator/personal_filing_raw_fact_extractor.py"
+            "scripts/verify-boundaries.ts"
+          )
+          expected=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M"
+            "packages/personal-filing-corpus/src/index.ts"
+            "M"
+            "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts"
+            "A"
+            "packages/personal-filing-corpus/src/personal-filing-quality-measurement-security.test.ts"
+            "A"
+            "packages/personal-filing-corpus/src/personal-filing-quality-measurement.test.ts"
+            "A"
+            "packages/personal-filing-corpus/src/personal-filing-quality-measurement.ts"
+            "A"
+            "packages/personal-filing-corpus/src/test-personal-filing-quality-measurement-builder.ts"
+            "M"
+            "scripts/verify-boundaries.ts"
+          )
+          matches_exactly() {
+            local -n expected_values="$1"
+            local -n actual_values="$2"
+            if [[ "${#actual_values[@]}" != "${#expected_values[@]}" ]]; then
+              return 1
+            fi
+            for index in "${!expected_values[@]}"; do
+              if [[ "${actual_values[$index]}" != "${expected_values[$index]}" ]]; then
+                return 1
+              fi
+            done
+          }
+          if git merge-base --is-ancestor "$baseline" HEAD; then
+            mapfile -d '' -t protected_actual < <(
+              git diff --name-only --no-renames -z "$baseline" HEAD -- "${protected[@]}"
+            )
+            if [[ "${#protected_actual[@]}" != "0" ]]; then
+              required=true
+              head_revision="$(git rev-parse HEAD)"
+              read -r -a topology <<< "$(git rev-list --parents -n 1 HEAD)"
+              merge_base="$(git merge-base "$baseline" HEAD)"
+              successor_count="$(git rev-list --count "$baseline"..HEAD)"
+              first_parent_count="$(git rev-list --first-parent --count "$baseline"..HEAD)"
+              mapfile -d '' -t actual < <(
+                git diff --name-status --no-renames -z "$baseline" HEAD --
+              )
+              if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                 [[ "$merge_base" == "$baseline" ]] && \
+                 [[ "$successor_count" == "1" ]] && \
+                 [[ "$first_parent_count" == "1" ]] && \
+                 [[ "${#topology[@]}" == "2" ]] && \
+                 [[ "${topology[0]}" == "$GITHUB_SHA" ]] && \
+                 [[ "${topology[1]}" == "$baseline" ]] && \
+                 matches_exactly expected actual; then
+                exact=true
+              fi
+            fi
+          fi
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
+          if [[ "$required" == "true" && "$exact" != "true" ]]; then
+            echo "Cycle 2x protected surfaces changed outside the exact personal quality-measurement source transition; refusing inherited evidence routing." >&2
+            exit 1
+          fi
       - name: Classify exact Cycle 2w personal raw fact extraction before inherited routes
         id: cycle2w_source
-        if: ${{ success() }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -164,7 +281,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2v personal fact comparison before inherited routes
         id: cycle2v_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -274,7 +391,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2u personal fact normalization before inherited routes
         id: cycle2u_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -377,7 +494,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2s personal payload custody before inherited routes
         id: cycle2s_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -474,7 +591,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2r personal payload identity before inherited routes
         id: cycle2r_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -566,7 +683,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2q personal-use profile before inherited evidence routes
         id: cycle2q_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -662,7 +779,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2p source or Windows identity corrective before evidence routes
         id: cycle2p_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -804,7 +921,7 @@ jobs:
           fi
       - name: Classify exact Cycle 2o evidence source or corrective child before inherited routes
         id: cycle2o_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -885,7 +1002,7 @@ jobs:
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
       - name: Classify exact admission validity bridge before evidence routes
         id: admission_validity_bridge
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' && steps.cycle2o_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' && steps.cycle2o_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -952,7 +1069,7 @@ jobs:
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
       - name: Classify exact Cycle 2n evidence source before inherited routes
         id: cycle2n_source
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' && steps.cycle2o_source.outputs.exact != 'true' && steps.admission_validity_bridge.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' && steps.cycle2o_source.outputs.exact != 'true' && steps.admission_validity_bridge.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -983,7 +1100,7 @@ jobs:
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
       - name: Classify exact post-evidence legacy bridge
         id: legacy_bridge
-        if: ${{ success() && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' && steps.cycle2o_source.outputs.exact != 'true' && steps.admission_validity_bridge.outputs.exact != 'true' && steps.cycle2n_source.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle2x_source.outputs.exact != 'true' && steps.cycle2w_source.outputs.exact != 'true' && steps.cycle2v_source.outputs.exact != 'true' && steps.cycle2u_source.outputs.exact != 'true' && steps.cycle2s_source.outputs.exact != 'true' && steps.cycle2r_source.outputs.exact != 'true' && steps.cycle2q_source.outputs.exact != 'true' && steps.cycle2p_source.outputs.exact != 'true' && steps.cycle2o_source.outputs.exact != 'true' && steps.admission_validity_bridge.outputs.exact != 'true' && steps.cycle2n_source.outputs.exact != 'true' }}
         shell: bash
         run: |
           exact=false
@@ -1081,6 +1198,10 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v3.json"
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v4.json"
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
+          if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
+            echo "Cycle 2x is a personal local quality-measurement route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
+            exit 0
+          fi
           if [[ "${{ steps.cycle2w_source.outputs.exact }}" == "true" ]]; then
             echo "Cycle 2w is a personal local raw fact-extraction route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
             exit 0

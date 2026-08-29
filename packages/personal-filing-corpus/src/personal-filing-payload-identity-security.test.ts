@@ -78,6 +78,16 @@ describe("personal filing payload identity security boundary", () => {
         "PERSONAL_FILING_FACT_NORMALIZATION_NOT_PROVEN",
         "PERSONAL_FILING_FACT_NORMALIZATION_QUARANTINE_CODES",
         "PERSONAL_FILING_FACT_NORMALIZATION_SCHEMA_VERSION",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_ASSURANCE",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_ASSERTION_KINDS",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_CHECKS",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_CLAIM",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_LIMITS",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_METRICS",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_NOT_PROVEN",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_QUARANTINE_CODES",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION",
+        "PERSONAL_FILING_QUALITY_MEASUREMENT_THRESHOLDS",
         "PERSONAL_FILING_RAW_FACT_EXTRACTION_ASSURANCE",
         "PERSONAL_FILING_RAW_FACT_EXTRACTION_CHECKS",
         "PERSONAL_FILING_RAW_FACT_EXTRACTION_CLAIM",
@@ -108,6 +118,7 @@ describe("personal filing payload identity security boundary", () => {
         "deletePersonalFilingPayloadCustody",
         "comparePersonalFilingFactValidation",
         "comparePersonalFilingRawFactExtraction",
+        "createPersonalFilingQualityMeasurementProtocol",
         "normalizePersonalFilingFacts",
         "personalFilingPayloadRelativePath",
         "recordPersonalFilingPayloadCustody",
@@ -124,6 +135,10 @@ describe("personal filing payload identity security boundary", () => {
     expect("recordPersonalFilingPayloadCustodyWithRuntime" in publicApi).toBe(
       false,
     );
+    expect(
+      "createSuppliedPersonalFilingQualityMeasurementProtocolForTesting" in
+        publicApi,
+    ).toBe(false);
   });
 
   it("accepts exactly one argument with three enumerable data properties", async () => {
