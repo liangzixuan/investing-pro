@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2s threat model
+# Sprint 0 through promoted Cycle 2u threat model
 
 ## Current trust boundaries
 
@@ -14,11 +14,14 @@ boundary in the running profile.
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q/2r/2s are disconnected from the running API and web application.
+Cycle 2q/2r/2s/2u are disconnected from the running API and web application.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
-read a caller-selected local payload root during an explicit invocation; and
-Cycle 2s can write aggregate audit records and unlink manifest-selected live
-payload names only during an explicit caller invocation.
+read a caller-selected local payload root during an explicit invocation; Cycle
+2s can write aggregate audit records and unlink manifest-selected live payload
+names only during an explicit caller invocation; and Cycle 2u is a pure
+normalizer over caller-supplied owned byte snapshots. Cycle 2t records only
+**owner-approved private operation Pass for one owner-selected corpus** and
+introduces no repository-visible input or runtime route.
 Enterprise approval, tenancy, B15/V15, and production controls are not trust
 boundaries for this profile unless its scope widens.
 
@@ -1615,16 +1618,88 @@ preserves Cycle 2r/2q/2p plus Cycle 2o version 5 history. Exact gates are in
 [ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
 and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
 
+Cycle 2t's entire repository-visible statement is **owner-approved private
+operation Pass for one owner-selected corpus**. The selection and every private
+input and output remain outside Git and logs. This coarse statement is neither
+an independently reviewed artifact nor proof of source authenticity, parsing,
+fact truth, or quality.
+
+Cycle 2u is Pass only for exact source revision
+`4df5549087660b5b5d473c478b03b17576fd4784`, the direct child of promoted
+Cycle 2s documentation baseline
+`39f0ce974f84e278ec9d12193b284876c928110e`. It adds no filesystem, network,
+process, database, API, web, queue, or fetch boundary. It accepts only bounded
+declaration, manifest, normalization-plan, and parser-result byte snapshots
+and returns a normalized record or a value-free quarantine.
+
+The assets at risk are exact corpus/plan/source binding; confidentiality of the
+private plan and fact material; completeness and ordering of the fixed ten-key
+set; decimal, unit, period, and empty-dimension semantics; free-cash-flow
+operand integrity; root/amendment role and lineage integrity; deterministic
+fact identity; truthful manifest-scoped open ends; immutability; and atomic
+failure confidentiality.
+
+Primary threats are caller mutation or accessor side effects during validation;
+oversize or noncanonical JSON; plan substitution; parser-version or taxonomy
+substitution; source-document replay under another manifest entry; metadata or
+content-binding mismatch; missing, duplicate, reordered, or extra facts;
+dimension or context smuggling; noncanonical decimal or implicit unit
+conversion; forged free-cash-flow operands or arithmetic; amendment-only or
+unlinked-pair lineage; false global-currentness inference; partial results on
+failure; and leakage through error detail.
+
+Controls are intrinsic bounded byte ownership before parse or hash; canonical
+JSON and closed keys; reuse of Cycle 2q declaration/manifest verification;
+exact corpus, plan, manifest-entry, parser, taxonomy, source, and content
+bindings; exactly one root 10-K or one manifest-linked root/amendment pair;
+exactly ten ordered fact keys per document; fixed unit and instant/duration
+contracts with empty dimensions; unique direct source QNames; rejection of a
+free-cash-flow subtrahend that collides with a direct mapping; only the
+deliberate reuse of the mapped `operating_cash_flow` as the free-cash-flow
+minuend; bounded canonical decimal strings without binary floating point; and
+no implicit unit conversion.
+
+Free cash flow is accepted only as the fixed
+`operating_cash_flow_minus_capital_expenditures` subtraction. Both private-plan
+mapped operands must share the fact's duration and USD unit, and the result is
+recomputed exactly. This prevents an unexplained direct free-cash-flow value
+from entering the bounded record but does not establish accounting truth.
+
+Root-only mode creates ten versions, zero edges, and null predecessor/successor
+links. Its open end is explicitly
+`no_later_version_within_exact_frozen_manifest_only`. Optional linked-pair mode
+creates twenty versions and ten key-matched edges with half-open known windows.
+These are manifest-scoped source events; the normalizer neither discovers
+external amendments nor declares a globally current fact.
+
+Every success graph is frozen and exact replay is deterministic. Every failure
+returns one frozen aggregate quarantine code with zero fact versions and zero
+lineage. No partial source value, mapping, identifier, digest, or timestamp
+crosses the failure boundary, and the operation performs no silent repair.
+
+Residuals remain explicit. Cycle 2u does not establish raw payload identity at
+normalization time; raw XBRL/iXBRL parsing, extraction, or taxonomy mapping;
+SEC authenticity or complete provenance; accounting/fact truth; taxonomy
+authority or general coverage; amendment discovery or global currentness;
+independent parser/validator agreement; conflict adjudication; owner-reviewed
+precision/recall or other quality thresholds; or running-app and production
+composition. The private Cycle 2u operation is recorded only as
+**owner-approved private operation Pass for one owner-selected corpus**; no
+selected-corpus characteristic or private run data is repository evidence.
+Exact gates are in
+[ADR 0047](./adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
+and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
-2. **Personal filing ingestion:** retain Cycle 2a's one-shot isolation controls;
-   after Cycle 2r's disconnected identity verifier and Cycle 2s's disconnected
-   custody/deletion capabilities, require one successful
-   manifest-to-identity-to-custody invocation over the selected owner corpus,
-   then add bounded
-   ten-fact normalization/lineage, parser quality, conflict quarantine, and
-   provenance.
+2. **Personal filing ingestion:** retain Cycle 2a's one-shot isolation controls.
+   Cycle 2t now records **owner-approved private operation Pass for one
+   owner-selected corpus**, and Cycle 2u adds bounded exact-plan ten-fact
+   normalization plus manifest-scoped
+   root/amendment lineage. Next require Cycle 2v independent parser/validator
+   comparison with atomic conflict quarantine and no silent repair, followed by
+   owner-reviewed parser quality and provenance evidence.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1636,11 +1711,12 @@ and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
    promoted Cycle 2n quality composition, promoted Cycle 2o archive-custody
    composition, and promoted Cycle 2p admission-validity correction remain
    engineering preparation. Cycle 2q closes the personal declaration and
-   manifest boundary only. Cycle 2r adds a payload-identity verifier and Cycle
-   2s adds custody/deletion capabilities, but neither records a successful
-   owner-corpus operation. Cycle 2t activation is next. Organizational
-   rights/steward approval and authority keys are separate enterprise-profile
-   gates, not personal-profile prerequisites.
+   manifest boundary, Cycle 2r adds payload identity, Cycle 2s adds custody and
+   selected-live-root deletion, Cycle 2t records coarse private activation,
+   and Cycle 2u adds bounded personal normalization/lineage. None proves the
+   pending independent comparison or owner-reviewed quality boundary.
+   Organizational rights/steward approval and authority keys are separate
+   enterprise-profile gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

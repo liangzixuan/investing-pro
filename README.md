@@ -803,16 +803,56 @@ parser-isolation, normalization, and payload-custody runs `33221451518`,
 `33221451525`, `33221451528`, and `33221451601` also reached terminal success.
 No Cycle 2s cross-engine/CI evidence artifact is emitted.
 
-Generated fixtures prove the disconnected capability only. Cycle 2t is the
-next blocker: record custody for canonical owner declaration/manifest bytes,
-their exact manifest-complete live payload root, and a new empty separate audit
-root. Require exactly the final custody JSON and no pending name; deletion is
-not part of activation. Keep every owner input, payload, raw path, returned
-record/digest, and audit byte outside Git and logs. Enterprise
-approval, multi-user controls, B15/V15, and production remain Out of scope for
-this profile. See
+Generated fixtures prove the disconnected capability only. Cycle 2t's complete
+repository-visible status is **owner-approved private operation Pass for one
+owner-selected corpus**; the selection and every private operation input and
+output remain unrecorded here. That status is not an independent review and
+does not prove source authenticity, parser correctness, or fact truth.
+Enterprise approval, multi-user controls, B15/V15, and production remain Out
+of scope for this profile. See
 [ADR 0046](./docs/adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
 and the [Cycle 2s exit matrix](./docs/CYCLE_2S_EXIT_MATRIX.md).
+
+Cycle 2u is **Pass only for exact source revision
+`4df5549087660b5b5d473c478b03b17576fd4784`, the direct child of promoted
+Cycle 2s documentation baseline
+`39f0ce974f84e278ec9d12193b284876c928110e`.** It adds the disconnected
+`normalizePersonalFilingFacts` boundary to the personal package. The operation
+owns bounded declaration, manifest, normalization-plan, and parser-result byte
+snapshots; reuses the personal manifest verifier; and accepts only canonical
+private plan and source documents bound to that verified manifest.
+
+The closed contract contains exactly `assets`, `cash`, `debt`,
+`diluted_shares`, `free_cash_flow`, `gross_profit`, `net_income`,
+`operating_cash_flow`, `operating_income`, and `revenue`, once and in order per
+source document. Direct facts use exact plan mappings with unique source
+QNames, fixed unit/period contracts, empty dimensions, and canonical decimals.
+The free-cash-flow subtrahend cannot collide with any direct mapping; the only
+deliberate coordinate reuse is its minuend matching the mapped
+`operating_cash_flow`. Free cash flow is allowed only as the fixed
+operating-cash-flow-minus-capital-expenditures subtraction with both operands
+and exact decimal recomputation; no other implicit derivation or unit
+conversion is accepted.
+
+One manifest root creates 10 versions and zero lineage edges with
+`root_only_no_in_corpus_amendment`. Its open end means only no later version in
+the exact frozen manifest. An optional manifest-linked amendment pair creates
+20 versions and exactly 10 one-to-one supersession edges with half-open known
+windows. It does not discover external amendments or establish global
+currentness.
+
+Any failure produces one immutable value-free quarantine with zero facts and
+zero lineage. The success claim is
+`bounded_private_ten_fact_normalization_and_manifest_linked_lineage_for_personal_single_user_local_use`.
+The exact private plan, parser-result documents, normalized material, and
+operation record stay outside Git and logs. The complete private-operation
+status is **owner-approved private operation Pass for one owner-selected
+corpus**. Raw XBRL/iXBRL parsing, SEC authenticity, accounting/fact truth,
+taxonomy authority, amendment discovery, independent parser comparison,
+quality, database/API/web composition, and production remain unproven. Cycle
+2v independent parser/validator comparison and conflict quarantine is next.
+See [ADR 0047](./docs/adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
+and the [Cycle 2u exit matrix](./docs/CYCLE_2U_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1389,4 +1429,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0045](./docs/adr/0045-personal-local-filing-payload-identity-verification.md),
 [Cycle 2s exit matrix](./docs/CYCLE_2S_EXIT_MATRIX.md),
 [ADR 0046](./docs/adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md),
+[Cycle 2u exit matrix](./docs/CYCLE_2U_EXIT_MATRIX.md),
+[ADR 0047](./docs/adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md),
 and [architecture decisions](./docs/adr/).

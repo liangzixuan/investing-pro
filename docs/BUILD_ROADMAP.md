@@ -1600,17 +1600,71 @@ payload-custody runs/jobs were `33221451518` / `99016145897`, `33221451525` /
 `99016146058`, `33221451528` / `99016145920`, and `33221451601` /
 `99016146192`.
 
-This promotion proves generated-fixture capability behavior only. The next
-blocker is Cycle 2t owner-corpus activation: record custody for canonical owner
-declaration/manifest bytes, their exact manifest-complete live payload root,
-and a new empty canonical non-root audit root which is separate and nonnested.
-Require a returned custody record, exactly the final custody JSON, and no
-pending name; deletion is not part of activation. Keep every owner input,
-payload, raw path, returned record/digest, and audit byte outside Git and logs.
-After activation, continue to bounded personal ten-fact normalization and
-correction lineage. See
+This promotion proves generated-fixture capability behavior only. Cycle 2t
+later closed the operational activation blocker. Its complete
+repository-visible status is **owner-approved private operation Pass for one
+owner-selected corpus**; the selection and every private operation input and
+output remain outside Git and logs. Cycle 2u then adds bounded personal
+ten-fact normalization and manifest-scoped lineage.
+See
 [ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
 and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
+
+## Cycle 2t — owner-selected private corpus activation
+
+Status: **Owner-approved private operation Pass for one owner-selected
+corpus.**
+
+Cycle 2t is an owner operation, not a source promotion or public evidence
+artifact. The repository stores no corpus selection or private operation input
+or output. The coarse status is not an independent review and does not prove
+SEC authenticity, raw parsing, fact truth, or quality.
+
+Enterprise approval, multi-user controls, B15/V15, and production remain Out
+of scope for `personal_single_user_local`. Cycle 2t closes only the bounded
+private activation prerequisite for the next personal engineering boundary.
+
+## Cycle 2u — bounded personal ten-fact normalization and lineage
+
+Status: **Pass only for exact source revision
+`4df5549087660b5b5d473c478b03b17576fd4784`, the direct child of promoted
+Cycle 2s documentation baseline
+`39f0ce974f84e278ec9d12193b284876c928110e`.**
+
+Cycle 2u adds `normalizePersonalFilingFacts` to the disconnected personal
+package. It owns bounded declaration, manifest, canonical private plan, and
+parser-result snapshots; invokes the Cycle 2q manifest verifier; and requires
+exact binding across the corpus, plan, manifest entries, and source documents.
+The accepted source set is either one root 10-K or that root plus one
+manifest-linked 10-K/A.
+
+Every source document contains the exact ten keys once and in fixed order,
+with plan-bound source mapping, unique direct source QNames, unit,
+instant/duration contract, empty dimensions, and bounded canonical decimals.
+The free-cash-flow subtrahend cannot collide with a direct mapping; its minuend
+matching the mapped `operating_cash_flow` is the only deliberate coordinate
+reuse. Free cash flow is accepted only as the fixed
+operating-cash-flow-minus-capital-expenditures subtraction with both operands
+and exact decimal recomputation. The boundary performs no raw XBRL/iXBRL
+parse, source fetch, implicit conversion, or silent repair.
+
+Root mode produces ten versions and zero lineage edges with every predecessor
+and successor null. Its open end is qualified to the exact frozen manifest and
+does not claim absence of an external amendment. Optional linked-pair mode
+produces twenty versions and ten one-to-one supersession edges with half-open
+known windows. Any whole-input failure returns one immutable value-free
+quarantine with zero facts and zero lineage.
+
+The exact private plan, parser-result documents, normalized material, and
+operation record remain outside Git and logs. The complete private-operation
+status is **owner-approved private operation Pass for one owner-selected
+corpus**. Raw parser/extraction correctness, SEC authenticity,
+accounting/fact truth, taxonomy authority, amendment discovery, global
+currentness, independent comparison, owner-reviewed quality, database/API/web
+composition, and production remain unproven. Cycle 2v independent
+parser/validator comparison and conflict quarantine is next. See
+[ADR 0047](./adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
+and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
 
 ## Cycle 2 — personal local filing ingestion proof
 
@@ -1618,10 +1672,10 @@ Target: continue incrementally behind the declared personal profile.
 
 1. Cycle 2r defines the fixed direct-root `<accession>.payload` mapping and a bounded streaming verifier capability. A specific corpus becomes verified only after a successful invocation over that corpus.
 2. Cycle 2s records bounded aggregate custody metadata in a separate audit root and provides explicit selected-live-root deletion with intent and terminal receipt capabilities.
-3. Activate one owner-selected corpus by recording custody against its exact manifest-complete live payload root and a new empty separate audit root, keeping every owner input, payload, path, returned record/digest, and audit byte outside Git and logs.
-4. Normalize ten launch facts with source accession, accepted/available time, parser version, taxonomy, unit, dimensions, and supersession lineage.
-5. Compare two independent parsers/validators, quarantine conflicts, and forbid silent repair.
-6. Measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
+3. Cycle 2t is recorded only as owner-approved private operation Pass for one owner-selected corpus; no selected-corpus characteristic or private operation material is repository-visible.
+4. Cycle 2u normalizes ten launch facts under an exact private plan, binds manifest source metadata, and produces root-only or manifest-linked amendment lineage with atomic value-free quarantine.
+5. Cycle 2v must compare two independent parsers/validators, quarantine conflicts, and forbid silent repair.
+6. A later boundary must measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
 
 Personal-profile exit gate: every selected local payload matches its manifest,
 all supported documents produce bounded deterministic outcomes, and the frozen
@@ -1634,17 +1688,19 @@ at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stag
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
 bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
 bounded synthetic Cycle 2n, promoted bounded synthetic Cycle 2o, promoted
-repository-controlled Cycle 2p, personal manifest-only Cycle 2q, nor Cycle 2r's
-disconnected payload-identity verifier capability, nor Cycle 2s's disconnected
-custody/deletion capabilities satisfies this exit gate.
+repository-controlled Cycle 2p, personal manifest-only Cycle 2q, Cycle 2r's
+disconnected payload-identity verifier capability, Cycle 2s's disconnected
+custody/deletion capabilities, coarse Cycle 2t activation, nor Cycle 2u's
+bounded normalization/lineage result satisfies this full exit gate.
 Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot verify personal filing payloads.
-A successful manifest-to-payload-identity-to-custody invocation over an
-owner-selected corpus, local source provenance, real ten-fact coverage,
-owner-reviewed quality measurement, supported XBRL/iXBRL and taxonomy
-handling, and correction lineage remain pending for the personal path.
+Cycle 2t and Cycle 2u close only bounded private activation and exact-plan
+normalization/manifest-scoped lineage. Independent parser/validator agreement,
+conflict quarantine, raw XBRL/iXBRL and taxonomy correctness, amendment
+discovery, owner-reviewed quality measurement, and the complete personal exit
+gate remain pending.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

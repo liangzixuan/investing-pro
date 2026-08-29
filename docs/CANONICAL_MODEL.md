@@ -48,11 +48,18 @@ and Cycle 2r personal local payload-identity verification capability Pass only
 for exact source revision `e15ddd8aa923a43fdca730e233abfbe684101e78`;
 and Cycle 2s personal local payload-custody and owner-deletion capabilities Pass
 only for exact source revision
-`78b3880632ff7e54ac493e9c208ee1d93a275aa1`.
-The running application remains synthetic-only; Cycle 2q/2r/2s add
+`78b3880632ff7e54ac493e9c208ee1d93a275aa1`; Cycle 2t owner-selected corpus
+activation is **owner-approved private operation Pass for one owner-selected
+corpus**, with every selection and private operation input/output outside Git
+and logs; and Cycle 2u bounded personal
+ten-fact normalization and manifest-scoped lineage Pass only for exact source
+revision `4df5549087660b5b5d473c478b03b17576fd4784`, the direct child of
+promoted Cycle 2s documentation baseline
+`39f0ce974f84e278ec9d12193b284876c928110e`.
+The running application remains synthetic-only. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
-selected-live-root deletion boundaries, not admitted raw filing data or an
-owner-corpus operation record.
+selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
+normalization boundary. None is database/API/web application composition.
 
 ## Identity
 
@@ -1361,14 +1368,100 @@ and a 19-path protected surface. Both offline boundaries accept it. No Cycle
 preserved.
 
 For `personal_single_user_local` only, enterprise approvals, tenant/multi-user
-controls, B15/V15, and production operations remain Out of scope. The next
-canonical boundary is Cycle 2t owner-corpus activation: custody recording over
-canonical owner documents, the exact manifest-complete live payload root, and
-a new empty separate canonical audit root. Exactly one final custody JSON and
-no pending name may remain; deletion is not part of activation, and all owner
-material stays outside Git and logs. See
+controls, B15/V15, and production operations remain Out of scope. Cycle 2t
+has only this repository-visible status: **owner-approved private operation
+Pass for one owner-selected corpus**. There is no selection or private
+operation input/output in Git or logs. Cycle 2u then adds bounded ten-fact
+normalization and manifest-scoped lineage. See
 [ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
 and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
+
+## Cycle 2t owner-selected private activation status
+
+Cycle 2t has one repository-visible statement: **owner-approved private
+operation Pass for one owner-selected corpus**. This is an operational status,
+not a source revision or independently reviewed evidence artifact. The corpus
+selection and every declaration, manifest, payload, path, custody input/output,
+identifier, digest, timestamp, and returned record remain outside Git and
+logs. No public model field is populated from the private operation.
+
+That coarse Pass closes only the private activation prerequisite defined after
+Cycle 2s. It does not establish SEC authenticity, parsing, normalized fact
+truth, correction completeness, or quality.
+
+## Cycle 2u bounded personal fact-normalization model
+
+Cycle 2u adds the pure `normalizePersonalFilingFacts` operation to
+`@research-cockpit/personal-filing-corpus`. Its single input object contains
+owned bounded byte snapshots for the declaration, manifest, canonical private
+normalization plan, and one or two canonical parser-result documents. It first
+reuses `verifyPersonalFilingCorpusManifest`, then verifies exact digest and
+metadata bindings among the corpus, plan, manifest entries, and parser-result
+documents. It neither reads the payload root nor parses raw filing bytes.
+
+The plan defines one parser version and taxonomy and exactly ten mappings in
+this fixed order:
+
+1. `assets` — instant USD;
+2. `cash` — instant USD;
+3. `debt` — instant USD;
+4. `diluted_shares` — duration shares;
+5. `free_cash_flow` — duration USD;
+6. `gross_profit` — duration USD;
+7. `net_income` — duration USD;
+8. `operating_cash_flow` — duration USD;
+9. `operating_income` — duration USD; and
+10. `revenue` — duration USD.
+
+Each parser-result document contains each key exactly once and in that order.
+All dimensions are empty. Direct facts bind the private plan mapping, use
+unique source QNames, and obey the exact unit/period contract. The
+free-cash-flow subtrahend cannot collide with any direct mapping; the only
+deliberate coordinate reuse is its minuend matching the mapped
+`operating_cash_flow`. Values use bounded canonical base-ten strings without
+binary floating point or implicit unit conversion.
+
+`free_cash_flow` has no direct source mapping in this model. Its derivation is
+fixed to `operating_cash_flow_minus_capital_expenditures`, carries the mapped
+minuend and subtrahend with the same duration context and USD unit, and is
+recomputed exactly. The returned normalized fact preserves both operands. This
+is a mechanical model contract, not an authoritative accounting definition.
+
+The manifest/source set has only two allowed shapes. One root 10-K produces
+ten `PersonalNormalizedFilingFactVersion` values, no supersession edges, and
+lineage status `root_only_no_in_corpus_amendment`. Every root predecessor and
+successor is null. The aggregate `nullKnownToScope` is
+`no_later_version_within_exact_frozen_manifest_only`, so null never means
+globally current.
+
+The optional manifest-linked 10-K/A shape produces twenty versions and exactly
+ten key-matched `PersonalFilingFactSupersession` edges. Root versions have a
+half-open known window ending when the linked amendment becomes available;
+successors begin then. The edge is source-event lineage and therefore remains
+present when a supplied value is unchanged. Amendment-only, unlinked,
+partial, reordered, overcomplete, or context-incompatible source sets fail
+closed.
+
+Success is a frozen `PersonalFilingFactNormalizationRecord` with status
+`normalized_for_personal_use`, `synthetic: false`, deterministic fact
+identities, and exact claim
+`bounded_private_ten_fact_normalization_and_manifest_linked_lineage_for_personal_single_user_local_use`.
+An exact replay is byte-identical. Any failure returns only a frozen aggregate
+quarantine code, zero fact versions, zero lineage edges, and no partial source
+or value material. Quarantine never repairs input.
+
+The complete repository-visible private Cycle 2u status is **owner-approved
+private operation Pass for one owner-selected corpus**. No selected-corpus
+characteristic, private plan, parser-result document, normalized value,
+identifier, digest, timestamp, or returned record is stored in Git or logs.
+
+Raw XBRL/iXBRL parsing and extraction correctness, SEC authenticity,
+accounting/fact truth, taxonomy authority and general coverage, amendment
+discovery, global currentness, independent comparison, quality, database/API/
+web composition, and production are unproven. Cycle 2v independent
+parser/validator comparison and conflict quarantine is next. See
+[ADR 0047](./adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
+and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
