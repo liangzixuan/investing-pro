@@ -143,10 +143,12 @@ later external filing exists. The optional linked-pair path is available only
 when the frozen manifest itself supplies the correction link. No private
 corpus characteristic or selected mode is recorded here.
 
-The next blocker is Cycle 2v independent parser/validator comparison and
-conflict quarantine. Neither Cycle 2u output nor its private plan is accepted
-as ground truth for that comparison, and disagreements must not be silently
-repaired.
+Cycle 2v next compares this TypeScript normalizer with a distinct
+repository-pinned zero-dependency Python validator that independently
+reconstructs the same exact complete record from the same owned inputs.
+Disagreements must not be silently repaired. This is not independent raw
+parsing or extraction; that remains the following blocker, before
+owner-reviewed quality.
 
 ## References
 

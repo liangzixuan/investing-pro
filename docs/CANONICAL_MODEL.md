@@ -55,11 +55,17 @@ and logs; and Cycle 2u bounded personal
 ten-fact normalization and manifest-scoped lineage Pass only for exact source
 revision `4df5549087660b5b5d473c478b03b17576fd4784`, the direct child of
 promoted Cycle 2s documentation baseline
-`39f0ce974f84e278ec9d12193b284876c928110e`.
+`39f0ce974f84e278ec9d12193b284876c928110e`; and Cycle 2v bounded
+TypeScript/Python complete normalization-record agreement Pass only for exact
+source revision `76bd8a1319d6b5feb05da412ca30fe6507c5bdbb`, the direct child of
+promoted Cycle 2u documentation baseline
+`90c20e6eeb6c387015af81f74ba4b8e7aebc444b`.
 The running application remains synthetic-only. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
-normalization boundary. None is database/API/web application composition.
+normalization boundary; Cycle 2v adds a disconnected cross-language
+normalization-record comparison boundary. None is database/API/web application
+composition.
 
 ## Identity
 
@@ -1458,10 +1464,63 @@ identifier, digest, timestamp, or returned record is stored in Git or logs.
 Raw XBRL/iXBRL parsing and extraction correctness, SEC authenticity,
 accounting/fact truth, taxonomy authority and general coverage, amendment
 discovery, global currentness, independent comparison, quality, database/API/
-web composition, and production are unproven. Cycle 2v independent
-parser/validator comparison and conflict quarantine is next. See
+web composition, and production are unproven. Cycle 2v narrows the next step
+to distinct TypeScript/Python reconstruction of this exact complete record;
+independent raw parsing remains later. See
 [ADR 0047](./adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
 and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
+
+## Cycle 2v bounded TypeScript/Python record-agreement model
+
+The Cycle 2v comparator snapshots one exact Cycle 2u declaration, manifest,
+normalization plan, and parser-result byte scope and invokes the local
+`normalizePersonalFilingFacts` implementation. It verifies the canonical-LF
+source digest of the repository-pinned zero-dependency Python validator, sends
+only those same snapshots to it over standard input, owns its canonical output,
+and then compares the two records. Python independently reconstructs the entire
+Cycle 2u record without calling TypeScript or receiving its result. Python
+executable identity, process isolation, and runtime attestation remain
+nonclaims.
+
+Agreement is byte identity of the full canonical record, not a digest, subset,
+tolerant comparison, or semantic projection. Every schema, claim, status,
+binding, parser/taxonomy declaration, fact identity, value, free-cash-flow
+operand, pointer, version window, lineage edge, `lineageScope`,
+`lineageStatus`, `nullKnownToScope`, and `ownerCorrectionStatus` must match in
+canonical order. Root mode is exactly 10 versions and 0 edges with the frozen-
+manifest-qualified open end. The optional linked-pair mode is exactly 20
+versions and 10 edges. Free cash flow is still only exact OCF minus capex with
+both operands.
+
+Every input error, TypeScript normalization quarantine, Python source or
+execution failure, malformed or noncanonical secondary record, or
+canonical-byte difference becomes one
+immutable value-free quarantine. It contains no partial record, value, mapping,
+identifier, digest, timestamp, preferred side, or detailed diff and performs
+no repair. Success status is `agreed_for_personal_use`; its deterministic
+metadata receipt binds the input set, normalized record, agreement, and both
+implementations by SHA-256. The complete private record is not returned through
+the comparison boundary or recorded in Git/logs.
+
+Cycle 2v is Pass only for source revision
+`76bd8a1319d6b5feb05da412ca30fe6507c5bdbb`, directly after promoted Cycle 2u
+documentation baseline `90c20e6eeb6c387015af81f74ba4b8e7aebc444b`. Its
+private operation is recorded only as **owner-approved private
+TypeScript/Python validator comparison Pass for one owner-selected corpus**.
+No selected-corpus or private-run detail is repository evidence.
+
+The independence claim is only distinct repository-pinned TypeScript and
+Python normalization-record reconstruction. The paths share the same input
+bytes, parser results, written specification, repository, operator, host, and
+failure domain. Cycle 2v therefore does not prove independent raw parsing or
+extraction, shared-input/spec correctness, accounting truth, operator/host/key/
+failure-domain independence, common error or collusion resistance, runtime
+attestation, SEC authenticity, amendment discovery, global currentness,
+owner-reviewed quality, application composition, or production. Independent
+raw parsing/extraction is next, followed by owner-reviewed quality.
+Enterprise/shared-service gates remain Out of scope for the personal profile.
+See [ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
+and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

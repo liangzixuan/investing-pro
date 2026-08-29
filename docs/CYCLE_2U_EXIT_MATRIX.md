@@ -35,8 +35,9 @@ review and proves neither SEC authenticity nor fact truth.
 | Owner operation                     | No private run data or selected-corpus characteristic is repository-visible                                                                                        | Owner-approved private operation Pass for one owner-selected corpus |
 | Raw parsing and authenticity        | Raw XBRL/iXBRL parsing, extraction, taxonomy authority, SEC authenticity, and complete provenance                                                                  | Unproven                                                            |
 | Fact and accounting truth           | Accounting correctness, fact truth, free-cash-flow interpretation, amendment discovery, and global currentness                                                     | Unproven                                                            |
-| Independent comparison              | A second independent parser/validator comparison and conflict quarantine                                                                                           | Next blocker: Cycle 2v                                              |
-| Quality evidence                    | Owner-reviewed reference set, precision/recall, tolerance, and silent-failure thresholds                                                                           | Pending after Cycle 2v                                              |
+| Independent comparison              | Distinct repository-pinned TypeScript/Python reconstruction of the same complete Cycle 2u record with byte-exact agreement and conflict quarantine                 | Staged as Cycle 2v                                                  |
+| Independent raw parsing             | A separate parser/extraction path reconstructs facts from raw filing bytes                                                                                         | Next blocker after Cycle 2v                                         |
+| Quality evidence                    | Owner-reviewed reference set, precision/recall, tolerance, and silent-failure thresholds                                                                           | Pending after independent raw parsing                               |
 | Running composition                 | Database, API, web, queue, fetcher, and production application integration                                                                                         | Unproven                                                            |
 | Enterprise and shared-service gates | Organizational approval, tenant/multi-user controls, B15/V15, and production operations                                                                            | Out of scope                                                        |
 
@@ -143,11 +144,13 @@ source terms remain outside this internal engineering classification.
 
 ## Next blocker
 
-Cycle 2v should execute a second genuinely independent parser or validator over
-the same private source scope, compare complete manifest-bound normalized
-outputs, quarantine every disagreement without silent repair, and keep
-conflict details out of public failure results. Cycle 2u does not pre-accept
-either side as ground truth.
+Cycle 2v compares the local TypeScript normalizer with a distinct
+repository-pinned zero-dependency Python validator. Both consume the same
+owned declaration, manifest, plan, and parser-result bytes, and agreement
+requires byte identity of the exact complete record. This detects distinct
+normalization-implementation disagreement but is not independent raw parsing
+or extraction. That raw parser/extraction boundary remains next, followed by
+owner-reviewed quality.
 
 ## Exit rule
 

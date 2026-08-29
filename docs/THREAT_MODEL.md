@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2u threat model
+# Sprint 0 through staged Cycle 2v threat model
 
 ## Current trust boundaries
 
@@ -14,14 +14,17 @@ boundary in the running profile.
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q/2r/2s/2u are disconnected from the running API and web application.
+Cycle 2q/2r/2s/2u/2v are disconnected from the running API and web application.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
 names only during an explicit caller invocation; and Cycle 2u is a pure
 normalizer over caller-supplied owned byte snapshots. Cycle 2t records only
 **owner-approved private operation Pass for one owner-selected corpus** and
-introduces no repository-visible input or runtime route.
+introduces no repository-visible input or runtime route. Cycle 2v compares the
+complete private normalization record reconstructed by pinned TypeScript and
+Python implementations and returns only metadata agreement or a value-free
+quarantine.
 Enterprise approval, tenancy, B15/V15, and production controls are not trust
 boundaries for this profile unless its scope widens.
 
@@ -1690,6 +1693,56 @@ Exact gates are in
 [ADR 0047](./adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
 and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
 
+Cycle 2v is Pass only for source revision
+`76bd8a1319d6b5feb05da412ca30fe6507c5bdbb`, the direct child of promoted Cycle
+2u documentation baseline
+`90c20e6eeb6c387015af81f74ba4b8e7aebc444b`. The comparator snapshots one
+exact declaration, manifest, plan, and parser-result byte scope and invokes the
+local TypeScript Cycle 2u normalizer. After a canonical-LF source-digest
+preflight, it launches the repository-pinned zero-dependency Python validator,
+sends only those same snapshots over standard input, owns its canonical
+standard output, and compares the records. Python reconstructs the exact
+complete record without receiving the TypeScript result. Python executable
+identity, process isolation, and runtime attestation remain unproven.
+
+Assets at risk are same-input delivery; separation of the implementations;
+complete-field and canonical-order coverage; exact decimal and free-cash-flow
+operand agreement; fact/pointer identity; lineage shape, windows, scopes, and
+statuses; secondary-record integrity; deterministic comparison; conflict
+atomicity; and confidentiality of both private records and differences.
+
+Primary threats are mutable or unequal inputs across paths; Python delegating
+to TypeScript or receiving its output; incomplete-field, digest-only, tolerant,
+or semantic-projection comparison; noncanonical serialization; malformed,
+oversized, trailing, or ambiguous secondary output; one-sided quarantine
+acceptance; choosing a preferred result; silent repair; detailed conflict
+leakage; and treating agreement as raw-parser or fact-truth evidence.
+
+Controls are one owned bounded input snapshot, identical bytes for both paths,
+repository pinning, a distinct zero-dependency Python reconstruction, and
+byte-exact comparison of the full canonical Cycle 2u record. Root-only records
+must be 10 versions/0 edges with the manifest-qualified open end; optional
+linked-pair records must be 20/10. Both paths independently enforce exact OCF-
+minus-capex derivation and preserve both operands. Every invalid input,
+normalization quarantine, Python source or execution failure, malformed
+secondary record, or byte difference
+returns one immutable value-free aggregate quarantine with no preferred side,
+diff location, private field, or repair.
+
+Residuals are deliberate. The two paths share declaration, manifest, plan,
+parser-result bytes, written specification, repository, operator, host, and
+failure domain. Cycle 2v therefore cannot establish independent raw parsing or
+extraction; shared-input/specification correctness; accounting or fact truth;
+operator/host/key/failure-domain independence; resistance to common error or
+collusion; runtime attestation; SEC authenticity; amendment discovery or global
+currentness; owner-reviewed quality; or application/production composition.
+The private operation is recorded only as **owner-approved private
+TypeScript/Python validator comparison Pass for one owner-selected corpus**; no
+corpus characteristic or private operation material is repository evidence.
+Exact gates are in
+[ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
+and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1697,9 +1750,11 @@ and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
    Cycle 2t now records **owner-approved private operation Pass for one
    owner-selected corpus**, and Cycle 2u adds bounded exact-plan ten-fact
    normalization plus manifest-scoped
-   root/amendment lineage. Next require Cycle 2v independent parser/validator
-   comparison with atomic conflict quarantine and no silent repair, followed by
-   owner-reviewed parser quality and provenance evidence.
+   root/amendment lineage. Cycle 2v next adds byte-exact complete-record
+   agreement between distinct pinned TypeScript and Python normalization
+   validators with atomic conflict quarantine and no silent repair. It does not
+   independently parse raw bytes; require that separate parser/extraction path
+   next, followed by owner-reviewed quality and provenance evidence.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1713,8 +1768,9 @@ and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
    engineering preparation. Cycle 2q closes the personal declaration and
    manifest boundary, Cycle 2r adds payload identity, Cycle 2s adds custody and
    selected-live-root deletion, Cycle 2t records coarse private activation,
-   and Cycle 2u adds bounded personal normalization/lineage. None proves the
-   pending independent comparison or owner-reviewed quality boundary.
+   and Cycle 2u adds bounded personal normalization/lineage. Cycle 2v adds only
+   cross-language record reconstruction agreement. None proves the pending
+   independent raw parser/extraction or owner-reviewed quality boundary.
    Organizational rights/steward approval and authority keys are separate
    enterprise-profile gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

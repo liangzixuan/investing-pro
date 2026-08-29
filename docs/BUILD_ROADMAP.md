@@ -1666,6 +1666,43 @@ parser/validator comparison and conflict quarantine is next. See
 [ADR 0047](./adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
 and the [Cycle 2u exit matrix](./CYCLE_2U_EXIT_MATRIX.md).
 
+## Cycle 2v — bounded TypeScript/Python normalization-record agreement
+
+Status: **Pass only for exact source revision
+`76bd8a1319d6b5feb05da412ca30fe6507c5bdbb`, the direct child of promoted
+Cycle 2u documentation baseline
+`90c20e6eeb6c387015af81f74ba4b8e7aebc444b`.**
+
+Cycle 2v supplies one owned declaration/manifest/plan/parser-result snapshot to
+two repository-pinned paths. TypeScript invokes the local Cycle 2u normalizer.
+After checking the canonical-LF Python source digest, the comparator launches a
+distinct zero-dependency Python validator with only the same snapshot over
+standard input. Python independently applies the complete Cycle 2u record
+contract. The comparator accepts only byte identity of the full
+canonical records, including every binding, fact identity and value, fixed
+free-cash-flow operand, lineage edge, scope, and status. Root mode remains
+10 versions/0 edges; the optional linked pair remains 20/10.
+
+Any invalid input, normalization quarantine, Python source or execution
+failure, malformed secondary record, or byte difference becomes one immutable
+value-free conflict quarantine. Neither
+side is preferred, no detailed diff is disclosed, and no mismatch is tolerated
+or silently repaired. The private operation is recorded only as
+**owner-approved private TypeScript/Python validator comparison Pass for one
+owner-selected corpus**.
+
+The independence claim ends at distinct TypeScript and Python normalization
+record reconstruction. Both paths share the same parser-result bytes and
+written specification, so Cycle 2v does not prove independent parsing or
+extraction, shared-input/spec correctness, accounting truth,
+operator/host/key/failure-domain independence, common-error or collusion
+resistance, runtime attestation, SEC authenticity, amendment discovery, global
+currentness, owner-reviewed quality, application composition, or production.
+Independent raw parsing/extraction is next, followed by owner-reviewed quality.
+Enterprise/shared-service gates remain Out of scope. See
+[ADR 0048](./adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
+and the [Cycle 2v exit matrix](./CYCLE_2V_EXIT_MATRIX.md).
+
 ## Cycle 2 — personal local filing ingestion proof
 
 Target: continue incrementally behind the declared personal profile.
@@ -1674,8 +1711,9 @@ Target: continue incrementally behind the declared personal profile.
 2. Cycle 2s records bounded aggregate custody metadata in a separate audit root and provides explicit selected-live-root deletion with intent and terminal receipt capabilities.
 3. Cycle 2t is recorded only as owner-approved private operation Pass for one owner-selected corpus; no selected-corpus characteristic or private operation material is repository-visible.
 4. Cycle 2u normalizes ten launch facts under an exact private plan, binds manifest source metadata, and produces root-only or manifest-linked amendment lineage with atomic value-free quarantine.
-5. Cycle 2v must compare two independent parsers/validators, quarantine conflicts, and forbid silent repair.
-6. A later boundary must measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
+5. Cycle 2v compares the exact complete Cycle 2u record reconstructed by the repository-pinned TypeScript normalizer and distinct zero-dependency Python validator, quarantines every conflict, and forbids silent repair.
+6. A later boundary must independently parse/extract the raw filing bytes rather than share parser-result documents.
+7. The following boundary must measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
 
 Personal-profile exit gate: every selected local payload matches its manifest,
 all supported documents produce bounded deterministic outcomes, and the frozen
@@ -1697,8 +1735,9 @@ establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot verify personal filing payloads.
 Cycle 2t and Cycle 2u close only bounded private activation and exact-plan
-normalization/manifest-scoped lineage. Independent parser/validator agreement,
-conflict quarantine, raw XBRL/iXBRL and taxonomy correctness, amendment
+normalization/manifest-scoped lineage. Cycle 2v can close distinct
+TypeScript/Python complete-record reconstruction agreement, not independent raw
+parsing. Raw XBRL/iXBRL extraction and taxonomy correctness, amendment
 discovery, owner-reviewed quality measurement, and the complete personal exit
 gate remain pending.
 

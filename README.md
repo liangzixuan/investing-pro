@@ -850,9 +850,43 @@ status is **owner-approved private operation Pass for one owner-selected
 corpus**. Raw XBRL/iXBRL parsing, SEC authenticity, accounting/fact truth,
 taxonomy authority, amendment discovery, independent parser comparison,
 quality, database/API/web composition, and production remain unproven. Cycle
-2v independent parser/validator comparison and conflict quarantine is next.
+2v narrows that next comparison to distinct repository-pinned TypeScript and
+Python reconstruction of the same complete record; it does not claim an
+independent raw parser.
 See [ADR 0047](./docs/adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)
 and the [Cycle 2u exit matrix](./docs/CYCLE_2U_EXIT_MATRIX.md).
+
+Cycle 2v is **Pass only for exact source revision
+`76bd8a1319d6b5feb05da412ca30fe6507c5bdbb`, the direct child of promoted
+Cycle 2u documentation baseline
+`90c20e6eeb6c387015af81f74ba4b8e7aebc444b`.** It supplies the same owned
+declaration, manifest, plan, and parser-result bytes to the repository-pinned
+TypeScript Cycle 2u normalizer and a distinct repository-pinned,
+zero-dependency Python validator. Python independently reconstructs the exact
+complete Cycle 2u record; the TypeScript comparator accepts only byte-identical
+canonical records, including all values, operands, identities, bindings,
+lineage, scopes, and statuses.
+
+Any invalid input, normalization quarantine, Python source or execution
+failure, invalid secondary record, or byte difference returns one atomic
+value-free quarantine. There is no tolerance,
+preferred side, detailed conflict disclosure, or silent repair. Success is an
+immutable metadata-only receipt binding the input set, agreed record, and both
+pinned implementations. The private comparison is recorded only as
+**owner-approved private TypeScript/Python validator comparison Pass for one
+owner-selected corpus**; no corpus characteristic or private input/output is
+repository-visible.
+
+This is independent normalization-record reconstruction, not independent raw
+parsing or extraction. Shared-input/specification correctness, accounting
+truth, operator/host/key/failure-domain independence, common error or
+collusion, runtime attestation, SEC authenticity, amendment discovery, global
+currentness, owner-reviewed quality, application composition, and production
+remain unproven. Independent raw parsing/extraction is next, followed by
+owner-reviewed quality. Enterprise/shared-service requirements remain Out of
+scope for the personal profile. See
+[ADR 0048](./docs/adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md)
+and the [Cycle 2v exit matrix](./docs/CYCLE_2V_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1431,4 +1465,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0046](./docs/adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md),
 [Cycle 2u exit matrix](./docs/CYCLE_2U_EXIT_MATRIX.md),
 [ADR 0047](./docs/adr/0047-bounded-personal-ten-fact-normalization-and-root-lineage.md),
+[Cycle 2v exit matrix](./docs/CYCLE_2V_EXIT_MATRIX.md),
+[ADR 0048](./docs/adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md),
 and [architecture decisions](./docs/adr/).
