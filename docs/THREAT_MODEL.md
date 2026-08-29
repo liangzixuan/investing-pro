@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2r threat model
+# Sprint 0 through promoted Cycle 2s threat model
 
 ## Current trust boundaries
 
@@ -14,9 +14,11 @@ boundary in the running profile.
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q/2r are disconnected from the running API and web application. Cycle
-2q accepts declaration and manifest metadata; the Cycle 2r verifier can also
-read a caller-selected local payload root during an explicit invocation.
+Cycle 2q/2r/2s are disconnected from the running API and web application.
+Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
+read a caller-selected local payload root during an explicit invocation; and
+Cycle 2s can write aggregate audit records and unlink manifest-selected live
+payload names only during an explicit caller invocation.
 Enterprise approval, tenancy, B15/V15, and production controls are not trust
 boundaries for this profile unless its scope widens.
 
@@ -1533,14 +1535,96 @@ version 5 history. Exact gates are in
 [ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
 and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
 
+Cycle 2s is Pass only for exact source revision
+`78b3880632ff7e54ac493e9c208ee1d93a275aa1`, the direct child of promoted
+Cycle 2r documentation baseline
+`a13b51d2cd6862029aa598829e40209ce178c7be`. It adds disconnected custody and
+owner-deletion operations to the same zero-production-dependency personal
+package. No API, web, database, queue, fetcher, parser, or owner corpus invokes
+them in this promotion.
+
+The new assets at risk are separation and identity of the payload/audit roots;
+manifest, payload-identity, location, and custody-chain binding; audit-record
+integrity and inventory; intent-before-unlink ordering; terminal-receipt
+truthfulness; bounded retry behavior; and public error confidentiality.
+Primary threats are root aliasing, nesting, replacement, links, unexpected
+payload or audit entries, canonical-record tamper, stale custody/intent chains,
+wrong confirmation or expected digest, file replacement before unlink,
+partial deletion falsely minting a receipt, clock rollback, failed pending
+publication, unsafe pending promotion, and leakage through result or error
+details.
+
+Custody controls are full owned-document reverification; internal Cycle 2r
+identity over the current exact set; canonical distinct non-root/nonnested root
+observations with bigint identity; an unkeyed domain-separated SHA-256 over
+canonical paths plus those identities; fixed bounded audit names and canonical
+aggregate schemas; exclusive
+pending-file creation, synchronization, destination-absence observation,
+same-directory rename, and reread; and an exact binding from the manifest to
+the runtime payload-identity result. Retention days produce a target timestamp
+only. They do not impose a minimum hold, scheduler, automatic deadline, or
+legal-hold execution.
+
+Deletion controls require the fixed confirmation and expected custody digest;
+publish append-only intent before any unlink; derive every target from the
+manifest's direct-child mapping; prohibit recursive removal and root deletion;
+rehash and observe each present path/descriptor immediately before unlink; and
+withhold the receipt until every selected name is absent and the exact live
+root is empty. The empty payload directory plus custody, intent, and terminal
+receipt audit files remain.
+
+Pending-state promotion is intentionally narrow and record-specific. Custody
+pending requires canonical bytes plus the current manifest, location, and exact
+live-payload identity. Intent pending requires the canonical
+custody/location/intent chain; after promotion, deletion rejects extras,
+rehashes each present selected payload before unlink, and permits missing
+selected names under that persisted intent. Receipt pending requires the
+canonical custody/intent/receipt chain and an observed-empty live root.
+Arbitrary, partial, binding-mismatched, directory, hard-link, or symbolic-link
+candidates remain untouched and fail closed. This is bounded retry, not
+transactional rollback, crash/power-loss recovery, cross-process coordination,
+or exactly-once deletion.
+
+The exact custody and deletion claims are
+`bounded_separate_local_payload_and_audit_custody_recorded_for_personal_single_user_local_use`
+and
+`bounded_owner_triggered_selected_live_payload_paths_observed_absent_for_personal_single_user_local_use`.
+The deletion assurance is
+`observed_pre_unlink_identity_and_post_unlink_path_absence`. No root path,
+accession, per-file digest, or payload bytes cross the aggregate result
+boundary.
+
+Residuals are explicit. Selected-live-root absence does not cover backup,
+cloud, replica, snapshot, cache, temp, log, swap, recycle bin, filesystem
+history, third party, process memory, forensic recovery, or physical media and
+is not cryptographic erasure. The operation does not prevent future recreation
+or resurrection. It does not prove automated retention, atomicity, active
+attacker race safety, every Windows reparse behavior, filesystem/ACL/storage
+attestation, signed/tamper-proof audit, caller identity/authority, application
+composition, or any specific owner corpus. SEC authenticity/provenance,
+MIME/archive/malware safety, parser correctness, and fact quality remain
+unproven. The location digest is not a plaintext root field, but its secrecy,
+unlinkability, and resistance to offline path/root-identity guessing are not
+claimed.
+
+The exact 11-path transition has 22 NUL fields, 778 bytes, digest
+`sha256:f8feb8c71409711439761778e738872c3ff91974ce1a2a047dbf410f276805e6`,
+and a 19-path protected surface. Both offline boundaries accept the committed
+source. The route emits no Cycle 2s cross-engine/CI evidence artifact and
+preserves Cycle 2r/2q/2p plus Cycle 2o version 5 history. Exact gates are in
+[ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
+and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
 2. **Personal filing ingestion:** retain Cycle 2a's one-shot isolation controls;
-   after Cycle 2r's disconnected verifier capability, require a successful
-   invocation over the selected owner corpus, then add bounded local custody,
-   audit metadata, retention/deletion receipts, parser quality, conflict
-   quarantine, and provenance.
+   after Cycle 2r's disconnected identity verifier and Cycle 2s's disconnected
+   custody/deletion capabilities, require one successful
+   manifest-to-identity-to-custody invocation over the selected owner corpus,
+   then add bounded
+   ten-fact normalization/lineage, parser quality, conflict quarantine, and
+   provenance.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1552,11 +1636,11 @@ and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
    promoted Cycle 2n quality composition, promoted Cycle 2o archive-custody
    composition, and promoted Cycle 2p admission-validity correction remain
    engineering preparation. Cycle 2q closes the personal declaration and
-   manifest boundary only. Cycle 2r adds a payload-identity verifier capability
-   but no successful owner-corpus invocation; local custody, audit, and
-   owner-managed deletion are next. Organizational rights/steward approval and
-   authority keys are separate enterprise-profile gates, not personal-profile
-   prerequisites.
+   manifest boundary only. Cycle 2r adds a payload-identity verifier and Cycle
+   2s adds custody/deletion capabilities, but neither records a successful
+   owner-corpus operation. Cycle 2t activation is next. Organizational
+   rights/steward approval and authority keys are separate enterprise-profile
+   gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

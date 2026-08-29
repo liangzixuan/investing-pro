@@ -1538,23 +1538,90 @@ and payload-custody runs/jobs were `33207340045` / `98971625271`,
 This promotion proves verifier behavior with generated temporary fixtures. It
 adds no owner-selected corpus, manifest, filing payload, payload-root
 configuration, or successful owner-corpus operation record. Therefore no
-specific personal corpus is yet verified by this source promotion. The next
-highest-priority blocker is bounded local custody, audit metadata, retention,
-and owner-triggered deletion with an aggregate receipt. Enterprise approvals,
-multi-user controls, B15/V15, and production operations remain Out of scope
-for `personal_single_user_local` unless the profile widens. See
+specific personal corpus is yet verified by this source promotion. At the
+Cycle 2r exit, the next highest-priority blocker was bounded local custody,
+audit metadata, retention-target metadata, and owner-triggered deletion with an aggregate
+receipt. Cycle 2s later closes that disconnected source-capability boundary.
+Enterprise approvals, multi-user controls, B15/V15, and production operations
+remain Out of scope for `personal_single_user_local` unless the profile widens.
+See
 [ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
 and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
+
+## Cycle 2s — personal local payload custody and owner deletion
+
+Status: **Pass only for exact source revision
+`78b3880632ff7e54ac493e9c208ee1d93a275aa1`, the direct child of promoted
+Cycle 2r documentation baseline
+`a13b51d2cd6862029aa598829e40209ce178c7be`.**
+
+Cycle 2s extends the isolated personal package with bounded custody recording
+and owner-triggered selected-live-payload deletion. Custody reverifies the
+owned declaration and manifest, invokes Cycle 2r identity internally, requires
+separate existing canonical non-root/nonnested payload and audit roots, and
+establishes or returns exactly one synchronized canonical aggregate record.
+An empty audit root publishes through the pending path; an existing final is
+revalidated/replayed, and valid pending bytes may be promoted. The record binds
+the exact manifest, runtime identity result, platform-valued link assurance,
+and an unkeyed location digest over canonical paths plus observed identities.
+Plaintext paths are not returned, but digest secrecy, unlinkability, and
+resistance to offline guessing are not claimed. The retention target is
+recorded policy arithmetic only; there is no scheduler, deadline enforcement,
+legal hold, or minimum hold.
+
+Deletion requires a fixed confirmation and expected custody digest. It
+publishes append-only intent before unlink, considers only manifest-derived
+direct children, rehashes and identity-observes each present file before
+unlink, never removes recursively, and never deletes the payload root. A
+terminal receipt is possible only after every selected name is absent and the
+exact live root is empty. The empty root and aggregate custody, intent, and
+receipt files remain.
+
+The bounded result does not prove deletion from backups, cloud or replicas,
+snapshots, caches, temp/log/swap/history, third parties, memory, or physical
+media and is not cryptographic erasure. It also does not prove automated
+retention, transactional/crash/cross-process/exactly-once recovery, active
+attacker race safety, universal Windows reparse behavior, signed/tamper-proof
+audit, caller authentication, running-app composition, or a specific owner
+corpus.
+
+The exact 11-path direct-child transition has 22 NUL fields, 778 bytes, digest
+`sha256:f8feb8c71409711439761778e738872c3ff91974ce1a2a047dbf410f276805e6`,
+and a 19-path protected surface. Both offline boundaries accept the committed
+source. No Cycle 2s evidence version or cross-engine/CI evidence artifact is
+created; Cycle 2r/2q/2p/2o history is preserved. This does not refer to the
+local audit files created by an explicit custody operation.
+
+Full local verification passed 1,405 tests with 8 intentional capability
+skips; the focused personal-package suite passed 80 with 4 skips. Exact-source
+CI run `33221451567` passed Ubuntu/Windows jobs `99016146240` /
+`99016146391`; cross-engine, parser-isolation, normalization, and
+payload-custody runs/jobs were `33221451518` / `99016145897`, `33221451525` /
+`99016146058`, `33221451528` / `99016145920`, and `33221451601` /
+`99016146192`.
+
+This promotion proves generated-fixture capability behavior only. The next
+blocker is Cycle 2t owner-corpus activation: record custody for canonical owner
+declaration/manifest bytes, their exact manifest-complete live payload root,
+and a new empty canonical non-root audit root which is separate and nonnested.
+Require a returned custody record, exactly the final custody JSON, and no
+pending name; deletion is not part of activation. Keep every owner input,
+payload, raw path, returned record/digest, and audit byte outside Git and logs.
+After activation, continue to bounded personal ten-fact normalization and
+correction lineage. See
+[ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
+and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
 
 ## Cycle 2 — personal local filing ingestion proof
 
 Target: continue incrementally behind the declared personal profile.
 
 1. Cycle 2r defines the fixed direct-root `<accession>.payload` mapping and a bounded streaming verifier capability. A specific corpus becomes verified only after a successful invocation over that corpus.
-2. Preserve local raw payload and audit metadata in separate bounded locations, bind custody metadata to the manifest and successful payload-identity result, and provide explicit user-managed retention/deletion with an aggregate receipt.
-3. Normalize ten launch facts with source accession, accepted/available time, parser version, taxonomy, unit, dimensions, and supersession lineage.
-4. Compare two independent parsers/validators, quarantine conflicts, and forbid silent repair.
-5. Measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
+2. Cycle 2s records bounded aggregate custody metadata in a separate audit root and provides explicit selected-live-root deletion with intent and terminal receipt capabilities.
+3. Activate one owner-selected corpus by recording custody against its exact manifest-complete live payload root and a new empty separate audit root, keeping every owner input, payload, path, returned record/digest, and audit byte outside Git and logs.
+4. Normalize ten launch facts with source accession, accepted/available time, parser version, taxonomy, unit, dimensions, and supersession lineage.
+5. Compare two independent parsers/validators, quarantine conflicts, and forbid silent repair.
+6. Measure document success, fact precision/recall, unit/date tolerance, silent-failure rate, and quarantine rate against a frozen owner-reviewed reference set.
 
 Personal-profile exit gate: every selected local payload matches its manifest,
 all supported documents produce bounded deterministic outcomes, and the frozen
@@ -1568,13 +1635,14 @@ Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
 bounded synthetic Cycle 2l, promoted bounded synthetic Cycle 2m, nor promoted
 bounded synthetic Cycle 2n, promoted bounded synthetic Cycle 2o, promoted
 repository-controlled Cycle 2p, personal manifest-only Cycle 2q, nor Cycle 2r's
-disconnected payload-identity verifier capability satisfies this exit gate.
+disconnected payload-identity verifier capability, nor Cycle 2s's disconnected
+custody/deletion capabilities satisfies this exit gate.
 Cycle 2i does not
 establish that a parser
 executed or correctly derived its signed documents; Cycle 2j establishes only
 the exact reviewed synthetic pair and cannot verify personal filing payloads.
-A successful payload-identity invocation over an owner-selected corpus, local
-custody/audit/deletion, local source provenance, real ten-fact coverage,
+A successful manifest-to-payload-identity-to-custody invocation over an
+owner-selected corpus, local source provenance, real ten-fact coverage,
 owner-reviewed quality measurement, supported XBRL/iXBRL and taxonomy
 handling, and correction lineage remain pending for the personal path.
 

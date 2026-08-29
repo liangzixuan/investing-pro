@@ -45,10 +45,14 @@ repository-controlled admission-validity boundary Pass only for exact revision
 and Cycle 2q personal single-user local manifest verification Pass only for
 exact source revision `398bb280593b6de125c5561ac9dd1b1c0fe254bd`;
 and Cycle 2r personal local payload-identity verification capability Pass only
-for exact source revision `e15ddd8aa923a43fdca730e233abfbe684101e78`.
-The running application remains synthetic-only; Cycle 2q/2r add disconnected
-manifest and local-file verification boundaries, not admitted raw filing data
-or an owner-corpus verification record.
+for exact source revision `e15ddd8aa923a43fdca730e233abfbe684101e78`;
+and Cycle 2s personal local payload-custody and owner-deletion capabilities Pass
+only for exact source revision
+`78b3880632ff7e54ac493e9c208ee1d93a275aa1`.
+The running application remains synthetic-only; Cycle 2q/2r/2s add
+disconnected manifest, local-file verification, custody-recording, and
+selected-live-root deletion boundaries, not admitted raw filing data or an
+owner-corpus operation record.
 
 ## Identity
 
@@ -1278,11 +1282,93 @@ remains anchored at `472cc10b8df90bee01925b2efd4fbcb614d7590c`.
 
 For `personal_single_user_local` only, organizational approval, tenant and
 multi-user controls, B15/V15, and production operations remain Out of scope.
-The next canonical boundary is local custody and audit metadata bound to a
-successful payload-identity result, plus explicit owner-managed
-retention/deletion and an aggregate receipt. See
+Cycle 2s later adds local custody and audit metadata bound to a successful
+payload-identity result, plus explicit owner-managed selected-live-root
+deletion and an aggregate receipt. See
 [ADR 0045](./adr/0045-personal-local-filing-payload-identity-verification.md)
 and the [Cycle 2r exit matrix](./CYCLE_2R_EXIT_MATRIX.md).
+
+## Cycle 2s personal local payload-custody and owner-deletion boundary
+
+Cycle 2s adds two operations over the existing personal manifest and payload
+identity model. `recordPersonalFilingPayloadCustody` snapshots and reverifies
+the Cycle 2q documents, invokes Cycle 2r identity over the current exact live
+set, and requires caller-selected payload and audit roots that are existing,
+canonical, distinct, non-root, and nonnested.
+
+From an empty audit root, success publishes one bounded canonical aggregate
+record through exclusive pending creation, synchronization,
+destination-absence observation, same-directory rename, and reread. An
+existing final record is revalidated and replayed, while a valid pending record
+may be promoted. `PersonalFilingPayloadCustodyRecord` contains corpus and manifest
+identity, a runtime payload-identity binding, platform-valued `linkAssurance`,
+counts and bytes, and an unkeyed domain-separated location binding over
+canonical paths plus observed identities. It contains neither plaintext root
+path, accession, per-file digest, nor payload bytes, but location-digest
+secrecy, unlinkability, and resistance to offline guessing are not claimed.
+It also contains custody time and a calculated retention target. Its exact claim is
+`bounded_separate_local_payload_and_audit_custody_recorded_for_personal_single_user_local_use`;
+its status is `local_payload_custody_recorded_for_personal_use`; and its state
+is `live_payloads_verified`.
+
+`retentionTargetAt` is canonical policy metadata computed from custody time and
+declared retention days. It is not a scheduler, deadline, legal hold, minimum
+hold, or proof of future deletion. An explicit owner-delete operation may run
+before that target.
+
+`deletePersonalFilingPayloadCustody` requires the literal
+`delete_all_manifest_bound_local_payloads` and expected custody-record digest.
+It validates the complete custody chain, publishes append-only intent before
+any unlink, and targets only manifest-derived direct children. Each present
+file is boundedly rehashed and observed through its path and descriptor before
+unlink. Recursive removal and payload-root deletion are excluded.
+
+Terminal success requires every selected name absent and the exact live-root
+inventory empty. The payload root remains as `directory_retained_empty`; the
+audit root retains custody, intent, and terminal receipt files. The frozen
+`PersonalFilingPayloadDeletionRecord` has exact claim
+`bounded_owner_triggered_selected_live_payload_paths_observed_absent_for_personal_single_user_local_use`,
+status `live_payload_names_absent_after_explicit_personal_delete`, state
+`owner_delete_live_payloads_absent_observed`, and assurance
+`observed_pre_unlink_identity_and_post_unlink_path_absence`.
+
+Fixed pending names provide only bounded retry. Custody pending requires
+canonical bytes plus the current manifest, location, and exact live-payload
+identity. Intent pending requires the canonical custody/location/intent chain;
+after promotion, deletion rejects extras, rehashes each present selected
+payload before unlink, and permits missing selected names under that persisted
+intent. Receipt pending requires the canonical custody/intent/receipt chain
+and an observed-empty live root. Arbitrary, partial, binding-mismatched,
+directory, hard-link, or symbolic-link candidates remain untouched and fail
+closed. This is not transactional rollback, crash/power/cross-process recovery,
+or exactly-once deletion.
+
+Absence applies only to the selected live root. Backups, cloud copies,
+replicas, snapshots, caches, temporary files, logs, swap, recycle bins,
+filesystem history, third parties, process memory, and physical media are not
+covered; the result is not cryptographic erasure. Caller confirmation is not
+authentication. Authenticity/provenance, parser and fact quality, signed or
+tamper-proof audit, storage/ACL attestation, active-attacker race safety,
+running-app composition, and any specific owner corpus remain unproven.
+
+The exact source is `78b3880632ff7e54ac493e9c208ee1d93a275aa1`,
+the direct child of promoted Cycle 2r documentation baseline
+`a13b51d2cd6862029aa598829e40209ce178c7be`. Its exact 11-path transition has
+22 NUL fields, 778 bytes, digest
+`sha256:f8feb8c71409711439761778e738872c3ff91974ce1a2a047dbf410f276805e6`,
+and a 19-path protected surface. Both offline boundaries accept it. No Cycle
+2s evidence version or artifact is created, and Cycle 2r/2q/2p/2o history is
+preserved.
+
+For `personal_single_user_local` only, enterprise approvals, tenant/multi-user
+controls, B15/V15, and production operations remain Out of scope. The next
+canonical boundary is Cycle 2t owner-corpus activation: custody recording over
+canonical owner documents, the exact manifest-complete live payload root, and
+a new empty separate canonical audit root. Exactly one final custody JSON and
+no pending name may remain; deletion is not part of activation, and all owner
+material stays outside Git and logs. See
+[ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
+and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

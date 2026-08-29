@@ -146,13 +146,32 @@ running synthetic application.
 
 ## Next blocker
 
-Build bounded local custody, audit metadata, and owner-managed deletion. Keep
-raw payloads and audit metadata in separate bounded locations, bind custody
+At the Cycle 2r exit, the requested next design was bounded local custody,
+audit metadata, retention-target metadata, and owner-managed deletion. Keep raw
+payloads and audit metadata in separate bounded locations, bind custody
 metadata to the corpus/manifest and a successful payload-identity result, and
-provide an explicit owner-triggered retention/deletion operation with an
-aggregate receipt. The receipt must state that deletion of selected live files
-does not prove deletion from backups, cloud copies, swap, filesystem history,
-or physical media and is not cryptographic erasure.
+provide an explicit owner-triggered deletion operation with an aggregate
+receipt. The capability boundary—not necessarily a field embedded in that
+receipt—must state that selected-live-file deletion does not prove deletion
+from backups, cloud copies, swap, filesystem history, or physical media and is
+not cryptographic erasure.
+
+## Custody/deletion follow-on
+
+Cycle 2s later adds bounded local custody, audit, retention-metadata, and
+owner-triggered deletion capabilities at exact source revision
+`78b3880632ff7e54ac493e9c208ee1d93a275aa1`, using generated temporary
+fixtures only. It does not revise Cycle 2r or prove a specific owner corpus.
+See
+[ADR 0046](./adr/0046-personal-local-filing-payload-custody-and-owner-deletion.md)
+and the [Cycle 2s exit matrix](./CYCLE_2S_EXIT_MATRIX.md).
+
+After that source-capability follow-on, Cycle 2t is the next operational
+blocker: take one owner-selected canonical declaration and manifest plus
+separate payload and audit roots through manifest verification,
+payload-identity verification, and custody recording while keeping all owner
+inputs, payloads, paths, and audit records outside Git. Generated fixtures do
+not close this gate.
 
 ## Exit rule
 

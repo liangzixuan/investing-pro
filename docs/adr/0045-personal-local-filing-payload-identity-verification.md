@@ -138,14 +138,22 @@ declared length, and SHA-256 for the bytes and identities observed during one
 successful invocation. It remains disconnected from the synthetic-only
 running application and does not grant admission status.
 
-The highest-priority next blocker is bounded local custody, audit metadata,
-retention, and owner-managed deletion. The next milestone should keep raw
-payloads and audit metadata in separate bounded locations, bind custody
-metadata to the corpus/manifest and a successful payload-identity result, and
-provide an explicit owner-triggered deletion operation with an aggregate
-receipt. That receipt must not claim deletion from backups, cloud copies, swap,
-filesystem history, or physical media, and must not claim cryptographic
-erasure.
+At the Cycle 2r exit, the highest-priority next blocker was bounded local
+custody, audit metadata, retention-target metadata, and owner-managed deletion. Cycle 2s later
+adds that disconnected source capability at exact revision
+`78b3880632ff7e54ac493e9c208ee1d93a275aa1`: separate bounded roots, an
+aggregate custody record bound to the successful payload-identity result,
+intent before manifest-selected live-file unlink, and a terminal aggregate
+absence receipt. It does not revise this Cycle 2r decision or prove a specific
+owner corpus. See
+[ADR 0046](./0046-personal-local-filing-payload-custody-and-owner-deletion.md)
+and the [Cycle 2s exit matrix](../CYCLE_2S_EXIT_MATRIX.md).
+
+The next blocker is Cycle 2t owner-corpus activation: one owner-selected
+canonical declaration and manifest plus separate local payload and audit roots
+must complete manifest verification, payload identity, and custody recording,
+with all owner inputs, payloads, paths, and audit records kept outside Git.
+Generated fixtures do not close that operational gate.
 
 This decision does not prove SEC authenticity or complete provenance; MIME
 truth, archive structure, malware safety, parser correctness, or fact quality;
