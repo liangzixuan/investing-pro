@@ -1817,7 +1817,10 @@ and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
 ## Cycle 2y — bounded personal quality-readiness composition
 
-Status: **Design accepted; exact source revision and verification Pending.**
+Status: **Pass only for exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`, the direct child of promoted
+Cycle 2x documentation baseline
+`2e88db749ead46828235f7c58e128f92e4ccff44`.**
 
 Cycle 2y keeps synthetic startup as the default. Only the exact explicit
 `personal_readiness` mode may invoke a pre-listen loader. That loader reads the
@@ -1845,10 +1848,15 @@ Enterprise/shared-service gates remain Out of scope. See
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
-Evidence placeholders for the exact source revision, transition, local gates,
-public CI, and independent review remain **Pending**. They must be replaced by
-exact public facts before promotion and must never include private aggregate or
-owner-local material.
+The 30-path source transition added 12 paths and modified 18, with 2,713
+insertions and 51 deletions. `corepack pnpm verify` passed 1,526 tests with 8
+intentional skips, every guardrail and type check, and all production builds.
+Exact-source public CI run `33334380969` passed on first attempt through Ubuntu
+job `99318536228` and Windows job `99318536323`. Three parallel read-only
+implementation, contract, and adversarial review tracks completed; final
+closure checks reported no remaining actionable P0/P1/P2 finding after
+corrections. None of this evidence contains private aggregate or owner-local
+material.
 
 ## Cycle 2 — personal local filing ingestion proof
 
@@ -1895,11 +1903,11 @@ and taxonomy correctness, amendment discovery, and generalization beyond the
 exact frozen scope remain unproven; they are nonclaims rather than blockers for
 this closed personal-corpus gate.
 
-Cycle 2y stages the first local running-application composition boundary, but
-only for coarse readiness. It does not authorize personal facts, a personal dossier,
-database persistence, queueing, fetching, alerts, or background ingestion. The
-next product milestone is atomic same-snapshot selected-fact release under a
-new explicit owner-visible and nonpersistent boundary.
+Cycle 2y closes the first local running-application composition boundary, but
+only for coarse readiness. It does not authorize personal facts, a personal
+dossier, database persistence, queueing, fetching, alerts, or background
+ingestion. The next product milestone is atomic same-snapshot selected-fact
+release under a new explicit owner-visible and nonpersistent boundary.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

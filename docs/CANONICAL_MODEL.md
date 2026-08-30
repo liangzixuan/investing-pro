@@ -78,7 +78,7 @@ normalization boundary; Cycle 2v adds a disconnected cross-language
 normalization-record comparison boundary; and Cycle 2w adds a disconnected raw
 selected-fact extraction comparison boundary. Cycle 2x adds a disconnected
 commit-before-reference-reveal quality-measurement boundary and records only a
-coarse private Pass. Cycle 2y stages only a disabled-data-plane coarse
+coarse private Pass. Cycle 2y closes only a disabled-data-plane coarse
 readiness route and optional browser chip. None composes personal facts into a
 dossier or persistence boundary.
 
@@ -1738,9 +1738,11 @@ dossier, and it stores nothing. The existing synthetic dossier, database
 projection, evidence, thesis, alert, and browser-local-state models remain
 separate.
 
-The exact Cycle 2y source revision and public verification are **Pending**.
-Until the evidence placeholders in ADR 0051 and the Cycle 2y exit matrix are
-replaced, this is an accepted design rather than a promoted source claim.
+Cycle 2y is promoted only for exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`. Local `corepack pnpm verify`
+passed 1,526 tests with 8 intentional skips and all production builds.
+Exact-source public CI run `33334380969` passed through Ubuntu job
+`99318536228` and Windows job `99318536323`.
 
 Cycle 2y closes only coarse readiness API-to-browser composition. Atomic
 selected-fact release from the same immutable candidate snapshot, browser

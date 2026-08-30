@@ -1,6 +1,7 @@
 # ADR 0051: bounded personal quality-readiness composition
 
-Status: Accepted design; **source revision and verification Pending**.
+Status: Accepted and verified; **Pass only for exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`**.
 
 ## Context
 
@@ -130,15 +131,25 @@ Cycle 2y does not establish:
 
 ## Evidence and promotion
 
-- Exact source revision: **Pending**.
-- Exact predecessor and transition topology: **Pending**.
-- Local contract, API, browser, privacy, and boundary verification: **Pending**.
-- Public CI runs and jobs: **Pending**.
-- Independent review: **Pending**.
+- Exact source revision:
+  `a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`.
+- Exact predecessor and topology: direct child of promoted Cycle 2x
+  documentation baseline `2e88db749ead46828235f7c58e128f92e4ccff44`; the
+  source transition contains 30 paths, 12 added and 18 modified, with 2,713
+  insertions and 51 deletions.
+- Local contract, API, browser, privacy, and boundary verification:
+  `corepack pnpm verify` passed with 1,526 tests, 8 intentional skips, all
+  guardrails and type checks, and all production builds. Focused API, web, and
+  contracts totals were 76/76, 11/11, and 6/6.
+- Public CI: exact-source run `33334380969` passed on its first attempt with
+  Ubuntu job `99318536228` and Windows job `99318536323`.
+- Independent review: three parallel read-only implementation, contract, and
+  adversarial review tracks completed; final closure checks reported no
+  remaining actionable P0/P1/P2 finding after corrections. This is source
+  review rather than an external audit.
 
-Pending placeholders are not promotion evidence. Finalization must cite only
-public source and verification facts. It must not add the private aggregate,
-its hash or path, or any private result detail.
+No private aggregate, hash, path, binding, or private result detail is part of
+the promotion evidence.
 
 ## Consequences and next blocker
 

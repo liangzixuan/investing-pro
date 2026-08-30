@@ -207,11 +207,13 @@ quarantine.
 
 It does not make the reference independently adjudicated truth, establish
 general parser correctness, authenticate the filing source, prove accounting
-truth, or authorize application or production use. Cycle 2y separately stages
-only disabled-by-default coarse readiness composition from one pre-listen
+truth, or authorize application or production use. Cycle 2y separately closes
+only disabled-by-default coarse readiness composition at exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`, from one pre-listen
 admission through a guarded local endpoint to an optional browser chip. It
-does not expose personal facts or a personal dossier and does not broaden this decision. Its
-exact source revision and public evidence remain Pending. See
+does not expose personal facts or a personal dossier and does not broaden this
+decision. Its exact-source CI run `33334380969` passed on Ubuntu and Windows.
+See
 [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md).
 

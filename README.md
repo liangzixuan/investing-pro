@@ -985,8 +985,10 @@ scope. See
 [ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./docs/CYCLE_2X_EXIT_MATRIX.md).
 
-Cycle 2y stages a **disabled-by-default coarse personal-quality readiness
-composition boundary**. Only explicit `personal_readiness` startup may admit
+Cycle 2y closes a **disabled-by-default coarse personal-quality readiness
+composition boundary** at exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`. Only explicit
+`personal_readiness` startup may admit
 the exact source-pinned and hash-pinned resource-corrected Cycle 2x aggregate,
 once and before listen. The local readiness route is guarded by exact loopback,
 Host, and Origin checks and returns only
@@ -1003,8 +1005,9 @@ state, logs, and storage. Atomic same-snapshot fact release, an authenticated
 browser session, and resistance to hostile same-user processes remain later
 boundaries. Enterprise/shared-service requirements remain Out of scope.
 
-Cycle 2y's exact source revision and public verification are **Pending** and
-must replace the explicit evidence placeholders before promotion. See
+Exact-source CI run `33334380969` passed on Ubuntu job `99318536228` and
+Windows job `99318536323`; the full local release gate passed 1,526 tests with
+8 intentional skips. See
 [ADR 0051](./docs/adr/0051-bounded-personal-quality-readiness-composition.md)
 and the [Cycle 2y exit matrix](./docs/CYCLE_2Y_EXIT_MATRIX.md).
 

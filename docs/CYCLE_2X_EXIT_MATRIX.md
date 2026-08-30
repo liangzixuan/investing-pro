@@ -170,11 +170,12 @@ scope—not Pass and not current blockers. They reopen if the profile widens.
 ## Next blocker
 
 The bounded personal quality gate is closed for the exact frozen scope. Cycle
-2y separately stages disabled-by-default coarse readiness composition from a
+2y closes disabled-by-default coarse readiness composition at exact source
+revision `a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`, from a
 pre-listen one-shot admission through a guarded local API to an optional
 browser chip. It does not change the Cycle 2x quality claim, expose the private
-measurement record, or enable personal facts or a dossier. Its exact source
-revision and public evidence remain Pending. See
+measurement record, or enable personal facts or a personal dossier.
+Exact-source CI run `33334380969` passed on Ubuntu and Windows. See
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 

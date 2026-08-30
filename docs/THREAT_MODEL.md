@@ -15,7 +15,7 @@ The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
 Cycle 2q/2r/2s/2u/2v/2w/2x remain disconnected from the running API and web
-application. Cycle 2y stages only a coarse readiness composition with its
+application. Cycle 2y closes only a coarse readiness composition with its
 personal data plane disabled.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
@@ -31,7 +31,7 @@ dimensionless coordinates against a pinned Python worker that receives only
 raw filing bytes and target QNames, returning only metadata agreement or a
 value-free quarantine. Cycle 2x commits the internally derived candidate before
 owner-reviewed reference-content reveal, evaluates only fixed aggregate quality
-metrics, and records only a coarse private Pass. Cycle 2y stages one explicit,
+metrics, and records only a coarse private Pass. Cycle 2y closes one explicit,
 disabled-by-default readiness path that admits the exact private quality result
 before listen and exposes only a fixed coarse DTO while its data plane remains
 disabled.
@@ -1908,8 +1908,9 @@ nonclaims are in
 [ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
-Cycle 2y is an accepted design with exact source revision and verification
-**Pending**. Synthetic startup remains the default. Only exact
+Cycle 2y passes only for exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`. Synthetic startup remains the
+default. Only exact
 `personal_readiness` startup may invoke a one-shot pre-listen loader bound to
 the expected source and resource-corrected aggregate hash. The loader reduces
 the admitted quality-ready state to an empty, immutable capability that can
@@ -1932,7 +1933,8 @@ browser persistence; and widening `dataPlane` through an alternate response.
 
 Controls are exact mode allowlisting with synthetic default; one source-pinned
 and hash-pinned aggregate read before listen; closed terminal-state admission;
-complete reduction to the exact four-field readiness DTO; immutable
+complete reduction to an empty capability that enables only the exact
+four-field readiness DTO; immutable
 `dataPlane: "disabled"`; no request-triggered loader; exact loopback bind with
 proxy trust disabled; exact Host and Origin allowlists; GET-only input closure;
 private/no-store and no-cache headers on every GET outcome; no private ETag;
@@ -1948,11 +1950,14 @@ database, thesis, alert, export, queue, fetcher, or background composition. The
 route does not prove atomic release from the same candidate snapshot whose
 quality result was admitted.
 
-Cycle 2y closes only coarse readiness API-to-browser composition after its
-Pending source and evidence are frozen and verified. The next separate blocker
-is owner-authorized, all-or-nothing selected-fact release from the same
-immutable candidate snapshot. Authenticated browser sessions and hostile
-same-user process resistance remain later. Enterprise/shared-service
+Local `corepack pnpm verify` passed 1,526 tests with 8 intentional skips and all
+production builds. Exact-source public CI run `33334380969` passed through
+Ubuntu job `99318536228` and Windows job `99318536323`.
+
+Cycle 2y closes only coarse readiness API-to-browser composition. The next
+separate blocker is owner-authorized, all-or-nothing selected-fact release from
+the same immutable candidate snapshot. Authenticated browser sessions and
+hostile same-user process resistance remain later. Enterprise/shared-service
 requirements remain Out of scope. Exact design gates and nonclaims are in
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
@@ -1973,7 +1978,7 @@ requirements remain Out of scope. Exact design gates and nonclaims are in
    quality reference and thresholds before candidate execution, commits the
    internally derived observations before reference reveal, and records a
    coarse private Pass after the fixed personal threshold outcome is met.
-   Cycle 2y then stages only explicit pre-listen coarse readiness composition
+   Cycle 2y then closes only explicit pre-listen coarse readiness composition
    with the personal data plane disabled; it exposes no personal facts or
    personal dossier.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
@@ -1995,7 +2000,7 @@ requirements remain Out of scope. Exact design gates and nonclaims are in
    the declared bounded owner-reviewed quality and personal filing-ingestion
    exit gate for one owner-selected corpus. It does not prove shared selection/
    mapping correctness, general parser coverage, or generalization beyond the
-   exact frozen scope. Cycle 2y stages only coarse local readiness composition.
+   exact frozen scope. Cycle 2y closes only coarse local readiness composition.
    Atomic same-snapshot selected-fact release is the next separately scoped
    boundary.
    Organizational rights/steward approval and authority keys are separate
