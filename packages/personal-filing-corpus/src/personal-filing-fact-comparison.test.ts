@@ -38,10 +38,12 @@ describe("personal filing fact cross-implementation comparison", () => {
     expect(PERSONAL_FILING_FACT_COMPARISON_IMPLEMENTATIONS[0]).toMatchObject({
       role: "typescript-primary",
       runtimeFamily: "node-typescript",
+      validatorVersion: "1.0.0",
     });
     expect(PERSONAL_FILING_FACT_COMPARISON_IMPLEMENTATIONS[1]).toMatchObject({
       role: "python-secondary",
       runtimeFamily: "python-stdlib",
+      validatorVersion: "1.0.1",
     });
     expect(
       PERSONAL_FILING_FACT_COMPARISON_IMPLEMENTATIONS[0].implementationSha256,
@@ -70,6 +72,9 @@ describe("personal filing fact cross-implementation comparison", () => {
     ]);
     expect(PERSONAL_FILING_FACT_COMPARISON_CHECKS).toContain(
       "byte_exact_complete_cycle2u_record_agreement_not_digest_or_subset_equality",
+    );
+    expect(PERSONAL_FILING_FACT_COMPARISON_CHECKS).toContain(
+      "bounded_python_isolated_mode_stdin_subprocess_with_pinned_source_preflight",
     );
     expect(PERSONAL_FILING_FACT_COMPARISON_NOT_PROVEN).toContain(
       "independent_raw_filing_parsing_extraction_or_taxonomy_mapping",

@@ -30,7 +30,7 @@ export interface PersonalFilingFactComparisonImplementationBinding {
   readonly role: PersonalFilingFactComparisonValidatorRole;
   readonly runtimeFamily: PersonalFilingFactComparisonRuntimeFamily;
   readonly validatorId: string;
-  readonly validatorVersion: "1.0.0";
+  readonly validatorVersion: "1.0.0" | "1.0.1";
 }
 
 export const PERSONAL_FILING_FACT_COMPARISON_IMPLEMENTATIONS: readonly [
@@ -51,7 +51,7 @@ export const PERSONAL_FILING_FACT_COMPARISON_IMPLEMENTATIONS: readonly [
     role: "python-secondary",
     runtimeFamily: "python-stdlib",
     validatorId: "personal-filing-fact-validator-python-v1",
-    validatorVersion: "1.0.0",
+    validatorVersion: "1.0.1",
   }),
 ]);
 
@@ -68,7 +68,7 @@ export const PERSONAL_FILING_FACT_COMPARISON_CHECKS = Object.freeze([
   "metadata_only_immutable_agreement_receipt_or_atomic_value_free_quarantine",
   "domain_separated_input_record_and_agreement_sha256_bindings",
   "deterministic_replay_owned_snapshot_mutation_safety_and_deep_immutability",
-  "bounded_local_python_stdin_subprocess_with_pinned_source_preflight",
+  "bounded_python_isolated_mode_stdin_subprocess_with_pinned_source_preflight",
   "no_network_database_api_web_queue_or_application_composition",
 ] as const);
 
@@ -490,7 +490,7 @@ function runPinnedPythonValidator(snapshot: InputSnapshot): Uint8Array {
         sourceDocuments: snapshot.sourceDocuments.map(base64),
       })}\n`,
     );
-    const result = spawnSync("python", ["-B", PYTHON_VALIDATOR_PATH], {
+    const result = spawnSync("python", ["-I", "-B", PYTHON_VALIDATOR_PATH], {
       input: request,
       maxBuffer: PERSONAL_FILING_FACT_COMPARISON_LIMITS.recordBytes + 1,
       timeout: 10_000,
@@ -644,6 +644,8 @@ function validateImplementationBindings(): void {
     second.role !== "python-secondary" ||
     first.runtimeFamily !== "node-typescript" ||
     second.runtimeFamily !== "python-stdlib" ||
+    first.validatorVersion !== "1.0.0" ||
+    second.validatorVersion !== "1.0.1" ||
     first.validatorId === second.validatorId ||
     first.implementationSha256 === second.implementationSha256 ||
     !HASH.test(first.implementationSha256) ||

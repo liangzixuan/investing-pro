@@ -47,7 +47,7 @@ export function runPythonPersonalFilingFactValidator(
     normalizationPlan: base64(fixture.normalizationPlan),
     sourceDocuments: fixture.sourceDocuments.map(base64),
   });
-  const result = spawnSync("python", ["-B", PYTHON_VALIDATOR_PATH], {
+  const result = spawnSync("python", ["-I", "-B", PYTHON_VALIDATOR_PATH], {
     input: request,
     maxBuffer: 2 * 1024 * 1024,
     timeout: 10_000,

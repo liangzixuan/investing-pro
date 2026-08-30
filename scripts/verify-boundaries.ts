@@ -5800,6 +5800,8 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     '"secondary_validator_receives_no_primary_record_or_primary_record_digest"',
     '"byte_exact_complete_cycle2u_record_agreement_not_digest_or_subset_equality"',
     '"no_tolerance_coercion_reordering_merge_fallback_preference_or_silent_repair"',
+    '"bounded_python_isolated_mode_stdin_subprocess_with_pinned_source_preflight"',
+    'validatorVersion: "1.0.1"',
     'readonly status: "agreed_for_personal_use"',
     'readonly status: "matched_for_testing_only"',
     'readonly status: "quarantined"',
@@ -5815,7 +5817,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     '"validator_conflict"',
     '"validator_execution_failure"',
     "runPinnedPythonValidator",
-    'spawnSync("python", ["-B", PYTHON_VALIDATOR_PATH]',
+    'spawnSync("python", ["-I", "-B", PYTHON_VALIDATOR_PATH]',
   ])
     if (!factComparison.includes(required))
       found.push(
