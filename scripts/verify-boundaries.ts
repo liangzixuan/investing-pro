@@ -188,6 +188,10 @@ const cycle2wSourceRevision =
   "1f7ff096c9187386cad9ae60e1e44861e6e5f842" as const;
 const cycle2xBaselineRevision =
   "716a3f6b7ad5a43c48a6a61d18b59c2cd5645018" as const;
+const cycle2xSourceRevision =
+  "c0138a3121361fc06f210e42febe6af4c6fa3e13" as const;
+const cycle2xValidatorIsolationRevision =
+  "7f7163d4673360645e332d0b7d28467c15656f8a" as const;
 const cycle2qTransition = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -489,6 +493,51 @@ const cycle2xTransition = [
     status: "A",
   },
   { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2xValidatorIsolationTransition = [
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-comparison.test.ts`,
+    status: "M",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/personal-filing-fact-comparison.ts`,
+    status: "M",
+  },
+  {
+    path: `${personalFilingCorpusPackagePrefix}src/test-personal-filing-fact-comparison-builder.ts`,
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2xRoutingClosureTransition = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) => left.path.localeCompare(right.path));
+const cycle2xCorrectiveCumulativeTransition = [
+  ...cycle2xTransition,
+  ...cycle2xValidatorIsolationTransition.filter(
+    (entry) =>
+      !cycle2xTransition.some((sourceEntry) => sourceEntry.path === entry.path),
+  ),
 ].sort((left, right) => left.path.localeCompare(right.path));
 const cycle2xProtectedPaths = [
   ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -6017,28 +6066,101 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   if (
     cycle2xSection === "" ||
     !cycle2xSection.includes(`baseline="${cycle2xBaselineRevision}"`) ||
+    !cycle2xSection.includes(`source="${cycle2xSourceRevision}"`) ||
+    !cycle2xSection.includes(
+      `validator_isolation="${cycle2xValidatorIsolationRevision}"`,
+    ) ||
     JSON.stringify(doubleQuotedShellArray(cycle2xSection, "protected")) !==
       JSON.stringify(cycle2xProtectedPaths) ||
-    JSON.stringify(doubleQuotedShellArray(cycle2xSection, "expected")) !==
+    JSON.stringify(
+      doubleQuotedShellArray(cycle2xSection, "expected_source"),
+    ) !==
       JSON.stringify(
         cycle2xTransition.flatMap(({ path, status }) => [status, path]),
       ) ||
+    JSON.stringify(
+      doubleQuotedShellArray(cycle2xSection, "expected_validator_isolation"),
+    ) !==
+      JSON.stringify(
+        cycle2xValidatorIsolationTransition.flatMap(({ path, status }) => [
+          status,
+          path,
+        ]),
+      ) ||
+    JSON.stringify(
+      doubleQuotedShellArray(cycle2xSection, "expected_routing_closure"),
+    ) !==
+      JSON.stringify(
+        cycle2xRoutingClosureTransition.flatMap(({ path, status }) => [
+          status,
+          path,
+        ]),
+      ) ||
+    JSON.stringify(
+      doubleQuotedShellArray(cycle2xSection, "expected_cumulative"),
+    ) !==
+      JSON.stringify(
+        cycle2xCorrectiveCumulativeTransition.flatMap(({ path, status }) => [
+          status,
+          path,
+        ]),
+      ) ||
+    !cycle2xSection.includes(
+      'git diff --name-status --no-renames -z "$baseline" "$source" --',
+    ) ||
+    !cycle2xSection.includes(
+      'git diff --name-status --no-renames -z "$source" "$validator_isolation" --',
+    ) ||
+    !cycle2xSection.includes(
+      'git diff --name-status --no-renames -z "$validator_isolation" HEAD --',
+    ) ||
     !cycle2xSection.includes(
       'git diff --name-status --no-renames -z "$baseline" HEAD --',
     ) ||
     !cycle2xSection.includes('[[ "$head_revision" == "$GITHUB_SHA" ]]') ||
+    !cycle2xSection.includes('[[ "$head_revision" == "$source" ]]') ||
     !cycle2xSection.includes('[[ "$successor_count" == "1" ]]') ||
     !cycle2xSection.includes('[[ "$first_parent_count" == "1" ]]') ||
+    !cycle2xSection.includes('[[ "$successor_count" == "3" ]]') ||
+    !cycle2xSection.includes('[[ "$first_parent_count" == "3" ]]') ||
     !cycle2xSection.includes('[[ "${#topology[@]}" == "2" ]]') ||
     !cycle2xSection.includes('[[ "${topology[0]}" == "$GITHUB_SHA" ]]') ||
     !cycle2xSection.includes('[[ "${topology[1]}" == "$baseline" ]]') ||
-    !cycle2xSection.includes("matches_exactly expected actual") ||
+    !cycle2xSection.includes(
+      '[[ "${topology[1]}" == "$validator_isolation" ]]',
+    ) ||
+    !cycle2xSection.includes(
+      '[[ "${#validator_isolation_topology[@]}" == "2" ]]',
+    ) ||
+    !cycle2xSection.includes(
+      '[[ "${validator_isolation_topology[0]}" == "$validator_isolation" ]]',
+    ) ||
+    !cycle2xSection.includes(
+      '[[ "${validator_isolation_topology[1]}" == "$source" ]]',
+    ) ||
+    !cycle2xSection.includes('[[ "${#source_topology[@]}" == "2" ]]') ||
+    !cycle2xSection.includes('[[ "${source_topology[0]}" == "$source" ]]') ||
+    !cycle2xSection.includes('[[ "${source_topology[1]}" == "$baseline" ]]') ||
+    !cycle2xSection.includes("matches_exactly expected_source source_actual") ||
+    !cycle2xSection.includes(
+      "matches_exactly expected_validator_isolation validator_isolation_actual",
+    ) ||
+    !cycle2xSection.includes(
+      "matches_exactly expected_routing_closure routing_closure_actual",
+    ) ||
+    !cycle2xSection.includes(
+      "matches_exactly expected_cumulative cumulative_actual",
+    ) ||
+    !cycle2xSection.includes("required=true") ||
+    !cycle2xSection.includes("exact=true") ||
+    !cycle2xSection.includes('echo "required=$required" >> "$GITHUB_OUTPUT"') ||
+    !cycle2xSection.includes('echo "exact=$exact" >> "$GITHUB_OUTPUT"') ||
     !cycle2xSection.includes(
       'if [[ "$required" == "true" && "$exact" != "true" ]]; then',
     )
   )
     found.push(
-      `${workflowPath}: exact fail-closed Cycle 2x baseline, protected set, full tuple, and 1/1 topology are required before Cycle 2w`,
+      `${workflowPath}: exact fail-closed Cycle 2x source and validator-isolation corrective closure with 1/1 and 3/3 topology are required before Cycle 2w`,
     );
   const cycle2wSection =
     cycle2wStart >= 0 && cycle2vStart > cycle2wStart
@@ -6389,11 +6511,20 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     const verifier = await cycle2kText(path, found);
     for (const required of [
       cycle2xBaselineRevision,
+      cycle2xSourceRevision,
+      cycle2xValidatorIsolationRevision,
       cycle2wSourceRevision,
       "CYCLE_2X_SOURCE_TRANSITION",
+      "CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION",
+      "CYCLE_2X_ROUTING_CLOSURE_TRANSITION",
+      "CYCLE_2X_CORRECTIVE_CUMULATIVE_TRANSITION",
       "CYCLE_2X_PROTECTED_SURFACE_PATHS",
       "isCycle2xDirectChildAllowed",
       "isCycle2xCommitDiffSetAllowed",
+      "isCycle2xCorrectiveChainAllowed",
+      "isCycle2xValidatorIsolationCommitDiffSetAllowed",
+      "isCycle2xRoutingClosureCommitDiffSetAllowed",
+      "isCycle2xCorrectiveCumulativeDiffSetAllowed",
       "isCycle2xTransitionRoutingRequired",
       "await verifyCycle2xTransition(repositoryPath, revision)",
       "!cycle2xRoutingRequired &&",
@@ -6467,6 +6598,56 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         found.push(
           `${path}: missing Cycle 2x transition path ${transitionPath}`,
         );
+    for (const { path: transitionPath } of cycle2xValidatorIsolationTransition)
+      if (!verifier.includes(transitionPath))
+        found.push(
+          `${path}: missing Cycle 2x validator-isolation transition path ${transitionPath}`,
+        );
+    for (const { path: transitionPath } of cycle2xRoutingClosureTransition)
+      if (!verifier.includes(transitionPath))
+        found.push(
+          `${path}: missing Cycle 2x routing-closure transition path ${transitionPath}`,
+        );
+    const cycle2xVerifierStart = verifier.indexOf(
+      "async function verifyCycle2xTransition(",
+    );
+    const cycle2wVerifierStart = verifier.indexOf(
+      "async function verifyCycle2wTransition(",
+      cycle2xVerifierStart,
+    );
+    const cycle2xVerifierSection =
+      cycle2xVerifierStart >= 0 && cycle2wVerifierStart > cycle2xVerifierStart
+        ? verifier
+            .slice(cycle2xVerifierStart, cycle2wVerifierStart)
+            .replace(/\s+/gu, " ")
+        : "";
+    const cycle2xVerifierOrder = [
+      "revision === CYCLE_2X_SOURCE_REVISION",
+      "const correctiveChain = isCycle2xCorrectiveChainAllowed(",
+      "if (!directSource && !correctiveChain)",
+      "if (directSource) {",
+      "isCycle2xCommitDiffSetAllowed(entries)",
+      "cycle2pDiffEntries( repositoryPath, CYCLE_2X_BASELINE_REVISION, CYCLE_2X_SOURCE_REVISION, )",
+      "cycle2pDiffEntries( repositoryPath, CYCLE_2X_SOURCE_REVISION, CYCLE_2X_VALIDATOR_ISOLATION_REVISION, )",
+      "cycle2pDiffEntries( repositoryPath, CYCLE_2X_VALIDATOR_ISOLATION_REVISION, revision, )",
+      "cycle2pDiffEntries(repositoryPath, CYCLE_2X_BASELINE_REVISION, revision)",
+      "isCycle2xCommitDiffSetAllowed(sourceEntries)",
+      "isCycle2xValidatorIsolationCommitDiffSetAllowed( validatorIsolationEntries, )",
+      "isCycle2xRoutingClosureCommitDiffSetAllowed(routingClosureEntries)",
+      "isCycle2xCorrectiveCumulativeDiffSetAllowed(cumulativeEntries)",
+      "await verifyCycle2wTransition(repositoryPath, CYCLE_2W_SOURCE_REVISION)",
+    ].map((required) => cycle2xVerifierSection.indexOf(required));
+    if (
+      cycle2xVerifierSection === "" ||
+      cycle2xVerifierOrder.some((index) => index < 0) ||
+      cycle2xVerifierOrder.some(
+        (index, position) =>
+          position > 0 && index <= cycle2xVerifierOrder[position - 1]!,
+      )
+    )
+      found.push(
+        `${path}: Cycle 2x verifier must preserve the exact source pin, corrective chain, four diff ranges, four validations, and inherited Cycle 2w verification in order`,
+      );
     for (const { path: transitionPath } of cycle2wTransition)
       if (!verifier.includes(transitionPath))
         found.push(
@@ -6550,6 +6731,10 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       "isCycle2xBaselineMergeBaseAllowed",
       "isCycle2xDirectChildAllowed",
       "isCycle2xCommitDiffSetAllowed",
+      "isCycle2xCorrectiveChainAllowed",
+      "isCycle2xValidatorIsolationCommitDiffSetAllowed",
+      "isCycle2xRoutingClosureCommitDiffSetAllowed",
+      "isCycle2xCorrectiveCumulativeDiffSetAllowed",
       "isCycle2xTransitionRoutingRequired",
       'describe("Cycle 2w personal raw fact-extraction routing"',
       "isCycle2wBaselineMergeBaseAllowed",

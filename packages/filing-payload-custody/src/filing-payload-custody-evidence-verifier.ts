@@ -80,6 +80,10 @@ const CYCLE_2W_SOURCE_REVISION =
   "1f7ff096c9187386cad9ae60e1e44861e6e5f842" as const;
 const CYCLE_2X_BASELINE_REVISION =
   "716a3f6b7ad5a43c48a6a61d18b59c2cd5645018" as const;
+const CYCLE_2X_SOURCE_REVISION =
+  "c0138a3121361fc06f210e42febe6af4c6fa3e13" as const;
+const CYCLE_2X_VALIDATOR_ISOLATION_REVISION =
+  "7f7163d4673360645e332d0b7d28467c15656f8a" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -1695,6 +1699,71 @@ const CYCLE_2X_SOURCE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION = Object.freeze(
+  [
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/test-personal-filing-fact-comparison-builder.ts",
+      status: "M",
+    },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
+const CYCLE_2X_ROUTING_CLOSURE_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
+const CYCLE_2X_CORRECTIVE_CUMULATIVE_TRANSITION = Object.freeze(
+  [
+    ...CYCLE_2X_SOURCE_TRANSITION,
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/test-personal-filing-fact-comparison-builder.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3021,8 +3090,32 @@ export function isCycle2xDirectChildAllowed(
     successorCount === "1" &&
     firstParentCount === "1" &&
     COMMIT.test(revision) &&
+    revision === CYCLE_2X_SOURCE_REVISION &&
+    parentLine === `${CYCLE_2X_SOURCE_REVISION} ${CYCLE_2X_BASELINE_REVISION}`
+  );
+}
+
+/** @internal Exact three-commit Cycle 2x validator-isolation corrective chain. */
+export function isCycle2xCorrectiveChainAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  sourceParentLine: string,
+  validatorIsolationParentLine: string,
+): boolean {
+  return (
+    successorCount === "3" &&
+    firstParentCount === "3" &&
+    COMMIT.test(revision) &&
     revision !== CYCLE_2X_BASELINE_REVISION &&
-    parentLine === `${revision} ${CYCLE_2X_BASELINE_REVISION}`
+    revision !== CYCLE_2X_SOURCE_REVISION &&
+    revision !== CYCLE_2X_VALIDATOR_ISOLATION_REVISION &&
+    parentLine === `${revision} ${CYCLE_2X_VALIDATOR_ISOLATION_REVISION}` &&
+    sourceParentLine ===
+      `${CYCLE_2X_SOURCE_REVISION} ${CYCLE_2X_BASELINE_REVISION}` &&
+    validatorIsolationParentLine ===
+      `${CYCLE_2X_VALIDATOR_ISOLATION_REVISION} ${CYCLE_2X_SOURCE_REVISION}`
   );
 }
 
@@ -3868,6 +3961,39 @@ export function isCycle2xCommitDiffSetAllowed(
   }[],
 ): boolean {
   return exactCycle2pDiffSet(entries, CYCLE_2X_SOURCE_TRANSITION);
+}
+
+/** @internal Exact Cycle 2x validator-isolation corrective transition seam. */
+export function isCycle2xValidatorIsolationCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION);
+}
+
+/** @internal Exact Cycle 2x corrective routing-closure transition seam. */
+export function isCycle2xRoutingClosureCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2X_ROUTING_CLOSURE_TRANSITION);
+}
+
+/** @internal Exact Cycle 2x baseline-through-corrective cumulative seam. */
+export function isCycle2xCorrectiveCumulativeDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_2X_CORRECTIVE_CUMULATIVE_TRANSITION,
+  );
 }
 
 /** @internal Exact Cycle 2w personal raw fact-extraction transition seam. */
@@ -5010,6 +5136,8 @@ async function verifyCycle2xTransition(
 ): Promise<void> {
   for (const requiredRevision of [
     CYCLE_2X_BASELINE_REVISION,
+    CYCLE_2X_SOURCE_REVISION,
+    CYCLE_2X_VALIDATOR_ISOLATION_REVISION,
     CYCLE_2W_SOURCE_REVISION,
     CYCLE_2V_SOURCE_REVISION,
     CYCLE_2U_SOURCE_REVISION,
@@ -5051,22 +5179,84 @@ async function verifyCycle2xTransition(
       128,
     ),
   ).join(" ");
-  if (
-    !isCycle2xDirectChildAllowed(
+  const sourceParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_2X_SOURCE_REVISION],
+      128,
+    ),
+  ).join(" ");
+  const validatorIsolationParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_2X_VALIDATOR_ISOLATION_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
+  const directSource =
+    revision === CYCLE_2X_SOURCE_REVISION &&
+    isCycle2xDirectChildAllowed(
       String(successorCount),
       String(firstParentCount),
       revision,
       parentLine,
-    )
-  )
-    invalid();
-
-  const entries = await cycle2pDiffEntries(
-    repositoryPath,
-    CYCLE_2X_BASELINE_REVISION,
+    );
+  const correctiveChain = isCycle2xCorrectiveChainAllowed(
+    String(successorCount),
+    String(firstParentCount),
     revision,
+    parentLine,
+    sourceParentLine,
+    validatorIsolationParentLine,
   );
-  if (!isCycle2xCommitDiffSetAllowed(entries)) invalid();
+  if (!directSource && !correctiveChain) invalid();
+
+  if (directSource) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2X_BASELINE_REVISION,
+      revision,
+    );
+    if (!isCycle2xCommitDiffSetAllowed(entries)) invalid();
+  } else {
+    const [
+      sourceEntries,
+      validatorIsolationEntries,
+      routingClosureEntries,
+      cumulativeEntries,
+    ] = await Promise.all([
+      cycle2pDiffEntries(
+        repositoryPath,
+        CYCLE_2X_BASELINE_REVISION,
+        CYCLE_2X_SOURCE_REVISION,
+      ),
+      cycle2pDiffEntries(
+        repositoryPath,
+        CYCLE_2X_SOURCE_REVISION,
+        CYCLE_2X_VALIDATOR_ISOLATION_REVISION,
+      ),
+      cycle2pDiffEntries(
+        repositoryPath,
+        CYCLE_2X_VALIDATOR_ISOLATION_REVISION,
+        revision,
+      ),
+      cycle2pDiffEntries(repositoryPath, CYCLE_2X_BASELINE_REVISION, revision),
+    ]);
+    if (
+      !isCycle2xCommitDiffSetAllowed(sourceEntries) ||
+      !isCycle2xValidatorIsolationCommitDiffSetAllowed(
+        validatorIsolationEntries,
+      ) ||
+      !isCycle2xRoutingClosureCommitDiffSetAllowed(routingClosureEntries) ||
+      !isCycle2xCorrectiveCumulativeDiffSetAllowed(cumulativeEntries)
+    )
+      invalid();
+  }
 
   await verifyCycle2wTransition(repositoryPath, CYCLE_2W_SOURCE_REVISION);
   const [currentBlob, historicalBlob] = await Promise.all([

@@ -104,8 +104,12 @@ import {
   isCycle2uTransitionRoutingRequired,
   isCycle2xBaselineMergeBaseAllowed,
   isCycle2xCommitDiffSetAllowed,
+  isCycle2xCorrectiveChainAllowed,
+  isCycle2xCorrectiveCumulativeDiffSetAllowed,
   isCycle2xDirectChildAllowed,
+  isCycle2xRoutingClosureCommitDiffSetAllowed,
   isCycle2xTransitionRoutingRequired,
+  isCycle2xValidatorIsolationCommitDiffSetAllowed,
   isCycle2wBaselineMergeBaseAllowed,
   isCycle2wCommitDiffSetAllowed,
   isCycle2wDirectChildAllowed,
@@ -570,6 +574,10 @@ const CYCLE_2W_PROTECTED_SURFACE_PATHS = [
 ];
 const CYCLE_2X_BASELINE_REVISION =
   "716a3f6b7ad5a43c48a6a61d18b59c2cd5645018" as const;
+const CYCLE_2X_SOURCE_REVISION =
+  "c0138a3121361fc06f210e42febe6af4c6fa3e13" as const;
+const CYCLE_2X_VALIDATOR_ISOLATION_REVISION =
+  "7f7163d4673360645e332d0b7d28467c15656f8a" as const;
 const CYCLE_2X_SOURCE_TRANSITION = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -613,6 +621,59 @@ const CYCLE_2X_SOURCE_TRANSITION = [
     status: "A",
   },
   { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION = [
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-filing-corpus/src/test-personal-filing-fact-comparison-builder.ts",
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2X_ROUTING_CLOSURE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2X_CORRECTIVE_CUMULATIVE_TRANSITION = [
+  ...CYCLE_2X_SOURCE_TRANSITION,
+  ...CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION.filter(
+    (entry) =>
+      !CYCLE_2X_SOURCE_TRANSITION.some(
+        (sourceEntry) => sourceEntry.path === entry.path,
+      ),
+  ),
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
@@ -2369,7 +2430,7 @@ describe("Cycle 2x personal quality-measurement routing", () => {
     expect(isCycle2xBaselineMergeBaseAllowed("a".repeat(40))).toBe(false);
     expect(isCycle2xBaselineMergeBaseAllowed(undefined)).toBe(false);
 
-    const revision = "e".repeat(40);
+    const revision = CYCLE_2X_SOURCE_REVISION;
     const valid = [
       "1",
       "1",
@@ -2388,6 +2449,9 @@ describe("Cycle 2x personal quality-measurement routing", () => {
         values[2] = CYCLE_2X_BASELINE_REVISION;
       },
       (values: string[]) => {
+        values[2] = "e".repeat(40);
+      },
+      (values: string[]) => {
         values[2] = "not-a-commit";
       },
       (values: string[]) => {
@@ -2402,6 +2466,65 @@ describe("Cycle 2x personal quality-measurement routing", () => {
       expect(
         isCycle2xDirectChildAllowed(
           ...(values as Parameters<typeof isCycle2xDirectChildAllowed>),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("accepts only the exact three-commit validator-isolation corrective chain", () => {
+    const revision = "e".repeat(40);
+    const valid = [
+      "3",
+      "3",
+      revision,
+      `${revision} ${CYCLE_2X_VALIDATOR_ISOLATION_REVISION}`,
+      `${CYCLE_2X_SOURCE_REVISION} ${CYCLE_2X_BASELINE_REVISION}`,
+      `${CYCLE_2X_VALIDATOR_ISOLATION_REVISION} ${CYCLE_2X_SOURCE_REVISION}`,
+    ] as const;
+    expect(isCycle2xCorrectiveChainAllowed(...valid)).toBe(true);
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "2";
+      },
+      (values: string[]) => {
+        values[1] = "4";
+      },
+      (values: string[]) => {
+        values[2] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[2] = CYCLE_2X_SOURCE_REVISION;
+      },
+      (values: string[]) => {
+        values[2] = CYCLE_2X_BASELINE_REVISION;
+      },
+      (values: string[]) => {
+        values[2] = CYCLE_2X_VALIDATOR_ISOLATION_REVISION;
+      },
+      (values: string[]) => {
+        values[3] = `${revision} ${CYCLE_2X_SOURCE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${CYCLE_2X_SOURCE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] = `${CYCLE_2X_SOURCE_REVISION} ${"d".repeat(40)}`;
+      },
+      (values: string[]) => {
+        values[4] += ` ${"d".repeat(40)}`;
+      },
+      (values: string[]) => {
+        values[5] = `${CYCLE_2X_VALIDATOR_ISOLATION_REVISION} ${CYCLE_2X_BASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[5] += ` ${CYCLE_2X_BASELINE_REVISION}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle2xCorrectiveChainAllowed(
+          ...(values as Parameters<typeof isCycle2xCorrectiveChainAllowed>),
         ),
       ).toBe(false);
     }
@@ -2446,6 +2569,77 @@ describe("Cycle 2x personal quality-measurement routing", () => {
       isCycle2xCommitDiffSetAllowed([
         ...CYCLE_2X_SOURCE_TRANSITION,
         { path: "unreviewed", status: "A" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("requires exact isolation, routing-closure, and cumulative corrective tuples", () => {
+    const transitions: readonly [
+      string,
+      (
+        entries: readonly { readonly path: string; readonly status: string }[],
+      ) => boolean,
+      readonly { readonly path: string; readonly status: string }[],
+      number,
+    ][] = [
+      [
+        "isolation",
+        isCycle2xValidatorIsolationCommitDiffSetAllowed,
+        CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION,
+        4,
+      ],
+      [
+        "routing_closure",
+        isCycle2xRoutingClosureCommitDiffSetAllowed,
+        CYCLE_2X_ROUTING_CLOSURE_TRANSITION,
+        6,
+      ],
+      [
+        "cumulative",
+        isCycle2xCorrectiveCumulativeDiffSetAllowed,
+        CYCLE_2X_CORRECTIVE_CUMULATIVE_TRANSITION,
+        15,
+      ],
+    ];
+    for (const [name, allowed, entries, count] of transitions) {
+      expect(entries, name).toHaveLength(count);
+      expect(allowed(entries), name).toBe(true);
+      expect(allowed([...entries].reverse()), `${name}:reversed`).toBe(false);
+      expect(allowed(entries.slice(0, -1)), `${name}:missing`).toBe(false);
+      expect(allowed([...entries, entries[0]!]), `${name}:duplicate`).toBe(
+        false,
+      );
+      expect(
+        allowed([
+          { ...entries[0]!, status: entries[0]!.status === "M" ? "A" : "M" },
+          ...entries.slice(1),
+        ]),
+        `${name}:status`,
+      ).toBe(false);
+      expect(
+        allowed([
+          { ...entries[0]!, path: "same-length-substitution" },
+          ...entries.slice(1),
+        ]),
+        `${name}:path`,
+      ).toBe(false);
+      expect(
+        allowed([...entries, { path: "unreviewed", status: "A" }]),
+        `${name}:extra`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle2xRoutingClosureCommitDiffSetAllowed(
+        CYCLE_2X_VALIDATOR_ISOLATION_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2xRoutingClosureCommitDiffSetAllowed([
+        ...CYCLE_2X_ROUTING_CLOSURE_TRANSITION,
+        {
+          path: "packages/personal-filing-corpus/src/personal-filing-fact-comparison.ts",
+          status: "M",
+        },
       ]),
     ).toBe(false);
   });
