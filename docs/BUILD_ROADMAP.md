@@ -1858,6 +1858,42 @@ closure checks reported no remaining actionable P0/P1/P2 finding after
 corrections. None of this evidence contains private aggregate or owner-local
 material.
 
+## Cycle 2z — bounded personal owner-authorized selected-fact release
+
+Status: **Accepted design; implementation, exact source revision, public
+verification, independent review, and owner-authorized private release are
+Pending. No personal selected-fact release Pass is claimed.**
+
+Cycle 2z proposes one exact explicit personal release mode. Before listen, it
+must snapshot the bounded inputs, rederive the candidate through the production
+normalization and raw-agreement path, and match the exact input set and
+candidate commitments already admitted by the quality result. A separate
+normalized record or caller assertion cannot satisfy the same-snapshot gate.
+
+The owner reviews the exact canonical plan and proposed closed response before
+supplying fresh single-use authorization. All validation and response
+derivation must finish before atomic authorization consumption. The running
+application receives only an opaque capability for one immutable selected-facts
+response. Failure is pre-listen, atomic, and value-free.
+
+The local route is GET-only with no caller selection and retains the loopback,
+Host, Origin, and noncacheable response boundaries. An optional browser view is
+nonpersistent and remains disconnected from the synthetic dossier, evidence,
+valuation, thesis, alerts, history, export, and storage.
+
+Exact source, local verification, public CI, independent review, and the coarse
+owner-approved private release outcome remain **Pending**. Public evidence must
+never contain the selected subset, response content, private bindings,
+authorization material, commitments, locations, or operation detail. See
+[ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+
+After Cycle 2z, the next separate blocker is request-time authenticated
+owner-browser composition with a short-lived session-bound capability and
+CSRF, replay, and lifetime controls. Same-user hostile-process resistance
+remains later and unproven. Enterprise/shared-service gates remain Out of
+scope.
+
 ## Cycle 2 — personal local filing ingestion proof
 
 Target: continue incrementally behind the declared personal profile.
@@ -1870,6 +1906,7 @@ Target: continue incrementally behind the declared personal profile.
 6. Cycle 2w compares exact values at ten primary-selected dimensionless raw coordinates per document against a repository-pinned Python extractor that receives only raw bytes and target QNames, not primary parser results or normalized material.
 7. Cycle 2x freezes an owner-reviewed reference and quality plan before candidate execution, commits internally derived candidate observations before reference reveal, and evaluates document success, fact precision/recall, exact unit/date agreement, silent failures, and quarantine rate against fixed zero-tolerance thresholds.
 8. Cycle 2y admits only the exact quality-ready aggregate once before listen and exposes a fixed coarse readiness DTO while the personal data plane remains disabled.
+9. Cycle 2z proposes an atomic owner-authorized release of one startup-fixed selected-fact response rederived from the exact candidate snapshot admitted by the quality result; implementation and both public and private evidence remain Pending.
 
 Personal-profile exit gate: **Pass for the one owner-selected corpus.** Every
 selected local payload matches its manifest,
@@ -1904,10 +1941,12 @@ exact frozen scope remain unproven; they are nonclaims rather than blockers for
 this closed personal-corpus gate.
 
 Cycle 2y closes the first local running-application composition boundary, but
-only for coarse readiness. It does not authorize personal facts, a personal
-dossier, database persistence, queueing, fetching, alerts, or background
-ingestion. The next product milestone is atomic same-snapshot selected-fact
-release under a new explicit owner-visible and nonpersistent boundary.
+only for coarse readiness. Cycle 2z is the provisional next boundary for atomic
+same-snapshot selected-fact release under explicit owner authorization and a
+nonpersistent response. It claims no Pass while its source and private evidence
+remain Pending. Request-time authenticated owner-browser composition is the
+next blocker after Cycle 2z; broader personal dossier, persistence, queueing,
+fetching, alerts, and background ingestion remain later.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

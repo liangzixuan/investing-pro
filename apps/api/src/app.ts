@@ -25,6 +25,11 @@ import {
   type PersonalQualityReadinessCapability,
 } from "./personal-quality-readiness";
 import { registerPersonalReadinessRoute } from "./personal-readiness-routes";
+import {
+  isPersonalSelectedFactReleaseCapability,
+  type PersonalSelectedFactReleaseCapability,
+} from "./personal-selected-fact-release";
+import { registerPersonalSelectedFactRoute } from "./personal-selected-fact-routes";
 import { registerResearchStateRoutes } from "./research-state-routes";
 
 const DEMO_API_BODY_LIMIT_BYTES = 384 * 1024;
@@ -48,7 +53,7 @@ interface EvidenceParams {
 export async function buildApp(
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
-  return buildComposedApp(undefined, listenOptions);
+  return buildComposedApp(undefined, undefined, listenOptions);
 }
 
 export async function buildPersonalReadinessApp(
@@ -58,11 +63,22 @@ export async function buildPersonalReadinessApp(
   if (!isPersonalQualityReadinessCapability(readiness)) {
     throw new TypeError("Personal filing readiness is unavailable.");
   }
-  return buildComposedApp(readiness, listenOptions);
+  return buildComposedApp(readiness, undefined, listenOptions);
+}
+
+export async function buildPersonalFactReleaseApp(
+  factRelease: PersonalSelectedFactReleaseCapability,
+  listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
+): Promise<FastifyInstance> {
+  if (!isPersonalSelectedFactReleaseCapability(factRelease)) {
+    throw new TypeError("Personal selected-fact release is unavailable.");
+  }
+  return buildComposedApp(undefined, factRelease, listenOptions);
 }
 
 async function buildComposedApp(
   readiness?: PersonalQualityReadinessCapability,
+  factRelease?: PersonalSelectedFactReleaseCapability,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -159,6 +175,7 @@ async function buildComposedApp(
 
   await registerResearchStateRoutes(app, researchState);
   await registerPersonalReadinessRoute(app, readiness, listenOptions);
+  await registerPersonalSelectedFactRoute(app, factRelease, listenOptions);
 
   app.setNotFoundHandler((request, reply) =>
     sendProblem(

@@ -29,6 +29,17 @@ export interface PublicPersonalQualityReadinessFixture {
 
 export function createValidPersonalQualityReadinessWrapper(
   documentCount = 1,
+  bindings: Readonly<{
+    candidateObservationsSha256: string;
+    inputSetSha256: string;
+    ownerReviewedReferenceSha256: string;
+    qualityPlanSha256: string;
+  }> = {
+    candidateObservationsSha256: HASH_A,
+    inputSetSha256: HASH_B,
+    ownerReviewedReferenceSha256: HASH_C,
+    qualityPlanSha256: HASH_D,
+  },
 ): Record<string, unknown> {
   const expectedFactCount = documentCount * 10;
   const counts = {
@@ -51,10 +62,10 @@ export function createValidPersonalQualityReadinessWrapper(
     valueMismatchCount: 0,
   };
   const candidateCommitmentSha256 = domainHash(COMMITMENT_DOMAIN, {
-    candidateObservationsSha256: HASH_A,
-    inputSetSha256: HASH_B,
-    ownerReviewedReferenceSha256: HASH_C,
-    qualityPlanSha256: HASH_D,
+    candidateObservationsSha256: bindings.candidateObservationsSha256,
+    inputSetSha256: bindings.inputSetSha256,
+    ownerReviewedReferenceSha256: bindings.ownerReviewedReferenceSha256,
+    qualityPlanSha256: bindings.qualityPlanSha256,
   });
   const failedThresholds: never[] = [];
   const personalQualityThresholdOutcome = "met";
@@ -91,13 +102,13 @@ export function createValidPersonalQualityReadinessWrapper(
         succeededDocumentCount: documentCount,
       },
       candidateCommitmentSha256,
-      candidateObservationsSha256: HASH_A,
+      candidateObservationsSha256: bindings.candidateObservationsSha256,
       claim:
         "bounded_owner_reviewed_frozen_reference_personal_filing_quality_measurement_with_predeclared_zero_tolerance_thresholds_and_atomic_value_free_quarantine_for_personal_single_user_local_use",
       counts,
       evaluationSha256,
       failedThresholds,
-      inputSetSha256: HASH_B,
+      inputSetSha256: bindings.inputSetSha256,
       metrics: {
         documentSuccess: ratio(documentCount, documentCount, 1, "minimum"),
         factPrecision: ratio(
@@ -122,9 +133,9 @@ export function createValidPersonalQualityReadinessWrapper(
           unitTolerancePolicy: "exact_canonical_unit.v1",
         },
       },
-      ownerReviewedReferenceSha256: HASH_C,
+      ownerReviewedReferenceSha256: bindings.ownerReviewedReferenceSha256,
       personalQualityThresholdOutcome,
-      qualityPlanSha256: HASH_D,
+      qualityPlanSha256: bindings.qualityPlanSha256,
       schemaVersion: "1.0.0",
       status: "quality_evaluated_for_personal_use",
       synthetic: false,

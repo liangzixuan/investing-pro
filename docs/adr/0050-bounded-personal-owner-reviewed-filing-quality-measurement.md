@@ -222,11 +222,20 @@ owner-authorized selected-fact release from the same immutable candidate
 snapshot bound to the admitted quality result. Enterprise and shared-service
 requirements remain Out of scope for the personal profile.
 
+Cycle 2z records the accepted design for that selected-fact boundary, but its
+implementation, exact source, public verification, independent review, and
+owner-approved private outcome remain Pending. It supplies no Pass and does not
+widen this quality-measurement decision. See
+[ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md).
+
 ## References
 
 - [Cycle 2x exit matrix](../CYCLE_2X_EXIT_MATRIX.md)
 - [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
 - [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md)
+- [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
+- [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
 - [Cycle 2w exit matrix](../CYCLE_2W_EXIT_MATRIX.md)
 - [ADR 0049](./0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

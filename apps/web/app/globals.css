@@ -117,7 +117,8 @@ h4,
 .identity-line,
 .local-badge,
 .demo-chip,
-.personal-readiness-chip {
+.personal-readiness-chip,
+.personal-facts-chip {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.72rem;
   font-weight: 700;
@@ -219,6 +220,17 @@ h4,
   white-space: nowrap;
 }
 
+.personal-facts-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #b69353;
+  border-radius: 999px;
+  background: #f5ead5;
+  color: #6a4a19;
+  white-space: nowrap;
+}
+
 .demo-disclosure {
   padding: 10px 24px;
   border-bottom: 1px solid #efd3c9;
@@ -232,6 +244,87 @@ h4,
   width: min(calc(100% - 48px), var(--content));
   margin: 0 auto;
   padding-bottom: 96px;
+}
+
+.personal-facts-panel {
+  margin-top: 34px;
+  padding: 26px;
+  border: 1px solid #d0bb91;
+  border-radius: var(--radius-lg);
+  background: #fffaf0;
+  box-shadow: var(--shadow);
+}
+
+.personal-facts-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.personal-facts-heading .eyebrow {
+  margin-bottom: 6px;
+  color: #79551e;
+}
+
+.personal-facts-heading h2 {
+  margin-bottom: 0;
+  font-size: clamp(1.45rem, 2.6vw, 2.15rem);
+}
+
+.personal-facts-heading > p {
+  max-width: 465px;
+  margin-bottom: 2px;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+
+.personal-facts-grid {
+  display: grid;
+  margin: 22px 0 0;
+  padding: 0;
+  border: 1px solid #ded0b5;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #e7dcc5;
+  gap: 1px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.personal-fact {
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+}
+
+.personal-fact dt,
+.personal-fact small,
+.personal-fact dd span {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.personal-fact dt {
+  min-height: 2.2em;
+  font-weight: 700;
+}
+
+.personal-fact dd {
+  display: flex;
+  margin: 10px 0 4px;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.personal-fact dd strong {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-fact small {
+  display: block;
+  line-height: 1.35;
 }
 
 .dossier-hero {
@@ -1264,6 +1357,10 @@ thead th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .personal-facts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .metric-card:nth-child(5n) {
     border-right: 1px solid var(--line);
   }
@@ -1317,6 +1414,16 @@ thead th {
     align-items: flex-start;
     flex-direction: column;
     gap: 20px;
+  }
+
+  .personal-facts-panel {
+    padding: 18px;
+  }
+
+  .personal-facts-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .company-identity {

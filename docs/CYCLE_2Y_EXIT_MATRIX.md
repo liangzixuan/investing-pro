@@ -176,6 +176,12 @@ An authenticated browser session and defenses against same-user hostile local
 processes remain later, separate boundaries. They are not implied by a
 loopback address, Host check, Origin check, or disabled data plane.
 
+Cycle 2z now records the accepted design for that selected-fact boundary, but
+its implementation, exact source, public verification, independent review, and
+owner-approved private outcome remain Pending. Cycle 2z does not widen this
+Cycle 2y exit. See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+
 ## Exit rule
 
 Cycle 2y is promoted only for exact frozen source revision

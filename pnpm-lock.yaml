@@ -56,6 +56,9 @@ importers:
       '@research-cockpit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@research-cockpit/personal-filing-corpus':
+        specifier: workspace:*
+        version: link:../../packages/personal-filing-corpus
       '@research-cockpit/research-core':
         specifier: workspace:*
         version: link:../../modules/research-core

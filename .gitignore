@@ -9,5 +9,6 @@ test-results/
 .npmrc
 *.log
 *.tsbuildinfo
+apps/api/tsup.config.bundled_*.mjs
 .DS_Store
 Thumbs.db

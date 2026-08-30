@@ -1011,6 +1011,23 @@ Windows job `99318536323`; the full local release gate passed 1,526 tests with
 [ADR 0051](./docs/adr/0051-bounded-personal-quality-readiness-composition.md)
 and the [Cycle 2y exit matrix](./docs/CYCLE_2Y_EXIT_MATRIX.md).
 
+Cycle 2z is an **accepted design with implementation, exact source revision,
+public verification, independent review, and owner-authorized private release
+Pending**. It proposes one explicit personal selected-fact startup boundary
+that rederives the production candidate from the same frozen inputs, matches it
+to the admitted quality result, and consumes fresh owner authorization before
+listen. Only the exact startup-fixed selected-facts response may reach the
+guarded local GET route and optional nonpersistent browser view.
+
+Cycle 2z does not authorize dynamic selection, a personal dossier, history,
+evidence display, valuation, thesis, alerts, export, persistence, or background
+ingestion. Loopback, Host, and Origin checks are not owner authentication.
+Authenticated owner-browser composition remains the next separate blocker;
+hostile same-user processes remain unproven. Enterprise/shared-service
+requirements remain Out of scope. See
+[ADR 0052](./docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](./docs/CYCLE_2Z_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -1614,4 +1631,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md),
 [Cycle 2y exit matrix](./docs/CYCLE_2Y_EXIT_MATRIX.md),
 [ADR 0051](./docs/adr/0051-bounded-personal-quality-readiness-composition.md),
+[Cycle 2z exit matrix](./docs/CYCLE_2Z_EXIT_MATRIX.md),
+[ADR 0052](./docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md),
 and [architecture decisions](./docs/adr/).

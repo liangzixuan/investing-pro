@@ -147,3 +147,19 @@ export {
   type PersonalFilingQualityMeasurementRatioMetric,
   type PersonalFilingQualityMeasurementRevealResult,
 } from "./personal-filing-quality-measurement";
+
+export {
+  PERSONAL_FILING_SELECTED_FACT_RELEASE_PLAN_ROLE,
+  PERSONAL_FILING_SELECTED_FACT_RELEASE_PROFILE,
+  PERSONAL_FILING_SELECTED_FACT_RELEASE_ROLE,
+  PERSONAL_FILING_SELECTED_FACT_RELEASE_SCHEMA_VERSION,
+  PERSONAL_FILING_SELECTED_FACT_RELEASE_SELECTION_RULE,
+  preparePersonalFilingSelectedFactRelease,
+  type PersonalFilingSelectedFact,
+  type PersonalFilingSelectedFactReleaseExpectedBindings,
+  type PersonalFilingSelectedFactReleaseInput,
+  type PersonalFilingSelectedFactReleasePlan,
+  type PersonalFilingSelectedFactReleasePreparedResult,
+  type PersonalFilingSelectedFactReleaseQuarantinedResult,
+  type PersonalFilingSelectedFactReleaseResult,
+} from "./personal-filing-selected-fact-release";

@@ -6,6 +6,8 @@ import type {
   AlertWriteRequestDto,
   AlertWriteResponseDto,
   PersonalFilingReadinessDto,
+  PersonalFilingSelectedFactDto,
+  PersonalFilingSelectedFactsDto,
   ThesisWriteRequestDto,
   ThesisWriteResponseDto,
 } from "./index";
@@ -64,6 +66,18 @@ const SAFE_TEXT_PATTERN =
   "pattern: '^(?=[\\s\\S]*\\S)[^\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]*$'";
 const UUID_PATTERN_SOURCE =
   'pattern: "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$"';
+const PERSONAL_FILING_FACT_KEYS = [
+  "assets",
+  "cash",
+  "debt",
+  "diluted_shares",
+  "free_cash_flow",
+  "gross_profit",
+  "net_income",
+  "operating_cash_flow",
+  "operating_income",
+  "revenue",
+] as const;
 
 describe("local API OpenAPI contract", () => {
   it("exposes only the two exact update-only research-state routes", async () => {
@@ -78,6 +92,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/instruments/{symbol}/dossier",
       "/v1/evidence/{evidenceId}",
       "/v1/personal-filing/readiness",
+      "/v1/personal-filing/selected-facts",
       "/v1/theses/{thesisId}",
       "/v1/alerts/{alertId}",
     ]);
@@ -165,7 +180,7 @@ describe("local API OpenAPI contract", () => {
     const schema = schemaSection(
       source,
       "PersonalFilingReadiness",
-      "InstrumentId",
+      "PersonalFilingSelectedFacts",
     );
     expect(schema).toContain("additionalProperties: false");
     expect(requiredKeys(schema)).toEqual([
@@ -187,6 +202,88 @@ describe("local API OpenAPI contract", () => {
     );
     expect(headers).toContain("const: private, no-store");
     expect(headers).toContain("const: no-cache");
+  });
+
+  it("freezes the closed personal selected-fact release contract", async () => {
+    const source = await openApiSource();
+    const route = pathSection(source, "/v1/personal-filing/selected-facts");
+    const normalizedRoute = route.replace(/\s+/g, " ");
+
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "get:",
+    ]);
+    expect(statuses(route)).toEqual(["200", "403", "404"]);
+    expect(parameterRefs(route)).toEqual([]);
+    expect(route).not.toContain("parameters:");
+    expect(route).not.toContain("requestBody:");
+    expect(route).not.toContain("in: query");
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalFilingSelectedFacts"',
+    );
+    expect(route.match(/#\/components\/headers\/PrivateNoStore/g)).toHaveLength(
+      3,
+    );
+    expect(route.match(/#\/components\/headers\/PragmaNoCache/g)).toHaveLength(
+      3,
+    );
+    expect(route.match(/#\/components\/schemas\/ProblemDetails/g)).toHaveLength(
+      2,
+    );
+    expect(normalizedRoute).toContain("caller-supplied selection");
+    expect(normalizedRoute).toContain("HEAD is not exposed");
+    expect(normalizedRoute).toContain("unique fact keys in canonical order");
+
+    const outer = schemaSection(
+      source,
+      "PersonalFilingSelectedFacts",
+      "PersonalFilingSelectedFact",
+    );
+    expect(outer).toContain("additionalProperties: false");
+    expect(requiredKeys(outer)).toEqual([
+      "schemaVersion",
+      "profile",
+      "status",
+      "facts",
+    ]);
+    expect(schemaKeys(outer)).toEqual(requiredKeys(outer));
+    expect(outer).toContain('const: "1.0.0"');
+    expect(outer).toContain("const: personal_single_user_local");
+    expect(outer).toContain("const: selected_facts_released");
+    expect(outer).toContain("minItems: 1");
+    expect(outer).toContain("maxItems: 10");
+    expect(outer).toContain(
+      '$ref: "#/components/schemas/PersonalFilingSelectedFact"',
+    );
+
+    const fact = schemaSection(
+      source,
+      "PersonalFilingSelectedFact",
+      "InstrumentId",
+    );
+    expect(fact).toContain("additionalProperties: false");
+    expect(requiredKeys(fact)).toEqual([
+      "key",
+      "value",
+      "unit",
+      "periodStart",
+      "periodEnd",
+    ]);
+    expect(schemaKeys(fact)).toEqual(requiredKeys(fact));
+    const key = boundedSection(fact, "        key:", "        value:");
+    expect(listValues(key, /^ {12}- ([a-z_]+)$/gm)).toEqual(
+      PERSONAL_FILING_FACT_KEYS,
+    );
+    const unit = boundedSection(fact, "        unit:", "        periodStart:");
+    expect(listValues(unit, /^ {12}- ([A-Za-z]+)$/gm)).toEqual([
+      "USD",
+      "shares",
+    ]);
+    expect(fact).toContain("maxLength: 40");
+    expect(fact).toContain(
+      'pattern: "^-?(?:0|[1-9][0-9]{0,25})(?:\\\\.[0-9]{0,11}[1-9])?$"',
+    );
+    expect(fact.match(/format: date/g)).toHaveLength(2);
+    expect(fact).toContain('            - "null"');
   });
 
   it("publishes the exact non-secret persona selectors and strict write headers", async () => {
@@ -370,6 +467,19 @@ describe("local API OpenAPI contract", () => {
       status: "quality_gate_ready",
       dataPlane: "disabled",
     } satisfies PersonalFilingReadinessDto;
+    const personalFilingSelectedFact = {
+      key: "revenue",
+      value: "120000000",
+      unit: "USD",
+      periodStart: "2025-01-01",
+      periodEnd: "2025-12-31",
+    } satisfies PersonalFilingSelectedFactDto;
+    const personalFilingSelectedFacts = {
+      schemaVersion: "1.0.0",
+      profile: "personal_single_user_local",
+      status: "selected_facts_released",
+      facts: [personalFilingSelectedFact],
+    } satisfies PersonalFilingSelectedFactsDto;
     const thesisRequest = {
       instrumentId: "instrument.synthetic.syn1",
       claim: "Synthetic claim",
@@ -422,6 +532,19 @@ describe("local API OpenAPI contract", () => {
       "profile",
       "status",
       "dataPlane",
+    ]);
+    expect(Object.keys(personalFilingSelectedFact)).toEqual([
+      "key",
+      "value",
+      "unit",
+      "periodStart",
+      "periodEnd",
+    ]);
+    expect(Object.keys(personalFilingSelectedFacts)).toEqual([
+      "schemaVersion",
+      "profile",
+      "status",
+      "facts",
     ]);
   });
 });

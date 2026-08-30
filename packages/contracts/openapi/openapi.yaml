@@ -111,6 +111,52 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/selected-facts:
+    get:
+      operationId: getPersonalFilingSelectedFacts
+      summary: Read the owner-authorized selected personal filing facts.
+      description: >-
+        Local-only, personal single-user selected-fact boundary. The response
+        contains only the startup-fixed owner-authorized normalized fact
+        projection. It accepts no path parameters, query parameters, request
+        body, caller-supplied selection, or caller-supplied release state. The
+        operation requires the exact configured loopback Host authority and one
+        allowlisted local browser Origin; HEAD is not exposed. Runtime enforces
+        unique fact keys in canonical order.
+      responses:
+        "200":
+          description: The exact owner-authorized selected facts are available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalFilingSelectedFacts"
+        "403":
+          description: The local-only selected-fact request is not allowed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: No owner-authorized selected-fact release is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /v1/theses/{thesisId}:
     put:
       operationId: updateSyntheticThesis
@@ -593,6 +639,73 @@ components:
           const: quality_gate_ready
         dataPlane:
           const: disabled
+    PersonalFilingSelectedFacts:
+      type: object
+      description: >-
+        Exact owner-authorized personal single-user normalized fact projection.
+        Fact-key uniqueness and canonical ordering are enforced by the runtime.
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - profile
+        - status
+        - facts
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        profile:
+          const: personal_single_user_local
+        status:
+          const: selected_facts_released
+        facts:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/PersonalFilingSelectedFact"
+    PersonalFilingSelectedFact:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - value
+        - unit
+        - periodStart
+        - periodEnd
+      properties:
+        key:
+          type: string
+          enum:
+            - assets
+            - cash
+            - debt
+            - diluted_shares
+            - free_cash_flow
+            - gross_profit
+            - net_income
+            - operating_cash_flow
+            - operating_income
+            - revenue
+        value:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: "^-?(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{0,11}[1-9])?$"
+        unit:
+          type: string
+          enum:
+            - USD
+            - shares
+        periodStart:
+          type:
+            - string
+            - "null"
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        periodEnd:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
     InstrumentId:
       type: string
       minLength: 3

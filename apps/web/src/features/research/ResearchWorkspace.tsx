@@ -1,6 +1,9 @@
 "use client";
 
-import type { DossierDto } from "@research-cockpit/contracts";
+import type {
+  DossierDto,
+  PersonalFilingSelectedFactsDto,
+} from "@research-cockpit/contracts";
 import {
   DEFAULT_KNOWN_AT,
   PRE_RESTATEMENT_KNOWN_AT,
@@ -8,12 +11,17 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { fetchDossier, fetchPersonalFilingReadiness } from "@/lib/api";
+import {
+  fetchDossier,
+  fetchPersonalFilingReadiness,
+  fetchPersonalFilingSelectedFacts,
+} from "@/lib/api";
 
 import { AnalyticalChart } from "./AnalyticalChart";
 import type { EvidenceSelection } from "./evidence-selection";
 import { EvidenceDialog } from "./EvidenceDialog";
 import { MetricGrid } from "./MetricGrid";
+import { PersonalFilingFacts } from "./PersonalFilingFacts";
 import { ThesisMonitor } from "./ThesisMonitor";
 import { ValuationWorkbench } from "./ValuationWorkbench";
 
@@ -29,6 +37,8 @@ export function ResearchWorkspace({
   const [retryToken, setRetryToken] = useState(0);
   const [selection, setSelection] = useState<EvidenceSelection | null>(null);
   const [personalQualityReady, setPersonalQualityReady] = useState(false);
+  const [personalFacts, setPersonalFacts] =
+    useState<PersonalFilingSelectedFactsDto | null>(null);
   const closeEvidence = useCallback(() => setSelection(null), []);
 
   useEffect(() => {
@@ -39,6 +49,18 @@ export function ResearchWorkspace({
       })
       .catch(() => {
         if (!controller.signal.aborted) setPersonalQualityReady(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPersonalFilingSelectedFacts(controller.signal)
+      .then((release) => {
+        if (!controller.signal.aborted) setPersonalFacts(release);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPersonalFacts(null);
       });
     return () => controller.abort();
   }, []);
@@ -113,7 +135,11 @@ export function ResearchWorkspace({
         </nav>
         <div className="mode-chips" aria-label="Data modes">
           <span className="demo-chip">Synthetic demo</span>
-          {personalQualityReady ? (
+          {personalFacts !== null ? (
+            <span className="personal-facts-chip">
+              Personal facts · read only
+            </span>
+          ) : personalQualityReady ? (
             <span className="personal-readiness-chip">
               Personal quality ready · data off
             </span>
@@ -122,10 +148,18 @@ export function ResearchWorkspace({
       </header>
 
       <div className="demo-disclosure" role="note">
-        <strong>Fictional dataset.</strong> {dossier.demoDisclosure}
+        <strong>
+          {personalFacts === null
+            ? "Fictional dataset."
+            : "Fictional dossier below."}
+        </strong>{" "}
+        {dossier.demoDisclosure}
       </div>
 
       <main className="research-shell" id="main-content">
+        {personalFacts === null ? null : (
+          <PersonalFilingFacts release={personalFacts} />
+        )}
         <section className="dossier-hero" aria-labelledby="company-title">
           <div className="company-identity">
             <span className="ticker-mark" aria-hidden="true">

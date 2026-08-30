@@ -153,12 +153,17 @@ const cycle2wPersonalFilingCorpusPackagePaths = [
   `${personalFilingCorpusPackagePrefix}src/test-personal-filing-raw-fact-extraction-builder.ts`,
   `${personalFilingCorpusPackagePrefix}validator/personal_filing_raw_fact_extractor.py`,
 ].sort();
-const personalFilingCorpusPackagePaths = [
+const cycle2xPersonalFilingCorpusPackagePaths = [
   ...cycle2wPersonalFilingCorpusPackagePaths,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-quality-measurement-security.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-quality-measurement.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-quality-measurement.ts`,
   `${personalFilingCorpusPackagePrefix}src/test-personal-filing-quality-measurement-builder.ts`,
+].sort();
+const personalFilingCorpusPackagePaths = [
+  ...cycle2xPersonalFilingCorpusPackagePaths,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.ts`,
 ].sort();
 const cycle2qBaselineRevision =
   "2f0534d2a5b4206221cc66ece5e03cf529e5d373" as const;
@@ -546,7 +551,7 @@ const cycle2xProtectedPaths = [
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
   "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
-  ...personalFilingCorpusPackagePaths,
+  ...cycle2xPersonalFilingCorpusPackagePaths,
   "scripts/verify-boundaries.ts",
 ];
 
@@ -5099,7 +5104,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     JSON.stringify(personalFilingCorpusPackagePaths)
   )
     found.push(
-      `${personalFilingCorpusPackagePrefix}: Cycle 2x package tree must remain the exact thirty-file manifest, payload-identity, payload-custody, fact-normalization, fact-comparison, raw-fact-extraction, quality-measurement, two Python validators, tsconfig, index, four-builder, and fourteen-test surface`,
+      `${personalFilingCorpusPackagePrefix}: Cycle 2z package tree must remain the exact thirty-two-file manifest, payload-identity, payload-custody, fact-normalization, fact-comparison, raw-fact-extraction, quality-measurement, selected-fact-release, two Python validators, tsconfig, index, four-builder, and fifteen-test surface`,
     );
 
   const manifest = await cycle2kJson(
@@ -5169,6 +5174,8 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   const qualityMeasurementUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-quality-measurement.test.ts`;
   const qualityMeasurementSecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-quality-measurement-security.test.ts`;
   const qualityMeasurementBuilderPath = `${personalFilingCorpusPackagePrefix}src/test-personal-filing-quality-measurement-builder.ts`;
+  const selectedFactReleasePath = `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.ts`;
+  const selectedFactReleaseTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.test.ts`;
   const implementation = await cycle2kText(implementationPath, found);
   const index = await cycle2kText(indexPath, found);
   const unitTest = await cycle2kText(unitTestPath, found);
@@ -5249,6 +5256,11 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   );
   const qualityMeasurementBuilder = await cycle2kText(
     qualityMeasurementBuilderPath,
+    found,
+  );
+  const selectedFactRelease = await cycle2kText(selectedFactReleasePath, found);
+  const selectedFactReleaseTest = await cycle2kText(
+    selectedFactReleaseTestPath,
     found,
   );
   const manifestPublicExports = [
@@ -5394,6 +5406,21 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ["PersonalFilingQualityMeasurementRatioMetric", true],
     ["PersonalFilingQualityMeasurementRevealResult", true],
   ] as const;
+  const selectedFactReleasePublicExports = [
+    ["PERSONAL_FILING_SELECTED_FACT_RELEASE_PLAN_ROLE", false],
+    ["PERSONAL_FILING_SELECTED_FACT_RELEASE_PROFILE", false],
+    ["PERSONAL_FILING_SELECTED_FACT_RELEASE_ROLE", false],
+    ["PERSONAL_FILING_SELECTED_FACT_RELEASE_SCHEMA_VERSION", false],
+    ["PERSONAL_FILING_SELECTED_FACT_RELEASE_SELECTION_RULE", false],
+    ["preparePersonalFilingSelectedFactRelease", false],
+    ["PersonalFilingSelectedFact", true],
+    ["PersonalFilingSelectedFactReleaseExpectedBindings", true],
+    ["PersonalFilingSelectedFactReleaseInput", true],
+    ["PersonalFilingSelectedFactReleasePlan", true],
+    ["PersonalFilingSelectedFactReleasePreparedResult", true],
+    ["PersonalFilingSelectedFactReleaseQuarantinedResult", true],
+    ["PersonalFilingSelectedFactReleaseResult", true],
+  ] as const;
 
   const indexSource = ts.createSourceFile(
     indexPath,
@@ -5403,7 +5430,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ts.ScriptKind.TS,
   );
   if (
-    indexSource.statements.length !== 7 ||
+    indexSource.statements.length !== 8 ||
     !isExactNamedReExportDeclaration(
       indexSource.statements[0],
       "./personal-filing-corpus",
@@ -5438,10 +5465,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       indexSource.statements[6],
       "./personal-filing-quality-measurement",
       qualityMeasurementPublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[7],
+      "./personal-filing-selected-fact-release",
+      selectedFactReleasePublicExports,
     )
   )
     found.push(
-      `${indexPath}: Cycle 2x personal corpus public export surface must remain exact and test-only quality controls must stay private`,
+      `${indexPath}: Cycle 2z personal corpus public export surface must remain exact and test-only quality controls must stay private`,
     );
   const expectedImports = new Map<string, readonly string[]>([
     [implementationPath, ["node:crypto"]],
@@ -5455,6 +5487,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./personal-filing-fact-comparison",
         "./personal-filing-raw-fact-extraction",
         "./personal-filing-quality-measurement",
+        "./personal-filing-selected-fact-release",
       ],
     ],
     [unitTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
@@ -5671,6 +5704,26 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./test-personal-filing-fact-builder",
       ],
     ],
+    [
+      selectedFactReleasePath,
+      [
+        "node:util/types",
+        "./personal-filing-corpus",
+        "./personal-filing-fact-normalization",
+        "./personal-filing-quality-measurement",
+        "./personal-filing-raw-fact-extraction",
+      ],
+    ],
+    [
+      selectedFactReleaseTestPath,
+      [
+        "vitest",
+        "./personal-filing-fact-normalization",
+        "./personal-filing-quality-measurement",
+        "./personal-filing-selected-fact-release",
+        "./test-personal-filing-quality-measurement-builder",
+      ],
+    ],
   ]);
   for (const [path, content] of [
     [implementationPath, implementation],
@@ -5699,13 +5752,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     [qualityMeasurementUnitTestPath, qualityMeasurementUnitTest],
     [qualityMeasurementSecurityTestPath, qualityMeasurementSecurityTest],
     [qualityMeasurementBuilderPath, qualityMeasurementBuilder],
+    [selectedFactReleasePath, selectedFactRelease],
+    [selectedFactReleaseTestPath, selectedFactReleaseTest],
   ] as const) {
     if (
       JSON.stringify(collectModuleSpecifiers(content)) !==
       JSON.stringify(expectedImports.get(path))
     )
       found.push(
-        `${path}: Cycle 2q/2r/2s/2u/2v/2w/2x imports must remain exact`,
+        `${path}: Cycle 2q/2r/2s/2u/2v/2w/2x/2z imports must remain exact`,
       );
     if (
       hasRuntimeDynamicImport(content) ||
@@ -6047,6 +6102,95 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     found.push(
       `${qualityMeasurementPath}: personal quality measurement must remain owner-reviewed, non-enterprise, non-synthetic, and value-free on quarantine`,
     );
+
+  for (const required of [
+    '"personal_single_user_local" as const',
+    '"personal_selected_fact_release_plan" as const',
+    '"personal_selected_fact_release" as const',
+    '"exact_candidate_document_index_and_fact_key.v1" as const',
+    'readonly status: "prepared_selected_facts_for_personal_use"',
+    'readonly status: "quarantined"',
+    "readonly facts: readonly []",
+    "candidateCommitmentSha256",
+    "candidateObservationsSha256",
+    "inputSetSha256",
+    "ownerReviewedReferenceSha256",
+    "qualityPlanSha256",
+    "createPersonalFilingQualityMeasurementProtocol",
+    "normalizePersonalFilingFacts",
+    "normalization.audit.sourceDocumentCount !==",
+    "committed.audit.succeededDocumentCount !==",
+    "committed.audit.quarantinedDocumentCount !== 0",
+    "PERSONAL_FILING_FACT_KEYS.indexOf",
+    "seenBuffers.has(buffer as object)",
+    "isProxy",
+    "wipeSnapshot(snapshot)",
+    "key: fact.key",
+    "periodEnd: fact.periodEnd",
+    "periodStart: fact.periodStart",
+    "unit: fact.unit",
+    "value: fact.value",
+  ])
+    if (!selectedFactRelease.includes(required))
+      found.push(
+        `${selectedFactReleasePath}: missing exact Cycle 2z same-snapshot binding, closed selection, frozen projection, or value-free quarantine control ${required}`,
+      );
+  for (const exactDeclaration of [
+    `const INPUT_KEYS = [
+  "declaration",
+  "expectedBindings",
+  "manifest",
+  "normalizationPlan",
+  "qualityPlan",
+  "rawFilingDocuments",
+  "releasePlan",
+  "sourceDocuments",
+] as const;`,
+    `const BINDING_KEYS = [
+  "candidateCommitmentSha256",
+  "candidateObservationsSha256",
+  "inputSetSha256",
+  "ownerReviewedReferenceSha256",
+  "qualityPlanSha256",
+] as const;`,
+    `const PLAN_KEYS = [
+  "documentIndex",
+  "factKeys",
+  "profile",
+  "role",
+  "schemaVersion",
+  "selectionRule",
+] as const;`,
+  ])
+    if (!selectedFactRelease.includes(exactDeclaration))
+      found.push(
+        `${selectedFactReleasePath}: Cycle 2z input, five-hash binding, and release-plan descriptor closures must remain exact`,
+      );
+  for (const requiredTest of [
+    '"requires every member of the exact five-hash binding tuple"',
+    '"rejects aliases, Buffer carriers, proxies, accessors, and extra keys without invoking canaries"',
+    '"owns the input snapshot and leaves a successful result immutable after caller mutation"',
+    '"never releases partial values when normalization or selection cannot complete"',
+  ])
+    if (!selectedFactReleaseTest.includes(requiredTest))
+      found.push(
+        `${selectedFactReleaseTestPath}: missing exact Cycle 2z adversarial regression ${requiredTest}`,
+      );
+  for (const forbidden of [
+    'status: "admitted"',
+    "rights_and_steward_approved",
+    "sourceConcept",
+    "sourceContentSha256",
+    "factId",
+    "knownFrom",
+    "knownToExclusive",
+    "candidateDocuments",
+    ".reveal(",
+  ])
+    if (selectedFactRelease.includes(forbidden))
+      found.push(
+        `${selectedFactReleasePath}: Cycle 2z selected-fact release must not expose provenance, reference content, candidate internals, enterprise admission, or reveal capability ${forbidden}`,
+      );
 
   const workflowPath =
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml";

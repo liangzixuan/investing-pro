@@ -163,9 +163,18 @@ quality result. That future boundary requires its own minimal DTO, lifecycle,
 browser disclosure, nonpersistence, and failure controls. Browser
 authentication and same-user hostile-process resistance remain later still.
 
+Cycle 2z records the accepted design for that owner-authorized selected-fact
+release, but its implementation, exact source, public verification,
+independent review, and private owner outcome remain Pending. It does not widen
+the Cycle 2y decision. Request-time authenticated owner-browser composition is
+the next separate blocker after Cycle 2z; same-user hostile-process resistance
+remains later.
+
 ## References
 
 - [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
+- [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
+- [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
 - [Cycle 2x exit matrix](../CYCLE_2X_EXIT_MATRIX.md)
 - [ADR 0050](./0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

@@ -1,4 +1,4 @@
-# Sprint 0 through staged Cycle 2y threat model
+# Sprint 0 through provisional Cycle 2z threat model
 
 ## Current trust boundaries
 
@@ -17,6 +17,9 @@ commercial use or payload redistribution, and no production/shared service.
 Cycle 2q/2r/2s/2u/2v/2w/2x remain disconnected from the running API and web
 application. Cycle 2y closes only a coarse readiness composition with its
 personal data plane disabled.
+Cycle 2z is only an accepted, Pending design for a bounded owner-authorized
+selected-fact release; it currently adds no running trust boundary and claims
+no release Pass.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -1962,6 +1965,49 @@ requirements remain Out of scope. Exact design gates and nonclaims are in
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
+Cycle 2z is an accepted design with implementation, exact source, public
+verification, independent review, and owner-authorized private release
+**Pending**. It proposes the first boundary in which selected personal values
+may enter API and browser memory. No release Pass is currently claimed.
+
+Assets at risk are the confidentiality and integrity of the selected response,
+the admitted quality and same-snapshot bindings, the owner-reviewed selection,
+single-use authorization, pre-listen ordering, local request boundary, and the
+absence of persistence or log residue.
+
+Primary threats are implicit release-mode fallback; alternate or mutable input
+sets; substitution of a separately supplied normalized record; mismatch
+between the admitted quality result and rederived candidate; unreviewed,
+duplicated, reordered, or widened selection; response substitution; stale,
+replayed, revoked, replaced, or raced authorization; partial release; request-
+triggered rederivation or reselection; authority-header confusion; cache or log
+leakage; and accidental composition into the synthetic product model.
+
+Required controls are exact startup-mode and configuration closure; bounded
+owned stable input snapshots; production-path rederivation; exact input-set and
+candidate commitment checks; closed canonical plan and response validation;
+owner review of the proposed response; fresh single-use authorization consumed
+atomically only after validation; pre-listen all-or-nothing capability
+creation; GET-only input closure; exact loopback, Host, and Origin guards;
+private noncacheable outcomes; generic value-free failures; and browser,
+storage, analytics, telemetry, and log exclusion.
+
+Residual risk remains substantial. Rendering intentionally reveals the
+authorized facts to the local browser. Host and Origin are not request-time
+owner authentication. Browser extensions, developer tools, screenshots,
+memory inspection, and hostile same-user processes remain outside the claim.
+Cycle 2z does not add history, dossier, evidence, valuation, thesis, alerts,
+export, persistence, remote access, tenancy, shared-service, or production
+safety.
+
+The next separate blocker after Cycle 2z is request-time authenticated
+owner-browser composition with a short-lived session-bound capability and
+CSRF, replay, and lifetime controls. Same-user hostile-process resistance
+remains later. Enterprise/shared-service requirements remain Out of scope.
+Exact design gates and nonclaims are in
+[ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1981,6 +2027,9 @@ requirements remain Out of scope. Exact design gates and nonclaims are in
    Cycle 2y then closes only explicit pre-listen coarse readiness composition
    with the personal data plane disabled; it exposes no personal facts or
    personal dossier.
+   Cycle 2z is the provisional owner-authorized same-snapshot selected-fact
+   release boundary; its implementation and public and private evidence remain
+   Pending, so it currently supplies no release Pass.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's

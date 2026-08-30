@@ -108,6 +108,31 @@ export interface PersonalFilingReadinessDto {
   dataPlane: "disabled";
 }
 
+export interface PersonalFilingSelectedFactDto {
+  readonly key:
+    | "assets"
+    | "cash"
+    | "debt"
+    | "diluted_shares"
+    | "free_cash_flow"
+    | "gross_profit"
+    | "net_income"
+    | "operating_cash_flow"
+    | "operating_income"
+    | "revenue";
+  readonly value: string;
+  readonly unit: "USD" | "shares";
+  readonly periodStart: string | null;
+  readonly periodEnd: string;
+}
+
+export interface PersonalFilingSelectedFactsDto {
+  readonly schemaVersion: "1.0.0";
+  readonly profile: "personal_single_user_local";
+  readonly status: "selected_facts_released";
+  readonly facts: readonly PersonalFilingSelectedFactDto[];
+}
+
 export interface ValuationInputDto {
   baseRevenue: string;
   cash: string;

@@ -1,4 +1,5 @@
-export type ApiMode = "synthetic_demo" | "personal_readiness";
+export type ApiMode =
+  "synthetic_demo" | "personal_readiness" | "personal_fact_release";
 
 export type ApiModeEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -13,7 +14,11 @@ export class ApiModeError extends Error {
 
 export function resolveApiMode(environment: ApiModeEnvironment): ApiMode {
   const value = environment.RESEARCH_COCKPIT_MODE ?? "synthetic_demo";
-  if (value !== "synthetic_demo" && value !== "personal_readiness") {
+  if (
+    value !== "synthetic_demo" &&
+    value !== "personal_readiness" &&
+    value !== "personal_fact_release"
+  ) {
     throw new ApiModeError();
   }
   return value;

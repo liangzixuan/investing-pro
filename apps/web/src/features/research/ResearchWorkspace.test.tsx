@@ -47,6 +47,7 @@ const hookHarness = vi.hoisted(() => {
 const apiMocks = vi.hoisted(() => ({
   fetchDossier: vi.fn(),
   fetchPersonalFilingReadiness: vi.fn(),
+  fetchPersonalFilingSelectedFacts: vi.fn(),
 }));
 
 vi.mock("react", async (importOriginal) => ({
@@ -69,6 +70,9 @@ beforeEach(() => {
   hookHarness.reset();
   apiMocks.fetchDossier.mockReset();
   apiMocks.fetchPersonalFilingReadiness.mockReset();
+  apiMocks.fetchPersonalFilingSelectedFacts.mockReset();
+  apiMocks.fetchPersonalFilingReadiness.mockResolvedValue(false);
+  apiMocks.fetchPersonalFilingSelectedFacts.mockResolvedValue(null);
 });
 
 describe("ResearchWorkspace personal readiness", () => {
@@ -98,6 +102,43 @@ describe("ResearchWorkspace personal readiness", () => {
 
     expect(ready).toContain("Synthetic demo");
     expect(ready).toContain("Personal quality ready · data off");
+  });
+
+  it("keeps private facts unavailable when their request fails", async () => {
+    apiMocks.fetchPersonalFilingSelectedFacts.mockRejectedValueOnce(
+      new Error("selected facts unavailable"),
+    );
+
+    const text = textContent(await renderLoadedWorkspace());
+
+    expect(text).toContain("Synthetic demo");
+    expect(text).toContain("Northwind Robotics");
+    expect(text).not.toContain("Personal facts · read only");
+  });
+
+  it("shows a distinct read-only mode only after exact facts are returned", async () => {
+    apiMocks.fetchPersonalFilingReadiness.mockResolvedValueOnce(true);
+    apiMocks.fetchPersonalFilingSelectedFacts.mockResolvedValueOnce({
+      schemaVersion: "1.0.0",
+      profile: "personal_single_user_local",
+      status: "selected_facts_released",
+      facts: [
+        {
+          key: "revenue",
+          value: "123",
+          unit: "USD",
+          periodStart: "2024-01-01",
+          periodEnd: "2024-12-31",
+        },
+      ],
+    });
+
+    const text = textContent(await renderLoadedWorkspace());
+
+    expect(text).toContain("Synthetic demo");
+    expect(text).toContain("Personal facts · read only");
+    expect(text).toContain("Fictional dossier below.");
+    expect(text).not.toContain("Personal quality ready · data off");
   });
 });
 

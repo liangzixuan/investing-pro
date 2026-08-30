@@ -80,7 +80,9 @@ selected-fact extraction comparison boundary. Cycle 2x adds a disconnected
 commit-before-reference-reveal quality-measurement boundary and records only a
 coarse private Pass. Cycle 2y closes only a disabled-data-plane coarse
 readiness route and optional browser chip. None composes personal facts into a
-dossier or persistence boundary.
+dossier or persistence boundary. Cycle 2z is only an accepted, Pending design
+for a transient owner-authorized selected-fact response; it currently adds no
+canonical state and claims no release Pass.
 
 ## Identity
 
@@ -1750,6 +1752,41 @@ authentication, and hostile same-user process resistance remain later
 boundaries. Enterprise/shared-service operation remains Out of scope. See
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
+
+## Cycle 2z bounded personal selected-fact release model
+
+Cycle 2z is an accepted design with implementation and evidence **Pending**. It
+introduces no canonical database entity. Its proposed output is one transient,
+closed selected-facts DTO held by an opaque, instance-bound capability after
+pre-listen validation and fresh owner authorization.
+
+The release boundary rederives the production candidate from the same exact
+bounded inputs used by the quality measurement. Both the input-set commitment
+and candidate commitment must match the admitted evaluated-and-met quality
+result. A supplied normalized record, reference, displayed value, or caller
+assertion cannot enter the model as a substitute.
+
+The owner-reviewed plan selects a bounded nonempty canonical subset of the
+existing public personal fact vocabulary. The response contains only schema,
+profile, release status, and selected facts; each fact contains only its key,
+canonical value and unit, and period. Source identifiers, concepts, lineage,
+derivations, quality material, and private bindings remain outside the running
+model.
+
+The capability is created only after the complete response matches the owner's
+review and single-use authorization is consumed atomically. Requests cannot
+load source inputs, rederive facts, change selection, or retry authorization.
+The optional browser view does not persist or promote the response into the
+synthetic dossier, evidence, valuation, thesis, alert, history, export, or
+database models.
+
+Exact source revision, public verification, independent review, and the coarse
+owner-approved private release outcome remain **Pending**. Cycle 2z claims no
+Pass until all are closed. Request-time authenticated owner-browser
+composition is the next separate blocker. Same-user hostile-process resistance
+remains unproven, and enterprise/shared-service operation remains Out of scope.
+See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

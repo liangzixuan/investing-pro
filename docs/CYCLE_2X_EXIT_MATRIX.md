@@ -183,6 +183,13 @@ After that coarse boundary, the next distinct blocker is atomic,
 owner-authorized release of the minimum selected normalized facts from the
 same immutable candidate snapshot bound to the admitted quality result.
 
+Cycle 2z records an accepted design for that boundary, but implementation,
+exact source, public verification, independent review, and the owner-approved
+private outcome remain Pending. It supplies no Pass and does not widen Cycle
+2x or Cycle 2y. See
+[ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+
 ## Exit rule
 
 Cycle 2x may be promoted only for the exact cumulative source chain and coarse

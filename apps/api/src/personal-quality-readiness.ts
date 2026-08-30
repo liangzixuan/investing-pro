@@ -34,6 +34,20 @@ export type PersonalQualityReadinessEnvironment = Readonly<
   Record<string, string | undefined>
 >;
 
+export interface ValidatedPersonalQualityBindings {
+  readonly candidateCommitmentSha256: `sha256:${string}`;
+  readonly candidateObservationsSha256: `sha256:${string}`;
+  readonly evaluationSha256: `sha256:${string}`;
+  readonly inputSetSha256: `sha256:${string}`;
+  readonly ownerReviewedReferenceSha256: `sha256:${string}`;
+  readonly qualityPlanSha256: `sha256:${string}`;
+}
+
+export interface ValidatedPersonalQualityAdmission {
+  readonly bindings: ValidatedPersonalQualityBindings;
+  readonly capability: PersonalQualityReadinessCapability;
+}
+
 const readinessCapabilities = new WeakSet<object>();
 
 export class PersonalQualityReadinessError extends Error {
@@ -49,6 +63,13 @@ export class PersonalQualityReadinessError extends Error {
 export async function loadPersonalQualityReadiness(
   environment: PersonalQualityReadinessEnvironment,
 ): Promise<PersonalQualityReadinessCapability | undefined> {
+  const admission = await loadValidatedPersonalQualityAdmission(environment);
+  return admission?.capability;
+}
+
+export async function loadValidatedPersonalQualityAdmission(
+  environment: PersonalQualityReadinessEnvironment,
+): Promise<ValidatedPersonalQualityAdmission | undefined> {
   const path = environment[RESULT_PATH_KEY];
   const expectedSha256 = environment[RESULT_SHA256_KEY];
   if (path === undefined && expectedSha256 === undefined) return undefined;
@@ -71,11 +92,11 @@ export async function loadPersonalQualityReadiness(
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     const parsed: unknown = JSON.parse(text);
     if (text !== `${canonicalJson(parsed)}\n`) fail();
-    validateWrapper(parsed);
+    const bindings = validateWrapper(parsed);
 
     const capability = Object.freeze({}) as PersonalQualityReadinessCapability;
     readinessCapabilities.add(capability);
-    return capability;
+    return Object.freeze({ bindings, capability });
   } catch {
     throw new PersonalQualityReadinessError();
   } finally {
@@ -158,7 +179,7 @@ function sameFileState(left: BigIntStats, right: BigIntStats): boolean {
   );
 }
 
-function validateWrapper(value: unknown): void {
+function validateWrapper(value: unknown): ValidatedPersonalQualityBindings {
   const wrapper = exactRecord(value, ["result", "runner", "schemaVersion"]);
   if (wrapper.schemaVersion !== QUALITY_SCHEMA_VERSION) fail();
   const runner = exactRecord(wrapper.runner, [
@@ -179,10 +200,12 @@ function validateWrapper(value: unknown): void {
   ) {
     fail();
   }
-  validateEvaluatedResult(wrapper.result);
+  return validateEvaluatedResult(wrapper.result);
 }
 
-function validateEvaluatedResult(value: unknown): void {
+function validateEvaluatedResult(
+  value: unknown,
+): ValidatedPersonalQualityBindings {
   const result = exactRecord(value, [
     "assurance",
     "audit",
@@ -246,6 +269,14 @@ function validateEvaluatedResult(value: unknown): void {
   ) {
     fail();
   }
+  return Object.freeze({
+    candidateCommitmentSha256: result.candidateCommitmentSha256,
+    candidateObservationsSha256: result.candidateObservationsSha256,
+    evaluationSha256: result.evaluationSha256,
+    inputSetSha256: result.inputSetSha256,
+    ownerReviewedReferenceSha256: result.ownerReviewedReferenceSha256,
+    qualityPlanSha256: result.qualityPlanSha256,
+  }) as ValidatedPersonalQualityBindings;
 }
 
 type Counts = Readonly<Record<CountKey, number>>;
