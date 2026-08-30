@@ -21,5 +21,9 @@ describe("web security headers", () => {
     expect(headers["Content-Security-Policy"]).toContain(
       "frame-ancestors 'none'",
     );
+    expect(headers["Content-Security-Policy"]).toContain("http://[::1]:3100");
+    expect(headers["Content-Security-Policy"]).not.toContain(
+      "http://localhost:3100",
+    );
   });
 });

@@ -207,16 +207,24 @@ quarantine.
 
 It does not make the reference independently adjudicated truth, establish
 general parser correctness, authenticate the filing source, prove accounting
-truth, or authorize application or production use. If development continues,
-the next distinct blocker is explicit local running-application composition
-across any introduced database, API, web, queue, fetcher, or background
-boundary. That future work must preserve this private-evidence boundary.
-Enterprise and shared-service requirements remain Out of scope for the
-personal profile.
+truth, or authorize application or production use. Cycle 2y separately stages
+only disabled-by-default coarse readiness composition from one pre-listen
+admission through a guarded local endpoint to an optional browser chip. It
+does not expose personal facts or a personal dossier and does not broaden this decision. Its
+exact source revision and public evidence remain Pending. See
+[ADR 0051](./0051-bounded-personal-quality-readiness-composition.md) and the
+[Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md).
+
+After coarse readiness, the next distinct blocker is atomic,
+owner-authorized selected-fact release from the same immutable candidate
+snapshot bound to the admitted quality result. Enterprise and shared-service
+requirements remain Out of scope for the personal profile.
 
 ## References
 
 - [Cycle 2x exit matrix](../CYCLE_2X_EXIT_MATRIX.md)
+- [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
+- [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md)
 - [Cycle 2w exit matrix](../CYCLE_2W_EXIT_MATRIX.md)
 - [ADR 0049](./0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

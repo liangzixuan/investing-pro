@@ -1815,6 +1815,41 @@ service gates remain Out of scope. See
 [ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
+## Cycle 2y — bounded personal quality-readiness composition
+
+Status: **Design accepted; exact source revision and verification Pending.**
+
+Cycle 2y keeps synthetic startup as the default. Only the exact explicit
+`personal_readiness` mode may invoke a pre-listen loader. That loader reads the
+exact source-pinned and hash-pinned resource-corrected Cycle 2x aggregate once,
+admits only the quality-ready terminal predicate, discards the private carrier,
+and gives the running application only an opaque capability that can enable the
+fixed DTO `{schemaVersion, profile, status, dataPlane: "disabled"}`.
+
+The readiness endpoint is GET-only, accepts no request state, remains on exact
+loopback, and adds exact Host and Origin guards. Every GET outcome is private,
+noncacheable, and value-free beyond the fixed success DTO. The paired
+pre-listen path and owner-provided digest inputs are removed from the process
+environment before listen. An optional browser chip may render only that DTO
+and cannot persist it. No personal fact, label, value, metric, hash, path,
+reference, quality plan, approval, aggregate, binding, or execution detail
+enters the response, browser, log, or storage.
+
+This closes only coarse startup-to-API-to-browser readiness composition.
+Personal facts and personal dossier fields remain disconnected and the
+personal data plane remains disabled. The next separately scoped boundary is atomic, owner-authorized
+release of the minimum selected normalized facts from the same immutable
+candidate snapshot bound to the admitted quality result. Authenticated browser
+sessions and protection from hostile same-user processes remain later.
+Enterprise/shared-service gates remain Out of scope. See
+[ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
+[Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
+
+Evidence placeholders for the exact source revision, transition, local gates,
+public CI, and independent review remain **Pending**. They must be replaced by
+exact public facts before promotion and must never include private aggregate or
+owner-local material.
+
 ## Cycle 2 — personal local filing ingestion proof
 
 Target: continue incrementally behind the declared personal profile.
@@ -1826,6 +1861,7 @@ Target: continue incrementally behind the declared personal profile.
 5. Cycle 2v compares the exact complete Cycle 2u record reconstructed by the repository-pinned TypeScript normalizer and distinct zero-dependency Python validator, quarantines every conflict, and forbids silent repair.
 6. Cycle 2w compares exact values at ten primary-selected dimensionless raw coordinates per document against a repository-pinned Python extractor that receives only raw bytes and target QNames, not primary parser results or normalized material.
 7. Cycle 2x freezes an owner-reviewed reference and quality plan before candidate execution, commits internally derived candidate observations before reference reveal, and evaluates document success, fact precision/recall, exact unit/date agreement, silent failures, and quarantine rate against fixed zero-tolerance thresholds.
+8. Cycle 2y admits only the exact quality-ready aggregate once before listen and exposes a fixed coarse readiness DTO while the personal data plane remains disabled.
 
 Personal-profile exit gate: **Pass for the one owner-selected corpus.** Every
 selected local payload matches its manifest,
@@ -1859,9 +1895,11 @@ and taxonomy correctness, amendment discovery, and generalization beyond the
 exact frozen scope remain unproven; they are nonclaims rather than blockers for
 this closed personal-corpus gate.
 
-The next product milestone is a separately designed local running-application
-composition boundary. The disconnected Cycle 2x result does not authorize a
-database, API, web, queue, fetcher, or background ingestion route.
+Cycle 2y stages the first local running-application composition boundary, but
+only for coarse readiness. It does not authorize personal facts, a personal dossier,
+database persistence, queueing, fetching, alerts, or background ingestion. The
+next product milestone is atomic same-snapshot selected-fact release under a
+new explicit owner-visible and nonpersistent boundary.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

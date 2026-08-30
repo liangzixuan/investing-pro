@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type {
   AlertWriteRequestDto,
   AlertWriteResponseDto,
+  PersonalFilingReadinessDto,
   ThesisWriteRequestDto,
   ThesisWriteResponseDto,
 } from "./index";
@@ -64,11 +65,11 @@ const SAFE_TEXT_PATTERN =
 const UUID_PATTERN_SOURCE =
   'pattern: "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$"';
 
-describe("Cycle 1c OpenAPI contract", () => {
+describe("local API OpenAPI contract", () => {
   it("exposes only the two exact update-only research-state routes", async () => {
     const source = await openApiSource();
     expect(source).toContain("openapi: 3.1.0");
-    expect(source).toContain("  version: 0.2.0");
+    expect(source).toContain("  version: 0.3.0");
     expect(source).toContain("  - url: http://127.0.0.1:3100");
     expect(source).not.toContain("0.0.0.0");
     expect(topLevelPaths(source)).toEqual([
@@ -76,6 +77,7 @@ describe("Cycle 1c OpenAPI contract", () => {
       "/health/ready",
       "/v1/instruments/{symbol}/dossier",
       "/v1/evidence/{evidenceId}",
+      "/v1/personal-filing/readiness",
       "/v1/theses/{thesisId}",
       "/v1/alerts/{alertId}",
     ]);
@@ -118,6 +120,73 @@ describe("Cycle 1c OpenAPI contract", () => {
         expect(routeSource).toContain(header);
       }
     }
+  });
+
+  it("freezes the coarse local-only personal-filing readiness route", async () => {
+    const source = await openApiSource();
+    const route = pathSection(source, "/v1/personal-filing/readiness");
+    const normalizedRoute = route.replace(/\s+/g, " ");
+
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "get:",
+    ]);
+    expect(statuses(route)).toEqual(["200", "403", "404"]);
+    expect(parameterRefs(route)).toEqual([]);
+    expect(route).not.toContain("parameters:");
+    expect(route).not.toContain("requestBody:");
+    expect(route).not.toContain("in: query");
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalFilingReadiness"',
+    );
+    expect(route.match(/#\/components\/headers\/PrivateNoStore/g)).toHaveLength(
+      3,
+    );
+    expect(route.match(/#\/components\/headers\/PragmaNoCache/g)).toHaveLength(
+      3,
+    );
+    expect(route.match(/#\/components\/schemas\/ProblemDetails/g)).toHaveLength(
+      2,
+    );
+    expect(normalizedRoute).toContain(
+      "Local-only, value-free readiness boundary",
+    );
+    expect(normalizedRoute).toContain("data plane remains disabled");
+    expect(normalizedRoute).toContain(
+      "exact configured loopback Host authority",
+    );
+    expect(normalizedRoute).toContain("HEAD is not exposed");
+    expect(normalizedRoute).toContain(
+      "no private facts, labels, values, metrics,",
+    );
+    expect(normalizedRoute).toContain(
+      "hashes, identifiers, timestamps, source or owner-local paths",
+    );
+
+    const schema = schemaSection(
+      source,
+      "PersonalFilingReadiness",
+      "InstrumentId",
+    );
+    expect(schema).toContain("additionalProperties: false");
+    expect(requiredKeys(schema)).toEqual([
+      "schemaVersion",
+      "profile",
+      "status",
+      "dataPlane",
+    ]);
+    expect(schemaKeys(schema)).toEqual(requiredKeys(schema));
+    expect(schema).toContain('const: "1.0.0"');
+    expect(schema).toContain("const: personal_single_user_local");
+    expect(schema).toContain("const: quality_gate_ready");
+    expect(schema).toContain("const: disabled");
+
+    const headers = boundedSection(
+      source,
+      "    PrivateNoStore:",
+      "  responses:",
+    );
+    expect(headers).toContain("const: private, no-store");
+    expect(headers).toContain("const: no-cache");
   });
 
   it("publishes the exact non-secret persona selectors and strict write headers", async () => {
@@ -233,7 +302,11 @@ describe("Cycle 1c OpenAPI contract", () => {
       "ThesisWriteResponse",
       "AlertWriteResponse",
     );
-    const alert = schemaSection(source, "AlertWriteResponse", "InstrumentId");
+    const alert = schemaSection(
+      source,
+      "AlertWriteResponse",
+      "PersonalFilingReadiness",
+    );
     const common = ["schemaVersion", "synthetic", "id", "instrumentId"];
     const tail = ["version", "createdAt", "updatedAt"];
     expect(schemaKeys(thesis)).toEqual([
@@ -291,6 +364,12 @@ describe("Cycle 1c OpenAPI contract", () => {
   });
 
   it("keeps the TypeScript DTO keys aligned with the OpenAPI schemas", () => {
+    const personalFilingReadiness = {
+      schemaVersion: "1.0.0",
+      profile: "personal_single_user_local",
+      status: "quality_gate_ready",
+      dataPlane: "disabled",
+    } satisfies PersonalFilingReadinessDto;
     const thesisRequest = {
       instrumentId: "instrument.synthetic.syn1",
       claim: "Synthetic claim",
@@ -338,6 +417,12 @@ describe("Cycle 1c OpenAPI contract", () => {
     ]);
     expect(Object.keys(thesisResponse)).not.toContain("organizationId");
     expect(Object.keys(alertResponse)).not.toContain("principalId");
+    expect(Object.keys(personalFilingReadiness)).toEqual([
+      "schemaVersion",
+      "profile",
+      "status",
+      "dataPlane",
+    ]);
   });
 });
 

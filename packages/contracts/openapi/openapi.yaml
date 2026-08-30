@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
-  title: Research Cockpit Demo API
-  version: 0.2.0
+  title: Research Cockpit Local API
+  version: 0.3.0
   description: >-
-    Synthetic-only evidence-first research API. The two research-state PUT
-    operations are an update-only loopback demo contract. X-Demo-Persona
-    values are public selectors, not secrets, credentials, or authentication.
+    Evidence-first loopback API. Research data and the two research-state PUT
+    operations remain synthetic-only. An explicit personal-readiness mode may
+    additionally expose one coarse, value-free quality-gate status while its
+    private data plane remains disabled. X-Demo-Persona values are public
+    selectors, not secrets, credentials, or authentication.
 servers:
   - url: http://127.0.0.1:3100
 paths:
@@ -61,6 +63,54 @@ paths:
           description: Rights-cleared evidence passport.
         "404":
           description: Evidence is unknown or not display-authorized.
+  /v1/personal-filing/readiness:
+    get:
+      operationId: getPersonalFilingReadiness
+      summary: Read the coarse local personal-filing quality readiness state.
+      description: >-
+        Local-only, value-free readiness boundary. The response reports only
+        that the personal quality gate is ready while the data plane remains
+        disabled. It exposes no private facts, labels, values, metrics,
+        thresholds, hashes, identifiers, timestamps, source or owner-local
+        paths, bindings, approvals, seals, receipts, or execution details.
+        The operation accepts no path parameters, query parameters, request
+        body, or caller-supplied readiness state. It requires the exact
+        configured loopback Host authority and one allowlisted local browser
+        Origin; HEAD is not exposed.
+      responses:
+        "200":
+          description: The coarse personal-filing quality gate is ready.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalFilingReadiness"
+        "403":
+          description: The local-only readiness request is not allowed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: No ready personal-filing quality gate is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /v1/theses/{thesisId}:
     put:
       operationId: updateSyntheticThesis
@@ -285,6 +335,18 @@ components:
       schema:
         type: string
         const: no-store
+    PrivateNoStore:
+      description: The local readiness response must remain private and must not be stored.
+      required: true
+      schema:
+        type: string
+        const: private, no-store
+    PragmaNoCache:
+      description: The local readiness response must not be cached by legacy intermediaries.
+      required: true
+      schema:
+        type: string
+        const: no-cache
   responses:
     InvalidWriteRequest:
       description: >-
@@ -511,6 +573,26 @@ components:
         updatedAt:
           type: string
           format: date-time
+    PersonalFilingReadiness:
+      type: object
+      description: >-
+        Coarse local-only readiness with the private data plane disabled. This
+        schema contains no private fact, metric, hash, path, or binding.
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - profile
+        - status
+        - dataPlane
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        profile:
+          const: personal_single_user_local
+        status:
+          const: quality_gate_ready
+        dataPlane:
+          const: disabled
     InstrumentId:
       type: string
       minLength: 3

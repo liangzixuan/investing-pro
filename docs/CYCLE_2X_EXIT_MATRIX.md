@@ -169,12 +169,18 @@ scope—not Pass and not current blockers. They reopen if the profile widens.
 
 ## Next blocker
 
-The bounded personal quality gate is closed for the exact frozen scope. If
-development continues, the next distinct blocker is explicit local running-
-application composition across any introduced database, API, web, queue,
-fetcher, or background boundary. That work must preserve the private-evidence
-boundary, must not make the private measurement record repository evidence,
-and must not broaden this quality result beyond its exact frozen scope.
+The bounded personal quality gate is closed for the exact frozen scope. Cycle
+2y separately stages disabled-by-default coarse readiness composition from a
+pre-listen one-shot admission through a guarded local API to an optional
+browser chip. It does not change the Cycle 2x quality claim, expose the private
+measurement record, or enable personal facts or a dossier. Its exact source
+revision and public evidence remain Pending. See
+[ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
+[Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
+
+After that coarse boundary, the next distinct blocker is atomic,
+owner-authorized release of the minimum selected normalized facts from the
+same immutable candidate snapshot bound to the admitted quality result.
 
 ## Exit rule
 

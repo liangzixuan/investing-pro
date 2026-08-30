@@ -8,7 +8,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  "connect-src 'self' http://127.0.0.1:3100 http://localhost:3100",
+  "connect-src 'self' http://127.0.0.1:3100 http://[::1]:3100",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

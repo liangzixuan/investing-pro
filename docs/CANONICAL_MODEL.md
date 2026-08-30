@@ -78,7 +78,9 @@ normalization boundary; Cycle 2v adds a disconnected cross-language
 normalization-record comparison boundary; and Cycle 2w adds a disconnected raw
 selected-fact extraction comparison boundary. Cycle 2x adds a disconnected
 commit-before-reference-reveal quality-measurement boundary and records only a
-coarse private Pass. None is database/API/web application composition.
+coarse private Pass. Cycle 2y stages only a disabled-data-plane coarse
+readiness route and optional browser chip. None composes personal facts into a
+dossier or persistence boundary.
 
 ## Identity
 
@@ -1704,6 +1706,48 @@ The next separate product boundary is explicit local running-application
 composition. See
 [ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
+
+## Cycle 2y bounded personal quality-readiness composition model
+
+Cycle 2y is disabled by default. The only personal startup mode is the exact
+literal `personal_readiness`; it cannot be inferred from private file presence
+or selected by a request. Before listen, a dedicated loader reads the exact
+source-pinned and hash-pinned resource-corrected Cycle 2x aggregate once. It
+admits only the closed quality-ready predicate and reduces the private evidence
+to an empty, immutable readiness capability. That capability can enable only a
+DTO with exactly `schemaVersion`, `profile`, `status`, and
+`dataPlane: "disabled"`.
+
+The running application receives no private reference, quality plan, approval,
+aggregate, binding, metric, label, value, hash, source path, owner-local path,
+or validation detail. The listener cannot start with a partial readiness state,
+and requests cannot reread, replace, or retry private evidence. The paired
+pre-listen path and owner-provided digest inputs are removed from the process
+environment before the listener starts.
+
+The readiness route is GET-only and accepts no path, query, body, identifier,
+or caller readiness assertion. Exact loopback binding, disabled proxy trust,
+and exact local Host and Origin allowlists gate access. Success returns only
+the fixed DTO. Denied and unavailable requests are value-free. Every GET
+outcome uses private/no-store and no-cache controls and emits no private ETag
+or data-as-of header.
+
+An optional browser chip may render only the same coarse status. It does not
+receive facts, values, labels, metrics, evidence, history, a timeline, or a
+dossier, and it stores nothing. The existing synthetic dossier, database
+projection, evidence, thesis, alert, and browser-local-state models remain
+separate.
+
+The exact Cycle 2y source revision and public verification are **Pending**.
+Until the evidence placeholders in ADR 0051 and the Cycle 2y exit matrix are
+replaced, this is an accepted design rather than a promoted source claim.
+
+Cycle 2y closes only coarse readiness API-to-browser composition. Atomic
+selected-fact release from the same immutable candidate snapshot, browser
+authentication, and hostile same-user process resistance remain later
+boundaries. Enterprise/shared-service operation remains Out of scope. See
+[ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
+[Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

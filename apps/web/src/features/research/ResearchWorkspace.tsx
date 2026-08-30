@@ -8,7 +8,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { fetchDossier } from "@/lib/api";
+import { fetchDossier, fetchPersonalFilingReadiness } from "@/lib/api";
 
 import { AnalyticalChart } from "./AnalyticalChart";
 import type { EvidenceSelection } from "./evidence-selection";
@@ -28,7 +28,20 @@ export function ResearchWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const [selection, setSelection] = useState<EvidenceSelection | null>(null);
+  const [personalQualityReady, setPersonalQualityReady] = useState(false);
   const closeEvidence = useCallback(() => setSelection(null), []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPersonalFilingReadiness(controller.signal)
+      .then((ready) => {
+        if (!controller.signal.aborted) setPersonalQualityReady(ready);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPersonalQualityReady(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -98,7 +111,14 @@ export function ResearchWorkspace({
           <a href="#commit">Commit</a>
           <a href="#monitor">Monitor</a>
         </nav>
-        <span className="demo-chip">Synthetic demo</span>
+        <div className="mode-chips" aria-label="Data modes">
+          <span className="demo-chip">Synthetic demo</span>
+          {personalQualityReady ? (
+            <span className="personal-readiness-chip">
+              Personal quality ready · data off
+            </span>
+          ) : null}
+        </div>
       </header>
 
       <div className="demo-disclosure" role="note">

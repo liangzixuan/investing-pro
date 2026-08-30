@@ -101,6 +101,13 @@ export interface DossierDto {
   omissions: OmissionSummaryDto;
 }
 
+export interface PersonalFilingReadinessDto {
+  schemaVersion: "1.0.0";
+  profile: "personal_single_user_local";
+  status: "quality_gate_ready";
+  dataPlane: "disabled";
+}
+
 export interface ValuationInputDto {
   baseRevenue: string;
   cash: string;

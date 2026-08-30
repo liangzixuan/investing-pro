@@ -148,10 +148,7 @@ describe("demo REST API", () => {
       `http://127.0.0.1:${address.port}/health/live`,
     );
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      status: "alive",
-      mode: "synthetic_demo",
-    });
+    await expect(response.json()).resolves.toEqual({ status: "alive" });
   });
 
   it("wires a fresh composed write state into every app instance", async () => {

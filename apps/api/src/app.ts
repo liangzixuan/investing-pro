@@ -15,9 +15,23 @@ import Fastify, {
 } from "fastify";
 
 import { createDemoResearchStateComposition } from "./demo-research-state";
+import {
+  DEFAULT_DEMO_API_HOST,
+  DEFAULT_DEMO_API_PORT,
+  type DemoApiListenOptions,
+} from "./listen-options";
+import {
+  isPersonalQualityReadinessCapability,
+  type PersonalQualityReadinessCapability,
+} from "./personal-quality-readiness";
+import { registerPersonalReadinessRoute } from "./personal-readiness-routes";
 import { registerResearchStateRoutes } from "./research-state-routes";
 
 const DEMO_API_BODY_LIMIT_BYTES = 384 * 1024;
+const DEFAULT_LISTEN_OPTIONS: DemoApiListenOptions = Object.freeze({
+  host: DEFAULT_DEMO_API_HOST,
+  port: DEFAULT_DEMO_API_PORT,
+});
 
 interface DossierParams {
   symbol: string;
@@ -31,7 +45,26 @@ interface EvidenceParams {
   evidenceId: string;
 }
 
-export async function buildApp(): Promise<FastifyInstance> {
+export async function buildApp(
+  listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
+): Promise<FastifyInstance> {
+  return buildComposedApp(undefined, listenOptions);
+}
+
+export async function buildPersonalReadinessApp(
+  readiness: PersonalQualityReadinessCapability,
+  listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
+): Promise<FastifyInstance> {
+  if (!isPersonalQualityReadinessCapability(readiness)) {
+    throw new TypeError("Personal filing readiness is unavailable.");
+  }
+  return buildComposedApp(readiness, listenOptions);
+}
+
+async function buildComposedApp(
+  readiness?: PersonalQualityReadinessCapability,
+  listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
+): Promise<FastifyInstance> {
   const app = Fastify({
     bodyLimit: DEMO_API_BODY_LIMIT_BYTES,
     logger: false,
@@ -41,7 +74,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   const researchState = createDemoResearchStateComposition();
 
   await app.register(cors, {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: [
+      "http://[::1]:3000",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+    ],
     methods: ["GET"],
     allowedHeaders: ["Accept", "Content-Type", "X-Trace-Id"],
     exposedHeaders: ["ETag", "X-Data-As-Of", "X-Trace-Id"],
@@ -53,14 +90,13 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   app.addHook("onSend", async (request, reply, payload) => {
     void reply.header("X-Trace-Id", request.id);
-    void reply.header("Cache-Control", "no-store");
+    if (!reply.hasHeader("Cache-Control")) {
+      void reply.header("Cache-Control", "no-store");
+    }
     return payload;
   });
 
-  app.get("/health/live", () => ({
-    status: "alive",
-    mode: "synthetic_demo",
-  }));
+  app.get("/health/live", () => ({ status: "alive" }));
   app.get("/health/ready", () => ({
     status: "ready",
     fixture: "synthetic/v1",
@@ -122,6 +158,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   );
 
   await registerResearchStateRoutes(app, researchState);
+  await registerPersonalReadinessRoute(app, readiness, listenOptions);
 
   app.setNotFoundHandler((request, reply) =>
     sendProblem(

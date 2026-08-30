@@ -116,7 +116,8 @@ h4,
 .unit-label,
 .identity-line,
 .local-badge,
-.demo-chip {
+.demo-chip,
+.personal-readiness-chip {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.72rem;
   font-weight: 700;
@@ -196,6 +197,25 @@ h4,
   background: var(--mint-soft);
   color: var(--mint-deep);
   padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.mode-chips {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.personal-readiness-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #99b2c2;
+  border-radius: 999px;
+  background: #e6eef3;
+  color: #294d62;
   white-space: nowrap;
 }
 

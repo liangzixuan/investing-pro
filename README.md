@@ -985,6 +985,29 @@ scope. See
 [ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./docs/CYCLE_2X_EXIT_MATRIX.md).
 
+Cycle 2y stages a **disabled-by-default coarse personal-quality readiness
+composition boundary**. Only explicit `personal_readiness` startup may admit
+the exact source-pinned and hash-pinned resource-corrected Cycle 2x aggregate,
+once and before listen. The local readiness route is guarded by exact loopback,
+Host, and Origin checks and returns only
+`{schemaVersion, profile, status, dataPlane: "disabled"}` with private/no-store
+and no-cache response controls. An optional browser chip may render only that
+same coarse state. The paired absolute path and owner-provided digest are
+pre-listen inputs only and are removed from the process environment before the
+listener starts.
+
+Cycle 2y does not compose personal facts or a personal dossier. Personal values, labels,
+reference content, quality-plan content, metrics, hashes, paths, approvals,
+aggregate material, and execution detail remain outside responses, browser
+state, logs, and storage. Atomic same-snapshot fact release, an authenticated
+browser session, and resistance to hostile same-user processes remain later
+boundaries. Enterprise/shared-service requirements remain Out of scope.
+
+Cycle 2y's exact source revision and public verification are **Pending** and
+must replace the explicit evidence placeholders before promotion. See
+[ADR 0051](./docs/adr/0051-bounded-personal-quality-readiness-composition.md)
+and the [Cycle 2y exit matrix](./docs/CYCLE_2Y_EXIT_MATRIX.md).
+
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
 RLS reader. That port cannot claim complete coverage or disclose hidden row
@@ -1245,7 +1268,25 @@ pnpm install --frozen-lockfile
 pnpm dev:demo
 ```
 
-Open `http://localhost:3000/research/SYN1`. The API listens on `http://localhost:3100`.
+Open `http://localhost:3000/research/SYN1`. The API listens on
+`http://127.0.0.1:3100`.
+
+To admit only the coarse personal quality-ready state, build the API and start
+it in a separate terminal with an absolute path to the preserved aggregate and
+its exact lowercase SHA-256. Both inputs are required together; an invalid or
+partial configuration fails before listen.
+
+```powershell
+$env:RESEARCH_COCKPIT_MODE = "personal_readiness"
+$env:PERSONAL_FILING_QUALITY_RESULT_PATH = "C:\absolute\owner-local\quality-result.json"
+$env:PERSONAL_FILING_QUALITY_RESULT_SHA256 = "sha256:<64 lowercase hex characters>"
+pnpm --filter @research-cockpit/api build
+pnpm --filter @research-cockpit/api start
+```
+
+Run `pnpm --filter @research-cockpit/web dev` in another terminal and open the
+same synthetic dossier page. When admission succeeds, the header adds
+`Personal quality ready · data off`; no personal filing fact enters the page.
 
 ## Verify
 
@@ -1568,4 +1609,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0049](./docs/adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md),
 [Cycle 2x exit matrix](./docs/CYCLE_2X_EXIT_MATRIX.md),
 [ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md),
+[Cycle 2y exit matrix](./docs/CYCLE_2Y_EXIT_MATRIX.md),
+[ADR 0051](./docs/adr/0051-bounded-personal-quality-readiness-composition.md),
 and [architecture decisions](./docs/adr/).
