@@ -178,15 +178,17 @@ secondary worker whose input excludes primary parser-result and normalized
 material. It does not close independent selection, general raw-parser
 correctness, source authenticity, fact truth, or quality.
 
-The next blocker is a frozen owner-reviewed reference set with labels and
-thresholds declared before measurement. That boundary must measure document
-success, fact precision and recall, unit/date tolerance, silent-failure rate,
-and quarantine rate and must require zero silent critical failures. Cycle 2w
-does not pre-accept that reference set, its labels, or its thresholds.
+At the Cycle 2w exit, the next blocker was a frozen owner-reviewed reference
+set with labels and thresholds declared before measurement. Cycle 2x closes
+that separate bounded quality-measurement step for one owner-selected corpus.
+It does not retroactively make the Cycle 2w selected projection or agreement
+receipt ground truth, and it leaves every other Cycle 2w nonclaim unchanged.
 
 ## References
 
 - [Cycle 2w exit matrix](../CYCLE_2W_EXIT_MATRIX.md)
+- [Cycle 2x exit matrix](../CYCLE_2X_EXIT_MATRIX.md)
+- [ADR 0050](./0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 - [Cycle 2v exit matrix](../CYCLE_2V_EXIT_MATRIX.md)
 - [ADR 0048](./0048-bounded-personal-typescript-python-normalization-record-agreement.md)
 - [ADR 0047](./0047-bounded-personal-ten-fact-normalization-and-root-lineage.md)

@@ -1745,10 +1745,75 @@ the shared QName mapping or primary selection, completeness among additional
 coordinates, excluded dimensional semantics, primary parser implementation
 identity or source lineage, general XBRL/iXBRL coverage, SEC authenticity,
 accounting truth, amendment discovery, host/runtime independence, or quality.
-The next blocker is owner-reviewed quality measurement over a frozen reference
-set. Enterprise/shared-service gates remain Out of scope. See
+Cycle 2x closes the next bounded owner-reviewed quality step without changing
+Cycle 2w's historical claim. Enterprise/shared-service gates remain Out of
+scope. See
 [ADR 0049](./adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
+
+## Cycle 2x — bounded owner-reviewed personal filing quality measurement
+
+Status: **Pass only for exact promoted corrective-chain tip
+`39ce73760afe0e5d22063b02a60efe64e83f3747`.**
+
+The capability source `c0138a3121361fc06f210e42febe6af4c6fa3e13` is the
+direct child of promoted Cycle 2w documentation baseline
+`716a3f6b7ad5a43c48a6a61d18b59c2cd5645018`. Validator subprocess isolation
+was corrected at `7f7163d4673360645e332d0b7d28467c15656f8a`; the promoted
+tip is its exact routing-closure child. The admission boundary preserves the
+12-path source transition, four-path isolation correction, six-path routing
+closure, and 15-path cumulative transition diff set.
+
+Cycle 2x owns bounded disjoint declaration, manifest, normalization-plan,
+quality-plan, parser-result, and raw-filing snapshots. The canonical quality
+plan binds the exact owner-reviewed reference digest, document selection, and
+fixed zero-tolerance threshold policy before candidate execution. Candidate
+observations are derived internally through Cycle 2w raw-extraction agreement
+and the Cycle 2u normalized projection, then committed before reference content
+is revealed. The commit receives only the reference digest. Reveal requires an
+empty, frozen, identity-bound, instance-local, single-use capability; every
+first attempt consumes it.
+
+The reference schema requires the exact ordered launch labels for every
+admitted document, including direct concept/unit/period/value fields and the
+fixed free-cash-flow operand contract. The evaluator alone derives document
+success, fact precision and recall, exact unit/date agreement, silent critical
+failures, and quarantine rate. Counts, metrics, thresholds, weights,
+exclusions, and outcomes are not caller inputs. Integer ratio evaluation is
+fail-closed and every fixed threshold must pass, including zero quarantine and
+zero silent critical failures. A valid disagreement or upstream quarantine is
+an evaluated `not_met`; invalid protocol or reference material becomes one
+atomic value-free quarantine. Terminal results are immutable aggregate-only
+records.
+
+The private operation is recorded only as **owner-approved private bounded
+quality-measurement Pass for one owner-selected corpus**. This means only that
+the protocol completed `quality_evaluated_for_personal_use` and met its
+predeclared personal threshold outcome. No selected-corpus characteristic,
+private reference or quality plan, input or output, fact, label, value,
+coordinate, mapping, count, metric, measured numerator, denominator, or per-
+metric outcome, digest, timestamp, token, approval, seal, receipt, runner
+artifact, execution mode, or execution detail is repository-visible.
+
+The exact tip passed source-bound CI run `33290262191`'s full hosted release
+gate on Ubuntu and Windows. Cross-engine, parser-isolation,
+normalization, and payload-custody runs `33290262193`, `33290262185`,
+`33290262180`, and `33290262184` passed at the same revision. No Cycle 2x
+canonical evidence artifact was emitted; those runs prove source and routing
+health, not the private measurement.
+
+Cycle 2x closes the currently declared personal filing-ingestion exit gate for
+the one owner-selected corpus. It does not establish external chronology or
+actual reference secrecy, owner identity, independent adjudication or label
+correctness, representativeness or generalization, source authenticity,
+accounting truth, broad parser coverage, runtime independence, amendment
+discovery, global currentness, running-application composition, shared-service
+safety, or production readiness. Any changed source, corpus, reference, plan,
+or thresholds requires fresh review and measurement. Local running-application
+composition is the next separately scoped product boundary. Enterprise/shared-
+service gates remain Out of scope. See
+[ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
+and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
 ## Cycle 2 — personal local filing ingestion proof
 
@@ -1760,14 +1825,16 @@ Target: continue incrementally behind the declared personal profile.
 4. Cycle 2u normalizes ten launch facts under an exact private plan, binds manifest source metadata, and produces root-only or manifest-linked amendment lineage with atomic value-free quarantine.
 5. Cycle 2v compares the exact complete Cycle 2u record reconstructed by the repository-pinned TypeScript normalizer and distinct zero-dependency Python validator, quarantines every conflict, and forbids silent repair.
 6. Cycle 2w compares exact values at ten primary-selected dimensionless raw coordinates per document against a repository-pinned Python extractor that receives only raw bytes and target QNames, not primary parser results or normalized material.
-7. The next boundary must freeze an owner-reviewed reference set and labels before measuring document success, fact precision/recall, declared unit/date tolerance, silent-failure rate, and quarantine rate against predeclared thresholds.
+7. Cycle 2x freezes an owner-reviewed reference and quality plan before candidate execution, commits internally derived candidate observations before reference reveal, and evaluates document success, fact precision/recall, exact unit/date agreement, silent failures, and quarantine rate against fixed zero-tolerance thresholds.
 
-Personal-profile exit gate: every selected local payload matches its manifest,
+Personal-profile exit gate: **Pass for the one owner-selected corpus.** Every
+selected local payload matches its manifest,
 all supported documents produce bounded deterministic outcomes, and the frozen
 owner-reviewed reference set meets its declared quality thresholds with zero
 silent critical failures.
 
-Neither historical Cycle 2a, Phase-A Cycle 2b, historical Cycle 2c, historical
+No earlier cycle alone satisfies this exit gate. Historical Cycle 2a, Phase-A
+Cycle 2b, historical Cycle 2c, historical
 Cycle 2d/Cycle 2e, Superseded Cycle 2f/Cycle 2g, bounded source-stage Cycle 2h
 at exact commit `61701307ded7fa77a555e27925ae86670f6b4dc0`, promoted source-stage
 Cycle 2i, promoted bounded synthetic Cycle 2j, Superseded Cycle 2k, promoted
@@ -1785,9 +1852,16 @@ Cycle 2t and Cycle 2u close only bounded private activation and exact-plan
 normalization/manifest-scoped lineage. Cycle 2v closes distinct
 TypeScript/Python complete-record reconstruction agreement. Cycle 2w closes
 only a secondary raw path's exact values at the primary-selected dimensionless
-coordinates. Shared selection and mapping correctness, general XBRL/iXBRL
-extraction and taxonomy correctness, amendment discovery, owner-reviewed
-quality measurement, and the complete personal exit gate remain pending.
+coordinates. Cycle 2x supplies the bounded owner-reviewed quality measurement
+needed for the declared personal exit gate and records only its coarse private
+Pass. Shared selection and mapping correctness, general XBRL/iXBRL extraction
+and taxonomy correctness, amendment discovery, and generalization beyond the
+exact frozen scope remain unproven; they are nonclaims rather than blockers for
+this closed personal-corpus gate.
+
+The next product milestone is a separately designed local running-application
+composition boundary. The disconnected Cycle 2x result does not authorize a
+database, API, web, queue, fetcher, or background ingestion route.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user

@@ -63,14 +63,22 @@ promoted Cycle 2u documentation baseline
 raw selected-fact extraction agreement Pass only for exact source revision
 `1f7ff096c9187386cad9ae60e1e44861e6e5f842`, the direct child of promoted
 Cycle 2v documentation baseline
-`ad5e3003d3670c84021dabe47c4fb3976274bb23`.
+`ad5e3003d3670c84021dabe47c4fb3976274bb23`; and Cycle 2x bounded
+owner-reviewed personal filing quality measurement Pass only for exact
+promoted corrective-chain tip
+`39ce73760afe0e5d22063b02a60efe64e83f3747`, comprising source
+`c0138a3121361fc06f210e42febe6af4c6fa3e13`, validator-isolation correction
+`7f7163d4673360645e332d0b7d28467c15656f8a`, and routing closure `39ce737` from
+promoted Cycle 2w documentation baseline
+`716a3f6b7ad5a43c48a6a61d18b59c2cd5645018`.
 The running application remains synthetic-only. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
 normalization boundary; Cycle 2v adds a disconnected cross-language
 normalization-record comparison boundary; and Cycle 2w adds a disconnected raw
-selected-fact extraction comparison boundary. None is database/API/web
-application composition.
+selected-fact extraction comparison boundary. Cycle 2x adds a disconnected
+commit-before-reference-reveal quality-measurement boundary and records only a
+coarse private Pass. None is database/API/web application composition.
 
 ## Identity
 
@@ -1607,11 +1615,95 @@ repository, process, failure-domain, or runtime independence; resistance to
 common-specification error, coordinated defects, collusion, or malicious code;
 Python runtime identity or attestation; owner-reviewed precision/recall or
 quality thresholds; application composition; or production. The next blocker
-is quality measurement over a frozen owner-reviewed reference set.
+at the Cycle 2w exit was quality measurement over a frozen owner-reviewed
+reference set; Cycle 2x closes that separate bounded step without changing the
+Cycle 2w claim.
 Enterprise/shared-service gates remain Out of scope for the personal profile.
 See
 [ADR 0049](./adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
+
+## Cycle 2x bounded owner-reviewed personal filing quality-measurement model
+
+Cycle 2x owns one exact declaration, manifest, normalization plan, quality
+plan, parser-result source array, and raw-filing array. Each byte snapshot is
+bounded, intrinsically owned, disjoint, and immutable for the operation. The
+manifest is verified before quality work. The quality plan is canonical and
+binds the exact raw-document population, owner-reviewed reference digest,
+selection rules, assertion kinds, metric set, and fixed threshold policy before
+candidate execution.
+
+The operation exposes one fresh protocol with two phases. `commit` receives
+the private source inputs and quality plan but no reference content, labels, or
+expected values. It internally executes the Cycle 2w raw-extraction agreement
+and reconstructs the Cycle 2u normalized candidate projection. The resulting
+candidate observations and their commitment are fixed before `commit` returns
+a capability. The capability is empty, frozen, instance-bound, identity-bound,
+and single-use. Every first `reveal` attempt consumes it, including malformed,
+mismatched, or otherwise unsuccessful attempts; copies, replay, and cross-
+instance use are rejected.
+
+`reveal` accepts only the exact reference bytes whose digest was bound by the
+quality plan. The closed reference schema requires one document entry for each
+plan-bound document and the exact ordered launch fact keys. Direct facts bind
+the owner-reviewed source concept, canonical decimal value, fixed USD or shares
+unit, and exact instant or duration period. The derived free-cash-flow label
+binds the fixed subtraction formula, both operands, their concepts, values,
+units, and periods, and exact recomputation. The source enforces this schema;
+the repository does not contain or reveal the private labels or reference.
+
+The evaluator derives all accounting internally. It measures document
+success, fact precision, fact recall, exact canonical unit/date agreement,
+silent critical failures, and quarantine rate. Ratios use integer arithmetic
+and undefined denominators fail closed. The fixed policy requires complete
+document success, precision, and recall; exact unit and date agreement; zero
+quarantine; and zero silent critical failures. The caller cannot provide
+counts, metrics, thresholds, weights, exclusions, or outcomes.
+
+A successfully produced but disagreeing candidate, omitted fact, or explicit
+upstream document quarantine is a valid evaluation whose threshold outcome is
+`not_met`; it is not silently converted to protocol failure. Invalid inputs,
+plan/reference mismatch, malformed reference material, capability failure, or
+internal protocol failure instead produce one immutable value-free aggregate
+quarantine. No fallback, preferred side, merge, repair, threshold override,
+partial success, or retry into acceptance exists.
+
+Committed and evaluated results are immutable aggregate-only values. The
+commitment exposes hashes and coarse audit state but no reference content. The
+evaluation exposes aggregate counts, metrics, threshold outcome, and bindings
+to the already committed candidate and frozen plan/reference, but no fact,
+label, value, concept, coordinate, source identifier, path, timestamp, or diff.
+Quarantine exposes zero counts, metrics, facts, and bindings.
+
+Cycle 2x is Pass only for exact promoted corrective-chain tip
+`39ce73760afe0e5d22063b02a60efe64e83f3747`. The validator subprocess uses
+Python isolated and no-bytecode mode after correction
+`7f7163d4673360645e332d0b7d28467c15656f8a`; this does not claim executable
+identity, OS sandboxing, preflight-to-launch atomicity, or runtime attestation.
+The exact routing closure admits no alternate source topology or diff set.
+
+The private result is recorded only as **owner-approved private bounded
+quality-measurement Pass for one owner-selected corpus**, meaning the exact
+protocol completed quality evaluation and met its predeclared personal
+threshold outcome. No selected-corpus characteristic, private reference or
+plan, input or output, fact, label, value, coordinate, mapping, count, metric,
+measured numerator, denominator, or per-metric outcome, digest, timestamp,
+token, approval, seal, receipt, runner artifact, execution mode, or execution
+detail is repository evidence.
+
+This closes the currently declared personal filing-ingestion exit gate for the
+one owner-selected corpus. It does not prove authenticated chronology or actual
+reference secrecy; owner identity, independent adjudication, label correctness,
+representativeness, statistical adequacy, or generalization; source
+authenticity or accounting truth; general parser coverage; primary-parser,
+host, process, or runtime independence; absence of common error or coordinated
+defects; amendment discovery or global currentness; application composition;
+shared-service safety; or production readiness. Any changed source, corpus,
+reference, plan, or threshold policy requires fresh review and measurement.
+The next separate product boundary is explicit local running-application
+composition. See
+[ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
+and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

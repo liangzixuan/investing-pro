@@ -38,7 +38,7 @@ receipt, path, identifier, or execution mode belongs in Git or logs.
 | No preference or repair         | A conflict exposes no diff, chooses no side, accepts no tolerance, and performs no fallback, merge, coercion, repair, retry into acceptance, or partial success               | Pass at exact source revision |
 | Determinism and confidentiality | Exact replay is deterministic; success is metadata-only; quarantine returns zero facts and bindings; private material stays outside Git/logs                                  | Pass at exact source revision |
 | Private operation               | Only the coarse owner-approved comparison status may become repository-visible                                                                                                | Owner-approved private Pass   |
-| Owner-reviewed quality          | A frozen reference set establishes document success, fact precision/recall, unit/date tolerance, silent-failure, and quarantine thresholds with zero silent critical failures | Next blocker after Cycle 2w   |
+| Owner-reviewed quality          | A frozen reference set establishes document success, fact precision/recall, unit/date tolerance, silent-failure, and quarantine thresholds with zero silent critical failures | Closed separately by Cycle 2x |
 | Enterprise/shared service       | Organizational approval, tenancy, B15/V15, commercial redistribution, and production controls                                                                                 | Out of scope                  |
 
 ## Prerequisite and raw-scope boundary
@@ -171,12 +171,13 @@ scope—not Pass and not current blockers. They reopen if the profile widens.
 
 ## Next blocker
 
-The next blocker is a frozen owner-reviewed reference set whose labels,
-selection rules, and thresholds are declared before measurement. It must
-measure document success, fact precision and recall, unit/date tolerance,
-silent-failure rate, and quarantine rate and require zero silent critical
-failures. Cycle 2w does not make its own selected projection or agreement
-receipt ground truth for that review.
+At the Cycle 2w exit, the next blocker was a frozen owner-reviewed reference
+set whose labels, selection rules, and thresholds were declared before
+measurement. Cycle 2x closes that separate bounded quality-measurement step for
+one owner-selected corpus without changing Cycle 2w's historical claim or
+making this selected projection and agreement receipt ground truth by itself.
+See [ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
+and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
 ## Exit rule
 
@@ -187,4 +188,5 @@ secondary worker whose input excludes primary parser-result and normalized
 material. It does not close independent selection, primary parser identity,
 general raw-parser correctness, authenticity, accounting truth, amendment
 discovery, global currentness, owner-reviewed quality, application composition,
-or production safety.
+or production safety. Cycle 2x later closes only the separately specified
+bounded owner-reviewed quality gate; all other Cycle 2w nonclaims remain.

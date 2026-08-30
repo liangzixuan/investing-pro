@@ -923,13 +923,67 @@ value path; it does not prove the shared QName mapping or primary selection,
 completeness among additional coordinates, excluded dimensional semantics,
 primary parser identity or code lineage, general XBRL coverage, SEC
 authenticity, accounting truth, amendment discovery, runtime independence,
-owner-reviewed quality, application composition, or production. The next
-blocker is a frozen owner-reviewed reference set with predeclared document
-success, fact precision/recall, unit/date tolerance, silent-failure, and
-quarantine thresholds. Enterprise/shared-service requirements remain Out of
+owner-reviewed quality, application composition, or production. Cycle 2x
+closes the next bounded owner-reviewed quality step without changing Cycle
+2w's historical claim. Enterprise/shared-service requirements remain Out of
 scope. See
 [ADR 0049](./docs/adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 and the [Cycle 2w exit matrix](./docs/CYCLE_2W_EXIT_MATRIX.md).
+
+Cycle 2x is **Pass only for exact promoted corrective-chain tip
+`39ce73760afe0e5d22063b02a60efe64e83f3747`**. The bounded capability began at
+source revision `c0138a3121361fc06f210e42febe6af4c6fa3e13`, the direct child of
+promoted Cycle 2w documentation baseline
+`716a3f6b7ad5a43c48a6a61d18b59c2cd5645018`. Validator subprocess isolation
+was corrected at `7f7163d4673360645e332d0b7d28467c15656f8a`, and `39ce737` is the
+exact routing-closure child that admits only that three-commit source chain.
+
+The protocol owns bounded declaration, manifest, normalization-plan,
+quality-plan, parser-result, and raw-filing snapshots. The plan binds the exact
+owner-reviewed reference digest, population, selection rules, and fixed
+zero-tolerance thresholds before candidate execution. Candidate observations
+are derived internally through Cycle 2w and Cycle 2u and committed before the
+reference content can be revealed. The reveal capability is instance-bound,
+single-use, and consumed by every first attempt.
+
+The frozen reference contract contains the exact ordered launch labels for
+each admitted document, including the fixed free-cash-flow operand contract.
+The evaluator derives document success, fact precision and recall, exact unit
+and date agreement, silent critical failures, and quarantine rate with integer
+ratio arithmetic. The caller cannot supply counts, metrics, thresholds,
+weights, exclusions, or outcomes. Every threshold must pass; any successful
+disagreement or explicit pipeline quarantine is evaluated as `not_met`, while
+invalid protocol or reference material becomes one atomic value-free
+quarantine. Results are immutable and aggregate-only.
+
+The private result is recorded only as **owner-approved private bounded
+quality-measurement Pass for one owner-selected corpus**: the protocol reached
+`quality_evaluated_for_personal_use` and its predeclared personal threshold
+outcome was met. No selected-corpus characteristic, private reference or plan,
+input or output, fact, label, value, coordinate, mapping, count, metric,
+measured numerator, denominator, or per-metric outcome, digest, timestamp,
+token, approval, seal, receipt, runner artifact, execution mode, or execution
+detail is repository-visible.
+
+The exact tip passed exact-source CI run `33290262191`'s full hosted release
+gate on Ubuntu and Windows. Cross-engine, parser-isolation,
+normalization, and payload-custody runs `33290262193`, `33290262185`,
+`33290262180`, and `33290262184` also passed. These public runs prove source
+and routing health only; they do not authenticate the private measurement.
+
+Cycle 2x closes the currently declared `personal_single_user_local` filing-
+ingestion exit gate for the one owner-selected corpus. It does not establish
+external chronology or secrecy, owner identity, independent adjudication,
+label correctness, representativeness or generalization, SEC authenticity,
+accounting truth, broad parser coverage, runtime independence, amendment
+discovery, global currentness, database/API/web composition, shared-service
+safety, or production readiness. Any changed source, corpus, reference, plan,
+or thresholds requires fresh review and measurement. The next separate product
+boundary is explicit local running-application composition; Cycle 2x does not
+authorize that wiring. Enterprise/shared-service requirements remain Out of
+scope. See
+[ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
+and the [Cycle 2x exit matrix](./docs/CYCLE_2X_EXIT_MATRIX.md).
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1512,4 +1566,6 @@ See [the sanitized product brief](./docs/SANITIZED_PRODUCT_BRIEF.md),
 [ADR 0048](./docs/adr/0048-bounded-personal-typescript-python-normalization-record-agreement.md),
 [Cycle 2w exit matrix](./docs/CYCLE_2W_EXIT_MATRIX.md),
 [ADR 0049](./docs/adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md),
+[Cycle 2x exit matrix](./docs/CYCLE_2X_EXIT_MATRIX.md),
+[ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md),
 and [architecture decisions](./docs/adr/).

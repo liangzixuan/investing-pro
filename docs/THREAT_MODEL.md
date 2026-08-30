@@ -1,4 +1,4 @@
-# Sprint 0 through staged Cycle 2w threat model
+# Sprint 0 through staged Cycle 2x threat model
 
 ## Current trust boundaries
 
@@ -14,7 +14,7 @@ boundary in the running profile.
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q/2r/2s/2u/2v/2w are disconnected from the running API and web
+Cycle 2q/2r/2s/2u/2v/2w/2x are disconnected from the running API and web
 application.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
@@ -28,7 +28,9 @@ Python implementations and returns only metadata agreement or a value-free
 quarantine. Cycle 2w separately compares exact values at primary-selected
 dimensionless coordinates against a pinned Python worker that receives only
 raw filing bytes and target QNames, returning only metadata agreement or a
-value-free quarantine.
+value-free quarantine. Cycle 2x commits the internally derived candidate before
+owner-reviewed reference-content reveal, evaluates only fixed aggregate quality
+metrics, and records only a coarse private Pass.
 Enterprise approval, tenancy, B15/V15, and production controls are not trust
 boundaries for this profile unless its scope widens.
 
@@ -1822,6 +1824,86 @@ repository evidence. Exact gates are in
 [ADR 0049](./adr/0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
 
+Cycle 2x is Pass only for exact promoted corrective-chain tip
+`39ce73760afe0e5d22063b02a60efe64e83f3747`. The capability source
+`c0138a3121361fc06f210e42febe6af4c6fa3e13` is the direct child of promoted
+Cycle 2w documentation baseline
+`716a3f6b7ad5a43c48a6a61d18b59c2cd5645018`; validator subprocess isolation
+was corrected at `7f7163d4673360645e332d0b7d28467c15656f8a`, and the promoted tip is
+its exact routing-closure child.
+
+Assets at risk are the integrity and confidentiality of the owner-reviewed
+reference, quality plan, candidate observations, labels, values, source
+mapping, and result; the ordering between candidate commitment and reference
+reveal; single-use capability state; exact threshold accounting; and the
+distinction between an evaluated quality disagreement and a malformed protocol
+attempt.
+
+Primary threats are mutable or aliased input carriers; manifest, plan,
+candidate, or raw-scope substitution; changing the reference population,
+selection rules, labels, metrics, or thresholds after candidate observation;
+passing reference content or expected values into candidate derivation;
+forging supplied counts, metrics, weights, exclusions, or outcomes; capability
+copy, replay, cross-instance use, or failed-attempt reuse; reference digest
+mismatch; malformed, incomplete, reordered, duplicate, or incoherent labels;
+free-cash-flow operand mismatch; tolerant or floating-point comparison;
+zero-denominator acceptance; treating explicit pipeline quarantine as silence
+or success; converting a valid disagreement into protocol quarantine; fallback,
+repair, partial success, or threshold override; hostile validator execution;
+and private fact, label, value, coordinate, identifier, path, timestamp, digest,
+or diff leakage.
+
+Controls are intrinsic bounded ownership of disjoint declaration, manifest,
+normalization-plan, quality-plan, parser-result, and raw-filing snapshots; exact
+manifest verification; a canonical quality plan binding the reference digest,
+population, selection rules, metrics, and zero-tolerance policy before
+candidate execution; internal Cycle 2w agreement and Cycle 2u candidate
+projection; candidate commitment before reference-content reveal; a frozen,
+identity-bound, instance-local, single-use capability consumed by every first
+attempt; an exact ordered reference schema including the fixed free-cash-flow
+operand contract; integer-only ratio accounting; fixed metrics and thresholds
+that the caller cannot supply; explicit `not_met` evaluation for disagreement
+or upstream quarantine; and immutable aggregate-only success or atomic
+value-free protocol quarantine. The corrected validator launch uses Python
+isolated and no-bytecode mode.
+
+Residuals are deliberate. A digest commitment does not hide a predictable
+reference or prove chronology, secrecy, blinding, zero knowledge, or absence of
+label leakage. Owner identity, independent adjudication, label correctness,
+reference representativeness, statistical adequacy, and generalization are not
+proven. The candidate and reference can share a specification, repository,
+operator, host, and failure domain. Source authenticity, accounting truth,
+general parser coverage, primary-parser identity and lineage, amendment
+discovery, global currentness, executable identity, OS/process isolation,
+preflight-to-launch atomicity, runtime attestation, and resistance to common
+error, coordinated defects, collusion, or malicious code remain outside the
+claim. There is no database, API, web, queue, fetcher, background job, or
+running-application composition.
+
+The private operation is recorded only as **owner-approved private bounded
+quality-measurement Pass for one owner-selected corpus**. It means only that
+the protocol completed `quality_evaluated_for_personal_use` and met its
+predeclared personal threshold outcome. No selected-corpus characteristic,
+private reference or plan, input or output, fact, label, value, coordinate,
+mapping, count, metric, measured numerator, denominator, or per-metric outcome,
+digest, timestamp, token, approval, seal, receipt, runner artifact, execution
+mode, or execution detail is repository evidence.
+
+The exact tip passed full Ubuntu and Windows release gates plus cross-engine,
+parser-isolation, normalization, and payload-custody acceptance at source-bound
+runs `33290262191`, `33290262193`, `33290262185`, `33290262180`, and
+`33290262184`. Those runs prove public source and routing health only and emit
+no private Cycle 2x quality artifact.
+
+Cycle 2x closes the currently declared personal filing-ingestion exit gate for
+the one owner-selected corpus. Any changed source, corpus, reference, plan, or
+threshold policy requires fresh review and measurement. Local running-
+application composition is the next separately scoped product boundary.
+Enterprise/shared-service requirements remain Out of scope. Exact gates and
+nonclaims are in
+[ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
+and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -1834,8 +1916,10 @@ and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
    validators with atomic conflict quarantine and no silent repair. Cycle 2w
    then adds a secondary raw path for exact values at ten primary-selected
    dimensionless coordinates per document without passing primary parser-result
-   or normalized material to that worker. Require a frozen owner-reviewed
-   quality reference set and thresholds next.
+   or normalized material to that worker. Cycle 2x freezes the owner-reviewed
+   quality reference and thresholds before candidate execution, commits the
+   internally derived observations before reference reveal, and records a
+   coarse private Pass after the fixed personal threshold outcome is met.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -1851,9 +1935,12 @@ and the [Cycle 2w exit matrix](./CYCLE_2W_EXIT_MATRIX.md).
    selected-live-root deletion, Cycle 2t records coarse private activation,
    and Cycle 2u adds bounded personal normalization/lineage. Cycle 2v adds only
    cross-language record reconstruction agreement, and Cycle 2w adds only the
-   narrow secondary raw selected-coordinate value comparison. None proves the
-   pending shared selection/mapping correctness, general parser coverage, or
-   owner-reviewed quality boundary.
+   narrow secondary raw selected-coordinate value comparison. Cycle 2x closes
+   the declared bounded owner-reviewed quality and personal filing-ingestion
+   exit gate for one owner-selected corpus. It does not prove shared selection/
+   mapping correctness, general parser coverage, or generalization beyond the
+   exact frozen scope. Explicit local running-application composition is the
+   next separately scoped boundary.
    Organizational rights/steward approval and authority keys are separate
    enterprise-profile gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
