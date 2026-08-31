@@ -98,6 +98,8 @@ const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION =
   "c215166dbc5f1a87ae67a7c6a76b93308359dcbb" as const;
 const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION =
   "879a03759493158f20f579d1efc2e3d337de4385" as const;
+const CYCLE_2Z_ROADMAP_REBASELINE_REVISION =
+  "4c660188831b91111a45d588245cb8735b8858ab" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -1973,6 +1975,28 @@ const CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2Z_UBUNTU_CI_STABILIZATION_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3400,6 +3424,38 @@ export function isCycle2zRoadmapRebaselineTopologyAllowed(
   return (
     successorCount === "6" &&
     firstParentCount === "6" &&
+    revision === CYCLE_2Z_ROADMAP_REBASELINE_REVISION &&
+    parentLine ===
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}` &&
+    isCycle2zMaintenanceTopologyAllowed(
+      "5",
+      "5",
+      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal Exact Cycle 2z Ubuntu CI stabilization after the pinned roadmap rebaseline. */
+export function isCycle2zUbuntuCiStabilizationTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "7" &&
+    firstParentCount === "7" &&
     COMMIT.test(revision) &&
     revision !== CYCLE_2Z_BASELINE_REVISION &&
     revision !== CYCLE_2Z_SOURCE_REVISION &&
@@ -3407,12 +3463,13 @@ export function isCycle2zRoadmapRebaselineTopologyAllowed(
     revision !== CYCLE_2Z_PROMOTION_REVISION &&
     revision !== CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION &&
     revision !== CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION &&
-    parentLine ===
-      `${revision} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}` &&
-    isCycle2zMaintenanceTopologyAllowed(
-      "5",
-      "5",
-      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+    revision !== CYCLE_2Z_ROADMAP_REBASELINE_REVISION &&
+    parentLine === `${revision} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}` &&
+    isCycle2zRoadmapRebaselineTopologyAllowed(
+      "6",
+      "6",
+      CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
+      roadmapRebaselineParentLine,
       commitBoundaryCorrectiveParentLine,
       stabilizationParentLine,
       promotionParentLine,
@@ -4377,6 +4434,19 @@ export function isCycle2zRoadmapRebaselineCommitDiffSetAllowed(
   }[],
 ): boolean {
   return exactCycle2pDiffSet(entries, CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION);
+}
+
+/** @internal Exact Cycle 2z Ubuntu CI stabilization transition seam. */
+export function isCycle2zUbuntuCiStabilizationCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_2Z_UBUNTU_CI_STABILIZATION_TRANSITION,
+  );
 }
 
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
@@ -5592,6 +5662,7 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_PROMOTION_REVISION,
     CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
     CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+    CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -5676,6 +5747,18 @@ async function verifyCycle2zTransition(
       128,
     ),
   ).join(" ");
+  const roadmapRebaselineParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
   const directSource = isCycle2zDirectChildAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -5710,11 +5793,25 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
+  const ubuntuCiStabilizationChild =
+    isCycle2zUbuntuCiStabilizationTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    );
   if (
     !directSource &&
     !correctiveChild &&
     !maintenanceChild &&
-    !roadmapRebaselineChild
+    !roadmapRebaselineChild &&
+    !ubuntuCiStabilizationChild
   )
     invalid();
 
@@ -5724,7 +5821,12 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_SOURCE_REVISION,
   );
   if (!isCycle2zCommitDiffSetAllowed(sourceEntries)) invalid();
-  if (correctiveChild || maintenanceChild || roadmapRebaselineChild) {
+  if (
+    correctiveChild ||
+    maintenanceChild ||
+    roadmapRebaselineChild ||
+    ubuntuCiStabilizationChild
+  ) {
     const correctiveEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_SOURCE_REVISION,
@@ -5732,7 +5834,11 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle2zCorrectiveCommitDiffSetAllowed(correctiveEntries)) invalid();
   }
-  if (maintenanceChild || roadmapRebaselineChild) {
+  if (
+    maintenanceChild ||
+    roadmapRebaselineChild ||
+    ubuntuCiStabilizationChild
+  ) {
     const promotionEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_ROUTING_CLOSURE_REVISION,
@@ -5764,14 +5870,27 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (roadmapRebaselineChild) {
+  if (roadmapRebaselineChild || ubuntuCiStabilizationChild) {
     const roadmapRebaselineEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
-      revision,
+      roadmapRebaselineChild ? revision : CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
     );
     if (
       !isCycle2zRoadmapRebaselineCommitDiffSetAllowed(roadmapRebaselineEntries)
+    )
+      invalid();
+  }
+  if (ubuntuCiStabilizationChild) {
+    const ubuntuCiStabilizationEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
+      revision,
+    );
+    if (
+      !isCycle2zUbuntuCiStabilizationCommitDiffSetAllowed(
+        ubuntuCiStabilizationEntries,
+      )
     )
       invalid();
   }

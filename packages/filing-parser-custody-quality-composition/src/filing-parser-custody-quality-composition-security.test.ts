@@ -80,7 +80,11 @@ describe("filing parser custody quality composition security", () => {
   });
 
   it("consumes reference mismatch, capability replay, double reveal, and cross-instance substitution", async () => {
-    const mismatch = buildFilingParserCustodyQualityCompositionTestHarness();
+    // Keep capability-state coverage independent of filesystem custody, which
+    // has separate encrypted-workspace integration coverage.
+    const mismatch = buildFilingParserCustodyQualityCompositionTestHarness({
+      custody: createStaticAuthenticatedCustodyProtocol("reference-mismatch"),
+    });
     const mismatchCommit = await commit(mismatch);
     const changedReference = Uint8Array.from(mismatch.declaredReference);
     changedReference[0] = (changedReference[0] ?? 0) ^ 1;
@@ -97,7 +101,9 @@ describe("filing parser custody quality composition security", () => {
     expect(consumedMismatch).toBe(firstMismatch);
     expect(mismatch.quality.revealCalls).toHaveLength(0);
 
-    const replay = buildFilingParserCustodyQualityCompositionTestHarness();
+    const replay = buildFilingParserCustodyQualityCompositionTestHarness({
+      custody: createStaticAuthenticatedCustodyProtocol("capability-replay"),
+    });
     const replayCommit = await commit(replay);
     assertEvaluated(
       replay.protocol.reveal(replayCommit.capability, replay.declaredReference),
@@ -115,8 +121,12 @@ describe("filing parser custody quality composition security", () => {
     expect(thirdReveal).toBe(secondReveal);
     expect(replay.quality.revealCalls).toHaveLength(1);
 
-    const left = buildFilingParserCustodyQualityCompositionTestHarness();
-    const right = buildFilingParserCustodyQualityCompositionTestHarness();
+    const left = buildFilingParserCustodyQualityCompositionTestHarness({
+      custody: createStaticAuthenticatedCustodyProtocol("cross-instance-left"),
+    });
+    const right = buildFilingParserCustodyQualityCompositionTestHarness({
+      custody: createStaticAuthenticatedCustodyProtocol("cross-instance-right"),
+    });
     const leftCommit = await commit(left);
     const rightCommit = await commit(right);
     assertQuarantined(

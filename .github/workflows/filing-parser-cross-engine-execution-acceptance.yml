@@ -62,6 +62,7 @@ jobs:
           cycle2z_source="e64924bc091bfc7a3e071e7db746910e082051c4"
           cycle2z_maintenance="c215166dbc5f1a87ae67a7c6a76b93308359dcbb"
           cycle2z_roadmap_parent="879a03759493158f20f579d1efc2e3d337de4385"
+          cycle2z_roadmap="4c660188831b91111a45d588245cb8735b8858ab"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -215,6 +216,16 @@ jobs:
             "M"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle2z_ubuntu_ci_stabilization=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser-custody-quality-composition/src/filing-parser-custody-quality-composition-security.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -288,10 +299,12 @@ jobs:
                  git cat-file -e "$cycle2z_baseline^{commit}" && \
                  git cat-file -e "$cycle2z_source^{commit}" && \
                  git cat-file -e "$cycle2z_maintenance^{commit}" && \
-                 git cat-file -e "$cycle2z_roadmap_parent^{commit}"; then
+                 git cat-file -e "$cycle2z_roadmap_parent^{commit}" && \
+                 git cat-file -e "$cycle2z_roadmap^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_roadmap_parent_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_roadmap_parent")"
+                read -r -a cycle2z_roadmap_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_roadmap")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -305,7 +318,10 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle2z_maintenance" "$cycle2z_roadmap_parent" --
                 )
                 mapfile -d '' -t cycle2z_roadmap_rebaseline_actual < <(
-                  git diff --name-status --no-renames -z "$cycle2z_roadmap_parent" HEAD --
+                  git diff --name-status --no-renames -z "$cycle2z_roadmap_parent" "$cycle2z_roadmap" --
+                )
+                mapfile -d '' -t cycle2z_ubuntu_ci_stabilization_actual < <(
+                  git diff --name-status --no-renames -z "$cycle2z_roadmap" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -338,6 +354,7 @@ jobs:
                     cycle2z=true
                   elif [[ "$cycle2z_successor_count" == "6" ]] && \
                        [[ "$cycle2z_first_parent_count" == "6" ]] && \
+                       [[ "$head_revision" == "$cycle2z_roadmap" ]] && \
                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle2z_roadmap_parent" ]] && \
@@ -346,6 +363,22 @@ jobs:
                        [[ "${cycle2z_roadmap_parent_topology[1]}" == "$cycle2z_maintenance" ]] && \
                        matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
                        matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual; then
+                    exact=true
+                    cycle2z=true
+                  elif [[ "$cycle2z_successor_count" == "7" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "7" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle2z_roadmap" ]] && \
+                       [[ "${#cycle2z_roadmap_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_roadmap_topology[0]}" == "$cycle2z_roadmap" ]] && \
+                       [[ "${cycle2z_roadmap_topology[1]}" == "$cycle2z_roadmap_parent" ]] && \
+                       [[ "${#cycle2z_roadmap_parent_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_roadmap_parent_topology[0]}" == "$cycle2z_roadmap_parent" ]] && \
+                       [[ "${cycle2z_roadmap_parent_topology[1]}" == "$cycle2z_maintenance" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual; then
                     exact=true
                     cycle2z=true
                   fi
