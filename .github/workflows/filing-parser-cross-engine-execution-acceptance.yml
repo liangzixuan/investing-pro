@@ -47,16 +47,19 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 2x source or validator-isolation corrective closure
+      - name: Classify exact Cycle 2x or Cycle 2z personal filing closure
         id: cycle2x_source
         if: ${{ success() }}
         shell: bash
         run: |
           exact=false
           required=false
+          cycle2z=false
           baseline="716a3f6b7ad5a43c48a6a61d18b59c2cd5645018"
           source="c0138a3121361fc06f210e42febe6af4c6fa3e13"
           validator_isolation="7f7163d4673360645e332d0b7d28467c15656f8a"
+          cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
+          cycle2z_source="e64924bc091bfc7a3e071e7db746910e082051c4"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -178,6 +181,18 @@ jobs:
             "M"
             "scripts/verify-boundaries.ts"
           )
+          expected_cycle2z_corrective=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -247,12 +262,48 @@ jobs:
                   exact=true
                 fi
               fi
+              if [[ "$exact" != "true" ]] && \
+                 git cat-file -e "$cycle2z_baseline^{commit}" && \
+                 git cat-file -e "$cycle2z_source^{commit}"; then
+                read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
+                read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
+                cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
+                cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
+                cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
+                mapfile -d '' -t cycle2z_corrective_actual < <(
+                  git diff --name-status --no-renames -z "$cycle2z_source" HEAD --
+                )
+                if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                   [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
+                   [[ "${#cycle2z_source_topology[@]}" == "2" ]] && \
+                   [[ "${cycle2z_source_topology[0]}" == "$cycle2z_source" ]] && \
+                   [[ "${cycle2z_source_topology[1]}" == "$cycle2z_baseline" ]]; then
+                  if [[ "$head_revision" == "$cycle2z_source" ]] && \
+                     [[ "$cycle2z_successor_count" == "1" ]] && \
+                     [[ "$cycle2z_first_parent_count" == "1" ]] && \
+                     [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                     [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${cycle2z_topology[1]}" == "$cycle2z_baseline" ]]; then
+                    exact=true
+                    cycle2z=true
+                  elif [[ "$cycle2z_successor_count" == "2" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "2" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle2z_source" ]] && \
+                       matches_exactly expected_cycle2z_corrective cycle2z_corrective_actual; then
+                    exact=true
+                    cycle2z=true
+                  fi
+                fi
+              fi
             fi
           fi
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
+          echo "cycle2z=$cycle2z" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Cycle 2x protected surfaces changed outside the exact source or validator-isolation corrective closure; refusing inherited evidence routing." >&2
+            echo "Protected personal filing surfaces changed outside the exact Cycle 2x or Cycle 2z closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2w personal raw fact extraction before inherited routes
@@ -1290,7 +1341,11 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v4.json"
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
-            echo "Cycle 2x is a personal local quality-measurement route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
+            if [[ "${{ steps.cycle2x_source.outputs.cycle2z }}" == "true" ]]; then
+              echo "Cycle 2z is a personal local selected-fact release route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
+            else
+              echo "Cycle 2x is a personal local quality-measurement route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
+            fi
             exit 0
           fi
           if [[ "${{ steps.cycle2w_source.outputs.exact }}" == "true" ]]; then
