@@ -101,6 +101,8 @@ import {
   isCycle2zDirectChildAllowed,
   isCycle2zMaintenanceTopologyAllowed,
   isCycle2zPromotionCommitDiffSetAllowed,
+  isCycle2zRoadmapRebaselineCommitDiffSetAllowed,
+  isCycle2zRoadmapRebaselineTopologyAllowed,
   isCycle2zTransitionRoutingRequired,
   isCycle2zWindowsTimeoutStabilizationCommitDiffSetAllowed,
   isCycle2xBaselineMergeBaseAllowed,
@@ -666,6 +668,8 @@ const CYCLE_2Z_PROMOTION_REVISION =
   "325e7d9a1fe38195099899dc9b9498e504cabbe9" as const;
 const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION =
   "c215166dbc5f1a87ae67a7c6a76b93308359dcbb" as const;
+const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION =
+  "879a03759493158f20f579d1efc2e3d337de4385" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -820,6 +824,24 @@ const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION = [
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
     status: "M",
   },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "A" },
   {
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
     status: "M",
@@ -2748,6 +2770,89 @@ describe("Cycle 2z selected-fact release routing", () => {
     }
   });
 
+  it("accepts only one direct roadmap-rebaseline child after the pinned maintenance route", () => {
+    const revision = "a".repeat(40);
+    const valid = [
+      "6",
+      "6",
+      revision,
+      `${revision} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle2zRoadmapRebaselineTopologyAllowed(...valid)).toBe(true);
+
+    for (const pinnedRevision of [
+      CYCLE_2Z_BASELINE_REVISION,
+      CYCLE_2Z_SOURCE_REVISION,
+      CYCLE_2Z_ROUTING_CLOSURE_REVISION,
+      CYCLE_2Z_PROMOTION_REVISION,
+      CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+    ]) {
+      const values: string[] = [...valid];
+      values[2] = pinnedRevision;
+      values[3] = `${pinnedRevision} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`;
+      expect(
+        isCycle2zRoadmapRebaselineTopologyAllowed(
+          ...(values as Parameters<
+            typeof isCycle2zRoadmapRebaselineTopologyAllowed
+          >),
+        ),
+        pinnedRevision,
+      ).toBe(false);
+    }
+
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "5";
+      },
+      (values: string[]) => {
+        values[1] = "5";
+      },
+      (values: string[]) => {
+        values[2] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[3] = `${revision} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] = `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] += ` ${CYCLE_2Z_PROMOTION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[5] = `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[6] = `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[7] = `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[8] = `${CYCLE_2Z_SOURCE_REVISION} ${"d".repeat(40)}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle2zRoadmapRebaselineTopologyAllowed(
+          ...(values as Parameters<
+            typeof isCycle2zRoadmapRebaselineTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+  });
+
   it("requires every exact ordered source, promotion, stabilization, and corrective name-status tuple", () => {
     const transitions: readonly [
       string,
@@ -2781,6 +2886,12 @@ describe("Cycle 2z selected-fact release routing", () => {
         isCycle2zCommitBoundaryCorrectiveDiffSetAllowed,
         CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
         3,
+      ],
+      [
+        "roadmap rebaseline",
+        isCycle2zRoadmapRebaselineCommitDiffSetAllowed,
+        CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION,
+        5,
       ],
     ];
     for (const [name, allowed, entries, count] of transitions) {
@@ -2819,6 +2930,16 @@ describe("Cycle 2z selected-fact release routing", () => {
     expect(
       isCycle2zCorrectiveCommitDiffSetAllowed(
         CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2zRoadmapRebaselineCommitDiffSetAllowed(
+        CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2zCommitBoundaryCorrectiveDiffSetAllowed(
+        CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION,
       ),
     ).toBe(false);
   });

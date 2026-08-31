@@ -96,6 +96,8 @@ const CYCLE_2Z_PROMOTION_REVISION =
   "325e7d9a1fe38195099899dc9b9498e504cabbe9" as const;
 const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION =
   "c215166dbc5f1a87ae67a7c6a76b93308359dcbb" as const;
+const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION =
+  "879a03759493158f20f579d1efc2e3d337de4385" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -1951,6 +1953,26 @@ const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "A" },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3363,6 +3385,43 @@ export function isCycle2zMaintenanceTopologyAllowed(
   );
 }
 
+/** @internal Exact Cycle 2z roadmap rebaseline after the pinned maintenance route. */
+export function isCycle2zRoadmapRebaselineTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "6" &&
+    firstParentCount === "6" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_2Z_BASELINE_REVISION &&
+    revision !== CYCLE_2Z_SOURCE_REVISION &&
+    revision !== CYCLE_2Z_ROUTING_CLOSURE_REVISION &&
+    revision !== CYCLE_2Z_PROMOTION_REVISION &&
+    revision !== CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION &&
+    revision !== CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}` &&
+    isCycle2zMaintenanceTopologyAllowed(
+      "5",
+      "5",
+      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
 /** @internal Any Cycle 2z protected-surface touch must route and fail closed. */
 export function isCycle2zTransitionRoutingRequired(
   baselineDiffPaths: readonly string[] | undefined,
@@ -4308,6 +4367,16 @@ export function isCycle2zCommitBoundaryCorrectiveDiffSetAllowed(
     entries,
     CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
   );
+}
+
+/** @internal Exact Cycle 2z personal-product roadmap rebaseline transition seam. */
+export function isCycle2zRoadmapRebaselineCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2Z_ROADMAP_REBASELINE_TRANSITION);
 }
 
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
@@ -5522,6 +5591,7 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_ROUTING_CLOSURE_REVISION,
     CYCLE_2Z_PROMOTION_REVISION,
     CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+    CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -5594,6 +5664,18 @@ async function verifyCycle2zTransition(
       128,
     ),
   ).join(" ");
+  const commitBoundaryCorrectiveParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
   const directSource = isCycle2zDirectChildAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -5617,7 +5699,24 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
-  if (!directSource && !correctiveChild && !maintenanceChild) invalid();
+  const roadmapRebaselineChild = isCycle2zRoadmapRebaselineTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
+  if (
+    !directSource &&
+    !correctiveChild &&
+    !maintenanceChild &&
+    !roadmapRebaselineChild
+  )
+    invalid();
 
   const sourceEntries = await cycle2pDiffEntries(
     repositoryPath,
@@ -5625,7 +5724,7 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_SOURCE_REVISION,
   );
   if (!isCycle2zCommitDiffSetAllowed(sourceEntries)) invalid();
-  if (correctiveChild || maintenanceChild) {
+  if (correctiveChild || maintenanceChild || roadmapRebaselineChild) {
     const correctiveEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_SOURCE_REVISION,
@@ -5633,7 +5732,7 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle2zCorrectiveCommitDiffSetAllowed(correctiveEntries)) invalid();
   }
-  if (maintenanceChild) {
+  if (maintenanceChild || roadmapRebaselineChild) {
     const promotionEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_ROUTING_CLOSURE_REVISION,
@@ -5654,12 +5753,25 @@ async function verifyCycle2zTransition(
     const commitBoundaryCorrectiveEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
-      revision,
+      maintenanceChild
+        ? revision
+        : CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
     );
     if (
       !isCycle2zCommitBoundaryCorrectiveDiffSetAllowed(
         commitBoundaryCorrectiveEntries,
       )
+    )
+      invalid();
+  }
+  if (roadmapRebaselineChild) {
+    const roadmapRebaselineEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+      revision,
+    );
+    if (
+      !isCycle2zRoadmapRebaselineCommitDiffSetAllowed(roadmapRebaselineEntries)
     )
       invalid();
   }

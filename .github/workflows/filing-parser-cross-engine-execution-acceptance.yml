@@ -61,6 +61,7 @@ jobs:
           cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
           cycle2z_source="e64924bc091bfc7a3e071e7db746910e082051c4"
           cycle2z_maintenance="c215166dbc5f1a87ae67a7c6a76b93308359dcbb"
+          cycle2z_roadmap_parent="879a03759493158f20f579d1efc2e3d337de4385"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -202,6 +203,18 @@ jobs:
             "M"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle2z_roadmap_rebaseline=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "docs/BUILD_ROADMAP.md"
+            "A"
+            "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -274,9 +287,11 @@ jobs:
               if [[ "$exact" != "true" ]] && \
                  git cat-file -e "$cycle2z_baseline^{commit}" && \
                  git cat-file -e "$cycle2z_source^{commit}" && \
-                 git cat-file -e "$cycle2z_maintenance^{commit}"; then
+                 git cat-file -e "$cycle2z_maintenance^{commit}" && \
+                 git cat-file -e "$cycle2z_roadmap_parent^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
+                read -r -a cycle2z_roadmap_parent_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_roadmap_parent")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -285,6 +300,12 @@ jobs:
                 )
                 mapfile -d '' -t cycle2z_maintenance_routing_actual < <(
                   git diff --name-status --no-renames -z "$cycle2z_maintenance" HEAD --
+                )
+                mapfile -d '' -t cycle2z_maintenance_parent_actual < <(
+                  git diff --name-status --no-renames -z "$cycle2z_maintenance" "$cycle2z_roadmap_parent" --
+                )
+                mapfile -d '' -t cycle2z_roadmap_rebaseline_actual < <(
+                  git diff --name-status --no-renames -z "$cycle2z_roadmap_parent" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -313,6 +334,18 @@ jobs:
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle2z_maintenance" ]] && \
                        matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_routing_actual; then
+                    exact=true
+                    cycle2z=true
+                  elif [[ "$cycle2z_successor_count" == "6" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "6" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle2z_roadmap_parent" ]] && \
+                       [[ "${#cycle2z_roadmap_parent_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_roadmap_parent_topology[0]}" == "$cycle2z_roadmap_parent" ]] && \
+                       [[ "${cycle2z_roadmap_parent_topology[1]}" == "$cycle2z_maintenance" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual; then
                     exact=true
                     cycle2z=true
                   fi

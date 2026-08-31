@@ -1972,12 +1972,53 @@ They are not current personal-profile blockers.
 
 ## Cycle 3 — product breadth
 
-Only after executed display/derived/alert/export rights and 10K/100K-user cost models exist:
+Status: **Planned; not started.** This section changes future sequencing only
+and makes no implementation, evidence, or parity claim.
 
-- expand from 10 to 30 versioned common-stock metrics;
-- add a typed screener/query engine and saved views;
-- persist thesis/watchlist data behind tenant authorization;
-- add one production alert channel with delivery receipts and duplicate monitoring; and
-- run paid-beta accessibility, performance, restore, incident-correction, and operational-readiness gates.
+Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
+completed `personal_single_user_local` offline boundary and exact Cycle 2z
+result remain unchanged. Request-time authenticated owner-browser composition
+is Cycle 3a and stays the highest-priority blocker. Any later networked source
+must enter through a separately declared, explicitly enabled
+`personal_single_user_local_connected` profile with source-specific terms,
+provenance, retention/export rules, local secret handling, and owner-set
+request, storage, and estimated-spend budgets. Those application budgets are
+not a provider-enforced billing ceiling.
 
-ETF accounting, portfolio performance, broad calendars, generative AI, broker connections, and multi-channel alerts remain deferred.
+Organizational approvals, tenant controls, billing, paid-beta gates,
+10K/100K-user cost models, commercial redistribution, and production
+operations remain dormant enterprise-profile work. They do not block the
+personal program. Personal durability still requires authentication,
+CSRF/replay controls, migration integrity, backup/restore, deletion, scheduler
+recovery, accessibility, measured performance, and source-license compliance.
+
+The delivery waves are:
+
+1. **Usable personal core — Cycles 3a–3g:** authenticated owner session,
+   authenticated personal dossier composition, connected-personal source
+   policy, durable local vault, security master/search/watchlists, automated
+   SEC filing refresh, and one licensed market-data/chart adapter.
+2. **Research breadth — Cycles 3h–3k:** ten-year statements and a versioned
+   metric registry, transparent multi-model valuation, peers/quality/risk
+   scores, and a typed screener with saved views.
+3. **Daily operating workflow — Cycles 3l–3o:** earnings/dividends/news/events,
+   portfolio analytics, background delivered alerts, and reproducible
+   reports/exports/custom views.
+4. **Optional intelligence and polish — Cycles 3p–3q:** evidence-grounded AI
+   and strategy research, then an installable personal app with accessibility,
+   performance, restore, and soak gates.
+
+Every displayed or exported number must retain source, period, unit,
+observed/known-at chronology, rights policy, and an evidence passport. Every
+derived number must retain its versioned formula and exact inputs. Missing,
+stale, conflicting, unsupported, or quarantined data must remain explicit;
+there is no silent fallback. Where the source policy permits retention,
+network results must be replayable from immutable local snapshots. Otherwise,
+the application retains only permitted request/source metadata, digests, and
+normalized derived evidence, marks the result non-replayable, and does not
+admit a feature whose required audit cannot be achieved. Credentials or
+private evidence must never enter Git, fixtures, logs, or public CI.
+
+The planned common-stock gap mapping, dependencies, numerical breadth
+objectives, exit criteria, nonclaims, and release order are maintained in the
+[personal product-breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md).
