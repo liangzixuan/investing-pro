@@ -95,6 +95,7 @@ const RUN_ID = "9876543210";
 const RUN_ATTEMPT = 2;
 const GIT_INTEGRATION_TEST_TIMEOUT_MILLISECONDS = 30_000;
 const V10_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
+const V12_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const V13_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const TRUST_ANCHOR_MATRIX_TIMEOUT_MILLISECONDS = 60_000;
 const TEMP_DIRECTORIES: string[] = [];
@@ -988,37 +989,47 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("rejects changed or missing v12 query-plan/load sources at the anchored commit", async () => {
-    for (const path of [
-      "packages/db/src/postgres-query-plan-load.ts",
-      "packages/db/acceptance/query-plan-load-fixture.sql",
-    ]) {
-      const changed = await createFixture();
-      await writeFile(
-        join(changed.repositoryPath, path),
-        "changed v12 query-plan/load source\n",
-      );
-      git(changed.repositoryPath, ["add", "--all"]);
-      git(changed.repositoryPath, ["commit", "-m", "changed v12 source"]);
-      const changedCommit = git(changed.repositoryPath, ["rev-parse", "HEAD"]);
-      await expect(
-        reviewPostgresAcceptanceEvidence(
-          await inputAtCommit(changed, changedCommit),
-        ),
-      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  it(
+    "rejects changed or missing v12 query-plan/load sources at the anchored commit",
+    { timeout: V12_SOURCE_BLOB_MATRIX_TIMEOUT_MILLISECONDS },
+    async () => {
+      for (const path of [
+        "packages/db/src/postgres-query-plan-load.ts",
+        "packages/db/acceptance/query-plan-load-fixture.sql",
+      ]) {
+        const changed = await createFixture();
+        await writeFile(
+          join(changed.repositoryPath, path),
+          "changed v12 query-plan/load source\n",
+        );
+        git(changed.repositoryPath, ["add", "--all"]);
+        git(changed.repositoryPath, ["commit", "-m", "changed v12 source"]);
+        const changedCommit = git(changed.repositoryPath, [
+          "rev-parse",
+          "HEAD",
+        ]);
+        await expect(
+          reviewPostgresAcceptanceEvidence(
+            await inputAtCommit(changed, changedCommit),
+          ),
+        ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
 
-      const missing = await createFixture();
-      await rm(join(missing.repositoryPath, path));
-      git(missing.repositoryPath, ["add", "--all"]);
-      git(missing.repositoryPath, ["commit", "-m", "missing v12 source"]);
-      const missingCommit = git(missing.repositoryPath, ["rev-parse", "HEAD"]);
-      await expect(
-        reviewPostgresAcceptanceEvidence(
-          await inputAtCommit(missing, missingCommit),
-        ),
-      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
-    }
-  });
+        const missing = await createFixture();
+        await rm(join(missing.repositoryPath, path));
+        git(missing.repositoryPath, ["add", "--all"]);
+        git(missing.repositoryPath, ["commit", "-m", "missing v12 source"]);
+        const missingCommit = git(missing.repositoryPath, [
+          "rev-parse",
+          "HEAD",
+        ]);
+        await expect(
+          reviewPostgresAcceptanceEvidence(
+            await inputAtCommit(missing, missingCommit),
+          ),
+        ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+      }
+    },
+  );
 
   it(
     "rejects changed, missing, or extra v13 privacy-retention plan and source blobs at the anchored commit",
