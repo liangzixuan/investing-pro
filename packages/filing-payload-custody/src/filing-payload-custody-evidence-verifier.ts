@@ -90,6 +90,12 @@ const CYCLE_2Z_BASELINE_REVISION =
   "62c01dafe305ddd43c75688e0225163b3abdf6df" as const;
 const CYCLE_2Z_SOURCE_REVISION =
   "e64924bc091bfc7a3e071e7db746910e082051c4" as const;
+const CYCLE_2Z_ROUTING_CLOSURE_REVISION =
+  "e76eeca112949f58e7e6e4ed57bcc0ab7e102d66" as const;
+const CYCLE_2Z_PROMOTION_REVISION =
+  "325e7d9a1fe38195099899dc9b9498e504cabbe9" as const;
+const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION =
+  "c215166dbc5f1a87ae67a7c6a76b93308359dcbb" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -1884,6 +1890,67 @@ const CYCLE_2Z_CORRECTIVE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_2Z_PROMOTION_TRANSITION = Object.freeze(
+  [
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
+const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_TRANSITION = Object.freeze(
+  [
+    {
+      path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+      status: "M",
+    },
+    {
+      path: "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
+const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3263,6 +3330,39 @@ export function isCycle2zCorrectiveTopologyAllowed(
   );
 }
 
+/** @internal Exact Cycle 2z post-promotion maintenance routing topology. */
+export function isCycle2zMaintenanceTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "5" &&
+    firstParentCount === "5" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_2Z_BASELINE_REVISION &&
+    revision !== CYCLE_2Z_SOURCE_REVISION &&
+    revision !== CYCLE_2Z_ROUTING_CLOSURE_REVISION &&
+    revision !== CYCLE_2Z_PROMOTION_REVISION &&
+    revision !== CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}` &&
+    stabilizationParentLine ===
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}` &&
+    promotionParentLine ===
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}` &&
+    routingClosureParentLine ===
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}` &&
+    sourceParentLine ===
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`
+  );
+}
+
 /** @internal Any Cycle 2z protected-surface touch must route and fail closed. */
 export function isCycle2zTransitionRoutingRequired(
   baselineDiffPaths: readonly string[] | undefined,
@@ -4172,6 +4272,42 @@ export function isCycle2zCorrectiveCommitDiffSetAllowed(
   }[],
 ): boolean {
   return exactCycle2pDiffSet(entries, CYCLE_2Z_CORRECTIVE_TRANSITION);
+}
+
+/** @internal Exact Cycle 2z promotion transition seam. */
+export function isCycle2zPromotionCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_2Z_PROMOTION_TRANSITION);
+}
+
+/** @internal Exact Cycle 2z Windows timeout-stabilization transition seam. */
+export function isCycle2zWindowsTimeoutStabilizationCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_TRANSITION,
+  );
+}
+
+/** @internal Exact Cycle 2z commit-boundary corrective transition seam. */
+export function isCycle2zCommitBoundaryCorrectiveDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
+  );
 }
 
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
@@ -5383,6 +5519,9 @@ async function verifyCycle2zTransition(
   for (const requiredRevision of [
     CYCLE_2Z_BASELINE_REVISION,
     CYCLE_2Z_SOURCE_REVISION,
+    CYCLE_2Z_ROUTING_CLOSURE_REVISION,
+    CYCLE_2Z_PROMOTION_REVISION,
+    CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -5424,6 +5563,37 @@ async function verifyCycle2zTransition(
       128,
     ),
   ).join(" ");
+  const routingClosureParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_2Z_ROUTING_CLOSURE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
+  const promotionParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_2Z_PROMOTION_REVISION],
+      128,
+    ),
+  ).join(" ");
+  const stabilizationParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
   const directSource = isCycle2zDirectChildAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -5437,7 +5607,17 @@ async function verifyCycle2zTransition(
     parentLine,
     sourceParentLine,
   );
-  if (!directSource && !correctiveChild) invalid();
+  const maintenanceChild = isCycle2zMaintenanceTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
+  if (!directSource && !correctiveChild && !maintenanceChild) invalid();
 
   const sourceEntries = await cycle2pDiffEntries(
     repositoryPath,
@@ -5445,13 +5625,43 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_SOURCE_REVISION,
   );
   if (!isCycle2zCommitDiffSetAllowed(sourceEntries)) invalid();
-  if (correctiveChild) {
+  if (correctiveChild || maintenanceChild) {
     const correctiveEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_SOURCE_REVISION,
-      revision,
+      correctiveChild ? revision : CYCLE_2Z_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle2zCorrectiveCommitDiffSetAllowed(correctiveEntries)) invalid();
+  }
+  if (maintenanceChild) {
+    const promotionEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2Z_ROUTING_CLOSURE_REVISION,
+      CYCLE_2Z_PROMOTION_REVISION,
+    );
+    if (!isCycle2zPromotionCommitDiffSetAllowed(promotionEntries)) invalid();
+    const stabilizationEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2Z_PROMOTION_REVISION,
+      CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+    );
+    if (
+      !isCycle2zWindowsTimeoutStabilizationCommitDiffSetAllowed(
+        stabilizationEntries,
+      )
+    )
+      invalid();
+    const commitBoundaryCorrectiveEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+      revision,
+    );
+    if (
+      !isCycle2zCommitBoundaryCorrectiveDiffSetAllowed(
+        commitBoundaryCorrectiveEntries,
+      )
+    )
+      invalid();
   }
 
   await verifyCycle2xTransition(

@@ -94,11 +94,15 @@ import {
   isCycle2uDirectChildAllowed,
   isCycle2uTransitionRoutingRequired,
   isCycle2zBaselineMergeBaseAllowed,
+  isCycle2zCommitBoundaryCorrectiveDiffSetAllowed,
   isCycle2zCommitDiffSetAllowed,
   isCycle2zCorrectiveCommitDiffSetAllowed,
   isCycle2zCorrectiveTopologyAllowed,
   isCycle2zDirectChildAllowed,
+  isCycle2zMaintenanceTopologyAllowed,
+  isCycle2zPromotionCommitDiffSetAllowed,
   isCycle2zTransitionRoutingRequired,
+  isCycle2zWindowsTimeoutStabilizationCommitDiffSetAllowed,
   isCycle2xBaselineMergeBaseAllowed,
   isCycle2xCommitDiffSetAllowed,
   isCycle2xCorrectiveChainAllowed,
@@ -656,6 +660,12 @@ const CYCLE_2Z_BASELINE_REVISION =
   "62c01dafe305ddd43c75688e0225163b3abdf6df" as const;
 const CYCLE_2Z_SOURCE_REVISION =
   "e64924bc091bfc7a3e071e7db746910e082051c4" as const;
+const CYCLE_2Z_ROUTING_CLOSURE_REVISION =
+  "e76eeca112949f58e7e6e4ed57bcc0ab7e102d66" as const;
+const CYCLE_2Z_PROMOTION_REVISION =
+  "325e7d9a1fe38195099899dc9b9498e504cabbe9" as const;
+const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION =
+  "c215166dbc5f1a87ae67a7c6a76b93308359dcbb" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -753,6 +763,61 @@ const CYCLE_2Z_CORRECTIVE_TRANSITION = [
   },
   {
     path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2Z_PROMOTION_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_TRANSITION = [
+  {
+    path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+    status: "M",
+  },
+  {
+    path: "packages/db/tests/postgres-acceptance-evidence-review.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
+const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
     status: "M",
   },
   {
@@ -2627,7 +2692,63 @@ describe("Cycle 2z selected-fact release routing", () => {
     }
   });
 
-  it("requires exact ordered source and corrective name-status tuples", () => {
+  it("accepts only one direct maintenance child after the pinned promoted stabilization chain", () => {
+    const revision = "f".repeat(40);
+    const valid = [
+      "5",
+      "5",
+      revision,
+      `${revision} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle2zMaintenanceTopologyAllowed(...valid)).toBe(true);
+
+    for (const mutate of [
+      (values: string[]) => {
+        values[0] = "4";
+      },
+      (values: string[]) => {
+        values[1] = "4";
+      },
+      (values: string[]) => {
+        values[2] = "not-a-commit";
+      },
+      (values: string[]) => {
+        values[2] = CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION;
+      },
+      (values: string[]) => {
+        values[3] = `${revision} ${CYCLE_2Z_PROMOTION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${CYCLE_2Z_PROMOTION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] = `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[5] = `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[6] = `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[7] = `${CYCLE_2Z_SOURCE_REVISION} ${"d".repeat(40)}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle2zMaintenanceTopologyAllowed(
+          ...(values as Parameters<typeof isCycle2zMaintenanceTopologyAllowed>),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("requires every exact ordered source, promotion, stabilization, and corrective name-status tuple", () => {
     const transitions: readonly [
       string,
       (
@@ -2642,6 +2763,24 @@ describe("Cycle 2z selected-fact release routing", () => {
         isCycle2zCorrectiveCommitDiffSetAllowed,
         CYCLE_2Z_CORRECTIVE_TRANSITION,
         5,
+      ],
+      [
+        "promotion",
+        isCycle2zPromotionCommitDiffSetAllowed,
+        CYCLE_2Z_PROMOTION_TRANSITION,
+        10,
+      ],
+      [
+        "Windows timeout stabilization",
+        isCycle2zWindowsTimeoutStabilizationCommitDiffSetAllowed,
+        CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_TRANSITION,
+        3,
+      ],
+      [
+        "commit-boundary corrective",
+        isCycle2zCommitBoundaryCorrectiveDiffSetAllowed,
+        CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
+        3,
       ],
     ];
     for (const [name, allowed, entries, count] of transitions) {
@@ -2672,6 +2811,16 @@ describe("Cycle 2z selected-fact release routing", () => {
         `${name}:extra`,
       ).toBe(false);
     }
+    expect(
+      isCycle2zCommitBoundaryCorrectiveDiffSetAllowed(
+        CYCLE_2Z_CORRECTIVE_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2zCorrectiveCommitDiffSetAllowed(
+        CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_TRANSITION,
+      ),
+    ).toBe(false);
   });
 
   it("routes every inherited or Cycle 2z transition surface", () => {

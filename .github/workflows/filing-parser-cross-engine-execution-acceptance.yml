@@ -60,6 +60,7 @@ jobs:
           validator_isolation="7f7163d4673360645e332d0b7d28467c15656f8a"
           cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
           cycle2z_source="e64924bc091bfc7a3e071e7db746910e082051c4"
+          cycle2z_maintenance="c215166dbc5f1a87ae67a7c6a76b93308359dcbb"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -193,6 +194,14 @@ jobs:
             "M"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle2z_maintenance_routing=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -264,7 +273,8 @@ jobs:
               fi
               if [[ "$exact" != "true" ]] && \
                  git cat-file -e "$cycle2z_baseline^{commit}" && \
-                 git cat-file -e "$cycle2z_source^{commit}"; then
+                 git cat-file -e "$cycle2z_source^{commit}" && \
+                 git cat-file -e "$cycle2z_maintenance^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
@@ -272,6 +282,9 @@ jobs:
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t cycle2z_corrective_actual < <(
                   git diff --name-status --no-renames -z "$cycle2z_source" HEAD --
+                )
+                mapfile -d '' -t cycle2z_maintenance_routing_actual < <(
+                  git diff --name-status --no-renames -z "$cycle2z_maintenance" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -292,6 +305,14 @@ jobs:
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle2z_source" ]] && \
                        matches_exactly expected_cycle2z_corrective cycle2z_corrective_actual; then
+                    exact=true
+                    cycle2z=true
+                  elif [[ "$cycle2z_successor_count" == "5" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "5" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle2z_maintenance" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_routing_actual; then
                     exact=true
                     cycle2z=true
                   fi
