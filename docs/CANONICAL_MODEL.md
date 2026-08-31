@@ -70,8 +70,13 @@ promoted corrective-chain tip
 `c0138a3121361fc06f210e42febe6af4c6fa3e13`, validator-isolation correction
 `7f7163d4673360645e332d0b7d28467c15656f8a`, and routing closure `39ce737` from
 promoted Cycle 2w documentation baseline
-`716a3f6b7ad5a43c48a6a61d18b59c2cd5645018`.
-The running application remains synthetic-only. Cycle 2q/2r/2s add
+`716a3f6b7ad5a43c48a6a61d18b59c2cd5645018`; Cycle 2y bounded personal
+quality-readiness composition Pass only for exact source revision
+`a3ab46aa09f1b63a86fdb8c1f98976b26ba30e3f`; and Cycle 2z bounded personal
+selected-fact release promoted only for exact source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence limited to
+the permitted coarse outcome.
+The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
 normalization boundary; Cycle 2v adds a disconnected cross-language
@@ -79,10 +84,10 @@ normalization-record comparison boundary; and Cycle 2w adds a disconnected raw
 selected-fact extraction comparison boundary. Cycle 2x adds a disconnected
 commit-before-reference-reveal quality-measurement boundary and records only a
 coarse private Pass. Cycle 2y closes only a disabled-data-plane coarse
-readiness route and optional browser chip. None composes personal facts into a
-dossier or persistence boundary. Cycle 2z is only an accepted, Pending design
-for a transient owner-authorized selected-fact response; it currently adds no
-canonical state and claims no release Pass.
+readiness route and optional browser chip. Cycle 2z adds only a transient,
+owner-authorized selected-fact response. Neither composes personal facts into a
+canonical dossier or persistence boundary, and Cycle 2z adds no canonical
+database state.
 
 ## Identity
 
@@ -1746,19 +1751,22 @@ passed 1,526 tests with 8 intentional skips and all production builds.
 Exact-source public CI run `33334380969` passed through Ubuntu job
 `99318536228` and Windows job `99318536323`.
 
-Cycle 2y closes only coarse readiness API-to-browser composition. Atomic
-selected-fact release from the same immutable candidate snapshot, browser
-authentication, and hostile same-user process resistance remain later
-boundaries. Enterprise/shared-service operation remains Out of scope. See
+Cycle 2y closes only coarse readiness API-to-browser composition. Cycle 2z
+separately closes the exact selected-fact release from the same immutable
+candidate snapshot without widening Cycle 2y. Browser authentication and
+hostile same-user process resistance remain later boundaries.
+Enterprise/shared-service operation remains Out of scope. See
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
 ## Cycle 2z bounded personal selected-fact release model
 
-Cycle 2z is an accepted design with implementation and evidence **Pending**. It
-introduces no canonical database entity. Its proposed output is one transient,
-closed selected-facts DTO held by an opaque, instance-bound capability after
-pre-listen validation and fresh owner authorization.
+Cycle 2z is **promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`**. Its private evidence is limited
+to the permitted coarse outcome below. It introduces no canonical database
+entity. Its output is one
+transient, closed selected-facts DTO held by an opaque, instance-bound
+capability after pre-listen validation and fresh owner authorization.
 
 The release boundary rederives the production candidate from the same exact
 bounded inputs used by the quality measurement. Both the input-set commitment
@@ -1780,11 +1788,24 @@ The optional browser view does not persist or promote the response into the
 synthetic dossier, evidence, valuation, thesis, alert, history, export, or
 database models.
 
-Exact source revision, public verification, independent review, and the coarse
-owner-approved private release outcome remain **Pending**. Cycle 2z claims no
-Pass until all are closed. Request-time authenticated owner-browser
-composition is the next separate blocker. Same-user hostile-process resistance
-remains unproven, and enterprise/shared-service operation remains Out of scope.
+The exact merge-free source chain is
+`62c01dafe305ddd43c75688e0225163b3abdf6df` ->
+`e64924bc091bfc7a3e071e7db746910e082051c4` ->
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. Its implementation transition
+contains 43 paths, 13 added and 30 modified, with 3,840 insertions and 46
+deletions; its corrective transition contains 5 modified paths, with 1,310
+insertions and 9 deletions. Local `corepack pnpm verify` passed 1,573 tests
+with 8 intentional skips and all format, lint, guardrail, type, peer, and
+production-build gates. Exact-source general CI run `33344500398` passed
+through Ubuntu job `99345958471` and Windows job `99345958683`;
+parser-isolation run `33344500394`, payload-custody run `33344500364`, and
+cross-engine run `33344500412` also passed. Independent read-only source review
+found no remaining actionable P0/P1/P2 issue for the declared personal scope.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope. Request-time authenticated owner-browser composition is
+the next separate blocker. Same-user hostile-process resistance remains
+unproven, and enterprise/shared-service operation remains Out of scope.
 See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 

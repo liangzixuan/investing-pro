@@ -217,15 +217,15 @@ See
 [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md).
 
-After coarse readiness, the next distinct blocker is atomic,
-owner-authorized selected-fact release from the same immutable candidate
-snapshot bound to the admitted quality result. Enterprise and shared-service
-requirements remain Out of scope for the personal profile.
-
-Cycle 2z records the accepted design for that selected-fact boundary, but its
-implementation, exact source, public verification, independent review, and
-owner-approved private outcome remain Pending. It supplies no Pass and does not
-widen this quality-measurement decision. See
+Cycle 2z separately closes the atomic, owner-authorized selected-fact release
+from the same immutable candidate snapshot bound to the admitted quality
+result. It is promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence limited to
+the permitted coarse outcome, and it does not widen this quality-measurement
+decision. Request-time
+authenticated owner-browser composition is the next separate blocker.
+Enterprise and shared-service requirements remain Out of scope for the
+personal profile. See
 [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md).
 

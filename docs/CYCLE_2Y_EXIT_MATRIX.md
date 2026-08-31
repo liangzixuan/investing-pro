@@ -164,22 +164,23 @@ Enterprise and shared-service requirements remain Out of scope for
 No private aggregate, binding, owner-local path, or private operation detail is
 part of this evidence.
 
-## Next blocker
+## Subsequent boundary and next blocker
 
-After coarse readiness composition, the next separate blocker is an explicit,
-owner-authorized personal fact-display boundary. It must atomically release
-only the minimum selected normalized facts from the same immutable candidate
-snapshot bound to the admitted quality result, while keeping the reference,
-quality plan, aggregate, mappings, source paths, and persistence disabled.
+Cycle 2z separately closes the explicit, owner-authorized personal fact-display
+boundary. It atomically releases only the minimum selected normalized facts
+from the same immutable candidate snapshot bound to the admitted quality
+result, while keeping the reference, quality plan, aggregate, mappings, source
+paths, and persistence disabled. It is promoted only for exact frozen source
+revision `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence
+limited to the permitted coarse outcome, and it does not widen this Cycle 2y
+exit.
 
 An authenticated browser session and defenses against same-user hostile local
 processes remain later, separate boundaries. They are not implied by a
 loopback address, Host check, Origin check, or disabled data plane.
 
-Cycle 2z now records the accepted design for that selected-fact boundary, but
-its implementation, exact source, public verification, independent review, and
-owner-approved private outcome remain Pending. Cycle 2z does not widen this
-Cycle 2y exit. See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+Request-time authenticated owner-browser composition is the next separate
+blocker. See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
 ## Exit rule
@@ -195,3 +196,5 @@ coarse browser chip.
 Personal facts, personal dossier composition, same-snapshot personal-fact
 release, browser authentication, hostile-local-process resistance,
 shared-service controls, and production remain outside the exit.
+Cycle 2z separately closes only the exact selected-fact release boundary; it
+does not retroactively widen the Cycle 2y claim.

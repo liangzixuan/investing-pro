@@ -1,8 +1,8 @@
 # ADR 0052: bounded personal owner-authorized selected-fact release
 
-Status: Accepted design; **implementation, exact source revision, public
-verification, independent review, and owner-authorized private release are
-Pending. No personal selected-fact release Pass is claimed.**
+Status: **Accepted and promoted only for exact source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. Private evidence is limited to
+the permitted coarse outcome below.**
 
 ## Context
 
@@ -112,31 +112,45 @@ Cycle 2z does not establish:
 
 ## Evidence and promotion
 
-- Exact source revision: **Pending**.
-- Exact predecessor and transition topology: **Pending**.
+- Exact source revision:
+  `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`.
+- Exact predecessor and transition topology: merge-free direct-child chain
+  `62c01dafe305ddd43c75688e0225163b3abdf6df` ->
+  `e64924bc091bfc7a3e071e7db746910e082051c4` ->
+  `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. The implementation transition
+  contains 43 paths, 13 added and 30 modified, with 3,840 insertions and 46
+  deletions. The corrective transition contains 5 modified paths, with 1,310
+  insertions and 9 deletions.
 - Local contract, candidate-binding, API, browser, privacy, and boundary
-  verification: **Pending**.
-- Public CI runs and jobs: **Pending**.
-- Independent implementation, contract, adversarial, and privacy review:
-  **Pending**.
-- Coarse owner-approved private selected-fact release outcome: **Pending**.
+  verification: `corepack pnpm verify` passed formatting, lint, guardrails,
+  type checks, peer checks, 1,573 tests with 8 intentional skips, and all
+  production builds at the exact source revision.
+- Public CI: exact-source general run `33344500398` passed through Ubuntu job
+  `99345958471` and Windows job `99345958683`; parser-isolation run
+  `33344500394`, payload-custody run `33344500364`, and cross-engine run
+  `33344500412` also passed.
+- Independent implementation, contract, adversarial, and privacy source review
+  completed with no remaining actionable P0/P1/P2 finding for the declared
+  personal scope. This is not an external audit.
+- Coarse owner-approved private selected-fact release outcome: Pass for the
+  exact frozen personal scope.
 
-Pending public source evidence does not prove that a private release occurred.
-Pending private evidence cannot be replaced by synthetic tests. Promotion
-requires both exact-source public verification and the owner's coarse private
-Pass.
+Public source evidence does not prove that the private release occurred, and
+synthetic tests cannot replace the coarse private outcome. Promotion requires
+both exact-source public verification and the permitted coarse private
+outcome.
 
 Repository evidence must never contain released keys, values, units, periods,
 selection details, response content, private bindings, authorization material,
-commitments, locations, or operation detail. The only permitted private
-repository-visible statement after success is a coarse owner-approved Pass for
-the exact frozen personal scope.
+commitments, locations, or operation detail. The exact coarse sentence above is
+the only permitted private repository-visible outcome statement.
 
 ## Consequences and next blocker
 
-Cycle 2z can close only bounded, same-snapshot, owner-authorized selected-fact
-release from startup through the local API and optional browser view. It does
-not create a dossier or persistent data plane.
+Cycle 2z closes only bounded, same-snapshot, owner-authorized selected-fact
+release from startup through the local API and optional browser view for the
+exact frozen source and personal scope. It does not create a dossier or
+persistent data plane.
 
 The next separate blocker is request-time authenticated owner-browser
 composition: a short-lived, session-bound owner capability with CSRF, replay,

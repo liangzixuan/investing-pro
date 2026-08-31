@@ -6,39 +6,38 @@ quality result. The personal response remains local, nonpersistent, and
 separate from the synthetic dossier. The decision is recorded in
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md).
 
-Source status: **Pending — replace with the exact frozen source revision only
-after implementation is complete and verified.**
+Source status: **Pass only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`.**
 
-Public verification status: **Pending — record exact local and CI evidence
-only after the source revision is frozen.**
+Public verification status: **Pass at that exact source revision.**
 
-Private release status: **Pending — no personal selected-fact release Pass is
-claimed.**
+Private evidence status: **Limited to the permitted coarse outcome recorded
+below.**
 
-| Gate                        | Required result                                                                                                | Current status                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Default closure             | Synthetic and readiness-only startup cannot infer or activate fact release                                     | Pending exact-source evidence             |
-| Explicit startup            | Only the exact personal selected-fact mode can request release                                                 | Pending exact-source evidence             |
-| Pre-listen completion       | Private validation, derivation, and authorization consumption finish before listen                             | Pending exact-source evidence             |
-| Bounded snapshots           | Every private carrier is copied once into an owned, bounded, stable snapshot                                   | Pending exact-source evidence             |
-| Quality admission           | Only the exact evaluated and met personal quality result is accepted                                           | Pending exact-source evidence             |
-| Input-set binding           | The rederived input set matches the admitted quality result                                                    | Pending exact-source evidence             |
-| Candidate binding           | Production rederivation succeeds and matches the admitted candidate commitment                                 | Pending exact-source evidence             |
-| Plan closure                | The owner-reviewed plan selects only a bounded nonempty canonical subset of the fixed vocabulary               | Pending exact-source evidence             |
-| Response closure            | The proposed response is exact, immutable, and contains only the selected-fact DTO                             | Contract staged; runtime evidence Pending |
-| Owner authorization         | Fresh exact authorization binds source, quality result, snapshot, plan, and response                           | Pending private evidence                  |
-| One-shot consumption        | Authorization is consumed atomically; replay, race, replacement, and revocation fail closed                    | Pending exact-source evidence             |
-| Atomic failure              | Failure exposes no partial fact or alternate response and prevents explicit release startup                    | Pending exact-source evidence             |
-| Request closure             | GET only; no path, query, body, identifier, caller selection, or release assertion                             | Contract staged; runtime evidence Pending |
-| Local guard                 | Exact loopback, Host, and Origin checks apply with proxy trust disabled                                        | Pending exact-source evidence             |
-| Cache denial                | Every GET outcome is private and noncacheable and emits no private validator                                   | Contract staged; runtime evidence Pending |
-| Browser boundary            | The optional view renders only the authorized response and persists none of it                                 | Pending exact-source evidence             |
-| Synthetic separation        | Personal facts do not populate the synthetic dossier or its derived features                                   | Pending exact-source evidence             |
-| Confidentiality             | Public evidence, failures, and logs contain no private release material or operation detail                    | Pending exact-source and private evidence |
-| Private operation           | Only a coarse owner-approved Pass may become repository-visible after success                                  | Pending owner approval                    |
-| Browser authentication      | Request-time authenticated owner-browser composition                                                           | Later boundary                            |
-| Same-user hostile processes | Resistance to hostile processes under the same operating-system user                                           | Unproven                                  |
-| Enterprise/shared service   | Tenancy, organizational approval, commercial redistribution, shared-service controls, and production operation | Out of scope                              |
+| Gate                        | Required result                                                                                                | Current status                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Default closure             | Synthetic and readiness-only startup cannot infer or activate fact release                                     | Pass at exact source revision      |
+| Explicit startup            | Only the exact personal selected-fact mode can request release                                                 | Pass at exact source revision      |
+| Pre-listen completion       | Private validation, derivation, and authorization consumption finish before listen                             | Pass at exact source revision      |
+| Bounded snapshots           | Every private carrier is copied once into an owned, bounded, stable snapshot                                   | Pass at exact source revision      |
+| Quality admission           | Only the exact evaluated and met personal quality result is accepted                                           | Pass at exact source revision      |
+| Input-set binding           | The rederived input set matches the admitted quality result                                                    | Pass at exact source revision      |
+| Candidate binding           | Production rederivation succeeds and matches the admitted candidate commitment                                 | Pass at exact source revision      |
+| Plan closure                | The owner-reviewed plan selects only a bounded nonempty canonical subset of the fixed vocabulary               | Pass at exact source revision      |
+| Response closure            | The proposed response is exact, immutable, and contains only the selected-fact DTO                             | Pass at exact source revision      |
+| Owner authorization         | Fresh exact authorization binds source, quality result, snapshot, plan, and response                           | Pass at exact source revision      |
+| One-shot consumption        | Authorization is consumed atomically; replay, race, replacement, and revocation fail closed                    | Pass at exact source revision      |
+| Atomic failure              | Failure exposes no partial fact or alternate response and prevents explicit release startup                    | Pass at exact source revision      |
+| Request closure             | GET only; no path, query, body, identifier, caller selection, or release assertion                             | Pass at exact source revision      |
+| Local guard                 | Exact loopback, Host, and Origin checks apply with proxy trust disabled                                        | Pass at exact source revision      |
+| Cache denial                | Every GET outcome is private and noncacheable and emits no private validator                                   | Pass at exact source revision      |
+| Browser boundary            | The optional view renders only the authorized response and persists none of it                                 | Pass at exact source revision      |
+| Synthetic separation        | Personal facts do not populate the synthetic dossier or its derived features                                   | Pass at exact source revision      |
+| Confidentiality             | Public evidence, failures, and logs contain no private release material or operation detail                    | Pass at exact source revision      |
+| Private operation           | Only a coarse owner-approved Pass may become repository-visible after success                                  | See permitted coarse outcome below |
+| Browser authentication      | Request-time authenticated owner-browser composition                                                           | Later boundary                     |
+| Same-user hostile processes | Resistance to hostile processes under the same operating-system user                                           | Unproven                           |
+| Enterprise/shared service   | Tenancy, organizational approval, commercial redistribution, shared-service controls, and production operation | Out of scope                       |
 
 ## Startup and same-snapshot boundary
 
@@ -93,19 +92,32 @@ Enterprise and shared-service requirements remain Out of scope for
 
 ## Evidence and promotion
 
-- Exact source revision: **Pending**.
-- Exact predecessor and transition topology: **Pending**.
-- Local verification: **Pending**.
-- Focused contract, candidate-binding, API, browser, privacy, and adversarial
-  verification: **Pending**.
-- Public CI runs and jobs: **Pending**.
-- Independent review: **Pending**.
-- Coarse owner-approved private release outcome: **Pending**.
+- Exact source revision:
+  `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`.
+- Exact predecessor and transition topology: direct-child chain
+  `62c01dafe305ddd43c75688e0225163b3abdf6df` ->
+  `e64924bc091bfc7a3e071e7db746910e082051c4` ->
+  `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with no merge commit. The
+  implementation transition contains 43 paths, comprising 13 additions and 30
+  modifications, with 3,840 insertions and 46 deletions. The corrective
+  transition contains 5 modified paths, with 1,310 insertions and 9 deletions.
+- Local verification: `corepack pnpm verify` passed formatting, lint,
+  guardrails, type checks, peer checks, 1,573 tests with 8 intentional skips,
+  and all production builds at the exact source revision.
+- Public CI: general exact-source run `33344500398` passed through Ubuntu job
+  `99345958471` and Windows job `99345958683`. Parser-isolation run
+  `33344500394`, payload-custody run `33344500364`, and cross-engine run
+  `33344500412` also passed at the exact source revision.
+- Independent review: parallel read-only implementation, contract,
+  adversarial, and privacy review completed with no remaining actionable
+  P0/P1/P2 finding for the declared personal scope. This is source review, not
+  an external audit.
+- Coarse owner-approved private selected-fact release outcome: Pass for the
+  exact frozen personal scope.
 
-These placeholders are not evidence and do not authorize promotion. Public
-source gates prove only the bounded capability. Synthetic tests cannot produce
-the private Pass. No promotion text may contain released facts or any private
-release detail.
+Public source gates prove only the bounded capability. Synthetic tests cannot
+produce the permitted coarse private outcome. No promotion text contains
+released facts or any private release detail.
 
 ## Next blocker
 
@@ -121,8 +133,8 @@ shared-service controls remain Out of scope.
 
 ## Exit rule
 
-Cycle 2z cannot be promoted while either exact-source public evidence or the
-coarse owner-approved private release outcome remains Pending. A future
-promotion is limited to the exact frozen source and exact frozen personal scope
-that passed both boundaries. It cannot widen the response, selection,
+Cycle 2z is promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. Promotion requires the public
+source evidence above and the permitted coarse private outcome, without
+asserting any private sub-result. It does not widen the response, selection,
 application features, authentication claim, hostile-process claim, or profile.

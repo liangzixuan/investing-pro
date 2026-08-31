@@ -978,10 +978,10 @@ label correctness, representativeness or generalization, SEC authenticity,
 accounting truth, broad parser coverage, runtime independence, amendment
 discovery, global currentness, database/API/web composition, shared-service
 safety, or production readiness. Any changed source, corpus, reference, plan,
-or thresholds requires fresh review and measurement. The next separate product
-boundary is explicit local running-application composition; Cycle 2x does not
-authorize that wiring. Enterprise/shared-service requirements remain Out of
-scope. See
+or thresholds requires fresh review and measurement. Cycle 2y and Cycle 2z
+separately close bounded readiness and selected-fact composition without
+widening Cycle 2x. Enterprise/shared-service requirements remain Out of scope.
+See
 [ADR 0050](./docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./docs/CYCLE_2X_EXIT_MATRIX.md).
 
@@ -1001,8 +1001,9 @@ listener starts.
 Cycle 2y does not compose personal facts or a personal dossier. Personal values, labels,
 reference content, quality-plan content, metrics, hashes, paths, approvals,
 aggregate material, and execution detail remain outside responses, browser
-state, logs, and storage. Atomic same-snapshot fact release, an authenticated
-browser session, and resistance to hostile same-user processes remain later
+state, logs, and storage. Cycle 2z separately closes the exact same-snapshot
+selected-fact release boundary without widening Cycle 2y. An authenticated
+browser session and resistance to hostile same-user processes remain later
 boundaries. Enterprise/shared-service requirements remain Out of scope.
 
 Exact-source CI run `33334380969` passed on Ubuntu job `99318536228` and
@@ -1011,13 +1012,31 @@ Windows job `99318536323`; the full local release gate passed 1,526 tests with
 [ADR 0051](./docs/adr/0051-bounded-personal-quality-readiness-composition.md)
 and the [Cycle 2y exit matrix](./docs/CYCLE_2Y_EXIT_MATRIX.md).
 
-Cycle 2z is an **accepted design with implementation, exact source revision,
-public verification, independent review, and owner-authorized private release
-Pending**. It proposes one explicit personal selected-fact startup boundary
-that rederives the production candidate from the same frozen inputs, matches it
-to the admitted quality result, and consumes fresh owner authorization before
+Cycle 2z is **promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`**. Its private evidence is limited
+to the permitted coarse outcome below. It closes one explicit personal
+selected-fact startup boundary that
+rederives the production candidate from the same frozen inputs, matches it to
+the admitted quality result, and consumes fresh owner authorization before
 listen. Only the exact startup-fixed selected-facts response may reach the
 guarded local GET route and optional nonpersistent browser view.
+
+The source is the merge-free chain
+`62c01dafe305ddd43c75688e0225163b3abdf6df` ->
+`e64924bc091bfc7a3e071e7db746910e082051c4` ->
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. Its implementation transition
+contains 43 paths, 13 added and 30 modified, with 3,840 insertions and 46
+deletions; its corrective transition contains 5 modified paths, with 1,310
+insertions and 9 deletions. Local `corepack pnpm verify` passed 1,573 tests
+with 8 intentional skips and every format, lint, guardrail, type, peer, and
+production-build gate. Exact-source general CI run `33344500398` passed through
+Ubuntu job `99345958471` and Windows job `99345958683`; parser-isolation run
+`33344500394`, payload-custody run `33344500364`, and cross-engine run
+`33344500412` also passed. Independent read-only source review found no
+remaining actionable P0/P1/P2 issue for the declared personal scope.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope.
 
 Cycle 2z does not authorize dynamic selection, a personal dossier, history,
 evidence display, valuation, thesis, alerts, export, persistence, or background

@@ -167,7 +167,7 @@ For `personal_single_user_local`, enterprise approvals, tenant and multi-user
 controls, B15/V15, and shared-service or production operation remain Out of
 scope—not Pass and not current blockers. They reopen if the profile widens.
 
-## Next blocker
+## Subsequent boundary and next blocker
 
 The bounded personal quality gate is closed for the exact frozen scope. Cycle
 2y closes disabled-by-default coarse readiness composition at exact source
@@ -179,14 +179,13 @@ Exact-source CI run `33334380969` passed on Ubuntu and Windows. See
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
-After that coarse boundary, the next distinct blocker is atomic,
-owner-authorized release of the minimum selected normalized facts from the
-same immutable candidate snapshot bound to the admitted quality result.
-
-Cycle 2z records an accepted design for that boundary, but implementation,
-exact source, public verification, independent review, and the owner-approved
-private outcome remain Pending. It supplies no Pass and does not widen Cycle
-2x or Cycle 2y. See
+Cycle 2z separately closes the atomic, owner-authorized release of the minimum
+selected normalized facts from the same immutable candidate snapshot bound to
+the admitted quality result. It is promoted only for exact frozen source
+revision `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence
+limited to the permitted coarse outcome; it does not widen Cycle 2x or Cycle
+2y. Request-time authenticated
+owner-browser composition is the next separate blocker. See
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 

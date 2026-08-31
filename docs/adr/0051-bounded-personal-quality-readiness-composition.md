@@ -157,18 +157,14 @@ Cycle 2y closes only coarse quality-readiness composition from startup through
 the local API to an optional browser chip. It leaves the personal data plane
 disabled and preserves the existing synthetic dossier and storage boundaries.
 
-The next separate blocker is an owner-authorized, all-or-nothing selected-fact
+Cycle 2z separately closes the owner-authorized, all-or-nothing selected-fact
 release from the same immutable candidate snapshot bound to the admitted
-quality result. That future boundary requires its own minimal DTO, lifecycle,
-browser disclosure, nonpersistence, and failure controls. Browser
-authentication and same-user hostile-process resistance remain later still.
-
-Cycle 2z records the accepted design for that owner-authorized selected-fact
-release, but its implementation, exact source, public verification,
-independent review, and private owner outcome remain Pending. It does not widen
-the Cycle 2y decision. Request-time authenticated owner-browser composition is
-the next separate blocker after Cycle 2z; same-user hostile-process resistance
-remains later.
+quality result. It is promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence limited to
+the permitted coarse outcome, and it does not widen the Cycle 2y decision.
+Request-time authenticated
+owner-browser composition is the next separate blocker; same-user
+hostile-process resistance remains later and unproven.
 
 ## References
 

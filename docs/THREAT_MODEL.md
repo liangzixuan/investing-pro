@@ -1,25 +1,27 @@
-# Sprint 0 through provisional Cycle 2z threat model
+# Sprint 0 through promoted Cycle 2z threat model
 
 ## Current trust boundaries
 
 The browser accepts dossier JSON only from the local Fastify API and keeps its
-thesis and alert profile local. The API reads only source-controlled synthetic
-fixtures and now has exactly two additional update-only routes over seeded
-synthetic in-memory research state. The write composition accepts only an exact
-loopback peer and a fixed public fixture persona selector; the selector is not
-a credential. There is no authentication, customer tenant data, live database,
-file upload, external fetch, email, broker, payment, model, or filing-parser
-boundary in the running profile.
+thesis and alert profile local. Synthetic startup remains the default. In that
+default mode, the API reads only source-controlled synthetic fixtures and has
+exactly two additional update-only routes over seeded synthetic in-memory
+research state. The write composition accepts only an exact loopback peer and
+a fixed public fixture persona selector; the selector is not a credential.
+There is no authentication, customer tenant data, live database, file upload,
+external fetch, email, broker, payment, or model boundary in the default
+running profile.
 
 The active filing-corpus profile is separately
 `personal_single_user_local`: one owner, local-only offline research, no
 commercial use or payload redistribution, and no production/shared service.
-Cycle 2q/2r/2s/2u/2v/2w/2x remain disconnected from the running API and web
-application. Cycle 2y closes only a coarse readiness composition with its
-personal data plane disabled.
-Cycle 2z is only an accepted, Pending design for a bounded owner-authorized
-selected-fact release; it currently adds no running trust boundary and claims
-no release Pass.
+Cycle 2q/2r/2s/2u/2v/2w/2x remain disconnected from the default running API
+and web application. Cycle 2y closes only a separate, explicit coarse readiness
+composition with its personal data plane disabled. Cycle 2z separately closes
+an explicit, bounded owner-authorized selected-fact release for exact source
+revision `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66` and the exact frozen
+personal scope. It permits only the startup-fixed response to enter API and
+optional browser memory and adds no persistence boundary.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -1904,10 +1906,10 @@ no private Cycle 2x quality artifact.
 
 Cycle 2x closes the currently declared personal filing-ingestion exit gate for
 the one owner-selected corpus. Any changed source, corpus, reference, plan, or
-threshold policy requires fresh review and measurement. Local running-
-application composition is the next separately scoped product boundary.
-Enterprise/shared-service requirements remain Out of scope. Exact gates and
-nonclaims are in
+threshold policy requires fresh review and measurement. Cycle 2y and Cycle 2z
+separately close bounded readiness and selected-fact composition without
+widening Cycle 2x. Enterprise/shared-service requirements remain Out of scope.
+Exact gates and nonclaims are in
 [ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
@@ -1949,26 +1951,46 @@ Residuals remain substantial and deliberate. Host and Origin checks are not
 owner authentication. Same-user processes, browser extensions, developer
 tools, screenshots, and process-memory inspection remain outside the claim.
 There is no personal fact, value, label, metric, history, evidence, dossier,
-database, thesis, alert, export, queue, fetcher, or background composition. The
-route does not prove atomic release from the same candidate snapshot whose
-quality result was admitted.
+database, thesis, alert, export, queue, fetcher, or background composition in
+Cycle 2y's readiness route. Cycle 2z separately closes only the exact atomic
+selected-fact release from the same candidate snapshot whose quality result was
+admitted.
 
 Local `corepack pnpm verify` passed 1,526 tests with 8 intentional skips and all
 production builds. Exact-source public CI run `33334380969` passed through
 Ubuntu job `99318536228` and Windows job `99318536323`.
 
-Cycle 2y closes only coarse readiness API-to-browser composition. The next
-separate blocker is owner-authorized, all-or-nothing selected-fact release from
-the same immutable candidate snapshot. Authenticated browser sessions and
-hostile same-user process resistance remain later. Enterprise/shared-service
-requirements remain Out of scope. Exact design gates and nonclaims are in
+Cycle 2y closes only coarse readiness API-to-browser composition. Cycle 2z
+separately closes the exact owner-authorized, all-or-nothing selected-fact
+release from the same immutable candidate snapshot without widening Cycle 2y.
+Authenticated browser sessions and hostile same-user process resistance remain
+later. Enterprise/shared-service requirements remain Out of scope. Exact
+design gates and nonclaims are in
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
-Cycle 2z is an accepted design with implementation, exact source, public
-verification, independent review, and owner-authorized private release
-**Pending**. It proposes the first boundary in which selected personal values
-may enter API and browser memory. No release Pass is currently claimed.
+Cycle 2z is **promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`**. Its private evidence is limited
+to the permitted coarse outcome below. It closes the first boundary in which
+selected personal values may enter API and optional browser memory.
+
+The exact merge-free source chain is
+`62c01dafe305ddd43c75688e0225163b3abdf6df` ->
+`e64924bc091bfc7a3e071e7db746910e082051c4` ->
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. Its implementation transition
+contains 43 paths, 13 added and 30 modified, with 3,840 insertions and 46
+deletions; its corrective transition contains 5 modified paths, with 1,310
+insertions and 9 deletions. Local `corepack pnpm verify` passed 1,573 tests
+with 8 intentional skips and all format, lint, guardrail, type, peer, and
+production-build gates. Exact-source general CI run `33344500398` passed
+through Ubuntu job `99345958471` and Windows job `99345958683`;
+parser-isolation run `33344500394`, payload-custody run `33344500364`, and
+cross-engine run `33344500412` also passed. Independent read-only source review
+found no remaining actionable P0/P1/P2 issue for the declared personal scope.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope. Public evidence and this threat model contain no private
+release material or operation detail.
 
 Assets at risk are the confidentiality and integrity of the selected response,
 the admitted quality and same-snapshot bindings, the owner-reviewed selection,
@@ -1983,7 +2005,7 @@ replayed, revoked, replaced, or raced authorization; partial release; request-
 triggered rederivation or reselection; authority-header confusion; cache or log
 leakage; and accidental composition into the synthetic product model.
 
-Required controls are exact startup-mode and configuration closure; bounded
+Controls are exact startup-mode and configuration closure; bounded
 owned stable input snapshots; production-path rederivation; exact input-set and
 candidate commitment checks; closed canonical plan and response validation;
 owner review of the proposed response; fresh single-use authorization consumed
@@ -2027,9 +2049,8 @@ and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
    Cycle 2y then closes only explicit pre-listen coarse readiness composition
    with the personal data plane disabled; it exposes no personal facts or
    personal dossier.
-   Cycle 2z is the provisional owner-authorized same-snapshot selected-fact
-   release boundary; its implementation and public and private evidence remain
-   Pending, so it currently supplies no release Pass.
+   Cycle 2z then closes the owner-authorized same-snapshot selected-fact
+   release boundary only for its exact frozen source and personal scope.
    Cycle 2c's generated synthetic lifecycle, Cycle 2d's closed synthetic
    normalization/lineage contract, Cycle 2e's same-process declared-role
    comparison, Cycle 2f's declared-reference metric accounting, and Cycle 2g's
@@ -2050,8 +2071,9 @@ and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
    exit gate for one owner-selected corpus. It does not prove shared selection/
    mapping correctness, general parser coverage, or generalization beyond the
    exact frozen scope. Cycle 2y closes only coarse local readiness composition.
-   Atomic same-snapshot selected-fact release is the next separately scoped
-   boundary.
+   Cycle 2z separately closes only the exact atomic same-snapshot selected-fact
+   release. Request-time authenticated owner-browser composition is the next
+   separately scoped boundary.
    Organizational rights/steward approval and authority keys are separate
    enterprise-profile gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

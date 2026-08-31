@@ -1809,9 +1809,9 @@ correctness, representativeness or generalization, source authenticity,
 accounting truth, broad parser coverage, runtime independence, amendment
 discovery, global currentness, running-application composition, shared-service
 safety, or production readiness. Any changed source, corpus, reference, plan,
-or thresholds requires fresh review and measurement. Local running-application
-composition is the next separately scoped product boundary. Enterprise/shared-
-service gates remain Out of scope. See
+or thresholds requires fresh review and measurement. Cycle 2y and Cycle 2z
+separately close bounded readiness and selected-fact composition without
+widening Cycle 2x. Enterprise/shared-service gates remain Out of scope. See
 [ADR 0050](./adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md)
 and the [Cycle 2x exit matrix](./CYCLE_2X_EXIT_MATRIX.md).
 
@@ -1840,11 +1840,10 @@ enters the response, browser, log, or storage.
 
 This closes only coarse startup-to-API-to-browser readiness composition.
 Personal facts and personal dossier fields remain disconnected and the
-personal data plane remains disabled. The next separately scoped boundary is atomic, owner-authorized
-release of the minimum selected normalized facts from the same immutable
-candidate snapshot bound to the admitted quality result. Authenticated browser
-sessions and protection from hostile same-user processes remain later.
-Enterprise/shared-service gates remain Out of scope. See
+personal data plane remains disabled in Cycle 2y. Cycle 2z separately closes
+the exact owner-authorized release boundary without widening Cycle 2y.
+Authenticated browser sessions and protection from hostile same-user processes
+remain later. Enterprise/shared-service gates remain Out of scope. See
 [ADR 0051](./adr/0051-bounded-personal-quality-readiness-composition.md) and the
 [Cycle 2y exit matrix](./CYCLE_2Y_EXIT_MATRIX.md).
 
@@ -1860,19 +1859,19 @@ material.
 
 ## Cycle 2z — bounded personal owner-authorized selected-fact release
 
-Status: **Accepted design; implementation, exact source revision, public
-verification, independent review, and owner-authorized private release are
-Pending. No personal selected-fact release Pass is claimed.**
+Status: **Promoted only for exact frozen source revision
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. Private evidence is limited to
+the permitted coarse outcome below.**
 
-Cycle 2z proposes one exact explicit personal release mode. Before listen, it
-must snapshot the bounded inputs, rederive the candidate through the production
-normalization and raw-agreement path, and match the exact input set and
+Cycle 2z closes one exact explicit personal release mode. Before listen, it
+snapshots the bounded inputs, rederives the candidate through the production
+normalization and raw-agreement path, and matches the exact input set and
 candidate commitments already admitted by the quality result. A separate
 normalized record or caller assertion cannot satisfy the same-snapshot gate.
 
 The owner reviews the exact canonical plan and proposed closed response before
 supplying fresh single-use authorization. All validation and response
-derivation must finish before atomic authorization consumption. The running
+derivation finishes before atomic authorization consumption. The running
 application receives only an opaque capability for one immutable selected-facts
 response. Failure is pre-listen, atomic, and value-free.
 
@@ -1881,10 +1880,28 @@ Host, Origin, and noncacheable response boundaries. An optional browser view is
 nonpersistent and remains disconnected from the synthetic dossier, evidence,
 valuation, thesis, alerts, history, export, and storage.
 
-Exact source, local verification, public CI, independent review, and the coarse
-owner-approved private release outcome remain **Pending**. Public evidence must
-never contain the selected subset, response content, private bindings,
-authorization material, commitments, locations, or operation detail. See
+The exact merge-free source chain is
+`62c01dafe305ddd43c75688e0225163b3abdf6df` ->
+`e64924bc091bfc7a3e071e7db746910e082051c4` ->
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. The implementation transition
+contains 43 paths, comprising 13 additions and 30 modifications, with 3,840
+insertions and 46 deletions. The corrective transition contains 5 modified
+paths, with 1,310 insertions and 9 deletions.
+
+At the exact source revision, `corepack pnpm verify` passed formatting, lint,
+guardrails, type checks, peer checks, 1,573 tests with 8 intentional skips, and
+all production builds. General CI run `33344500398` passed through Ubuntu job
+`99345958471` and Windows job `99345958683`; parser-isolation run
+`33344500394`, payload-custody run `33344500364`, and cross-engine run
+`33344500412` also passed. Independent read-only implementation, contract,
+adversarial, and privacy source review found no remaining actionable P0/P1/P2
+issue for the declared personal scope. This is source review, not an external
+audit.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope. Public evidence contains no selected subset, response
+content, private binding, authorization material, commitment, location, or
+operation detail. See
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
@@ -1906,7 +1923,7 @@ Target: continue incrementally behind the declared personal profile.
 6. Cycle 2w compares exact values at ten primary-selected dimensionless raw coordinates per document against a repository-pinned Python extractor that receives only raw bytes and target QNames, not primary parser results or normalized material.
 7. Cycle 2x freezes an owner-reviewed reference and quality plan before candidate execution, commits internally derived candidate observations before reference reveal, and evaluates document success, fact precision/recall, exact unit/date agreement, silent failures, and quarantine rate against fixed zero-tolerance thresholds.
 8. Cycle 2y admits only the exact quality-ready aggregate once before listen and exposes a fixed coarse readiness DTO while the personal data plane remains disabled.
-9. Cycle 2z proposes an atomic owner-authorized release of one startup-fixed selected-fact response rederived from the exact candidate snapshot admitted by the quality result; implementation and both public and private evidence remain Pending.
+9. Cycle 2z closes an atomic owner-authorized release of one startup-fixed selected-fact response rederived from the exact candidate snapshot admitted by the quality result, only for the exact frozen source and personal scope.
 
 Personal-profile exit gate: **Pass for the one owner-selected corpus.** Every
 selected local payload matches its manifest,
@@ -1941,12 +1958,12 @@ exact frozen scope remain unproven; they are nonclaims rather than blockers for
 this closed personal-corpus gate.
 
 Cycle 2y closes the first local running-application composition boundary, but
-only for coarse readiness. Cycle 2z is the provisional next boundary for atomic
-same-snapshot selected-fact release under explicit owner authorization and a
-nonpersistent response. It claims no Pass while its source and private evidence
-remain Pending. Request-time authenticated owner-browser composition is the
-next blocker after Cycle 2z; broader personal dossier, persistence, queueing,
-fetching, alerts, and background ingestion remain later.
+only for coarse readiness. Cycle 2z closes the separate atomic same-snapshot
+selected-fact release boundary under explicit owner authorization and a
+nonpersistent response for the exact frozen source and personal scope.
+Request-time authenticated owner-browser composition is the next blocker;
+broader personal dossier, persistence, queueing, fetching, alerts, and
+background ingestion remain later.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user
