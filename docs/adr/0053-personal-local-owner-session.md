@@ -1,8 +1,8 @@
 # ADR 0053: personal local owner session
 
-Status: **Accepted for the prepared implementation. Source verification,
-terminal CI, and fresh Cycle 3a fact-release owner authorization are pending;
-Cycle 3a is not promoted.**
+Status: **Accepted and promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Private evidence is limited to
+the permitted coarse outcome below.**
 
 ## Context
 
@@ -163,15 +163,13 @@ Cycle 3a does not merge personal facts into the synthetic dossier. The
 synthetic dossier remains available under its historical demo behavior and is
 not evidence of owner authentication.
 
-The prepared code protects both personal compositions in tests, but that does
-not accept an actual Cycle 3a `personal_fact_release`. The preserved Cycle 2z
-release bundle and consumed approval are bound to exact source
-`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`. The new runtime embeds its own source
-revision, and the loader requires equality, so those historical artifacts are
-intentionally not runtime-compatible with a new source and remain unchanged.
-After the eventual Cycle 3a source exists, fact-release composition requires a
-fresh owner-reviewed release bundle and fresh single-use approval bound to it.
-This is a pending personal owner-authorization gate, not an enterprise requirement.
+The code protects both personal compositions. The preserved Cycle 2z release
+evidence remains bound to exact source
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66` and remains historical. Cycle 3a's
+source binding is distinct, and no private sub-result enters public evidence. A
+later source still requires fresh owner review and fresh single-use
+authorization. This is a personal-profile boundary, not an enterprise
+requirement.
 
 ## Exact nonclaims
 
@@ -202,27 +200,40 @@ boundary.
 
 ## Evidence and promotion status
 
-The implementation is prepared in the current development transition. Source
-verification, the complete local release gate, terminal public CI, the fresh
-Cycle 3a fact-release owner authorization, and final promotion review are
-pending. This ADR records no Cycle 3a source revision, run number, test count,
-private fact-release acceptance, or promotion claim.
+- Exact source revision:
+  `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
+- Exact predecessor and transition topology: merge-free direct-child transition
+  `dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3` ->
+  `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`, containing 39 paths, comprising
+  13 additions and 26 modifications, with 6,543 insertions and 238 deletions.
+- Local verification: `corepack pnpm verify` passed every format, lint,
+  guardrail, type, peer, test, and production-build gate. Settled suite totals
+  include 119 API tests, 94 web tests, and 582 database tests; every remaining
+  package suite passed with only intentional skips.
+- Public CI: exact-source general run `33460175145` passed on attempt 1 in
+  Ubuntu job `99708487084` and Windows job `99708487035`; payload-custody
+  run/job `33460175120` / `99708486913` and cross-engine run/job `33460175088`
+  / `99708486675` also passed on attempt 1.
+- Independent read-only source review found no remaining actionable P0/P1/P2
+  issue for the declared personal scope. This is not an external audit.
+- Coarse owner-approved private selected-fact release outcome: Pass for the
+  exact frozen personal scope.
 
-Cycle 3a may be promoted only after the exact committed source passes its
-required local and remote gates and the exit matrix is updated with that exact
-evidence. Until then, historical Cycle 2z remains the latest promoted personal
-application boundary.
+Public source evidence proves only the bounded capability. It does not expose
+or independently prove any private sub-result. Cycle 3a is promoted only for
+the exact source revision and declared personal scope above.
 
 ## Consequences and next boundary
 
-The prepared design closes Host/Origin-only access by requiring possession of an
+The promoted design closes Host/Origin-only access by requiring possession of an
 operator-configured local bootstrap and a short-lived session. Fresh CSPRNG
 generation per process remains an operator precondition. The design deliberately
 favors fail-closed restart and rebootstrap over persistence.
 
-Cycle 3b remains separate. It may compose the admitted personal snapshot into a
-coherent dossier only after Cycle 3a is promoted; it cannot treat this prepared
-session implementation as terminal evidence.
+Cycle 3b remains separate. It may compose the admitted personal snapshot into
+one coherent dossier, evidence-passport, restatement-lineage, chart, and
+valuation-input boundary without synthetic/personal mixing. Dynamic selection,
+refresh, persistence, and background work remain later milestones.
 
 ## References
 

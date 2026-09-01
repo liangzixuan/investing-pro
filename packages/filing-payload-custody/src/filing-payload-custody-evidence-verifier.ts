@@ -102,6 +102,8 @@ const CYCLE_2Z_ROADMAP_REBASELINE_REVISION =
   "4c660188831b91111a45d588245cb8735b8858ab" as const;
 const CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION =
   "dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3" as const;
+const CYCLE_3A_SOURCE_REVISION =
+  "ee023b9cf7cf43fd63baa9b531ae71cc34f349e1" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2092,6 +2094,46 @@ const CYCLE_3A_SOURCE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_3A_PROMOTION_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    { path: "README.md", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+      status: "M",
+    },
+    { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2283,6 +2325,7 @@ const CYCLE_3A_TRANSITION_PATHS = new Set(
 const CYCLE_3A_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_2Z_PROTECTED_SURFACE_PATHS,
   ...CYCLE_3A_TRANSITION_PATHS,
+  ...CYCLE_3A_PROMOTION_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -3575,7 +3618,7 @@ export function isCycle2zUbuntuCiStabilizationTopologyAllowed(
   );
 }
 
-/** @internal Exact Cycle 3a source directly after pinned Cycle 2z closure. */
+/** @internal Exact pinned Cycle 3a source directly after Cycle 2z closure. */
 export function isCycle3aSourceTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -3592,6 +3635,42 @@ export function isCycle3aSourceTopologyAllowed(
   return (
     successorCount === "8" &&
     firstParentCount === "8" &&
+    revision === CYCLE_3A_SOURCE_REVISION &&
+    parentLine ===
+      `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}` &&
+    isCycle2zUbuntuCiStabilizationTopologyAllowed(
+      "7",
+      "7",
+      CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact merge-free Cycle 3a promotion child after pinned source. */
+export function isCycle3aPromotionTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "9" &&
+    firstParentCount === "9" &&
     COMMIT.test(revision) &&
     revision !== CYCLE_2Z_BASELINE_REVISION &&
     revision !== CYCLE_2Z_SOURCE_REVISION &&
@@ -3601,11 +3680,13 @@ export function isCycle3aSourceTopologyAllowed(
     revision !== CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION &&
     revision !== CYCLE_2Z_ROADMAP_REBASELINE_REVISION &&
     revision !== CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION &&
-    parentLine === `${revision} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}` &&
-    isCycle2zUbuntuCiStabilizationTopologyAllowed(
-      "7",
-      "7",
-      CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
+    revision !== CYCLE_3A_SOURCE_REVISION &&
+    parentLine === `${revision} ${CYCLE_3A_SOURCE_REVISION}` &&
+    isCycle3aSourceTopologyAllowed(
+      "8",
+      "8",
+      CYCLE_3A_SOURCE_REVISION,
+      cycle3aSourceParentLine,
       ubuntuCiStabilizationParentLine,
       roadmapRebaselineParentLine,
       commitBoundaryCorrectiveParentLine,
@@ -4602,6 +4683,16 @@ export function isCycle3aSourceCommitDiffSetAllowed(
   }[],
 ): boolean {
   return exactCycle2pDiffSet(entries, CYCLE_3A_SOURCE_TRANSITION);
+}
+
+/** @internal Exact Cycle 3a public promotion-and-routing transition. */
+export function isCycle3aPromotionCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_3A_PROMOTION_TRANSITION);
 }
 
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
@@ -5819,6 +5910,7 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
     CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
     CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
+    CYCLE_3A_SOURCE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -5927,6 +6019,13 @@ async function verifyCycle2zTransition(
       128,
     ),
   ).join(" ");
+  const cycle3aSourceParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_3A_SOURCE_REVISION],
+      128,
+    ),
+  ).join(" ");
   const directSource = isCycle2zDirectChildAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -5987,13 +6086,28 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
+  const cycle3aPromotion = isCycle3aPromotionTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    cycle3aSourceParentLine,
+    ubuntuCiStabilizationParentLine,
+    roadmapRebaselineParentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
   if (
     !directSource &&
     !correctiveChild &&
     !maintenanceChild &&
     !roadmapRebaselineChild &&
     !ubuntuCiStabilizationChild &&
-    !cycle3aSource
+    !cycle3aSource &&
+    !cycle3aPromotion
   )
     invalid();
 
@@ -6008,7 +6122,8 @@ async function verifyCycle2zTransition(
     maintenanceChild ||
     roadmapRebaselineChild ||
     ubuntuCiStabilizationChild ||
-    cycle3aSource
+    cycle3aSource ||
+    cycle3aPromotion
   ) {
     const correctiveEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6021,7 +6136,8 @@ async function verifyCycle2zTransition(
     maintenanceChild ||
     roadmapRebaselineChild ||
     ubuntuCiStabilizationChild ||
-    cycle3aSource
+    cycle3aSource ||
+    cycle3aPromotion
   ) {
     const promotionEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6054,7 +6170,12 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (roadmapRebaselineChild || ubuntuCiStabilizationChild || cycle3aSource) {
+  if (
+    roadmapRebaselineChild ||
+    ubuntuCiStabilizationChild ||
+    cycle3aSource ||
+    cycle3aPromotion
+  ) {
     const roadmapRebaselineEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
@@ -6065,7 +6186,7 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (ubuntuCiStabilizationChild || cycle3aSource) {
+  if (ubuntuCiStabilizationChild || cycle3aSource || cycle3aPromotion) {
     const ubuntuCiStabilizationEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
@@ -6080,13 +6201,22 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (cycle3aSource) {
+  if (cycle3aSource || cycle3aPromotion) {
     const cycle3aSourceEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
-      revision,
+      CYCLE_3A_SOURCE_REVISION,
     );
     if (!isCycle3aSourceCommitDiffSetAllowed(cycle3aSourceEntries)) invalid();
+  }
+  if (cycle3aPromotion) {
+    const cycle3aPromotionEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3A_SOURCE_REVISION,
+      revision,
+    );
+    if (!isCycle3aPromotionCommitDiffSetAllowed(cycle3aPromotionEntries))
+      invalid();
   }
 
   await verifyCycle2xTransition(

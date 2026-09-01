@@ -175,12 +175,11 @@ revision `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence
 limited to the permitted coarse outcome, and it does not widen this Cycle 2y
 exit.
 
-An authenticated browser session and defenses against same-user hostile local
-processes remain later, separate boundaries. They are not implied by a
-loopback address, Host check, Origin check, or disabled data plane.
-
-Request-time authenticated owner-browser composition is the next separate
-blocker. See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
+Cycle 3a separately closes request-time authenticated owner-browser composition
+only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
+Same-user hostile local processes remain unproven. Cycle 3b authenticated
+personal dossier composition is the next separate blocker. See
+[ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
 ## Exit rule

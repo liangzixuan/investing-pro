@@ -152,13 +152,13 @@ release from startup through the local API and optional browser view for the
 exact frozen source and personal scope. It does not create a dossier or
 persistent data plane.
 
-The next separate blocker is request-time authenticated owner-browser
-composition: a short-lived, session-bound owner capability with CSRF, replay,
-and lifetime controls so private values are not available merely to a local
-client that can reproduce Host and Origin. That boundary still does not prove
-resistance to hostile same-user processes. Broader selection, history, dossier,
-persistence, export, valuation, thesis, and alerts remain later. Enterprise and
-shared-service controls remain Out of scope for the personal profile.
+Cycle 3a separately closes request-time authenticated owner-browser composition
+only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`;
+it still does not prove resistance to hostile same-user processes. The next
+separate blocker is Cycle 3b authenticated personal dossier composition.
+Dynamic selection, refresh, persistence, and background work remain later.
+Enterprise and shared-service controls remain Out of scope for the personal
+profile.
 
 ## References
 

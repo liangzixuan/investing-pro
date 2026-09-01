@@ -5,55 +5,56 @@ existing personal readiness and selected-fact routes without widening their
 data scope or changing the synthetic default. The decision is recorded in
 [ADR 0053](./adr/0053-personal-local-owner-session.md).
 
-Implementation status: **Prepared.**
+Implementation status: **Pass only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.**
 
-Source status: **No promoted source revision is recorded.**
+Public verification status: **Pass at that exact source revision.**
 
-Verification status: **Source verification, terminal CI, and fresh Cycle 3a
-fact-release owner authorization are pending.**
+Private evidence status: **Limited to the permitted coarse outcome recorded
+below.**
 
 | Gate                         | Required result                                                                                                                                                            | Current status                |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Synthetic default            | With no personal configuration, API and web retain their existing synthetic defaults                                                                                       | Prepared; terminal CI pending |
-| Explicit API configuration   | Both personal modes require one exact `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET`; synthetic mode rejects personal configuration                                             | Prepared; terminal CI pending |
-| Secret shape                 | API accepts only exactly 64 lowercase hexadecimal characters; this proves representation, not entropy                                                                      | Prepared; terminal CI pending |
+| Synthetic default            | With no personal configuration, API and web retain their existing synthetic defaults                                                                                       | Pass at exact source revision |
+| Explicit API configuration   | Both personal modes require one exact `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET`; synthetic mode rejects personal configuration                                             | Pass at exact source revision |
+| Secret shape                 | API accepts only exactly 64 lowercase hexadecimal characters; this proves representation, not entropy                                                                      | Pass at exact source revision |
 | Secret generation            | Operator generates and lowercase-hex encodes 32 fresh CSPRNG bytes for every API process                                                                                   | Operator precondition         |
-| Environment removal          | The API captures then deletes the bootstrap variable from its process environment before composition and listen                                                            | Prepared; terminal CI pending |
-| Digest-only authority        | After session construction, the server retains bootstrap and session digests rather than plaintext authority                                                               | Prepared; terminal CI pending |
-| Web opt-in                   | Owner controls render only for exact `RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`                                                                                | Prepared; terminal CI pending |
-| Bootstrap transport          | Password-field input is cleared and sent only through `X-Research-Cockpit-Bootstrap` on a bodyless POST                                                                    | Prepared; terminal CI pending |
-| Bootstrap replay             | Within one authority/process, exactly one valid bootstrap may create the sole active session; reuse cannot replace or recover it                                           | Prepared; terminal CI pending |
+| Environment removal          | The API captures then deletes the bootstrap variable from its process environment before composition and listen                                                            | Pass at exact source revision |
+| Digest-only authority        | After session construction, the server retains bootstrap and session digests rather than plaintext authority                                                               | Pass at exact source revision |
+| Web opt-in                   | Owner controls render only for exact `RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`                                                                                | Pass at exact source revision |
+| Bootstrap transport          | Password-field input is cleared and sent only through `X-Research-Cockpit-Bootstrap` on a bodyless POST                                                                    | Pass at exact source revision |
+| Bootstrap replay             | Within one authority/process, exactly one valid bootstrap may create the sole active session; reuse cannot replace or recover it                                           | Pass at exact source revision |
 | Cross-process secret reuse   | Detecting or denying operator reuse of the same valid-shaped secret in a separate process                                                                                  | Explicit nonclaim             |
-| Stale-cookie recovery        | A fresh process may bootstrap with no owner cookie or one syntactically valid stale owner cookie; success replaces it, while malformed or duplicate cookies fail           | Prepared; terminal CI pending |
-| Cookie boundary              | The host-only nonpersistent cookie is `HttpOnly`, `SameSite=Strict`, scoped to `/v1/personal-filing`, and has no active `Domain`, `Expires`, or `Max-Age`                  | Prepared; terminal CI pending |
-| Binding                      | Session authorization matches the exact literal-loopback Origin and configured API Host retained at bootstrap                                                              | Prepared; terminal CI pending |
-| CSRF                         | Every state-changing request requires its exact fixed intent header under exact-origin credentialed CORS                                                                   | Prepared; terminal CI pending |
-| Input closure                | Duplicate or malformed authority/intent/bootstrap, forbidden proxy or negotiation inputs, queries, bodies, and ambiguous framing fail closed                               | Prepared; terminal CI pending |
-| Idle expiry                  | Ten minutes without successful authorization invalidates the active session at the half-open boundary                                                                      | Prepared; terminal CI pending |
-| Absolute expiry              | Sixty minutes from bootstrap invalidates the session and cannot be extended by use or rotation                                                                             | Prepared; terminal CI pending |
-| Clock failure                | Nonfinite, failing, or backward-moving monotonic time invalidates authority                                                                                                | Prepared; terminal CI pending |
-| Reuse                        | A valid unexpired session supports normal repeated protected requests and refreshes only idle time                                                                         | Prepared; terminal CI pending |
-| Browser lifecycle lease      | Local observations are captured before corresponding request dispatch and never later than server authorization; reads/rotation reset only local idle                      | Prepared; terminal CI pending |
-| Unknown browser absolute     | A tab finding an active cookie without its original absolute timestamp uses a conservative local lease bounded by idle TTL and claims no exact synchronization             | Prepared; terminal CI pending |
-| Hide and restore             | `pagehide`/hidden clear local private presentation while preserving known deadlines; focus/`pageshow`/visible clear first and revalidate                                   | Prepared; terminal CI pending |
-| Coordination failure         | `BroadcastChannel` construction failure disables personal access; publish failure locks and clears the initiating tab                                                      | Prepared; terminal CI pending |
-| Cross-tab invalidation       | Immediate sibling invalidation or clear-then-revalidate is claimed only for operational delivery; missed-signal fallback is focus/visible/`pageshow` or conservative lease | Prepared; terminal CI pending |
-| Browser-storage exclusion    | Lifecycle signals and timestamps enter no Web Storage, IndexedDB, or durable cookie                                                                                        | Prepared; terminal CI pending |
-| Rotation                     | Rotation replaces the cookie and digest, preserves the absolute deadline, and rejects the old token                                                                        | Prepared; terminal CI pending |
-| Logout                       | Logout invalidates server state and clears the exact cookie path                                                                                                           | Prepared; terminal CI pending |
-| Revocation                   | Explicit revocation invalidates server state and clears the exact cookie path                                                                                              | Prepared; terminal CI pending |
-| Process close                | Closing the API invalidates bootstrap/session state and destroys the digest key                                                                                            | Prepared; terminal CI pending |
-| Private-work ordering        | Missing, malformed, expired, rotated, logged-out, revoked, or wrong-binding authority is denied before a personal capability is read                                       | Prepared; terminal CI pending |
-| Confidentiality              | Cycle 3a code places authority in no URL, body, durable cookie, application browser storage, fixture, console, application log, or detailed error                          | Prepared; terminal CI pending |
-| Cache denial                 | Session and protected-personal outcomes remain private and noncacheable                                                                                                    | Prepared; terminal CI pending |
-| Personal API base            | Before fetch, browser calls require exact literal-loopback HTTP origin, explicit port 1–65535, and no userinfo, path, query, or fragment                                   | Prepared; terminal CI pending |
-| Personal UI origin           | IPv4 uses `http://127.0.0.1:3000`; IPv6 uses `http://[::1]:3000`; `localhost` is never mixed with `127.0.0.1`                                                              | Prepared; terminal CI pending |
-| Service-worker guard         | A controlling service worker or unreadable controller state denies personal calls before fetch; Cycle 3a registers no application worker and stores no authority there     | Prepared; terminal CI pending |
+| Stale-cookie recovery        | A fresh process may bootstrap with no owner cookie or one syntactically valid stale owner cookie; success replaces it, while malformed or duplicate cookies fail           | Pass at exact source revision |
+| Cookie boundary              | The host-only nonpersistent cookie is `HttpOnly`, `SameSite=Strict`, scoped to `/v1/personal-filing`, and has no active `Domain`, `Expires`, or `Max-Age`                  | Pass at exact source revision |
+| Binding                      | Session authorization matches the exact literal-loopback Origin and configured API Host retained at bootstrap                                                              | Pass at exact source revision |
+| CSRF                         | Every state-changing request requires its exact fixed intent header under exact-origin credentialed CORS                                                                   | Pass at exact source revision |
+| Input closure                | Duplicate or malformed authority/intent/bootstrap, forbidden proxy or negotiation inputs, queries, bodies, and ambiguous framing fail closed                               | Pass at exact source revision |
+| Idle expiry                  | Ten minutes without successful authorization invalidates the active session at the half-open boundary                                                                      | Pass at exact source revision |
+| Absolute expiry              | Sixty minutes from bootstrap invalidates the session and cannot be extended by use or rotation                                                                             | Pass at exact source revision |
+| Clock failure                | Nonfinite, failing, or backward-moving monotonic time invalidates authority                                                                                                | Pass at exact source revision |
+| Reuse                        | A valid unexpired session supports normal repeated protected requests and refreshes only idle time                                                                         | Pass at exact source revision |
+| Browser lifecycle lease      | Local observations are captured before corresponding request dispatch and never later than server authorization; reads/rotation reset only local idle                      | Pass at exact source revision |
+| Unknown browser absolute     | A tab finding an active cookie without its original absolute timestamp uses a conservative local lease bounded by idle TTL and claims no exact synchronization             | Pass at exact source revision |
+| Hide and restore             | `pagehide`/hidden clear local private presentation while preserving known deadlines; focus/`pageshow`/visible clear first and revalidate                                   | Pass at exact source revision |
+| Coordination failure         | `BroadcastChannel` construction failure disables personal access; publish failure locks and clears the initiating tab                                                      | Pass at exact source revision |
+| Cross-tab invalidation       | Immediate sibling invalidation or clear-then-revalidate is claimed only for operational delivery; missed-signal fallback is focus/visible/`pageshow` or conservative lease | Pass at exact source revision |
+| Browser-storage exclusion    | Lifecycle signals and timestamps enter no Web Storage, IndexedDB, or durable cookie                                                                                        | Pass at exact source revision |
+| Rotation                     | Rotation replaces the cookie and digest, preserves the absolute deadline, and rejects the old token                                                                        | Pass at exact source revision |
+| Logout                       | Logout invalidates server state and clears the exact cookie path                                                                                                           | Pass at exact source revision |
+| Revocation                   | Explicit revocation invalidates server state and clears the exact cookie path                                                                                              | Pass at exact source revision |
+| Process close                | Closing the API invalidates bootstrap/session state and destroys the digest key                                                                                            | Pass at exact source revision |
+| Private-work ordering        | Missing, malformed, expired, rotated, logged-out, revoked, or wrong-binding authority is denied before a personal capability is read                                       | Pass at exact source revision |
+| Confidentiality              | Cycle 3a code places authority in no URL, body, durable cookie, application browser storage, fixture, console, application log, or detailed error                          | Pass at exact source revision |
+| Cache denial                 | Session and protected-personal outcomes remain private and noncacheable                                                                                                    | Pass at exact source revision |
+| Personal API base            | Before fetch, browser calls require exact literal-loopback HTTP origin, explicit port 1–65535, and no userinfo, path, query, or fragment                                   | Pass at exact source revision |
+| Personal UI origin           | IPv4 uses `http://127.0.0.1:3000`; IPv6 uses `http://[::1]:3000`; `localhost` is never mixed with `127.0.0.1`                                                              | Pass at exact source revision |
+| Service-worker guard         | A controlling service worker or unreadable controller state denies personal calls before fetch; Cycle 3a registers no application worker and stores no authority there     | Pass at exact source revision |
 | Hostile browser state        | Resistance beyond the narrow controlling-service-worker guard                                                                                                              | Explicit nonclaim             |
-| Protected composition code   | Tests apply the owner-session boundary to both personal compositions                                                                                                       | Prepared; terminal CI pending |
-| Cycle 3a fact authorization  | Fresh owner-reviewed release bundle and fresh single-use approval bound to the eventual Cycle 3a source                                                                    | Pending owner authorization   |
+| Protected composition code   | Tests apply the owner-session boundary to both personal compositions                                                                                                       | Pass at exact source revision |
+| Cycle 3a fact authorization  | Fresh owner-reviewed release and fresh single-use authorization bound to the exact Cycle 3a source                                                                         | See permitted coarse outcome  |
 | Preserved Cycle 2z artifact  | Remains bound to `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, historically unchanged, and intentionally incompatible with a new source                                      | Preserved historical evidence |
-| Dossier separation           | Personal facts remain separate from the synthetic dossier; no Cycle 3b consumer is introduced                                                                              | Prepared; terminal CI pending |
+| Dossier separation           | Personal facts remain separate from the synthetic dossier; no Cycle 3b consumer is introduced                                                                              | Pass at exact source revision |
 | Human identity               | Verified human identity                                                                                                                                                    | Explicit nonclaim             |
 | Same-user/browser adversary  | Hostile same-user processes, extensions, developer tools, screenshots, clipboard readers, and memory inspection                                                            | Explicit nonclaim             |
 | Remote/shared authentication | Remote, multi-user, tenant, shared-service, service-account, and production authentication                                                                                 | Out of scope                  |
@@ -151,23 +152,41 @@ remain Cycle 3b or later.
 
 ## Private fact-release authorization boundary
 
-The prepared code protects both personal compositions in tests. That is not an
-acceptance result for an actual Cycle 3a `personal_fact_release`. The preserved
-Cycle 2z release bundle and consumed approval are source-bound to
-`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, while the new runtime embeds its own
-source revision and the loader requires equality. Those historical artifacts
-are intentionally not runtime-compatible with a new source and remain unchanged.
-
-After the eventual Cycle 3a source exists, actual fact-release composition
-requires a fresh owner-reviewed release bundle and fresh single-use approval
-bound to that exact source. This pending gate belongs to the personal profile; it is not
-an enterprise/shared-service requirement.
+The code protects both personal compositions. The preserved Cycle 2z evidence
+remains source-bound to `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66` and
+historically unchanged. Cycle 3a's source binding is distinct, and no private
+sub-result enters public evidence. A later source requires fresh owner review
+and fresh single-use authorization. This belongs to the personal profile; it is
+not an enterprise/shared-service requirement.
 
 ## Evidence and exit rule
 
-This matrix records prepared implementation only. It intentionally contains no
-Cycle 3a commit hash, CI run, test count, private fact-release acceptance, or
-Pass claim. Promotion requires an exact committed source, complete local
-verification, terminal green required CI, a fresh owner-reviewed fact-release
-bundle and fresh single-use approval bound to that source, and final review. The
-status and evidence fields must be updated only after those results exist.
+- Exact source revision:
+  `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
+- Exact predecessor and transition topology: merge-free direct-child transition
+  `dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3` ->
+  `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`, containing 39 paths, comprising
+  13 additions and 26 modifications, with 6,543 insertions and 238 deletions.
+- Local verification: `corepack pnpm verify` passed every format, lint,
+  guardrail, type, peer, test, and production-build gate. Settled suite totals
+  include 119 API tests, 94 web tests, and 582 database tests; every remaining
+  package suite passed with only intentional skips.
+- Public CI: exact-source general run `33460175145` passed on attempt 1 in
+  Ubuntu job `99708487084` and Windows job `99708487035`; payload-custody
+  run/job `33460175120` / `99708486913` and cross-engine run/job `33460175088`
+  / `99708486675` also passed on attempt 1.
+- Independent read-only source review found no remaining actionable P0/P1/P2
+  issue for the declared personal scope. This is not an external audit.
+- Coarse owner-approved private selected-fact release outcome: Pass for the
+  exact frozen personal scope.
+
+Public source evidence proves only the bounded capability and cannot substitute
+for the permitted coarse private outcome. No public promotion text contains a
+private sub-result. Cycle 3a is promoted only for the exact source revision and
+declared personal scope above.
+
+The next separate milestone is Cycle 3b authenticated personal dossier
+composition: one coherent admitted snapshot for dossier, evidence-passport,
+restatement-lineage, chart, and valuation inputs, with no synthetic/personal
+mixing. Dynamic selection, refresh, persistence, and background work remain
+later milestones.

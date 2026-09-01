@@ -1041,14 +1041,16 @@ frozen personal scope.
 Cycle 2z does not authorize dynamic selection, a personal dossier, history,
 evidence display, valuation, thesis, alerts, export, persistence, or background
 ingestion. Loopback, Host, and Origin checks are not owner authentication.
-Cycle 3a's authenticated owner-browser implementation is prepared, with source
-verification, terminal CI, and fresh Cycle 3a fact-release owner authorization
-pending; it is not yet promoted. Hostile same-user processes remain unproven.
+Cycle 3a separately closes the authenticated owner-browser boundary only for
+exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
+Hostile same-user processes remain unproven.
 Enterprise/shared-service requirements remain Out of scope. See
 [ADR 0052](./docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./docs/CYCLE_2Z_EXIT_MATRIX.md).
 
-Cycle 3a prepares one operator-supplied bootstrap that is single-use within one
+Cycle 3a is **accepted and promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`**. Private evidence is limited to
+the permitted coarse outcome below. It uses one operator-supplied bootstrap that is single-use within one
 API authority/process and one active process-memory owner session in front of
 both explicit personal API modes. The API accepts only exactly 64 lowercase
 hexadecimal characters in `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET`; that shape
@@ -1105,15 +1107,28 @@ one syntactically valid stale owner cookie; success replaces the stale value.
 Malformed or duplicate cookies fail, and the fresh process must still have an
 unused bootstrap digest and no active session.
 
-The prepared code protects both personal compositions in tests, but it does not
-make the preserved Cycle 2z private release artifact runnable at a new source.
-That release bundle and its consumed approval remain bound to exact Cycle 2z
-source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, while the runtime embeds its
-new source revision and requires equality. An actual Cycle 3a
-`personal_fact_release` therefore remains unaccepted until the eventual Cycle 3a
-source has a fresh owner-reviewed release bundle and fresh single-use approval
-bound to it. This is a pending personal owner-authorization gate, not an enterprise
-requirement, and it does not alter the historical Cycle 2z evidence.
+The code protects both personal compositions. The preserved Cycle 2z release
+evidence remains bound to exact Cycle 2z source
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66` and remains historical. Cycle 3a's
+source binding is distinct, and no private sub-result enters public evidence.
+This does not widen or alter Cycle 2z.
+
+The exact merge-free source transition is
+`dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3` ->
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`: 39 paths, comprising 13 additions
+and 26 modifications, with 6,543 insertions and 238 deletions. Local
+`corepack pnpm verify` passed every format, lint, guardrail, type, peer, test,
+and production-build gate. Settled suite totals include 119 API tests, 94 web
+tests, and 582 database tests; every remaining package suite passed with only
+intentional skips. Exact-source general CI run `33460175145` passed on attempt
+1 in Ubuntu job `99708487084` and Windows job `99708487035`; payload-custody
+run/job `33460175120` / `99708486913` and cross-engine run/job `33460175088` /
+`99708486675` also passed on attempt 1. Independent read-only source review
+found no remaining actionable P0/P1/P2 issue for the declared personal scope;
+this is not an external audit.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope.
 
 This proves local bearer possession, not verified human identity. Single-use and
 replay denial apply only within one authority/process; the API cannot detect an
@@ -1123,10 +1138,11 @@ tools, screenshots, clipboard readers, hostile browser state beyond the narrow
 service-worker guard, remote or multi-user authentication, durable sessions, and
 Cycle 3b dossier composition remain nonclaims. See
 [ADR 0053](./docs/adr/0053-personal-local-owner-session.md) and the
-[Cycle 3a exit matrix](./docs/CYCLE_3A_EXIT_MATRIX.md). Cycle 3a source
-verification, terminal CI, and fresh fact-release owner authorization are
-pending; no commit, private fact-release acceptance, or promotion evidence is
-recorded yet.
+[Cycle 3a exit matrix](./docs/CYCLE_3A_EXIT_MATRIX.md). The next separate
+milestone is Cycle 3b authenticated personal dossier composition: one coherent
+admitted snapshot for dossier, evidence-passport, restatement-lineage, chart,
+and valuation inputs, with no synthetic/personal mixing. Dynamic selection,
+refresh, persistence, and background work remain later milestones.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1433,10 +1449,9 @@ try {
 
 Do not echo the variable, pass it as a command-line argument, include it in a
 transcript, or save it in the repository. `personal_fact_release` uses the same
-bootstrap steps, but the preserved Cycle 2z release bundle and consumed approval
-cannot be reused: after the eventual Cycle 3a source exists, that mode requires
-its complete quality result plus a fresh owner-reviewed release bundle, digest,
-and fresh single-use approval bound to the new source.
+bootstrap steps. Its authorization remains source-bound and single-use; a later
+source requires a fresh owner-reviewed release and fresh authorization rather
+than reusing historical evidence.
 
 In the web terminal, opt into the matching IPv4 personal web mode and start
 Next.js on the literal IPv4 address:

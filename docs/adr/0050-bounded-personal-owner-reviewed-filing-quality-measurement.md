@@ -222,8 +222,10 @@ from the same immutable candidate snapshot bound to the admitted quality
 result. It is promoted only for exact frozen source revision
 `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, with private evidence limited to
 the permitted coarse outcome, and it does not widen this quality-measurement
-decision. Request-time
-authenticated owner-browser composition is the next separate blocker.
+decision. Cycle 3a separately closes request-time authenticated owner-browser
+composition only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b authenticated personal
+dossier composition is the next separate blocker.
 Enterprise and shared-service requirements remain Out of scope for the
 personal profile. See
 [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)

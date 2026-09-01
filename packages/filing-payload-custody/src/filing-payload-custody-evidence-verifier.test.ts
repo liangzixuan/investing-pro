@@ -95,6 +95,8 @@ import {
   isCycle2uTransitionRoutingRequired,
   isCycle3aSourceCommitDiffSetAllowed,
   isCycle3aSourceTopologyAllowed,
+  isCycle3aPromotionCommitDiffSetAllowed,
+  isCycle3aPromotionTopologyAllowed,
   isCycle3aTransitionRoutingRequired,
   isCycle2zBaselineMergeBaseAllowed,
   isCycle2zCommitBoundaryCorrectiveDiffSetAllowed,
@@ -679,6 +681,8 @@ const CYCLE_2Z_ROADMAP_REBASELINE_REVISION =
   "4c660188831b91111a45d588245cb8735b8858ab" as const;
 const CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION =
   "dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3" as const;
+const CYCLE_3A_SOURCE_REVISION =
+  "ee023b9cf7cf43fd63baa9b531ae71cc34f349e1" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -967,6 +971,44 @@ const CYCLE_3A_SOURCE_TRANSITION = [
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
+const CYCLE_3A_PROMOTION_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    status: "M",
+  },
+  { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set([
     ...CYCLE_2X_PROTECTED_SURFACE_PATHS,
@@ -977,6 +1019,7 @@ const CYCLE_3A_PROTECTED_SURFACE_PATHS = [
   ...new Set([
     ...CYCLE_2Z_PROTECTED_SURFACE_PATHS,
     ...CYCLE_3A_SOURCE_TRANSITION.map((entry) => entry.path),
+    ...CYCLE_3A_PROMOTION_TRANSITION.map((entry) => entry.path),
   ]),
 ].sort();
 
@@ -3069,8 +3112,8 @@ describe("Cycle 2z selected-fact release routing", () => {
     }
   });
 
-  it("accepts only one fresh Cycle 3a direct child and every pinned predecessor link", () => {
-    const revision = "b".repeat(40);
+  it("accepts only the pinned Cycle 3a source and every predecessor link", () => {
+    const revision = CYCLE_3A_SOURCE_REVISION;
     const valid = [
       "8",
       "8",
@@ -3092,6 +3135,7 @@ describe("Cycle 2z selected-fact release routing", () => {
       [1, "7"],
       [1, "9"],
       [2, "not-a-commit"],
+      [2, "b".repeat(40)],
     ] as const) {
       const values: string[] = [...valid];
       values[index] = replacement;
@@ -3100,27 +3144,6 @@ describe("Cycle 2z selected-fact release routing", () => {
           ...(values as Parameters<typeof isCycle3aSourceTopologyAllowed>),
         ),
         `${index}:${replacement}`,
-      ).toBe(false);
-    }
-
-    for (const pinnedRevision of [
-      CYCLE_2Z_BASELINE_REVISION,
-      CYCLE_2Z_SOURCE_REVISION,
-      CYCLE_2Z_ROUTING_CLOSURE_REVISION,
-      CYCLE_2Z_PROMOTION_REVISION,
-      CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
-      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
-      CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
-      CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
-    ]) {
-      const values: string[] = [...valid];
-      values[2] = pinnedRevision;
-      values[3] = `${pinnedRevision} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`;
-      expect(
-        isCycle3aSourceTopologyAllowed(
-          ...(values as Parameters<typeof isCycle3aSourceTopologyAllowed>),
-        ),
-        pinnedRevision,
       ).toBe(false);
     }
 
@@ -3159,6 +3182,111 @@ describe("Cycle 2z selected-fact release routing", () => {
         isCycle3aSourceTopologyAllowed(
           ...(mergedParent as Parameters<
             typeof isCycle3aSourceTopologyAllowed
+          >),
+        ),
+        `pinned-link-merge:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts one merge-free Cycle 3a promotion child of the pinned source", () => {
+    const revision = "b".repeat(40);
+    const valid = [
+      "9",
+      "9",
+      revision,
+      `${revision} ${CYCLE_3A_SOURCE_REVISION}`,
+      `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle3aPromotionTopologyAllowed(...valid)).toBe(true);
+
+    for (const [index, replacement] of [
+      [0, "8"],
+      [0, "10"],
+      [1, "8"],
+      [1, "10"],
+      [2, "not-a-commit"],
+    ] as const) {
+      const values: string[] = [...valid];
+      values[index] = replacement;
+      expect(
+        isCycle3aPromotionTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3aPromotionTopologyAllowed>),
+        ),
+        `${index}:${replacement}`,
+      ).toBe(false);
+    }
+
+    for (const pinnedRevision of [
+      CYCLE_2Z_BASELINE_REVISION,
+      CYCLE_2Z_SOURCE_REVISION,
+      CYCLE_2Z_ROUTING_CLOSURE_REVISION,
+      CYCLE_2Z_PROMOTION_REVISION,
+      CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+      CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
+      CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
+      CYCLE_3A_SOURCE_REVISION,
+    ]) {
+      const values: string[] = [...valid];
+      values[2] = pinnedRevision;
+      values[3] = `${pinnedRevision} ${CYCLE_3A_SOURCE_REVISION}`;
+      expect(
+        isCycle3aPromotionTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3aPromotionTopologyAllowed>),
+        ),
+        pinnedRevision,
+      ).toBe(false);
+    }
+
+    for (const mutate of [
+      (values: string[]) => {
+        values[3] = `${revision} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] = `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[4] += ` ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle3aPromotionTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3aPromotionTopologyAllowed>),
+        ),
+      ).toBe(false);
+    }
+
+    for (let index = 5; index < valid.length; index += 1) {
+      const changedParent: string[] = [...valid];
+      changedParent[index] = `${changedParent[index]}-changed`;
+      expect(
+        isCycle3aPromotionTopologyAllowed(
+          ...(changedParent as Parameters<
+            typeof isCycle3aPromotionTopologyAllowed
+          >),
+        ),
+        `pinned-link:${index}`,
+      ).toBe(false);
+
+      const mergedParent: string[] = [...valid];
+      mergedParent[index] += ` ${"e".repeat(40)}`;
+      expect(
+        isCycle3aPromotionTopologyAllowed(
+          ...(mergedParent as Parameters<
+            typeof isCycle3aPromotionTopologyAllowed
           >),
         ),
         `pinned-link-merge:${index}`,
@@ -3217,6 +3345,12 @@ describe("Cycle 2z selected-fact release routing", () => {
         isCycle3aSourceCommitDiffSetAllowed,
         CYCLE_3A_SOURCE_TRANSITION,
         39,
+      ],
+      [
+        "Cycle 3a promotion",
+        isCycle3aPromotionCommitDiffSetAllowed,
+        CYCLE_3A_PROMOTION_TRANSITION,
+        16,
       ],
     ];
     for (const [name, allowed, entries, count] of transitions) {
@@ -3294,6 +3428,12 @@ describe("Cycle 2z selected-fact release routing", () => {
       isCycle2zUbuntuCiStabilizationCommitDiffSetAllowed(
         CYCLE_3A_SOURCE_TRANSITION,
       ),
+    ).toBe(false);
+    expect(
+      isCycle3aPromotionCommitDiffSetAllowed(CYCLE_3A_SOURCE_TRANSITION),
+    ).toBe(false);
+    expect(
+      isCycle3aSourceCommitDiffSetAllowed(CYCLE_3A_PROMOTION_TRANSITION),
     ).toBe(false);
   });
 

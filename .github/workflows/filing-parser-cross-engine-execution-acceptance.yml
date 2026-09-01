@@ -37,9 +37,15 @@ on:
       - apps/web/src/lib/web-mode.ts
       - docs/BUILD_ROADMAP.md
       - docs/CANONICAL_MODEL.md
+      - docs/CYCLE_2X_EXIT_MATRIX.md
+      - docs/CYCLE_2Y_EXIT_MATRIX.md
+      - docs/CYCLE_2Z_EXIT_MATRIX.md
       - docs/CYCLE_3A_EXIT_MATRIX.md
       - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
       - docs/THREAT_MODEL.md
+      - docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md
+      - docs/adr/0051-bounded-personal-quality-readiness-composition.md
+      - docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md
       - docs/adr/0053-personal-local-owner-session.md
       - fixtures/synthetic/filing-parser-cross-engine-execution/**
       - LICENSE_POLICY.md
@@ -103,6 +109,7 @@ jobs:
           cycle2z_roadmap_parent="879a03759493158f20f579d1efc2e3d337de4385"
           cycle2z_roadmap="4c660188831b91111a45d588245cb8735b8858ab"
           cycle2z_ubuntu_ci_stabilization="dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3"
+          cycle3a_source="ee023b9cf7cf43fd63baa9b531ae71cc34f349e1"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -174,9 +181,15 @@ jobs:
             "apps/web/src/lib/web-mode.ts"
             "docs/BUILD_ROADMAP.md"
             "docs/CANONICAL_MODEL.md"
+            "docs/CYCLE_2X_EXIT_MATRIX.md"
+            "docs/CYCLE_2Y_EXIT_MATRIX.md"
+            "docs/CYCLE_2Z_EXIT_MATRIX.md"
             "docs/CYCLE_3A_EXIT_MATRIX.md"
             "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
             "docs/THREAT_MODEL.md"
+            "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md"
+            "docs/adr/0051-bounded-personal-quality-readiness-composition.md"
+            "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md"
             "docs/adr/0053-personal-local-owner-session.md"
             "packages/contracts/openapi/openapi.yaml"
             "packages/contracts/src/openapi.test.ts"
@@ -387,6 +400,40 @@ jobs:
             "M"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3a_promotion=(
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            "README.md"
+            "M"
+            "docs/BUILD_ROADMAP.md"
+            "M"
+            "docs/CANONICAL_MODEL.md"
+            "M"
+            "docs/CYCLE_2X_EXIT_MATRIX.md"
+            "M"
+            "docs/CYCLE_2Y_EXIT_MATRIX.md"
+            "M"
+            "docs/CYCLE_2Z_EXIT_MATRIX.md"
+            "M"
+            "docs/CYCLE_3A_EXIT_MATRIX.md"
+            "M"
+            "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M"
+            "docs/THREAT_MODEL.md"
+            "M"
+            "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md"
+            "M"
+            "docs/adr/0051-bounded-personal-quality-readiness-composition.md"
+            "M"
+            "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md"
+            "M"
+            "docs/adr/0053-personal-local-owner-session.md"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -467,7 +514,8 @@ jobs:
                  git cat-file -e "$cycle2z_maintenance^{commit}" && \
                  git cat-file -e "$cycle2z_roadmap_parent^{commit}" && \
                  git cat-file -e "$cycle2z_roadmap^{commit}" && \
-                 git cat-file -e "$cycle2z_ubuntu_ci_stabilization^{commit}"; then
+                 git cat-file -e "$cycle2z_ubuntu_ci_stabilization^{commit}" && \
+                 git cat-file -e "$cycle3a_source^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_routing_closure")"
@@ -476,6 +524,7 @@ jobs:
                 read -r -a cycle2z_roadmap_parent_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_roadmap_parent")"
                 read -r -a cycle2z_roadmap_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_roadmap")"
                 read -r -a cycle2z_ubuntu_ci_stabilization_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_ubuntu_ci_stabilization")"
+                read -r -a cycle3a_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3a_source")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -495,7 +544,10 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle2z_roadmap" "$cycle2z_ubuntu_ci_stabilization" --
                 )
                 mapfile -d '' -t cycle3a_source_actual < <(
-                  git diff --name-status --no-renames -z "$cycle2z_ubuntu_ci_stabilization" HEAD --
+                  git diff --name-status --no-renames -z "$cycle2z_ubuntu_ci_stabilization" "$cycle3a_source" --
+                )
+                mapfile -d '' -t cycle3a_promotion_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3a_source" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -576,6 +628,19 @@ jobs:
                     cycle2z=true
                   elif [[ "$cycle2z_successor_count" == "8" ]] && \
                        [[ "$cycle2z_first_parent_count" == "8" ]] && \
+                       [[ "$head_revision" == "$cycle3a_source" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle2z_ubuntu_ci_stabilization" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                  elif [[ "$cycle2z_successor_count" == "9" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "9" ]] && \
                        [[ "$head_revision" != "$cycle2z_baseline" ]] && \
                        [[ "$head_revision" != "$cycle2z_source" ]] && \
                        [[ "$head_revision" != "$cycle2z_routing_closure" ]] && \
@@ -584,13 +649,18 @@ jobs:
                        [[ "$head_revision" != "$cycle2z_roadmap_parent" ]] && \
                        [[ "$head_revision" != "$cycle2z_roadmap" ]] && \
                        [[ "$head_revision" != "$cycle2z_ubuntu_ci_stabilization" ]] && \
+                       [[ "$head_revision" != "$cycle3a_source" ]] && \
                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
-                       [[ "${cycle2z_topology[1]}" == "$cycle2z_ubuntu_ci_stabilization" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3a_source" ]] && \
+                       [[ "${#cycle3a_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3a_source_topology[0]}" == "$cycle3a_source" ]] && \
+                       [[ "${cycle3a_source_topology[1]}" == "$cycle2z_ubuntu_ci_stabilization" ]] && \
                        matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
                        matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
                        matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
-                       matches_exactly expected_cycle3a_source cycle3a_source_actual; then
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual; then
                     exact=true
                     cycle2z=true
                     cycle3a=true

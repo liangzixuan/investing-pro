@@ -1906,11 +1906,10 @@ operation detail. See
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
 After Cycle 2z, Cycle 3a is the separately scoped request-time authenticated
-owner-browser boundary. Its implementation is now prepared with a short-lived
+owner-browser boundary. It is promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`, with a short-lived
 session-bound capability and CSRF, replay, rotation, revocation, and lifetime
-controls; source verification, terminal CI, and fresh Cycle 3a fact-release owner
-authorization remain pending, so it is not yet promoted. Same-user hostile-
-process resistance remains unproven.
+controls. Same-user hostile-process resistance remains unproven.
 Enterprise/shared-service gates remain Out of scope.
 
 ## Cycle 2 — personal local filing ingestion proof
@@ -1963,10 +1962,10 @@ Cycle 2y closes the first local running-application composition boundary, but
 only for coarse readiness. Cycle 2z closes the separate atomic same-snapshot
 selected-fact release boundary under explicit owner authorization and a
 nonpersistent response for the exact frozen source and personal scope. Cycle
-3a's request-time authenticated owner-browser implementation is prepared, but
-source verification, terminal CI, and fresh Cycle 3a fact-release owner
-authorization remain pending. Broader personal dossier, persistence, queueing,
-fetching, alerts, and background ingestion remain later.
+3a closes request-time authenticated owner-browser composition only for exact
+source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Broader personal
+dossier, persistence, queueing, fetching, alerts, and background ingestion
+remain later.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user
@@ -1975,18 +1974,16 @@ They are not current personal-profile blockers.
 
 ## Cycle 3 — product breadth
 
-Status: **Cycle 3a implementation prepared; source verification, terminal CI,
-and fresh Cycle 3a fact-release owner authorization pending. Cycles 3b through
-3q remain planned.** No Cycle 3 capability is promoted and no parity claim is
-made.
+Status: **Cycle 3a is promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycles 3b through 3q remain
+planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
-is Cycle 3a; its prepared implementation remains the highest-priority
-verification blocker until exact-source local and terminal CI gates pass and the
-fresh personal fact-release authorization is available. Any later networked
-source must enter through a separately declared, explicitly enabled
+is closed by Cycle 3a only for its exact source. The next blocker is Cycle 3b
+authenticated personal dossier composition. Any later networked source must
+enter through a separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
 request, storage, and estimated-spend budgets. Those application budgets are
@@ -1999,13 +1996,30 @@ personal program. Personal durability still requires authentication,
 CSRF/replay controls, migration integrity, backup/restore, deletion, scheduler
 recovery, accessibility, measured performance, and source-license compliance.
 
-### Cycle 3a — prepared personal local owner session
+### Cycle 3a — personal local owner session
 
-Status: **Implementation prepared; source verification, terminal CI, and fresh
-Cycle 3a fact-release owner authorization pending. Not promoted.** The exact
-design is recorded in
-[ADR 0053](./adr/0053-personal-local-owner-session.md), and promotion remains
-governed by the [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+Status: **Accepted and promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Private evidence is limited to
+the permitted coarse outcome below.** The exact design and evidence are in
+[ADR 0053](./adr/0053-personal-local-owner-session.md) and the
+[Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+
+The exact merge-free source transition is
+`dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3` ->
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`: 39 paths, comprising 13 additions
+and 26 modifications, with 6,543 insertions and 238 deletions. Local
+`corepack pnpm verify` passed every format, lint, guardrail, type, peer, test,
+and production-build gate. Settled suite totals include 119 API tests, 94 web
+tests, and 582 database tests; every remaining package suite passed with only
+intentional skips. Exact-source general CI run `33460175145` passed on attempt
+1 in Ubuntu job `99708487084` and Windows job `99708487035`; payload-custody
+run/job `33460175120` / `99708486913` and cross-engine run/job `33460175088` /
+`99708486675` also passed on attempt 1. Independent read-only source review
+found no remaining actionable P0/P1/P2 issue for the declared personal scope;
+this is not an external audit.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope.
 
 Both explicit personal API modes require one operator-supplied
 `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET` with exactly 64 lowercase hexadecimal
@@ -2077,15 +2091,13 @@ address. Missing, malformed, duplicate, expired, wrong-bound, rotated,
 logged-out, revoked, or closed authority is denied before a protected personal
 capability is read.
 
-The prepared code protects both personal compositions in tests, but the
-preserved Cycle 2z release bundle and consumed approval are intentionally not
-runtime-compatible with a new source. They remain bound to exact Cycle 2z source
-`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`; the Cycle 3a runtime embeds its new
-source revision and the loader requires equality. An actual Cycle 3a
-`personal_fact_release` is therefore not accepted and remains gated on a fresh
-owner-reviewed release bundle and fresh single-use approval bound to the
-eventual Cycle 3a source. This is a personal owner-authorization gate, not an enterprise
-requirement. Historical Cycle 2z evidence remains unchanged.
+The code protects both personal compositions. Preserved Cycle 2z evidence
+remains bound to exact Cycle 2z source
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66` and historically unchanged. Cycle
+3a's source binding is distinct, and no private sub-result enters public
+evidence. A later source requires fresh owner review and fresh single-use
+authorization. This is a personal owner-authorization gate, not an enterprise
+requirement.
 
 This boundary proves bearer possession only. Per-authority/process single-use
 and replay denial do not detect an operator reusing the same valid-shaped secret
@@ -2094,7 +2106,11 @@ The boundary does not verify a human or resist hostile same-user processes,
 browser extensions, developer tools, screenshots, clipboard readers, memory
 inspection, or hostile browser state beyond the narrow controlling-service-
 worker prefetch guard. It adds no remote, multi-user, tenant, service, durable,
-or production authentication. Personal dossier composition remains Cycle 3b.
+or production authentication. The next separate milestone is Cycle 3b
+authenticated personal dossier composition: one coherent admitted snapshot for
+dossier, evidence-passport, restatement-lineage, chart, and valuation inputs,
+with no synthetic/personal mixing. Dynamic selection, refresh, persistence, and
+background work remain later milestones.
 
 The delivery waves are:
 

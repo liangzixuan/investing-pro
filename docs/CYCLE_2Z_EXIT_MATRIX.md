@@ -35,7 +35,7 @@ below.**
 | Synthetic separation        | Personal facts do not populate the synthetic dossier or its derived features                                   | Pass at exact source revision      |
 | Confidentiality             | Public evidence, failures, and logs contain no private release material or operation detail                    | Pass at exact source revision      |
 | Private operation           | Only a coarse owner-approved Pass may become repository-visible after success                                  | See permitted coarse outcome below |
-| Browser authentication      | Request-time authenticated owner-browser composition                                                           | Later boundary                     |
+| Browser authentication      | Request-time authenticated owner-browser composition                                                           | Closed separately by Cycle 3a      |
 | Same-user hostile processes | Resistance to hostile processes under the same operating-system user                                           | Unproven                           |
 | Enterprise/shared service   | Tenancy, organizational approval, commercial redistribution, shared-service controls, and production operation | Out of scope                       |
 
@@ -121,14 +121,11 @@ released facts or any private release detail.
 
 ## Next blocker
 
-After Cycle 2z, the next separate blocker is request-time authenticated
-owner-browser composition with a short-lived session-bound owner capability and
-CSRF, replay, and lifetime controls. Host and Origin alone are not owner
-authentication. Hostile same-user processes remain unproven even after that
-boundary.
-
-Broader selection, history, dossier composition, persistence, export,
-valuation, thesis, and alerts remain separate later milestones. Enterprise and
+Cycle 3a separately closes request-time authenticated owner-browser composition
+only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
+Hostile same-user processes remain unproven. The next separate blocker is Cycle
+3b authenticated personal dossier composition. Dynamic selection, refresh,
+persistence, and background work remain later milestones. Enterprise and
 shared-service controls remain Out of scope.
 
 ## Exit rule

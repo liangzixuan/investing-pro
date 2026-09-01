@@ -1,4 +1,4 @@
-# Sprint 0 through promoted Cycle 2z threat model
+# Sprint 0 through promoted Cycle 3a threat model
 
 ## Current trust boundaries
 
@@ -21,7 +21,10 @@ composition with its personal data plane disabled. Cycle 2z separately closes
 an explicit, bounded owner-authorized selected-fact release for exact source
 revision `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66` and the exact frozen
 personal scope. It permits only the startup-fixed response to enter API and
-optional browser memory and adds no persistence boundary.
+optional browser memory and adds no persistence boundary. Cycle 3a separately
+closes the short-lived local owner-session boundary only for exact source
+revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`; it adds no persistent
+identity or remote/shared-service boundary.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2022,23 +2025,38 @@ Cycle 2z does not add history, dossier, evidence, valuation, thesis, alerts,
 export, persistence, remote access, tenancy, shared-service, or production
 safety.
 
-The next separate boundary after Cycle 2z is Cycle 3a request-time authenticated
-owner-browser composition. Its implementation is prepared with a short-lived
+Cycle 3a separately closes request-time authenticated owner-browser composition
+only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`,
+with a short-lived
 session-bound capability and CSRF, replay, rotation, revocation, and lifetime
-controls, but source verification, terminal CI, and fresh Cycle 3a fact-release
-owner authorization remain pending. Same-user hostile-process resistance
-remains outside the claim.
+controls. Same-user hostile-process resistance remains outside the claim.
 Enterprise/shared-service requirements remain Out of scope. Historical Cycle
 2z design gates and nonclaims are in
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
-## Cycle 3a prepared personal owner-session threat boundary
+## Cycle 3a personal owner-session threat boundary
 
-Cycle 3a is **prepared but not promoted**. Source verification, terminal CI, and
-fresh Cycle 3a fact-release owner authorization remain pending, and this threat
-model records no Cycle 3a source revision, run, private fact-release acceptance,
-or Pass claim.
+Cycle 3a is **accepted and promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`**. Private evidence is limited to
+the permitted coarse outcome below.
+
+The exact merge-free source transition is
+`dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3` ->
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`: 39 paths, comprising 13 additions
+and 26 modifications, with 6,543 insertions and 238 deletions. Local
+`corepack pnpm verify` passed every format, lint, guardrail, type, peer, test,
+and production-build gate. Settled suite totals include 119 API tests, 94 web
+tests, and 582 database tests; every remaining package suite passed with only
+intentional skips. Exact-source general CI run `33460175145` passed on attempt
+1 in Ubuntu job `99708487084` and Windows job `99708487035`; payload-custody
+run/job `33460175120` / `99708486913` and cross-engine run/job `33460175088` /
+`99708486675` also passed on attempt 1. Independent read-only source review
+found no remaining actionable P0/P1/P2 issue for the declared personal scope;
+this is not an external audit.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope.
 
 Assets at risk are the operator-configured bootstrap secret, the one-time
 bootstrap state, the active session bearer and digest, exact Host/Origin binding, idle and
@@ -2126,16 +2144,12 @@ Controls are:
   generic value-free failures, disabled application logging, and browser-
   storage exclusion.
 
-The code protects both personal compositions in tests, but a source-binding
-control intentionally prevents the preserved Cycle 2z private artifact from
-running at Cycle 3a. Its release bundle and consumed approval are bound to exact
-source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`; the new runtime embeds its own
-source revision, and the loader requires equality. Actual Cycle 3a
-`personal_fact_release` remains unaccepted until a fresh owner-reviewed release
-bundle and fresh single-use approval are bound to the eventual Cycle 3a source.
-Reusing or relabeling the Cycle 2z artifact is not a permitted shortcut.
-This is a pending personal owner-authorization gate, not an enterprise
-requirement, and the historical Cycle 2z evidence remains unchanged.
+The code protects both personal compositions. Preserved Cycle 2z evidence
+remains bound to exact source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`
+and historically unchanged. Cycle 3a's source binding is distinct, and no
+private sub-result enters public evidence. A later source requires fresh owner
+review and fresh single-use authorization. This is a personal-profile boundary,
+not an enterprise requirement.
 
 The browser origin is part of the authority boundary. An API bound to
 `127.0.0.1` accepts only `http://127.0.0.1:3000`; an API bound to `::1` accepts
@@ -2162,7 +2176,7 @@ precondition. There is also no Cycle 3b personal dossier composition: the
 protected selected facts remain separate from the synthetic dossier, evidence,
 history, valuation, thesis, alerts, export, persistence, fetcher, and background
 flows.
-Exact design and pending gates are in
+Exact design, evidence, and nonclaims are in
 [ADR 0053](./adr/0053-personal-local-owner-session.md) and the
 [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
 
@@ -2208,10 +2222,9 @@ Exact design and pending gates are in
    mapping correctness, general parser coverage, or generalization beyond the
    exact frozen scope. Cycle 2y closes only coarse local readiness composition.
    Cycle 2z separately closes only the exact atomic same-snapshot selected-fact
-   release. Cycle 3a request-time authenticated owner-browser composition is
-   prepared, with source verification, terminal CI, and fresh Cycle 3a fact-
-   release owner authorization still required before promotion. That owner
-   authorization is a personal-profile gate. Organizational rights/steward
+   release. Cycle 3a separately closes request-time authenticated owner-browser
+   composition only for its exact source. Cycle 3b authenticated personal
+   dossier composition is the next separate milestone. Organizational rights/steward
    approval and authority keys are separate enterprise-profile gates, not
    personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

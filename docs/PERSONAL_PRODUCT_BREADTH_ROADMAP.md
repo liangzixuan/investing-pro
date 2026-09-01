@@ -1,9 +1,9 @@
 # Personal product-breadth roadmap
 
-Status: **Cycle 3a implementation prepared; source verification, terminal CI,
-and fresh Cycle 3a fact-release owner authorization pending. Cycles 3b through
-3q remain planned.** This document does not promote a Cycle 3 capability or
-alter the exact historical Cycle 2z personal result.
+Status: **Cycle 3a is promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycles 3b through 3q remain
+planned.** This does not alter the exact historical Cycle 2z personal result or
+make a feature-parity claim.
 
 ## Goal
 
@@ -123,28 +123,28 @@ Later subcycles may widen a universe only with the same checks.
 
 ## Gap-to-milestone map
 
-| Capability gap                          | Current baseline                                               | Planned closure |
-| --------------------------------------- | -------------------------------------------------------------- | --------------- |
-| Owner authentication                    | Cycle 3a prepared; verification and fact authorization pending | Cycle 3a        |
-| Personal dossier composition            | Startup-fixed facts in a separate read-only panel              | Cycle 3b        |
-| Connected source governance             | Offline profile only                                           | Cycle 3c        |
-| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs     | Cycle 3d        |
-| Security universe, search, watchlists   | One synthetic symbol                                           | Cycle 3e        |
-| Automated filings and amendments        | Manually prepared exact filing corpus                          | Cycle 3f        |
-| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart           | Cycle 3g        |
-| Transparent technical indicators        | No end-user price/volume indicator workspace                   | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set    | Cycle 3h        |
-| Multi-model valuation                   | One exit-multiple model                                        | Cycle 3i        |
-| Peers, health, quality, and risk scores | No end-user comparison or scorecards                           | Cycle 3j        |
-| Screener and saved views                | No universe query                                              | Cycle 3k        |
-| Earnings, dividends, news, calendars    | No daily event workflow                                        | Cycle 3l        |
-| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow            | Cycle 3l-b      |
-| Transcript discovery                    | No transcript metadata or permitted-text workflow              | Cycle 3l-c      |
-| Holdings and portfolio performance      | No portfolio model                                             | Cycle 3m        |
-| Background delivered alerts             | One immediate local rule evaluation                            | Cycle 3n        |
-| Reports, exports, custom views          | No end-user export or saved layout                             | Cycle 3o        |
-| Evidence-grounded AI and strategies     | No model integration                                           | Cycle 3p        |
-| Installable daily-use application       | Responsive local web demo                                      | Cycle 3q        |
+| Capability gap                          | Current baseline                                            | Planned closure |
+| --------------------------------------- | ----------------------------------------------------------- | --------------- |
+| Owner authentication                    | Cycle 3a promoted only for its exact source                 | Cycle 3a        |
+| Personal dossier composition            | Startup-fixed facts in a separate read-only panel           | Cycle 3b        |
+| Connected source governance             | Offline profile only                                        | Cycle 3c        |
+| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs  | Cycle 3d        |
+| Security universe, search, watchlists   | One synthetic symbol                                        | Cycle 3e        |
+| Automated filings and amendments        | Manually prepared exact filing corpus                       | Cycle 3f        |
+| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart        | Cycle 3g        |
+| Transparent technical indicators        | No end-user price/volume indicator workspace                | Cycle 3g-b      |
+| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set | Cycle 3h        |
+| Multi-model valuation                   | One exit-multiple model                                     | Cycle 3i        |
+| Peers, health, quality, and risk scores | No end-user comparison or scorecards                        | Cycle 3j        |
+| Screener and saved views                | No universe query                                           | Cycle 3k        |
+| Earnings, dividends, news, calendars    | No daily event workflow                                     | Cycle 3l        |
+| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow         | Cycle 3l-b      |
+| Transcript discovery                    | No transcript metadata or permitted-text workflow           | Cycle 3l-c      |
+| Holdings and portfolio performance      | No portfolio model                                          | Cycle 3m        |
+| Background delivered alerts             | One immediate local rule evaluation                         | Cycle 3n        |
+| Reports, exports, custom views          | No end-user export or saved layout                          | Cycle 3o        |
+| Evidence-grounded AI and strategies     | No model integration                                        | Cycle 3p        |
+| Installable daily-use application       | Responsive local web demo                                   | Cycle 3q        |
 
 ## Wave 1 — usable personal core
 
@@ -153,10 +153,27 @@ Later subcycles may widen a universe only with the same checks.
 Target: close the highest-priority request-time owner-browser blocker without
 widening the offline data scope.
 
-Status: **Implementation prepared; source verification, terminal CI, and fresh
-Cycle 3a fact-release owner authorization pending. Not promoted.** See
+Status: **Accepted and promoted only for exact source revision
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Private evidence is limited to
+the permitted coarse outcome below.** See
 [ADR 0053](./adr/0053-personal-local-owner-session.md) and the
 [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+
+The exact merge-free source transition is
+`dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3` ->
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`: 39 paths, comprising 13 additions
+and 26 modifications, with 6,543 insertions and 238 deletions. Local
+`corepack pnpm verify` passed every gate; settled suite totals include 119 API,
+94 web, and 582 database tests, with all remaining package suites passing and
+only intentional skips. General CI run `33460175145` passed on attempt 1 in
+Ubuntu job `99708487084` and Windows job `99708487035`; payload-custody run/job
+`33460175120` / `99708486913` and cross-engine run/job `33460175088` /
+`99708486675` also passed on attempt 1. Independent read-only source review
+found no remaining actionable P0/P1/P2 issue for the declared personal scope;
+this is not an external audit.
+
+Coarse owner-approved private selected-fact release outcome: Pass for the exact
+frozen personal scope.
 
 Exit criteria:
 
@@ -214,10 +231,9 @@ Exit criteria:
   attempted against an active session fail closed;
 - every protected personal data route rejects missing, expired, cross-origin,
   malformed, revoked, or rotated authority before private work begins;
-- tests protect both personal compositions, but an actual Cycle 3a
-  `personal_fact_release` remains unaccepted until the eventual Cycle 3a source
-  has a fresh owner-reviewed release bundle and fresh single-use approval; the
-  preserved Cycle 2z artifact remains source-bound and unchanged;
+- tests protect both personal compositions; Cycle 3a's source binding is
+  distinct, no private sub-result enters public evidence, and preserved Cycle
+  2z evidence remains source-bound and unchanged;
 - no credential or capability appears in a crash output or fixture; and
 - synthetic API and web modes remain the defaults and unchanged.
 
@@ -231,12 +247,11 @@ narrow controlling-service-worker prefetch guard. Remote, multi-user, service,
 and persistent authentication also remain outside this personal boundary. Cycle
 3b dossier composition does not enter Cycle 3a.
 
-The pending `personal_fact_release` owner authorization is a personal-profile
-gate, not an enterprise/shared-service requirement. The preserved Cycle 2z
-bundle and consumed approval remain bound to exact source
-`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`; the Cycle 3a loader requires its
-embedded source revision to match, so those historical artifacts are
-intentionally not runtime-compatible with the eventual Cycle 3a source.
+The `personal_fact_release` owner authorization is a personal-profile gate, not
+an enterprise/shared-service requirement. The preserved Cycle 2z evidence
+remains bound to exact source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`;
+Cycle 3a passed only for its own exact source. A later source requires fresh
+owner review and fresh single-use authorization.
 
 ### Cycle 3b — authenticated personal dossier composition
 
