@@ -130,6 +130,7 @@ jobs:
           cycle2z_ubuntu_ci_stabilization="dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3"
           cycle3a_source="ee023b9cf7cf43fd63baa9b531ae71cc34f349e1"
           cycle3a_promotion="3b7f9c10639e3fc7086fe2c162d4a88827216188"
+          cycle3b_source="8755cb81e3202136a52cb1eccb75aa1c1602eeba"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -568,6 +569,22 @@ jobs:
             "M"
             "scripts/verify-boundaries.ts"
           )
+          expected_cycle3b_corrective=(
+            "M"
+            ".github/workflows/filing-parser-acceptance.yml"
+            "M"
+            ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M"
+            ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M"
+            "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           cycle3b_protected=()
           for ((cycle3b_index = 1; cycle3b_index < ${#expected_cycle3b_source[@]}; cycle3b_index += 2)); do
             cycle3b_protected+=("${expected_cycle3b_source[$cycle3b_index]}")
@@ -657,9 +674,10 @@ jobs:
                  git cat-file -e "$cycle2z_maintenance^{commit}" && \
                  git cat-file -e "$cycle2z_roadmap_parent^{commit}" && \
                   git cat-file -e "$cycle2z_roadmap^{commit}" && \
-                  git cat-file -e "$cycle2z_ubuntu_ci_stabilization^{commit}" && \
-                  git cat-file -e "$cycle3a_source^{commit}" && \
-                  git cat-file -e "$cycle3a_promotion^{commit}"; then
+                   git cat-file -e "$cycle2z_ubuntu_ci_stabilization^{commit}" && \
+                   git cat-file -e "$cycle3a_source^{commit}" && \
+                   git cat-file -e "$cycle3a_promotion^{commit}" && \
+                   git cat-file -e "$cycle3b_source^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_routing_closure")"
@@ -670,6 +688,7 @@ jobs:
                 read -r -a cycle2z_ubuntu_ci_stabilization_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_ubuntu_ci_stabilization")"
                 read -r -a cycle3a_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3a_source")"
                 read -r -a cycle3a_promotion_topology <<< "$(git rev-list --parents -n 1 "$cycle3a_promotion")"
+                read -r -a cycle3b_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3b_source")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -695,7 +714,10 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3a_source" "$cycle3a_promotion" --
                 )
                 mapfile -d '' -t cycle3b_source_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3a_promotion" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3a_promotion" "$cycle3b_source" --
+                )
+                mapfile -d '' -t cycle3b_corrective_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3b_source" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -806,16 +828,7 @@ jobs:
                     cycle3a=true
                   elif [[ "$cycle2z_successor_count" == "10" ]] && \
                        [[ "$cycle2z_first_parent_count" == "10" ]] && \
-                       [[ "$head_revision" != "$cycle2z_baseline" ]] && \
-                       [[ "$head_revision" != "$cycle2z_source" ]] && \
-                       [[ "$head_revision" != "$cycle2z_routing_closure" ]] && \
-                       [[ "$head_revision" != "$cycle2z_promotion" ]] && \
-                       [[ "$head_revision" != "$cycle2z_maintenance" ]] && \
-                       [[ "$head_revision" != "$cycle2z_roadmap_parent" ]] && \
-                       [[ "$head_revision" != "$cycle2z_roadmap" ]] && \
-                       [[ "$head_revision" != "$cycle2z_ubuntu_ci_stabilization" ]] && \
-                       [[ "$head_revision" != "$cycle3a_source" ]] && \
-                       [[ "$head_revision" != "$cycle3a_promotion" ]] && \
+                       [[ "$head_revision" == "$cycle3b_source" ]] && \
                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle3a_promotion" ]] && \
@@ -831,6 +844,36 @@ jobs:
                        matches_exactly expected_cycle3a_source cycle3a_source_actual && \
                        matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
                        matches_exactly expected_cycle3b_source cycle3b_source_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                  elif [[ "$cycle2z_successor_count" == "11" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "11" ]] && \
+                       [[ "$head_revision" != "$cycle2z_baseline" ]] && \
+                       [[ "$head_revision" != "$cycle2z_source" ]] && \
+                       [[ "$head_revision" != "$cycle2z_routing_closure" ]] && \
+                       [[ "$head_revision" != "$cycle2z_promotion" ]] && \
+                       [[ "$head_revision" != "$cycle2z_maintenance" ]] && \
+                       [[ "$head_revision" != "$cycle2z_roadmap_parent" ]] && \
+                       [[ "$head_revision" != "$cycle2z_roadmap" ]] && \
+                       [[ "$head_revision" != "$cycle2z_ubuntu_ci_stabilization" ]] && \
+                       [[ "$head_revision" != "$cycle3a_source" ]] && \
+                       [[ "$head_revision" != "$cycle3a_promotion" ]] && \
+                       [[ "$head_revision" != "$cycle3b_source" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3b_source" ]] && \
+                       [[ "${#cycle3b_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3b_source_topology[0]}" == "$cycle3b_source" ]] && \
+                       [[ "${cycle3b_source_topology[1]}" == "$cycle3a_promotion" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual; then
                     exact=true
                     cycle2z=true
                     cycle3a=true

@@ -98,6 +98,8 @@ import {
   isCycle3aPromotionCommitDiffSetAllowed,
   isCycle3aPromotionTopologyAllowed,
   isCycle3aTransitionRoutingRequired,
+  isCycle3bCorrectiveCommitDiffSetAllowed,
+  isCycle3bCorrectiveTopologyAllowed,
   isCycle3bSourceCommitDiffSetAllowed,
   isCycle3bSourceTopologyAllowed,
   isCycle3bTransitionRoutingRequired,
@@ -688,6 +690,8 @@ const CYCLE_3A_SOURCE_REVISION =
   "ee023b9cf7cf43fd63baa9b531ae71cc34f349e1" as const;
 const CYCLE_3A_PROMOTION_REVISION =
   "3b7f9c10639e3fc7086fe2c162d4a88827216188" as const;
+const CYCLE_3B_SOURCE_REVISION =
+  "8755cb81e3202136a52cb1eccb75aa1c1602eeba" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1143,6 +1147,38 @@ const CYCLE_3B_SOURCE_TRANSITION = [
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
+const CYCLE_3B_CORRECTIVE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set([
     ...CYCLE_2X_PROTECTED_SURFACE_PATHS,
@@ -1160,6 +1196,7 @@ const CYCLE_3B_PROTECTED_SURFACE_PATHS = [
   ...new Set([
     ...CYCLE_3A_PROTECTED_SURFACE_PATHS,
     ...CYCLE_3B_SOURCE_TRANSITION.map((entry) => entry.path),
+    ...CYCLE_3B_CORRECTIVE_TRANSITION.map((entry) => entry.path),
   ]),
 ].sort();
 
@@ -3436,7 +3473,7 @@ describe("Cycle 2z selected-fact release routing", () => {
   });
 
   it("accepts one merge-free Cycle 3b source child of the pinned promotion", () => {
-    const revision = "b".repeat(40);
+    const revision = CYCLE_3B_SOURCE_REVISION;
     const valid = [
       "10",
       "10",
@@ -3460,6 +3497,7 @@ describe("Cycle 2z selected-fact release routing", () => {
       [1, "9"],
       [1, "11"],
       [2, "not-a-commit"],
+      [2, "b".repeat(40)],
     ] as const) {
       const values: string[] = [...valid];
       values[index] = replacement;
@@ -3542,6 +3580,70 @@ describe("Cycle 2z selected-fact release routing", () => {
     }
   });
 
+  it("accepts only one merge-free corrective child of the pinned Cycle 3b source", () => {
+    const revision = "c".repeat(40);
+    const valid = [
+      "11",
+      "11",
+      revision,
+      `${revision} ${CYCLE_3B_SOURCE_REVISION}`,
+      `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}`,
+      `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}`,
+      `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle3bCorrectiveTopologyAllowed(...valid)).toBe(true);
+
+    for (const [index, replacement] of [
+      [0, "10"],
+      [0, "12"],
+      [1, "10"],
+      [1, "12"],
+      [2, "not-a-commit"],
+      [2, CYCLE_3B_SOURCE_REVISION],
+    ] as const) {
+      const values: string[] = [...valid];
+      values[index] = replacement;
+      if (index === 2) values[3] = `${replacement} ${CYCLE_3B_SOURCE_REVISION}`;
+      expect(
+        isCycle3bCorrectiveTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3bCorrectiveTopologyAllowed>),
+        ),
+        `${index}:${replacement}`,
+      ).toBe(false);
+    }
+
+    for (let index = 3; index < valid.length; index += 1) {
+      const changedParent: string[] = [...valid];
+      changedParent[index] = `${changedParent[index]}-changed`;
+      expect(
+        isCycle3bCorrectiveTopologyAllowed(
+          ...(changedParent as Parameters<
+            typeof isCycle3bCorrectiveTopologyAllowed
+          >),
+        ),
+        `parent:${index}`,
+      ).toBe(false);
+
+      const mergedParent: string[] = [...valid];
+      mergedParent[index] += ` ${"d".repeat(40)}`;
+      expect(
+        isCycle3bCorrectiveTopologyAllowed(
+          ...(mergedParent as Parameters<
+            typeof isCycle3bCorrectiveTopologyAllowed
+          >),
+        ),
+        `merge:${index}`,
+      ).toBe(false);
+    }
+  });
+
   it("requires every exact ordered source, promotion, stabilization, and corrective name-status tuple", () => {
     const transitions: readonly [
       string,
@@ -3605,6 +3707,12 @@ describe("Cycle 2z selected-fact release routing", () => {
         isCycle3bSourceCommitDiffSetAllowed,
         CYCLE_3B_SOURCE_TRANSITION,
         56,
+      ],
+      [
+        "Cycle 3b corrective",
+        isCycle3bCorrectiveCommitDiffSetAllowed,
+        CYCLE_3B_CORRECTIVE_TRANSITION,
+        7,
       ],
     ];
     for (const [name, allowed, entries, count] of transitions) {
@@ -3694,6 +3802,12 @@ describe("Cycle 2z selected-fact release routing", () => {
     ).toBe(false);
     expect(
       isCycle3aPromotionCommitDiffSetAllowed(CYCLE_3B_SOURCE_TRANSITION),
+    ).toBe(false);
+    expect(
+      isCycle3bCorrectiveCommitDiffSetAllowed(CYCLE_3B_SOURCE_TRANSITION),
+    ).toBe(false);
+    expect(
+      isCycle3bSourceCommitDiffSetAllowed(CYCLE_3B_CORRECTIVE_TRANSITION),
     ).toBe(false);
     expect(
       isCycle3bSourceCommitDiffSetAllowed(

@@ -96,6 +96,11 @@ import {
   isCycle2zCorrectiveTopologyAllowed,
   isCycle2zDirectChildAllowed,
   isCycle2zTransitionRoutingRequired,
+  isCycle3bRoutingClosureCommitDiffSetAllowed,
+  isCycle3bRoutingClosureTopologyAllowed,
+  isCycle3bSourceCommitDiffSetAllowed,
+  isCycle3bSourceTopologyAllowed,
+  isCycle3bTransitionRoutingRequired,
   isCycle2rBaselineMergeBaseAllowed,
   isCycle2rCommitDiffSetAllowed,
   isCycle2rDirectChildAllowed,
@@ -694,6 +699,24 @@ const CYCLE_2Z_BASELINE_REVISION =
   "62c01dafe305ddd43c75688e0225163b3abdf6df" as const;
 const CYCLE_2Z_SOURCE_REVISION =
   "e64924bc091bfc7a3e071e7db746910e082051c4" as const;
+const CYCLE_2Z_ROUTING_CLOSURE_REVISION =
+  "e76eeca112949f58e7e6e4ed57bcc0ab7e102d66" as const;
+const CYCLE_2Z_PROMOTION_REVISION =
+  "325e7d9a1fe38195099899dc9b9498e504cabbe9" as const;
+const CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION =
+  "c215166dbc5f1a87ae67a7c6a76b93308359dcbb" as const;
+const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION =
+  "879a03759493158f20f579d1efc2e3d337de4385" as const;
+const CYCLE_2Z_ROADMAP_REBASELINE_REVISION =
+  "4c660188831b91111a45d588245cb8735b8858ab" as const;
+const CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION =
+  "dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3" as const;
+const CYCLE_3A_SOURCE_REVISION =
+  "ee023b9cf7cf43fd63baa9b531ae71cc34f349e1" as const;
+const CYCLE_3A_PROMOTION_REVISION =
+  "3b7f9c10639e3fc7086fe2c162d4a88827216188" as const;
+const CYCLE_3B_SOURCE_REVISION =
+  "8755cb81e3202136a52cb1eccb75aa1c1602eeba" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -804,6 +827,121 @@ const CYCLE_2Z_CORRECTIVE_TRANSITION = [
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
+const CYCLE_3B_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) => left.path.localeCompare(right.path));
+const CYCLE_3B_SOURCE_TRANSITION = [
+  [
+    ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    "M",
+  ],
+  [".github/workflows/filing-payload-custody-acceptance.yml", "M"],
+  ["README.md", "M"],
+  ["apps/api/src/api-mode.test.ts", "M"],
+  ["apps/api/src/api-mode.ts", "M"],
+  ["apps/api/src/app.ts", "M"],
+  ["apps/api/src/composition-root.ts", "M"],
+  ["apps/api/src/personal-dossier-release.test.ts", "A"],
+  ["apps/api/src/personal-dossier-release.ts", "A"],
+  ["apps/api/src/personal-dossier-routes.ts", "A"],
+  ["apps/api/src/test-personal-dossier-release-builder.ts", "A"],
+  ["apps/web/app/globals.css", "M"],
+  ["apps/web/app/page.tsx", "M"],
+  ["apps/web/app/personal/page.tsx", "A"],
+  ["apps/web/app/research/[symbol]/page.tsx", "M"],
+  ["apps/web/src/features/research/OwnerSessionPanel.test.tsx", "M"],
+  ["apps/web/src/features/research/OwnerSessionPanel.tsx", "M"],
+  ["apps/web/src/features/research/PersonalDossier.test.tsx", "A"],
+  ["apps/web/src/features/research/PersonalDossier.tsx", "A"],
+  ["apps/web/src/features/research/PersonalResearchWorkspace.test.tsx", "A"],
+  ["apps/web/src/features/research/PersonalResearchWorkspace.tsx", "A"],
+  ["apps/web/src/features/research/test-personal-dossier-builder.ts", "A"],
+  ["apps/web/src/lib/api.test.ts", "M"],
+  ["apps/web/src/lib/api.ts", "M"],
+  ["apps/web/src/lib/personal-api.ts", "A"],
+  ["apps/web/src/lib/web-mode.test.ts", "M"],
+  ["apps/web/src/lib/web-mode.ts", "M"],
+  ["apps/web/src/research-page-mode.test.tsx", "A"],
+  ["docs/BUILD_ROADMAP.md", "M"],
+  ["docs/CANONICAL_MODEL.md", "M"],
+  ["docs/CYCLE_2X_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_2Y_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_2Z_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3A_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3B_EXIT_MATRIX.md", "A"],
+  ["docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "M"],
+  ["docs/THREAT_MODEL.md", "M"],
+  [
+    "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    "M",
+  ],
+  ["docs/adr/0051-bounded-personal-quality-readiness-composition.md", "M"],
+  [
+    "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    "M",
+  ],
+  ["docs/adr/0053-personal-local-owner-session.md", "M"],
+  ["docs/adr/0054-authenticated-personal-dossier-composition.md", "A"],
+  ["packages/contracts/openapi/openapi.yaml", "M"],
+  ["packages/contracts/src/index.ts", "M"],
+  ["packages/contracts/src/openapi.test.ts", "M"],
+  [
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    "M",
+  ],
+  [
+    "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    "M",
+  ],
+  ["packages/personal-filing-corpus/src/index.ts", "M"],
+  [
+    "packages/personal-filing-corpus/src/personal-filing-dossier-security.test.ts",
+    "A",
+  ],
+  ["packages/personal-filing-corpus/src/personal-filing-dossier.test.ts", "A"],
+  ["packages/personal-filing-corpus/src/personal-filing-dossier.ts", "A"],
+  [
+    "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts",
+    "M",
+  ],
+  [
+    "packages/personal-filing-corpus/src/personal-filing-quality-measurement.test.ts",
+    "M",
+  ],
+  [
+    "packages/personal-filing-corpus/src/personal-filing-quality-measurement.ts",
+    "M",
+  ],
+  [
+    "packages/personal-filing-corpus/src/test-personal-filing-dossier-builder.ts",
+    "A",
+  ],
+  ["scripts/verify-boundaries.ts", "M"],
+].map(([path, status]) => ({ path: path!, status: status! }));
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set(
     [...CYCLE_2Z_SOURCE_TRANSITION, ...CYCLE_2Z_CORRECTIVE_TRANSITION].map(
@@ -2713,6 +2851,169 @@ describe("Cycle 2z owner-authorized selected-fact release routing", () => {
     expect(isCycle2zTransitionRoutingRequired(undefined)).toBe(false);
     expect(isCycle2zTransitionRoutingRequired([])).toBe(false);
     expect(isCycle2zTransitionRoutingRequired(["unexpected"])).toBe(false);
+  });
+});
+
+describe("Cycle 3b parser isolation routing closure", () => {
+  const sourceTopology = [
+    "10",
+    "10",
+    CYCLE_3B_SOURCE_REVISION,
+    `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}`,
+    `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}`,
+    `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+    `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+    `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+    `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+    `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+    `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+    `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+    `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+  ] as const;
+
+  it("pins the source to one merge-free direct child of Cycle 3a promotion", () => {
+    expect(isCycle3bSourceTopologyAllowed(...sourceTopology)).toBe(true);
+    for (const [index, value] of sourceTopology.entries()) {
+      const changed: string[] = [...sourceTopology];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "9"
+            : "11"
+          : index === 2
+            ? "not-a-commit"
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3bSourceTopologyAllowed(
+          ...(changed as Parameters<typeof isCycle3bSourceTopologyAllowed>),
+        ),
+        `source:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("permits one exact linear routing child and rejects count, parent, and merge drift", () => {
+    const revision = "a".repeat(40);
+    const valid = [
+      "11",
+      "11",
+      revision,
+      `${revision} ${CYCLE_3B_SOURCE_REVISION}`,
+      `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}`,
+      `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}`,
+      `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle3bRoutingClosureTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "10"
+            : "12"
+          : index === 2
+            ? CYCLE_3B_SOURCE_REVISION
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3bRoutingClosureTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3bRoutingClosureTopologyAllowed
+          >),
+        ),
+        `closure:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("requires the exact sorted seven-file corrective tuple", () => {
+    const allowed = isCycle3bRoutingClosureCommitDiffSetAllowed;
+    expect(CYCLE_3B_ROUTING_CLOSURE_TRANSITION).toHaveLength(7);
+    expect(allowed(CYCLE_3B_ROUTING_CLOSURE_TRANSITION)).toBe(true);
+    expect(allowed([...CYCLE_3B_ROUTING_CLOSURE_TRANSITION].reverse())).toBe(
+      false,
+    );
+    for (const [
+      index,
+      entry,
+    ] of CYCLE_3B_ROUTING_CLOSURE_TRANSITION.entries()) {
+      expect(
+        allowed(
+          CYCLE_3B_ROUTING_CLOSURE_TRANSITION.filter(
+            (_, candidate) => candidate !== index,
+          ),
+        ),
+        `missing:${entry.path}`,
+      ).toBe(false);
+      expect(
+        allowed(
+          CYCLE_3B_ROUTING_CLOSURE_TRANSITION.map(
+            (candidate, candidateIndex) =>
+              candidateIndex === index
+                ? { ...candidate, status: "A" }
+                : candidate,
+          ),
+        ),
+        `status:${entry.path}`,
+      ).toBe(false);
+    }
+    expect(
+      allowed([
+        ...CYCLE_3B_ROUTING_CLOSURE_TRANSITION,
+        { path: "unexpected", status: "M" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("freezes all 56 source name-status entries", () => {
+    const allowed = isCycle3bSourceCommitDiffSetAllowed;
+    expect(CYCLE_3B_SOURCE_TRANSITION).toHaveLength(56);
+    expect(allowed(CYCLE_3B_SOURCE_TRANSITION)).toBe(true);
+    expect(allowed([...CYCLE_3B_SOURCE_TRANSITION].reverse())).toBe(false);
+    for (const [index, entry] of CYCLE_3B_SOURCE_TRANSITION.entries()) {
+      expect(
+        allowed(
+          CYCLE_3B_SOURCE_TRANSITION.filter(
+            (_, candidate) => candidate !== index,
+          ),
+        ),
+        `source:missing:${entry.path}`,
+      ).toBe(false);
+      expect(
+        allowed(
+          CYCLE_3B_SOURCE_TRANSITION.map((candidate, candidateIndex) =>
+            candidateIndex === index
+              ? { ...candidate, status: candidate.status === "M" ? "A" : "M" }
+              : candidate,
+          ),
+        ),
+        `source:status:${entry.path}`,
+      ).toBe(false);
+    }
+    expect(
+      allowed([
+        ...CYCLE_3B_SOURCE_TRANSITION,
+        { path: "unexpected", status: "M" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("routes every corrective surface and fails closed on absent input", () => {
+    for (const { path } of CYCLE_3B_ROUTING_CLOSURE_TRANSITION) {
+      expect(isCycle3bTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle3bTransitionRoutingRequired(["unexpected", path])).toBe(
+        true,
+      );
+    }
+    expect(isCycle3bTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle3bTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle3bTransitionRoutingRequired(["unexpected"])).toBe(false);
   });
 });
 

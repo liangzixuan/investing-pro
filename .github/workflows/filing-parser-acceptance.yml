@@ -4,13 +4,25 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - .gitignore
       - .github/workflows/ci.yml
       - .github/workflows/filing-parser-acceptance.yml
+      - .github/workflows/filing-parser-cross-engine-execution-acceptance.yml
+      - .github/workflows/filing-payload-custody-acceptance.yml
       - LICENSE_POLICY.md
+      - README.md
       - THIRD_PARTY_NOTICES.md
+      - apps/api/**
+      - apps/web/**
+      - docs/**
       - fixtures/synthetic/filing-parser/**
+      - fixtures/synthetic/filing-payload-custody/**
       - package.json
+      - packages/contracts/**
+      - packages/db/tests/postgres-acceptance-evidence-review.test.ts
       - packages/filing-parser/**
+      - packages/filing-payload-custody/**
+      - packages/personal-filing-corpus/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - scripts/verify-boundaries.ts
@@ -19,13 +31,25 @@ on:
   push:
     branches: [main]
     paths:
+      - .gitignore
       - .github/workflows/ci.yml
       - .github/workflows/filing-parser-acceptance.yml
+      - .github/workflows/filing-parser-cross-engine-execution-acceptance.yml
+      - .github/workflows/filing-payload-custody-acceptance.yml
       - LICENSE_POLICY.md
+      - README.md
       - THIRD_PARTY_NOTICES.md
+      - apps/api/**
+      - apps/web/**
+      - docs/**
       - fixtures/synthetic/filing-parser/**
+      - fixtures/synthetic/filing-payload-custody/**
       - package.json
+      - packages/contracts/**
+      - packages/db/tests/postgres-acceptance-evidence-review.test.ts
       - packages/filing-parser/**
+      - packages/filing-payload-custody/**
+      - packages/personal-filing-corpus/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - scripts/verify-boundaries.ts
