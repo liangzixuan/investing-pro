@@ -19,6 +19,7 @@ on:
       - fixtures/synthetic/filing-payload-custody/**
       - package.json
       - packages/contracts/**
+      - packages/connected-source-policy/**
       - packages/db/tests/postgres-acceptance-evidence-review.test.ts
       - packages/filing-parser/**
       - packages/filing-payload-custody/**
@@ -46,6 +47,7 @@ on:
       - fixtures/synthetic/filing-payload-custody/**
       - package.json
       - packages/contracts/**
+      - packages/connected-source-policy/**
       - packages/db/tests/postgres-acceptance-evidence-review.test.ts
       - packages/filing-parser/**
       - packages/filing-payload-custody/**

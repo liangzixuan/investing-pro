@@ -126,6 +126,10 @@ const CYCLE_3A_PROMOTION_REVISION =
   "3b7f9c10639e3fc7086fe2c162d4a88827216188" as const;
 const CYCLE_3B_SOURCE_REVISION =
   "8755cb81e3202136a52cb1eccb75aa1c1602eeba" as const;
+const CYCLE_3B_ROUTING_CLOSURE_REVISION =
+  "074c65ba5b9912230891d030236d634f4f36a2ac" as const;
+const CYCLE_3C_SOURCE_REVISION =
+  "4e9f011434382ccaae66f396fd5b163e4c0fc6be" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2277,6 +2281,101 @@ const CYCLE_3B_ROUTING_CLOSURE_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_3C_SOURCE_TRANSITION = Object.freeze(
+  [
+    { path: "README.md", status: "M" },
+    { path: "apps/api/package.json", status: "M" },
+    { path: "apps/api/src/api-mode.test.ts", status: "M" },
+    { path: "apps/api/src/api-mode.ts", status: "M" },
+    { path: "apps/api/src/composition-root.test.ts", status: "M" },
+    { path: "apps/api/src/composition-root.ts", status: "M" },
+    { path: "apps/api/src/connected-app.ts", status: "A" },
+    { path: "apps/api/src/connected-composition-root.test.ts", status: "A" },
+    { path: "apps/api/src/connected-composition-root.ts", status: "A" },
+    { path: "apps/api/src/connected-server.ts", status: "A" },
+    {
+      path: "apps/api/src/connected-source-policy-composition.test.ts",
+      status: "A",
+    },
+    {
+      path: "apps/api/src/connected-source-policy-composition.ts",
+      status: "A",
+    },
+    {
+      path: "apps/api/src/connected-source-policy-routes.test.ts",
+      status: "A",
+    },
+    { path: "apps/api/src/connected-source-policy-routes.ts", status: "A" },
+    { path: "apps/api/src/connected-static-graph.test.ts", status: "A" },
+    { path: "apps/api/src/personal-owner-session-routes.ts", status: "M" },
+    { path: "apps/api/src/personal-owner-session.ts", status: "M" },
+    {
+      path: "apps/api/src/test-connected-source-policy-builder.ts",
+      status: "A",
+    },
+    { path: "apps/api/tsup.config.ts", status: "M" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_3B_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_3C_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+      status: "M",
+    },
+    { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
+    {
+      path: "docs/adr/0054-authenticated-personal-dossier-composition.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0055-connected-personal-source-policy-registry.md",
+      status: "A",
+    },
+    { path: "packages/connected-source-policy/package.json", status: "A" },
+    {
+      path: "packages/connected-source-policy/src/connected-source-policy-security.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/connected-source-policy/src/connected-source-policy.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/connected-source-policy/src/connected-source-policy.ts",
+      status: "A",
+    },
+    { path: "packages/connected-source-policy/src/index.ts", status: "A" },
+    {
+      path: "packages/connected-source-policy/src/test-connected-source-policy-builder.ts",
+      status: "A",
+    },
+    { path: "packages/connected-source-policy/tsconfig.json", status: "A" },
+    { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+    { path: "packages/contracts/src/index.ts", status: "M" },
+    { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+    { path: "pnpm-lock.yaml", status: "M" },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
+const CYCLE_3C_ROUTING_CLOSURE_TRANSITION = Object.freeze([
+  ...CYCLE_3B_ROUTING_CLOSURE_TRANSITION,
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2469,6 +2568,11 @@ const CYCLE_3B_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3A_PROTECTED_SURFACE_PATHS,
   ...CYCLE_3B_SOURCE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3B_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+]);
+const CYCLE_3C_PROTECTED_SURFACE_PATHS = new Set([
+  ...CYCLE_3B_PROTECTED_SURFACE_PATHS,
+  ...CYCLE_3C_SOURCE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3C_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2K_TRANSITION_PATHS = new Set(
   CYCLE_2K_TRANSITION.map((entry) => entry.path),
@@ -4078,9 +4182,9 @@ export function isCycle3bRoutingClosureTopologyAllowed(
   return (
     successorCount === "11" &&
     firstParentCount === "11" &&
-    COMMIT_SHA.test(revision) &&
-    revision !== CYCLE_3B_SOURCE_REVISION &&
-    parentLine === `${revision} ${CYCLE_3B_SOURCE_REVISION}` &&
+    revision === CYCLE_3B_ROUTING_CLOSURE_REVISION &&
+    parentLine ===
+      `${CYCLE_3B_ROUTING_CLOSURE_REVISION} ${CYCLE_3B_SOURCE_REVISION}` &&
     cycle3bSourceParentLine ===
       `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}` &&
     isCycle3bSourceTopologyAllowed(
@@ -4101,18 +4205,115 @@ export function isCycle3bRoutingClosureTopologyAllowed(
   );
 }
 
+/** @internal Exact pinned merge-free Cycle 3c source after Cycle 3b routing. */
+export function isCycle3cSourceTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3bRoutingClosureParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "12" &&
+    firstParentCount === "12" &&
+    revision === CYCLE_3C_SOURCE_REVISION &&
+    parentLine ===
+      `${CYCLE_3C_SOURCE_REVISION} ${CYCLE_3B_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3bRoutingClosureTopologyAllowed(
+      "11",
+      "11",
+      CYCLE_3B_ROUTING_CLOSURE_REVISION,
+      cycle3bRoutingClosureParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact merge-free parser-routing child after Cycle 3c source. */
+export function isCycle3cRoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bRoutingClosureParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "13" &&
+    firstParentCount === "13" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_3C_SOURCE_REVISION &&
+    parentLine === `${revision} ${CYCLE_3C_SOURCE_REVISION}` &&
+    cycle3cSourceParentLine ===
+      `${CYCLE_3C_SOURCE_REVISION} ${CYCLE_3B_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3cSourceTopologyAllowed(
+      "12",
+      "12",
+      CYCLE_3C_SOURCE_REVISION,
+      cycle3cSourceParentLine,
+      cycle3bRoutingClosureParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
 /** @internal Any inherited through Cycle 3b protected-surface touch routes. */
 export function isCycle2zTransitionRoutingRequired(
   baselineDiffPaths: readonly string[] | undefined,
 ): boolean {
   return (
     baselineDiffPaths !== undefined &&
-    baselineDiffPaths.some((path) => CYCLE_3B_PROTECTED_SURFACE_PATHS.has(path))
+    baselineDiffPaths.some((path) => CYCLE_3C_PROTECTED_SURFACE_PATHS.has(path))
   );
 }
 
 /** @internal Any inherited or Cycle 3b protected-surface touch routes. */
 export function isCycle3bTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return isCycle2zTransitionRoutingRequired(baselineDiffPaths);
+}
+
+/** @internal Any inherited or Cycle 3c protected-surface touch routes. */
+export function isCycle3cTransitionRoutingRequired(
   baselineDiffPaths: readonly string[] | undefined,
 ): boolean {
   return isCycle2zTransitionRoutingRequired(baselineDiffPaths);
@@ -5230,6 +5431,26 @@ export function isCycle3bRoutingClosureCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact Cycle 3c connected-source policy source transition. */
+export function isCycle3cSourceCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3C_SOURCE_TRANSITION,
+  );
+}
+
+/** @internal Exact Cycle 3c parser-routing closure transition. */
+export function isCycle3cRoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3C_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -5533,7 +5754,7 @@ async function cycle2zTransitionSurfaceDiffPaths(
       CYCLE_2Z_BASELINE_REVISION,
       revision,
       "--",
-      ...CYCLE_3B_PROTECTED_SURFACE_PATHS,
+      ...CYCLE_3C_PROTECTED_SURFACE_PATHS,
     ]),
   );
 }
@@ -6400,6 +6621,8 @@ async function verifyCycle2zTransition(
     CYCLE_3A_SOURCE_REVISION,
     CYCLE_3A_PROMOTION_REVISION,
     CYCLE_3B_SOURCE_REVISION,
+    CYCLE_3B_ROUTING_CLOSURE_REVISION,
+    CYCLE_3C_SOURCE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -6529,6 +6752,25 @@ async function verifyCycle2zTransition(
       128,
     ),
   );
+  const cycle3bRoutingClosureParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3B_ROUTING_CLOSURE_REVISION,
+      ],
+      128,
+    ),
+  );
+  const cycle3cSourceParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_3C_SOURCE_REVISION],
+      128,
+    ),
+  );
   const directSource = isCycle2zDirectChildAllowed(
     successorCount,
     firstParentCount,
@@ -6634,6 +6876,41 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
+  const cycle3cSource = isCycle3cSourceTopologyAllowed(
+    successorCount,
+    firstParentCount,
+    revision,
+    parentLine,
+    cycle3bRoutingClosureParentLine,
+    cycle3bSourceParentLine,
+    cycle3aPromotionParentLine,
+    cycle3aSourceParentLine,
+    ubuntuCiStabilizationParentLine,
+    roadmapRebaselineParentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
+  const cycle3cRoutingClosure = isCycle3cRoutingClosureTopologyAllowed(
+    successorCount,
+    firstParentCount,
+    revision,
+    parentLine,
+    cycle3cSourceParentLine,
+    cycle3bRoutingClosureParentLine,
+    cycle3bSourceParentLine,
+    cycle3aPromotionParentLine,
+    cycle3aSourceParentLine,
+    ubuntuCiStabilizationParentLine,
+    roadmapRebaselineParentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
   if (
     !directSource &&
     !correctiveChild &&
@@ -6643,7 +6920,9 @@ async function verifyCycle2zTransition(
     !cycle3aSource &&
     !cycle3aPromotion &&
     !cycle3bSource &&
-    !cycle3bRoutingClosure
+    !cycle3bRoutingClosure &&
+    !cycle3cSource &&
+    !cycle3cRoutingClosure
   )
     invalidReview();
 
@@ -6662,7 +6941,9 @@ async function verifyCycle2zTransition(
     cycle3aSource ||
     cycle3aPromotion ||
     cycle3bSource ||
-    cycle3bRoutingClosure
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
   ) {
     const correctiveEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6680,7 +6961,9 @@ async function verifyCycle2zTransition(
     cycle3aSource ||
     cycle3aPromotion ||
     cycle3bSource ||
-    cycle3bRoutingClosure
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
   ) {
     const promotionEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6716,7 +6999,9 @@ async function verifyCycle2zTransition(
     cycle3aSource ||
     cycle3aPromotion ||
     cycle3bSource ||
-    cycle3bRoutingClosure
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6731,7 +7016,9 @@ async function verifyCycle2zTransition(
     cycle3aSource ||
     cycle3aPromotion ||
     cycle3bSource ||
-    cycle3bRoutingClosure
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6747,7 +7034,9 @@ async function verifyCycle2zTransition(
     cycle3aSource ||
     cycle3aPromotion ||
     cycle3bSource ||
-    cycle3bRoutingClosure
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6756,7 +7045,13 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3aSourceCommitDiffSetAllowed(entries)) invalidReview();
   }
-  if (cycle3aPromotion || cycle3bSource || cycle3bRoutingClosure) {
+  if (
+    cycle3aPromotion ||
+    cycle3bSource ||
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3A_SOURCE_REVISION,
@@ -6764,7 +7059,12 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3aPromotionCommitDiffSetAllowed(entries)) invalidReview();
   }
-  if (cycle3bSource || cycle3bRoutingClosure) {
+  if (
+    cycle3bSource ||
+    cycle3bRoutingClosure ||
+    cycle3cSource ||
+    cycle3cRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3A_PROMOTION_REVISION,
@@ -6772,13 +7072,29 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3bSourceCommitDiffSetAllowed(entries)) invalidReview();
   }
-  if (cycle3bRoutingClosure) {
+  if (cycle3bRoutingClosure || cycle3cSource || cycle3cRoutingClosure) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3B_SOURCE_REVISION,
-      revision,
+      CYCLE_3B_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle3bRoutingClosureCommitDiffSetAllowed(entries)) invalidReview();
+  }
+  if (cycle3cSource || cycle3cRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3B_ROUTING_CLOSURE_REVISION,
+      CYCLE_3C_SOURCE_REVISION,
+    );
+    if (!isCycle3cSourceCommitDiffSetAllowed(entries)) invalidReview();
+  }
+  if (cycle3cRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3C_SOURCE_REVISION,
+      revision,
+    );
+    if (!isCycle3cRoutingClosureCommitDiffSetAllowed(entries)) invalidReview();
   }
 
   await verifyCycle2xTransition(

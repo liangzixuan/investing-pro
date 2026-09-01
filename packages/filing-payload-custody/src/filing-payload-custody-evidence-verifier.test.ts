@@ -103,6 +103,11 @@ import {
   isCycle3bSourceCommitDiffSetAllowed,
   isCycle3bSourceTopologyAllowed,
   isCycle3bTransitionRoutingRequired,
+  isCycle3cRoutingClosureCommitDiffSetAllowed,
+  isCycle3cRoutingClosureTopologyAllowed,
+  isCycle3cSourceCommitDiffSetAllowed,
+  isCycle3cSourceTopologyAllowed,
+  isCycle3cTransitionRoutingRequired,
   isCycle2zBaselineMergeBaseAllowed,
   isCycle2zCommitBoundaryCorrectiveDiffSetAllowed,
   isCycle2zCommitDiffSetAllowed,
@@ -692,6 +697,10 @@ const CYCLE_3A_PROMOTION_REVISION =
   "3b7f9c10639e3fc7086fe2c162d4a88827216188" as const;
 const CYCLE_3B_SOURCE_REVISION =
   "8755cb81e3202136a52cb1eccb75aa1c1602eeba" as const;
+const CYCLE_3B_CORRECTIVE_REVISION =
+  "074c65ba5b9912230891d030236d634f4f36a2ac" as const;
+const CYCLE_3C_SOURCE_REVISION =
+  "4e9f011434382ccaae66f396fd5b163e4c0fc6be" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1179,6 +1188,68 @@ const CYCLE_3B_CORRECTIVE_TRANSITION = [
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
+const CYCLE_3C_SOURCE_TRANSITION = [
+  ["README.md", "M"],
+  ["apps/api/package.json", "M"],
+  ["apps/api/src/api-mode.test.ts", "M"],
+  ["apps/api/src/api-mode.ts", "M"],
+  ["apps/api/src/composition-root.test.ts", "M"],
+  ["apps/api/src/composition-root.ts", "M"],
+  ["apps/api/src/connected-app.ts", "A"],
+  ["apps/api/src/connected-composition-root.test.ts", "A"],
+  ["apps/api/src/connected-composition-root.ts", "A"],
+  ["apps/api/src/connected-server.ts", "A"],
+  ["apps/api/src/connected-source-policy-composition.test.ts", "A"],
+  ["apps/api/src/connected-source-policy-composition.ts", "A"],
+  ["apps/api/src/connected-source-policy-routes.test.ts", "A"],
+  ["apps/api/src/connected-source-policy-routes.ts", "A"],
+  ["apps/api/src/connected-static-graph.test.ts", "A"],
+  ["apps/api/src/personal-owner-session-routes.ts", "M"],
+  ["apps/api/src/personal-owner-session.ts", "M"],
+  ["apps/api/src/test-connected-source-policy-builder.ts", "A"],
+  ["apps/api/tsup.config.ts", "M"],
+  ["docs/BUILD_ROADMAP.md", "M"],
+  ["docs/CANONICAL_MODEL.md", "M"],
+  ["docs/CYCLE_2X_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_2Y_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_2Z_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3A_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3B_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3C_EXIT_MATRIX.md", "A"],
+  ["docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "M"],
+  ["docs/THREAT_MODEL.md", "M"],
+  [
+    "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    "M",
+  ],
+  ["docs/adr/0051-bounded-personal-quality-readiness-composition.md", "M"],
+  [
+    "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    "M",
+  ],
+  ["docs/adr/0053-personal-local-owner-session.md", "M"],
+  ["docs/adr/0054-authenticated-personal-dossier-composition.md", "M"],
+  ["docs/adr/0055-connected-personal-source-policy-registry.md", "A"],
+  ["packages/connected-source-policy/package.json", "A"],
+  [
+    "packages/connected-source-policy/src/connected-source-policy-security.test.ts",
+    "A",
+  ],
+  ["packages/connected-source-policy/src/connected-source-policy.test.ts", "A"],
+  ["packages/connected-source-policy/src/connected-source-policy.ts", "A"],
+  ["packages/connected-source-policy/src/index.ts", "A"],
+  [
+    "packages/connected-source-policy/src/test-connected-source-policy-builder.ts",
+    "A",
+  ],
+  ["packages/connected-source-policy/tsconfig.json", "A"],
+  ["packages/contracts/openapi/openapi.yaml", "M"],
+  ["packages/contracts/src/index.ts", "M"],
+  ["packages/contracts/src/openapi.test.ts", "M"],
+  ["pnpm-lock.yaml", "M"],
+  ["scripts/verify-boundaries.ts", "M"],
+].map(([path, status]) => ({ path: path!, status: status! }));
+const CYCLE_3C_ROUTING_CLOSURE_TRANSITION = [...CYCLE_3B_CORRECTIVE_TRANSITION];
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set([
     ...CYCLE_2X_PROTECTED_SURFACE_PATHS,
@@ -1197,6 +1268,13 @@ const CYCLE_3B_PROTECTED_SURFACE_PATHS = [
     ...CYCLE_3A_PROTECTED_SURFACE_PATHS,
     ...CYCLE_3B_SOURCE_TRANSITION.map((entry) => entry.path),
     ...CYCLE_3B_CORRECTIVE_TRANSITION.map((entry) => entry.path),
+  ]),
+].sort();
+const CYCLE_3C_PROTECTED_SURFACE_PATHS = [
+  ...new Set([
+    ...CYCLE_3B_PROTECTED_SURFACE_PATHS,
+    ...CYCLE_3C_SOURCE_TRANSITION.map((entry) => entry.path),
+    ...CYCLE_3C_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
   ]),
 ].sort();
 
@@ -3580,8 +3658,8 @@ describe("Cycle 2z selected-fact release routing", () => {
     }
   });
 
-  it("accepts only one merge-free corrective child of the pinned Cycle 3b source", () => {
-    const revision = "c".repeat(40);
+  it("accepts only the pinned merge-free corrective child of the Cycle 3b source", () => {
+    const revision = CYCLE_3B_CORRECTIVE_REVISION;
     const valid = [
       "11",
       "11",
@@ -3640,6 +3718,86 @@ describe("Cycle 2z selected-fact release routing", () => {
           >),
         ),
         `merge:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts only the pinned merge-free Cycle 3c source", () => {
+    const valid = [
+      "12",
+      "12",
+      CYCLE_3C_SOURCE_REVISION,
+      `${CYCLE_3C_SOURCE_REVISION} ${CYCLE_3B_CORRECTIVE_REVISION}`,
+      `${CYCLE_3B_CORRECTIVE_REVISION} ${CYCLE_3B_SOURCE_REVISION}`,
+      `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}`,
+      `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}`,
+      `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle3cSourceTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "11"
+            : "13"
+          : index === 2
+            ? "not-a-commit"
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3cSourceTopologyAllowed(
+          ...(changed as Parameters<typeof isCycle3cSourceTopologyAllowed>),
+        ),
+        `source:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts only one exact merge-free Cycle 3c routing child", () => {
+    const revision = "d".repeat(40);
+    const valid = [
+      "13",
+      "13",
+      revision,
+      `${revision} ${CYCLE_3C_SOURCE_REVISION}`,
+      `${CYCLE_3C_SOURCE_REVISION} ${CYCLE_3B_CORRECTIVE_REVISION}`,
+      `${CYCLE_3B_CORRECTIVE_REVISION} ${CYCLE_3B_SOURCE_REVISION}`,
+      `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}`,
+      `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}`,
+      `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle3cRoutingClosureTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "12"
+            : "14"
+          : index === 2
+            ? CYCLE_3C_SOURCE_REVISION
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3cRoutingClosureTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3cRoutingClosureTopologyAllowed
+          >),
+        ),
+        `routing:${index}`,
       ).toBe(false);
     }
   });
@@ -3712,6 +3870,18 @@ describe("Cycle 2z selected-fact release routing", () => {
         "Cycle 3b corrective",
         isCycle3bCorrectiveCommitDiffSetAllowed,
         CYCLE_3B_CORRECTIVE_TRANSITION,
+        7,
+      ],
+      [
+        "Cycle 3c source",
+        isCycle3cSourceCommitDiffSetAllowed,
+        CYCLE_3C_SOURCE_TRANSITION,
+        47,
+      ],
+      [
+        "Cycle 3c routing",
+        isCycle3cRoutingClosureCommitDiffSetAllowed,
+        CYCLE_3C_ROUTING_CLOSURE_TRANSITION,
         7,
       ],
     ];
@@ -3860,6 +4030,21 @@ describe("Cycle 2z selected-fact release routing", () => {
     expect(isCycle3bTransitionRoutingRequired(undefined)).toBe(false);
     expect(isCycle3bTransitionRoutingRequired([])).toBe(false);
     expect(isCycle3bTransitionRoutingRequired(["unreviewed"])).toBe(false);
+  });
+
+  it("routes every inherited or Cycle 3c transition surface", () => {
+    expect(new Set(CYCLE_3C_PROTECTED_SURFACE_PATHS).size).toBe(
+      CYCLE_3C_PROTECTED_SURFACE_PATHS.length,
+    );
+    for (const path of CYCLE_3C_PROTECTED_SURFACE_PATHS) {
+      expect(isCycle3cTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle3bTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle3aTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle2zTransitionRoutingRequired([path]), path).toBe(true);
+    }
+    expect(isCycle3cTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle3cTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle3cTransitionRoutingRequired(["unreviewed"])).toBe(false);
   });
 });
 

@@ -6,14 +6,17 @@ on:
     branches: [main]
     paths:
       - .github/workflows/ci.yml
+      - .github/workflows/filing-parser-acceptance.yml
       - .github/workflows/filing-parser-cross-engine-execution-acceptance.yml
       - .github/workflows/filing-payload-custody-acceptance.yml
       - README.md
+      - apps/api/package.json
       - apps/api/src/api-mode.test.ts
       - apps/api/src/api-mode.ts
       - apps/api/src/app.ts
       - apps/api/src/composition-root.test.ts
       - apps/api/src/composition-root.ts
+      - apps/api/src/connected-*.ts
       - apps/api/src/personal-owner-session-routes.test.ts
       - apps/api/src/personal-owner-session-routes.ts
       - apps/api/src/personal-owner-session.test.ts
@@ -29,6 +32,8 @@ on:
       - apps/api/src/test-personal-owner-session-builder.ts
       - apps/api/src/test-personal-dossier-release-builder.ts
       - apps/api/src/test-personal-selected-fact-release-builder.ts
+      - apps/api/src/test-connected-source-policy-builder.ts
+      - apps/api/tsup.config.ts
       - apps/web/app/globals.css
       - apps/web/app/page.tsx
       - apps/web/app/personal/page.tsx
@@ -57,6 +62,7 @@ on:
       - docs/CYCLE_2Z_EXIT_MATRIX.md
       - docs/CYCLE_3A_EXIT_MATRIX.md
       - docs/CYCLE_3B_EXIT_MATRIX.md
+      - docs/CYCLE_3C_EXIT_MATRIX.md
       - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
       - docs/THREAT_MODEL.md
       - docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md
@@ -64,6 +70,7 @@ on:
       - docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md
       - docs/adr/0053-personal-local-owner-session.md
       - docs/adr/0054-authenticated-personal-dossier-composition.md
+      - docs/adr/0055-connected-personal-source-policy-registry.md
       - fixtures/synthetic/filing-parser-cross-engine-execution/**
       - LICENSE_POLICY.md
       - package.json
@@ -81,6 +88,7 @@ on:
       - packages/filing-payload-custody/**
       - packages/personal-filing-corpus/**
       - packages/contracts/openapi/openapi.yaml
+      - packages/connected-source-policy/**
       - packages/contracts/src/index.ts
       - packages/contracts/src/openapi.test.ts
       - pnpm-lock.yaml
@@ -107,7 +115,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, or Cycle 3b personal filing closure
+      - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, or Cycle 3c personal filing closure
         id: cycle2x_source
         if: ${{ success() }}
         shell: bash
@@ -117,6 +125,7 @@ jobs:
           cycle2z=false
           cycle3a=false
           cycle3b=false
+          cycle3c=false
           baseline="716a3f6b7ad5a43c48a6a61d18b59c2cd5645018"
           source="c0138a3121361fc06f210e42febe6af4c6fa3e13"
           validator_isolation="7f7163d4673360645e332d0b7d28467c15656f8a"
@@ -131,6 +140,8 @@ jobs:
           cycle3a_source="ee023b9cf7cf43fd63baa9b531ae71cc34f349e1"
           cycle3a_promotion="3b7f9c10639e3fc7086fe2c162d4a88827216188"
           cycle3b_source="8755cb81e3202136a52cb1eccb75aa1c1602eeba"
+          cycle3b_corrective="074c65ba5b9912230891d030236d634f4f36a2ac"
+          cycle3c_source="4e9f011434382ccaae66f396fd5b163e4c0fc6be"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -585,9 +596,66 @@ jobs:
             "M"
             "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3c_source=(
+            "M" "README.md"
+            "M" "apps/api/package.json"
+            "M" "apps/api/src/api-mode.test.ts"
+            "M" "apps/api/src/api-mode.ts"
+            "M" "apps/api/src/composition-root.test.ts"
+            "M" "apps/api/src/composition-root.ts"
+            "A" "apps/api/src/connected-app.ts"
+            "A" "apps/api/src/connected-composition-root.test.ts"
+            "A" "apps/api/src/connected-composition-root.ts"
+            "A" "apps/api/src/connected-server.ts"
+            "A" "apps/api/src/connected-source-policy-composition.test.ts"
+            "A" "apps/api/src/connected-source-policy-composition.ts"
+            "A" "apps/api/src/connected-source-policy-routes.test.ts"
+            "A" "apps/api/src/connected-source-policy-routes.ts"
+            "A" "apps/api/src/connected-static-graph.test.ts"
+            "M" "apps/api/src/personal-owner-session-routes.ts"
+            "M" "apps/api/src/personal-owner-session.ts"
+            "A" "apps/api/src/test-connected-source-policy-builder.ts"
+            "M" "apps/api/tsup.config.ts"
+            "M" "docs/BUILD_ROADMAP.md"
+            "M" "docs/CANONICAL_MODEL.md"
+            "M" "docs/CYCLE_2X_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_2Y_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_2Z_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3A_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3B_EXIT_MATRIX.md"
+            "A" "docs/CYCLE_3C_EXIT_MATRIX.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M" "docs/THREAT_MODEL.md"
+            "M" "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md"
+            "M" "docs/adr/0051-bounded-personal-quality-readiness-composition.md"
+            "M" "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md"
+            "M" "docs/adr/0053-personal-local-owner-session.md"
+            "M" "docs/adr/0054-authenticated-personal-dossier-composition.md"
+            "A" "docs/adr/0055-connected-personal-source-policy-registry.md"
+            "A" "packages/connected-source-policy/package.json"
+            "A" "packages/connected-source-policy/src/connected-source-policy-security.test.ts"
+            "A" "packages/connected-source-policy/src/connected-source-policy.test.ts"
+            "A" "packages/connected-source-policy/src/connected-source-policy.ts"
+            "A" "packages/connected-source-policy/src/index.ts"
+            "A" "packages/connected-source-policy/src/test-connected-source-policy-builder.ts"
+            "A" "packages/connected-source-policy/tsconfig.json"
+            "M" "packages/contracts/openapi/openapi.yaml"
+            "M" "packages/contracts/src/index.ts"
+            "M" "packages/contracts/src/openapi.test.ts"
+            "M" "pnpm-lock.yaml"
+            "M" "scripts/verify-boundaries.ts"
+          )
+          expected_cycle3c_routing=("${expected_cycle3b_corrective[@]}")
           cycle3b_protected=()
           for ((cycle3b_index = 1; cycle3b_index < ${#expected_cycle3b_source[@]}; cycle3b_index += 2)); do
             cycle3b_protected+=("${expected_cycle3b_source[$cycle3b_index]}")
+          done
+          cycle3c_protected=()
+          for ((cycle3c_index = 1; cycle3c_index < ${#expected_cycle3c_source[@]}; cycle3c_index += 2)); do
+            cycle3c_protected+=("${expected_cycle3c_source[$cycle3c_index]}")
+          done
+          for ((cycle3c_index = 1; cycle3c_index < ${#expected_cycle3c_routing[@]}; cycle3c_index += 2)); do
+            cycle3c_protected+=("${expected_cycle3c_routing[$cycle3c_index]}")
           done
           matches_exactly() {
             local -n expected_values="$1"
@@ -611,9 +679,13 @@ jobs:
             mapfile -d '' -t cycle3b_protected_actual < <(
               git diff --name-only --no-renames -z "$baseline" HEAD -- "${cycle3b_protected[@]}"
             )
+            mapfile -d '' -t cycle3c_protected_actual < <(
+              git diff --name-only --no-renames -z "$baseline" HEAD -- "${cycle3c_protected[@]}"
+            )
             if [[ "${#protected_actual[@]}" != "0" || \
                   "${#cycle3a_protected_actual[@]}" != "0" || \
-                  "${#cycle3b_protected_actual[@]}" != "0" ]]; then
+                  "${#cycle3b_protected_actual[@]}" != "0" || \
+                  "${#cycle3c_protected_actual[@]}" != "0" ]]; then
               required=true
               head_revision="$(git rev-parse HEAD)"
               if git cat-file -e "$source^{commit}" && \
@@ -677,7 +749,9 @@ jobs:
                    git cat-file -e "$cycle2z_ubuntu_ci_stabilization^{commit}" && \
                    git cat-file -e "$cycle3a_source^{commit}" && \
                    git cat-file -e "$cycle3a_promotion^{commit}" && \
-                   git cat-file -e "$cycle3b_source^{commit}"; then
+                   git cat-file -e "$cycle3b_source^{commit}" && \
+                   git cat-file -e "$cycle3b_corrective^{commit}" && \
+                   git cat-file -e "$cycle3c_source^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_routing_closure")"
@@ -689,6 +763,8 @@ jobs:
                 read -r -a cycle3a_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3a_source")"
                 read -r -a cycle3a_promotion_topology <<< "$(git rev-list --parents -n 1 "$cycle3a_promotion")"
                 read -r -a cycle3b_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3b_source")"
+                read -r -a cycle3b_corrective_topology <<< "$(git rev-list --parents -n 1 "$cycle3b_corrective")"
+                read -r -a cycle3c_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3c_source")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -717,7 +793,13 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3a_promotion" "$cycle3b_source" --
                 )
                 mapfile -d '' -t cycle3b_corrective_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3b_source" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3b_source" "$cycle3b_corrective" --
+                )
+                mapfile -d '' -t cycle3c_source_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3b_corrective" "$cycle3c_source" --
+                )
+                mapfile -d '' -t cycle3c_routing_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3c_source" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -850,17 +932,7 @@ jobs:
                     cycle3b=true
                   elif [[ "$cycle2z_successor_count" == "11" ]] && \
                        [[ "$cycle2z_first_parent_count" == "11" ]] && \
-                       [[ "$head_revision" != "$cycle2z_baseline" ]] && \
-                       [[ "$head_revision" != "$cycle2z_source" ]] && \
-                       [[ "$head_revision" != "$cycle2z_routing_closure" ]] && \
-                       [[ "$head_revision" != "$cycle2z_promotion" ]] && \
-                       [[ "$head_revision" != "$cycle2z_maintenance" ]] && \
-                       [[ "$head_revision" != "$cycle2z_roadmap_parent" ]] && \
-                       [[ "$head_revision" != "$cycle2z_roadmap" ]] && \
-                       [[ "$head_revision" != "$cycle2z_ubuntu_ci_stabilization" ]] && \
-                       [[ "$head_revision" != "$cycle3a_source" ]] && \
-                       [[ "$head_revision" != "$cycle3a_promotion" ]] && \
-                       [[ "$head_revision" != "$cycle3b_source" ]] && \
+                       [[ "$head_revision" == "$cycle3b_corrective" ]] && \
                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle3b_source" ]] && \
@@ -878,6 +950,54 @@ jobs:
                     cycle2z=true
                     cycle3a=true
                     cycle3b=true
+                  elif [[ "$cycle2z_successor_count" == "12" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "12" ]] && \
+                       [[ "$head_revision" == "$cycle3c_source" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3b_corrective" ]] && \
+                       [[ "${#cycle3b_corrective_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3b_corrective_topology[0]}" == "$cycle3b_corrective" ]] && \
+                       [[ "${cycle3b_corrective_topology[1]}" == "$cycle3b_source" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                       matches_exactly expected_cycle3c_source cycle3c_source_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                    cycle3c=true
+                  elif [[ "$cycle2z_successor_count" == "13" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "13" ]] && \
+                       [[ "$head_revision" != "$cycle3c_source" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3c_source" ]] && \
+                       [[ "${#cycle3c_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3c_source_topology[0]}" == "$cycle3c_source" ]] && \
+                       [[ "${cycle3c_source_topology[1]}" == "$cycle3b_corrective" ]] && \
+                       [[ "${#cycle3b_corrective_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3b_corrective_topology[0]}" == "$cycle3b_corrective" ]] && \
+                       [[ "${cycle3b_corrective_topology[1]}" == "$cycle3b_source" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                       matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                       matches_exactly expected_cycle3c_routing cycle3c_routing_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                    cycle3c=true
                   fi
                 fi
               fi
@@ -888,8 +1008,9 @@ jobs:
           echo "cycle2z=$cycle2z" >> "$GITHUB_OUTPUT"
           echo "cycle3a=$cycle3a" >> "$GITHUB_OUTPUT"
           echo "cycle3b=$cycle3b" >> "$GITHUB_OUTPUT"
+          echo "cycle3c=$cycle3c" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, or Cycle 3b closure; refusing inherited evidence routing." >&2
+            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, or Cycle 3c closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2w personal raw fact extraction before inherited routes
@@ -1927,7 +2048,9 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v4.json"
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
-            if [[ "${{ steps.cycle2x_source.outputs.cycle3b }}" == "true" ]]; then
+            if [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
+              echo "Cycle 3c is a provider-neutral connected-source policy route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
+            elif [[ "${{ steps.cycle2x_source.outputs.cycle3b }}" == "true" ]]; then
               echo "Cycle 3b is an authenticated personal dossier-composition route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3a }}" == "true" ]]; then
               echo "Cycle 3a is a personal local owner-session route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
