@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest";
 import type {
   AlertWriteRequestDto,
   AlertWriteResponseDto,
+  PersonalFilingDossierDto,
+  PersonalFilingDossierEvidenceDto,
+  PersonalFilingDossierFactDto,
   PersonalFilingReadinessDto,
   PersonalFilingSelectedFactDto,
   PersonalFilingSelectedFactsDto,
@@ -83,7 +86,7 @@ describe("local API OpenAPI contract", () => {
   it("exposes only the two exact update-only research-state routes", async () => {
     const source = await openApiSource();
     expect(source).toContain("openapi: 3.1.0");
-    expect(source).toContain("  version: 0.4.0");
+    expect(source).toContain("  version: 0.5.0");
     expect(source).toContain("  - url: http://127.0.0.1:3100");
     expect(source).not.toContain("0.0.0.0");
     expect(topLevelPaths(source)).toEqual([
@@ -98,6 +101,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/session/revoke",
       "/v1/personal-filing/readiness",
       "/v1/personal-filing/selected-facts",
+      "/v1/personal-filing/dossier",
       "/v1/theses/{thesisId}",
       "/v1/alerts/{alertId}",
     ]);
@@ -344,7 +348,7 @@ describe("local API OpenAPI contract", () => {
     const fact = schemaSection(
       source,
       "PersonalFilingSelectedFact",
-      "InstrumentId",
+      "PersonalFilingDossier",
     );
     expect(fact).toContain("additionalProperties: false");
     expect(requiredKeys(fact)).toEqual([
@@ -370,6 +374,134 @@ describe("local API OpenAPI contract", () => {
     );
     expect(fact.match(/format: date/g)).toHaveLength(2);
     expect(fact).toContain('            - "null"');
+  });
+
+  it("freezes the authenticated atomic personal-dossier contract", async () => {
+    const source = await openApiSource();
+    const route = pathSection(source, "/v1/personal-filing/dossier");
+    const normalizedRoute = route.replace(/\s+/g, " ");
+
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "get:",
+    ]);
+    expect(statuses(route)).toEqual(["200", "403", "404"]);
+    expect(parameterRefs(route)).toEqual([]);
+    expect(route).not.toContain("parameters:");
+    expect(route).not.toContain("requestBody:");
+    expect(route).not.toContain("in: query");
+    expect(route).toContain("PersonalOwnerSession: []");
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalFilingDossier"',
+    );
+    expect(route.match(/#\/components\/headers\/PrivateNoStore/g)).toHaveLength(
+      3,
+    );
+    expect(route.match(/#\/components\/headers\/PragmaNoCache/g)).toHaveLength(
+      3,
+    );
+    expect(normalizedRoute).toContain("One atomic response");
+    expect(normalizedRoute).toContain("known-at lineage");
+    expect(normalizedRoute).toContain("graph closure before release");
+    expect(normalizedRoute).toContain("HEAD is not exposed");
+
+    const outer = schemaSection(
+      source,
+      "PersonalFilingDossier",
+      "PersonalFilingDossierFact",
+    );
+    expect(outer).toContain("additionalProperties: false");
+    expect(requiredKeys(outer)).toEqual([
+      "asOf",
+      "chart",
+      "dataMode",
+      "evidence",
+      "facts",
+      "lineage",
+      "omissions",
+      "profile",
+      "schemaVersion",
+      "status",
+      "valuationInputs",
+    ]);
+    expect(schemaKeys(outer)).toEqual(requiredKeys(outer));
+    expect(outer).toContain("const: personal");
+    expect(outer).toContain("const: personal_single_user_local");
+    expect(outer).toContain("const: personal_dossier_released");
+
+    const fact = schemaSection(
+      source,
+      "PersonalFilingDossierFact",
+      "PersonalFilingDossierEvidence",
+    );
+    expect(requiredKeys(fact)).toEqual([
+      "evidenceId",
+      "id",
+      "key",
+      "knownFrom",
+      "knownToExclusive",
+      "label",
+      "periodEnd",
+      "periodStart",
+      "unit",
+      "value",
+      "version",
+    ]);
+    expect(schemaKeys(fact)).toEqual(requiredKeys(fact));
+    expect(fact).toContain("format: date-time");
+    expect(fact).toContain('            - "null"');
+
+    const evidence = schemaSection(
+      source,
+      "PersonalFilingDossierEvidence",
+      "PersonalFilingDossierDerivationOperand",
+    );
+    expect(requiredKeys(evidence)).toContain("derivationFormula");
+    expect(requiredKeys(evidence)).toContain("derivationOperands");
+    expect(evidence).toContain("oneOf:");
+    expect(evidence).toContain("Direct personal filing evidence");
+    expect(evidence).toContain("Derived free-cash-flow evidence");
+    expect(evidence).toContain("maxItems: 0");
+    expect(evidence).toContain("prefixItems:");
+    expect(evidence).toContain("const: minuend");
+    expect(evidence).toContain("const: subtrahend");
+    expect(evidence).toContain("items: false");
+    expect(evidence).toContain("minItems: 2");
+    expect(evidence).toContain("maxItems: 2");
+    expect(evidence).toContain(
+      "operating_cash_flow_minus_capital_expenditures",
+    );
+    expect(evidence.match(/format: date-time/g)).toHaveLength(2);
+
+    const operand = schemaSection(
+      source,
+      "PersonalFilingDossierDerivationOperand",
+      "PersonalFilingDossierLineage",
+    );
+    expect(requiredKeys(operand)).toEqual([
+      "concept",
+      "periodEnd",
+      "periodStart",
+      "role",
+      "unit",
+      "value",
+    ]);
+    expect(schemaKeys(operand)).toEqual(requiredKeys(operand));
+    expect(operand).toContain("- minuend");
+    expect(operand).toContain("- subtrahend");
+
+    const chart = schemaSection(
+      source,
+      "PersonalFilingDossierChart",
+      "PersonalFilingDossierChartReady",
+    );
+    expect(chart).toContain("PersonalFilingDossierChartReady");
+    expect(chart).toContain("PersonalFilingDossierChartUnsupported");
+    const unsupportedChart = schemaSection(
+      source,
+      "PersonalFilingDossierChartUnsupported",
+      "PersonalFilingDossierChartSeries",
+    );
+    expect(unsupportedChart).toContain("NO_OWNER_APPROVED_CHART_FACTS");
   });
 
   it("publishes the exact non-secret persona selectors and strict write headers", async () => {
@@ -566,6 +698,63 @@ describe("local API OpenAPI contract", () => {
       status: "selected_facts_released",
       facts: [personalFilingSelectedFact],
     } satisfies PersonalFilingSelectedFactsDto;
+    const personalFilingDossierFact = {
+      evidenceId: "evidence-0001",
+      id: "fact-0001",
+      key: "revenue",
+      knownFrom: "2026-02-20T20:00:01.000Z",
+      knownToExclusive: null,
+      label: "Revenue",
+      periodEnd: "2025-12-31",
+      periodStart: "2025-01-01",
+      unit: "USD",
+      value: "120000000",
+      version: "current",
+    } satisfies PersonalFilingDossierFactDto;
+    const personalFilingDossierEvidence = {
+      derivationFormula: null,
+      derivationOperands: [],
+      factId: "fact-0001",
+      id: "evidence-0001",
+      sourceAcceptedAt: "2026-02-20T20:00:00.000Z",
+      sourceAccession: "0000000000-26-000001",
+      sourceAvailableAt: "2026-02-20T20:00:01.000Z",
+      sourceConcept: "sample:Revenue",
+      sourceContentSha256:
+        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      sourceDocumentSha256:
+        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      taxonomy: "sample-gaap-2026",
+    } satisfies PersonalFilingDossierEvidenceDto;
+    const personalFilingDossier = {
+      asOf: "2026-02-20T20:00:01.000Z",
+      chart: {
+        reasonCode: "NO_OWNER_APPROVED_CHART_FACTS",
+        status: "unsupported",
+      },
+      dataMode: "personal",
+      evidence: [personalFilingDossierEvidence],
+      facts: [personalFilingDossierFact],
+      lineage: {
+        events: [],
+        scope: "issuer_filing_versions_within_exact_frozen_manifest_only",
+        status: "root_only_no_in_corpus_amendment",
+      },
+      omissions: {
+        count: null,
+        explanation:
+          "The dossier contains only the exact owner-fixed fact scope.",
+        hasOmissions: true,
+        reasonCode: "OWNER_FIXED_SCOPE",
+      },
+      profile: "personal_single_user_local",
+      schemaVersion: "1.0.0",
+      status: "personal_dossier_released",
+      valuationInputs: {
+        reasonCode: "REQUIRED_FACTS_NOT_RELEASED",
+        status: "unsupported",
+      },
+    } satisfies PersonalFilingDossierDto;
     const thesisRequest = {
       instrumentId: "instrument.synthetic.syn1",
       claim: "Synthetic claim",
@@ -631,6 +820,45 @@ describe("local API OpenAPI contract", () => {
       "profile",
       "status",
       "facts",
+    ]);
+    expect(Object.keys(personalFilingDossierFact)).toEqual([
+      "evidenceId",
+      "id",
+      "key",
+      "knownFrom",
+      "knownToExclusive",
+      "label",
+      "periodEnd",
+      "periodStart",
+      "unit",
+      "value",
+      "version",
+    ]);
+    expect(Object.keys(personalFilingDossierEvidence)).toEqual([
+      "derivationFormula",
+      "derivationOperands",
+      "factId",
+      "id",
+      "sourceAcceptedAt",
+      "sourceAccession",
+      "sourceAvailableAt",
+      "sourceConcept",
+      "sourceContentSha256",
+      "sourceDocumentSha256",
+      "taxonomy",
+    ]);
+    expect(Object.keys(personalFilingDossier)).toEqual([
+      "asOf",
+      "chart",
+      "dataMode",
+      "evidence",
+      "facts",
+      "lineage",
+      "omissions",
+      "profile",
+      "schemaVersion",
+      "status",
+      "valuationInputs",
     ]);
   });
 });

@@ -1,5 +1,8 @@
 export type ApiMode =
-  "synthetic_demo" | "personal_readiness" | "personal_fact_release";
+  | "synthetic_demo"
+  | "personal_readiness"
+  | "personal_fact_release"
+  | "personal_dossier";
 
 export type ApiModeEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -17,7 +20,8 @@ export function resolveApiMode(environment: ApiModeEnvironment): ApiMode {
   if (
     value !== "synthetic_demo" &&
     value !== "personal_readiness" &&
-    value !== "personal_fact_release"
+    value !== "personal_fact_release" &&
+    value !== "personal_dossier"
   ) {
     throw new ApiModeError();
   }

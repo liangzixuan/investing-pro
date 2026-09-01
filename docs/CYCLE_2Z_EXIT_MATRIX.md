@@ -123,10 +123,13 @@ released facts or any private release detail.
 
 Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
-Hostile same-user processes remain unproven. The next separate blocker is Cycle
-3b authenticated personal dossier composition. Dynamic selection, refresh,
-persistence, and background work remain later milestones. Enterprise and
-shared-service controls remain Out of scope.
+Hostile same-user processes remain unproven. Cycle 3b authenticated personal
+dossier composition has prepared public source but no fresh owner
+authorization, terminal exact-source evidence, private activation, acceptance,
+or promotion. Dynamic selection, refresh, persistence, and background work
+remain later milestones. Cycle 3c connected-personal source policy is the next
+functional product blocker. Enterprise and shared-service controls remain Out
+of scope.
 
 ## Exit rule
 

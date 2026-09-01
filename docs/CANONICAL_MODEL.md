@@ -1943,9 +1943,9 @@ remains bound to exact source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`
 and historically unchanged. Cycle 3a's source binding is distinct, and no
 private sub-result enters public evidence. A later source requires fresh owner
 review and fresh single-use authorization. This is personal owner authorization,
-not an enterprise requirement. A valid session authorizes only the existing
-bounded personal response; it does not add a personal dossier or convert the
-synthetic dossier into personal state.
+not an enterprise requirement. At the exact promoted Cycle 3a source, a valid
+session authorizes only the existing bounded personal response; it does not add
+a personal dossier or convert the synthetic dossier into personal state.
 
 This model proves bearer possession, not verified human identity. It does not
 prove bootstrap entropy and does not detect cross-process same-secret reuse.
@@ -1953,13 +1953,62 @@ Hostile same-user processes, browser extensions, developer tools, screenshots,
 clipboard readers, browser/process-memory inspection, and hostile browser state
 beyond the narrow controlling-service-worker guard remain nonclaims. Remote,
 multi-user, tenant, service-account, shared-service, durable, and production
-authentication remain outside the model. The next separate milestone is Cycle
-3b authenticated personal dossier composition: one coherent admitted snapshot
-for dossier, evidence-passport, restatement-lineage, chart, and valuation
-inputs, with no synthetic/personal mixing. Dynamic selection, refresh,
-persistence, and background work remain later milestones. See
-[ADR 0053](./adr/0053-personal-local-owner-session.md) and the
-[Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+authentication remain outside the model.
+
+Cycle 3b has prepared public source but is not owner-authorized, privately run,
+terminally verified, accepted, or promoted. The prepared API mode is exact
+`RESEARCH_COCKPIT_MODE=personal_dossier`; its matching browser mode is exact
+`RESEARCH_COCKPIT_WEB_MODE=personal_dossier` and exposes the parameter-free
+`/personal` route. A request to `/research/[symbol]` redirects before resolving
+the symbol or `knownAt`. The mode uses `exact_candidate_document_index.v1` to
+fix one document index, canonical selected fact keys, and canonical chart keys
+before startup. The selected index is the terminal entry of the separately
+sealed and admitted declaration, manifest, and quality-plan prefix. The composer
+decodes only the corresponding raw/source document-array prefix. An earlier
+snapshot requires its own prefix-sealed artifact: supplying a full manifest
+would still cryptographically bind every later manifest entry even when its
+document-array suffix is ignored. The composer produces one
+`PersonalFilingDossierDto` with `dataMode: "personal"` and status
+`personal_dossier_released`.
+
+The response is one closed graph. `facts` is the sole primary-fact registry.
+Each fact has one canonical identifier, `knownFrom`/`knownToExclusive`, and an
+evidence reference. Evidence records bind that fact to its source accession,
+accepted and available times, source concept, taxonomy, content and document
+digests, optional derivation formula, and immutable `derivationOperands`. Those
+operands are the only deliberate numeric evidence outside the primary-fact
+registry.
+Direct evidence has no operands. Derived evidence has exactly two ordered
+operands with `minuend` and `subtrahend` roles plus exact concept, value, unit,
+and period coordinates.
+Lineage has one exact frozen-manifest scope and references predecessor and
+successor facts. A ready chart contains only series and point references to
+approved facts; otherwise it is explicitly unsupported. Ready
+`valuationInputs` references the four required same-snapshot facts; missing or
+out-of-domain inputs are explicitly unsupported. `omissions` keeps its count
+undisclosed and names the owner-fixed scope. Outside the required immutable
+derivation operands, no structure may copy a personal numeric value from the
+fact registry or refer to a foreign or missing fact.
+Unsupported chart and valuation variants prove honest failure semantics; the
+later terminal owner-approved response must make both ready to close the Cycle
+3b end-user result.
+
+The only dossier data operation is authenticated
+`GET /v1/personal-filing/dossier`, with no request-selected path, query, body,
+fact, document, chart, snapshot, or `knownAt`. The response is available only
+behind a branded process-memory capability after exact bundle, quality,
+runtime-source, response, and fresh approval bindings pass. The prior Cycle 2z
+and Cycle 3a approvals cannot authorize it. Its required action is
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`.
+
+No fresh approval or private execution is authorized by the prepared source.
+Dynamic selection, refresh, connected sources, persistence, background work,
+security-master mapping, prices, broad statements, owner corrections, personal
+thesis/alerts/exports, and remote/shared authentication remain later or
+out-of-scope. Cycle 3c connected-personal source policy is the next functional
+product blocker. See
+[ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
+[Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

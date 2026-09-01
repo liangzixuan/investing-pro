@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   PERSONAL_FILING_QUALITY_MEASUREMENT_ASSURANCE,
@@ -8,6 +8,7 @@ import {
   PERSONAL_FILING_QUALITY_MEASUREMENT_NOT_PROVEN,
   PERSONAL_FILING_QUALITY_MEASUREMENT_SCHEMA_VERSION,
   PERSONAL_FILING_QUALITY_MEASUREMENT_THRESHOLDS,
+  commitPersonalFilingQualityMeasurementForDossier,
   createPersonalFilingQualityMeasurementProtocol,
   createSuppliedPersonalFilingQualityMeasurementProtocolForTesting,
   type PersonalFilingQualityMeasurementEvaluatedResult,
@@ -59,6 +60,101 @@ describe("personal filing quality measurement", () => {
       expect(Object.isFrozen(value)).toBe(true);
     }
   });
+
+  it.each([false, true])(
+    "returns the exact admitted normalization used for dossier candidate commitment in linked mode %s",
+    (withAmendment) => {
+      const fixture =
+        buildPersonalFilingQualityMeasurementFixture(withAmendment);
+      const ordinary = createPersonalFilingQualityMeasurementProtocol().commit(
+        fixture.commitInput,
+      );
+      const dossier = commitPersonalFilingQualityMeasurementForDossier(
+        fixture.commitInput,
+      );
+      expect(ordinary.status).toBe("candidate_committed_for_personal_use");
+      expect(dossier.status).toBe(
+        "candidate_and_normalization_committed_for_dossier",
+      );
+      if (
+        ordinary.status !== "candidate_committed_for_personal_use" ||
+        dossier.status !== "candidate_and_normalization_committed_for_dossier"
+      ) {
+        return;
+      }
+      expect(dossier.commitment).toMatchObject({
+        audit: ordinary.audit,
+        candidateCommitmentSha256: ordinary.candidateCommitmentSha256,
+        candidateObservationsSha256: ordinary.candidateObservationsSha256,
+        inputSetSha256: ordinary.inputSetSha256,
+        ownerReviewedReferenceSha256: ordinary.ownerReviewedReferenceSha256,
+        qualityPlanSha256: ordinary.qualityPlanSha256,
+        status: ordinary.status,
+      });
+      expect(dossier.normalization.audit).toMatchObject({
+        factVersionCount: withAmendment ? 20 : 10,
+        sourceDocumentCount: withAmendment ? 2 : 1,
+      });
+      expect(Object.isFrozen(dossier)).toBe(true);
+      expect(Object.isFrozen(dossier.normalization)).toBe(true);
+    },
+  );
+
+  it.each(["success", "quarantine"] as const)(
+    "wipes every dossier-seam-owned byte snapshot after %s",
+    (outcome) => {
+      const fixture = buildPersonalFilingQualityMeasurementFixture(true);
+      const qualityPlan = new Uint8Array(fixture.commitInput.qualityPlan);
+      if (outcome === "quarantine") qualityPlan[0] = 120;
+      const input = { ...fixture.commitInput, qualityPlan };
+      const callerBuffers = [
+        input.declaration,
+        input.manifest,
+        input.normalizationPlan,
+        input.qualityPlan,
+        ...input.rawFilingDocuments,
+        ...input.sourceDocuments,
+      ];
+      const callerCopies = callerBuffers.map((bytes) => new Uint8Array(bytes));
+      const wiped: Uint8Array[] = [];
+      const fill = vi
+        .spyOn(Uint8Array.prototype, "fill")
+        .mockImplementation(function (
+          this: Uint8Array,
+          value: number,
+          start?: number,
+          end?: number,
+        ) {
+          if (value === 0) wiped.push(this);
+          const from = start ?? 0;
+          const to = end ?? this.length;
+          for (let index = from; index < to; index += 1) this[index] = value;
+          return this;
+        });
+      let result: ReturnType<
+        typeof commitPersonalFilingQualityMeasurementForDossier
+      >;
+      try {
+        result = commitPersonalFilingQualityMeasurementForDossier(input);
+      } finally {
+        fill.mockRestore();
+      }
+
+      expect(result.status).toBe(
+        outcome === "success"
+          ? "candidate_and_normalization_committed_for_dossier"
+          : "quarantined",
+      );
+      expect(wiped).toHaveLength(4 + input.rawFilingDocuments.length * 2);
+      expect(wiped.every((bytes) => bytes.every((byte) => byte === 0))).toBe(
+        true,
+      );
+      for (const bytes of callerBuffers) expect(wiped).not.toContain(bytes);
+      callerBuffers.forEach((bytes, index) =>
+        expect(bytes).toEqual(callerCopies[index]),
+      );
+    },
+  );
 
   it.each([
     [false, 1, 10, 20],

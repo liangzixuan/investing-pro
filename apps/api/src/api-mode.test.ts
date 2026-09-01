@@ -14,6 +14,9 @@ describe("API mode", () => {
     expect(
       resolveApiMode({ RESEARCH_COCKPIT_MODE: "personal_fact_release" }),
     ).toBe("personal_fact_release");
+    expect(resolveApiMode({ RESEARCH_COCKPIT_MODE: "personal_dossier" })).toBe(
+      "personal_dossier",
+    );
     for (const value of ["", "personal", "PERSONAL_READINESS", "production"]) {
       expect(() => resolveApiMode({ RESEARCH_COCKPIT_MODE: value })).toThrow(
         ApiModeError,

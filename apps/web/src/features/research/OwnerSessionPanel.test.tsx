@@ -75,7 +75,7 @@ vi.mock("react", async (importOriginal) => ({
   useState: hookHarness.useState,
 }));
 
-vi.mock("@/lib/api", () => apiMocks);
+vi.mock("@/lib/personal-api", () => apiMocks);
 
 import {
   OWNER_SESSION_BROADCAST_CHANNEL,

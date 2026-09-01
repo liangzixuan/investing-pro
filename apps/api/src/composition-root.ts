@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { resolveApiMode } from "./api-mode";
 import {
   buildApp,
+  buildPersonalDossierApp,
   buildPersonalFactReleaseApp,
   buildPersonalReadinessApp,
 } from "./app";
@@ -13,6 +14,7 @@ import {
   PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY,
 } from "./personal-owner-session";
 import { loadPersonalQualityReadiness } from "./personal-quality-readiness";
+import { loadPersonalDossierRelease } from "./personal-dossier-release";
 import { loadPersonalSelectedFactRelease } from "./personal-selected-fact-release";
 
 export type LocalApiEnvironment = Readonly<Record<string, string | undefined>>;
@@ -28,12 +30,17 @@ const LOCAL_API_PRIVATE_ENVIRONMENT_KEYS = [
   "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH",
   "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256",
   "PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH",
+  "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
+  "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
+  "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
 ] as const;
 
 export class LocalApiCompositionError extends Error {
   readonly code:
     | "PERSONAL_CONFIGURATION_REQUIRES_EXPLICIT_MODE"
+    | "PERSONAL_CONFIGURATION_REQUIRES_DOSSIER_MODE"
     | "PERSONAL_CONFIGURATION_REQUIRES_FACT_RELEASE_MODE"
+    | "PERSONAL_DOSSIER_UNAVAILABLE"
     | "PERSONAL_FACT_RELEASE_UNAVAILABLE"
     | "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID"
     | "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED"
@@ -65,6 +72,12 @@ export function captureLocalApiEnvironment(
       environment.PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256,
     PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH:
       environment.PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH,
+    PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH:
+      environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH,
+    PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256:
+      environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256,
+    PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH:
+      environment.PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH,
   };
   for (const key of LOCAL_API_PRIVATE_ENVIRONMENT_KEYS) {
     delete environment[key];
@@ -115,7 +128,10 @@ function prepareConfiguredApp(
     environment.PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256 !==
       undefined ||
     environment.PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH !==
-      undefined;
+      undefined ||
+    environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH !== undefined ||
+    environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256 !== undefined ||
+    environment.PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH !== undefined;
   const hasFactReleaseConfiguration =
     environment.PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH !==
       undefined ||
@@ -123,6 +139,10 @@ function prepareConfiguredApp(
       undefined ||
     environment.PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH !==
       undefined;
+  const hasDossierConfiguration =
+    environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH !== undefined ||
+    environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256 !== undefined ||
+    environment.PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH !== undefined;
 
   if (mode === "synthetic_demo") {
     if (hasPersonalConfiguration) {
@@ -133,6 +153,16 @@ function prepareConfiguredApp(
     return buildApp(listenOptions);
   }
   if (mode === "personal_readiness" && hasFactReleaseConfiguration) {
+    throw new LocalApiCompositionError(
+      "PERSONAL_CONFIGURATION_REQUIRES_FACT_RELEASE_MODE",
+    );
+  }
+  if (mode !== "personal_dossier" && hasDossierConfiguration) {
+    throw new LocalApiCompositionError(
+      "PERSONAL_CONFIGURATION_REQUIRES_DOSSIER_MODE",
+    );
+  }
+  if (mode === "personal_dossier" && hasFactReleaseConfiguration) {
     throw new LocalApiCompositionError(
       "PERSONAL_CONFIGURATION_REQUIRES_FACT_RELEASE_MODE",
     );
@@ -167,7 +197,7 @@ function prepareConfiguredApp(
 }
 
 async function completePersonalComposition(
-  mode: "personal_fact_release" | "personal_readiness",
+  mode: "personal_dossier" | "personal_fact_release" | "personal_readiness",
   environment: LocalApiEnvironment,
   ownerSession: PersonalOwnerSessionAuthority,
   listenOptions: ReturnType<typeof resolveDemoApiListenOptions>,
@@ -180,6 +210,17 @@ async function completePersonalComposition(
         throw new LocalApiCompositionError("PERSONAL_READINESS_UNAVAILABLE");
       }
       return buildPersonalReadinessApp(readiness, ownerSession, listenOptions);
+    }
+
+    if (mode === "personal_dossier") {
+      const dossier = await loadPersonalDossierRelease(
+        environment,
+        runtimeSourceCommit,
+      );
+      if (dossier === undefined) {
+        throw new LocalApiCompositionError("PERSONAL_DOSSIER_UNAVAILABLE");
+      }
+      return buildPersonalDossierApp(dossier, ownerSession, listenOptions);
     }
 
     const factRelease = await loadPersonalSelectedFactRelease(

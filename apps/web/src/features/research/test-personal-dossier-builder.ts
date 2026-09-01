@@ -1,0 +1,218 @@
+import type { PersonalFilingDossierDto } from "@research-cockpit/contracts";
+
+const priorKnownFrom = "2025-02-01T12:00:00.000Z";
+const currentKnownFrom = "2025-03-01T12:00:00.000Z";
+const hashA = `sha256:${"a".repeat(64)}` as const;
+const hashB = `sha256:${"b".repeat(64)}` as const;
+
+export function buildPersonalDossierFixture(
+  currentRevenue = "1200",
+): PersonalFilingDossierDto {
+  const factSeed = [
+    {
+      id: "fact-0001",
+      evidenceId: "evidence-0001",
+      key: "cash",
+      label: "Cash",
+      value: "225",
+      unit: "USD",
+      periodStart: null,
+      periodEnd: "2024-12-31",
+      knownFrom: priorKnownFrom,
+      knownToExclusive: currentKnownFrom,
+      version: "superseded",
+      concept: "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      accession: "0000000001-25-000001",
+    },
+    {
+      id: "fact-0002",
+      evidenceId: "evidence-0002",
+      key: "debt",
+      label: "Debt",
+      value: "95",
+      unit: "USD",
+      periodStart: null,
+      periodEnd: "2024-12-31",
+      knownFrom: priorKnownFrom,
+      knownToExclusive: currentKnownFrom,
+      version: "superseded",
+      concept: "us-gaap:LongTermDebtCurrent",
+      accession: "0000000001-25-000001",
+    },
+    {
+      id: "fact-0003",
+      evidenceId: "evidence-0003",
+      key: "diluted_shares",
+      label: "Diluted shares",
+      value: "48",
+      unit: "shares",
+      periodStart: "2024-01-01",
+      periodEnd: "2024-12-31",
+      knownFrom: priorKnownFrom,
+      knownToExclusive: currentKnownFrom,
+      version: "superseded",
+      concept: "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      accession: "0000000001-25-000001",
+    },
+    {
+      id: "fact-0004",
+      evidenceId: "evidence-0004",
+      key: "revenue",
+      label: "Revenue",
+      value: "1100",
+      unit: "USD",
+      periodStart: "2024-01-01",
+      periodEnd: "2024-12-31",
+      knownFrom: priorKnownFrom,
+      knownToExclusive: currentKnownFrom,
+      version: "superseded",
+      concept: "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      accession: "0000000001-25-000001",
+    },
+    {
+      id: "fact-0005",
+      evidenceId: "evidence-0005",
+      key: "cash",
+      label: "Cash",
+      value: "250",
+      unit: "USD",
+      periodStart: null,
+      periodEnd: "2024-12-31",
+      knownFrom: currentKnownFrom,
+      knownToExclusive: null,
+      version: "current",
+      concept: "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      accession: "0000000001-25-000002",
+    },
+    {
+      id: "fact-0006",
+      evidenceId: "evidence-0006",
+      key: "debt",
+      label: "Debt",
+      value: "100",
+      unit: "USD",
+      periodStart: null,
+      periodEnd: "2024-12-31",
+      knownFrom: currentKnownFrom,
+      knownToExclusive: null,
+      version: "current",
+      concept: "us-gaap:LongTermDebtCurrent",
+      accession: "0000000001-25-000002",
+    },
+    {
+      id: "fact-0007",
+      evidenceId: "evidence-0007",
+      key: "diluted_shares",
+      label: "Diluted shares",
+      value: "50",
+      unit: "shares",
+      periodStart: "2024-01-01",
+      periodEnd: "2024-12-31",
+      knownFrom: currentKnownFrom,
+      knownToExclusive: null,
+      version: "current",
+      concept: "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      accession: "0000000001-25-000002",
+    },
+    {
+      id: "fact-0008",
+      evidenceId: "evidence-0008",
+      key: "revenue",
+      label: "Revenue",
+      value: currentRevenue,
+      unit: "USD",
+      periodStart: "2024-01-01",
+      periodEnd: "2024-12-31",
+      knownFrom: currentKnownFrom,
+      knownToExclusive: null,
+      version: "current",
+      concept: "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      accession: "0000000001-25-000002",
+    },
+  ] as const;
+
+  const facts = factSeed.map((fact) =>
+    Object.freeze({
+      evidenceId: fact.evidenceId,
+      id: fact.id,
+      key: fact.key,
+      knownFrom: fact.knownFrom,
+      knownToExclusive: fact.knownToExclusive,
+      label: fact.label,
+      periodEnd: fact.periodEnd,
+      periodStart: fact.periodStart,
+      unit: fact.unit,
+      value: fact.value,
+      version: fact.version,
+    }),
+  );
+  const evidence = factSeed.map((fact) =>
+    Object.freeze({
+      derivationFormula: null,
+      derivationOperands: Object.freeze([] as const),
+      factId: fact.id,
+      id: fact.evidenceId,
+      sourceAcceptedAt: fact.knownFrom,
+      sourceAccession: fact.accession,
+      sourceAvailableAt: fact.knownFrom,
+      sourceConcept: fact.concept,
+      sourceContentSha256: hashA,
+      sourceDocumentSha256: hashB,
+      taxonomy: "us-gaap-2024",
+    }),
+  );
+
+  return Object.freeze({
+    asOf: currentKnownFrom,
+    chart: Object.freeze({
+      series: Object.freeze([
+        Object.freeze({
+          key: "revenue",
+          label: "Revenue",
+          points: Object.freeze([
+            Object.freeze({ factId: "fact-0004" }),
+            Object.freeze({ factId: "fact-0008" }),
+          ]),
+          unit: "USD",
+        }),
+      ]),
+      status: "ready",
+    }),
+    dataMode: "personal",
+    evidence: Object.freeze(evidence),
+    facts: Object.freeze(facts),
+    lineage: Object.freeze({
+      events: Object.freeze(
+        (["cash", "debt", "diluted_shares", "revenue"] as const).map(
+          (key, index) =>
+            Object.freeze({
+              effectiveAt: currentKnownFrom,
+              key,
+              predecessorFactId: `fact-${String(index + 1).padStart(4, "0")}`,
+              successorFactId: `fact-${String(index + 5).padStart(4, "0")}`,
+            }),
+        ),
+      ),
+      scope: "issuer_filing_versions_within_exact_frozen_manifest_only",
+      status: "amendment_supersession_observed",
+    }),
+    omissions: Object.freeze({
+      count: null,
+      explanation:
+        "Only the exact owner-fixed filing and fact scope is represented.",
+      hasOmissions: true,
+      reasonCode: "OWNER_FIXED_SCOPE",
+    }),
+    profile: "personal_single_user_local",
+    schemaVersion: "1.0.0",
+    status: "personal_dossier_released",
+    valuationInputs: Object.freeze({
+      baseRevenueFactId: "fact-0008",
+      cashFactId: "fact-0005",
+      debtFactId: "fact-0006",
+      dilutedSharesFactId: "fact-0007",
+      modelVersion: "exit-multiple-v1",
+      status: "ready",
+    }),
+  });
+}

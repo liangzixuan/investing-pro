@@ -225,11 +225,14 @@ the permitted coarse outcome, and it does not widen this quality-measurement
 decision. Cycle 3a separately closes request-time authenticated owner-browser
 composition only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b authenticated personal
-dossier composition is the next separate blocker.
+dossier composition has prepared public source but no fresh owner
+authorization, terminal exact-source evidence, private activation, acceptance,
+or promotion. Cycle 3c connected-personal source policy is the next functional
+product blocker.
 Enterprise and shared-service requirements remain Out of scope for the
 personal profile. See
 [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
-and the [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md).
+and the [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md).
 
 ## References
 
@@ -238,6 +241,8 @@ and the [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md).
 - [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md)
 - [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
 - [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
+- [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
+- [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Cycle 2w exit matrix](../CYCLE_2W_EXIT_MATRIX.md)
 - [ADR 0049](./0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

@@ -12,6 +12,7 @@ import {
   PERSONAL_FILING_FACT_KEYS,
   PERSONAL_FILING_FACT_NORMALIZATION_LIMITS,
   normalizePersonalFilingFacts,
+  type PersonalFilingFactNormalizationRecord,
   type PersonalFilingFactKey,
   type PersonalFilingFactSubtractionDerivation,
   type PersonalNormalizedFilingFactVersion,
@@ -245,6 +246,18 @@ export interface PersonalFilingQualityMeasurementProtocol {
   ) => PersonalFilingQualityMeasurementRevealResult;
 }
 
+export type PersonalFilingQualityMeasurementDossierAdmissionResult =
+  | Readonly<{
+      commitment: PersonalFilingQualityMeasurementCommittedResult;
+      normalization: PersonalFilingFactNormalizationRecord;
+      status: "candidate_and_normalization_committed_for_dossier";
+    }>
+  | Readonly<{
+      commitment: PersonalFilingQualityMeasurementQuarantinedResult;
+      normalization: null;
+      status: "quarantined";
+    }>;
+
 interface QualityDerivationOperand {
   readonly concept: string;
   readonly periodEnd: string;
@@ -402,6 +415,55 @@ export function createSuppliedPersonalFilingQualityMeasurementProtocolForTesting
   return createProtocol(arguments.length === 0, true);
 }
 
+/** @internal Dossier-only seam that returns the exact normalization used for candidate commitment. */
+export function commitPersonalFilingQualityMeasurementForDossier(
+  input: PersonalFilingQualityMeasurementCommitInput,
+): PersonalFilingQualityMeasurementDossierAdmissionResult {
+  let snapshot: InputSnapshot | undefined;
+  try {
+    if (arguments.length !== 1) fail();
+    snapshot = snapshotCommitInput(input, false);
+    const corpus = verifyPersonalFilingCorpusManifest({
+      declaration: snapshot.declaration,
+      manifest: snapshot.manifest,
+    });
+    const qualityPlanSha256 = sha256(snapshot.qualityPlan);
+    const plan = validateQualityPlan(
+      parseCanonicalDocument(snapshot.qualityPlan),
+      snapshot,
+      corpus.filingCount,
+    );
+    const derived = deriveCandidateDocumentsWithNormalization(snapshot, plan);
+    if (
+      derived.normalization === null ||
+      derived.candidateDocuments.some(
+        (document) => document.status !== "succeeded",
+      )
+    ) {
+      fail();
+    }
+    const context = committedContext(
+      derived.candidateDocuments,
+      hashInputSet(snapshot),
+      plan.ownerReviewedReferenceSha256,
+      qualityPlanSha256,
+    );
+    return Object.freeze({
+      commitment: committed(context),
+      normalization: derived.normalization,
+      status: "candidate_and_normalization_committed_for_dossier" as const,
+    });
+  } catch {
+    return Object.freeze({
+      commitment: quarantined("protocol_quarantined"),
+      normalization: null,
+      status: "quarantined" as const,
+    });
+  } finally {
+    wipeOwnedSnapshot(snapshot);
+  }
+}
+
 function createProtocol(
   validFactoryCall: boolean,
   suppliedCandidate: false,
@@ -460,36 +522,12 @@ function createProtocol(
             plan,
           )
         : deriveCandidateDocuments(snapshot, plan);
-      const candidateBytes = new TextEncoder().encode(
-        canonicalJson({ documents: candidateDocuments }),
-      );
-      const candidateObservationsSha256 = domainHash(
-        CANDIDATE_DOMAIN,
-        candidateBytes,
-      );
-      const candidateCommitmentSha256 = domainHash(
-        COMMITMENT_DOMAIN,
-        new TextEncoder().encode(
-          canonicalJson({
-            candidateObservationsSha256,
-            inputSetSha256,
-            ownerReviewedReferenceSha256: plan.ownerReviewedReferenceSha256,
-            qualityPlanSha256,
-          }),
-        ),
-      );
-      const capability = Object.freeze(
-        {},
-      ) as PersonalFilingQualityMeasurementCapability;
-      context = Object.freeze({
-        candidateCommitmentSha256,
+      context = committedContext(
         candidateDocuments,
-        candidateObservationsSha256,
-        capability,
         inputSetSha256,
-        ownerReviewedReferenceSha256: plan.ownerReviewedReferenceSha256,
+        plan.ownerReviewedReferenceSha256,
         qualityPlanSha256,
-      });
+      );
       state = "candidate_committed";
       return committed(context);
     } catch {
@@ -535,6 +573,38 @@ function createProtocol(
   };
 
   return Object.freeze({ commit, reveal });
+}
+
+function committedContext(
+  candidateDocuments: readonly CandidateDocument[],
+  inputSetSha256: `sha256:${string}`,
+  ownerReviewedReferenceSha256: `sha256:${string}`,
+  qualityPlanSha256: `sha256:${string}`,
+): CommittedContext {
+  const candidateObservationsSha256 = domainHash(
+    CANDIDATE_DOMAIN,
+    new TextEncoder().encode(canonicalJson({ documents: candidateDocuments })),
+  );
+  const candidateCommitmentSha256 = domainHash(
+    COMMITMENT_DOMAIN,
+    new TextEncoder().encode(
+      canonicalJson({
+        candidateObservationsSha256,
+        inputSetSha256,
+        ownerReviewedReferenceSha256,
+        qualityPlanSha256,
+      }),
+    ),
+  );
+  return Object.freeze({
+    candidateCommitmentSha256,
+    candidateDocuments,
+    candidateObservationsSha256,
+    capability: Object.freeze({}) as PersonalFilingQualityMeasurementCapability,
+    inputSetSha256,
+    ownerReviewedReferenceSha256,
+    qualityPlanSha256,
+  });
 }
 
 function committed(
@@ -668,6 +738,24 @@ function snapshotCommitInput(
     if (error instanceof ProtocolFailure) throw error;
     fail();
   }
+}
+
+function wipeOwnedSnapshot(
+  snapshot: InputSnapshot | SuppliedInputSnapshot | undefined,
+): void {
+  if (snapshot === undefined) return;
+  const bytes = [
+    snapshot.declaration,
+    snapshot.manifest,
+    snapshot.normalizationPlan,
+    snapshot.qualityPlan,
+    ...snapshot.rawFilingDocuments,
+    ...snapshot.sourceDocuments,
+  ];
+  if ("candidateObservations" in snapshot) {
+    bytes.push(snapshot.candidateObservations);
+  }
+  for (const owned of bytes) owned.fill(0);
 }
 
 function requiredSuppliedSnapshot(
@@ -1003,6 +1091,17 @@ function deriveCandidateDocuments(
   snapshot: InputSnapshot,
   plan: QualityPlan,
 ): readonly CandidateDocument[] {
+  return deriveCandidateDocumentsWithNormalization(snapshot, plan)
+    .candidateDocuments;
+}
+
+function deriveCandidateDocumentsWithNormalization(
+  snapshot: InputSnapshot,
+  plan: QualityPlan,
+): Readonly<{
+  candidateDocuments: readonly CandidateDocument[];
+  normalization: PersonalFilingFactNormalizationRecord | null;
+}> {
   const rawInput = Object.freeze({
     declaration: snapshot.declaration,
     manifest: snapshot.manifest,
@@ -1012,7 +1111,10 @@ function deriveCandidateDocuments(
   });
   const extraction = comparePersonalFilingRawFactExtraction(rawInput);
   if (extraction.status !== "raw_extraction_agreed_for_personal_use") {
-    return quarantinedCandidateDocuments(plan);
+    return Object.freeze({
+      candidateDocuments: quarantinedCandidateDocuments(plan),
+      normalization: null,
+    });
   }
   const normalization = normalizePersonalFilingFacts({
     declaration: snapshot.declaration,
@@ -1021,14 +1123,20 @@ function deriveCandidateDocuments(
     sourceDocuments: snapshot.sourceDocuments,
   });
   if (normalization.status !== "normalized_for_personal_use") {
-    return quarantinedCandidateDocuments(plan);
+    return Object.freeze({
+      candidateDocuments: quarantinedCandidateDocuments(plan),
+      normalization: null,
+    });
   }
   if (
     normalization.factVersions.length !==
     plan.documentCount *
       PERSONAL_FILING_QUALITY_MEASUREMENT_LIMITS.factsPerDocument
   ) {
-    return quarantinedCandidateDocuments(plan);
+    return Object.freeze({
+      candidateDocuments: quarantinedCandidateDocuments(plan),
+      normalization: null,
+    });
   }
   try {
     const documents: SucceededCandidateDocument[] = [];
@@ -1066,9 +1174,15 @@ function deriveCandidateDocuments(
         }),
       );
     }
-    return Object.freeze(documents);
+    return Object.freeze({
+      candidateDocuments: Object.freeze(documents),
+      normalization,
+    });
   } catch {
-    return quarantinedCandidateDocuments(plan);
+    return Object.freeze({
+      candidateDocuments: quarantinedCandidateDocuments(plan),
+      normalization: null,
+    });
   }
 }
 

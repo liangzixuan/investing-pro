@@ -1,7 +1,6 @@
-import { DEFAULT_KNOWN_AT } from "@research-cockpit/research-core";
+import { redirect } from "next/navigation";
 
-import { ResearchWorkspace } from "@/features/research/ResearchWorkspace";
-import { isPersonalWebMode } from "@/lib/web-mode";
+import { isPersonalDossierWebMode, isPersonalWebMode } from "@/lib/web-mode";
 
 interface ResearchPageProps {
   params: Promise<{ symbol: string }>;
@@ -12,16 +11,26 @@ export default async function ResearchPage({
   params,
   searchParams,
 }: ResearchPageProps) {
-  const [{ symbol }, query] = await Promise.all([params, searchParams]);
+  const configuredMode = process.env.RESEARCH_COCKPIT_WEB_MODE;
+  if (isPersonalDossierWebMode(configuredMode)) {
+    redirect("/personal");
+  }
+
+  const [{ symbol }, query, { DEFAULT_KNOWN_AT }, { ResearchWorkspace }] =
+    await Promise.all([
+      params,
+      searchParams,
+      import("@research-cockpit/research-core"),
+      import("@/features/research/ResearchWorkspace"),
+    ]);
   const rawKnownAt = Array.isArray(query.knownAt)
     ? query.knownAt[0]
     : query.knownAt;
-  const personalMode = isPersonalWebMode(process.env.RESEARCH_COCKPIT_WEB_MODE);
   return (
     <ResearchWorkspace
       symbol={symbol.toUpperCase()}
       initialKnownAt={rawKnownAt ?? DEFAULT_KNOWN_AT}
-      personalMode={personalMode}
+      personalMode={isPersonalWebMode(configuredMode)}
     />
   );
 }

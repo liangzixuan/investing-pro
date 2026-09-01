@@ -34,6 +34,11 @@ import {
   PERSONAL_OWNER_INTENT_HEADER_NAME,
   registerPersonalOwnerSessionRoutes,
 } from "./personal-owner-session-routes";
+import {
+  isPersonalDossierReleaseCapability,
+  type PersonalDossierReleaseCapability,
+} from "./personal-dossier-release";
+import { registerPersonalDossierRoute } from "./personal-dossier-routes";
 import { registerPersonalReadinessRoute } from "./personal-readiness-routes";
 import {
   isPersonalSelectedFactReleaseCapability,
@@ -63,7 +68,13 @@ interface EvidenceParams {
 export async function buildApp(
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
-  return buildComposedApp(undefined, undefined, undefined, listenOptions);
+  return buildComposedApp(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    listenOptions,
+  );
 }
 
 export async function buildPersonalReadinessApp(
@@ -77,7 +88,13 @@ export async function buildPersonalReadinessApp(
   if (!isPersonalOwnerSessionAuthority(ownerSession)) {
     throw new TypeError("Personal owner session is unavailable.");
   }
-  return buildComposedApp(readiness, undefined, ownerSession, listenOptions);
+  return buildComposedApp(
+    readiness,
+    undefined,
+    undefined,
+    ownerSession,
+    listenOptions,
+  );
 }
 
 export async function buildPersonalFactReleaseApp(
@@ -91,12 +108,39 @@ export async function buildPersonalFactReleaseApp(
   if (!isPersonalOwnerSessionAuthority(ownerSession)) {
     throw new TypeError("Personal owner session is unavailable.");
   }
-  return buildComposedApp(undefined, factRelease, ownerSession, listenOptions);
+  return buildComposedApp(
+    undefined,
+    factRelease,
+    undefined,
+    ownerSession,
+    listenOptions,
+  );
+}
+
+export async function buildPersonalDossierApp(
+  dossier: PersonalDossierReleaseCapability,
+  ownerSession: PersonalOwnerSessionAuthority,
+  listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
+): Promise<FastifyInstance> {
+  if (!isPersonalDossierReleaseCapability(dossier)) {
+    throw new TypeError("Personal dossier release is unavailable.");
+  }
+  if (!isPersonalOwnerSessionAuthority(ownerSession)) {
+    throw new TypeError("Personal owner session is unavailable.");
+  }
+  return buildComposedApp(
+    undefined,
+    undefined,
+    dossier,
+    ownerSession,
+    listenOptions,
+  );
 }
 
 async function buildComposedApp(
   readiness?: PersonalQualityReadinessCapability,
   factRelease?: PersonalSelectedFactReleaseCapability,
+  dossier?: PersonalDossierReleaseCapability,
   ownerSession?: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
@@ -106,8 +150,8 @@ async function buildComposedApp(
     trustProxy: false,
     genReqId: () => cryptoTraceId(),
   });
-  const researchState = createDemoResearchStateComposition();
   const personalSessionEnabled = ownerSession !== undefined;
+  const personalDossierEnabled = dossier !== undefined;
 
   await app.register(cors, {
     origin: personalSessionEnabled
@@ -132,7 +176,12 @@ async function buildComposedApp(
 
   app.addHook("onSend", async (request, reply, payload) => {
     void reply.header("X-Trace-Id", request.id);
-    if (!reply.hasHeader("Cache-Control")) {
+    if (personalDossierEnabled) {
+      void reply
+        .header("Cache-Control", "private, no-store")
+        .header("Pragma", "no-cache")
+        .header("Vary", "Origin");
+    } else if (!reply.hasHeader("Cache-Control")) {
       void reply.header("Cache-Control", "no-store");
     }
     return payload;
@@ -145,82 +194,95 @@ async function buildComposedApp(
   }
 
   app.get("/health/live", () => ({ status: "alive" }));
-  app.get("/health/ready", () => ({
-    status: "ready",
-    fixture: "synthetic/v1",
-  }));
+  app.get("/health/ready", () =>
+    personalDossierEnabled
+      ? { status: "ready" }
+      : { status: "ready", fixture: "synthetic/v1" },
+  );
 
-  app.get<{ Params: DossierParams; Querystring: DossierQuery }>(
-    "/v1/instruments/:symbol/dossier",
-    async (request, reply) => {
-      const knownAt = request.query.knownAt ?? DEFAULT_KNOWN_AT;
-      try {
-        const dossier = buildDossier(request.params.symbol, knownAt);
-        if (!dossier) {
+  if (!personalDossierEnabled) {
+    const researchState = createDemoResearchStateComposition();
+    app.get<{ Params: DossierParams; Querystring: DossierQuery }>(
+      "/v1/instruments/:symbol/dossier",
+      async (request, reply) => {
+        const knownAt = request.query.knownAt ?? DEFAULT_KNOWN_AT;
+        try {
+          const dossier = buildDossier(request.params.symbol, knownAt);
+          if (!dossier) {
+            return sendProblem(
+              reply,
+              request,
+              404,
+              "Synthetic instrument not found",
+              "Only SYN1 exists in demo mode.",
+            );
+          }
+
+          const serialized = JSON.stringify(dossier);
+          void reply.header("X-Data-As-Of", dossier.requestedKnownAt);
+          void reply.header(
+            "ETag",
+            `W/"${createHash("sha256").update(serialized).digest("hex")}"`,
+          );
+          return reply.type("application/json; charset=utf-8").send(serialized);
+        } catch (error) {
+          if (error instanceof RangeError) {
+            return sendProblem(
+              reply,
+              request,
+              400,
+              "Invalid knownAt",
+              error.message,
+            );
+          }
+          throw error;
+        }
+      },
+    );
+
+    app.get<{ Params: EvidenceParams }>(
+      "/v1/evidence/:evidenceId",
+      async (request, reply) => {
+        const evidence = getEvidencePassport(request.params.evidenceId);
+        if (!evidence) {
           return sendProblem(
             reply,
             request,
             404,
-            "Synthetic instrument not found",
-            "Only SYN1 exists in demo mode.",
+            "Evidence not available",
+            "The evidence identifier is unknown or its rights policy does not allow display.",
           );
         }
+        return evidence;
+      },
+    );
 
-        const serialized = JSON.stringify(dossier);
-        void reply.header("X-Data-As-Of", dossier.requestedKnownAt);
-        void reply.header(
-          "ETag",
-          `W/"${createHash("sha256").update(serialized).digest("hex")}"`,
-        );
-        return reply.type("application/json; charset=utf-8").send(serialized);
-      } catch (error) {
-        if (error instanceof RangeError) {
-          return sendProblem(
-            reply,
-            request,
-            400,
-            "Invalid knownAt",
-            error.message,
-          );
-        }
-        throw error;
-      }
-    },
-  );
-
-  app.get<{ Params: EvidenceParams }>(
-    "/v1/evidence/:evidenceId",
-    async (request, reply) => {
-      const evidence = getEvidencePassport(request.params.evidenceId);
-      if (!evidence) {
-        return sendProblem(
-          reply,
-          request,
-          404,
-          "Evidence not available",
-          "The evidence identifier is unknown or its rights policy does not allow display.",
-        );
-      }
-      return evidence;
-    },
-  );
-
-  await registerResearchStateRoutes(app, researchState);
+    await registerResearchStateRoutes(app, researchState);
+  }
   if (ownerSession !== undefined) {
     await registerPersonalOwnerSessionRoutes(app, ownerSession, listenOptions);
   }
-  await registerPersonalReadinessRoute(
-    app,
-    readiness,
-    ownerSession,
-    listenOptions,
-  );
-  await registerPersonalSelectedFactRoute(
-    app,
-    factRelease,
-    ownerSession,
-    listenOptions,
-  );
+  if (personalDossierEnabled) {
+    await registerPersonalDossierRoute(
+      app,
+      dossier,
+      ownerSession,
+      listenOptions,
+    );
+  } else {
+    await registerPersonalReadinessRoute(
+      app,
+      readiness,
+      ownerSession,
+      listenOptions,
+    );
+    await registerPersonalSelectedFactRoute(
+      app,
+      factRelease,
+      ownerSession,
+      listenOptions,
+    );
+  }
 
   app.setNotFoundHandler((request, reply) =>
     sendProblem(
@@ -228,7 +290,9 @@ async function buildComposedApp(
       request,
       404,
       "Route not found",
-      "No demo API route matches this request.",
+      personalDossierEnabled
+        ? "No local API route matches this request."
+        : "No demo API route matches this request.",
     ),
   );
 

@@ -154,15 +154,21 @@ persistent data plane.
 
 Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`;
-it still does not prove resistance to hostile same-user processes. The next
-separate blocker is Cycle 3b authenticated personal dossier composition.
-Dynamic selection, refresh, persistence, and background work remain later.
-Enterprise and shared-service controls remain Out of scope for the personal
-profile.
+it still does not prove resistance to hostile same-user processes. Cycle 3b
+authenticated personal dossier composition has prepared public source but no
+fresh owner authorization, terminal exact-source evidence, private activation,
+acceptance, or promotion. Its required
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` action is deliberately
+incompatible with this ADR's narrower approval. Dynamic selection, refresh,
+persistence, and background work remain later. Cycle 3c connected-personal
+source policy is the next functional product blocker. Enterprise and
+shared-service controls remain Out of scope for the personal profile.
 
 ## References
 
 - [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
+- [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
+- [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
 - [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

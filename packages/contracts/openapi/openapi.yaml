@@ -1,14 +1,16 @@
 openapi: 3.1.0
 info:
   title: Research Cockpit Local API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     Evidence-first loopback API. Research data and the two research-state PUT
     operations remain synthetic-only. An explicit personal-readiness mode may
     additionally expose one coarse, value-free quality-gate status, and an
     explicit personal-fact mode may expose its startup-fixed projection, only
-    behind a short-lived local owner session. X-Demo-Persona values are public
-    selectors, not secrets, credentials, or owner authentication.
+    behind a short-lived local owner session. An explicit personal-dossier
+    mode may expose one startup-fixed, provenance-linked dossier graph through
+    the same owner-session boundary. X-Demo-Persona values are public selectors,
+    not secrets, credentials, or owner authentication.
 servers:
   - url: http://127.0.0.1:3100
 paths:
@@ -297,6 +299,55 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: No owner-authorized selected-fact release is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/dossier:
+    get:
+      operationId: getPersonalFilingDossier
+      summary: Read the owner-authorized personal filing dossier graph.
+      description: >-
+        Local-only, personal single-user dossier boundary. One atomic response
+        carries the startup-fixed facts, evidence, known-at lineage, chart
+        references, valuation-input references, and explicit omission state.
+        It accepts no path parameters, query parameters, request body,
+        caller-supplied selection, or caller-supplied release state. The
+        operation requires the exact configured loopback Host authority, one
+        same-site local browser Origin, and an active owner-session cookie;
+        HEAD is not exposed. Runtime validates graph closure before release.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "200":
+          description: The exact owner-authorized personal dossier is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalFilingDossier"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: No owner-authorized personal dossier release is available.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -907,6 +958,432 @@ components:
           type: string
           format: date
           pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    PersonalFilingDossier:
+      type: object
+      description: >-
+        One startup-fixed, owner-authorized, provenance-linked personal filing
+        dossier. Every identifier is response-local and every reference closes
+        within this atomic response.
+      additionalProperties: false
+      required:
+        - asOf
+        - chart
+        - dataMode
+        - evidence
+        - facts
+        - lineage
+        - omissions
+        - profile
+        - schemaVersion
+        - status
+        - valuationInputs
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        chart:
+          $ref: "#/components/schemas/PersonalFilingDossierChart"
+        dataMode:
+          const: personal
+        evidence:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/PersonalFilingDossierEvidence"
+        facts:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/PersonalFilingDossierFact"
+        lineage:
+          $ref: "#/components/schemas/PersonalFilingDossierLineage"
+        omissions:
+          $ref: "#/components/schemas/PersonalFilingDossierOmissions"
+        profile:
+          const: personal_single_user_local
+        schemaVersion:
+          const: "1.0.0"
+        status:
+          const: personal_dossier_released
+        valuationInputs:
+          $ref: "#/components/schemas/PersonalFilingDossierValuationInputs"
+    PersonalFilingDossierFact:
+      type: object
+      additionalProperties: false
+      required:
+        - evidenceId
+        - id
+        - key
+        - knownFrom
+        - knownToExclusive
+        - label
+        - periodEnd
+        - periodStart
+        - unit
+        - value
+        - version
+      properties:
+        evidenceId:
+          type: string
+          pattern: "^evidence-[0-9]{4}$"
+        id:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        key:
+          $ref: "#/components/schemas/PersonalFilingDossierFactKey"
+        knownFrom:
+          type: string
+          format: date-time
+        knownToExclusive:
+          type:
+            - string
+            - "null"
+          format: date-time
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        periodEnd:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        periodStart:
+          type:
+            - string
+            - "null"
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        unit:
+          type: string
+          enum:
+            - USD
+            - shares
+        value:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: "^-?(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{0,11}[1-9])?$"
+        version:
+          type: string
+          enum:
+            - current
+            - superseded
+    PersonalFilingDossierEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - derivationFormula
+        - derivationOperands
+        - factId
+        - id
+        - sourceAcceptedAt
+        - sourceAccession
+        - sourceAvailableAt
+        - sourceConcept
+        - sourceContentSha256
+        - sourceDocumentSha256
+        - taxonomy
+      properties:
+        derivationFormula:
+          type:
+            - string
+            - "null"
+          enum:
+            - operating_cash_flow_minus_capital_expenditures
+            - null
+        derivationOperands:
+          type: array
+          minItems: 0
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/PersonalFilingDossierDerivationOperand"
+        factId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        id:
+          type: string
+          pattern: "^evidence-[0-9]{4}$"
+        sourceAcceptedAt:
+          type: string
+          format: date-time
+        sourceAccession:
+          type: string
+          minLength: 1
+          maxLength: 40
+        sourceAvailableAt:
+          type: string
+          format: date-time
+        sourceConcept:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 200
+        sourceContentSha256:
+          type: string
+          pattern: "^sha256:[0-9a-f]{64}$"
+        sourceDocumentSha256:
+          type: string
+          pattern: "^sha256:[0-9a-f]{64}$"
+        taxonomy:
+          type: string
+          minLength: 1
+          maxLength: 200
+      oneOf:
+        - title: Direct personal filing evidence
+          properties:
+            derivationFormula:
+              type: "null"
+            derivationOperands:
+              type: array
+              maxItems: 0
+            sourceConcept:
+              type: string
+              minLength: 1
+              maxLength: 200
+        - title: Derived free-cash-flow evidence
+          properties:
+            derivationFormula:
+              const: operating_cash_flow_minus_capital_expenditures
+            derivationOperands:
+              type: array
+              minItems: 2
+              maxItems: 2
+              prefixItems:
+                - allOf:
+                    - $ref: "#/components/schemas/PersonalFilingDossierDerivationOperand"
+                    - type: object
+                      properties:
+                        role:
+                          const: minuend
+                - allOf:
+                    - $ref: "#/components/schemas/PersonalFilingDossierDerivationOperand"
+                    - type: object
+                      properties:
+                        role:
+                          const: subtrahend
+              items: false
+            sourceConcept:
+              type: "null"
+    PersonalFilingDossierDerivationOperand:
+      type: object
+      additionalProperties: false
+      required:
+        - concept
+        - periodEnd
+        - periodStart
+        - role
+        - unit
+        - value
+      properties:
+        concept:
+          type: string
+          minLength: 1
+          maxLength: 200
+        periodEnd:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        periodStart:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        role:
+          type: string
+          enum:
+            - minuend
+            - subtrahend
+        unit:
+          const: USD
+        value:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: "^-?(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{0,11}[1-9])?$"
+    PersonalFilingDossierLineage:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+        - scope
+        - status
+      properties:
+        events:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/PersonalFilingDossierLineageEvent"
+        scope:
+          const: issuer_filing_versions_within_exact_frozen_manifest_only
+        status:
+          type: string
+          enum:
+            - amendment_supersession_observed
+            - root_only_no_in_corpus_amendment
+    PersonalFilingDossierLineageEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - effectiveAt
+        - key
+        - predecessorFactId
+        - successorFactId
+      properties:
+        effectiveAt:
+          type: string
+          format: date-time
+        key:
+          $ref: "#/components/schemas/PersonalFilingDossierFactKey"
+        predecessorFactId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        successorFactId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+    PersonalFilingDossierChart:
+      oneOf:
+        - $ref: "#/components/schemas/PersonalFilingDossierChartReady"
+        - $ref: "#/components/schemas/PersonalFilingDossierChartUnsupported"
+    PersonalFilingDossierChartReady:
+      type: object
+      additionalProperties: false
+      required:
+        - series
+        - status
+      properties:
+        series:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/PersonalFilingDossierChartSeries"
+        status:
+          const: ready
+    PersonalFilingDossierChartUnsupported:
+      type: object
+      additionalProperties: false
+      required:
+        - reasonCode
+        - status
+      properties:
+        reasonCode:
+          const: NO_OWNER_APPROVED_CHART_FACTS
+        status:
+          const: unsupported
+    PersonalFilingDossierChartSeries:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - points
+        - unit
+      properties:
+        key:
+          $ref: "#/components/schemas/PersonalFilingDossierFactKey"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        points:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/PersonalFilingDossierChartPoint"
+        unit:
+          type: string
+          enum:
+            - USD
+            - shares
+    PersonalFilingDossierChartPoint:
+      type: object
+      additionalProperties: false
+      required:
+        - factId
+      properties:
+        factId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+    PersonalFilingDossierValuationInputs:
+      oneOf:
+        - $ref: "#/components/schemas/PersonalFilingDossierValuationInputsReady"
+        - $ref: "#/components/schemas/PersonalFilingDossierValuationInputsUnsupported"
+    PersonalFilingDossierValuationInputsReady:
+      type: object
+      additionalProperties: false
+      required:
+        - baseRevenueFactId
+        - cashFactId
+        - debtFactId
+        - dilutedSharesFactId
+        - modelVersion
+        - status
+      properties:
+        baseRevenueFactId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        cashFactId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        debtFactId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        dilutedSharesFactId:
+          type: string
+          pattern: "^fact-[0-9]{4}$"
+        modelVersion:
+          const: exit-multiple-v1
+        status:
+          const: ready
+    PersonalFilingDossierValuationInputsUnsupported:
+      type: object
+      additionalProperties: false
+      required:
+        - reasonCode
+        - status
+      properties:
+        reasonCode:
+          type: string
+          enum:
+            - INPUT_OUT_OF_DOMAIN
+            - REQUIRED_FACTS_NOT_RELEASED
+        status:
+          const: unsupported
+    PersonalFilingDossierOmissions:
+      type: object
+      additionalProperties: false
+      required:
+        - count
+        - explanation
+        - hasOmissions
+        - reasonCode
+      properties:
+        count:
+          type: "null"
+        explanation:
+          type: string
+          minLength: 1
+          maxLength: 240
+        hasOmissions:
+          type: boolean
+        reasonCode:
+          const: OWNER_FIXED_SCOPE
+    PersonalFilingDossierFactKey:
+      type: string
+      enum:
+        - assets
+        - cash
+        - debt
+        - diluted_shares
+        - free_cash_flow
+        - gross_profit
+        - net_income
+        - operating_cash_flow
+        - operating_income
+        - revenue
     InstrumentId:
       type: string
       minLength: 3

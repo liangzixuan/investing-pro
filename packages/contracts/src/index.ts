@@ -133,6 +133,141 @@ export interface PersonalFilingSelectedFactsDto {
   readonly facts: readonly PersonalFilingSelectedFactDto[];
 }
 
+export type PersonalFilingDossierFactKeyDto =
+  | "assets"
+  | "cash"
+  | "debt"
+  | "diluted_shares"
+  | "free_cash_flow"
+  | "gross_profit"
+  | "net_income"
+  | "operating_cash_flow"
+  | "operating_income"
+  | "revenue";
+
+export interface PersonalFilingDossierFactDto {
+  readonly evidenceId: `evidence-${string}`;
+  readonly id: `fact-${string}`;
+  readonly key: PersonalFilingDossierFactKeyDto;
+  readonly knownFrom: string;
+  readonly knownToExclusive: string | null;
+  readonly label: string;
+  readonly periodEnd: string;
+  readonly periodStart: string | null;
+  readonly unit: "USD" | "shares";
+  readonly value: string;
+  readonly version: "current" | "superseded";
+}
+
+export interface PersonalFilingDossierDerivationOperandDto<
+  Role extends "minuend" | "subtrahend" = "minuend" | "subtrahend",
+> {
+  readonly concept: string;
+  readonly periodEnd: string;
+  readonly periodStart: string;
+  readonly role: Role;
+  readonly unit: "USD";
+  readonly value: string;
+}
+
+interface PersonalFilingDossierEvidenceBaseDto {
+  readonly factId: `fact-${string}`;
+  readonly id: `evidence-${string}`;
+  readonly sourceAcceptedAt: string;
+  readonly sourceAccession: string;
+  readonly sourceAvailableAt: string;
+  readonly sourceContentSha256: `sha256:${string}`;
+  readonly sourceDocumentSha256: `sha256:${string}`;
+  readonly taxonomy: string;
+}
+
+export type PersonalFilingDossierEvidenceDto =
+  | (PersonalFilingDossierEvidenceBaseDto &
+      Readonly<{
+        derivationFormula: null;
+        derivationOperands: readonly [];
+        sourceConcept: string;
+      }>)
+  | (PersonalFilingDossierEvidenceBaseDto &
+      Readonly<{
+        derivationFormula: "operating_cash_flow_minus_capital_expenditures";
+        derivationOperands: readonly [
+          PersonalFilingDossierDerivationOperandDto<"minuend">,
+          PersonalFilingDossierDerivationOperandDto<"subtrahend">,
+        ];
+        sourceConcept: null;
+      }>);
+
+export interface PersonalFilingDossierLineageEventDto {
+  readonly effectiveAt: string;
+  readonly key: PersonalFilingDossierFactKeyDto;
+  readonly predecessorFactId: `fact-${string}`;
+  readonly successorFactId: `fact-${string}`;
+}
+
+export interface PersonalFilingDossierLineageDto {
+  readonly events: readonly PersonalFilingDossierLineageEventDto[];
+  readonly scope: "issuer_filing_versions_within_exact_frozen_manifest_only";
+  readonly status:
+    "amendment_supersession_observed" | "root_only_no_in_corpus_amendment";
+}
+
+export interface PersonalFilingDossierChartPointDto {
+  readonly factId: `fact-${string}`;
+}
+
+export interface PersonalFilingDossierChartSeriesDto {
+  readonly key: PersonalFilingDossierFactKeyDto;
+  readonly label: string;
+  readonly points: readonly PersonalFilingDossierChartPointDto[];
+  readonly unit: "USD" | "shares";
+}
+
+export type PersonalFilingDossierChartDto =
+  | Readonly<{
+      reasonCode: "NO_OWNER_APPROVED_CHART_FACTS";
+      status: "unsupported";
+    }>
+  | Readonly<{
+      series: readonly PersonalFilingDossierChartSeriesDto[];
+      status: "ready";
+    }>;
+
+export type PersonalFilingDossierValuationInputsDto =
+  | Readonly<{
+      reasonCode: "INPUT_OUT_OF_DOMAIN" | "REQUIRED_FACTS_NOT_RELEASED";
+      status: "unsupported";
+    }>
+  | Readonly<{
+      baseRevenueFactId: `fact-${string}`;
+      cashFactId: `fact-${string}`;
+      debtFactId: `fact-${string}`;
+      dilutedSharesFactId: `fact-${string}`;
+      modelVersion: "exit-multiple-v1";
+      status: "ready";
+    }>;
+
+export interface PersonalFilingDossierOmissionsDto {
+  readonly count: null;
+  readonly explanation: string;
+  readonly hasOmissions: boolean;
+  readonly reasonCode: "OWNER_FIXED_SCOPE";
+}
+
+export interface PersonalFilingDossierDto {
+  readonly asOf: string;
+  readonly chart: PersonalFilingDossierChartDto;
+  readonly dataMode: "personal";
+  readonly evidence: readonly PersonalFilingDossierEvidenceDto[];
+  readonly facts: readonly PersonalFilingDossierFactDto[];
+  readonly lineage: PersonalFilingDossierLineageDto;
+  readonly omissions: PersonalFilingDossierOmissionsDto;
+  readonly profile: "personal_single_user_local";
+  readonly schemaVersion: "1.0.0";
+  readonly status: "personal_dossier_released";
+  readonly valuationInputs: PersonalFilingDossierValuationInputsDto;
+}
+
 export interface ValuationInputDto {
   baseRevenue: string;
   cash: string;

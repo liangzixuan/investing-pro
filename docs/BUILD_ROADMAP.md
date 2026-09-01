@@ -1975,15 +1975,18 @@ They are not current personal-profile blockers.
 ## Cycle 3 — product breadth
 
 Status: **Cycle 3a is promoted only for exact source revision
-`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycles 3b through 3q remain
-planned.** No parity claim is made.
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
+source but no fresh owner authorization, terminal exact-source result, private
+activation, acceptance, or promotion. Cycles 3c through 3q remain planned.** No
+parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
-is closed by Cycle 3a only for its exact source. The next blocker is Cycle 3b
-authenticated personal dossier composition. Any later networked source must
-enter through a separately declared, explicitly enabled
+is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
+dossier composition is prepared but not promoted; Cycle 3c connected-personal
+source policy is the next functional product blocker. Any later networked
+source must enter through a separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
 request, storage, and estimated-spend budgets. Those application budgets are
@@ -2106,11 +2109,52 @@ The boundary does not verify a human or resist hostile same-user processes,
 browser extensions, developer tools, screenshots, clipboard readers, memory
 inspection, or hostile browser state beyond the narrow controlling-service-
 worker prefetch guard. It adds no remote, multi-user, tenant, service, durable,
-or production authentication. The next separate milestone is Cycle 3b
-authenticated personal dossier composition: one coherent admitted snapshot for
-dossier, evidence-passport, restatement-lineage, chart, and valuation inputs,
-with no synthetic/personal mixing. Dynamic selection, refresh, persistence, and
-background work remain later milestones.
+or production authentication. At the exact Cycle 3a source, personal facts
+remain separate from the synthetic dossier.
+
+### Cycle 3b — authenticated personal dossier composition
+
+Status: **Prepared public source only; not owner-authorized, privately run,
+terminally verified, accepted, or promoted.** The exact decision and pending
+gates are in [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md)
+and the [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
+
+Exact API startup with `RESEARCH_COCKPIT_MODE=personal_dossier` prepares one
+read-only, memory-only `PersonalFilingDossierDto` from a plan using
+`exact_candidate_document_index.v1`. The plan fixes one document index,
+canonical selected fact keys, and canonical chart keys. That index is the
+terminal entry of the separately sealed and admitted declaration, manifest, and
+quality-plan prefix. Only its matching raw/source document-array prefix is
+decoded; an earlier snapshot requires its own prefix-sealed artifact because a
+full manifest still cryptographically binds every later manifest entry. Facts
+are the sole primary-fact registry. Evidence may retain the exact immutable
+derivation operands required to audit a derived fact; in-corpus lineage, the
+fixed filing-fact chart, and valuation inputs otherwise reference facts inside
+one closed response. Exact
+`GET /v1/personal-filing/dossier` requires the Cycle 3a owner session before
+private capability access. The matching browser starts only under
+`RESEARCH_COCKPIT_WEB_MODE=personal_dossier` and renders at the parameter-free
+`/personal` route; `/research/[symbol]` redirects before symbol or `knownAt`
+resolution. The browser admits no synthetic fallback and persists no personal
+state.
+
+The public contract exposes explicit unsupported chart and valuation variants
+for honest failure semantics. Those variants do not close the Cycle 3b end-user
+result: terminal promotion requires the later exact owner-approved response to
+contain a ready nonempty filing-fact chart and ready same-snapshot valuation
+inputs.
+
+The prior Cycle 2z and Cycle 3a approvals are incompatible. Promotion requires
+fresh owner review of the exact canonical dossier and one single-use
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization bound to a later
+exact source, bundle, quality result, plan, and response, followed by terminal
+public and private evidence. This prepared source authorizes no private run.
+
+Dynamic selection or `knownAt`, connected sources, refresh, persistence,
+background work, security-master mapping, prices, broad statements, owner
+corrections, personal thesis/alerts/exports, hostile same-user resistance, and
+remote/shared authentication remain nonclaims. Cycle 3c connected-personal
+profile and source-policy registry is the next functional product blocker.
 
 The delivery waves are:
 

@@ -1,6 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { isPersonalDossierWebMode } from "@/lib/web-mode";
+
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
+  if (isPersonalDossierWebMode(process.env.RESEARCH_COCKPIT_WEB_MODE)) {
+    redirect("/personal");
+  }
+
   return (
     <main className="landing-shell">
       <div className="landing-grid" aria-hidden="true" />

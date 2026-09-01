@@ -104,6 +104,8 @@ const CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION =
   "dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3" as const;
 const CYCLE_3A_SOURCE_REVISION =
   "ee023b9cf7cf43fd63baa9b531ae71cc34f349e1" as const;
+const CYCLE_3A_PROMOTION_REVISION =
+  "3b7f9c10639e3fc7086fe2c162d4a88827216188" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2134,6 +2136,140 @@ const CYCLE_3A_PROMOTION_TRANSITION = Object.freeze(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   ),
 );
+const CYCLE_3B_SOURCE_TRANSITION = Object.freeze(
+  [
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    {
+      path: ".github/workflows/filing-payload-custody-acceptance.yml",
+      status: "M",
+    },
+    { path: "README.md", status: "M" },
+    { path: "apps/api/src/api-mode.test.ts", status: "M" },
+    { path: "apps/api/src/api-mode.ts", status: "M" },
+    { path: "apps/api/src/app.ts", status: "M" },
+    { path: "apps/api/src/composition-root.ts", status: "M" },
+    {
+      path: "apps/api/src/personal-dossier-release.test.ts",
+      status: "A",
+    },
+    { path: "apps/api/src/personal-dossier-release.ts", status: "A" },
+    { path: "apps/api/src/personal-dossier-routes.ts", status: "A" },
+    {
+      path: "apps/api/src/test-personal-dossier-release-builder.ts",
+      status: "A",
+    },
+    { path: "apps/web/app/globals.css", status: "M" },
+    { path: "apps/web/app/page.tsx", status: "M" },
+    { path: "apps/web/app/personal/page.tsx", status: "A" },
+    { path: "apps/web/app/research/[symbol]/page.tsx", status: "M" },
+    {
+      path: "apps/web/src/features/research/OwnerSessionPanel.test.tsx",
+      status: "M",
+    },
+    {
+      path: "apps/web/src/features/research/OwnerSessionPanel.tsx",
+      status: "M",
+    },
+    {
+      path: "apps/web/src/features/research/PersonalDossier.test.tsx",
+      status: "A",
+    },
+    {
+      path: "apps/web/src/features/research/PersonalDossier.tsx",
+      status: "A",
+    },
+    {
+      path: "apps/web/src/features/research/PersonalResearchWorkspace.test.tsx",
+      status: "A",
+    },
+    {
+      path: "apps/web/src/features/research/PersonalResearchWorkspace.tsx",
+      status: "A",
+    },
+    {
+      path: "apps/web/src/features/research/test-personal-dossier-builder.ts",
+      status: "A",
+    },
+    { path: "apps/web/src/lib/api.test.ts", status: "M" },
+    { path: "apps/web/src/lib/api.ts", status: "M" },
+    { path: "apps/web/src/lib/personal-api.ts", status: "A" },
+    { path: "apps/web/src/lib/web-mode.test.ts", status: "M" },
+    { path: "apps/web/src/lib/web-mode.ts", status: "M" },
+    { path: "apps/web/src/research-page-mode.test.tsx", status: "A" },
+    { path: "docs/BUILD_ROADMAP.md", status: "M" },
+    { path: "docs/CANONICAL_MODEL.md", status: "M" },
+    { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+    { path: "docs/CYCLE_3B_EXIT_MATRIX.md", status: "A" },
+    { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+    { path: "docs/THREAT_MODEL.md", status: "M" },
+    {
+      path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+      status: "M",
+    },
+    {
+      path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+      status: "M",
+    },
+    { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
+    {
+      path: "docs/adr/0054-authenticated-personal-dossier-composition.md",
+      status: "A",
+    },
+    { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+    { path: "packages/contracts/src/index.ts", status: "M" },
+    { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+    { path: "packages/personal-filing-corpus/src/index.ts", status: "M" },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-dossier-security.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-dossier.test.ts",
+      status: "A",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-dossier.ts",
+      status: "A",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-payload-identity-security.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-quality-measurement.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/personal-filing-quality-measurement.ts",
+      status: "M",
+    },
+    {
+      path: "packages/personal-filing-corpus/src/test-personal-filing-dossier-builder.ts",
+      status: "A",
+    },
+    { path: "scripts/verify-boundaries.ts", status: "M" },
+  ].sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  ),
+);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2326,6 +2462,10 @@ const CYCLE_3A_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_2Z_PROTECTED_SURFACE_PATHS,
   ...CYCLE_3A_TRANSITION_PATHS,
   ...CYCLE_3A_PROMOTION_TRANSITION.map((entry) => entry.path),
+]);
+const CYCLE_3B_PROTECTED_SURFACE_PATHS = new Set([
+  ...CYCLE_3A_PROTECTED_SURFACE_PATHS,
+  ...CYCLE_3B_SOURCE_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -3653,7 +3793,7 @@ export function isCycle3aSourceTopologyAllowed(
   );
 }
 
-/** @internal One exact merge-free Cycle 3a promotion child after pinned source. */
+/** @internal The exact pinned merge-free Cycle 3a promotion after its source. */
 export function isCycle3aPromotionTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -3671,6 +3811,44 @@ export function isCycle3aPromotionTopologyAllowed(
   return (
     successorCount === "9" &&
     firstParentCount === "9" &&
+    revision === CYCLE_3A_PROMOTION_REVISION &&
+    parentLine ===
+      `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}` &&
+    isCycle3aSourceTopologyAllowed(
+      "8",
+      "8",
+      CYCLE_3A_SOURCE_REVISION,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact merge-free Cycle 3b source child after pinned promotion. */
+export function isCycle3bSourceTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "10" &&
+    firstParentCount === "10" &&
     COMMIT.test(revision) &&
     revision !== CYCLE_2Z_BASELINE_REVISION &&
     revision !== CYCLE_2Z_SOURCE_REVISION &&
@@ -3681,11 +3859,13 @@ export function isCycle3aPromotionTopologyAllowed(
     revision !== CYCLE_2Z_ROADMAP_REBASELINE_REVISION &&
     revision !== CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION &&
     revision !== CYCLE_3A_SOURCE_REVISION &&
-    parentLine === `${revision} ${CYCLE_3A_SOURCE_REVISION}` &&
-    isCycle3aSourceTopologyAllowed(
-      "8",
-      "8",
-      CYCLE_3A_SOURCE_REVISION,
+    revision !== CYCLE_3A_PROMOTION_REVISION &&
+    parentLine === `${revision} ${CYCLE_3A_PROMOTION_REVISION}` &&
+    isCycle3aPromotionTopologyAllowed(
+      "9",
+      "9",
+      CYCLE_3A_PROMOTION_REVISION,
+      cycle3aPromotionParentLine,
       cycle3aSourceParentLine,
       ubuntuCiStabilizationParentLine,
       roadmapRebaselineParentLine,
@@ -3704,12 +3884,19 @@ export function isCycle2zTransitionRoutingRequired(
 ): boolean {
   return (
     baselineDiffPaths !== undefined &&
-    baselineDiffPaths.some((path) => CYCLE_3A_PROTECTED_SURFACE_PATHS.has(path))
+    baselineDiffPaths.some((path) => CYCLE_3B_PROTECTED_SURFACE_PATHS.has(path))
   );
 }
 
 /** @internal Any inherited or Cycle 3a protected-surface touch routes fail closed. */
 export function isCycle3aTransitionRoutingRequired(
+  baselineDiffPaths: readonly string[] | undefined,
+): boolean {
+  return isCycle2zTransitionRoutingRequired(baselineDiffPaths);
+}
+
+/** @internal Any inherited or Cycle 3b protected-surface touch routes fail closed. */
+export function isCycle3bTransitionRoutingRequired(
   baselineDiffPaths: readonly string[] | undefined,
 ): boolean {
   return isCycle2zTransitionRoutingRequired(baselineDiffPaths);
@@ -4695,6 +4882,16 @@ export function isCycle3aPromotionCommitDiffSetAllowed(
   return exactCycle2pDiffSet(entries, CYCLE_3A_PROMOTION_TRANSITION);
 }
 
+/** @internal Exact Cycle 3b authenticated personal dossier source transition. */
+export function isCycle3bSourceCommitDiffSetAllowed(
+  entries: readonly {
+    readonly path: string;
+    readonly status: string;
+  }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_3B_SOURCE_TRANSITION);
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -5070,7 +5267,7 @@ async function cycle2zTransitionSurfaceDiffPaths(
       CYCLE_2Z_BASELINE_REVISION,
       revision,
       "--",
-      ...CYCLE_3A_PROTECTED_SURFACE_PATHS,
+      ...CYCLE_3B_PROTECTED_SURFACE_PATHS,
     ]),
   );
 }
@@ -5911,6 +6108,7 @@ async function verifyCycle2zTransition(
     CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
     CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
     CYCLE_3A_SOURCE_REVISION,
+    CYCLE_3A_PROMOTION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -6026,6 +6224,13 @@ async function verifyCycle2zTransition(
       128,
     ),
   ).join(" ");
+  const cycle3aPromotionParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_3A_PROMOTION_REVISION],
+      128,
+    ),
+  ).join(" ");
   const directSource = isCycle2zDirectChildAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -6100,6 +6305,21 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
+  const cycle3bSource = isCycle3bSourceTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    cycle3aPromotionParentLine,
+    cycle3aSourceParentLine,
+    ubuntuCiStabilizationParentLine,
+    roadmapRebaselineParentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
   if (
     !directSource &&
     !correctiveChild &&
@@ -6107,7 +6327,8 @@ async function verifyCycle2zTransition(
     !roadmapRebaselineChild &&
     !ubuntuCiStabilizationChild &&
     !cycle3aSource &&
-    !cycle3aPromotion
+    !cycle3aPromotion &&
+    !cycle3bSource
   )
     invalid();
 
@@ -6123,7 +6344,8 @@ async function verifyCycle2zTransition(
     roadmapRebaselineChild ||
     ubuntuCiStabilizationChild ||
     cycle3aSource ||
-    cycle3aPromotion
+    cycle3aPromotion ||
+    cycle3bSource
   ) {
     const correctiveEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6137,7 +6359,8 @@ async function verifyCycle2zTransition(
     roadmapRebaselineChild ||
     ubuntuCiStabilizationChild ||
     cycle3aSource ||
-    cycle3aPromotion
+    cycle3aPromotion ||
+    cycle3bSource
   ) {
     const promotionEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6174,7 +6397,8 @@ async function verifyCycle2zTransition(
     roadmapRebaselineChild ||
     ubuntuCiStabilizationChild ||
     cycle3aSource ||
-    cycle3aPromotion
+    cycle3aPromotion ||
+    cycle3bSource
   ) {
     const roadmapRebaselineEntries = await cycle2pDiffEntries(
       repositoryPath,
@@ -6186,7 +6410,12 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (ubuntuCiStabilizationChild || cycle3aSource || cycle3aPromotion) {
+  if (
+    ubuntuCiStabilizationChild ||
+    cycle3aSource ||
+    cycle3aPromotion ||
+    cycle3bSource
+  ) {
     const ubuntuCiStabilizationEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
@@ -6201,7 +6430,7 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (cycle3aSource || cycle3aPromotion) {
+  if (cycle3aSource || cycle3aPromotion || cycle3bSource) {
     const cycle3aSourceEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
@@ -6209,14 +6438,22 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3aSourceCommitDiffSetAllowed(cycle3aSourceEntries)) invalid();
   }
-  if (cycle3aPromotion) {
+  if (cycle3aPromotion || cycle3bSource) {
     const cycle3aPromotionEntries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3A_SOURCE_REVISION,
-      revision,
+      cycle3aPromotion ? revision : CYCLE_3A_PROMOTION_REVISION,
     );
     if (!isCycle3aPromotionCommitDiffSetAllowed(cycle3aPromotionEntries))
       invalid();
+  }
+  if (cycle3bSource) {
+    const cycle3bSourceEntries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3A_PROMOTION_REVISION,
+      revision,
+    );
+    if (!isCycle3bSourceCommitDiffSetAllowed(cycle3bSourceEntries)) invalid();
   }
 
   await verifyCycle2xTransition(

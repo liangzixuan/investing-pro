@@ -3,6 +3,7 @@ import {
   DEFAULT_KNOWN_AT,
 } from "@research-cockpit/research-core";
 import type {
+  PersonalFilingDossierDto,
   PersonalFilingReadinessDto,
   PersonalFilingSelectedFactsDto,
 } from "@research-cockpit/contracts";
@@ -12,12 +13,15 @@ import {
   bootstrapOwnerSession,
   fetchDossier,
   fetchOwnerSession,
+  fetchPersonalFilingDossier,
   fetchPersonalFilingReadiness,
   fetchPersonalFilingSelectedFacts,
   logoutOwnerSession,
   revokeOwnerSession,
   rotateOwnerSession,
+  parsePersonalFilingDossier,
 } from "./api";
+import { buildPersonalDossierFixture } from "../features/research/test-personal-dossier-builder";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -340,6 +344,396 @@ describe("personal filing selected-facts API client", () => {
   });
 });
 
+describe("personal filing dossier API client", () => {
+  it("accepts and deeply freezes one closed credentialed dossier graph", async () => {
+    const localStorage = storageSpy();
+    const sessionStorage = storageSpy();
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", sessionStorage);
+    const fixture = buildCanonicalPersonalDossierFixture();
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(fixture), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+
+    const result = await fetchPersonalFilingDossier(controller.signal);
+
+    expect(result).toEqual(fixture);
+    expect(result).not.toBe(fixture);
+    expectDeeplyFrozen(result);
+    const [url, options] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBeInstanceOf(URL);
+    if (!(url instanceof URL)) throw new TypeError("Expected a URL object");
+    expect(url.pathname).toBe("/v1/personal-filing/dossier");
+    expect(url.search).toBe("");
+    expect(options).toMatchObject({
+      cache: "no-store",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+      signal: controller.signal,
+    });
+    expect(options).not.toHaveProperty("body");
+    for (const storage of [localStorage, sessionStorage]) {
+      expect(storage.getItem).not.toHaveBeenCalled();
+      expect(storage.setItem).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each([
+    [
+      "an outer extra field",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        privatePath: "PRIVATE",
+      }),
+    ],
+    [
+      "a synthetic mode marker",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        dataMode: "synthetic",
+      }),
+    ],
+    [
+      "a duplicated fact id",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        facts: [value.facts[0], { ...value.facts[1], id: value.facts[0]?.id }],
+      }),
+    ],
+    [
+      "a noncanonical fact ordinal",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        facts: [value.facts[1], value.facts[0], ...value.facts.slice(2)],
+      }),
+    ],
+    [
+      "a noncanonical evidence ordinal",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        evidence: [
+          value.evidence[1],
+          value.evidence[0],
+          ...value.evidence.slice(2),
+        ],
+      }),
+    ],
+    [
+      "an as-of instant that differs from the current snapshot",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        asOf: "2025-04-01T12:00:00.000Z",
+      }),
+    ],
+    [
+      "an unresolved evidence reference",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        facts: value.facts.map((fact, index) =>
+          index === 0 ? { ...fact, evidenceId: "evidence-9999" } : fact,
+        ),
+      }),
+    ],
+    [
+      "a broken lineage edge",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        lineage: {
+          ...value.lineage,
+          events: value.lineage.events.map((event) => ({
+            ...event,
+            successorFactId: "fact-0001",
+          })),
+        },
+      }),
+    ],
+    [
+      "a chart point with a copied value",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        chart:
+          value.chart.status === "ready"
+            ? {
+                ...value.chart,
+                series: value.chart.series.map((series) => ({
+                  ...series,
+                  points: series.points.map((point) => ({
+                    ...point,
+                    value: "PRIVATE_DUPLICATE",
+                  })),
+                })),
+              }
+            : value.chart,
+      }),
+    ],
+    [
+      "a valuation reference to the wrong fact key",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        valuationInputs:
+          value.valuationInputs.status === "ready"
+            ? {
+                ...value.valuationInputs,
+                cashFactId: value.valuationInputs.baseRevenueFactId,
+              }
+            : value.valuationInputs,
+      }),
+    ],
+    [
+      "a noncanonical decimal",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        facts: value.facts.map((fact, index) =>
+          index === 0 ? { ...fact, value: "01.0" } : fact,
+        ),
+      }),
+    ],
+    [
+      "mixed source-document metadata",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        evidence: value.evidence.map((item, index) =>
+          index === 4
+            ? { ...item, sourceDocumentSha256: `sha256:${"e".repeat(64)}` }
+            : item,
+        ),
+      }),
+    ],
+    [
+      "an overlong source concept",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        evidence: value.evidence.map((item, index) =>
+          index === 0
+            ? { ...item, sourceConcept: `us-gaap:${"x".repeat(129)}` }
+            : item,
+        ),
+      }),
+    ],
+    [
+      "noncanonical lineage-event order",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        lineage: {
+          ...value.lineage,
+          events: [...value.lineage.events].reverse(),
+        },
+      }),
+    ],
+    [
+      "an incomplete ready chart series",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        chart:
+          value.chart.status === "ready"
+            ? {
+                ...value.chart,
+                series: value.chart.series.map((series) => ({
+                  ...series,
+                  points: series.points.slice(1),
+                })),
+              }
+            : value.chart,
+      }),
+    ],
+    [
+      "incompatible instant and duration chart series",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        chart:
+          value.chart.status === "ready"
+            ? {
+                status: "ready",
+                series: [
+                  {
+                    key: "cash",
+                    label: "Cash",
+                    unit: "USD",
+                    points: [{ factId: "fact-0001" }, { factId: "fact-0005" }],
+                  },
+                  ...value.chart.series,
+                ],
+              }
+            : value.chart,
+      }),
+    ],
+    [
+      "a ready valuation with an out-of-domain input",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        facts: value.facts.map((fact) =>
+          fact.id === "fact-0008" ? { ...fact, value: "-1" } : fact,
+        ),
+      }),
+    ],
+    [
+      "an unsupported valuation despite complete valid inputs",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        valuationInputs: {
+          status: "unsupported",
+          reasonCode: "REQUIRED_FACTS_NOT_RELEASED",
+        },
+      }),
+    ],
+    [
+      "an injected omission explanation",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        omissions: {
+          ...value.omissions,
+          explanation: "PRIVATE_PATH_CANARY",
+        },
+      }),
+    ],
+    [
+      "an omission flag inconsistent with the admitted keys",
+      (value: PersonalFilingDossierDto) => ({
+        ...value,
+        omissions: { ...value.omissions, hasOmissions: false },
+      }),
+    ],
+  ])("rejects %s atomically", (_label, mutate) => {
+    const hostile = mutate(buildCanonicalPersonalDossierFixture());
+    expect(parsePersonalFilingDossier(hostile)).toBeNull();
+  });
+
+  it("requires canonical fact-key order inside a root snapshot", () => {
+    const fixture = buildCanonicalPersonalDossierFixture();
+
+    expect(
+      parsePersonalFilingDossier(buildRootDossier(fixture, [4, 5])),
+    ).not.toBeNull();
+    expect(
+      parsePersonalFilingDossier(buildRootDossier(fixture, [5, 4])),
+    ).toBeNull();
+  });
+
+  it("rejects malformed derivation operands and accepts the exact FCF pair", () => {
+    const fixture = buildCanonicalPersonalDossierFixture();
+    const fcfFact = {
+      ...fixture.facts[0],
+      id: "fact-0001",
+      evidenceId: "evidence-0001",
+      key: "free_cash_flow",
+      label: "Free cash flow",
+      periodStart: "2024-01-01",
+      value: "75",
+      knownFrom: fixture.asOf,
+      knownToExclusive: null,
+      version: "current",
+    } as const;
+    const fcfEvidence = {
+      ...fixture.evidence[0],
+      id: fcfFact.evidenceId,
+      factId: fcfFact.id,
+      sourceAcceptedAt: fixture.asOf,
+      sourceAvailableAt: fixture.asOf,
+      sourceConcept: null,
+      derivationFormula: "operating_cash_flow_minus_capital_expenditures",
+      derivationOperands: [
+        {
+          role: "minuend",
+          concept: "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+          value: "100",
+          unit: "USD",
+          periodStart: fcfFact.periodStart,
+          periodEnd: fcfFact.periodEnd,
+        },
+        {
+          role: "subtrahend",
+          concept: "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+          value: "25",
+          unit: "USD",
+          periodStart: fcfFact.periodStart,
+          periodEnd: fcfFact.periodEnd,
+        },
+      ],
+    } as const;
+    const exact = {
+      ...fixture,
+      facts: [fcfFact],
+      evidence: [fcfEvidence],
+      lineage: {
+        ...fixture.lineage,
+        events: [],
+        status: "root_only_no_in_corpus_amendment",
+      },
+      chart: {
+        status: "unsupported",
+        reasonCode: "NO_OWNER_APPROVED_CHART_FACTS",
+      },
+      valuationInputs: {
+        status: "unsupported",
+        reasonCode: "REQUIRED_FACTS_NOT_RELEASED",
+      },
+    };
+
+    expect(parsePersonalFilingDossier(exact)).not.toBeNull();
+    expect(
+      parsePersonalFilingDossier({
+        ...exact,
+        evidence: exact.evidence.map((item) =>
+          item.id === fcfEvidence.id
+            ? {
+                ...item,
+                derivationOperands: [
+                  item.derivationOperands[1],
+                  item.derivationOperands[0],
+                ],
+              }
+            : item,
+        ),
+      }),
+    ).toBeNull();
+    expect(
+      parsePersonalFilingDossier({
+        ...exact,
+        evidence: exact.evidence.map((item) => ({
+          ...item,
+          derivationOperands: item.derivationOperands.map((operand) =>
+            operand.role === "subtrahend"
+              ? { ...operand, value: "24" }
+              : operand,
+          ),
+        })),
+      }),
+    ).toBeNull();
+  });
+
+  it("does not read or surface denial, unavailability, or malformed bodies", async () => {
+    const denied = new Response("PRIVATE_DENIAL_CANARY", { status: 403 });
+    const unavailable = new Response("PRIVATE_UNAVAILABLE_CANARY", {
+      status: 404,
+    });
+    const malformed = new Response("PRIVATE_MALFORMED_CANARY", { status: 200 });
+    const deniedJson = vi.spyOn(denied, "json");
+    const unavailableJson = vi.spyOn(unavailable, "json");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(denied)
+        .mockResolvedValueOnce(unavailable)
+        .mockResolvedValueOnce(malformed),
+    );
+    const signal = new AbortController().signal;
+
+    await expect(fetchPersonalFilingDossier(signal)).resolves.toBeNull();
+    await expect(fetchPersonalFilingDossier(signal)).resolves.toBeNull();
+    await expect(fetchPersonalFilingDossier(signal)).resolves.toBeNull();
+    expect(deniedJson).not.toHaveBeenCalled();
+    expect(unavailableJson).not.toHaveBeenCalled();
+  });
+});
+
 describe("owner-session API client", () => {
   it("uses only the exact credentialed body-free session requests", async () => {
     const localStorage = storageSpy();
@@ -503,6 +897,7 @@ describe("personal API base URL boundary", () => {
       await expect(api.fetchPersonalFilingSelectedFacts(signal)).resolves.toBe(
         null,
       );
+      await expect(api.fetchPersonalFilingDossier(signal)).resolves.toBeNull();
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(
@@ -572,6 +967,7 @@ describe("personal API base URL boundary", () => {
     );
     await expect(fetchPersonalFilingReadiness(signal)).resolves.toBe(false);
     await expect(fetchPersonalFilingSelectedFacts(signal)).resolves.toBeNull();
+    await expect(fetchPersonalFilingDossier(signal)).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -622,6 +1018,71 @@ async function importApiWithBaseUrl(baseUrl: string) {
   return import("./api");
 }
 
+function buildCanonicalPersonalDossierFixture(): PersonalFilingDossierDto {
+  const fixture = buildPersonalDossierFixture();
+  return {
+    ...fixture,
+    evidence: fixture.evidence.map((item, index) =>
+      index < 4
+        ? item
+        : {
+            ...item,
+            sourceContentSha256: `sha256:${"c".repeat(64)}`,
+            sourceDocumentSha256: `sha256:${"d".repeat(64)}`,
+          },
+    ),
+    omissions: {
+      ...fixture.omissions,
+      explanation:
+        "The dossier contains only the exact owner-fixed fact scope.",
+    },
+  };
+}
+
+function buildRootDossier(
+  fixture: PersonalFilingDossierDto,
+  sourceIndexes: readonly number[],
+): PersonalFilingDossierDto {
+  const facts = sourceIndexes.map((sourceIndex, index) => {
+    const fact = fixture.facts[sourceIndex];
+    if (fact === undefined) throw new TypeError("Missing fixture fact.");
+    const ordinal = String(index + 1).padStart(4, "0");
+    return {
+      ...fact,
+      evidenceId: `evidence-${ordinal}`,
+      id: `fact-${ordinal}`,
+    };
+  });
+  const evidence = sourceIndexes.map((sourceIndex, index) => {
+    const item = fixture.evidence[sourceIndex];
+    if (item === undefined) throw new TypeError("Missing fixture evidence.");
+    const ordinal = String(index + 1).padStart(4, "0");
+    return {
+      ...item,
+      factId: `fact-${ordinal}`,
+      id: `evidence-${ordinal}`,
+    };
+  });
+  return {
+    ...fixture,
+    chart: {
+      reasonCode: "NO_OWNER_APPROVED_CHART_FACTS",
+      status: "unsupported",
+    },
+    evidence,
+    facts,
+    lineage: {
+      events: [],
+      scope: "issuer_filing_versions_within_exact_frozen_manifest_only",
+      status: "root_only_no_in_corpus_amendment",
+    },
+    valuationInputs: {
+      reasonCode: "REQUIRED_FACTS_NOT_RELEASED",
+      status: "unsupported",
+    },
+  } as PersonalFilingDossierDto;
+}
+
 function storageSpy() {
   return {
     getItem: vi.fn(),
@@ -631,4 +1092,10 @@ function storageSpy() {
     key: vi.fn(),
     length: 0,
   } satisfies Storage;
+}
+
+function expectDeeplyFrozen(value: unknown): void {
+  if (typeof value !== "object" || value === null) return;
+  expect(Object.isFrozen(value)).toBe(true);
+  for (const child of Object.values(value)) expectDeeplyFrozen(child);
 }

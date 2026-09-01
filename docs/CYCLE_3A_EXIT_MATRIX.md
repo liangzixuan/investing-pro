@@ -59,7 +59,7 @@ below.**
 | Same-user/browser adversary  | Hostile same-user processes, extensions, developer tools, screenshots, clipboard readers, and memory inspection                                                            | Explicit nonclaim             |
 | Remote/shared authentication | Remote, multi-user, tenant, shared-service, service-account, and production authentication                                                                                 | Out of scope                  |
 | Persistence                  | Durable login, persistent session survival across restart, credentialless restart recovery, cross-process sharing, and credential storage                                  | Out of scope                  |
-| Cycle 3b                     | Authenticated coherent personal dossier composition                                                                                                                        | Later milestone               |
+| Cycle 3b                     | Not part of the exact Cycle 3a source; a later public source is prepared but not authorized, verified, accepted, or promoted                                               | Prepared later source         |
 
 ## Configuration and bootstrap boundary
 
@@ -185,8 +185,15 @@ for the permitted coarse private outcome. No public promotion text contains a
 private sub-result. Cycle 3a is promoted only for the exact source revision and
 declared personal scope above.
 
-The next separate milestone is Cycle 3b authenticated personal dossier
-composition: one coherent admitted snapshot for dossier, evidence-passport,
-restatement-lineage, chart, and valuation inputs, with no synthetic/personal
-mixing. Dynamic selection, refresh, persistence, and background work remain
-later milestones.
+Cycle 3b authenticated personal dossier composition now has prepared public
+source for one coherent admitted snapshot spanning dossier, evidence passport,
+in-corpus restatement lineage, a fixed filing-fact chart, and valuation inputs,
+with no synthetic/personal mixing. It has no fresh owner authorization,
+terminal exact-source evidence, private activation, acceptance, or promotion.
+Its required fresh action is
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; Cycle 2z and Cycle 3a approvals
+are incompatible. Dynamic selection, refresh, persistence, and background work
+remain later milestones. Cycle 3c connected-personal source policy is the next
+functional product blocker. See
+[ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
+[Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).

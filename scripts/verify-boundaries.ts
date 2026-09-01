@@ -162,8 +162,12 @@ const cycle2xPersonalFilingCorpusPackagePaths = [
 ].sort();
 const personalFilingCorpusPackagePaths = [
   ...cycle2xPersonalFilingCorpusPackagePaths,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-dossier-security.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-dossier.test.ts`,
+  `${personalFilingCorpusPackagePrefix}src/personal-filing-dossier.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.test.ts`,
   `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.ts`,
+  `${personalFilingCorpusPackagePrefix}src/test-personal-filing-dossier-builder.ts`,
 ].sort();
 const cycle2qBaselineRevision =
   "2f0534d2a5b4206221cc66ece5e03cf529e5d373" as const;
@@ -5104,7 +5108,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     JSON.stringify(personalFilingCorpusPackagePaths)
   )
     found.push(
-      `${personalFilingCorpusPackagePrefix}: Cycle 2z package tree must remain the exact thirty-two-file manifest, payload-identity, payload-custody, fact-normalization, fact-comparison, raw-fact-extraction, quality-measurement, selected-fact-release, two Python validators, tsconfig, index, four-builder, and fifteen-test surface`,
+      `${personalFilingCorpusPackagePrefix}: Cycle 3b package tree must remain the exact thirty-six-file manifest, payload-identity, payload-custody, fact-normalization, fact-comparison, raw-fact-extraction, quality-measurement, selected-fact-release, personal-dossier, two Python validators, tsconfig, index, five-builder, and seventeen-test surface`,
     );
 
   const manifest = await cycle2kJson(
@@ -5176,6 +5180,10 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
   const qualityMeasurementBuilderPath = `${personalFilingCorpusPackagePrefix}src/test-personal-filing-quality-measurement-builder.ts`;
   const selectedFactReleasePath = `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.ts`;
   const selectedFactReleaseTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-selected-fact-release.test.ts`;
+  const dossierPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-dossier.ts`;
+  const dossierUnitTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-dossier.test.ts`;
+  const dossierSecurityTestPath = `${personalFilingCorpusPackagePrefix}src/personal-filing-dossier-security.test.ts`;
+  const dossierBuilderPath = `${personalFilingCorpusPackagePrefix}src/test-personal-filing-dossier-builder.ts`;
   const implementation = await cycle2kText(implementationPath, found);
   const index = await cycle2kText(indexPath, found);
   const unitTest = await cycle2kText(unitTestPath, found);
@@ -5263,6 +5271,10 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     selectedFactReleaseTestPath,
     found,
   );
+  const dossier = await cycle2kText(dossierPath, found);
+  const dossierUnitTest = await cycle2kText(dossierUnitTestPath, found);
+  const dossierSecurityTest = await cycle2kText(dossierSecurityTestPath, found);
+  const dossierBuilder = await cycle2kText(dossierBuilderPath, found);
   const manifestPublicExports = [
     ["PERSONAL_FILING_CORPUS_CHECKS", false],
     ["PERSONAL_FILING_CORPUS_CLAIM", false],
@@ -5421,6 +5433,31 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ["PersonalFilingSelectedFactReleaseQuarantinedResult", true],
     ["PersonalFilingSelectedFactReleaseResult", true],
   ] as const;
+  const dossierPublicExports = [
+    ["PERSONAL_FILING_DOSSIER_FACT_LABELS", false],
+    ["PERSONAL_FILING_DOSSIER_PLAN_ROLE", false],
+    ["PERSONAL_FILING_DOSSIER_PROFILE", false],
+    ["PERSONAL_FILING_DOSSIER_ROLE", false],
+    ["PERSONAL_FILING_DOSSIER_SCHEMA_VERSION", false],
+    ["PERSONAL_FILING_DOSSIER_SNAPSHOT_RULE", false],
+    ["preparePersonalFilingDossier", false],
+    ["PersonalFilingDossierChart", true],
+    ["PersonalFilingDossierChartSeries", true],
+    ["PersonalFilingDossierDerivationOperand", true],
+    ["PersonalFilingDossierEvidence", true],
+    ["PersonalFilingDossierEvidenceId", true],
+    ["PersonalFilingDossierFact", true],
+    ["PersonalFilingDossierFactId", true],
+    ["PersonalFilingDossierInput", true],
+    ["PersonalFilingDossierLineage", true],
+    ["PersonalFilingDossierLineageEvent", true],
+    ["PersonalFilingDossierOmissions", true],
+    ["PersonalFilingDossierPlan", true],
+    ["PersonalFilingDossierPreparedResult", true],
+    ["PersonalFilingDossierQuarantinedResult", true],
+    ["PersonalFilingDossierResult", true],
+    ["PersonalFilingDossierValuationInputs", true],
+  ] as const;
 
   const indexSource = ts.createSourceFile(
     indexPath,
@@ -5430,7 +5467,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     ts.ScriptKind.TS,
   );
   if (
-    indexSource.statements.length !== 8 ||
+    indexSource.statements.length !== 9 ||
     !isExactNamedReExportDeclaration(
       indexSource.statements[0],
       "./personal-filing-corpus",
@@ -5470,10 +5507,15 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
       indexSource.statements[7],
       "./personal-filing-selected-fact-release",
       selectedFactReleasePublicExports,
+    ) ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[8],
+      "./personal-filing-dossier",
+      dossierPublicExports,
     )
   )
     found.push(
-      `${indexPath}: Cycle 2z personal corpus public export surface must remain exact and test-only quality controls must stay private`,
+      `${indexPath}: Cycle 3b personal corpus public export surface must remain exact and test-only quality controls must stay private`,
     );
   const expectedImports = new Map<string, readonly string[]>([
     [implementationPath, ["node:crypto"]],
@@ -5488,6 +5530,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./personal-filing-raw-fact-extraction",
         "./personal-filing-quality-measurement",
         "./personal-filing-selected-fact-release",
+        "./personal-filing-dossier",
       ],
     ],
     [unitTestPath, ["node:crypto", "vitest", "./personal-filing-corpus"]],
@@ -5724,6 +5767,43 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
         "./test-personal-filing-quality-measurement-builder",
       ],
     ],
+    [
+      dossierPath,
+      [
+        "node:util/types",
+        "./personal-filing-fact-normalization",
+        "./personal-filing-selected-fact-release",
+        "./personal-filing-corpus",
+        "./personal-filing-quality-measurement",
+        "./personal-filing-raw-fact-extraction",
+      ],
+    ],
+    [
+      dossierUnitTestPath,
+      [
+        "vitest",
+        "./personal-filing-dossier",
+        "./personal-filing-selected-fact-release",
+        "./test-personal-filing-dossier-builder",
+      ],
+    ],
+    [
+      dossierSecurityTestPath,
+      [
+        "vitest",
+        "./personal-filing-dossier",
+        "./test-personal-filing-dossier-builder",
+      ],
+    ],
+    [
+      dossierBuilderPath,
+      [
+        "./personal-filing-fact-normalization",
+        "./personal-filing-dossier",
+        "./personal-filing-quality-measurement",
+        "./test-personal-filing-quality-measurement-builder",
+      ],
+    ],
   ]);
   for (const [path, content] of [
     [implementationPath, implementation],
@@ -5754,13 +5834,17 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     [qualityMeasurementBuilderPath, qualityMeasurementBuilder],
     [selectedFactReleasePath, selectedFactRelease],
     [selectedFactReleaseTestPath, selectedFactReleaseTest],
+    [dossierPath, dossier],
+    [dossierUnitTestPath, dossierUnitTest],
+    [dossierSecurityTestPath, dossierSecurityTest],
+    [dossierBuilderPath, dossierBuilder],
   ] as const) {
     if (
       JSON.stringify(collectModuleSpecifiers(content)) !==
       JSON.stringify(expectedImports.get(path))
     )
       found.push(
-        `${path}: Cycle 2q/2r/2s/2u/2v/2w/2x/2z imports must remain exact`,
+        `${path}: Cycle 2q/2r/2s/2u/2v/2w/2x/2z/3b imports must remain exact`,
       );
     if (
       hasRuntimeDynamicImport(content) ||
@@ -6088,6 +6172,8 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     'unitTolerancePolicy: "exact_canonical_unit.v1"',
     "comparePersonalFilingRawFactExtraction",
     "normalizePersonalFilingFacts",
+    "commitPersonalFilingQualityMeasurementForDossier",
+    'status: "candidate_and_normalization_committed_for_dossier"',
     "createPersonalFilingQualityMeasurementProtocol",
   ])
     if (!qualityMeasurement.includes(required))
@@ -6190,6 +6276,62 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     if (selectedFactRelease.includes(forbidden))
       found.push(
         `${selectedFactReleasePath}: Cycle 2z selected-fact release must not expose provenance, reference content, candidate internals, enterprise admission, or reveal capability ${forbidden}`,
+      );
+
+  for (const required of [
+    '"personal_dossier_release_plan" as const',
+    '"personal_dossier" as const',
+    '"exact_candidate_document_index.v1" as const',
+    'readonly status: "prepared_personal_dossier_for_personal_use"',
+    'readonly status: "quarantined"',
+    "commitPersonalFilingQualityMeasurementForDossier",
+    'admission.status !== "candidate_and_normalization_committed_for_dossier"',
+    "const normalized = admission.normalization",
+    "knownFrom: version.knownFrom",
+    "knownToExclusive:",
+    "derivationOperands:",
+    '"minuend"',
+    '"subtrahend"',
+    "sourceContentSha256: version.sourceContentSha256",
+    "sourceDocumentSha256: version.sourceDocumentSha256",
+    "selectedDocumentFacts(versions, documentIndex, plan.factKeys)",
+    "wipeSnapshot(snapshot)",
+    "isProxy",
+    'reasonCode: "NO_OWNER_APPROVED_CHART_FACTS"',
+    'reasonCode: "REQUIRED_FACTS_NOT_RELEASED"',
+    'reasonCode: "INPUT_OUT_OF_DOMAIN"',
+  ])
+    if (!dossier.includes(required))
+      found.push(
+        `${dossierPath}: missing exact Cycle 3b snapshot, provenance, derivation, closed-graph, unsupported-state, or quarantine control ${required}`,
+      );
+  for (const requiredTest of [
+    '"composes one immutable current-and-superseded graph from one owner-authorized snapshot"',
+    '"never looks ahead beyond the exact selected document index"',
+    '"uses explicit unsupported states without synthetic or partial fallback"',
+    '"rejects aliases, Buffer carriers, proxies, accessors, and extra keys without invoking canaries"',
+    '"owns every input and control array before composition"',
+    '"returns only the shared value-free quarantine graph after source corruption"',
+    '"exposes only response-local fact identifiers and keeps every graph reference closed"',
+  ])
+    if (
+      !dossierUnitTest.includes(requiredTest) &&
+      !dossierSecurityTest.includes(requiredTest)
+    )
+      found.push(
+        `${dossierPath}: missing exact Cycle 3b focused or adversarial regression ${requiredTest}`,
+      );
+  for (const forbidden of [
+    'status: "admitted"',
+    "rights_and_steward_approved",
+    "synthetic: true",
+    ".reveal(",
+    "preparePersonalFilingSelectedFactRelease(",
+    "normalizePersonalFilingFacts(",
+  ])
+    if (dossier.includes(forbidden))
+      found.push(
+        `${dossierPath}: Cycle 3b personal dossier must not claim enterprise admission, synthesize private values, or expose a reveal capability ${forbidden}`,
       );
 
   const workflowPath =

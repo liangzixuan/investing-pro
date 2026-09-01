@@ -230,15 +230,23 @@ operator-configured local bootstrap and a short-lived session. Fresh CSPRNG
 generation per process remains an operator precondition. The design deliberately
 favors fail-closed restart and rebootstrap over persistence.
 
-Cycle 3b remains separate. It may compose the admitted personal snapshot into
-one coherent dossier, evidence-passport, restatement-lineage, chart, and
-valuation-input boundary without synthetic/personal mixing. Dynamic selection,
-refresh, persistence, and background work remain later milestones.
+Cycle 3b remains separate from the exact promoted Cycle 3a source. A later
+public source is prepared to compose the admitted personal snapshot into one
+coherent dossier, evidence passport, in-corpus restatement lineage, fixed
+filing-fact chart, and valuation-input boundary without synthetic/personal
+mixing. It has no fresh owner authorization, terminal exact-source evidence,
+private activation, acceptance, or promotion. Its exact approval action is
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; the Cycle 3a approval cannot be
+reused. Dynamic selection, refresh, persistence, and background work remain
+later milestones. Cycle 3c connected-personal source policy is the next
+functional product blocker.
 
 ## References
 
 - [Cycle 3a exit matrix](../CYCLE_3A_EXIT_MATRIX.md)
+- [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
 - [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
+- [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)

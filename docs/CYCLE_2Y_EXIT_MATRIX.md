@@ -178,9 +178,12 @@ exit.
 Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
 Same-user hostile local processes remain unproven. Cycle 3b authenticated
-personal dossier composition is the next separate blocker. See
+personal dossier composition has prepared public source but no fresh owner
+authorization, terminal exact-source evidence, private activation, acceptance,
+or promotion. Cycle 3c connected-personal source policy is the next functional
+product blocker. See
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
-and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+and the [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
 ## Exit rule
 

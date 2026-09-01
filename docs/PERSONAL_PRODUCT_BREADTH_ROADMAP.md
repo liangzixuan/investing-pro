@@ -1,9 +1,11 @@
 # Personal product-breadth roadmap
 
 Status: **Cycle 3a is promoted only for exact source revision
-`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycles 3b through 3q remain
-planned.** This does not alter the exact historical Cycle 2z personal result or
-make a feature-parity claim.
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
+source but no fresh owner authorization, terminal exact-source result, private
+activation, acceptance, or promotion. Cycles 3c through 3q remain planned.**
+This does not alter the exact historical Cycle 2z personal result or make a
+feature-parity claim.
 
 ## Goal
 
@@ -126,7 +128,7 @@ Later subcycles may widen a universe only with the same checks.
 | Capability gap                          | Current baseline                                            | Planned closure |
 | --------------------------------------- | ----------------------------------------------------------- | --------------- |
 | Owner authentication                    | Cycle 3a promoted only for its exact source                 | Cycle 3a        |
-| Personal dossier composition            | Startup-fixed facts in a separate read-only panel           | Cycle 3b        |
+| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted           | Cycle 3b        |
 | Connected source governance             | Offline profile only                                        | Cycle 3c        |
 | Durable personal state                  | Browser-local thesis/rule and disconnected database proofs  | Cycle 3d        |
 | Security universe, search, watchlists   | One synthetic symbol                                        | Cycle 3e        |
@@ -258,6 +260,32 @@ owner review and fresh single-use authorization.
 Target: compose the admitted personal snapshot into the actual research
 workflow instead of leaving it as a disconnected fact panel.
 
+Status: **Prepared public source only; not owner-authorized, privately run,
+terminally verified, accepted, or promoted.** See
+[ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
+[Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
+
+The prepared scope is exact API startup with
+`RESEARCH_COCKPIT_MODE=personal_dossier`, exact browser startup with
+`RESEARCH_COCKPIT_WEB_MODE=personal_dossier`, the parameter-free `/personal`
+browser route, and authenticated `GET /v1/personal-filing/dossier`. The
+`/research/[symbol]` route redirects before symbol or `knownAt` resolution in
+this mode. One plan using
+`exact_candidate_document_index.v1` fixes the document index, selected fact
+keys, and chart keys. The index is the terminal entry of one separately sealed
+and admitted declaration, manifest, and quality-plan prefix. Composition decodes
+only the matching raw/source array prefix. An earlier snapshot requires its own
+prefix-sealed artifact because a full manifest still binds every later manifest
+entry. The result is a distinct `PersonalFilingDossierDto`. Facts are the sole
+primary-fact registry; immutable derivation operands remain in evidence, while
+lineage, chart, and valuation inputs reference those same-snapshot facts. There
+is no synthetic fallback.
+
+The public contract exposes honest unsupported chart and valuation variants,
+but those variants do not close the end-user result. Terminal promotion
+requires the later exact owner-approved response to contain a ready nonempty
+filing-fact chart and ready same-snapshot valuation inputs.
+
 Exit criteria:
 
 - only an authenticated session can request or render the admitted personal
@@ -274,6 +302,13 @@ Exit criteria:
 
 Dynamic selection, refresh, persistence, and background work remain later
 milestones.
+
+The prepared source does not authorize private execution. Promotion requires
+fresh owner review of the exact canonical response and one source-bound,
+single-use `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization. The
+prior Cycle 2z and Cycle 3a approvals are incompatible. Cycle 3c
+connected-personal source policy is the next functional product blocker and
+remains separate from this offline scope.
 
 ### Cycle 3c — connected-personal profile and source-policy registry
 

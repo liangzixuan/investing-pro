@@ -9,7 +9,7 @@ import {
   logoutOwnerSession,
   revokeOwnerSession,
   rotateOwnerSession,
-} from "@/lib/api";
+} from "@/lib/personal-api";
 
 import { OwnerSessionLifecycle } from "./owner-session-lifecycle";
 

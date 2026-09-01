@@ -442,6 +442,390 @@ h4,
   line-height: 1.35;
 }
 
+.personal-app-header {
+  border-bottom-color: #99b2c2;
+}
+
+.personal-dossier-chip {
+  display: inline-flex;
+  padding: 6px 10px;
+  border: 1px solid #79b39f;
+  border-radius: 999px;
+  background: var(--mint-soft);
+  color: var(--mint-deep);
+  white-space: nowrap;
+}
+
+.personal-disclosure {
+  padding: 10px 24px;
+  border-bottom: 1px solid #b8ced8;
+  background: #eaf3f6;
+  color: #294d62;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.personal-locked-state {
+  margin: 34px 0;
+  padding: 36px;
+  border: 1px dashed #99b2c2;
+  border-radius: var(--radius-lg);
+  background: #f7fafb;
+  text-align: center;
+}
+
+.personal-locked-state h1 {
+  max-width: 760px;
+  margin: 8px auto 12px;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+}
+
+.personal-locked-state p:last-child {
+  max-width: 650px;
+  margin: 0 auto;
+  color: var(--ink-soft);
+}
+
+.personal-dossier {
+  padding-bottom: 30px;
+}
+
+.personal-dossier-hero {
+  display: flex;
+  padding: 56px 0 32px;
+  border-bottom: 1px solid var(--line);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.personal-dossier-hero h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(2.4rem, 6vw, 5.2rem);
+}
+
+.personal-dossier-hero > div:first-child > p:last-child {
+  max-width: 720px;
+  color: var(--ink-soft);
+}
+
+.personal-dossier-as-of {
+  display: flex;
+  min-width: min(100%, 290px);
+  padding: 16px;
+  border: 1px solid #d0bb91;
+  border-radius: var(--radius-md);
+  background: #fffaf0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.personal-dossier-as-of span,
+.personal-dossier-as-of time {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.personal-dossier-as-of span {
+  color: var(--ink-soft);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.personal-dossier-as-of time {
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-dossier-section {
+  padding-top: 54px;
+}
+
+.personal-dossier-facts {
+  display: grid;
+  margin: 22px 0 0;
+  padding: 0;
+  border: 1px solid #ded0b5;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #e7dcc5;
+  gap: 1px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.personal-dossier-fact {
+  min-width: 0;
+  padding: 18px;
+  background: var(--surface);
+}
+
+.personal-dossier-fact dt {
+  min-height: 2.2em;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.personal-dossier-fact dd {
+  display: flex;
+  margin: 10px 0 4px;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.personal-dossier-fact dd strong {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-dossier-fact dd span,
+.personal-dossier-fact small,
+.personal-dossier-fact a {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.personal-dossier-fact small {
+  display: block;
+  min-height: 2.6em;
+}
+
+.personal-dossier-fact a,
+.personal-chart-series a,
+.personal-lineage-list a,
+.personal-valuation-inputs a {
+  color: var(--mint-deep);
+  font-weight: 750;
+  text-underline-offset: 3px;
+}
+
+.personal-chart {
+  display: grid;
+  margin-top: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.personal-chart-series,
+.personal-lineage-card,
+.personal-valuation-card,
+.personal-omissions,
+.personal-evidence-passport {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.personal-chart-series {
+  padding: 20px;
+}
+
+.personal-chart-series > header,
+.personal-evidence-passport > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.personal-chart-series h3,
+.personal-evidence-passport h3 {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
+.personal-chart-series > header > span,
+.personal-evidence-passport > header > span {
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.personal-chart-series ol,
+.personal-lineage-list {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.personal-chart-series li {
+  display: grid;
+  min-height: 70px;
+  grid-template-columns: 16px 1fr;
+  gap: 10px;
+}
+
+.personal-chart-series li > span {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--mint-deep);
+  box-shadow: 0 0 0 1px var(--mint-deep);
+}
+
+.personal-chart-series li:not(:last-child) > span::after {
+  position: absolute;
+  top: 12px;
+  left: 4px;
+  width: 1px;
+  height: 58px;
+  background: var(--line-strong);
+  content: "";
+}
+
+.personal-chart-series li strong,
+.personal-chart-series li small,
+.personal-chart-series li a {
+  display: block;
+}
+
+.personal-chart-series li strong {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.personal-chart-series li small {
+  margin: 3px 0;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-composition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.personal-lineage-card,
+.personal-valuation-card,
+.personal-omissions {
+  padding: 24px;
+}
+
+.personal-lineage-card h2,
+.personal-valuation-card h2,
+.personal-omissions h2 {
+  margin: 5px 0 14px;
+  font-size: 1.6rem;
+}
+
+.personal-state-label {
+  color: var(--mint-deep);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.personal-lineage-list li {
+  display: flex;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  flex-direction: column;
+  gap: 4px;
+}
+
+.personal-lineage-list time,
+.personal-lineage-list span,
+.personal-valuation-inputs a {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.personal-valuation-inputs {
+  display: grid;
+  margin: 18px 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.personal-valuation-inputs > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #faf7ee;
+}
+
+.personal-valuation-inputs dt {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.personal-valuation-inputs dd {
+  margin: 5px 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-unsupported {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px dashed #d1b17a;
+  border-radius: var(--radius-md);
+  background: #fff8ea;
+}
+
+.personal-unsupported p {
+  margin: 5px 0 0;
+  color: var(--ink-soft);
+}
+
+.personal-omissions strong,
+.personal-omissions p,
+.personal-omissions small {
+  display: block;
+}
+
+.personal-omissions p {
+  margin: 7px 0;
+  color: var(--ink-soft);
+}
+
+.personal-omissions small {
+  color: #79551e;
+}
+
+.personal-evidence-grid {
+  display: grid;
+  margin-top: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.personal-evidence-passport {
+  padding: 20px;
+  scroll-margin-top: 24px;
+}
+
+.personal-evidence-passport dl {
+  display: grid;
+  margin: 18px 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+
+.personal-evidence-passport dt {
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.personal-evidence-passport dd {
+  margin: 2px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.69rem;
+  overflow-wrap: anywhere;
+}
+
 .dossier-hero {
   display: flex;
   padding: 52px 0 38px;
@@ -1476,6 +1860,13 @@ thead th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .personal-dossier-facts,
+  .personal-chart,
+  .personal-composition-grid,
+  .personal-evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .metric-card:nth-child(5n) {
     border-right: 1px solid var(--line);
   }
@@ -1560,6 +1951,28 @@ thead th {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .personal-dossier-hero {
+    padding-top: 34px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .personal-dossier-facts,
+  .personal-chart,
+  .personal-composition-grid,
+  .personal-evidence-grid,
+  .personal-evidence-passport dl,
+  .personal-valuation-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-locked-state,
+  .personal-lineage-card,
+  .personal-valuation-card,
+  .personal-omissions {
+    padding: 18px;
   }
 
   .company-identity {

@@ -2172,13 +2172,41 @@ There is no remote, multi-user, tenant, shared-service, service-account, OIDC,
 WebAuthn, durable, session-surviving, credentialless-restart, or production
 authentication. A new process can establish a new session only with an
 operator-configured valid-shaped bootstrap; its freshness is an operator
-precondition. There is also no Cycle 3b personal dossier composition: the
-protected selected facts remain separate from the synthetic dossier, evidence,
-history, valuation, thesis, alerts, export, persistence, fetcher, and background
-flows.
-Exact design, evidence, and nonclaims are in
+precondition. At the exact promoted Cycle 3a source, protected selected facts
+remain separate from the synthetic dossier, evidence, history, valuation,
+thesis, alerts, export, persistence, fetcher, and background flows. Exact Cycle
+3a design, evidence, and nonclaims are in
 [ADR 0053](./adr/0053-personal-local-owner-session.md) and the
 [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+
+Cycle 3b now has prepared public source only. It is not owner-authorized,
+privately run, terminally verified, accepted, or promoted. The added assets are
+the exact dossier bundle and plan, canonical personal dossier response, fresh
+single-use approval mechanism and any later supplied authorization material,
+process-memory capability, authenticated response, and transient browser
+presentation. The principal new attacks are substituting or
+partially configuring a bundle; reusing an older approval; inducing later-
+document lookahead; forging, duplicating, or crossing fact references; injecting
+synthetic values into personal chart or valuation state; racing authorization
+or browser lifecycle clearing; and extracting private labels, values, counts,
+paths, hashes, source metadata, or authorization detail from failures.
+
+The prepared controls are exact pre-listen bundle, quality, source, plan,
+response, and approval binding; atomic one-use approval consumption; manifest-
+prefix-only composition from a separately sealed declaration, manifest, and
+quality-plan prefix whose selected index is terminal; raw/source array suffix
+exclusion from decoding and composition; a distinct personal DTO; one closed fact-reference graph;
+authorization before capability access; private/no-store success and failure;
+generic denial; no synthetic fallback; clear-as-one browser lifecycle;
+and exclusion from durable browser/application storage and logs. Exact API and
+web mode are both `personal_dossier`; the browser renders only at parameter-free
+`/personal`, and `/research/[symbol]` redirects before request-selected state is
+resolved. The required new action is
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; every prior approval is
+incompatible. No private run is authorized by this public source.
+Exact prepared design and pending gates are in
+[ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
+[Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 
@@ -2224,9 +2252,11 @@ Exact design, evidence, and nonclaims are in
    Cycle 2z separately closes only the exact atomic same-snapshot selected-fact
    release. Cycle 3a separately closes request-time authenticated owner-browser
    composition only for its exact source. Cycle 3b authenticated personal
-   dossier composition is the next separate milestone. Organizational rights/steward
-   approval and authority keys are separate enterprise-profile gates, not
-   personal-profile prerequisites.
+   dossier composition is prepared but not promoted and still requires fresh
+   exact owner authorization and terminal evidence. Cycle 3c connected-personal
+   source policy is the next functional product blocker. Organizational
+   rights/steward approval and authority keys are separate enterprise-profile
+   gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.

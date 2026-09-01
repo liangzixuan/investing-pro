@@ -164,12 +164,17 @@ quality result. It is promoted only for exact frozen source revision
 the permitted coarse outcome, and it does not widen the Cycle 2y decision.
 Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
-Cycle 3b authenticated personal dossier composition is the next separate
-blocker; same-user hostile-process resistance remains unproven.
+Cycle 3b authenticated personal dossier composition has prepared public source
+but no fresh owner authorization, terminal exact-source evidence, private
+activation, acceptance, or promotion. Cycle 3c connected-personal source policy
+is the next functional product blocker; same-user hostile-process resistance
+remains unproven.
 
 ## References
 
 - [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
+- [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
+- [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
 - [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
 - [Cycle 2x exit matrix](../CYCLE_2X_EXIT_MATRIX.md)

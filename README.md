@@ -1135,14 +1135,36 @@ replay denial apply only within one authority/process; the API cannot detect an
 operator reusing the same valid-shaped secret in another process. Cross-process
 same-secret reuse, hostile same-user processes, browser extensions, developer
 tools, screenshots, clipboard readers, hostile browser state beyond the narrow
-service-worker guard, remote or multi-user authentication, durable sessions, and
-Cycle 3b dossier composition remain nonclaims. See
+service-worker guard, remote or multi-user authentication, and durable sessions
+remain nonclaims. See
 [ADR 0053](./docs/adr/0053-personal-local-owner-session.md) and the
-[Cycle 3a exit matrix](./docs/CYCLE_3A_EXIT_MATRIX.md). The next separate
-milestone is Cycle 3b authenticated personal dossier composition: one coherent
-admitted snapshot for dossier, evidence-passport, restatement-lineage, chart,
-and valuation inputs, with no synthetic/personal mixing. Dynamic selection,
-refresh, persistence, and background work remain later milestones.
+[Cycle 3a exit matrix](./docs/CYCLE_3A_EXIT_MATRIX.md).
+
+Cycle 3b authenticated personal dossier composition now has prepared public
+source, but it has not received fresh owner authorization, run against the
+private corpus, completed terminal exact-source verification, or been promoted.
+The prepared boundary adds exact API startup with
+`RESEARCH_COCKPIT_MODE=personal_dossier`, matching browser startup with
+`RESEARCH_COCKPIT_WEB_MODE=personal_dossier`, the parameter-free `/personal`
+browser route, and authenticated `GET /v1/personal-filing/dossier` API access.
+In dossier web mode, `/research/[symbol]` redirects before the symbol or
+`knownAt` can select personal state. One startup-fixed plan admits a separately
+sealed declaration, manifest, and quality-plan prefix whose `documentIndex` is
+its terminal entry. Only the matching raw/source array prefix is decoded. An
+earlier snapshot therefore requires its own prefix-sealed artifact; a full
+manifest cannot avoid cryptographically binding its later entries merely by
+ignoring document-array suffixes. The resulting distinct personal dossier has
+facts, evidence, in-corpus lineage, a fixed filing-fact chart, valuation inputs,
+and explicit unsupported states in one closed reference graph. No
+synthetic value may enter that graph or its browser presentation. Promotion
+requires a fresh single-use
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization bound to the later
+exact source and canonical response. See
+[ADR 0054](./docs/adr/0054-authenticated-personal-dossier-composition.md) and the
+[Cycle 3b exit matrix](./docs/CYCLE_3B_EXIT_MATRIX.md). Dynamic selection,
+refresh, network access, persistence, and background work remain later
+milestones; Cycle 3c connected-personal source policy is the next functional
+product blocker.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1409,9 +1431,14 @@ For the default synthetic demo, open
 `http://127.0.0.1:3100`. Do not set either personal-mode variable for this
 default.
 
-Personal mode is a separate explicit startup. In the API terminal, first set the
-existing complete personal-mode inputs. The example below uses readiness-only
-mode. Build before creating authority, then generate one fresh 32-byte bootstrap
+Personal mode is a separate explicit startup. The runnable example below covers
+the promoted Cycle 3a readiness-only mode; it does not authorize the prepared
+Cycle 3b source or a private dossier run. Cycle 3b instead requires the matching
+API and web literals `personal_dossier` and the parameter-free `/personal`
+browser route, but it must remain inactive until its fresh exact-source owner
+approval exists. In the API terminal, first set the existing complete
+personal-mode inputs. Build before creating authority, then generate one fresh
+32-byte bootstrap
 with the platform CSPRNG and place it in the API environment and clipboard
 without printing it. The API captures and deletes its child-process copy of the
 bootstrap environment variable before listen. The parent shell must still clear
