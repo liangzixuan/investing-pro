@@ -32,7 +32,9 @@ export interface PublicPersonalSelectedFactReleaseFixture {
   readonly qualityPath: string;
 }
 
-export async function createPublicPersonalSelectedFactReleaseFixture(): Promise<PublicPersonalSelectedFactReleaseFixture> {
+export async function createPublicPersonalSelectedFactReleaseFixture(
+  sourceCommit = SOURCE_COMMIT,
+): Promise<PublicPersonalSelectedFactReleaseFixture> {
   const generated = buildPersonalFilingQualityMeasurementFixture(false);
   const committed = createPersonalFilingQualityMeasurementProtocol().commit(
     generated.commitInput,
@@ -79,7 +81,7 @@ export async function createPublicPersonalSelectedFactReleaseFixture(): Promise<
     releasePlan,
     role: "personal_selected_fact_release_bundle",
     schemaVersion: "1.0.0",
-    sourceCommit: SOURCE_COMMIT,
+    sourceCommit,
     sourceDocuments: generated.commitInput.sourceDocuments.map(base64),
   };
   const bundleBytes = canonicalBytes(bundle);
@@ -99,7 +101,7 @@ export async function createPublicPersonalSelectedFactReleaseFixture(): Promise<
       new TextEncoder().encode(canonicalJson(response)),
     ),
     schemaVersion: "1.0.0",
-    sourceCommit: SOURCE_COMMIT,
+    sourceCommit,
   };
   const directory = await mkdtemp(join(tmpdir(), "personal-fact-release-"));
   const bundlePath = join(
@@ -129,7 +131,7 @@ export async function createPublicPersonalSelectedFactReleaseFixture(): Promise<
   };
   const capability = await loadPersonalSelectedFactRelease(
     environment,
-    SOURCE_COMMIT,
+    sourceCommit,
   );
   if (capability === undefined) {
     throw new Error("Expected generated public selected-fact release.");

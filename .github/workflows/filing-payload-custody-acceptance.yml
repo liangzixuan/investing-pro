@@ -5,8 +5,42 @@ on:
   pull_request:
     paths:
       - .github/workflows/ci.yml
+      - .github/workflows/filing-parser-cross-engine-execution-acceptance.yml
       - .github/workflows/filing-parser-acceptance.yml
       - .github/workflows/filing-payload-custody-acceptance.yml
+      - README.md
+      - apps/api/src/app.ts
+      - apps/api/src/composition-root.test.ts
+      - apps/api/src/composition-root.ts
+      - apps/api/src/personal-owner-session-routes.test.ts
+      - apps/api/src/personal-owner-session-routes.ts
+      - apps/api/src/personal-owner-session.test.ts
+      - apps/api/src/personal-owner-session.ts
+      - apps/api/src/personal-readiness-routes.test.ts
+      - apps/api/src/personal-readiness-routes.ts
+      - apps/api/src/personal-selected-fact-release.test.ts
+      - apps/api/src/personal-selected-fact-routes.ts
+      - apps/api/src/server.ts
+      - apps/api/src/test-personal-owner-session-builder.ts
+      - apps/api/src/test-personal-selected-fact-release-builder.ts
+      - apps/web/app/globals.css
+      - apps/web/app/research/**/page.tsx
+      - apps/web/src/features/research/OwnerSessionPanel.test.tsx
+      - apps/web/src/features/research/OwnerSessionPanel.tsx
+      - apps/web/src/features/research/ResearchWorkspace.test.tsx
+      - apps/web/src/features/research/ResearchWorkspace.tsx
+      - apps/web/src/features/research/owner-session-lifecycle.test.ts
+      - apps/web/src/features/research/owner-session-lifecycle.ts
+      - apps/web/src/lib/api.test.ts
+      - apps/web/src/lib/api.ts
+      - apps/web/src/lib/web-mode.test.ts
+      - apps/web/src/lib/web-mode.ts
+      - docs/BUILD_ROADMAP.md
+      - docs/CANONICAL_MODEL.md
+      - docs/CYCLE_3A_EXIT_MATRIX.md
+      - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
+      - docs/THREAT_MODEL.md
+      - docs/adr/0053-personal-local-owner-session.md
       - LICENSE_POLICY.md
       - THIRD_PARTY_NOTICES.md
       - fixtures/synthetic/filing-payload-custody/**
@@ -14,6 +48,8 @@ on:
       - packages/filing-parser/src/filing-parser-evidence-verifier.test.ts
       - packages/filing-parser/src/filing-parser-evidence-verifier.ts
       - packages/filing-payload-custody/**
+      - packages/contracts/openapi/openapi.yaml
+      - packages/contracts/src/openapi.test.ts
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - scripts/verify-boundaries.ts
@@ -23,8 +59,42 @@ on:
     branches: [main]
     paths:
       - .github/workflows/ci.yml
+      - .github/workflows/filing-parser-cross-engine-execution-acceptance.yml
       - .github/workflows/filing-parser-acceptance.yml
       - .github/workflows/filing-payload-custody-acceptance.yml
+      - README.md
+      - apps/api/src/app.ts
+      - apps/api/src/composition-root.test.ts
+      - apps/api/src/composition-root.ts
+      - apps/api/src/personal-owner-session-routes.test.ts
+      - apps/api/src/personal-owner-session-routes.ts
+      - apps/api/src/personal-owner-session.test.ts
+      - apps/api/src/personal-owner-session.ts
+      - apps/api/src/personal-readiness-routes.test.ts
+      - apps/api/src/personal-readiness-routes.ts
+      - apps/api/src/personal-selected-fact-release.test.ts
+      - apps/api/src/personal-selected-fact-routes.ts
+      - apps/api/src/server.ts
+      - apps/api/src/test-personal-owner-session-builder.ts
+      - apps/api/src/test-personal-selected-fact-release-builder.ts
+      - apps/web/app/globals.css
+      - apps/web/app/research/**/page.tsx
+      - apps/web/src/features/research/OwnerSessionPanel.test.tsx
+      - apps/web/src/features/research/OwnerSessionPanel.tsx
+      - apps/web/src/features/research/ResearchWorkspace.test.tsx
+      - apps/web/src/features/research/ResearchWorkspace.tsx
+      - apps/web/src/features/research/owner-session-lifecycle.test.ts
+      - apps/web/src/features/research/owner-session-lifecycle.ts
+      - apps/web/src/lib/api.test.ts
+      - apps/web/src/lib/api.ts
+      - apps/web/src/lib/web-mode.test.ts
+      - apps/web/src/lib/web-mode.ts
+      - docs/BUILD_ROADMAP.md
+      - docs/CANONICAL_MODEL.md
+      - docs/CYCLE_3A_EXIT_MATRIX.md
+      - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
+      - docs/THREAT_MODEL.md
+      - docs/adr/0053-personal-local-owner-session.md
       - LICENSE_POLICY.md
       - THIRD_PARTY_NOTICES.md
       - fixtures/synthetic/filing-payload-custody/**
@@ -32,6 +102,8 @@ on:
       - packages/filing-parser/src/filing-parser-evidence-verifier.test.ts
       - packages/filing-parser/src/filing-parser-evidence-verifier.ts
       - packages/filing-payload-custody/**
+      - packages/contracts/openapi/openapi.yaml
+      - packages/contracts/src/openapi.test.ts
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - scripts/verify-boundaries.ts

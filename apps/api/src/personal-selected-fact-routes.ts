@@ -3,6 +3,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import type { DemoApiListenOptions } from "./listen-options";
 import {
+  isPersonalOwnerSessionAuthority,
+  type PersonalOwnerSessionAuthority,
+} from "./personal-owner-session";
+import { authorizePersonalRouteRequest } from "./personal-owner-session-routes";
+import {
   getPersonalSelectedFactReleaseResponse,
   isPersonalSelectedFactReleaseCapability,
   type PersonalSelectedFactReleaseCapability,
@@ -37,6 +42,7 @@ const FORBIDDEN_NEGOTIATION_HEADERS = new Set([
 export async function registerPersonalSelectedFactRoute(
   app: FastifyInstance,
   capability?: PersonalSelectedFactReleaseCapability,
+  ownerSession?: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = { host: "127.0.0.1", port: 3100 },
 ): Promise<void> {
   if (
@@ -45,14 +51,28 @@ export async function registerPersonalSelectedFactRoute(
   ) {
     throw new TypeError("Personal selected-fact release is unavailable.");
   }
+  if (
+    capability !== undefined &&
+    !isPersonalOwnerSessionAuthority(ownerSession)
+  ) {
+    throw new TypeError("Personal owner session is unavailable.");
+  }
 
   await app.register((routes, _options, done) => {
     routes.get(
       PERSONAL_FILING_SELECTED_FACTS_PATH,
       { exposeHeadRoute: false },
       (request, reply) => {
-        if (!isAllowedRequest(request, listenOptions))
-          return sendBoundaryProblem(reply, request);
+        const allowed =
+          ownerSession === undefined
+            ? isAllowedRequest(request, listenOptions)
+            : authorizePersonalRouteRequest(
+                request,
+                ownerSession,
+                listenOptions,
+                PERSONAL_FILING_SELECTED_FACTS_PATH,
+              );
+        if (!allowed) return sendBoundaryProblem(reply, request);
         if (capability === undefined)
           return sendUnavailableProblem(reply, request);
         return reply
@@ -131,9 +151,8 @@ function expectedHost(
   ) {
     return undefined;
   }
-  return listenOptions.host === "::1"
-    ? `[::1]:${String(port)}`
-    : `127.0.0.1:${String(port)}`;
+  const host = listenOptions.host === "::1" ? "[::1]" : "127.0.0.1";
+  return port === 80 ? host : `${host}:${String(port)}`;
 }
 
 function count(values: readonly string[], value: string): number {

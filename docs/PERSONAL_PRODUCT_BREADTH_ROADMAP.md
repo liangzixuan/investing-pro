@@ -1,8 +1,9 @@
 # Personal product-breadth roadmap
 
-Status: **Planned.** This document changes future milestones only. It does not
-widen any implemented claim, promote any Cycle 3 capability, or alter the exact
-historical Cycle 2z personal result.
+Status: **Cycle 3a implementation prepared; source verification, terminal CI,
+and fresh Cycle 3a fact-release owner authorization pending. Cycles 3b through
+3q remain planned.** This document does not promote a Cycle 3 capability or
+alter the exact historical Cycle 2z personal result.
 
 ## Goal
 
@@ -122,28 +123,28 @@ Later subcycles may widen a universe only with the same checks.
 
 ## Gap-to-milestone map
 
-| Capability gap                          | Current baseline                                            | Planned closure |
-| --------------------------------------- | ----------------------------------------------------------- | --------------- |
-| Owner authentication                    | Loopback, Host, and Origin checks only                      | Cycle 3a        |
-| Personal dossier composition            | Startup-fixed facts in a separate read-only panel           | Cycle 3b        |
-| Connected source governance             | Offline profile only                                        | Cycle 3c        |
-| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs  | Cycle 3d        |
-| Security universe, search, watchlists   | One synthetic symbol                                        | Cycle 3e        |
-| Automated filings and amendments        | Manually prepared exact filing corpus                       | Cycle 3f        |
-| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart        | Cycle 3g        |
-| Transparent technical indicators        | No end-user price/volume indicator workspace                | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set | Cycle 3h        |
-| Multi-model valuation                   | One exit-multiple model                                     | Cycle 3i        |
-| Peers, health, quality, and risk scores | No end-user comparison or scorecards                        | Cycle 3j        |
-| Screener and saved views                | No universe query                                           | Cycle 3k        |
-| Earnings, dividends, news, calendars    | No daily event workflow                                     | Cycle 3l        |
-| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow         | Cycle 3l-b      |
-| Transcript discovery                    | No transcript metadata or permitted-text workflow           | Cycle 3l-c      |
-| Holdings and portfolio performance      | No portfolio model                                          | Cycle 3m        |
-| Background delivered alerts             | One immediate local rule evaluation                         | Cycle 3n        |
-| Reports, exports, custom views          | No end-user export or saved layout                          | Cycle 3o        |
-| Evidence-grounded AI and strategies     | No model integration                                        | Cycle 3p        |
-| Installable daily-use application       | Responsive local web demo                                   | Cycle 3q        |
+| Capability gap                          | Current baseline                                               | Planned closure |
+| --------------------------------------- | -------------------------------------------------------------- | --------------- |
+| Owner authentication                    | Cycle 3a prepared; verification and fact authorization pending | Cycle 3a        |
+| Personal dossier composition            | Startup-fixed facts in a separate read-only panel              | Cycle 3b        |
+| Connected source governance             | Offline profile only                                           | Cycle 3c        |
+| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs     | Cycle 3d        |
+| Security universe, search, watchlists   | One synthetic symbol                                           | Cycle 3e        |
+| Automated filings and amendments        | Manually prepared exact filing corpus                          | Cycle 3f        |
+| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart           | Cycle 3g        |
+| Transparent technical indicators        | No end-user price/volume indicator workspace                   | Cycle 3g-b      |
+| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set    | Cycle 3h        |
+| Multi-model valuation                   | One exit-multiple model                                        | Cycle 3i        |
+| Peers, health, quality, and risk scores | No end-user comparison or scorecards                           | Cycle 3j        |
+| Screener and saved views                | No universe query                                              | Cycle 3k        |
+| Earnings, dividends, news, calendars    | No daily event workflow                                        | Cycle 3l        |
+| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow            | Cycle 3l-b      |
+| Transcript discovery                    | No transcript metadata or permitted-text workflow              | Cycle 3l-c      |
+| Holdings and portfolio performance      | No portfolio model                                             | Cycle 3m        |
+| Background delivered alerts             | One immediate local rule evaluation                            | Cycle 3n        |
+| Reports, exports, custom views          | No end-user export or saved layout                             | Cycle 3o        |
+| Evidence-grounded AI and strategies     | No model integration                                           | Cycle 3p        |
+| Installable daily-use application       | Responsive local web demo                                      | Cycle 3q        |
 
 ## Wave 1 — usable personal core
 
@@ -152,23 +153,90 @@ Later subcycles may widen a universe only with the same checks.
 Target: close the highest-priority request-time owner-browser blocker without
 widening the offline data scope.
 
+Status: **Implementation prepared; source verification, terminal CI, and fresh
+Cycle 3a fact-release owner authorization pending. Not promoted.** See
+[ADR 0053](./adr/0053-personal-local-owner-session.md) and the
+[Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+
 Exit criteria:
 
-- a fresh one-time bootstrap establishes a short-lived, possession-bound
-  owner session in a nonpersistent HttpOnly, same-site-bound cookie;
-- no bootstrap secret, session authority, or credential enters Web Storage,
-  IndexedDB, a durable cookie, a URL, a response body, or an application log;
-- CSRF, bootstrap replay, session rotation, idle expiry, absolute expiry,
-  logout, and explicit revocation are enforced, while normal reuse of a valid
-  session is supported;
-- every personal route rejects missing, expired, cross-origin, malformed, and
-  revoked or rotated authority before private work begins;
+- both explicit personal API modes require an operator-supplied exact
+  64-lowercase-hex `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET`; the API enforces
+  only that shape, while generating and encoding 32 fresh CSPRNG bytes per
+  process is an operator precondition; the API captures and deletes the value
+  from its process environment before composition and listen and retains only a
+  digest;
+- the personal owner controls appear only under exact
+  `RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`; the owner pastes the
+  secret into a password field that clears on submission and sends it only in
+  `X-Research-Cockpit-Bootstrap` on a bodyless POST;
+- the one-time bootstrap establishes the sole active process-memory owner
+  session in a host-only, nonpersistent `HttpOnly`, `SameSite=Strict` cookie
+  scoped to `/v1/personal-filing`;
+- Cycle 3a code places no bootstrap secret, session authority, or credential in
+  Web Storage, IndexedDB, a durable cookie, a URL, a response body, or an
+  application log;
+- exact matching literal-loopback Origin and Host plus the fixed
+  `X-Research-Cockpit-Intent` header enforce the CSRF boundary; before any
+  personal fetch, the browser requires an exact literal-loopback HTTP API origin
+  with an explicit valid port and no userinfo, path, query, or fragment; IPv4
+  uses `http://127.0.0.1:3000`, IPv6 uses `http://[::1]:3000`, and `localhost` is
+  not mixed with an API bound to `127.0.0.1`;
+- a controlling service worker, or unreadable controller state, rejects personal
+  calls before fetch; Cycle 3a registers no application service worker and stores
+  no authority in application service-worker state;
+- within one authority/process, bootstrap replay, normal valid reuse, rotation,
+  logout, explicit revocation, process-close invalidation, a 10-minute monotonic
+  idle expiry, and a 60-minute monotonic absolute expiry are enforced;
+- the browser captures local lifecycle deadlines or observations before
+  dispatching their corresponding bootstrap, revalidation, rotation, or
+  protected-read requests, never later than server authorization; successful
+  authorized private reads and rotation reset only local idle, while rotation
+  preserves the known absolute deadline;
+- a tab that discovers an active cookie without the original absolute timestamp
+  receives only a conservative local lease bounded by the idle TTL, with no
+  claim of exact browser/server deadline synchronization;
+- `pagehide` and hidden visibility clear and deactivate local private
+  presentation while preserving any known local deadline, without broadcasting or ending the server session; focus,
+  `pageshow`, and visible transitions clear first and revalidate without polling;
+  local expiry, logout, revocation, or failed revalidation immediately clears
+  rendered private state;
+- inability to construct the nonpersistent `BroadcastChannel` disables personal
+  access, and a publish failure locks and clears the initiating tab;
+- sibling invalidation is immediate only when the credential-free signal is
+  delivered operationally; an already-active sibling that misses it falls back
+  to focus/visible/`pageshow` revalidation or its conservative lease; bootstrap and
+  rotation use the same fail-closed channel to request clear-then-revalidate;
+  no lifecycle timestamp or signal enters Web Storage, IndexedDB, or a durable
+  cookie;
+- a fresh process can replace one syntactically valid stale owner cookie after
+  restart or expiry, while malformed or duplicate cookies and every bootstrap
+  attempted against an active session fail closed;
+- every protected personal data route rejects missing, expired, cross-origin,
+  malformed, revoked, or rotated authority before private work begins;
+- tests protect both personal compositions, but an actual Cycle 3a
+  `personal_fact_release` remains unaccepted until the eventual Cycle 3a source
+  has a fresh owner-reviewed release bundle and fresh single-use approval; the
+  preserved Cycle 2z artifact remains source-bound and unchanged;
 - no credential or capability appears in a crash output or fixture; and
-- synthetic demo mode remains the default and unchanged.
+- synthetic API and web modes remain the defaults and unchanged.
 
 This proves possession of the local session authority, not verified human
-identity. Same-user hostile-process resistance remains an explicit nonclaim.
-Closing it would require a separately designed OS isolation boundary.
+identity. The single-use and replay guarantee is scoped to one
+authority/process; cross-process reuse of the same valid-shaped secret is not
+detected and remains an explicit nonclaim. Hostile same-user processes, browser
+extensions, developer tools, screenshots, clipboard readers, and memory
+inspection remain explicit nonclaims, as does hostile browser state beyond the
+narrow controlling-service-worker prefetch guard. Remote, multi-user, service,
+and persistent authentication also remain outside this personal boundary. Cycle
+3b dossier composition does not enter Cycle 3a.
+
+The pending `personal_fact_release` owner authorization is a personal-profile
+gate, not an enterprise/shared-service requirement. The preserved Cycle 2z
+bundle and consumed approval remain bound to exact source
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`; the Cycle 3a loader requires its
+embedded source revision to match, so those historical artifacts are
+intentionally not runtime-compatible with the eventual Cycle 3a source.
 
 ### Cycle 3b — authenticated personal dossier composition
 

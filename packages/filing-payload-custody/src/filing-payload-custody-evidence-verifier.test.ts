@@ -93,6 +93,9 @@ import {
   isCycle2uCommitDiffSetAllowed,
   isCycle2uDirectChildAllowed,
   isCycle2uTransitionRoutingRequired,
+  isCycle3aSourceCommitDiffSetAllowed,
+  isCycle3aSourceTopologyAllowed,
+  isCycle3aTransitionRoutingRequired,
   isCycle2zBaselineMergeBaseAllowed,
   isCycle2zCommitBoundaryCorrectiveDiffSetAllowed,
   isCycle2zCommitDiffSetAllowed,
@@ -674,6 +677,8 @@ const CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION =
   "879a03759493158f20f579d1efc2e3d337de4385" as const;
 const CYCLE_2Z_ROADMAP_REBASELINE_REVISION =
   "4c660188831b91111a45d588245cb8735b8858ab" as const;
+const CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION =
+  "dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -877,10 +882,101 @@ const CYCLE_2Z_UBUNTU_CI_STABILIZATION_TRANSITION = [
 ].sort((left, right) =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
 );
+const CYCLE_3A_SOURCE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "apps/api/src/app.ts", status: "M" },
+  { path: "apps/api/src/composition-root.test.ts", status: "M" },
+  { path: "apps/api/src/composition-root.ts", status: "M" },
+  {
+    path: "apps/api/src/personal-owner-session-routes.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/personal-owner-session-routes.ts", status: "A" },
+  { path: "apps/api/src/personal-owner-session.test.ts", status: "A" },
+  { path: "apps/api/src/personal-owner-session.ts", status: "A" },
+  { path: "apps/api/src/personal-readiness-routes.test.ts", status: "M" },
+  { path: "apps/api/src/personal-readiness-routes.ts", status: "M" },
+  {
+    path: "apps/api/src/personal-selected-fact-release.test.ts",
+    status: "M",
+  },
+  { path: "apps/api/src/personal-selected-fact-routes.ts", status: "M" },
+  { path: "apps/api/src/server.ts", status: "M" },
+  {
+    path: "apps/api/src/test-personal-owner-session-builder.ts",
+    status: "A",
+  },
+  {
+    path: "apps/api/src/test-personal-selected-fact-release-builder.ts",
+    status: "M",
+  },
+  { path: "apps/web/app/globals.css", status: "M" },
+  { path: "apps/web/app/research/[symbol]/page.tsx", status: "M" },
+  {
+    path: "apps/web/src/features/research/OwnerSessionPanel.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/OwnerSessionPanel.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/ResearchWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/ResearchWorkspace.tsx",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/api.test.ts", status: "M" },
+  { path: "apps/web/src/lib/api.ts", status: "M" },
+  {
+    path: "apps/web/src/features/research/owner-session-lifecycle.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/owner-session-lifecycle.ts",
+    status: "A",
+  },
+  { path: "apps/web/src/lib/web-mode.test.ts", status: "A" },
+  { path: "apps/web/src/lib/web-mode.ts", status: "A" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  { path: "docs/adr/0053-personal-local-owner-session.md", status: "A" },
+  { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+  { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+].sort((left, right) =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+);
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set([
     ...CYCLE_2X_PROTECTED_SURFACE_PATHS,
     ...CYCLE_2Z_SOURCE_TRANSITION.map((entry) => entry.path),
+  ]),
+].sort();
+const CYCLE_3A_PROTECTED_SURFACE_PATHS = [
+  ...new Set([
+    ...CYCLE_2Z_PROTECTED_SURFACE_PATHS,
+    ...CYCLE_3A_SOURCE_TRANSITION.map((entry) => entry.path),
   ]),
 ].sort();
 
@@ -2881,8 +2977,8 @@ describe("Cycle 2z selected-fact release routing", () => {
     }
   });
 
-  it("accepts only one direct Ubuntu CI stabilization child after the pinned roadmap rebaseline", () => {
-    const revision = "b".repeat(40);
+  it("accepts only the pinned Ubuntu CI stabilization after the pinned roadmap rebaseline", () => {
+    const revision = CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION;
     const valid = [
       "7",
       "7",
@@ -2930,6 +3026,10 @@ describe("Cycle 2z selected-fact release routing", () => {
         values[2] = "not-a-commit";
       },
       (values: string[]) => {
+        values[2] = "b".repeat(40);
+        values[3] = `${values[2]} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`;
+      },
+      (values: string[]) => {
         values[3] = `${revision} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`;
       },
       (values: string[]) => {
@@ -2965,6 +3065,103 @@ describe("Cycle 2z selected-fact release routing", () => {
             typeof isCycle2zUbuntuCiStabilizationTopologyAllowed
           >),
         ),
+      ).toBe(false);
+    }
+  });
+
+  it("accepts only one fresh Cycle 3a direct child and every pinned predecessor link", () => {
+    const revision = "b".repeat(40);
+    const valid = [
+      "8",
+      "8",
+      revision,
+      `${revision} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+      `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+      `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+      `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+      `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+    ] as const;
+    expect(isCycle3aSourceTopologyAllowed(...valid)).toBe(true);
+
+    for (const [index, replacement] of [
+      [0, "7"],
+      [0, "9"],
+      [1, "7"],
+      [1, "9"],
+      [2, "not-a-commit"],
+    ] as const) {
+      const values: string[] = [...valid];
+      values[index] = replacement;
+      expect(
+        isCycle3aSourceTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3aSourceTopologyAllowed>),
+        ),
+        `${index}:${replacement}`,
+      ).toBe(false);
+    }
+
+    for (const pinnedRevision of [
+      CYCLE_2Z_BASELINE_REVISION,
+      CYCLE_2Z_SOURCE_REVISION,
+      CYCLE_2Z_ROUTING_CLOSURE_REVISION,
+      CYCLE_2Z_PROMOTION_REVISION,
+      CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION,
+      CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION,
+      CYCLE_2Z_ROADMAP_REBASELINE_REVISION,
+      CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION,
+    ]) {
+      const values: string[] = [...valid];
+      values[2] = pinnedRevision;
+      values[3] = `${pinnedRevision} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`;
+      expect(
+        isCycle3aSourceTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3aSourceTopologyAllowed>),
+        ),
+        pinnedRevision,
+      ).toBe(false);
+    }
+
+    for (const mutate of [
+      (values: string[]) => {
+        values[3] = `${revision} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`;
+      },
+      (values: string[]) => {
+        values[3] += ` ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`;
+      },
+    ]) {
+      const values = [...valid];
+      mutate(values);
+      expect(
+        isCycle3aSourceTopologyAllowed(
+          ...(values as Parameters<typeof isCycle3aSourceTopologyAllowed>),
+        ),
+      ).toBe(false);
+    }
+
+    for (let index = 4; index < valid.length; index += 1) {
+      const changedParent: string[] = [...valid];
+      changedParent[index] = `${changedParent[index]}-changed`;
+      expect(
+        isCycle3aSourceTopologyAllowed(
+          ...(changedParent as Parameters<
+            typeof isCycle3aSourceTopologyAllowed
+          >),
+        ),
+        `pinned-link:${index}`,
+      ).toBe(false);
+
+      const mergedParent: string[] = [...valid];
+      mergedParent[index] += ` ${"e".repeat(40)}`;
+      expect(
+        isCycle3aSourceTopologyAllowed(
+          ...(mergedParent as Parameters<
+            typeof isCycle3aSourceTopologyAllowed
+          >),
+        ),
+        `pinned-link-merge:${index}`,
       ).toBe(false);
     }
   });
@@ -3014,6 +3211,12 @@ describe("Cycle 2z selected-fact release routing", () => {
         isCycle2zUbuntuCiStabilizationCommitDiffSetAllowed,
         CYCLE_2Z_UBUNTU_CI_STABILIZATION_TRANSITION,
         4,
+      ],
+      [
+        "Cycle 3a source",
+        isCycle3aSourceCommitDiffSetAllowed,
+        CYCLE_3A_SOURCE_TRANSITION,
+        39,
       ],
     ];
     for (const [name, allowed, entries, count] of transitions) {
@@ -3082,6 +3285,16 @@ describe("Cycle 2z selected-fact release routing", () => {
         CYCLE_2Z_UBUNTU_CI_STABILIZATION_TRANSITION,
       ),
     ).toBe(false);
+    expect(
+      isCycle3aSourceCommitDiffSetAllowed(
+        CYCLE_2Z_UBUNTU_CI_STABILIZATION_TRANSITION,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle2zUbuntuCiStabilizationCommitDiffSetAllowed(
+        CYCLE_3A_SOURCE_TRANSITION,
+      ),
+    ).toBe(false);
   });
 
   it("routes every inherited or Cycle 2z transition surface", () => {
@@ -3097,6 +3310,19 @@ describe("Cycle 2z selected-fact release routing", () => {
     expect(isCycle2zTransitionRoutingRequired(undefined)).toBe(false);
     expect(isCycle2zTransitionRoutingRequired([])).toBe(false);
     expect(isCycle2zTransitionRoutingRequired(["unreviewed"])).toBe(false);
+  });
+
+  it("routes every inherited or Cycle 3a transition surface", () => {
+    expect(new Set(CYCLE_3A_PROTECTED_SURFACE_PATHS).size).toBe(
+      CYCLE_3A_PROTECTED_SURFACE_PATHS.length,
+    );
+    for (const path of CYCLE_3A_PROTECTED_SURFACE_PATHS) {
+      expect(isCycle3aTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle2zTransitionRoutingRequired([path]), path).toBe(true);
+    }
+    expect(isCycle3aTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle3aTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle3aTransitionRoutingRequired(["unreviewed"])).toBe(false);
   });
 });
 

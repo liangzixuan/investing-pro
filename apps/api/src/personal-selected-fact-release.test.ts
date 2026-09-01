@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import type * as FileSystemPromises from "node:fs/promises";
 
@@ -32,10 +33,18 @@ import {
   loadPersonalSelectedFactRelease,
   PersonalSelectedFactReleaseError,
 } from "./personal-selected-fact-release";
+import {
+  bootstrapTestPersonalOwnerSession,
+  createTestPersonalOwnerSession,
+} from "./test-personal-owner-session-builder";
 import { createPublicPersonalSelectedFactReleaseFixture } from "./test-personal-selected-fact-release-builder";
 
 const directories: string[] = [];
 const apps: Awaited<ReturnType<typeof buildApp>>[] = [];
+const CYCLE_2Z_APPROVED_SOURCE =
+  "e76eeca112949f58e7e6e4ed57bcc0ab7e102d66" as const;
+const CYCLE_3A_PARENT_SOURCE =
+  "dd7fb5ea0b5c288f4337793dd6ddcb314f8b41f3" as const;
 
 afterEach(async () => {
   linkControl.createTargetBeforeLink = false;
@@ -107,6 +116,26 @@ describe("personal selected-fact release boundary", () => {
     });
   });
 
+  it("does not treat the preserved Cycle 2z approval as compatible with a later runtime", async () => {
+    const fixture = await createPublicPersonalSelectedFactReleaseFixture(
+      CYCLE_2Z_APPROVED_SOURCE,
+    );
+    directories.push(fixture.directory);
+    await copyFile(fixture.consumedApprovalPath, fixture.approvalPath);
+    await rm(fixture.consumedApprovalPath);
+
+    await expect(
+      loadPersonalSelectedFactRelease(
+        fixture.environment,
+        CYCLE_3A_PARENT_SOURCE,
+      ),
+    ).rejects.toBeInstanceOf(PersonalSelectedFactReleaseError);
+    await expect(readFile(fixture.approvalPath)).resolves.toBeDefined();
+    await expect(readFile(fixture.consumedApprovalPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
   it("never replaces a preexisting consumed target", async () => {
     const fixture = await createPublicPersonalSelectedFactReleaseFixture();
     directories.push(fixture.directory);
@@ -142,10 +171,19 @@ describe("personal selected-fact release boundary", () => {
   it("serves only the guarded GET with private noncacheable responses", async () => {
     const fixture = await createPublicPersonalSelectedFactReleaseFixture();
     directories.push(fixture.directory);
-    const app = await buildPersonalFactReleaseApp(fixture.capability);
+    const ownerSession = createTestPersonalOwnerSession();
+    const app = await buildPersonalFactReleaseApp(
+      fixture.capability,
+      ownerSession.authority,
+    );
     apps.push(app);
+    const cookie = await bootstrapTestPersonalOwnerSession(
+      app,
+      ownerSession.secret,
+    );
     const headers = {
       accept: "application/json",
+      cookie,
       host: "127.0.0.1:3100",
       origin: "http://127.0.0.1:3000",
     };
@@ -163,8 +201,18 @@ describe("personal selected-fact release boundary", () => {
     expect(response.json()).toEqual(
       getPersonalSelectedFactReleaseResponse(fixture.capability),
     );
+    const headersWithoutSession = {
+      accept: headers.accept,
+      host: headers.host,
+      origin: headers.origin,
+    };
 
     for (const request of [
+      {
+        method: "GET" as const,
+        url: "/v1/personal-filing/selected-facts",
+        headers: headersWithoutSession,
+      },
       { method: "HEAD" as const, url: "/v1/personal-filing/selected-facts" },
       {
         method: "GET" as const,
@@ -212,6 +260,7 @@ describe("personal selected-fact release boundary", () => {
   it("requires the exact explicit fact mode and a complete five-field configuration", async () => {
     const partial = await createConfiguredApp({
       RESEARCH_COCKPIT_MODE: "personal_fact_release",
+      RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET: freshSecret(),
       PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH: "private-canary",
     }).catch((error: unknown) => error);
     const wrongMode = await createConfiguredApp({
@@ -240,4 +289,8 @@ function canonicalJson(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
     .join(",")}}`;
+}
+
+function freshSecret(): string {
+  return randomBytes(32).toString("hex");
 }

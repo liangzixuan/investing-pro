@@ -24,6 +24,16 @@ import {
   isPersonalQualityReadinessCapability,
   type PersonalQualityReadinessCapability,
 } from "./personal-quality-readiness";
+import {
+  isPersonalOwnerSessionAuthority,
+  type PersonalOwnerSessionAuthority,
+} from "./personal-owner-session";
+import {
+  personalBrowserOrigin,
+  PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME,
+  PERSONAL_OWNER_INTENT_HEADER_NAME,
+  registerPersonalOwnerSessionRoutes,
+} from "./personal-owner-session-routes";
 import { registerPersonalReadinessRoute } from "./personal-readiness-routes";
 import {
   isPersonalSelectedFactReleaseCapability,
@@ -53,32 +63,41 @@ interface EvidenceParams {
 export async function buildApp(
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
-  return buildComposedApp(undefined, undefined, listenOptions);
+  return buildComposedApp(undefined, undefined, undefined, listenOptions);
 }
 
 export async function buildPersonalReadinessApp(
   readiness: PersonalQualityReadinessCapability,
+  ownerSession: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
   if (!isPersonalQualityReadinessCapability(readiness)) {
     throw new TypeError("Personal filing readiness is unavailable.");
   }
-  return buildComposedApp(readiness, undefined, listenOptions);
+  if (!isPersonalOwnerSessionAuthority(ownerSession)) {
+    throw new TypeError("Personal owner session is unavailable.");
+  }
+  return buildComposedApp(readiness, undefined, ownerSession, listenOptions);
 }
 
 export async function buildPersonalFactReleaseApp(
   factRelease: PersonalSelectedFactReleaseCapability,
+  ownerSession: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
   if (!isPersonalSelectedFactReleaseCapability(factRelease)) {
     throw new TypeError("Personal selected-fact release is unavailable.");
   }
-  return buildComposedApp(undefined, factRelease, listenOptions);
+  if (!isPersonalOwnerSessionAuthority(ownerSession)) {
+    throw new TypeError("Personal owner session is unavailable.");
+  }
+  return buildComposedApp(undefined, factRelease, ownerSession, listenOptions);
 }
 
 async function buildComposedApp(
   readiness?: PersonalQualityReadinessCapability,
   factRelease?: PersonalSelectedFactReleaseCapability,
+  ownerSession?: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -88,15 +107,22 @@ async function buildComposedApp(
     genReqId: () => cryptoTraceId(),
   });
   const researchState = createDemoResearchStateComposition();
+  const personalSessionEnabled = ownerSession !== undefined;
 
   await app.register(cors, {
-    origin: [
-      "http://[::1]:3000",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-    ],
-    methods: ["GET"],
-    allowedHeaders: ["Accept", "Content-Type", "X-Trace-Id"],
+    origin: personalSessionEnabled
+      ? [personalBrowserOrigin(listenOptions)]
+      : ["http://[::1]:3000", "http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: personalSessionEnabled ? ["GET", "POST"] : ["GET"],
+    allowedHeaders: personalSessionEnabled
+      ? [
+          "Accept",
+          "X-Trace-Id",
+          PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME,
+          PERSONAL_OWNER_INTENT_HEADER_NAME,
+        ]
+      : ["Accept", "Content-Type", "X-Trace-Id"],
+    credentials: personalSessionEnabled,
     exposedHeaders: ["ETag", "X-Data-As-Of", "X-Trace-Id"],
   });
   await app.register(helmet, {
@@ -111,6 +137,12 @@ async function buildComposedApp(
     }
     return payload;
   });
+  if (ownerSession !== undefined) {
+    app.addHook("onClose", (_instance, done) => {
+      ownerSession.close();
+      done();
+    });
+  }
 
   app.get("/health/live", () => ({ status: "alive" }));
   app.get("/health/ready", () => ({
@@ -174,8 +206,21 @@ async function buildComposedApp(
   );
 
   await registerResearchStateRoutes(app, researchState);
-  await registerPersonalReadinessRoute(app, readiness, listenOptions);
-  await registerPersonalSelectedFactRoute(app, factRelease, listenOptions);
+  if (ownerSession !== undefined) {
+    await registerPersonalOwnerSessionRoutes(app, ownerSession, listenOptions);
+  }
+  await registerPersonalReadinessRoute(
+    app,
+    readiness,
+    ownerSession,
+    listenOptions,
+  );
+  await registerPersonalSelectedFactRoute(
+    app,
+    factRelease,
+    ownerSession,
+    listenOptions,
+  );
 
   app.setNotFoundHandler((request, reply) =>
     sendProblem(

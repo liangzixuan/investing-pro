@@ -9,13 +9,20 @@ import type {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  bootstrapOwnerSession,
   fetchDossier,
+  fetchOwnerSession,
   fetchPersonalFilingReadiness,
   fetchPersonalFilingSelectedFacts,
+  logoutOwnerSession,
+  revokeOwnerSession,
+  rotateOwnerSession,
 } from "./api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.resetModules();
 });
 
 describe("dossier API client", () => {
@@ -125,7 +132,7 @@ describe("personal filing readiness API client", () => {
     expect(url.search).toBe("");
     expect(options).toMatchObject({
       cache: "no-store",
-      credentials: "omit",
+      credentials: "include",
       headers: { Accept: "application/json" },
       redirect: "error",
       referrerPolicy: "no-referrer",
@@ -239,7 +246,7 @@ describe("personal filing selected-facts API client", () => {
     expect(url.search).toBe("");
     expect(options).toMatchObject({
       cache: "no-store",
-      credentials: "omit",
+      credentials: "include",
       headers: { Accept: "application/json" },
       redirect: "error",
       referrerPolicy: "no-referrer",
@@ -332,6 +339,288 @@ describe("personal filing selected-facts API client", () => {
     ).resolves.toBeNull();
   });
 });
+
+describe("owner-session API client", () => {
+  it("uses only the exact credentialed body-free session requests", async () => {
+    const localStorage = storageSpy();
+    const sessionStorage = storageSpy();
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", sessionStorage);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    const bootstrapSecret = "a".repeat(64);
+
+    await expect(fetchOwnerSession(controller.signal)).resolves.toBe(true);
+    await expect(
+      bootstrapOwnerSession(bootstrapSecret, controller.signal),
+    ).resolves.toBe(true);
+    await expect(logoutOwnerSession(controller.signal)).resolves.toBe(true);
+    await expect(rotateOwnerSession(controller.signal)).resolves.toBe(true);
+    await expect(revokeOwnerSession(controller.signal)).resolves.toBe(true);
+
+    const expected = [
+      ["/v1/personal-filing/session", "GET", undefined],
+      [
+        "/v1/personal-filing/session/bootstrap",
+        "POST",
+        {
+          "X-Research-Cockpit-Bootstrap": bootstrapSecret,
+          "X-Research-Cockpit-Intent": "bootstrap",
+        },
+      ],
+      [
+        "/v1/personal-filing/session/logout",
+        "POST",
+        { "X-Research-Cockpit-Intent": "logout" },
+      ],
+      [
+        "/v1/personal-filing/session/rotate",
+        "POST",
+        { "X-Research-Cockpit-Intent": "rotate" },
+      ],
+      [
+        "/v1/personal-filing/session/revoke",
+        "POST",
+        { "X-Research-Cockpit-Intent": "revoke" },
+      ],
+    ] as const;
+    expect(fetchMock).toHaveBeenCalledTimes(expected.length);
+    for (const [index, [path, method, headers]] of expected.entries()) {
+      const [url, options] = fetchMock.mock.calls[index] ?? [];
+      expect(url).toBeInstanceOf(URL);
+      if (!(url instanceof URL)) throw new TypeError("Expected a URL object");
+      expect(url.pathname).toBe(path);
+      expect(url.search).toBe("");
+      expect(url.href).not.toContain(bootstrapSecret);
+      expect(options).toMatchObject({
+        cache: "no-store",
+        credentials: "include",
+        method,
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal: controller.signal,
+      });
+      expect(options).not.toHaveProperty("body");
+      if (headers === undefined) expect(options?.headers).toBeUndefined();
+      else expect(options?.headers).toEqual(headers);
+    }
+    for (const storage of [localStorage, sessionStorage]) {
+      expect(storage.getItem).not.toHaveBeenCalled();
+      expect(storage.setItem).not.toHaveBeenCalled();
+    }
+  });
+
+  it("treats non-204 responses as unavailable without reading a body", async () => {
+    const response = new Response("SESSION_PRIVATE_CANARY", { status: 403 });
+    const jsonSpy = vi.spyOn(response, "json");
+    const textSpy = vi.spyOn(response, "text");
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(response));
+
+    await expect(fetchOwnerSession(new AbortController().signal)).resolves.toBe(
+      false,
+    );
+    expect(jsonSpy).not.toHaveBeenCalled();
+    expect(textSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not send an empty bootstrap credential", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      bootstrapOwnerSession("", new AbortController().signal),
+    ).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not send a malformed bootstrap credential", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      bootstrapOwnerSession(
+        "bootstrap_private_canary",
+        new AbortController().signal,
+      ),
+    ).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("personal API base URL boundary", () => {
+  const invalidPersonalApiBaseUrls = [
+    ["empty configuration", ""],
+    ["localhost alias", "http://localhost:3100"],
+    ["another IPv4 loopback address", "http://127.0.0.2:3100"],
+    ["an integer-form IPv4 address", "http://2130706433:3100"],
+    ["an expanded IPv6 loopback address", "http://[0:0:0:0:0:0:0:1]:3100"],
+    ["an uppercase scheme", "HTTP://127.0.0.1:3100"],
+    ["an IPv4 HTTPS origin", "https://127.0.0.1:3100"],
+    ["an IPv6 HTTPS origin", "https://[::1]:3100"],
+    ["a remote origin", "http://192.0.2.1:3100"],
+    ["IPv4 userinfo", "http://owner@127.0.0.1:3100"],
+    ["IPv6 userinfo", "http://owner:secret@[::1]:3100"],
+    ["an implicit IPv4 port", "http://127.0.0.1"],
+    ["an implicit IPv6 port", "http://[::1]"],
+    ["port zero", "http://127.0.0.1:0"],
+    ["a leading-zero port", "http://127.0.0.1:03100"],
+    ["an out-of-range port", "http://127.0.0.1:65536"],
+    ["a negative port", "http://127.0.0.1:-1"],
+    ["a nonnumeric port", "http://127.0.0.1:port"],
+    ["a trailing slash", "http://127.0.0.1:3100/"],
+    ["a path", "http://127.0.0.1:3100/v1"],
+    ["a query", "http://127.0.0.1:3100?target=private"],
+    ["a fragment", "http://127.0.0.1:3100#private"],
+    ["a trailing newline", "http://127.0.0.1:3100\n"],
+    ["leading whitespace", " http://127.0.0.1:3100"],
+    ["a trailing-dot host", "http://127.0.0.1.:3100"],
+    ["a scheme-relative URL", "//127.0.0.1:3100"],
+    ["a malformed URL", "not a URL"],
+  ] as const;
+
+  it.each(invalidPersonalApiBaseUrls)(
+    "fails every personal request closed before fetch for %s",
+    async (_label, configuredBaseUrl) => {
+      const api = await importApiWithBaseUrl(configuredBaseUrl);
+      const fetchMock = vi.fn<typeof fetch>();
+      vi.stubGlobal("fetch", fetchMock);
+      const signal = new AbortController().signal;
+      const bootstrapSecret = "b".repeat(64);
+
+      await expect(api.fetchOwnerSession(signal)).resolves.toBe(false);
+      await expect(
+        api.bootstrapOwnerSession(bootstrapSecret, signal),
+      ).resolves.toBe(false);
+      await expect(api.logoutOwnerSession(signal)).resolves.toBe(false);
+      await expect(api.rotateOwnerSession(signal)).resolves.toBe(false);
+      await expect(api.revokeOwnerSession(signal)).resolves.toBe(false);
+      await expect(api.fetchPersonalFilingReadiness(signal)).resolves.toBe(
+        false,
+      );
+      await expect(api.fetchPersonalFilingSelectedFacts(signal)).resolves.toBe(
+        null,
+      );
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(
+        bootstrapSecret,
+      );
+    },
+  );
+
+  it.each([
+    "http://127.0.0.1:1",
+    "http://127.0.0.1:65535",
+    "http://[::1]:3100",
+  ])("accepts the exact literal loopback HTTP origin %s", async (baseUrl) => {
+    const api = await importApiWithBaseUrl(baseUrl);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api.fetchOwnerSession(new AbortController().signal),
+    ).resolves.toBe(true);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBeInstanceOf(URL);
+    if (!(url instanceof URL)) throw new TypeError("Expected a URL object");
+    expect(url.href).toBe(`${baseUrl}/v1/personal-filing/session`);
+  });
+
+  it.each([
+    ["http://127.0.0.1:80", "http://127.0.0.1/v1/personal-filing/session"],
+    ["http://[::1]:80", "http://[::1]/v1/personal-filing/session"],
+  ])(
+    "accepts explicit HTTP port 80 and uses its canonical URL for %s",
+    async (baseUrl, expectedUrl) => {
+      const api = await importApiWithBaseUrl(baseUrl);
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response(null, { status: 204 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        api.fetchOwnerSession(new AbortController().signal),
+      ).resolves.toBe(true);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url] = fetchMock.mock.calls[0] ?? [];
+      expect(url).toBeInstanceOf(URL);
+      if (!(url instanceof URL)) throw new TypeError("Expected a URL object");
+      expect(url.href).toBe(expectedUrl);
+    },
+  );
+
+  it("fails every personal request closed under a controlling service worker", async () => {
+    vi.stubGlobal("navigator", {
+      serviceWorker: { controller: Object.freeze({}) },
+    });
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const signal = new AbortController().signal;
+    const bootstrapSecret = "c".repeat(64);
+
+    await expect(fetchOwnerSession(signal)).resolves.toBe(false);
+    await expect(bootstrapOwnerSession(bootstrapSecret, signal)).resolves.toBe(
+      false,
+    );
+    await expect(fetchPersonalFilingReadiness(signal)).resolves.toBe(false);
+    await expect(fetchPersonalFilingSelectedFacts(signal)).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when service-worker control cannot be inspected", async () => {
+    const navigatorWithFailingServiceWorker = {};
+    Object.defineProperty(navigatorWithFailingServiceWorker, "serviceWorker", {
+      get() {
+        throw new Error("Service-worker state unavailable.");
+      },
+    });
+    vi.stubGlobal("navigator", navigatorWithFailingServiceWorker);
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchOwnerSession(new AbortController().signal)).resolves.toBe(
+      false,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not apply the personal-only guard to synthetic dossiers", async () => {
+    const remoteBaseUrl = "https://api.example.test:444";
+    const api = await importApiWithBaseUrl(remoteBaseUrl);
+    const dossier = buildDossier("SYN1", DEFAULT_KNOWN_AT);
+    expect(dossier).not.toBeNull();
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(dossier), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api.fetchDossier("SYN1", DEFAULT_KNOWN_AT, new AbortController().signal),
+    ).resolves.toMatchObject({ instrument: { symbol: "SYN1" } });
+
+    const [url] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBeInstanceOf(URL);
+    if (!(url instanceof URL)) throw new TypeError("Expected a URL object");
+    expect(url.origin).toBe(remoteBaseUrl);
+  });
+});
+
+async function importApiWithBaseUrl(baseUrl: string) {
+  vi.resetModules();
+  vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", baseUrl);
+  return import("./api");
+}
 
 function storageSpy() {
   return {

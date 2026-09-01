@@ -1905,11 +1905,13 @@ operation detail. See
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
 
-After Cycle 2z, the next separate blocker is request-time authenticated
-owner-browser composition with a short-lived session-bound capability and
-CSRF, replay, and lifetime controls. Same-user hostile-process resistance
-remains later and unproven. Enterprise/shared-service gates remain Out of
-scope.
+After Cycle 2z, Cycle 3a is the separately scoped request-time authenticated
+owner-browser boundary. Its implementation is now prepared with a short-lived
+session-bound capability and CSRF, replay, rotation, revocation, and lifetime
+controls; source verification, terminal CI, and fresh Cycle 3a fact-release owner
+authorization remain pending, so it is not yet promoted. Same-user hostile-
+process resistance remains unproven.
+Enterprise/shared-service gates remain Out of scope.
 
 ## Cycle 2 — personal local filing ingestion proof
 
@@ -1960,10 +1962,11 @@ this closed personal-corpus gate.
 Cycle 2y closes the first local running-application composition boundary, but
 only for coarse readiness. Cycle 2z closes the separate atomic same-snapshot
 selected-fact release boundary under explicit owner authorization and a
-nonpersistent response for the exact frozen source and personal scope.
-Request-time authenticated owner-browser composition is the next blocker;
-broader personal dossier, persistence, queueing, fetching, alerts, and
-background ingestion remain later.
+nonpersistent response for the exact frozen source and personal scope. Cycle
+3a's request-time authenticated owner-browser implementation is prepared, but
+source verification, terminal CI, and fresh Cycle 3a fact-release owner
+authorization remain pending. Broader personal dossier, persistence, queueing,
+fetching, alerts, and background ingestion remain later.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user
@@ -1972,14 +1975,18 @@ They are not current personal-profile blockers.
 
 ## Cycle 3 — product breadth
 
-Status: **Planned; not started.** This section changes future sequencing only
-and makes no implementation, evidence, or parity claim.
+Status: **Cycle 3a implementation prepared; source verification, terminal CI,
+and fresh Cycle 3a fact-release owner authorization pending. Cycles 3b through
+3q remain planned.** No Cycle 3 capability is promoted and no parity claim is
+made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
-is Cycle 3a and stays the highest-priority blocker. Any later networked source
-must enter through a separately declared, explicitly enabled
+is Cycle 3a; its prepared implementation remains the highest-priority
+verification blocker until exact-source local and terminal CI gates pass and the
+fresh personal fact-release authorization is available. Any later networked
+source must enter through a separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
 request, storage, and estimated-spend budgets. Those application budgets are
@@ -1991,6 +1998,103 @@ operations remain dormant enterprise-profile work. They do not block the
 personal program. Personal durability still requires authentication,
 CSRF/replay controls, migration integrity, backup/restore, deletion, scheduler
 recovery, accessibility, measured performance, and source-license compliance.
+
+### Cycle 3a — prepared personal local owner session
+
+Status: **Implementation prepared; source verification, terminal CI, and fresh
+Cycle 3a fact-release owner authorization pending. Not promoted.** The exact
+design is recorded in
+[ADR 0053](./adr/0053-personal-local-owner-session.md), and promotion remains
+governed by the [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
+
+Both explicit personal API modes require one operator-supplied
+`RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET` with exactly 64 lowercase hexadecimal
+characters. The API enforces only that representation; generating and encoding
+32 fresh CSPRNG bytes for each process is an operator precondition rather than a
+programmatically proven property. The API captures and deletes the value from
+its process environment before composition and listen, derives a bootstrap
+digest, and retains no plaintext secret. A valid presentation is single-use
+within that authority/process and creates exactly one active process-memory
+session. Synthetic API startup remains the default and rejects personal
+configuration rather than inferring a personal mode.
+
+Bootstrap accepts no owner cookie or one syntactically valid stale owner cookie
+so a fresh process can recover after restart or expiry. Success replaces the
+stale cookie. Malformed or duplicate cookies fail, and recovery still requires
+an unused bootstrap digest and no active session in the new process.
+
+The web owner controls are separately disabled unless
+`RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`. The owner pastes the
+secret into a transient password field. Submission clears the field and sends
+the value only in `X-Research-Cockpit-Bootstrap` on a bodyless POST. Cycle 3a
+code places it in no URL, request or response body, durable cookie, Web Storage,
+IndexedDB, fixture, console, or application log.
+
+The accepted bootstrap sets one host-only, nonpersistent HttpOnly
+`SameSite=Strict` cookie scoped to `/v1/personal-filing`. The server stores only
+a keyed session digest and exact Host/Origin binding. Successful authorization
+refreshes a 10-minute monotonic idle deadline but never extends the 60-minute
+absolute deadline established at bootstrap. Rotation replaces the bearer while
+preserving the absolute deadline. Logout, explicit revocation, either expiry,
+clock failure or rollback, and process close invalidate the active authority.
+
+The personal browser lifecycle remains nonpersistent. The client captures each
+local lifecycle deadline or observation before dispatching its corresponding
+bootstrap, revalidation, rotation, or protected-read request, never later than
+server authorization. Successful authorized private reads and rotation reset
+only idle, while rotation preserves the known absolute deadline. A tab that
+discovers an active cookie without the original absolute timestamp uses a
+conservative lease bounded by the idle TTL and does not claim exact server-
+deadline synchronization. `pagehide` and a hidden visibility transition clear
+and deactivate local private presentation while preserving any known local
+deadline, without broadcasting or ending the server session. Focus, `pageshow`, and a visible transition clear first and
+trigger server revalidation without polling.
+
+Failure to construct the nonpersistent `BroadcastChannel` disables personal
+access. Publish failure locks and clears the initiating tab. Local expiry,
+logout, revocation, or failed revalidation clears rendered private state
+immediately, but immediate sibling invalidation is claimed only when the channel
+delivers operationally. An already-active sibling that misses a signal falls
+back to focus/visible/`pageshow` revalidation or its conservative lease. Bootstrap and
+rotation use the same fail-closed channel to request clear-then-revalidate. The
+channel, lifecycle timestamps, and signals are memory-only and never become a
+second authority.
+
+The local CSRF boundary combines credentialed CORS restricted to the one
+matching literal-loopback browser origin, exact Host and Origin validation, and
+one exact `X-Research-Cockpit-Intent` header for every state-changing action.
+Before any personal fetch, the browser client requires its API base to be an
+exact `http://127.0.0.1:<port>` or `http://[::1]:<port>` origin with an explicit
+port from 1 through 65535 and no userinfo, path, query, or fragment; an invalid
+base fails locally without a fetch. A controlling service worker, or unreadable
+controller state, likewise denies personal calls before fetch. Cycle 3a
+registers no application service worker and stores no authority in application
+service-worker state. The server remains stricter about the exact configured
+authority: an API bound to `127.0.0.1` accepts only
+`http://127.0.0.1:3000`; an API bound to `::1` accepts only
+`http://[::1]:3000`. `localhost` is never mixed with the literal IPv4 API
+address. Missing, malformed, duplicate, expired, wrong-bound, rotated,
+logged-out, revoked, or closed authority is denied before a protected personal
+capability is read.
+
+The prepared code protects both personal compositions in tests, but the
+preserved Cycle 2z release bundle and consumed approval are intentionally not
+runtime-compatible with a new source. They remain bound to exact Cycle 2z source
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`; the Cycle 3a runtime embeds its new
+source revision and the loader requires equality. An actual Cycle 3a
+`personal_fact_release` is therefore not accepted and remains gated on a fresh
+owner-reviewed release bundle and fresh single-use approval bound to the
+eventual Cycle 3a source. This is a personal owner-authorization gate, not an enterprise
+requirement. Historical Cycle 2z evidence remains unchanged.
+
+This boundary proves bearer possession only. Per-authority/process single-use
+and replay denial do not detect an operator reusing the same valid-shaped secret
+in a different process; cross-process same-secret reuse is an explicit nonclaim.
+The boundary does not verify a human or resist hostile same-user processes,
+browser extensions, developer tools, screenshots, clipboard readers, memory
+inspection, or hostile browser state beyond the narrow controlling-service-
+worker prefetch guard. It adds no remote, multi-user, tenant, service, durable,
+or production authentication. Personal dossier composition remains Cycle 3b.
 
 The delivery waves are:
 

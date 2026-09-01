@@ -83,7 +83,7 @@ describe("local API OpenAPI contract", () => {
   it("exposes only the two exact update-only research-state routes", async () => {
     const source = await openApiSource();
     expect(source).toContain("openapi: 3.1.0");
-    expect(source).toContain("  version: 0.3.0");
+    expect(source).toContain("  version: 0.4.0");
     expect(source).toContain("  - url: http://127.0.0.1:3100");
     expect(source).not.toContain("0.0.0.0");
     expect(topLevelPaths(source)).toEqual([
@@ -91,6 +91,11 @@ describe("local API OpenAPI contract", () => {
       "/health/ready",
       "/v1/instruments/{symbol}/dossier",
       "/v1/evidence/{evidenceId}",
+      "/v1/personal-filing/session",
+      "/v1/personal-filing/session/bootstrap",
+      "/v1/personal-filing/session/rotate",
+      "/v1/personal-filing/session/logout",
+      "/v1/personal-filing/session/revoke",
       "/v1/personal-filing/readiness",
       "/v1/personal-filing/selected-facts",
       "/v1/theses/{thesisId}",
@@ -137,6 +142,85 @@ describe("local API OpenAPI contract", () => {
     }
   });
 
+  it("freezes the body-free possession-bound local owner-session contract", async () => {
+    const source = await openApiSource();
+    const paths = [
+      ["/v1/personal-filing/session", "get"],
+      ["/v1/personal-filing/session/bootstrap", "post"],
+      ["/v1/personal-filing/session/rotate", "post"],
+      ["/v1/personal-filing/session/logout", "post"],
+      ["/v1/personal-filing/session/revoke", "post"],
+    ] as const;
+
+    for (const [path, method] of paths) {
+      const route = pathSection(source, path);
+      expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual(
+        [`${method}:`],
+      );
+      expect(statuses(route)).toEqual(["204", "403"]);
+      expect(route).not.toContain("requestBody:");
+      expect(route).not.toContain("in: query");
+      expect(route).toContain("#/components/headers/PrivateNoStore");
+      expect(route).toContain("#/components/headers/PragmaNoCache");
+      expect(route).toContain(
+        "#/components/responses/PersonalSessionForbidden",
+      );
+    }
+
+    const bootstrap = pathSection(
+      source,
+      "/v1/personal-filing/session/bootstrap",
+    );
+    expect(parameterRefs(bootstrap)).toEqual([
+      "#/components/parameters/XResearchCockpitBootstrap",
+    ]);
+    expect(bootstrap).toContain("const: bootstrap");
+    expect(bootstrap).not.toContain("PersonalOwnerSession: []");
+    expect(bootstrap).toContain(
+      "#/components/headers/PersonalOwnerSessionCookie",
+    );
+
+    for (const [path, intent] of [
+      ["/v1/personal-filing/session/rotate", "rotate"],
+      ["/v1/personal-filing/session/logout", "logout"],
+      ["/v1/personal-filing/session/revoke", "revoke"],
+    ] as const) {
+      const route = pathSection(source, path);
+      expect(route).toContain("PersonalOwnerSession: []");
+      expect(route).toContain(`const: ${intent}`);
+    }
+
+    const security = boundedSection(
+      source,
+      "    PersonalOwnerSession:",
+      "  parameters:",
+    );
+    expect(security).toContain("type: apiKey");
+    expect(security).toContain("in: cookie");
+    expect(security).toContain("name: research_cockpit_owner_session");
+    expect(security).toContain("Path=/v1/personal-filing");
+
+    const bootstrapParameter = componentSection(
+      source,
+      "XResearchCockpitBootstrap",
+      "ThesisId",
+    );
+    expect(bootstrapParameter).toContain("name: X-Research-Cockpit-Bootstrap");
+    expect(bootstrapParameter).toContain("minLength: 64");
+    expect(bootstrapParameter).toContain("maxLength: 64");
+    expect(bootstrapParameter).toContain('pattern: "^[0-9a-f]{64}$"');
+
+    const sessionHeaders = boundedSection(
+      source,
+      "    PersonalOwnerSessionCookie:",
+      "  responses:",
+    );
+    expect(sessionHeaders).toContain("HttpOnly");
+    expect(sessionHeaders).toContain("SameSite=Strict");
+    expect(sessionHeaders).toContain("Domain, Expires, and Max-Age are absent");
+    expect(sessionHeaders).toContain("Max-Age=0");
+  });
+
   it("freezes the coarse local-only personal-filing readiness route", async () => {
     const source = await openApiSource();
     const route = pathSection(source, "/v1/personal-filing/readiness");
@@ -169,6 +253,7 @@ describe("local API OpenAPI contract", () => {
     expect(normalizedRoute).toContain(
       "exact configured loopback Host authority",
     );
+    expect(route).toContain("PersonalOwnerSession: []");
     expect(normalizedRoute).toContain("HEAD is not exposed");
     expect(normalizedRoute).toContain(
       "no private facts, labels, values, metrics,",
@@ -232,6 +317,7 @@ describe("local API OpenAPI contract", () => {
     expect(normalizedRoute).toContain("caller-supplied selection");
     expect(normalizedRoute).toContain("HEAD is not exposed");
     expect(normalizedRoute).toContain("unique fact keys in canonical order");
+    expect(route).toContain("PersonalOwnerSession: []");
 
     const outer = schemaSection(
       source,

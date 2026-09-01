@@ -7,6 +7,20 @@ import type {
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3100";
+const ownerSessionPath = "/v1/personal-filing/session" as const;
+const ownerBootstrapSecretPattern = /^[0-9a-f]{64}$/u;
+const literalLoopbackHttpOriginPattern =
+  /^http:\/\/(?:127\.0\.0\.1|\[::1\]):([1-9][0-9]{0,4})$/u;
+
+const ownerSessionRequestOptions = Object.freeze({
+  cache: "no-store",
+  credentials: "include",
+  redirect: "error",
+  referrerPolicy: "no-referrer",
+} satisfies Pick<
+  RequestInit,
+  "cache" | "credentials" | "redirect" | "referrerPolicy"
+>);
 
 const personalFilingReadinessKeys = [
   "dataPlane",
@@ -92,13 +106,15 @@ export async function fetchDossier(
 export async function fetchPersonalFilingReadiness(
   signal: AbortSignal,
 ): Promise<boolean> {
-  const url = new URL("/v1/personal-filing/readiness", apiBaseUrl);
+  const personalBaseUrl = getPersonalApiBaseUrl();
+  if (personalBaseUrl === null) return false;
+  const url = new URL("/v1/personal-filing/readiness", personalBaseUrl);
 
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
       cache: "no-store",
-      credentials: "omit",
+      credentials: "include",
       redirect: "error",
       referrerPolicy: "no-referrer",
       signal,
@@ -117,13 +133,15 @@ export async function fetchPersonalFilingReadiness(
 export async function fetchPersonalFilingSelectedFacts(
   signal: AbortSignal,
 ): Promise<PersonalFilingSelectedFactsDto | null> {
-  const url = new URL("/v1/personal-filing/selected-facts", apiBaseUrl);
+  const personalBaseUrl = getPersonalApiBaseUrl();
+  if (personalBaseUrl === null) return null;
+  const url = new URL("/v1/personal-filing/selected-facts", personalBaseUrl);
 
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
       cache: "no-store",
-      credentials: "omit",
+      credentials: "include",
       redirect: "error",
       referrerPolicy: "no-referrer",
       signal,
@@ -135,6 +153,90 @@ export async function fetchPersonalFilingSelectedFacts(
       throw new DOMException("The operation was aborted.", "AbortError");
     }
     return null;
+  }
+}
+
+export function fetchOwnerSession(signal: AbortSignal): Promise<boolean> {
+  return requestOwnerSession(ownerSessionPath, { method: "GET", signal });
+}
+
+export function bootstrapOwnerSession(
+  bootstrapSecret: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (!ownerBootstrapSecretPattern.test(bootstrapSecret)) {
+    return Promise.resolve(false);
+  }
+  return requestOwnerSession(`${ownerSessionPath}/bootstrap`, {
+    method: "POST",
+    headers: {
+      "X-Research-Cockpit-Bootstrap": bootstrapSecret,
+      "X-Research-Cockpit-Intent": "bootstrap",
+    },
+    signal,
+  });
+}
+
+export function logoutOwnerSession(signal: AbortSignal): Promise<boolean> {
+  return requestOwnerSession(`${ownerSessionPath}/logout`, {
+    method: "POST",
+    headers: { "X-Research-Cockpit-Intent": "logout" },
+    signal,
+  });
+}
+
+export function rotateOwnerSession(signal: AbortSignal): Promise<boolean> {
+  return requestOwnerSession(`${ownerSessionPath}/rotate`, {
+    method: "POST",
+    headers: { "X-Research-Cockpit-Intent": "rotate" },
+    signal,
+  });
+}
+
+export function revokeOwnerSession(signal: AbortSignal): Promise<boolean> {
+  return requestOwnerSession(`${ownerSessionPath}/revoke`, {
+    method: "POST",
+    headers: { "X-Research-Cockpit-Intent": "revoke" },
+    signal,
+  });
+}
+
+async function requestOwnerSession(
+  path: string,
+  options: Pick<RequestInit, "headers" | "method" | "signal">,
+): Promise<boolean> {
+  const signal = options.signal;
+  const personalBaseUrl = getPersonalApiBaseUrl();
+  if (personalBaseUrl === null) return false;
+  try {
+    const response = await fetch(new URL(path, personalBaseUrl), {
+      ...ownerSessionRequestOptions,
+      ...options,
+    });
+    return response.status === 204;
+  } catch {
+    if (signal?.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    return false;
+  }
+}
+
+function getPersonalApiBaseUrl(): string | null {
+  if (hasControllingServiceWorker()) return null;
+  const match = literalLoopbackHttpOriginPattern.exec(apiBaseUrl);
+  if (match?.[0] !== apiBaseUrl) return null;
+
+  const port = Number(match[1]);
+  return port >= 1 && port <= 65_535 ? apiBaseUrl : null;
+}
+
+function hasControllingServiceWorker(): boolean {
+  if (typeof navigator === "undefined") return false;
+  try {
+    return navigator.serviceWorker?.controller != null;
+  } catch {
+    return true;
   }
 }
 

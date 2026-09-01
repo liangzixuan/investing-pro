@@ -6,10 +6,19 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { buildPersonalReadinessApp } from "./app";
 import { PERSONAL_FILING_READINESS_PATH } from "./personal-readiness-routes";
+import {
+  bootstrapLiveTestPersonalOwnerSession,
+  bootstrapTestPersonalOwnerSession,
+  createTestPersonalOwnerSession,
+} from "./test-personal-owner-session-builder";
 import { createPublicPersonalQualityReadinessFixture } from "./test-personal-quality-readiness-builder";
 
 const apps: Awaited<ReturnType<typeof buildPersonalReadinessApp>>[] = [];
 const directories: string[] = [];
+const sessionCookies = new WeakMap<
+  Awaited<ReturnType<typeof buildPersonalReadinessApp>>,
+  string
+>();
 
 afterEach(async () => {
   await Promise.all(apps.splice(0).map(async (app) => app.close()));
@@ -75,6 +84,7 @@ describe("personal filing readiness route", () => {
   });
 
   it.each([
+    ["missing session", { cookie: undefined }],
     ["nonloopback peer", { remoteAddress: "192.0.2.1" }],
     ["missing origin", { origin: undefined }],
     ["untrusted origin", { origin: "https://untrusted.example" }],
@@ -87,11 +97,10 @@ describe("personal filing readiness route", () => {
     "rejects %s with one value-free response",
     async (_label, change) => {
       const app = await readyApp();
-      const headers: Record<string, string> = {
-        accept: "application/json",
-        host: "127.0.0.1:3100",
-        origin: "http://127.0.0.1:3000",
-      };
+      const headers = allowedHeaders(requireSessionCookie(app));
+      if ("cookie" in change && change.cookie === undefined) {
+        delete headers.cookie;
+      }
       if ("origin" in change) {
         if (change.origin === undefined) delete headers.origin;
         else headers.origin = change.origin;
@@ -120,22 +129,23 @@ describe("personal filing readiness route", () => {
 
   it("rejects queries, unexpected methods, and forged capabilities", async () => {
     const app = await readyApp();
+    const headers = allowedHeaders(requireSessionCookie(app));
     const query = await app.inject({
       method: "GET",
       url: `${PERSONAL_FILING_READINESS_PATH}?private=canary`,
-      headers: allowedHeaders(),
+      headers,
       remoteAddress: "127.0.0.1",
     });
     const method = await app.inject({
       method: "POST",
       url: PERSONAL_FILING_READINESS_PATH,
-      headers: allowedHeaders(),
+      headers,
       remoteAddress: "127.0.0.1",
     });
     const head = await app.inject({
       method: "HEAD",
       url: PERSONAL_FILING_READINESS_PATH,
-      headers: allowedHeaders(),
+      headers,
       remoteAddress: "127.0.0.1",
     });
 
@@ -143,20 +153,25 @@ describe("personal filing readiness route", () => {
     expect(query.payload).not.toContain("private=canary");
     expect(method.statusCode).toBe(404);
     expect(head.statusCode).toBe(404);
+    const ownerSession = createTestPersonalOwnerSession();
     await expect(
       buildPersonalReadinessApp(
         Object.freeze({}) as Parameters<typeof buildPersonalReadinessApp>[0],
+        ownerSession.authority,
       ),
     ).rejects.toThrow("Personal filing readiness is unavailable.");
+    ownerSession.authority.close();
   });
 
   it("binds Host to the actual listening authority", async () => {
     const fixture = await createPublicPersonalQualityReadinessFixture();
     directories.push(fixture.directory);
-    const app = await buildPersonalReadinessApp(fixture.capability, {
-      host: "127.0.0.1",
-      port: 0,
-    });
+    const ownerSession = createTestPersonalOwnerSession();
+    const app = await buildPersonalReadinessApp(
+      fixture.capability,
+      ownerSession.authority,
+      { host: "127.0.0.1", port: 0 },
+    );
     apps.push(app);
     await app.listen({ host: "127.0.0.1", port: 0 });
     const address = app.server.address();
@@ -164,9 +179,15 @@ describe("personal filing readiness route", () => {
       throw new Error("Expected an IP socket address.");
     }
     const url = `http://127.0.0.1:${String(address.port)}${PERSONAL_FILING_READINESS_PATH}`;
+    const cookie = await bootstrapLiveTestPersonalOwnerSession(
+      `http://127.0.0.1:${String(address.port)}`,
+      ownerSession.secret,
+    );
     const valid = await fetch(url, {
+      credentials: "include",
       headers: {
         Accept: "application/json",
+        Cookie: cookie,
         Origin: "http://127.0.0.1:3000",
       },
     });
@@ -183,16 +204,25 @@ describe("personal filing readiness route", () => {
   it("supports the exact IPv6 loopback browser authority", async () => {
     const fixture = await createPublicPersonalQualityReadinessFixture();
     directories.push(fixture.directory);
-    const app = await buildPersonalReadinessApp(fixture.capability, {
-      host: "::1",
-      port: 3100,
-    });
+    const ownerSession = createTestPersonalOwnerSession();
+    const app = await buildPersonalReadinessApp(
+      fixture.capability,
+      ownerSession.authority,
+      { host: "::1", port: 3100 },
+    );
     apps.push(app);
+    const cookie = await bootstrapTestPersonalOwnerSession(
+      app,
+      ownerSession.secret,
+      "[::1]:3100",
+      "http://[::1]:3000",
+    );
     const response = await app.inject({
       method: "GET",
       url: PERSONAL_FILING_READINESS_PATH,
       headers: {
         accept: "application/json",
+        cookie,
         host: "[::1]:3100",
         origin: "http://[::1]:3000",
       },
@@ -211,8 +241,16 @@ async function readyApp(): Promise<
 > {
   const fixture = await createPublicPersonalQualityReadinessFixture();
   directories.push(fixture.directory);
-  const app = await buildPersonalReadinessApp(fixture.capability);
+  const ownerSession = createTestPersonalOwnerSession();
+  const app = await buildPersonalReadinessApp(
+    fixture.capability,
+    ownerSession.authority,
+  );
   apps.push(app);
+  sessionCookies.set(
+    app,
+    await bootstrapTestPersonalOwnerSession(app, ownerSession.secret),
+  );
   return app;
 }
 
@@ -222,17 +260,26 @@ function allowedRequest(
   return app.inject({
     method: "GET",
     url: PERSONAL_FILING_READINESS_PATH,
-    headers: allowedHeaders(),
+    headers: allowedHeaders(requireSessionCookie(app)),
     remoteAddress: "127.0.0.1",
   });
 }
 
-function allowedHeaders(): Record<string, string> {
+function allowedHeaders(cookie: string): Record<string, string> {
   return {
     accept: "application/json",
+    cookie,
     host: "127.0.0.1:3100",
     origin: "http://127.0.0.1:3000",
   };
+}
+
+function requireSessionCookie(
+  app: Awaited<ReturnType<typeof buildPersonalReadinessApp>>,
+): string {
+  const cookie = sessionCookies.get(app);
+  if (cookie === undefined) throw new Error("Expected an owner session.");
+  return cookie;
 }
 
 function requestStatus(url: string, host: string): Promise<number> {

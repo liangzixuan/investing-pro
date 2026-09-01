@@ -9,7 +9,7 @@ import {
   PRE_RESTATEMENT_KNOWN_AT,
 } from "@research-cockpit/research-core";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   fetchDossier,
@@ -21,6 +21,7 @@ import { AnalyticalChart } from "./AnalyticalChart";
 import type { EvidenceSelection } from "./evidence-selection";
 import { EvidenceDialog } from "./EvidenceDialog";
 import { MetricGrid } from "./MetricGrid";
+import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { PersonalFilingFacts } from "./PersonalFilingFacts";
 import { ThesisMonitor } from "./ThesisMonitor";
 import { ValuationWorkbench } from "./ValuationWorkbench";
@@ -28,9 +29,11 @@ import { ValuationWorkbench } from "./ValuationWorkbench";
 export function ResearchWorkspace({
   symbol,
   initialKnownAt,
+  personalMode = false,
 }: {
   symbol: string;
   initialKnownAt: string;
+  personalMode?: boolean;
 }) {
   const [dossier, setDossier] = useState<DossierDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,31 +42,28 @@ export function ResearchWorkspace({
   const [personalQualityReady, setPersonalQualityReady] = useState(false);
   const [personalFacts, setPersonalFacts] =
     useState<PersonalFilingSelectedFactsDto | null>(null);
+  const personalRequestEpoch = useRef(0);
   const closeEvidence = useCallback(() => setSelection(null), []);
+  const handleOwnerSessionChange = useCallback(
+    async (active: boolean, signal: AbortSignal) => {
+      const requestEpoch = ++personalRequestEpoch.current;
+      setPersonalQualityReady(false);
+      setPersonalFacts(null);
+      if (!active) return false;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPersonalFilingReadiness(controller.signal)
-      .then((ready) => {
-        if (!controller.signal.aborted) setPersonalQualityReady(ready);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setPersonalQualityReady(false);
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchPersonalFilingSelectedFacts(controller.signal)
-      .then((release) => {
-        if (!controller.signal.aborted) setPersonalFacts(release);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setPersonalFacts(null);
-      });
-    return () => controller.abort();
-  }, []);
+      const [ready, release] = await Promise.all([
+        fetchPersonalFilingReadiness(signal),
+        fetchPersonalFilingSelectedFacts(signal),
+      ]).catch(() => [false, null] as const);
+      if (signal.aborted || requestEpoch !== personalRequestEpoch.current) {
+        return false;
+      }
+      setPersonalQualityReady(ready);
+      setPersonalFacts(release);
+      return ready || release !== null;
+    },
+    [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -157,6 +157,9 @@ export function ResearchWorkspace({
       </div>
 
       <main className="research-shell" id="main-content">
+        {personalMode ? (
+          <OwnerSessionPanel onSessionChange={handleOwnerSessionChange} />
+        ) : null}
         {personalFacts === null ? null : (
           <PersonalFilingFacts release={personalFacts} />
         )}

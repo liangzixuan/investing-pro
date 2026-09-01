@@ -1803,11 +1803,143 @@ cross-engine run `33344500412` also passed. Independent read-only source review
 found no remaining actionable P0/P1/P2 issue for the declared personal scope.
 
 Coarse owner-approved private selected-fact release outcome: Pass for the exact
-frozen personal scope. Request-time authenticated owner-browser composition is
-the next separate blocker. Same-user hostile-process resistance remains
-unproven, and enterprise/shared-service operation remains Out of scope.
+frozen personal scope. Cycle 3a request-time authenticated owner-browser
+composition is now prepared, with source verification, terminal CI, and fresh
+Cycle 3a fact-release owner authorization pending. Same-user hostile-process
+resistance remains unproven, and enterprise/shared-service operation remains Out
+of scope.
 See [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+
+## Cycle 3a prepared personal owner-session model
+
+Cycle 3a introduces no persistent canonical entity. Its prepared model is one
+process-local `PersonalOwnerSessionAuthority` that can hold at most one unused
+bootstrap digest and at most one active session. Source verification, terminal
+CI, and fresh Cycle 3a fact-release owner authorization remain pending, so this
+model is not yet promoted.
+
+Every explicit personal API composition requires an operator-supplied
+`RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET` of exactly 64 lowercase hexadecimal
+characters. The API validates only that representation. Generating 32 fresh
+bytes with a CSPRNG for every process and encoding them in that representation
+is an operator precondition, not a property inferred or proven by the model. The
+API entry point captures and deletes the variable from its process environment
+before composition and listen. Authority construction derives the bootstrap
+digest. The original secret is not retained as model state. Synthetic
+composition remains the default and admits no owner-session state unless an
+explicit personal mode is selected with complete configuration.
+
+The bootstrap transition is:
+
+```text
+unused bootstrap digest
+  + exact secret
+  + exact literal-loopback Host/Origin binding
+  -> consumed bootstrap digest
+  + one active session digest
+  + fixed absolute deadline
+  + current idle observation
+```
+
+The transition may begin with no owner cookie or one syntactically valid stale
+owner cookie retained after restart or expiry. The fresh process must still
+hold an unused bootstrap digest and no active session. Success replaces the
+stale cookie; malformed or duplicate cookies do not enter the model.
+
+Consumption and replay denial are scoped to this authority/process. Separate
+processes do not share a consumed-bootstrap registry, so the model neither
+detects nor denies an operator configuring the same valid-shaped secret in
+another process.
+
+The active browser bearer is a fresh 32-byte random token represented by 43
+base64url characters. The bearer exists only in a host-only, nonpersistent
+`research_cockpit_owner_session` cookie scoped to `/v1/personal-filing` with
+`HttpOnly` and `SameSite=Strict`. There is no active `Domain`, `Expires`, or
+`Max-Age`. The authority retains only a keyed digest, exact Host and Origin,
+last successful authorization time, and absolute expiry.
+
+Time is process-local and monotonic. The idle interval is 10 minutes and is
+refreshed only by a successful authorization. The absolute interval is 60
+minutes from bootstrap and is never extended. Both intervals are half-open:
+authorization at either deadline fails and destroys the active digest. A
+nonfinite, failing, or backward-moving clock also fails closed.
+
+The allowed state transitions are:
+
+- `authorize`: validate bearer and binding, then advance only the idle
+  observation;
+- `rotate`: validate, replace bearer and digest, advance idle observation, and
+  preserve the absolute deadline;
+- `logout` or `revoke`: validate, destroy the active digest, and clear the exact
+  cookie path;
+- idle or absolute expiry: destroy the active digest before returning denial;
+  and
+- process close: destroy unused bootstrap state, active-session state, and the
+  digest key.
+
+The personal web model is independently opt-in through exact
+`RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`. Its password field holds
+the bootstrap secret only transiently, clears on submission, and sends it only
+through `X-Research-Cockpit-Bootstrap` on a bodyless POST. State-changing
+session transitions require their exact `X-Research-Cockpit-Intent`. IPv4 binds
+the browser to `http://127.0.0.1:3000`; IPv6 binds it to
+`http://[::1]:3000`. `localhost` and literal IPv4 are not interchangeable.
+Before any personal request dispatch, the client additionally accepts its API
+base only as an exact literal-loopback HTTP origin with an explicit port from 1
+through 65535 and no userinfo, path, query, or fragment. Invalid bases produce a
+local denial without a fetch. A controlling service worker, or an unreadable
+controller state, also produces prefetch denial. Cycle 3a registers no
+application service worker and places no authority in application service-worker
+state; this is not a general hostile-browser-state claim.
+
+Browser lifecycle observations remain transient UI state, not a canonical
+entity or second authority. The browser captures each local lifecycle deadline
+or observation before dispatching its corresponding bootstrap, revalidation,
+rotation, or protected-read request; the local timestamp is therefore never
+later than server authorization. Successful authorized private reads and
+rotation reset only local idle; rotation preserves the locally known absolute
+deadline. A tab discovering an existing active cookie without that original
+timestamp uses a conservative local lease bounded by the idle TTL and makes no
+exact synchronization claim. `pagehide` and a hidden visibility transition
+clear and deactivate local private presentation while preserving any known
+local deadline, without broadcasting or ending the server session. Focus, `pageshow`, and a visible transition clear first and
+revalidate with the server without polling.
+
+The nonpersistent `BroadcastChannel` is a required fail-closed coordination
+transport: construction failure disables personal access, and publish failure
+locks and clears the initiating tab. Local expiry, logout, revocation, or failed
+revalidation immediately clears rendered private state. Immediate sibling
+invalidation is modeled only when the message is delivered operationally; an
+already-active sibling that misses a signal falls back to
+focus/visible/`pageshow` revalidation or its conservative lease. Bootstrap and rotation use the same
+transport to request clear-then-revalidate. The channel and lifecycle timestamps
+never enter Web Storage, IndexedDB, or a durable cookie, and server denial
+overrides all local observations.
+
+The owner-session code path covers both personal compositions in tests, and the
+boundary is evaluated before either capability is obtained. This does not make
+the preserved Cycle 2z private artifact valid at a new source: its release bundle
+and consumed approval are bound to exact source
+`e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, while the Cycle 3a runtime embeds
+its new source revision and the loader requires equality. An actual Cycle 3a
+`personal_fact_release` is not accepted until the eventual source has a fresh
+owner-reviewed release bundle and fresh single-use approval bound to it. That
+pending gate is personal owner authorization, not an enterprise requirement, and the historical
+Cycle 2z evidence remains unchanged. Even after authorization, a valid session
+would authorize only the existing bounded personal response; it would not add a
+personal dossier or convert the synthetic dossier into personal state.
+
+This model proves bearer possession, not verified human identity. It does not
+prove bootstrap entropy and does not detect cross-process same-secret reuse.
+Hostile same-user processes, browser extensions, developer tools, screenshots,
+clipboard readers, browser/process-memory inspection, and hostile browser state
+beyond the narrow controlling-service-worker guard remain nonclaims. Remote,
+multi-user, tenant, service-account, shared-service, durable, and production
+authentication remain outside the model. Cycle 3b dossier composition remains
+separate. See
+[ADR 0053](./adr/0053-personal-local-owner-session.md) and the
+[Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

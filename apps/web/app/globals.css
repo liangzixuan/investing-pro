@@ -246,6 +246,121 @@ h4,
   padding-bottom: 96px;
 }
 
+.owner-session-panel {
+  margin-top: 34px;
+  padding: 24px 26px;
+  border: 1px solid #99b2c2;
+  border-radius: var(--radius-lg);
+  background: #f2f7fa;
+  box-shadow: var(--shadow);
+}
+
+.owner-session-heading,
+.owner-session-form > div,
+.owner-session-actions,
+.owner-session-actions > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.owner-session-heading,
+.owner-session-actions {
+  justify-content: space-between;
+}
+
+.owner-session-heading h2,
+.owner-session-heading p,
+.owner-session-actions p,
+.owner-session-form p {
+  margin: 0;
+}
+
+.owner-session-heading h2 {
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+}
+
+.owner-session-state {
+  padding: 6px 10px;
+  border: 1px solid #99b2c2;
+  border-radius: 999px;
+  color: #294d62;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.owner-session-state.active {
+  border-color: #79b39f;
+  background: var(--mint-soft);
+  color: var(--mint-deep);
+}
+
+.owner-session-state.inactive {
+  border-color: #d1b17a;
+  background: #fff5e4;
+  color: #6a4a19;
+}
+
+.owner-session-panel > p,
+.owner-session-form,
+.owner-session-actions {
+  margin-top: 18px;
+}
+
+.owner-session-form label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.owner-session-form > div {
+  align-items: stretch;
+}
+
+.owner-session-form input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  flex: 1;
+  background: var(--surface);
+}
+
+.owner-session-form p,
+.owner-session-actions p,
+.owner-session-message {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.owner-session-form p {
+  margin-top: 8px;
+}
+
+.owner-session-actions .secondary-action {
+  width: auto;
+}
+
+.owner-session-actions .danger-action {
+  border-color: #bd7462;
+  color: #7a3425;
+}
+
+.owner-session-message.error {
+  color: #8a3425;
+}
+
+.owner-session-panel button:disabled,
+.owner-session-panel input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .personal-facts-panel {
   margin-top: 34px;
   padding: 26px;
@@ -1418,6 +1533,27 @@ thead th {
 
   .personal-facts-panel {
     padding: 18px;
+  }
+
+  .owner-session-panel {
+    padding: 18px;
+  }
+
+  .owner-session-heading,
+  .owner-session-actions,
+  .owner-session-form > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .owner-session-actions > div {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .owner-session-actions .secondary-action {
+    width: 100%;
   }
 
   .personal-facts-heading {

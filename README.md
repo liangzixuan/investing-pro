@@ -1041,11 +1041,92 @@ frozen personal scope.
 Cycle 2z does not authorize dynamic selection, a personal dossier, history,
 evidence display, valuation, thesis, alerts, export, persistence, or background
 ingestion. Loopback, Host, and Origin checks are not owner authentication.
-Authenticated owner-browser composition remains the next separate blocker;
-hostile same-user processes remain unproven. Enterprise/shared-service
-requirements remain Out of scope. See
+Cycle 3a's authenticated owner-browser implementation is prepared, with source
+verification, terminal CI, and fresh Cycle 3a fact-release owner authorization
+pending; it is not yet promoted. Hostile same-user processes remain unproven.
+Enterprise/shared-service requirements remain Out of scope. See
 [ADR 0052](./docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./docs/CYCLE_2Z_EXIT_MATRIX.md).
+
+Cycle 3a prepares one operator-supplied bootstrap that is single-use within one
+API authority/process and one active process-memory owner session in front of
+both explicit personal API modes. The API accepts only exactly 64 lowercase
+hexadecimal characters in `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET`; that shape
+check does not prove how the value was generated. Generating 32 fresh bytes with
+a CSPRNG for every API process and encoding them as lowercase hexadecimal is an
+operator precondition. The API captures and deletes the variable from its
+process environment before composition and listen, then retains only digests.
+The owner pastes the secret into a password field shown only under exact
+`RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`. It is sent only in
+`X-Research-Cockpit-Bootstrap` on a bodyless POST. Cycle 3a code puts it in no
+URL, body, durable cookie, browser storage, console, or application log.
+
+Success sets one host-only, nonpersistent `HttpOnly`, `SameSite=Strict` cookie
+scoped to `/v1/personal-filing`. Valid use refreshes a 10-minute monotonic idle
+deadline but not the fixed 60-minute absolute deadline. Exact intent-header
+CSRF checks, rotation, logout, explicit revocation, expiry, and process-close
+invalidation are included. IPv4 personal mode requires
+`http://127.0.0.1:3000`; IPv6 requires `http://[::1]:3000`. Never mix
+`localhost` with an API bound to `127.0.0.1`. Before any personal browser fetch,
+the client also requires `NEXT_PUBLIC_API_BASE_URL` to be an exact literal-
+loopback HTTP origin with an explicit port from 1 through 65535 and no userinfo,
+path, query, or fragment. An invalid base fails locally without issuing a fetch.
+Personal calls also fail before fetch when the page has a controlling service
+worker or its controller state cannot be read. Cycle 3a registers no application
+service worker and puts no authority in application service-worker state; this
+is a narrow guard, not a claim against hostile browser state.
+
+The personal browser lifecycle is also memory-only. Bootstrap establishes local
+idle and absolute deadlines. Each local lifecycle observation is captured
+before dispatch of its corresponding bootstrap, revalidation, rotation, or
+protected-read request, so it is never later than server authorization.
+Successful authorized private reads and rotation reset only the local idle
+deadline; rotation preserves the known absolute deadline. A tab that discovers
+an already-active cookie but lacks the original absolute timestamp uses a
+conservative local lease bounded by the idle TTL, without claiming
+synchronization with the server deadline. `pagehide` and a hidden visibility
+transition clear and deactivate local private presentation while preserving any
+known local deadline, without broadcasting or ending the server session. Window focus, `pageshow`, and a visible transition
+clear first and revalidate with the server without polling.
+
+Personal access is disabled if the browser cannot construct the nonpersistent,
+credential-free `BroadcastChannel`. A publish failure locks and clears the
+initiating tab. Local expiry, logout, revocation, or failed revalidation clears
+rendered private state immediately; immediate sibling invalidation is claimed
+only when the channel delivers the signal operationally. An already-active
+sibling that misses a signal falls back to focus/visible/`pageshow`
+revalidation or its conservative local lease. Bootstrap and rotation use the same fail-closed
+transport to ask siblings to clear first and revalidate. No lifecycle signal or
+timestamp enters Web Storage, IndexedDB, or a durable cookie; the API remains
+authoritative.
+
+After restart or expiry, a fresh process can bootstrap with no owner cookie or
+one syntactically valid stale owner cookie; success replaces the stale value.
+Malformed or duplicate cookies fail, and the fresh process must still have an
+unused bootstrap digest and no active session.
+
+The prepared code protects both personal compositions in tests, but it does not
+make the preserved Cycle 2z private release artifact runnable at a new source.
+That release bundle and its consumed approval remain bound to exact Cycle 2z
+source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`, while the runtime embeds its
+new source revision and requires equality. An actual Cycle 3a
+`personal_fact_release` therefore remains unaccepted until the eventual Cycle 3a
+source has a fresh owner-reviewed release bundle and fresh single-use approval
+bound to it. This is a pending personal owner-authorization gate, not an enterprise
+requirement, and it does not alter the historical Cycle 2z evidence.
+
+This proves local bearer possession, not verified human identity. Single-use and
+replay denial apply only within one authority/process; the API cannot detect an
+operator reusing the same valid-shaped secret in another process. Cross-process
+same-secret reuse, hostile same-user processes, browser extensions, developer
+tools, screenshots, clipboard readers, hostile browser state beyond the narrow
+service-worker guard, remote or multi-user authentication, durable sessions, and
+Cycle 3b dossier composition remain nonclaims. See
+[ADR 0053](./docs/adr/0053-personal-local-owner-session.md) and the
+[Cycle 3a exit matrix](./docs/CYCLE_3A_EXIT_MATRIX.md). Cycle 3a source
+verification, terminal CI, and fresh fact-release owner authorization are
+pending; no commit, private fact-release acceptance, or promotion evidence is
+recorded yet.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1307,25 +1388,87 @@ pnpm install --frozen-lockfile
 pnpm dev:demo
 ```
 
-Open `http://localhost:3000/research/SYN1`. The API listens on
-`http://127.0.0.1:3100`.
+For the default synthetic demo, open
+`http://localhost:3000/research/SYN1`. The API listens on
+`http://127.0.0.1:3100`. Do not set either personal-mode variable for this
+default.
 
-To admit only the coarse personal quality-ready state, build the API and start
-it in a separate terminal with an absolute path to the preserved aggregate and
-its exact lowercase SHA-256. Both inputs are required together; an invalid or
-partial configuration fails before listen.
+Personal mode is a separate explicit startup. In the API terminal, first set the
+existing complete personal-mode inputs. The example below uses readiness-only
+mode. Build before creating authority, then generate one fresh 32-byte bootstrap
+with the platform CSPRNG and place it in the API environment and clipboard
+without printing it. The API captures and deletes its child-process copy of the
+bootstrap environment variable before listen. The parent shell must still clear
+its own copy.
 
 ```powershell
 $env:RESEARCH_COCKPIT_MODE = "personal_readiness"
 $env:PERSONAL_FILING_QUALITY_RESULT_PATH = "C:\absolute\owner-local\quality-result.json"
 $env:PERSONAL_FILING_QUALITY_RESULT_SHA256 = "sha256:<64 lowercase hex characters>"
+
 pnpm --filter @research-cockpit/api build
-pnpm --filter @research-cockpit/api start
+
+try {
+  $ownerBootstrapBytes = New-Object byte[] 32
+  $ownerBootstrapRng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try {
+    $ownerBootstrapRng.GetBytes($ownerBootstrapBytes)
+    $ownerBootstrapSecret = -join ($ownerBootstrapBytes | ForEach-Object { $_.ToString("x2") })
+  } finally {
+    $ownerBootstrapRng.Dispose()
+    [Array]::Clear($ownerBootstrapBytes, 0, $ownerBootstrapBytes.Length)
+    $ownerBootstrapBytes = $null
+  }
+
+  $env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET = $ownerBootstrapSecret
+  Set-Clipboard -Value $ownerBootstrapSecret
+  $ownerBootstrapSecret = $null
+  pnpm --filter @research-cockpit/api start
+} finally {
+  $ownerBootstrapSecret = $null
+  Remove-Item Env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET -ErrorAction SilentlyContinue
+  Set-Clipboard -Value ([string]::Empty)
+}
 ```
 
-Run `pnpm --filter @research-cockpit/web dev` in another terminal and open the
-same synthetic dossier page. When admission succeeds, the header adds
-`Personal quality ready · data off`; no personal filing fact enters the page.
+Do not echo the variable, pass it as a command-line argument, include it in a
+transcript, or save it in the repository. `personal_fact_release` uses the same
+bootstrap steps, but the preserved Cycle 2z release bundle and consumed approval
+cannot be reused: after the eventual Cycle 3a source exists, that mode requires
+its complete quality result plus a fresh owner-reviewed release bundle, digest,
+and fresh single-use approval bound to the new source.
+
+In the web terminal, opt into the matching IPv4 personal web mode and start
+Next.js on the literal IPv4 address:
+
+```powershell
+$env:RESEARCH_COCKPIT_WEB_MODE = "personal_single_user_local"
+$env:NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:3100"
+pnpm --filter @research-cockpit/web exec next dev -p 3000 -H 127.0.0.1
+```
+
+Open `http://127.0.0.1:3000/research/SYN1`, paste the clipboard value into the
+one-time bootstrap password field, and select **Start session**. After the
+session is confirmed, clear the clipboard from either terminal without
+displaying it:
+
+```powershell
+Set-Clipboard -Value ([string]::Empty)
+```
+
+The same session can be reused until idle or absolute expiry and can be rotated,
+logged out, or explicitly revoked from the owner panel. Stopping the API exits
+the `try` block, whose `finally` removes the parent-shell environment copy and
+clears the clipboard so the ordinary runbook cannot accidentally reuse the
+secret. The API itself enforces the hexadecimal shape and per-process single-use
+transition, but it cannot prove CSPRNG entropy or detect reuse in a different
+process.
+
+For the IPv6 variant, set `$env:HOST = "::1"`, set
+`NEXT_PUBLIC_API_BASE_URL` to `http://[::1]:3100`, start Next.js with `-H ::1`,
+and open `http://[::1]:3000/research/SYN1`. The browser URL, API URL, and bind
+host must use the same literal loopback family. `localhost` and `127.0.0.1` are
+not interchangeable in personal mode.
 
 ## Verify
 

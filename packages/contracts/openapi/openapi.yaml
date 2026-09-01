@@ -1,13 +1,14 @@
 openapi: 3.1.0
 info:
   title: Research Cockpit Local API
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     Evidence-first loopback API. Research data and the two research-state PUT
     operations remain synthetic-only. An explicit personal-readiness mode may
-    additionally expose one coarse, value-free quality-gate status while its
-    private data plane remains disabled. X-Demo-Persona values are public
-    selectors, not secrets, credentials, or authentication.
+    additionally expose one coarse, value-free quality-gate status, and an
+    explicit personal-fact mode may expose its startup-fixed projection, only
+    behind a short-lived local owner session. X-Demo-Persona values are public
+    selectors, not secrets, credentials, or owner authentication.
 servers:
   - url: http://127.0.0.1:3100
 paths:
@@ -63,6 +64,150 @@ paths:
           description: Rights-cleared evidence passport.
         "404":
           description: Evidence is unknown or not display-authorized.
+  /v1/personal-filing/session:
+    get:
+      operationId: checkPersonalOwnerSession
+      summary: Check whether the browser holds the active local owner session.
+      description: >-
+        Body-free, noncacheable possession check. It requires the exact
+        loopback peer, configured Host authority, same-site browser Origin,
+        and host-only owner-session cookie. It returns no session identifier,
+        expiry, private filing state, or other authority material. HEAD and
+        query parameters are not accepted.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "204":
+          description: The exact local owner session is active.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+        "403":
+          $ref: "#/components/responses/PersonalSessionForbidden"
+  /v1/personal-filing/session/bootstrap:
+    post:
+      operationId: bootstrapPersonalOwnerSession
+      summary: Consume the one-time local bootstrap secret.
+      description: >-
+        Body-free bootstrap operation for an explicitly selected personal
+        startup. The exact 64-character lowercase-hex operator-supplied value
+        appears only in the dedicated request header and is never returned.
+        The operator must generate it from 32 fresh CSPRNG bytes for each
+        process; the API enforces the encoding shape and per-process single use,
+        not entropy or cross-process reuse. Exact same-site Origin, Host,
+        loopback peer, and route-specific intent header checks provide the
+        request boundary. The first valid request consumes the process-local
+        bootstrap authority and creates one in-memory session; replay against
+        that authority fails closed.
+      parameters:
+        - $ref: "#/components/parameters/XResearchCockpitBootstrap"
+        - name: X-Research-Cockpit-Intent
+          in: header
+          required: true
+          schema:
+            type: string
+            const: bootstrap
+      responses:
+        "204":
+          description: The one-time bootstrap was consumed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+            Set-Cookie:
+              $ref: "#/components/headers/PersonalOwnerSessionCookie"
+        "403":
+          $ref: "#/components/responses/PersonalSessionForbidden"
+  /v1/personal-filing/session/rotate:
+    post:
+      operationId: rotatePersonalOwnerSession
+      summary: Replace the active owner-session authority.
+      description: >-
+        Body-free, authenticated rotation. The old cookie becomes invalid
+        atomically, the absolute deadline does not move, and only a new
+        nonpersistent HttpOnly cookie is issued.
+      security:
+        - PersonalOwnerSession: []
+      parameters:
+        - name: X-Research-Cockpit-Intent
+          in: header
+          required: true
+          schema:
+            type: string
+            const: rotate
+      responses:
+        "204":
+          description: The active owner session was rotated.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+            Set-Cookie:
+              $ref: "#/components/headers/PersonalOwnerSessionCookie"
+        "403":
+          $ref: "#/components/responses/PersonalSessionForbidden"
+  /v1/personal-filing/session/logout:
+    post:
+      operationId: logoutPersonalOwnerSession
+      summary: End the active local owner session.
+      description: >-
+        Body-free, authenticated logout. Server authority is invalidated and
+        the browser receives an exact-path cookie deletion instruction.
+      security:
+        - PersonalOwnerSession: []
+      parameters:
+        - name: X-Research-Cockpit-Intent
+          in: header
+          required: true
+          schema:
+            type: string
+            const: logout
+      responses:
+        "204":
+          description: The active owner session was ended.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+            Set-Cookie:
+              $ref: "#/components/headers/PersonalOwnerSessionCookieDeletion"
+        "403":
+          $ref: "#/components/responses/PersonalSessionForbidden"
+  /v1/personal-filing/session/revoke:
+    post:
+      operationId: revokePersonalOwnerSession
+      summary: Explicitly revoke the active local owner authority.
+      description: >-
+        Body-free, authenticated revocation. The single active server-side
+        authority is zeroed and the exact-path browser cookie is deleted. A
+        new session requires process restart and an operator-supplied fresh
+        bootstrap; reuse across processes is not detected.
+      security:
+        - PersonalOwnerSession: []
+      parameters:
+        - name: X-Research-Cockpit-Intent
+          in: header
+          required: true
+          schema:
+            type: string
+            const: revoke
+      responses:
+        "204":
+          description: The active owner authority was revoked.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+            Set-Cookie:
+              $ref: "#/components/headers/PersonalOwnerSessionCookieDeletion"
+        "403":
+          $ref: "#/components/responses/PersonalSessionForbidden"
   /v1/personal-filing/readiness:
     get:
       operationId: getPersonalFilingReadiness
@@ -76,7 +221,9 @@ paths:
         The operation accepts no path parameters, query parameters, request
         body, or caller-supplied readiness state. It requires the exact
         configured loopback Host authority and one allowlisted local browser
-        Origin; HEAD is not exposed.
+        Origin and an active owner-session cookie; HEAD is not exposed.
+      security:
+        - PersonalOwnerSession: []
       responses:
         "200":
           description: The coarse personal-filing quality gate is ready.
@@ -90,7 +237,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/PersonalFilingReadiness"
         "403":
-          description: The local-only readiness request is not allowed.
+          description: The request boundary or owner session is not accepted.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -121,8 +268,10 @@ paths:
         projection. It accepts no path parameters, query parameters, request
         body, caller-supplied selection, or caller-supplied release state. The
         operation requires the exact configured loopback Host authority and one
-        allowlisted local browser Origin; HEAD is not exposed. Runtime enforces
-        unique fact keys in canonical order.
+        same-site local browser Origin and an active owner-session cookie; HEAD
+        is not exposed. Runtime enforces unique fact keys in canonical order.
+      security:
+        - PersonalOwnerSession: []
       responses:
         "200":
           description: The exact owner-authorized selected facts are available.
@@ -136,7 +285,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/PersonalFilingSelectedFacts"
         "403":
-          description: The local-only selected-fact request is not allowed.
+          description: The request boundary or owner session is not accepted.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -288,7 +437,30 @@ paths:
         "500":
           $ref: "#/components/responses/UnexpectedWriteFailure"
 components:
+  securitySchemes:
+    PersonalOwnerSession:
+      type: apiKey
+      in: cookie
+      name: research_cockpit_owner_session
+      description: >-
+        Host-only, HttpOnly, SameSite=Strict, nonpersistent local session
+        cookie with Path=/v1/personal-filing. The API stores only its keyed
+        digest and binds it to the exact browser Origin and API authority.
   parameters:
+    XResearchCockpitBootstrap:
+      name: X-Research-Cockpit-Bootstrap
+      in: header
+      required: true
+      description: >-
+        Exact 64-character lowercase-hex bootstrap value. The operator must
+        derive it from 32 fresh CSPRNG bytes per process; the API enforces only
+        its encoding and process-local single use. It must never enter a URL,
+        request or response body, browser storage, log, or fixture.
+      schema:
+        type: string
+        minLength: 64
+        maxLength: 64
+        pattern: "^[0-9a-f]{64}$"
     ThesisId:
       name: thesisId
       in: path
@@ -393,7 +565,36 @@ components:
       schema:
         type: string
         const: no-cache
+    PersonalOwnerSessionCookie:
+      description: >-
+        Host-only nonpersistent cookie with Path=/v1/personal-filing,
+        HttpOnly, and SameSite=Strict; Domain, Expires, and Max-Age are absent.
+      required: true
+      schema:
+        type: string
+        pattern: "^research_cockpit_owner_session=[A-Za-z0-9_-]{43}; Path=/v1/personal-filing; HttpOnly; SameSite=Strict$"
+    PersonalOwnerSessionCookieDeletion:
+      description: Exact-path deletion of the invalidated owner-session cookie.
+      required: true
+      schema:
+        type: string
+        const: research_cockpit_owner_session=; Path=/v1/personal-filing; HttpOnly; SameSite=Strict; Max-Age=0
   responses:
+    PersonalSessionForbidden:
+      description: >-
+        The loopback, Host, Origin, header, cookie, CSRF-intent, expiry,
+        rotation, logout, revocation, or bootstrap boundary was not accepted.
+        The response is deliberately value-free and does not disclose which
+        check failed or reflect any credential.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/PrivateNoStore"
+        Pragma:
+          $ref: "#/components/headers/PragmaNoCache"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
     InvalidWriteRequest:
       description: >-
         Idempotency-Key or Content-Type is missing, a non-persona header is

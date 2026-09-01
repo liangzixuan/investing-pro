@@ -2022,13 +2022,149 @@ Cycle 2z does not add history, dossier, evidence, valuation, thesis, alerts,
 export, persistence, remote access, tenancy, shared-service, or production
 safety.
 
-The next separate blocker after Cycle 2z is request-time authenticated
-owner-browser composition with a short-lived session-bound capability and
-CSRF, replay, and lifetime controls. Same-user hostile-process resistance
-remains later. Enterprise/shared-service requirements remain Out of scope.
-Exact design gates and nonclaims are in
+The next separate boundary after Cycle 2z is Cycle 3a request-time authenticated
+owner-browser composition. Its implementation is prepared with a short-lived
+session-bound capability and CSRF, replay, rotation, revocation, and lifetime
+controls, but source verification, terminal CI, and fresh Cycle 3a fact-release
+owner authorization remain pending. Same-user hostile-process resistance
+remains outside the claim.
+Enterprise/shared-service requirements remain Out of scope. Historical Cycle
+2z design gates and nonclaims are in
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
 and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
+
+## Cycle 3a prepared personal owner-session threat boundary
+
+Cycle 3a is **prepared but not promoted**. Source verification, terminal CI, and
+fresh Cycle 3a fact-release owner authorization remain pending, and this threat
+model records no Cycle 3a source revision, run, private fact-release acceptance,
+or Pass claim.
+
+Assets at risk are the operator-configured bootstrap secret, the one-time
+bootstrap state, the active session bearer and digest, exact Host/Origin binding, idle and
+absolute deadlines, the CSRF intent, protected readiness and selected-fact
+capabilities, rendered private browser state, local lifecycle timestamps,
+cross-tab invalidation semantics, the synthetic-default closure, and the
+absence of authority in durable browser state, request/response bodies, URLs,
+fixtures, logs, and error surfaces.
+
+Primary threats are implicit personal-mode activation; missing, malformed, or
+reused bootstrap configuration; unproven bootstrap entropy; cross-process reuse
+of a valid-shaped secret; process-environment residue; plaintext secret
+retention; bootstrap guessing or replay; session fixation, duplication, theft,
+or substitution; stale-cookie recovery that bypasses fresh-process state;
+cookie widening or persistence; malformed personal API bases; personal requests
+intercepted by a controlling service worker; wrong-origin or DNS-name confusion;
+Host or proxy spoofing; CSRF; duplicate or ambiguous headers; request-body,
+query, content-negotiation, or framing smuggling; idle or absolute expiry bypass;
+clock rollback; stale private rendering after backgrounding or server expiry;
+sibling tabs retaining private state after missed invalidation delivery;
+coordination-channel construction or publication failure; rotation races; use
+after logout, revocation, or process close; private work before authorization;
+browser storage or console leakage; and detailed denial or crash output.
+
+Controls are:
+
+- an operator-supplied exact 64-lowercase-hex
+  `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET` required by both explicit personal
+  API modes, with synthetic startup unchanged and personal configuration
+  rejected under synthetic mode; the API enforces only the representation,
+  while generating and encoding 32 fresh CSPRNG bytes for each process is an
+  operator precondition;
+- capture and deletion of that variable from the API process environment before
+  composition and listen, followed by digest-only bootstrap state;
+- exact personal web opt-in through
+  `RESEARCH_COCKPIT_WEB_MODE=personal_single_user_local`, a password field that
+  clears on submission, and a bodyless bootstrap POST whose secret appears only
+  in `X-Research-Cockpit-Bootstrap`;
+- one accepted bootstrap per authority/process, one active process-memory
+  session, fresh 32-byte session randomness, keyed digest retention, and
+  immediate destruction of the consumed bootstrap digest;
+- recovery with either no owner cookie or one syntactically valid stale owner
+  cookie only when the fresh process has an unused bootstrap digest and no
+  active session; success replaces the stale cookie, while malformed or
+  duplicate cookies fail;
+- a host-only nonpersistent cookie scoped to `/v1/personal-filing` with
+  `HttpOnly`, `SameSite=Strict`, and no active `Domain`, `Expires`, or `Max-Age`;
+- exact matching literal-loopback Origin and configured Host, proxy trust
+  disabled, credentialed CORS limited to that origin, rejection of forwarded
+  identity, and one fixed `X-Research-Cockpit-Intent` value for every
+  state-changing action;
+- prefetch rejection of every personal browser call unless the API base is an
+  exact literal-loopback HTTP origin with an explicit port from 1 through 65535
+  and no userinfo, path, query, or fragment, plus prefetch rejection when the
+  page has a controlling service worker or its controller state cannot be read;
+- a 10-minute half-open monotonic idle deadline, a 60-minute half-open monotonic
+  absolute deadline, no absolute extension on use or rotation, and invalidation
+  on nonfinite, failing, or backward-moving time;
+- digest replacement on rotation; server invalidation and exact-path cookie
+  clearing on logout or revocation; and destruction of bootstrap, session, and
+  digest-key state on process close;
+- browser-memory lifecycle deadlines or observations captured before dispatch
+  of each corresponding bootstrap, revalidation, rotation, or protected-read
+  request, never later than server authorization; successful authorized private
+  reads and rotation reset only local idle, while rotation preserves the known
+  absolute deadline;
+- a conservative local lease bounded by the idle TTL when a tab discovers an
+  active cookie without the original absolute timestamp, with no claim of exact
+  browser/server deadline synchronization;
+- local private-presentation clearing and deactivation on `pagehide` or hidden
+  visibility while preserving any known local deadline, without broadcast or server logout; clear-first server
+  revalidation on focus, `pageshow`, or visible transition without polling; and
+  immediate rendered-private-state clearing on local expiry, logout,
+  revocation, or failed revalidation; and
+- fail-closed nonpersistent `BroadcastChannel` coordination: construction
+  failure disables personal access, publish failure locks and clears the
+  initiating tab, and no lifecycle state enters Web Storage, IndexedDB, or a
+  durable cookie; immediate sibling invalidation or clear-then-revalidate is
+  claimed only for operational message delivery, while an already-active
+  sibling that misses a signal falls back to focus/visible/`pageshow` revalidation or
+  its conservative lease;
+- no Cycle 3a application service-worker registration or authority stored in
+  application service-worker state; and
+- authorization before protected capability access, private/no-store outcomes,
+  generic value-free failures, disabled application logging, and browser-
+  storage exclusion.
+
+The code protects both personal compositions in tests, but a source-binding
+control intentionally prevents the preserved Cycle 2z private artifact from
+running at Cycle 3a. Its release bundle and consumed approval are bound to exact
+source `e76eeca112949f58e7e6e4ed57bcc0ab7e102d66`; the new runtime embeds its own
+source revision, and the loader requires equality. Actual Cycle 3a
+`personal_fact_release` remains unaccepted until a fresh owner-reviewed release
+bundle and fresh single-use approval are bound to the eventual Cycle 3a source.
+Reusing or relabeling the Cycle 2z artifact is not a permitted shortcut.
+This is a pending personal owner-authorization gate, not an enterprise
+requirement, and the historical Cycle 2z evidence remains unchanged.
+
+The browser origin is part of the authority boundary. An API bound to
+`127.0.0.1` accepts only `http://127.0.0.1:3000`; an API bound to `::1` accepts
+only `http://[::1]:3000`. Opening the web app at `localhost` while the API uses
+literal IPv4 is denied rather than treated as equivalent.
+
+Residual risk remains deliberate. Cycle 3a proves possession of the bootstrap
+and current session bearer, not verified human identity. Bootstrap consumption
+and replay denial are per authority/process: there is no cross-process
+consumption registry, so same-secret reuse in another process is not detected.
+The API cannot prove that a valid-shaped secret came from a CSPRNG. The owner
+pastes the secret through the system clipboard and renders authorized data in
+the browser; hostile same-user processes, browser extensions, developer tools,
+screenshots, clipboard readers, and browser/process-memory inspection can
+observe those surfaces and remain nonclaims. Rejecting a controlling service
+worker is a narrow prefetch guard, not a broader claim against hostile browser
+state. The loopback HTTP boundary is not remote transport security.
+
+There is no remote, multi-user, tenant, shared-service, service-account, OIDC,
+WebAuthn, durable, session-surviving, credentialless-restart, or production
+authentication. A new process can establish a new session only with an
+operator-configured valid-shaped bootstrap; its freshness is an operator
+precondition. There is also no Cycle 3b personal dossier composition: the
+protected selected facts remain separate from the synthetic dossier, evidence,
+history, valuation, thesis, alerts, export, persistence, fetcher, and background
+flows.
+Exact design and pending gates are in
+[ADR 0053](./adr/0053-personal-local-owner-session.md) and the
+[Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 
@@ -2072,10 +2208,12 @@ and the [Cycle 2z exit matrix](./CYCLE_2Z_EXIT_MATRIX.md).
    mapping correctness, general parser coverage, or generalization beyond the
    exact frozen scope. Cycle 2y closes only coarse local readiness composition.
    Cycle 2z separately closes only the exact atomic same-snapshot selected-fact
-   release. Request-time authenticated owner-browser composition is the next
-   separately scoped boundary.
-   Organizational rights/steward approval and authority keys are separate
-   enterprise-profile gates, not personal-profile prerequisites.
+   release. Cycle 3a request-time authenticated owner-browser composition is
+   prepared, with source verification, terminal CI, and fresh Cycle 3a fact-
+   release owner authorization still required before promotion. That owner
+   authorization is a personal-profile gate. Organizational rights/steward
+   approval and authority keys are separate enterprise-profile gates, not
+   personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.
 4. **Licensed vendor data:** require executed field/channel/purpose/retention/derived-use/AI rights, executable policy versions, deletion tests, and unit economics before connection.
 5. **Alerts:** use at-least-once processing, deterministic dedupe keys, idempotent internal state, provider receipts, duplicate SLOs, and correction notices.
