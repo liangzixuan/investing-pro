@@ -161,8 +161,10 @@ acceptance, or promotion. Its required
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` action is deliberately
 incompatible with this ADR's narrower approval. Dynamic selection, refresh,
 persistence, and background work remain later. Cycle 3c connected-personal
-source policy is the next functional product blocker. Enterprise and
-shared-service controls remain Out of scope for the personal profile.
+source policy now has provider-neutral prepared public source only, with no
+provider or private activation. Cycle 3d durable local research vault is the
+next functional product blocker. Enterprise and shared-service controls remain
+Out of scope for the personal profile.
 
 ## References
 

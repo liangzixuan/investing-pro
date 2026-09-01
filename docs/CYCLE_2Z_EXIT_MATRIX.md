@@ -127,9 +127,10 @@ Hostile same-user processes remain unproven. Cycle 3b authenticated personal
 dossier composition has prepared public source but no fresh owner
 authorization, terminal exact-source evidence, private activation, acceptance,
 or promotion. Dynamic selection, refresh, persistence, and background work
-remain later milestones. Cycle 3c connected-personal source policy is the next
-functional product blocker. Enterprise and shared-service controls remain Out
-of scope.
+remain later milestones. Cycle 3c connected-personal source policy now has
+provider-neutral prepared public source only, with no provider or private
+activation. Cycle 3d durable local research vault is the next functional
+product blocker. Enterprise and shared-service controls remain Out of scope.
 
 ## Exit rule
 

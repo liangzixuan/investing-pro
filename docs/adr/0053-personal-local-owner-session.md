@@ -238,8 +238,10 @@ mixing. It has no fresh owner authorization, terminal exact-source evidence,
 private activation, acceptance, or promotion. Its exact approval action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; the Cycle 3a approval cannot be
 reused. Dynamic selection, refresh, persistence, and background work remain
-later milestones. Cycle 3c connected-personal source policy is the next
-functional product blocker.
+later milestones. Cycle 3c connected-personal source policy now has
+provider-neutral prepared public source only, with no provider or private
+activation. Cycle 3d durable local research vault is the next functional
+product blocker.
 
 ## References
 

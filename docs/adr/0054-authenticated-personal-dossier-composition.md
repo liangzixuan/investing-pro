@@ -170,12 +170,15 @@ Promotion requires all of the following at one later exact source:
    CI.
 
 Until those gates pass, Cycle 3b remains prepared and not promoted. Cycle 3c
-connected-personal source policy is the next functional product blocker, but
-it must not be composed into this offline milestone.
+now has separate prepared public source for a connected-personal source-policy
+control plane. It contains no actual provider or external request and must not
+be composed into or treated as promotion of this offline milestone. Cycle 3d
+durable local research vault is the next functional implementation blocker.
 
 ## References
 
 - [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
+- [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)
 - [ADR 0053](./0053-personal-local-owner-session.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

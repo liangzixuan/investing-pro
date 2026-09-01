@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Research Cockpit Local API
-  version: 0.5.0
+  version: 0.6.0
   description: >-
     Evidence-first loopback API. Research data and the two research-state PUT
     operations remain synthetic-only. An explicit personal-readiness mode may
@@ -9,8 +9,10 @@ info:
     explicit personal-fact mode may expose its startup-fixed projection, only
     behind a short-lived local owner session. An explicit personal-dossier
     mode may expose one startup-fixed, provenance-linked dossier graph through
-    the same owner-session boundary. X-Demo-Persona values are public selectors,
-    not secrets, credentials, or owner authentication.
+    the same owner-session boundary. An explicit connected-personal mode exposes
+    only startup-fixed policy status and a bodyless one-way kill action; it has
+    no data-request operation. X-Demo-Persona values are public selectors, not
+    secrets, credentials, or owner authentication.
 servers:
   - url: http://127.0.0.1:3100
 paths:
@@ -348,6 +350,77 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: No owner-authorized personal dossier release is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/connected-source-policy/status:
+    get:
+      operationId: getConnectedSourcePolicyStatus
+      summary: Read the connected source-policy lifecycle and budget status.
+      description: >-
+        Authenticated, parameter-free status for the startup-fixed connected
+        source-policy controller. The closed response contains only lifecycle
+        state, stable source and policy identifiers, and application-side
+        budget counters. It accepts no path or query parameters and no request
+        body; HEAD is not exposed.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "200":
+          description: The connected source-policy status is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectedSourcePolicyStatus"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/connected-source-policy/kill:
+    post:
+      operationId: killConnectedSourcePolicy
+      summary: Disable future connected source-policy eligibility.
+      description: >-
+        Body-free owner action against the startup-fixed connected source-policy
+        controller. It requires the exact mutation intent header and accepts no
+        path or query parameters and no request body.
+      security:
+        - PersonalOwnerSession: []
+      parameters:
+        - name: X-Research-Cockpit-Intent
+          in: header
+          required: true
+          schema:
+            type: string
+            const: connected-source-policy-kill
+      responses:
+        "204":
+          description: Future connected source-policy eligibility is disabled.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+        "403":
+          description: The request boundary, owner session, or intent is not accepted.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -1384,6 +1457,146 @@ components:
         - operating_cash_flow
         - operating_income
         - revenue
+    ConnectedSourcePolicyStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - profile
+        - status
+        - reasonCode
+        - sourceId
+        - policyId
+        - policyVersion
+        - budget
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        profile:
+          const: personal_single_user_local_connected
+        status:
+          type: string
+          enum:
+            - disabled
+            - ready
+            - killed
+            - expired
+            - revoked
+            - incompatible
+            - budget_exhausted
+        reasonCode:
+          type:
+            - string
+            - "null"
+          enum:
+            - NOT_EXPLICITLY_ENABLED
+            - OWNER_KILL_SWITCH
+            - POLICY_NOT_ADMITTED
+            - POLICY_NOT_EFFECTIVE
+            - POLICY_REVIEW_DUE
+            - POLICY_EXPIRED
+            - POLICY_REVOKED
+            - POLICY_INCOMPATIBLE
+            - CLOCK_UNAVAILABLE
+            - CLOCK_INVALID
+            - BUDGET_EXHAUSTED
+            - null
+        sourceId:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z][A-Za-z0-9._:-]*$"
+        policyId:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        policyVersion:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 64
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        budget:
+          oneOf:
+            - $ref: "#/components/schemas/ConnectedSourceBudgetStatus"
+            - type: "null"
+    ConnectedSourceBudgetStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - currency
+        - estimatedSpendMicrounits
+        - requestBytes
+        - requests
+        - responseBytes
+        - storageBytes
+      properties:
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          pattern: "^[A-Z]{3}$"
+        estimatedSpendMicrounits:
+          $ref: "#/components/schemas/ConnectedSourceBudgetQuantity"
+        requestBytes:
+          $ref: "#/components/schemas/ConnectedSourceByteBudgetQuantity"
+        requests:
+          $ref: "#/components/schemas/ConnectedSourceRequestCountBudgetQuantity"
+        responseBytes:
+          $ref: "#/components/schemas/ConnectedSourceByteBudgetQuantity"
+        storageBytes:
+          $ref: "#/components/schemas/ConnectedSourceBudgetQuantity"
+    ConnectedSourceBudgetQuantity:
+      type: object
+      additionalProperties: false
+      required:
+        - limit
+        - used
+      properties:
+        limit:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        used:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+    ConnectedSourceByteBudgetQuantity:
+      type: object
+      additionalProperties: false
+      required:
+        - limit
+        - used
+      properties:
+        limit:
+          type: integer
+          minimum: 0
+          maximum: 1048576
+        used:
+          type: integer
+          minimum: 0
+          maximum: 1048576
+    ConnectedSourceRequestCountBudgetQuantity:
+      type: object
+      additionalProperties: false
+      required:
+        - limit
+        - used
+      properties:
+        limit:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        used:
+          type: integer
+          minimum: 0
+          maximum: 10000
     InstrumentId:
       type: string
       minLength: 3

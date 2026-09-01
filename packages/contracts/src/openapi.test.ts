@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest";
 import type {
   AlertWriteRequestDto,
   AlertWriteResponseDto,
+  ConnectedSourceBudgetQuantityDto,
+  ConnectedSourceBudgetStatusDto,
+  ConnectedSourcePolicyStatusDto,
   PersonalFilingDossierDto,
   PersonalFilingDossierEvidenceDto,
   PersonalFilingDossierFactDto,
@@ -81,12 +84,35 @@ const PERSONAL_FILING_FACT_KEYS = [
   "operating_income",
   "revenue",
 ] as const;
+const CONNECTED_SOURCE_POLICY_STATUSES = [
+  "disabled",
+  "ready",
+  "killed",
+  "expired",
+  "revoked",
+  "incompatible",
+  "budget_exhausted",
+] as const;
+const CONNECTED_SOURCE_POLICY_REASON_CODES = [
+  "NOT_EXPLICITLY_ENABLED",
+  "OWNER_KILL_SWITCH",
+  "POLICY_NOT_ADMITTED",
+  "POLICY_NOT_EFFECTIVE",
+  "POLICY_REVIEW_DUE",
+  "POLICY_EXPIRED",
+  "POLICY_REVOKED",
+  "POLICY_INCOMPATIBLE",
+  "CLOCK_UNAVAILABLE",
+  "CLOCK_INVALID",
+  "BUDGET_EXHAUSTED",
+  "null",
+] as const;
 
 describe("local API OpenAPI contract", () => {
-  it("exposes only the two exact update-only research-state routes", async () => {
+  it("exposes only the exact local API routes", async () => {
     const source = await openApiSource();
     expect(source).toContain("openapi: 3.1.0");
-    expect(source).toContain("  version: 0.5.0");
+    expect(source).toContain("  version: 0.6.0");
     expect(source).toContain("  - url: http://127.0.0.1:3100");
     expect(source).not.toContain("0.0.0.0");
     expect(topLevelPaths(source)).toEqual([
@@ -102,6 +128,8 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/readiness",
       "/v1/personal-filing/selected-facts",
       "/v1/personal-filing/dossier",
+      "/v1/personal-filing/connected-source-policy/status",
+      "/v1/personal-filing/connected-source-policy/kill",
       "/v1/theses/{thesisId}",
       "/v1/alerts/{alertId}",
     ]);
@@ -504,6 +532,199 @@ describe("local API OpenAPI contract", () => {
     expect(unsupportedChart).toContain("NO_OWNER_APPROVED_CHART_FACTS");
   });
 
+  it("freezes the exact authenticated connected source-policy administration contract", async () => {
+    const source = await openApiSource();
+    const statusRoute = pathSection(
+      source,
+      "/v1/personal-filing/connected-source-policy/status",
+    );
+    const killRoute = pathSection(
+      source,
+      "/v1/personal-filing/connected-source-policy/kill",
+    );
+
+    expect(
+      statusRoute.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim()),
+    ).toEqual(["get:"]);
+    expect(statuses(statusRoute)).toEqual(["200", "403"]);
+    expect(parameterRefs(statusRoute)).toEqual([]);
+    expect(statusRoute).not.toContain("parameters:");
+    expect(statusRoute).not.toContain("requestBody:");
+    expect(statusRoute).not.toContain("in: query");
+    expect(statusRoute).toContain("PersonalOwnerSession: []");
+    expect(statusRoute).toContain("HEAD is not exposed");
+    expect(statusRoute).toContain(
+      '$ref: "#/components/schemas/ConnectedSourcePolicyStatus"',
+    );
+    expect(
+      statusRoute.match(/#\/components\/headers\/PrivateNoStore/g),
+    ).toHaveLength(2);
+    expect(
+      statusRoute.match(/#\/components\/headers\/PragmaNoCache/g),
+    ).toHaveLength(2);
+
+    expect(
+      killRoute.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim()),
+    ).toEqual(["post:"]);
+    expect(statuses(killRoute)).toEqual(["204", "403"]);
+    expect(parameterRefs(killRoute)).toEqual([]);
+    expect(killRoute.match(/^ {8}- name:/gm)).toHaveLength(1);
+    expect(killRoute).not.toContain("requestBody:");
+    expect(killRoute).not.toContain("in: path");
+    expect(killRoute).not.toContain("in: query");
+    expect(killRoute).toContain("PersonalOwnerSession: []");
+    expect(killRoute).toContain("name: X-Research-Cockpit-Intent");
+    expect(killRoute).toContain("in: header");
+    expect(killRoute).toContain("required: true");
+    expect(killRoute).toContain("const: connected-source-policy-kill");
+    expect(
+      killRoute.match(/#\/components\/headers\/PrivateNoStore/g),
+    ).toHaveLength(2);
+    expect(
+      killRoute.match(/#\/components\/headers\/PragmaNoCache/g),
+    ).toHaveLength(2);
+    expect(
+      boundedSection(killRoute, '        "204":', '        "403":'),
+    ).not.toContain("content:");
+
+    const statusSchema = schemaSection(
+      source,
+      "ConnectedSourcePolicyStatus",
+      "ConnectedSourceBudgetStatus",
+    );
+    expect(statusSchema).toContain("additionalProperties: false");
+    expect(requiredKeys(statusSchema)).toEqual([
+      "schemaVersion",
+      "profile",
+      "status",
+      "reasonCode",
+      "sourceId",
+      "policyId",
+      "policyVersion",
+      "budget",
+    ]);
+    expect(schemaKeys(statusSchema)).toEqual(requiredKeys(statusSchema));
+    expect(statusSchema).toContain('const: "1.0.0"');
+    expect(statusSchema).toContain(
+      "const: personal_single_user_local_connected",
+    );
+    expect(
+      listValues(
+        boundedSection(statusSchema, "        status:", "        reasonCode:"),
+        /^ {12}- ([a-z_]+)$/gm,
+      ),
+    ).toEqual(CONNECTED_SOURCE_POLICY_STATUSES);
+    expect(
+      listValues(
+        boundedSection(
+          statusSchema,
+          "        reasonCode:",
+          "        sourceId:",
+        ),
+        /^ {12}- ([A-Z_]+|null)$/gm,
+      ),
+    ).toEqual(CONNECTED_SOURCE_POLICY_REASON_CODES);
+    for (const [field, nextField, maximumLength, pattern] of [
+      ["sourceId", "policyId", 128, '"^[A-Za-z][A-Za-z0-9._:-]*$"'],
+      ["policyId", "policyVersion", 128, '"^[A-Za-z0-9][A-Za-z0-9._:-]*$"'],
+      ["policyVersion", "budget", 64, '"^[A-Za-z0-9][A-Za-z0-9._:-]*$"'],
+    ] as const) {
+      const fieldSchema = boundedSection(
+        statusSchema,
+        `        ${field}:`,
+        `        ${nextField}:`,
+      );
+      expect(fieldSchema).toContain('- "null"');
+      expect(fieldSchema).toContain("minLength: 1");
+      expect(fieldSchema).toContain(`maxLength: ${maximumLength}`);
+      expect(fieldSchema).toContain(`pattern: ${pattern}`);
+    }
+    const budgetProperty = statusSchema.slice(
+      statusSchema.indexOf("        budget:"),
+    );
+    expect(budgetProperty).toContain("oneOf:");
+    expect(budgetProperty).toContain(
+      '$ref: "#/components/schemas/ConnectedSourceBudgetStatus"',
+    );
+    expect(budgetProperty).toContain('type: "null"');
+
+    const budgetSchema = schemaSection(
+      source,
+      "ConnectedSourceBudgetStatus",
+      "ConnectedSourceBudgetQuantity",
+    );
+    expect(budgetSchema).toContain("additionalProperties: false");
+    expect(requiredKeys(budgetSchema)).toEqual([
+      "currency",
+      "estimatedSpendMicrounits",
+      "requestBytes",
+      "requests",
+      "responseBytes",
+      "storageBytes",
+    ]);
+    expect(schemaKeys(budgetSchema)).toEqual(requiredKeys(budgetSchema));
+    expect(budgetSchema).toContain('pattern: "^[A-Z]{3}$"');
+    expect(
+      budgetSchema.match(
+        /#\/components\/schemas\/ConnectedSourceBudgetQuantity/g,
+      ),
+    ).toHaveLength(2);
+    expect(
+      budgetSchema.match(
+        /#\/components\/schemas\/ConnectedSourceByteBudgetQuantity/g,
+      ),
+    ).toHaveLength(2);
+    expect(
+      budgetSchema.match(
+        /#\/components\/schemas\/ConnectedSourceRequestCountBudgetQuantity/g,
+      ),
+    ).toHaveLength(1);
+
+    const quantitySchema = schemaSection(
+      source,
+      "ConnectedSourceBudgetQuantity",
+      "ConnectedSourceByteBudgetQuantity",
+    );
+    const byteQuantitySchema = schemaSection(
+      source,
+      "ConnectedSourceByteBudgetQuantity",
+      "ConnectedSourceRequestCountBudgetQuantity",
+    );
+    const requestCountQuantitySchema = schemaSection(
+      source,
+      "ConnectedSourceRequestCountBudgetQuantity",
+      "InstrumentId",
+    );
+    for (const exactQuantitySchema of [
+      quantitySchema,
+      byteQuantitySchema,
+      requestCountQuantitySchema,
+    ]) {
+      expect(exactQuantitySchema).toContain("additionalProperties: false");
+      expect(requiredKeys(exactQuantitySchema)).toEqual(["limit", "used"]);
+      expect(schemaKeys(exactQuantitySchema)).toEqual(
+        requiredKeys(exactQuantitySchema),
+      );
+      expect(exactQuantitySchema.match(/minimum: 0/g)).toHaveLength(2);
+    }
+    expect(quantitySchema.match(/maximum: 9007199254740991/g)).toHaveLength(2);
+    expect(byteQuantitySchema.match(/maximum: 1048576/g)).toHaveLength(2);
+    expect(requestCountQuantitySchema.match(/maximum: 10000/g)).toHaveLength(2);
+
+    const publicStatusSurface = `${statusRoute}\n${statusSchema}`.toLowerCase();
+    for (const forbidden of [
+      "provider",
+      "credential",
+      "secret",
+      "legal",
+      "license",
+      "terms",
+      "entitlement",
+    ]) {
+      expect(publicStatusSurface, forbidden).not.toContain(forbidden);
+    }
+  });
+
   it("publishes the exact non-secret persona selectors and strict write headers", async () => {
     const source = await openApiSource();
     for (const [schema, nextSchema] of [
@@ -755,6 +976,28 @@ describe("local API OpenAPI contract", () => {
         status: "unsupported",
       },
     } satisfies PersonalFilingDossierDto;
+    const connectedSourceBudgetQuantity = {
+      limit: 100,
+      used: 25,
+    } satisfies ConnectedSourceBudgetQuantityDto;
+    const connectedSourceBudget = {
+      currency: "USD",
+      estimatedSpendMicrounits: connectedSourceBudgetQuantity,
+      requestBytes: connectedSourceBudgetQuantity,
+      requests: connectedSourceBudgetQuantity,
+      responseBytes: connectedSourceBudgetQuantity,
+      storageBytes: connectedSourceBudgetQuantity,
+    } satisfies ConnectedSourceBudgetStatusDto;
+    const connectedSourcePolicyStatus = {
+      schemaVersion: "1.0.0",
+      profile: "personal_single_user_local_connected",
+      status: "ready",
+      reasonCode: null,
+      sourceId: "connected-source-primary",
+      policyId: "owner-policy-primary",
+      policyVersion: "v1",
+      budget: connectedSourceBudget,
+    } satisfies ConnectedSourcePolicyStatusDto;
     const thesisRequest = {
       instrumentId: "instrument.synthetic.syn1",
       claim: "Synthetic claim",
@@ -859,6 +1102,28 @@ describe("local API OpenAPI contract", () => {
       "schemaVersion",
       "status",
       "valuationInputs",
+    ]);
+    expect(Object.keys(connectedSourceBudgetQuantity)).toEqual([
+      "limit",
+      "used",
+    ]);
+    expect(Object.keys(connectedSourceBudget)).toEqual([
+      "currency",
+      "estimatedSpendMicrounits",
+      "requestBytes",
+      "requests",
+      "responseBytes",
+      "storageBytes",
+    ]);
+    expect(Object.keys(connectedSourcePolicyStatus)).toEqual([
+      "schemaVersion",
+      "profile",
+      "status",
+      "reasonCode",
+      "sourceId",
+      "policyId",
+      "policyVersion",
+      "budget",
     ]);
   });
 });

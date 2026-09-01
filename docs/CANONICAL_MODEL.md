@@ -2005,10 +2005,90 @@ No fresh approval or private execution is authorized by the prepared source.
 Dynamic selection, refresh, connected sources, persistence, background work,
 security-master mapping, prices, broad statements, owner corrections, personal
 thesis/alerts/exports, and remote/shared authentication remain later or
-out-of-scope. Cycle 3c connected-personal source policy is the next functional
-product blocker. See
+out-of-scope. Cycle 3c source policy remains a separate control plane. See
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
+
+Cycle 3c has provider-neutral prepared public source only and is not privately activated,
+accepted, or promoted. It adds the distinct
+`personal_single_user_local_connected` control-plane profile without changing
+the preserved offline profile. The canonical implementation lives in
+`@research-cockpit/connected-source-policy`; schema `1.0.0` is anchored by
+`CONNECTED_SOURCE_POLICY_SCHEMA_VERSION` and profile identity by
+`CONNECTED_SOURCE_POLICY_PROFILE`.
+
+`ConnectedSourcePolicyConfig` is a closed tagged union. Disabled configuration
+contains only `enabled: false`, profile, and schema version. Enabled
+configuration additionally fixes `sourceId`, one opaque `secretReference`,
+`ConnectedSourceIntendedUse`, and `ConnectedSourceBudget`. Budget coordinates
+are currency plus exact request count, request bytes, response bytes, storage
+bytes, and estimated-spend microunits. The reference has the designated locator
+grammar `owner-local-ref:v1:<store>:<entry>`; no separate provider-credential
+field exists. The grammar does not prove that operator-supplied store and entry
+identifiers are non-secret or that credential material exists. Non-secret
+locator identifiers are an operator precondition.
+
+`ConnectedSourcePolicyDocument` fixes `policyId`, `policyVersion`, `sourceId`,
+profile, schema version, provider identity/product/tier/opaque entitlement,
+terms and license URI/version, effective/review/expiry/revocation chronology,
+allowed purposes/geographies/devices, controls, and an exact allowlist. The
+only operations are `fetch_metadata`, `fetch_snapshot`, and `fetch_history`.
+Controls explicitly model attribution, display, derivation, cache, history,
+export, retention, deletion, and termination. Prohibited or unknown use is not
+converted into permission.
+
+`sourceId`, `policyId`, and `policyVersion` are status-visible and therefore
+must also be configured as non-secret metadata. Their bounded token grammar
+does not prove that semantic property.
+
+`parseConnectedSourcePolicyConfig` returns only parsed or rejected state.
+`createConnectedSourcePolicy` owns a process-memory controller with `status`,
+`kill`, `admitSourcePolicy`, `authorizeOperation`, `reserveBudget`, and
+`execute`. Canonical public statuses are `disabled`, `ready`, `killed`,
+`expired`, `revoked`, `incompatible`, and `budget_exhausted`; a reason code
+keeps lifecycle or budget denial explicit. Admission is one-shot. Kill is
+monotonic within the process. Authorization admits only one exact
+source/host/operation tuple. Reservation binds a replay key plus declared
+request, maximum response, maximum storage, and maximum estimated-spend units
+to a branded capability. Execution consumes that capability, and response bytes
+remain behind a separate branded capability until
+`readConnectedSourceResponse`.
+
+The owner-local secret and transport types are injection seams, not adapters.
+Startup receives no separate plaintext provider-credential field, performs no
+credential-readiness probe, and resolves no reference. If a future gateway composes
+`OwnerLocalSecretAdapter` and `ConnectedSourceTransportAdapter`, resolution is
+just in time only after authorization and budget reservation. The Cycle 3c API
+composes neither interface nor a transport capability. Within its
+connected-source-policy business/control surface it exposes only authenticated
+`GET /v1/personal-filing/connected-source-policy/status` and bodyless
+`POST /v1/personal-filing/connected-source-policy/kill` with intent
+`connected-source-policy-kill`. The dedicated connected app also exposes health
+and the five inherited owner-session lifecycle routes; none provide provider
+transport.
+
+The connected profile starts through a separate non-splitting
+`connected-server` entry, while the ordinary server rejects that mode. Its
+exact first-party static graph is limited to the connected server, minimal app
+and composition root, policy loader and routes, owner-session boundary, and
+listen options. Demo, personal-corpus, dossier/fact, research-state, and
+command-execution modules are not loaded into that entry.
+
+The registry bundle accepts only a canonical drive-qualified Windows path or
+single-rooted POSIX path. UNC, device-namespace, double-root, and root-relative
+Windows forms fail before filesystem access. This does not prove that an
+accepted drive is not mapped or a POSIX path is not network-mounted; locally
+backed bundle storage is an operator precondition.
+
+This model contains no actual provider/source credential, provider secret
+adapter, external request, provider response, entitlement or legal
+determination, provider billing ceiling, SEC refresh, or market-data adapter.
+Application budgets are local admission
+limits, not provider invoice guarantees. Enterprise/shared-service controls
+remain out of scope for the personal profile. Exact prepared design and gates
+are in [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and
+the [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md). Cycle 3d durable local
+research vault is the next functional implementation blocker.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

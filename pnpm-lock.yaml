@@ -53,6 +53,9 @@ importers:
       '@fastify/helmet':
         specifier: 13.1.0
         version: 13.1.0
+      '@research-cockpit/connected-source-policy':
+        specifier: workspace:*
+        version: link:../../packages/connected-source-policy
       '@research-cockpit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -100,6 +103,8 @@ importers:
         version: 10.6.0
 
   modules/research-state: {}
+
+  packages/connected-source-policy: {}
 
   packages/contracts: {}
 

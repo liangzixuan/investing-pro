@@ -1163,8 +1163,39 @@ exact source and canonical response. See
 [ADR 0054](./docs/adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./docs/CYCLE_3B_EXIT_MATRIX.md). Dynamic selection,
 refresh, network access, persistence, and background work remain later
-milestones; Cycle 3c connected-personal source policy is the next functional
-product blocker.
+milestones. The separate Cycle 3c control plane below does not authorize or
+promote Cycle 3b.
+
+Cycle 3c now has provider-neutral prepared public source for the explicit
+`personal_single_user_local_connected` control plane. The
+`@research-cockpit/connected-source-policy` package parses one canonical,
+startup-fixed source policy and exposes process-memory `status`, `kill`,
+`admitSourcePolicy`, `authorizeOperation`, `reserveBudget`, and `execute`
+seams. Within the connected-source-policy business/control surface, the API
+composes only authenticated
+`GET /v1/personal-filing/connected-source-policy/status` and bodyless
+`POST /v1/personal-filing/connected-source-policy/kill`; it receives no secret
+adapter or transport capability. The dedicated connected app additionally
+exposes health and the five inherited owner-session lifecycle routes; none
+provide provider transport. Connected startup uses the separate
+non-splitting `connected-server` entry; the ordinary server refuses this mode,
+and the connected static graph contains only the minimal app, policy loader,
+owner-session, status/kill routes, and loopback-listen modules. It does not load
+the demo app, personal filing corpus, dossier/fact loaders, research state, or
+command-execution modules. Startup accepts only a designated
+`owner-local-ref:v1:<store>:<entry>` locator in
+`CONNECTED_SOURCE_POLICY_SECRET_REFERENCE`, has no separate provider-credential
+field, performs no credential-readiness probe, and resolves no credential. The
+locator grammar cannot prove its operator-supplied store and entry identifiers
+are non-secret; that is an operator precondition. The same precondition applies
+to status-visible source and policy identifiers. The public source includes no
+actual provider/source credential, provider secret adapter, external request,
+entitlement or legal determination, provider billing ceiling, SEC refresh, or
+market-data adapter. It has not been
+privately activated, accepted, or promoted. See
+[ADR 0055](./docs/adr/0055-connected-personal-source-policy-registry.md) and the
+[Cycle 3c exit matrix](./docs/CYCLE_3C_EXIT_MATRIX.md). Cycle 3d durable local
+research vault is the next functional implementation blocker.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

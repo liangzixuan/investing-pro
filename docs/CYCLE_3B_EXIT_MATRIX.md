@@ -117,13 +117,16 @@ Cycle 3b cannot be marked Pass until the exact-source public gates and the
 fresh owner-authorized private activation both complete. A prepared source or a
 large synthetic test count is not a substitute for that end-user result.
 
-Cycle 3c connected-personal profile and source-policy registry is the next
-functional product blocker. It remains separate and cannot silently widen this
-offline Cycle 3b boundary.
+Cycle 3c now has prepared public source for a connected-personal source-policy
+control plane. It remains separate, contains no actual provider or external
+request, and cannot silently widen or promote this offline Cycle 3b boundary.
+Cycle 3d durable local research vault is the next functional implementation
+blocker after that prepared control plane.
 
 ## References
 
 - [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md)
+- [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md)
 - [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md)
 - [Personal product-breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](./BUILD_ROADMAP.md)

@@ -8,9 +8,10 @@ const repositoryDirectory = resolve(process.cwd(), "../..");
 const sourceCommit = resolveCleanBuildSourceIdentity(repositoryDirectory);
 
 export default defineConfig({
-  entry: ["src/server.ts"],
+  entry: ["src/server.ts", "src/connected-server.ts"],
   outDir: "dist/src",
   format: ["esm"],
+  splitting: false,
   target: "node24",
   sourcemap: true,
   clean: true,

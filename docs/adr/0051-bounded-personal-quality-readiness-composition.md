@@ -167,8 +167,9 @@ only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
 Cycle 3b authenticated personal dossier composition has prepared public source
 but no fresh owner authorization, terminal exact-source evidence, private
 activation, acceptance, or promotion. Cycle 3c connected-personal source policy
-is the next functional product blocker; same-user hostile-process resistance
-remains unproven.
+now has provider-neutral prepared public source only, with no provider or private
+activation. Cycle 3d durable local research vault is the next functional product
+blocker; same-user hostile-process resistance remains unproven.
 
 ## References
 

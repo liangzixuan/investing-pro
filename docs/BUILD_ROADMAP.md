@@ -1977,16 +1977,18 @@ They are not current personal-profile blockers.
 Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
 source but no fresh owner authorization, terminal exact-source result, private
-activation, acceptance, or promotion. Cycles 3c through 3q remain planned.** No
-parity claim is made.
+activation, acceptance, or promotion. Cycle 3c has prepared public source only;
+it is not privately activated, accepted, or promoted. Cycles 3d through 3q
+remain planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
 is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
 dossier composition is prepared but not promoted; Cycle 3c connected-personal
-source policy is the next functional product blocker. Any later networked
-source must enter through a separately declared, explicitly enabled
+source-policy control plane is prepared but not promoted; Cycle 3d durable
+local vault is the next functional implementation blocker. Any later networked
+source must still enter through the separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
 request, storage, and estimated-spend budgets. Those application budgets are
@@ -2150,11 +2152,80 @@ fresh owner review of the exact canonical dossier and one single-use
 exact source, bundle, quality result, plan, and response, followed by terminal
 public and private evidence. This prepared source authorizes no private run.
 
-Dynamic selection or `knownAt`, connected sources, refresh, persistence,
+Dynamic selection or `knownAt`, connected source execution, refresh, persistence,
 background work, security-master mapping, prices, broad statements, owner
 corrections, personal thesis/alerts/exports, hostile same-user resistance, and
-remote/shared authentication remain nonclaims. Cycle 3c connected-personal
-profile and source-policy registry is the next functional product blocker.
+remote/shared authentication remain nonclaims. Cycle 3c prepares the separate
+connected-personal source-policy control plane below without widening Cycle 3b.
+
+### Cycle 3c — provider-neutral connected-personal source-policy control plane
+
+Status: **Provider-neutral prepared public source only; not privately activated, accepted, or
+promoted.** The exact decision and pending gates are in
+[ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
+[Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
+
+The zero-production-dependency
+`@research-cockpit/connected-source-policy` package adds exact profile
+`personal_single_user_local_connected`, schema constant
+`CONNECTED_SOURCE_POLICY_SCHEMA_VERSION`, parser
+`parseConnectedSourcePolicyConfig`, and a process-memory controller from
+`createConnectedSourcePolicy`. Its exact methods are `status`, `kill`,
+`admitSourcePolicy`, `authorizeOperation`, `reserveBudget`, and `execute`.
+Source policies close provider identity, product/tier, opaque entitlement,
+terms/license versions, effective/review/expiry/revocation chronology, use
+scope, attribution, display, derivation, cache, history, export, retention,
+deletion, termination, exact host/operation pairs, and request/request-byte/
+response-byte/storage-byte/estimated-spend budgets.
+
+API startup is selected only by exact
+`RESEARCH_COCKPIT_MODE=personal_single_user_local_connected` with exact
+`CONNECTED_SOURCE_POLICY_BUNDLE_PATH`,
+`CONNECTED_SOURCE_POLICY_BUNDLE_SHA256`, and
+`CONNECTED_SOURCE_POLICY_SECRET_REFERENCE`. The canonical bundle wrapper has
+exactly `config`, `policy`, and `schemaVersion`. Default synthetic startup and
+all prior offline personal modes reject connected-only configuration. The
+loader verifies the stable regular file, fixed filename, digest, and canonical
+JSON; wipes its owned byte carrier; and deletes captured connected environment
+entries before listen. Cryptographic erasure of JavaScript strings is not
+claimed. The path must be drive-qualified on Windows or single-rooted on POSIX;
+UNC, device-namespace, double-root, and root-relative Windows forms fail before
+file access. Mapped drives and network-mounted POSIX backing cannot be proven
+by the application and remain an operator-locality precondition.
+
+Connected startup is a distinct non-splitting `connected-server` build and
+start entry. The ordinary server rejects connected mode. Its frozen static
+graph includes only the minimal connected app and composition root, policy
+loader and status/kill routes, owner-session boundary, listen options, and
+connected server; it excludes the demo app, personal filing corpus,
+dossier/fact loaders, research state, and command-execution modules.
+
+Within the connected-source-policy business/control surface, the API composes
+only owner-session-authenticated
+`GET /v1/personal-filing/connected-source-policy/status` and bodyless
+`POST /v1/personal-filing/connected-source-policy/kill`; the latter requires
+exact intent `connected-source-policy-kill`. The API receives no
+`OwnerLocalSecretAdapter`, `ConnectedSourceTransportAdapter`, or transport
+capability and never calls the controller's authorize, reserve, or execute
+seams. The dedicated connected app also exposes health and the five inherited
+owner-session lifecycle routes; none provide provider transport. Startup has
+no separate provider-credential field and accepts only a designated
+`owner-local-ref:v1:<store>:<entry>` locator. The locator's operator-supplied
+identifiers, and the source/policy identifiers returned by status, must be
+non-secret metadata; their semantics cannot be proved from grammar alone.
+Startup performs no credential-readiness probe and resolves no credential. A
+future execution gateway may resolve that reference just in time only after
+policy and budget admission.
+
+This prepared source contains no actual provider/source credential, provider
+secret adapter, external request, provider response, entitlement or legal
+determination, provider billing ceiling, SEC refresh, EDGAR fetch, or
+market-data adapter. Application budgets
+constrain only future work the project may start; they do not cap a provider
+invoice. Organizational stewardship, tenant controls, commercial use, shared
+service operation, and production billing remain personal-profile out-of-scope
+enterprise work. Cycle 3d durable local research vault is the next functional
+implementation blocker.
 
 The delivery waves are:
 

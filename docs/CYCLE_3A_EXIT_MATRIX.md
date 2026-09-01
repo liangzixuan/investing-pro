@@ -193,7 +193,9 @@ terminal exact-source evidence, private activation, acceptance, or promotion.
 Its required fresh action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; Cycle 2z and Cycle 3a approvals
 are incompatible. Dynamic selection, refresh, persistence, and background work
-remain later milestones. Cycle 3c connected-personal source policy is the next
-functional product blocker. See
+remain later milestones. Cycle 3c connected-personal source policy now has
+provider-neutral prepared public source only, with no provider or private
+activation. Cycle 3d durable local research vault is the next functional
+product blocker. See
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
-[Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
+[Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).

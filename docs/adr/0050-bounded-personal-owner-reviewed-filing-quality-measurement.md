@@ -227,8 +227,9 @@ composition only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b authenticated personal
 dossier composition has prepared public source but no fresh owner
 authorization, terminal exact-source evidence, private activation, acceptance,
-or promotion. Cycle 3c connected-personal source policy is the next functional
-product blocker.
+or promotion. Cycle 3c connected-personal source policy now has provider-neutral
+prepared public source only, with no provider or private activation. Cycle 3d
+durable local research vault is the next functional product blocker.
 Enterprise and shared-service requirements remain Out of scope for the
 personal profile. See
 [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)

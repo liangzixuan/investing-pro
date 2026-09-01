@@ -2,7 +2,8 @@ export type ApiMode =
   | "synthetic_demo"
   | "personal_readiness"
   | "personal_fact_release"
-  | "personal_dossier";
+  | "personal_dossier"
+  | "personal_single_user_local_connected";
 
 export type ApiModeEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -21,7 +22,8 @@ export function resolveApiMode(environment: ApiModeEnvironment): ApiMode {
     value !== "synthetic_demo" &&
     value !== "personal_readiness" &&
     value !== "personal_fact_release" &&
-    value !== "personal_dossier"
+    value !== "personal_dossier" &&
+    value !== "personal_single_user_local_connected"
   ) {
     throw new ApiModeError();
   }

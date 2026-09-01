@@ -17,7 +17,19 @@ describe("API mode", () => {
     expect(resolveApiMode({ RESEARCH_COCKPIT_MODE: "personal_dossier" })).toBe(
       "personal_dossier",
     );
-    for (const value of ["", "personal", "PERSONAL_READINESS", "production"]) {
+    expect(
+      resolveApiMode({
+        RESEARCH_COCKPIT_MODE: "personal_single_user_local_connected",
+      }),
+    ).toBe("personal_single_user_local_connected");
+    for (const value of [
+      "",
+      "personal",
+      "personal_connected",
+      "PERSONAL_SINGLE_USER_LOCAL_CONNECTED",
+      "PERSONAL_READINESS",
+      "production",
+    ]) {
       expect(() => resolveApiMode({ RESEARCH_COCKPIT_MODE: value })).toThrow(
         ApiModeError,
       );

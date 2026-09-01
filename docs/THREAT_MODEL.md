@@ -2208,6 +2208,111 @@ Exact prepared design and pending gates are in
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
+## Cycle 3c connected-personal source-policy threat boundary
+
+Cycle 3c has **provider-neutral prepared public source only**. It has not been privately
+activated, accepted, or promoted. No actual provider/source credential,
+provider secret adapter, external request, entitlement or legal determination,
+provider billing ceiling, SEC refresh, or market-data adapter is present.
+
+Assets at risk are offline-mode isolation; the canonical policy bundle and
+digest; source, provider, product, tier, entitlement, policy, and terms
+identifiers; lifecycle times; exact host/operation allowlist; intended-use and
+control declarations; request/request-byte/response-byte/storage-byte/
+estimated-spend budgets; the designated secret locator; process-memory admitted,
+killed, reservation, replay, and counter state; owner-session authority; and
+the absence of provider or credential detail from responses and failures.
+
+Primary threats are implicit connected-mode activation; connected
+configuration smuggled into synthetic or offline modes; partial, duplicate,
+unknown-field, mutable, substituted, or noncanonical bundles; policy/source/
+secret-reference mismatch; terms or policy replay and downgrade; expiry,
+review, revocation, or kill bypass; clock failure or rollback; wildcard,
+userinfo, case, port, operation, or redirect confusion; unknown use treated as
+permission; unit mismatch, integer overflow, replay, race, or post-hoc budget
+checking; kill during reserved or future in-flight work; credential-readiness
+probing at startup; credential material disguised as locator or status metadata;
+plaintext provider/source credential leakage; owner-session or
+intent bypass on status/kill; detailed denial or crash output; and treating an
+abstract adapter seam as proof of a real provider, legal right, bill cap, or
+source freshness.
+
+Prepared controls are:
+
+- exact opt-in `personal_single_user_local_connected` mode, with synthetic
+  default and every prior offline mode rejecting connected-only inputs;
+- exact startup keys `CONNECTED_SOURCE_POLICY_BUNDLE_PATH`,
+  `CONNECTED_SOURCE_POLICY_BUNDLE_SHA256`, and
+  `CONNECTED_SOURCE_POLICY_SECRET_REFERENCE`, plus a closed canonical wrapper
+  containing only `config`, `policy`, and `schemaVersion`;
+- stable regular-file, fixed filename, exact SHA-256, canonical-JSON, owned-byte
+  and post-composition byte-wipe checks, plus deletion of captured connected
+  environment entries before listen; JavaScript string erasure is not claimed;
+- drive-qualified Windows or single-rooted POSIX bundle paths, with UNC,
+  device-namespace, double-root, and root-relative Windows forms rejected
+  before filesystem access;
+- bounded owned immutable inputs, strict schema and unknown-field rejection,
+  exact source/policy/profile identity, one-shot admission, and closed status
+  and reason vocabularies;
+- explicit provider, legal, validity, use-scope, attribution, display,
+  derivation, cache, history, export, retention, deletion, and termination
+  declarations, with unknown never interpreted as allowed;
+- exact host/operation pairs limited to `fetch_metadata`, `fetch_snapshot`, or
+  `fetch_history`, with no caller-selected URL or implicit provider fallback;
+- pre-admission exact integer request, request-byte, response-byte,
+  storage-byte, and estimated-spend-microunit budgets, replay-bound branded
+  reservations, and post-result overrun failure semantics in the uncomposed
+  core gateway;
+- monotonic process-local kill, fail-closed lifecycle and clock handling, and
+  no restart-safe kill claim before the Cycle 3d vault;
+- startup acceptance of only the designated
+  `owner-local-ref:v1:<store>:<entry>` locator, with no separate
+  provider-credential field, credential-readiness probe, secret resolution, or
+  credential-validity claim; locator and status-visible source/policy
+  identifiers must be non-secret operator metadata because grammar cannot
+  prove their semantics;
+- injected `OwnerLocalSecretAdapter`, `ConnectedSourceTransportAdapter`, and
+  transport capability seams that the API does not receive or compose;
+- owner-session authorization and the inherited exact loopback, Host, Origin,
+  CORS, cookie, negotiation, framing, private/no-store, and generic-denial
+  server controls for status and kill, with exact kill intent
+  `connected-source-policy-kill`; Cycle 3c ships no connected browser client and
+  makes no service-worker prefetch-guard claim; and
+- a separate non-splitting connected server whose frozen first-party static
+  graph excludes the demo app, personal filing corpus, dossier/fact loaders,
+  research state, and command-execution modules; the ordinary server refuses
+  connected mode; and
+- dependency and route isolation that leave outbound DNS, provider sockets,
+  TLS/HTTP clients, provider SDKs, retries, redirects, queues, schedules, SEC
+  refresh, and market-data adapters outside the running API; the loopback HTTP
+  listener remains the sole socket boundary.
+
+Residual risk remains deliberate. The connected app also exposes health and
+the five inherited owner-session lifecycle routes; those are not provider
+transport paths. A syntactically admitted policy does not
+prove an entitlement, the accuracy or legal effect of terms metadata, or
+permission for an intended use. Locator grammar does not prove non-secret
+identifier semantics, credential availability, or credential validity. Injected
+future secret or transport adapters are a
+confidentiality trust boundary: a hostile adapter may retain, echo, transform,
+or exfiltrate credential bytes, and generic core code cannot detect every
+encoding. A future concrete adapter therefore needs adapter-specific leak
+tests. The package also cannot prove provider identity, response authenticity,
+network security, availability, provider-side cancellation, or downstream
+enforcement after invocation. The path grammar cannot prove that a Windows
+drive is not mapped or a POSIX path is not network-mounted; locally backed
+bundle storage is an operator precondition. Local budgets do not observe all
+provider usage and are not billing ceilings. Process restart loses kill, reservation, replay,
+and counters until a later durable design exists. A valid-shaped backward shift
+from the injected wall clock is not detected.
+
+Remote, multi-user, tenant, shared-service, commercial, and production
+security; organizational rights/steward/counsel approval; billing operations;
+and competitor parity remain out of scope. Personal use does not override
+provider terms. Exact prepared design and pending gates are in
+[ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
+[Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -2254,7 +2359,9 @@ Exact prepared design and pending gates are in
    composition only for its exact source. Cycle 3b authenticated personal
    dossier composition is prepared but not promoted and still requires fresh
    exact owner authorization and terminal evidence. Cycle 3c connected-personal
-   source policy is the next functional product blocker. Organizational
+   source-policy control-plane source is prepared but neither privately
+   activated nor promoted; it composes no provider transport. Cycle 3d durable
+   local vault is the next functional implementation blocker. Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

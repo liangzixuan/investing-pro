@@ -268,6 +268,50 @@ export interface PersonalFilingDossierDto {
   readonly valuationInputs: PersonalFilingDossierValuationInputsDto;
 }
 
+export interface ConnectedSourceBudgetQuantityDto {
+  readonly limit: number;
+  readonly used: number;
+}
+
+export interface ConnectedSourceBudgetStatusDto {
+  readonly currency: string;
+  readonly estimatedSpendMicrounits: ConnectedSourceBudgetQuantityDto;
+  readonly requestBytes: ConnectedSourceBudgetQuantityDto;
+  readonly requests: ConnectedSourceBudgetQuantityDto;
+  readonly responseBytes: ConnectedSourceBudgetQuantityDto;
+  readonly storageBytes: ConnectedSourceBudgetQuantityDto;
+}
+
+export interface ConnectedSourcePolicyStatusDto {
+  readonly schemaVersion: "1.0.0";
+  readonly profile: "personal_single_user_local_connected";
+  readonly status:
+    | "disabled"
+    | "ready"
+    | "killed"
+    | "expired"
+    | "revoked"
+    | "incompatible"
+    | "budget_exhausted";
+  readonly reasonCode:
+    | "NOT_EXPLICITLY_ENABLED"
+    | "OWNER_KILL_SWITCH"
+    | "POLICY_NOT_ADMITTED"
+    | "POLICY_NOT_EFFECTIVE"
+    | "POLICY_REVIEW_DUE"
+    | "POLICY_EXPIRED"
+    | "POLICY_REVOKED"
+    | "POLICY_INCOMPATIBLE"
+    | "CLOCK_UNAVAILABLE"
+    | "CLOCK_INVALID"
+    | "BUDGET_EXHAUSTED"
+    | null;
+  readonly sourceId: string | null;
+  readonly policyId: string | null;
+  readonly policyVersion: string | null;
+  readonly budget: ConnectedSourceBudgetStatusDto | null;
+}
+
 export interface ValuationInputDto {
   baseRevenue: string;
   cash: string;

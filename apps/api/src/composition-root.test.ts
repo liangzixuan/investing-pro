@@ -195,6 +195,25 @@ describe("local API composition root", () => {
     });
     expect(String(malformed)).not.toContain("private-canary");
   });
+
+  it("refuses connected mode and connected bindings at the ordinary entrypoint", async () => {
+    const connectedMode = await createConfiguredApp({
+      RESEARCH_COCKPIT_MODE: "personal_single_user_local_connected",
+      RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET: freshSecret(),
+    }).catch((error: unknown) => error);
+    const connectedBinding = await createConfiguredApp({
+      CONNECTED_SOURCE_POLICY_BUNDLE_PATH: "private-connected-canary",
+    }).catch((error: unknown) => error);
+
+    expect(connectedMode).toMatchObject({
+      code: "CONNECTED_MODE_REQUIRES_CONNECTED_ENTRYPOINT",
+    });
+    expect(connectedBinding).toMatchObject({
+      code: "CONNECTED_CONFIGURATION_REQUIRES_EXPLICIT_MODE",
+    });
+    expect(String(connectedMode)).not.toContain("private-connected-canary");
+    expect(String(connectedBinding)).not.toContain("private-connected-canary");
+  });
 });
 
 function freshSecret(): string {

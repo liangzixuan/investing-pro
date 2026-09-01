@@ -48,6 +48,7 @@ const FORBIDDEN_NEGOTIATION_HEADERS = new Set([
 ]);
 
 type PersonalOwnerIntent = "bootstrap" | "logout" | "revoke" | "rotate";
+export type PersonalOwnerMutationIntent = "connected-source-policy-kill";
 type ParsedHeader =
   | { readonly kind: "invalid" }
   | { readonly kind: "missing" }
@@ -176,6 +177,24 @@ export function authorizePersonalRouteRequest(
   return authorizeBoundary(authority, boundary);
 }
 
+export function authorizePersonalMutationRouteRequest(
+  request: FastifyRequest,
+  authority: PersonalOwnerSessionAuthority,
+  listenOptions: DemoApiListenOptions,
+  expectedPath: string,
+  expectedIntent: PersonalOwnerMutationIntent,
+): boolean {
+  if (!isPersonalOwnerSessionAuthority(authority)) return false;
+  const boundary = inspectPersonalRequest(
+    request,
+    listenOptions,
+    expectedPath,
+    "POST",
+    expectedIntent,
+  );
+  return authorizeBoundary(authority, boundary);
+}
+
 export function personalBrowserOrigin(
   listenOptions: DemoApiListenOptions,
 ): string {
@@ -225,7 +244,7 @@ function inspectPersonalRequest(
   listenOptions: DemoApiListenOptions,
   expectedPath: string,
   expectedMethod: "GET" | "POST",
-  expectedIntent?: PersonalOwnerIntent,
+  expectedIntent?: PersonalOwnerIntent | PersonalOwnerMutationIntent,
 ): PersonalRequestBoundary | undefined {
   if (
     request.method !== expectedMethod ||

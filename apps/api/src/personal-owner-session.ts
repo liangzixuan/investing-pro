@@ -4,6 +4,7 @@ import {
   randomBytes as secureRandomBytes,
   timingSafeEqual,
 } from "node:crypto";
+import { performance } from "node:perf_hooks";
 
 export const PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY =
   "RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET" as const;
@@ -63,7 +64,7 @@ export class PersonalOwnerSessionAuthority {
     this.#absoluteTtlMs =
       options.absoluteTtlMs ?? PERSONAL_OWNER_SESSION_ABSOLUTE_TTL_MS;
     this.#idleTtlMs = options.idleTtlMs ?? PERSONAL_OWNER_SESSION_IDLE_TTL_MS;
-    this.#now = options.now ?? (() => globalThis.performance.now());
+    this.#now = options.now ?? (() => performance.now());
     this.#randomBytes =
       options.randomBytes ?? ((size) => secureRandomBytes(size));
     if (

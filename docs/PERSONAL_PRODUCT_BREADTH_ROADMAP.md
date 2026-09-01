@@ -3,9 +3,10 @@
 Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
 source but no fresh owner authorization, terminal exact-source result, private
-activation, acceptance, or promotion. Cycles 3c through 3q remain planned.**
-This does not alter the exact historical Cycle 2z personal result or make a
-feature-parity claim.
+activation, acceptance, or promotion. Cycle 3c has prepared public source only;
+it is not privately activated, accepted, or promoted. Cycles 3d through 3q
+remain planned.** This does not alter the exact historical Cycle 2z personal
+result or make a feature-parity claim.
 
 ## Goal
 
@@ -34,10 +35,11 @@ owner, local-only offline research, no customers, no redistribution, and no
 production service. The startup-fixed Cycle 2z release remains exact and
 historical.
 
-### Planned connected profile
+### Prepared connected control-plane profile
 
-`personal_single_user_local_connected` will be a separate, explicit opt-in
-profile. It retains one-owner local UI and storage while allowing only
+`personal_single_user_local_connected` is prepared as a separate, explicit
+opt-in control-plane profile. It does not yet connect to a source. A later
+execution gateway may retain one-owner local UI and storage while allowing only
 configured outbound sources. Admission requires:
 
 - an allowlist of exact hosts and operations;
@@ -46,16 +48,27 @@ configured outbound sources. Admission requires:
   effective/review/expiry dates, permitted purpose/geography/device,
   attribution, display, derivation, cache, history, export, retention,
   deletion, and termination;
-- owner-local secrets held outside Git, browser storage, URLs, and logs;
-- identified clients, rate limits, retry/backoff, cache, request ceilings,
-  storage ceilings, and application-side estimated-spend budgets; and
-- explicit freshness and delayed/real-time labels based on the actual source
-  entitlement.
+- designated `owner-local-ref:v1:<store>:<entry>` owner-local secret locators
+  held in policy, with no separate provider-credential startup field; locator
+  identifiers must be non-secret operator metadata and credentials remain
+  outside Git, browser storage, URLs, and logs;
+- declared cache behavior, request/response byte ceilings, request-count and
+  storage ceilings, and application-side estimated-spend budgets.
+
+A later concrete execution gateway must separately add identified clients,
+rate limits, bounded retry/backoff, and source-backed freshness plus
+delayed/real-time labels before any live data feature can rely on them. Those
+controls are not fields or admission claims of the prepared Cycle 3c registry.
 
 Every admitted source has an owner-operated kill switch. Expired, revoked, or
 incompatible terms disable its network operations and dependent refresh jobs
 without silently falling back to another provider. Application budgets limit
 work the project starts; they are not guaranteed provider billing ceilings.
+
+Cycle 3c startup performs no credential-readiness probe and resolves no secret
+reference. The core package prepares injected secret and transport interfaces,
+but the API composes neither. A later execution gateway may resolve a reference
+just in time only after exact policy and budget admission.
 
 A configured source-policy record proves only that the application is bound to
 the reviewed configuration. It is not legal advice or an organizational
@@ -125,28 +138,28 @@ Later subcycles may widen a universe only with the same checks.
 
 ## Gap-to-milestone map
 
-| Capability gap                          | Current baseline                                            | Planned closure |
-| --------------------------------------- | ----------------------------------------------------------- | --------------- |
-| Owner authentication                    | Cycle 3a promoted only for its exact source                 | Cycle 3a        |
-| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted           | Cycle 3b        |
-| Connected source governance             | Offline profile only                                        | Cycle 3c        |
-| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs  | Cycle 3d        |
-| Security universe, search, watchlists   | One synthetic symbol                                        | Cycle 3e        |
-| Automated filings and amendments        | Manually prepared exact filing corpus                       | Cycle 3f        |
-| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart        | Cycle 3g        |
-| Transparent technical indicators        | No end-user price/volume indicator workspace                | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set | Cycle 3h        |
-| Multi-model valuation                   | One exit-multiple model                                     | Cycle 3i        |
-| Peers, health, quality, and risk scores | No end-user comparison or scorecards                        | Cycle 3j        |
-| Screener and saved views                | No universe query                                           | Cycle 3k        |
-| Earnings, dividends, news, calendars    | No daily event workflow                                     | Cycle 3l        |
-| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow         | Cycle 3l-b      |
-| Transcript discovery                    | No transcript metadata or permitted-text workflow           | Cycle 3l-c      |
-| Holdings and portfolio performance      | No portfolio model                                          | Cycle 3m        |
-| Background delivered alerts             | One immediate local rule evaluation                         | Cycle 3n        |
-| Reports, exports, custom views          | No end-user export or saved layout                          | Cycle 3o        |
-| Evidence-grounded AI and strategies     | No model integration                                        | Cycle 3p        |
-| Installable daily-use application       | Responsive local web demo                                   | Cycle 3q        |
+| Capability gap                          | Current baseline                                             | Planned closure |
+| --------------------------------------- | ------------------------------------------------------------ | --------------- |
+| Owner authentication                    | Cycle 3a promoted only for its exact source                  | Cycle 3a        |
+| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted            | Cycle 3b        |
+| Connected source governance             | Provider-neutral control plane prepared; no source activated | Cycle 3c        |
+| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs   | Cycle 3d        |
+| Security universe, search, watchlists   | One synthetic symbol                                         | Cycle 3e        |
+| Automated filings and amendments        | Manually prepared exact filing corpus                        | Cycle 3f        |
+| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart         | Cycle 3g        |
+| Transparent technical indicators        | No end-user price/volume indicator workspace                 | Cycle 3g-b      |
+| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set  | Cycle 3h        |
+| Multi-model valuation                   | One exit-multiple model                                      | Cycle 3i        |
+| Peers, health, quality, and risk scores | No end-user comparison or scorecards                         | Cycle 3j        |
+| Screener and saved views                | No universe query                                            | Cycle 3k        |
+| Earnings, dividends, news, calendars    | No daily event workflow                                      | Cycle 3l        |
+| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow          | Cycle 3l-b      |
+| Transcript discovery                    | No transcript metadata or permitted-text workflow            | Cycle 3l-c      |
+| Holdings and portfolio performance      | No portfolio model                                           | Cycle 3m        |
+| Background delivered alerts             | One immediate local rule evaluation                          | Cycle 3n        |
+| Reports, exports, custom views          | No end-user export or saved layout                           | Cycle 3o        |
+| Evidence-grounded AI and strategies     | No model integration                                         | Cycle 3p        |
+| Installable daily-use application       | Responsive local web demo                                    | Cycle 3q        |
 
 ## Wave 1 — usable personal core
 
@@ -303,34 +316,87 @@ Exit criteria:
 Dynamic selection, refresh, persistence, and background work remain later
 milestones.
 
-The prepared source does not authorize private execution. Promotion requires
+The prepared Cycle 3b source does not authorize private execution. Promotion requires
 fresh owner review of the exact canonical response and one source-bound,
 single-use `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization. The
-prior Cycle 2z and Cycle 3a approvals are incompatible. Cycle 3c
-connected-personal source policy is the next functional product blocker and
-remains separate from this offline scope.
+prior Cycle 2z and Cycle 3a approvals are incompatible. Cycle 3c now has a
+separate prepared connected-personal source-policy control plane and remains
+outside this offline scope.
 
 ### Cycle 3c — connected-personal profile and source-policy registry
 
-Target: introduce network access deliberately rather than silently widening
-the completed offline profile.
+Target: prepare the admission and owner-control boundary required before any
+later network access, without silently widening the completed offline profile.
+
+Status: **Provider-neutral prepared public source only; not privately activated, accepted, or
+promoted.** The prepared control plane includes no actual provider/source
+credential, provider secret adapter, external request, entitlement or legal
+determination, provider billing ceiling, SEC refresh, or market-data adapter. See
+[ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
+[Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
+
+Prepared interfaces:
+
+- package `@research-cockpit/connected-source-policy` publishes
+  `CONNECTED_SOURCE_POLICY_SCHEMA_VERSION`,
+  `CONNECTED_SOURCE_POLICY_PROFILE`, `CONNECTED_SOURCE_POLICY_OPERATIONS`, and
+  `CONNECTED_SOURCE_POLICY_STATUSES`;
+- `parseConnectedSourcePolicyConfig` accepts only the exact enabled or disabled
+  configuration, while `createConnectedSourcePolicy` returns a process-memory
+  controller with exact `status`, `kill`, `admitSourcePolicy`,
+  `authorizeOperation`, `reserveBudget`, and `execute` seams;
+- exact API mode is `personal_single_user_local_connected`; startup keys are
+  `CONNECTED_SOURCE_POLICY_BUNDLE_PATH`,
+  `CONNECTED_SOURCE_POLICY_BUNDLE_SHA256`, and
+  `CONNECTED_SOURCE_POLICY_SECRET_REFERENCE`;
+- bundle paths must be drive-qualified on Windows or single-rooted on POSIX;
+  UNC, device-namespace, double-root, and root-relative Windows forms fail
+  before file access, while mapped/network-mounted backing remains an operator
+  precondition;
+- a separate non-splitting `connected-server` entry owns this mode; the
+  ordinary server refuses it, and the exact connected static graph excludes
+  demo, personal-corpus, dossier/fact, research-state, and command-execution
+  modules; and
+- within the connected-source-policy business/control surface, the API composes
+  only authenticated
+  `GET /v1/personal-filing/connected-source-policy/status` and bodyless
+  `POST /v1/personal-filing/connected-source-policy/kill` with intent
+  `connected-source-policy-kill`; the dedicated app also exposes health and the
+  five inherited owner-session lifecycle routes, none of which provide provider
+  transport.
 
 Exit criteria:
 
 - the connected profile is disabled by default and cannot inherit an offline
   release implicitly;
-- outbound requests are limited to exact admitted host/operation pairs;
+- exact host/operation pairs support only the closed operations
+  `fetch_metadata`, `fetch_snapshot`, and `fetch_history`; the API composes no
+  outbound transport;
 - each source has a versioned machine-readable policy naming its exact product
   or tier, entitlement identifier, terms/license URI and version,
   effective/review/expiry dates, permitted purpose/geography/device, use,
   attribution, cache, history, export, retention, deletion, and termination;
-- expiry, revocation, or policy incompatibility activates the source kill
-  switch before further network or dependent refresh work;
-- owner-set request, byte, storage, and estimated-spend budgets fail closed
-  before excess work starts, without claiming to guarantee the provider bill;
-  and
-- secrets are loaded through an owner-local secret adapter and removed from
-  startup inputs before listeners or workers begin.
+- expiry, revocation, or policy incompatibility preserves its distinct terminal
+  status and denies eligibility before further network or dependent refresh
+  work; it does not synthesize an owner kill;
+- owner-set request-count, request-byte, response-byte, storage-byte, and
+  estimated-spend-microunit budgets fail closed before excess work starts,
+  without claiming to guarantee the provider bill;
+- policy stores only the designated locator grammar and startup has no separate
+  provider-credential field; the operator must keep locator identifiers and
+  status-visible source/policy identifiers non-secret, startup performs no
+  credential-readiness probe, and resolves no secret;
+- the abstract owner-local secret and transport seams remain uncomposed by the
+  API; a later gateway may resolve just in time only after policy and budget
+  admission;
+- status and kill remain owner-session-authenticated, parameter-free,
+  private/no-store, credential/reference-free, and generic on denial; and
+- focused hostile tests, full repository verification, Windows/Linux CI,
+  independent review, and exact source topology pass before promotion.
+
+Cycle 3d durable local research vault is the next functional implementation
+blocker. It must not silently make the Cycle 3c process-memory kill state or
+budget counters durable.
 
 ### Cycle 3d — durable local research vault
 

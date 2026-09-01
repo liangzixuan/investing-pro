@@ -111,6 +111,19 @@ const filingParserModule = "@research-cockpit/filing-parser";
 const filingPayloadCustodyModule = "@research-cockpit/filing-payload-custody";
 const personalFilingCorpusModule =
   "@research-cockpit/personal-filing-corpus" as const;
+const connectedSourcePolicyModule =
+  "@research-cockpit/connected-source-policy" as const;
+const connectedSourcePolicyPackagePrefix =
+  "packages/connected-source-policy/" as const;
+const connectedSourcePolicyPackagePaths = [
+  `${connectedSourcePolicyPackagePrefix}package.json`,
+  `${connectedSourcePolicyPackagePrefix}src/connected-source-policy-security.test.ts`,
+  `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.test.ts`,
+  `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.ts`,
+  `${connectedSourcePolicyPackagePrefix}src/index.ts`,
+  `${connectedSourcePolicyPackagePrefix}src/test-connected-source-policy-builder.ts`,
+  `${connectedSourcePolicyPackagePrefix}tsconfig.json`,
+].sort();
 const personalFilingCorpusPackagePrefix =
   "packages/personal-filing-corpus/" as const;
 const cycle2rPersonalFilingCorpusPackagePaths = [
@@ -2093,6 +2106,7 @@ const workspacePackageNames =
   await collectWorkspacePackageNames(filesToInspect);
 violations.push(
   ...(await personalFilingCorpusBoundaryViolations()),
+  ...(await connectedSourcePolicyBoundaryViolations()),
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
   ...(await filingParserQualityCompositionBoundaryViolations()),
   ...(await filingPayloadCustodyReviewedSurfaceBoundaryViolations()),
@@ -7860,6 +7874,967 @@ async function filingParserQualityCompositionBoundaryViolations(): Promise<
   )
     found.push("Cycle 2n quality-composition public index must remain exact");
   return found;
+}
+
+async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) => path.startsWith(connectedSourcePolicyPackagePrefix))
+    .sort();
+  if (!connectedSourcePolicyExactTree(actualTree))
+    found.push(
+      `${connectedSourcePolicyPackagePrefix}: Cycle 3c package tree must remain the exact manifest, tsconfig, core, index, test builder, and two-test surface`,
+    );
+
+  const manifestPath = `${connectedSourcePolicyPackagePrefix}package.json`;
+  const manifest = await cycle2kJson(manifestPath, found);
+  const expectedManifest = {
+    name: connectedSourcePolicyModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest))
+    found.push(
+      `${manifestPath}: connected source policy must remain private, index-only, and zero-production-dependency`,
+    );
+
+  const tsconfigPath = `${connectedSourcePolicyPackagePrefix}tsconfig.json`;
+  const tsconfig = await cycle2kJson(tsconfigPath, found);
+  const expectedTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts"],
+  };
+  if (JSON.stringify(tsconfig) !== JSON.stringify(expectedTsconfig))
+    found.push(`${tsconfigPath}: Cycle 3c tsconfig must remain exact`);
+
+  const expectedModulesByPath = new Map<string, readonly string[]>([
+    [
+      `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.ts`,
+      ["node:util/types"],
+    ],
+    [
+      `${connectedSourcePolicyPackagePrefix}src/index.ts`,
+      ["./connected-source-policy"],
+    ],
+    [
+      `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.test.ts`,
+      [
+        "vitest",
+        "./connected-source-policy",
+        "./test-connected-source-policy-builder",
+      ],
+    ],
+    [
+      `${connectedSourcePolicyPackagePrefix}src/connected-source-policy-security.test.ts`,
+      [
+        "vitest",
+        "./connected-source-policy",
+        "./test-connected-source-policy-builder",
+      ],
+    ],
+    [
+      `${connectedSourcePolicyPackagePrefix}src/test-connected-source-policy-builder.ts`,
+      ["./connected-source-policy"],
+    ],
+  ]);
+  for (const path of actualTree.filter((entry) => entry.endsWith(".ts"))) {
+    const content = await cycle2kText(path, found);
+    const expectedModules = expectedModulesByPath.get(path);
+    if (expectedModules === undefined) {
+      found.push(`${path}: unclassified Cycle 3c source`);
+      continue;
+    }
+    const importViolation = connectedSourcePolicyImportViolation(
+      content,
+      expectedModules,
+    );
+    if (importViolation !== null) found.push(`${path}: ${importViolation}`);
+  }
+
+  const publicExports = [
+    ["CONNECTED_SOURCE_POLICY_HARD_LIMITS", false],
+    ["CONNECTED_SOURCE_POLICY_NOT_PROVEN", false],
+    ["CONNECTED_SOURCE_POLICY_OPERATIONS", false],
+    ["CONNECTED_SOURCE_POLICY_PROFILE", false],
+    ["CONNECTED_SOURCE_POLICY_SCHEMA_VERSION", false],
+    ["CONNECTED_SOURCE_POLICY_STATUSES", false],
+    ["ConnectedSourcePolicyConfigurationError", false],
+    ["createConnectedSourcePolicy", false],
+    ["createConnectedSourceTransportCapability", false],
+    ["isConnectedSourceAdmittedOperationCapability", false],
+    ["parseConnectedSourcePolicyConfig", false],
+    ["readConnectedSourceResponse", false],
+    ["CapturedOwnerLocalSecret", true],
+    ["ConnectedSourceAdmittedOperationCapability", true],
+    ["ConnectedSourceAllowlistEntry", true],
+    ["ConnectedSourceAuthorizationInput", true],
+    ["ConnectedSourceAuthorizationResult", true],
+    ["ConnectedSourceBudget", true],
+    ["ConnectedSourceBudgetReservationInput", true],
+    ["ConnectedSourceBudgetReservationCapability", true],
+    ["ConnectedSourceBudgetReservationResult", true],
+    ["ConnectedSourceBudgetStatus", true],
+    ["ConnectedSourceClock", true],
+    ["ConnectedSourceControlsPolicy", true],
+    ["ConnectedSourceExecutionInput", true],
+    ["ConnectedSourceExecutionResult", true],
+    ["ConnectedSourceIntendedUse", true],
+    ["ConnectedSourceKillResult", true],
+    ["ConnectedSourceLegalPolicy", true],
+    ["ConnectedSourceOperation", true],
+    ["ConnectedSourcePolicy", true],
+    ["ConnectedSourcePolicyAdmissionResult", true],
+    ["ConnectedSourcePolicyConfig", true],
+    ["ConnectedSourcePolicyConfigParseResult", true],
+    ["ConnectedSourcePolicyDependencies", true],
+    ["ConnectedSourcePolicyDocument", true],
+    ["ConnectedSourcePolicyStatus", true],
+    ["ConnectedSourcePolicyStatusValue", true],
+    ["ConnectedSourceProviderPolicy", true],
+    ["ConnectedSourceResponseCapability", true],
+    ["ConnectedSourceStatusReason", true],
+    ["ConnectedSourceTransportAdapter", true],
+    ["ConnectedSourceTransportCapability", true],
+    ["ConnectedSourceTransportRequest", true],
+    ["ConnectedSourceTransportResult", true],
+    ["ConnectedSourceUseScopePolicy", true],
+    ["ConnectedSourceValidityPolicy", true],
+    ["OwnerLocalSecretAdapter", true],
+  ] as const;
+  const indexPath = `${connectedSourcePolicyPackagePrefix}src/index.ts`;
+  const indexSource = ts.createSourceFile(
+    indexPath,
+    await cycle2kText(indexPath, found),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    indexSource.statements.length !== 1 ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[0],
+      "./connected-source-policy",
+      publicExports,
+    )
+  )
+    found.push(
+      `${indexPath}: Cycle 3c public named export surface must remain exact`,
+    );
+
+  for (const path of [
+    `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.ts`,
+    `${connectedSourcePolicyPackagePrefix}src/index.ts`,
+  ]) {
+    const content = await cycle2kText(path, found);
+    const productionViolation = connectedSourcePolicyProductionViolation(
+      path,
+      content,
+    );
+    if (productionViolation !== null)
+      found.push(`${path}: ${productionViolation}`);
+  }
+
+  const allowedApiImportBindings = new Map<string, readonly string[]>([
+    [
+      "apps/api/src/connected-composition-root.ts",
+      ["type ConnectedSourceClock"],
+    ],
+    [
+      "apps/api/src/connected-source-policy-composition.ts",
+      [
+        "CONNECTED_SOURCE_POLICY_PROFILE",
+        "CONNECTED_SOURCE_POLICY_SCHEMA_VERSION",
+        "createConnectedSourcePolicy",
+        "parseConnectedSourcePolicyConfig",
+        "type ConnectedSourceClock",
+        "type ConnectedSourcePolicy",
+        "type ConnectedSourcePolicyStatus",
+      ],
+    ],
+    [
+      "apps/api/src/connected-source-policy-routes.ts",
+      ["type ConnectedSourcePolicyStatus"],
+    ],
+    [
+      "apps/api/src/test-connected-source-policy-builder.ts",
+      [
+        "type ConnectedSourceClock",
+        "type ConnectedSourcePolicyConfig",
+        "type ConnectedSourcePolicyDocument",
+      ],
+    ],
+  ]);
+  for (const file of externalCompositionFilesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    const content = await readFile(file, "utf8");
+    if (!collectModuleSpecifiers(content).includes(connectedSourcePolicyModule))
+      continue;
+    const expectedBindings = allowedApiImportBindings.get(path);
+    if (expectedBindings === undefined) {
+      found.push(
+        `${path}: only the exact reviewed apps/api files may import ${connectedSourcePolicyModule}`,
+      );
+      continue;
+    }
+    if (
+      JSON.stringify(connectedSourcePolicyImportBindings(content).sort()) !==
+      JSON.stringify([...expectedBindings].sort())
+    )
+      found.push(
+        `${path}: connected source policy imports must remain the exact reviewed status/kill composition bindings`,
+      );
+  }
+  for (const [path] of allowedApiImportBindings) {
+    const content = await cycle2kText(path, found);
+    if (!collectModuleSpecifiers(content).includes(connectedSourcePolicyModule))
+      found.push(`${path}: required Cycle 3c package binding is missing`);
+  }
+  for (const file of filesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    if (basename(path) !== "package.json") continue;
+    const content = await readFile(file, "utf8");
+    if (
+      content.includes(connectedSourcePolicyModule) &&
+      path !== manifestPath &&
+      path !== "apps/api/package.json"
+    )
+      found.push(
+        `${path}: only apps/api may declare the connected source policy package`,
+      );
+  }
+  const apiManifest = await cycle2kJson("apps/api/package.json", found);
+  if (
+    !isRecord(apiManifest?.dependencies) ||
+    apiManifest.dependencies[connectedSourcePolicyModule] !== "workspace:*"
+  )
+    found.push(
+      "apps/api/package.json: exact connected source policy workspace dependency is required",
+    );
+  if (
+    !isRecord(apiManifest?.scripts) ||
+    apiManifest.scripts["dev:connected"] !==
+      "tsx watch src/connected-server.ts" ||
+    apiManifest.scripts["start:connected"] !==
+      "node dist/src/connected-server.js"
+  )
+    found.push(
+      "apps/api/package.json: distinct Cycle 3c connected development and start entries are required",
+    );
+
+  const tsupConfigPath = "apps/api/tsup.config.ts";
+  const tsupConfig = await cycle2kText(tsupConfigPath, found);
+  if (
+    JSON.stringify(collectModuleSpecifiers(tsupConfig)) !==
+      JSON.stringify(["node:path", "tsup", "./src/build-source-identity"]) ||
+    !tsupConfig.includes(
+      'entry: ["src/server.ts", "src/connected-server.ts"]',
+    ) ||
+    !tsupConfig.includes("splitting: false")
+  )
+    found.push(
+      `${tsupConfigPath}: Cycle 3c requires exact separate non-splitting ordinary and connected build entries`,
+    );
+
+  const apiPaths = [
+    "apps/api/src/api-mode.ts",
+    "apps/api/src/composition-root.ts",
+    "apps/api/src/connected-app.ts",
+    "apps/api/src/connected-composition-root.ts",
+    "apps/api/src/connected-server.ts",
+    "apps/api/src/connected-source-policy-composition.ts",
+    "apps/api/src/connected-source-policy-routes.ts",
+    "apps/api/src/listen-options.ts",
+    "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-owner-session-routes.ts",
+    "apps/api/src/server.ts",
+  ] as const;
+  const apiSources = new Map<string, string>();
+  for (const path of apiPaths)
+    apiSources.set(path, await cycle2kText(path, found));
+  const apiModulesByPath = new Map<string, readonly string[]>([
+    ["apps/api/src/api-mode.ts", []],
+    [
+      "apps/api/src/composition-root.ts",
+      [
+        "fastify",
+        "./api-mode",
+        "./app",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-quality-readiness",
+        "./personal-dossier-release",
+        "./personal-selected-fact-release",
+      ],
+    ],
+    [
+      "apps/api/src/connected-app.ts",
+      [
+        "node:crypto",
+        "@fastify/cors",
+        "@fastify/helmet",
+        "@research-cockpit/contracts",
+        "fastify",
+        "./connected-source-policy-composition",
+        "./connected-source-policy-routes",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+      ],
+    ],
+    [
+      "apps/api/src/connected-composition-root.ts",
+      [
+        "fastify",
+        connectedSourcePolicyModule,
+        "./connected-app",
+        "./connected-source-policy-composition",
+        "./listen-options",
+        "./personal-owner-session",
+      ],
+    ],
+    [
+      "apps/api/src/connected-server.ts",
+      ["./connected-composition-root", "./listen-options"],
+    ],
+    [
+      "apps/api/src/connected-source-policy-composition.ts",
+      [
+        "node:crypto",
+        "node:fs",
+        "node:fs/promises",
+        "node:path",
+        connectedSourcePolicyModule,
+      ],
+    ],
+    [
+      "apps/api/src/connected-source-policy-routes.ts",
+      [
+        connectedSourcePolicyModule,
+        "@research-cockpit/contracts",
+        "fastify",
+        "./connected-source-policy-composition",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+      ],
+    ],
+    [
+      "apps/api/src/personal-owner-session-routes.ts",
+      [
+        "@research-cockpit/contracts",
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+      ],
+    ],
+    ["apps/api/src/listen-options.ts", []],
+    [
+      "apps/api/src/personal-owner-session.ts",
+      ["node:crypto", "node:perf_hooks"],
+    ],
+    ["apps/api/src/server.ts", ["./composition-root", "./listen-options"]],
+  ]);
+  for (const [path, expectedModules] of apiModulesByPath) {
+    const content = apiSources.get(path) ?? "";
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify(expectedModules)
+    )
+      found.push(
+        `${path}: runnable Cycle 3c API imports must remain the exact reviewed local/server/status-policy allowlist`,
+      );
+  }
+  const connectedApiPaths = [
+    "apps/api/src/connected-app.ts",
+    "apps/api/src/connected-composition-root.ts",
+    "apps/api/src/connected-server.ts",
+    "apps/api/src/connected-source-policy-composition.ts",
+    "apps/api/src/connected-source-policy-routes.ts",
+    "apps/api/src/listen-options.ts",
+    "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-owner-session-routes.ts",
+  ] as const;
+  const connectedApiImportSurfaceDigests = new Map<string, string>([
+    [
+      "apps/api/src/connected-app.ts",
+      "2d1da15dafa0f00aab0948a63fc3f30e602d7ac988051b852bd5b55ddc4a128a",
+    ],
+    [
+      "apps/api/src/connected-composition-root.ts",
+      "80c8f047a185d4080d603b533e7e83796be05ace4425c035be8dba4eda322655",
+    ],
+    [
+      "apps/api/src/connected-server.ts",
+      "c15c9ffedab7f62fde150cf37dfa7cd70c702bf832d70f8b0025c804d4548dc4",
+    ],
+    [
+      "apps/api/src/connected-source-policy-composition.ts",
+      "9341b5a2c3b70a852cec233238786e26f01e747a33d21d9f40b2466b6472b4b3",
+    ],
+    [
+      "apps/api/src/connected-source-policy-routes.ts",
+      "cfd5c9b7d3ea2f998637f866e2d570462ef9d99d9bdc3cf3ba7633629d675a61",
+    ],
+    [
+      "apps/api/src/listen-options.ts",
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ],
+    [
+      "apps/api/src/personal-owner-session-routes.ts",
+      "0229a37524463b8314d16936db405aab3a48446541f4a8b782ecb6d6a8038ac4",
+    ],
+    [
+      "apps/api/src/personal-owner-session.ts",
+      "5179c3c22049380bf3ba893e1b98eafb501d27f59b1c9879eaeaec6da85f7d32",
+    ],
+  ]);
+  const connectedApiSources = new Map(
+    connectedApiPaths.map((path) => [path, apiSources.get(path) ?? ""]),
+  );
+  for (const [path, content] of connectedApiSources) {
+    if (
+      connectedSourcePolicyImportSurfaceDigest(content) !==
+      connectedApiImportSurfaceDigests.get(path)
+    )
+      found.push(
+        `${path}: connected API import clauses and bindings must remain exact`,
+      );
+  }
+  const connectedServerProcessViolation =
+    connectedSourcePolicyConnectedServerProcessViolation(
+      connectedApiSources.get("apps/api/src/connected-server.ts") ?? "",
+    );
+  if (connectedServerProcessViolation !== null)
+    found.push(
+      `apps/api/src/connected-server.ts: ${connectedServerProcessViolation}`,
+    );
+  const apiSeamViolation =
+    connectedSourcePolicyApiSeamViolation(connectedApiSources);
+  if (apiSeamViolation !== null) found.push(apiSeamViolation);
+  const apiAnchorViolation =
+    connectedSourcePolicyApiAnchorViolation(apiSources);
+  if (apiAnchorViolation !== null) found.push(apiAnchorViolation);
+
+  const classifierRegressions = [
+    !connectedSourcePolicyExactTree(connectedSourcePolicyPackagePaths),
+    connectedSourcePolicyExactTree([
+      ...connectedSourcePolicyPackagePaths,
+      `${connectedSourcePolicyPackagePrefix}src/provider-client.ts`,
+    ]),
+    connectedSourcePolicyImportViolation(
+      'import { isProxy } from "node:util/types";',
+      ["node:util/types"],
+    ) !== null,
+    connectedSourcePolicyImportViolation(
+      'import { isProxy } from "node:util/types";\nimport "node:net";',
+      ["node:util/types"],
+    ) === null,
+    connectedSourcePolicyProductionViolation(
+      `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.ts`,
+      'import { isProxy } from "node:util/types";\nvoid fetch("https://provider.example");',
+    ) === null,
+    connectedSourcePolicyProductionViolation(
+      `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.ts`,
+      'import { isProxy } from "node:util/types";\nglobalThis["fetch"](["https", "provider.example"].join("://"));',
+    ) === null,
+    connectedSourcePolicyProductionViolation(
+      `${connectedSourcePolicyPackagePrefix}src/connected-source-policy.ts`,
+      'import { isProxy } from "node:util/types";\nconsole.log("private-canary");',
+    ) === null,
+    connectedSourcePolicyExternalImportViolation(
+      "apps/api/src/connected-source-policy-composition.ts",
+      `import ${JSON.stringify(connectedSourcePolicyModule)};`,
+      allowedApiImportBindings,
+    ),
+    !connectedSourcePolicyExternalImportViolation(
+      "apps/web/src/provider.ts",
+      `import ${JSON.stringify(connectedSourcePolicyModule)};`,
+      allowedApiImportBindings,
+    ),
+    connectedSourcePolicyApiSeamViolation(
+      new Map([["apps/api/src/connected-app.ts", "status(); kill();"]]),
+    ) !== null,
+    connectedSourcePolicyApiSeamViolation(
+      new Map([
+        ["apps/api/src/connected-app.ts", "policy.status(); policy.execute();"],
+      ]),
+    ) === null,
+    connectedSourcePolicyApiSeamViolation(
+      new Map([
+        [
+          "apps/api/src/connected-source-policy-composition.ts",
+          'void fetch("https://provider.example/v1");',
+        ],
+      ]),
+    ) === null,
+    connectedSourcePolicyApiSeamViolation(
+      new Map([
+        [
+          "apps/api/src/connected-source-policy-composition.ts",
+          'import "node:https";',
+        ],
+      ]),
+    ) === null,
+    connectedSourcePolicyApiSeamViolation(
+      new Map([
+        ["apps/api/src/connected-server.ts", 'import "./listen-options";'],
+        [
+          "apps/api/src/listen-options.ts",
+          'void fetch("https://provider.example/v1");',
+        ],
+      ]),
+    ) === null,
+    connectedSourcePolicyApiSeamViolation(
+      new Map([
+        [
+          "apps/api/src/connected-source-policy-routes.ts",
+          "console.log(request.headers.cookie);",
+        ],
+      ]),
+    ) === null,
+    connectedSourcePolicyApiSeamViolation(
+      new Map([
+        [
+          "apps/api/src/connected-source-policy-routes.ts",
+          'globalThis["fetch"](["https", "provider.example"].join("://"));',
+        ],
+      ]),
+    ) === null,
+    connectedSourcePolicyConnectedServerProcessViolation(`
+      process.stdout.write(process.env.PRIVATE_CANARY ?? "");
+      const captured = captureConnectedApiEnvironment(process.env);
+      process.stdout.write("Research Cockpit connected local API is listening.\\n");
+      process.stderr.write("Research Cockpit connected local API failed to start.\\n");
+      process.exitCode = 1;
+    `) === null,
+    connectedSourcePolicyImportSurfaceDigest(
+      (
+        apiSources.get("apps/api/src/connected-source-policy-composition.ts") ??
+        ""
+      ).replace(
+        'import { lstat, open } from "node:fs/promises";',
+        'import { lstat, open, writeFile } from "node:fs/promises";',
+      ),
+    ) ===
+      connectedApiImportSurfaceDigests.get(
+        "apps/api/src/connected-source-policy-composition.ts",
+      ),
+  ];
+  const regressedClassifier = classifierRegressions.indexOf(true);
+  if (regressedClassifier !== -1)
+    throw new Error(
+      `Cycle 3c connected-source boundary classifier ${String(regressedClassifier + 1)} regressed`,
+    );
+
+  return found;
+}
+
+function connectedSourcePolicyExactTree(actual: readonly string[]): boolean {
+  return (
+    JSON.stringify([...actual].sort()) ===
+    JSON.stringify(connectedSourcePolicyPackagePaths)
+  );
+}
+
+function connectedSourcePolicyImportViolation(
+  content: string,
+  expectedModules: readonly string[],
+): string | null {
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(expectedModules)
+  )
+    return "Cycle 3c imports must remain the exact reviewed per-file allowlist";
+  if (
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  )
+    return "Cycle 3c runtime module loading and dynamic code are forbidden";
+  return null;
+}
+
+function connectedSourcePolicyProductionViolation(
+  path: string,
+  content: string,
+): string | null {
+  const expectedModules =
+    path === `${connectedSourcePolicyPackagePrefix}src/index.ts`
+      ? ["./connected-source-policy"]
+      : ["node:util/types"];
+  const importViolation = connectedSourcePolicyImportViolation(
+    content,
+    expectedModules,
+  );
+  if (importViolation !== null) return importViolation;
+  const source = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const forbiddenGlobals = connectedSourcePolicyForbiddenGlobals();
+  forbiddenGlobals.add("env");
+  if (findIdentifiers(source, forbiddenGlobals).length > 0)
+    return "production source must not use network, process, environment, or fetch globals";
+  let concreteEndpoint = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      concreteEndpoint = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return concreteEndpoint
+    ? "production source must not embed a concrete provider or network endpoint"
+    : null;
+}
+
+function connectedSourcePolicyImportBindings(content: string): string[] {
+  const source = ts.createSourceFile(
+    "connected-source-policy-import.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const bindings: string[] = [];
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteralLike(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== connectedSourcePolicyModule
+    )
+      continue;
+    const clause = statement.importClause;
+    if (clause === undefined) {
+      bindings.push("<side-effect>");
+      continue;
+    }
+    if (clause.name !== undefined)
+      bindings.push(`<default:${clause.name.text}>`);
+    const named = clause.namedBindings;
+    if (named === undefined) continue;
+    if (ts.isNamespaceImport(named)) {
+      bindings.push(`<namespace:${named.name.text}>`);
+      continue;
+    }
+    for (const element of named.elements) {
+      const imported = (element.propertyName ?? element.name).text;
+      const local = element.name.text;
+      const binding = imported === local ? imported : `${imported} as ${local}`;
+      bindings.push(
+        clause.isTypeOnly || element.isTypeOnly ? `type ${binding}` : binding,
+      );
+    }
+  }
+  return bindings;
+}
+
+function connectedSourcePolicyImportSurfaceDigest(content: string): string {
+  const source = ts.createSourceFile(
+    "connected-source-policy-import-surface.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const surface = source.statements
+    .filter(ts.isImportDeclaration)
+    .map((declaration) => declaration.getText(source))
+    .join("\n");
+  return createHash("sha256").update(surface).digest("hex");
+}
+
+function connectedSourcePolicyExternalImportViolation(
+  path: string,
+  content: string,
+  allowed: ReadonlyMap<string, readonly string[]>,
+): boolean {
+  if (!collectModuleSpecifiers(content).includes(connectedSourcePolicyModule))
+    return false;
+  return !allowed.has(path) || !path.startsWith("apps/api/");
+}
+
+function connectedSourcePolicyConnectedServerProcessViolation(
+  content: string,
+): string | null {
+  const source = ts.createSourceFile(
+    "apps/api/src/connected-server.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const positions = {
+    env: [] as number[],
+    exitCode: [] as number[],
+    stderr: [] as number[],
+    stdout: [] as number[],
+  };
+  let invalid = false;
+  const fixedWrites = new Map([
+    ["stderr", "Research Cockpit connected local API failed to start.\n"],
+    ["stdout", "Research Cockpit connected local API is listening.\n"],
+  ]);
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && node.text === "process") {
+      const access = node.parent;
+      if (
+        !ts.isPropertyAccessExpression(access) ||
+        access.expression !== node
+      ) {
+        invalid = true;
+      } else if (access.name.text === "env") {
+        const call = access.parent;
+        if (
+          !ts.isCallExpression(call) ||
+          !ts.isIdentifier(call.expression) ||
+          call.expression.text !== "captureConnectedApiEnvironment" ||
+          call.arguments.length !== 1 ||
+          call.arguments[0] !== access
+        ) {
+          invalid = true;
+        } else {
+          positions.env.push(access.getStart(source));
+        }
+      } else if (
+        access.name.text === "stdout" ||
+        access.name.text === "stderr"
+      ) {
+        const writeAccess = access.parent;
+        const call = writeAccess.parent;
+        const argument = ts.isCallExpression(call) ? call.arguments[0] : null;
+        if (
+          !ts.isPropertyAccessExpression(writeAccess) ||
+          writeAccess.expression !== access ||
+          writeAccess.name.text !== "write" ||
+          !ts.isCallExpression(call) ||
+          call.expression !== writeAccess ||
+          call.arguments.length !== 1 ||
+          argument === undefined ||
+          argument === null ||
+          !ts.isStringLiteralLike(argument) ||
+          argument.text !== fixedWrites.get(access.name.text)
+        ) {
+          invalid = true;
+        } else {
+          positions[access.name.text].push(access.getStart(source));
+        }
+      } else if (access.name.text === "exitCode") {
+        const assignment = access.parent;
+        if (
+          !ts.isBinaryExpression(assignment) ||
+          assignment.left !== access ||
+          assignment.operatorToken.kind !== ts.SyntaxKind.EqualsToken ||
+          !ts.isNumericLiteral(assignment.right) ||
+          assignment.right.text !== "1"
+        ) {
+          invalid = true;
+        } else {
+          positions.exitCode.push(access.getStart(source));
+        }
+      } else {
+        invalid = true;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (
+    invalid ||
+    positions.env.length !== 1 ||
+    positions.stdout.length !== 1 ||
+    positions.stderr.length !== 1 ||
+    positions.exitCode.length !== 1 ||
+    !(
+      positions.env[0]! < positions.stdout[0]! &&
+      positions.stdout[0]! < positions.stderr[0]! &&
+      positions.stderr[0]! < positions.exitCode[0]!
+    )
+  ) {
+    return "process access must remain one first-step environment capture followed only by fixed stdout/stderr messages and exitCode assignment";
+  }
+  return null;
+}
+
+function connectedSourcePolicyForbiddenGlobals(): Set<string> {
+  return new Set([
+    "EventSource",
+    "WebSocket",
+    "XMLHttpRequest",
+    "console",
+    "fetch",
+    "global",
+    "globalThis",
+    "process",
+    "queueMicrotask",
+    "self",
+    "setImmediate",
+    "setInterval",
+    "setTimeout",
+    "window",
+  ]);
+}
+
+function connectedSourcePolicyApiSeamViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const forbidden =
+    /\b(?:OwnerLocalSecretAdapter|ConnectedSourceAdmittedOperationCapability|ConnectedSourceResponseCapability|ConnectedSourceTransport\w*|authorizeOperation|createConnectedSourceTransportCapability|execute|readConnectedSourceResponse|reserveBudget|secretAdapter|transportCapability)\b/u;
+  const forbiddenNetworkModule =
+    /^(?:node:)?(?:child_process|cluster|dgram|dns|http|http2|https|net|tls|worker_threads)(?:\/|$)/u;
+  for (const [path, content] of sources) {
+    if (forbidden.test(content))
+      return `${path}: runnable API must remain status/kill-only and must not compose transport, secret, execute, reserve, or authorize seams`;
+    if (
+      collectModuleSpecifiers(content).some((module) =>
+        forbiddenNetworkModule.test(module),
+      ) ||
+      hasRuntimeDynamicImport(content) ||
+      hasForbiddenDynamicCodeCapability(content) ||
+      hasUnresolvedRuntimeModuleLoad(content) ||
+      hasIndirectRuntimeModuleLoad(content)
+    )
+      return `${path}: runnable API must not compose provider SDKs, direct network modules, or dynamic runtime loading`;
+    const source = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const forbiddenGlobals = connectedSourcePolicyForbiddenGlobals();
+    if (path !== "apps/api/src/connected-server.ts")
+      forbiddenGlobals.add("process");
+    else forbiddenGlobals.delete("process");
+    if (findIdentifiers(source, forbiddenGlobals).length > 0)
+      return `${path}: connected API must not use direct network or background globals or access process state outside its reviewed startup entry`;
+    if (
+      /CONNECTED_SOURCE_POLICY_(?:API_KEY|CREDENTIAL|TOKEN|SECRET(?!_REFERENCE))/u.test(
+        content,
+      )
+    )
+      return `${path}: plaintext connected-source credential startup inputs are forbidden`;
+    let concreteEndpoint = false;
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isStringLiteralLike(node) &&
+        /(?:https?|wss?):\/\//iu.test(node.text) &&
+        !node.text.startsWith("https://research-cockpit.local/") &&
+        !/^http:\/\/(?:\[::1\]|localhost|127\.0\.0\.1)(?::[0-9]+)?(?:\/|$)/u.test(
+          node.text,
+        )
+      )
+        concreteEndpoint = true;
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    if (concreteEndpoint)
+      return `${path}: runnable API must not embed a concrete provider or real-network endpoint`;
+  }
+  return null;
+}
+
+function connectedSourcePolicyApiAnchorViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const required = new Map<string, readonly string[]>([
+    ["apps/api/src/api-mode.ts", ["personal_single_user_local_connected"]],
+    [
+      "apps/api/src/connected-source-policy-routes.ts",
+      [
+        '"/v1/personal-filing/connected-source-policy/status"',
+        '"/v1/personal-filing/connected-source-policy/kill"',
+        '"connected-source-policy-kill"',
+        "authorizePersonalRouteRequest(",
+        "authorizePersonalMutationRouteRequest(",
+        'header("Cache-Control", "private, no-store")',
+        "schemaVersion: status.schemaVersion",
+        "profile: status.profile",
+        "status: status.status",
+        "reasonCode: status.reasonCode",
+        "sourceId: status.sourceId",
+        "policyId: status.policyId",
+        "policyVersion: status.policyVersion",
+        "budget: status.budget",
+      ],
+    ],
+    [
+      "apps/api/src/personal-owner-session-routes.ts",
+      ['PersonalOwnerMutationIntent = "connected-source-policy-kill"'],
+    ],
+    [
+      "apps/api/src/connected-source-policy-composition.ts",
+      [
+        '"CONNECTED_SOURCE_POLICY_BUNDLE_PATH"',
+        '"CONNECTED_SOURCE_POLICY_BUNDLE_SHA256"',
+        '"CONNECTED_SOURCE_POLICY_SECRET_REFERENCE"',
+        "status(): ConnectedSourcePolicyStatus",
+        "kill(): void",
+        "createConnectedSourcePolicy(parsedConfig.config, { clock })",
+        "status: () => policy.status()",
+        "policy.kill()",
+      ],
+    ],
+    [
+      "apps/api/src/connected-composition-root.ts",
+      [
+        '"personal_single_user_local_connected"',
+        "CONNECTED_MODE_REQUIRED",
+        "CONNECTED_MODE_REJECTS_OFFLINE_CONFIGURATION",
+        "CONNECTED_SOURCE_POLICY_BUNDLE_PATH_KEY",
+        "CONNECTED_SOURCE_POLICY_BUNDLE_SHA256_KEY",
+        "CONNECTED_SOURCE_POLICY_SECRET_REFERENCE_KEY",
+        "loadConnectedSourcePolicyAdministration(",
+        "buildConnectedSourcePolicyApp(",
+        "disposeCapturedConnectedApiEnvironment(",
+      ],
+    ],
+    [
+      "apps/api/src/connected-app.ts",
+      [
+        "buildConnectedSourcePolicyApp(",
+        "registerPersonalOwnerSessionRoutes(",
+        "registerConnectedSourcePolicyRoutes(",
+        'header("Cache-Control", "private, no-store")',
+      ],
+    ],
+    [
+      "apps/api/src/connected-server.ts",
+      [
+        "captureConnectedApiEnvironment(process.env)",
+        "createConnectedConfiguredApp(",
+        "connectedSourceClock",
+      ],
+    ],
+    [
+      "apps/api/src/composition-root.ts",
+      ["CONNECTED_MODE_REQUIRES_CONNECTED_ENTRYPOINT"],
+    ],
+  ]);
+  for (const [path, anchors] of required) {
+    const content = sources.get(path);
+    if (
+      content === undefined ||
+      anchors.some((anchor) => !content.includes(anchor))
+    )
+      return `${path}: exact Cycle 3c mode, route, intent, status/kill, private-response, or startup-scrub anchors regressed`;
+  }
+  return null;
 }
 
 function filingPayloadCustodyReviewedSurfaceBoundaryViolations(): Promise<
