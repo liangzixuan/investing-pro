@@ -97,6 +97,17 @@ describe("personal vault composition root", () => {
     ).rejects.toMatchObject({
       code: "VAULT_MODE_REJECTS_OTHER_PRIVATE_CONFIGURATION",
     });
+    await expect(
+      createVaultConfiguredApp(
+        captureVaultApiEnvironment({
+          ...vaultEnvironment(root, "initialize"),
+          PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH:
+            "security-master-private-canary",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "VAULT_MODE_REJECTS_OTHER_PRIVATE_CONFIGURATION",
+    });
   });
 });
 

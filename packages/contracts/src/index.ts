@@ -108,6 +108,130 @@ export interface PersonalFilingReadinessDto {
   dataPlane: "disabled";
 }
 
+export type PersonalSecurityMasterContentKindDto =
+  "owner_local_source" | "synthetic_engineering";
+
+export type PersonalSecurityMasterInstrumentTypeDto = "adr" | "common_stock";
+
+export type PersonalSecurityMasterSearchMatchKindDto =
+  | "current_symbol_exact"
+  | "current_symbol_prefix"
+  | "former_symbol_exact"
+  | "former_symbol_prefix"
+  | "name_exact"
+  | "name_token_prefix"
+  | "name_contains";
+
+export interface PersonalSecurityMasterCoverageDto {
+  readonly activeEligibleSecurities: number;
+  readonly activeListings: number;
+  readonly admittedSourceRecords: number;
+  readonly basis:
+    | "owner_declared_snapshot_only"
+    | "synthetic_engineering_only_not_real_universe";
+  readonly eligibleSecurityBand:
+    "at_least_3000" | "from_1000_to_2999" | "under_1000";
+  readonly formerTickerEntries: number;
+  readonly ineligibleSourceRecords: number;
+  readonly inactiveSecurities: number;
+  readonly issuers: number;
+  readonly providerMappings: number;
+  readonly quarantinedSourceRecords: number;
+  readonly sourceRecords: number;
+  readonly staleSourceRecords: number;
+  readonly shareClasses: number;
+  readonly totalSecurities: number;
+  readonly unsupportedSourceRecords: number;
+}
+
+export interface PersonalSecurityMasterSnapshotReceiptDto {
+  readonly asOf: string;
+  readonly catalogId: string;
+  readonly catalogVersion: string;
+  readonly claim: "bounded_exact_owner_local_security_master_snapshot_admitted";
+  readonly coverage: PersonalSecurityMasterCoverageDto;
+  readonly generatedAt: string;
+  readonly profile: "personal_single_user_local_security_master";
+  readonly provenance: Readonly<{
+    acquiredAt: string;
+    artifacts: readonly Readonly<{
+      acquiredAt: string;
+      artifactId: string;
+      contentSha256: `sha256:${string}`;
+      mediaType:
+        | "application/json"
+        | "application/zip"
+        | "text/csv"
+        | "text/html"
+        | "text/plain";
+      sourceUri: string;
+      sourceVersion: string;
+    }>[];
+    attribution: string;
+    contentKind: PersonalSecurityMasterContentKindDto;
+    sourceId: string;
+    sourceRevision: `sha256:${string}`;
+  }>;
+  readonly schemaVersion: "1.0.0";
+  readonly snapshotSha256: `sha256:${string}`;
+  readonly sourcePolicyCompatibility: Readonly<{
+    attribution: "required";
+    cache: "permitted_owner_local";
+    decision: "compatible";
+    deleteOnRequest: true;
+    display: "permitted_owner_local";
+    effectiveAt: string;
+    expiresAt: string;
+    export: "prohibited";
+    intendedUse: "personal_security_research";
+    localOnly: true;
+    operation: "fetch_snapshot";
+    policyDocumentSha256: `sha256:${string}`;
+    policyId: string;
+    policyProfile: "personal_single_user_local_connected";
+    policySchemaVersion: "1.0.0";
+    policyVersion: string;
+    redistribution: "prohibited";
+    retention: "permitted_owner_local";
+    reviewedAt: string;
+    revocationCheck: "offline_snapshot_only_cannot_discover_later_revocation";
+    revokedAt: null;
+    rightsBasis: "owner_reviewed_rights_compatible";
+    search: "permitted_owner_local";
+    sourceId: string;
+  }>;
+  readonly status: "admitted_for_personal_local_search";
+}
+
+export interface PersonalSecurityMasterStatusDto {
+  readonly snapshot: PersonalSecurityMasterSnapshotReceiptDto;
+}
+
+export interface PersonalSecurityMasterSearchResultDto {
+  readonly cik: string;
+  readonly country: "US";
+  readonly exchangeMic: string;
+  readonly instrumentType: PersonalSecurityMasterInstrumentTypeDto;
+  readonly issuerId: string;
+  readonly issuerName: string;
+  readonly listingId: string;
+  readonly matchKind: PersonalSecurityMasterSearchMatchKindDto;
+  readonly matchedValue: string;
+  readonly securityId: string;
+  readonly securityName: string;
+  readonly shareClassId: string;
+  readonly shareClassName: string;
+  readonly symbol: string;
+}
+
+export interface PersonalSecurityMasterSearchResponseDto {
+  readonly limitApplied: number;
+  readonly normalizedQuery: string;
+  readonly results: readonly PersonalSecurityMasterSearchResultDto[];
+  readonly snapshot: PersonalSecurityMasterSnapshotReceiptDto;
+  readonly totalMatches: number;
+}
+
 export interface PersonalFilingSelectedFactDto {
   readonly key:
     | "assets"

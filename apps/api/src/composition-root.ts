@@ -43,6 +43,8 @@ const LOCAL_API_PRIVATE_ENVIRONMENT_KEYS = [
   "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
   "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
   "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+  "PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH",
+  "PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256",
   "RESEARCH_COCKPIT_VAULT_ROOT",
   "RESEARCH_COCKPIT_VAULT_STARTUP",
 ] as const;
@@ -59,6 +61,8 @@ export class LocalApiCompositionError extends Error {
     | "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID"
     | "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED"
     | "PERSONAL_READINESS_UNAVAILABLE"
+    | "SECURITY_MASTER_CONFIGURATION_REQUIRES_SECURITY_MASTER_ENTRYPOINT"
+    | "SECURITY_MASTER_MODE_REQUIRES_SECURITY_MASTER_ENTRYPOINT"
     | "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT"
     | "VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT";
 
@@ -100,6 +104,10 @@ export function captureLocalApiEnvironment(
       environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256,
     PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH:
       environment.PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH,
+    PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH:
+      environment.PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH,
+    PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256:
+      environment.PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256,
     RESEARCH_COCKPIT_VAULT_ROOT: environment.RESEARCH_COCKPIT_VAULT_ROOT,
     RESEARCH_COCKPIT_VAULT_STARTUP: environment.RESEARCH_COCKPIT_VAULT_STARTUP,
   };
@@ -175,6 +183,9 @@ function prepareConfiguredApp(
   const hasVaultConfiguration =
     environment.RESEARCH_COCKPIT_VAULT_ROOT !== undefined ||
     environment.RESEARCH_COCKPIT_VAULT_STARTUP !== undefined;
+  const hasSecurityMasterConfiguration =
+    environment.PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH !== undefined ||
+    environment.PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 !== undefined;
   if (mode === "personal_single_user_local_connected") {
     throw new LocalApiCompositionError(
       "CONNECTED_MODE_REQUIRES_CONNECTED_ENTRYPOINT",
@@ -182,6 +193,11 @@ function prepareConfiguredApp(
   }
   if (mode === "personal_single_user_local_vault") {
     throw new LocalApiCompositionError("VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT");
+  }
+  if (mode === "personal_single_user_local_security_master") {
+    throw new LocalApiCompositionError(
+      "SECURITY_MASTER_MODE_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
+    );
   }
   if (hasConnectedConfiguration) {
     throw new LocalApiCompositionError(
@@ -191,6 +207,11 @@ function prepareConfiguredApp(
   if (hasVaultConfiguration) {
     throw new LocalApiCompositionError(
       "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT",
+    );
+  }
+  if (hasSecurityMasterConfiguration) {
+    throw new LocalApiCompositionError(
+      "SECURITY_MASTER_CONFIGURATION_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
     );
   }
 

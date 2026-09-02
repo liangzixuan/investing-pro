@@ -1,4 +1,4 @@
-# Sprint 0 through promoted public/local-temporary Cycle 3d threat model
+# Sprint 0 through prepared public Cycle 3e-a threat model
 
 ## Current trust boundaries
 
@@ -30,7 +30,11 @@ Cycle 3c separately has a promoted provider-neutral, no-transport public result
 with no private activation or provider operation. Cycle 3d separately has a
 promoted public/local-temporary result for one durable owner-local vault, but no
 actual personal vault, key, backup, restore, private activation, or browser
-vault client.
+vault client. Cycle 3e-a separately has prepared public engineering source for
+one exact owner-local security-master snapshot and authenticated local search,
+but no exact source transition, terminal evidence, real catalog, source
+download, provider credential, network adapter, or private activation. It is
+not accepted or promoted.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2438,6 +2442,120 @@ nonclaims are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
 
+## Cycle 3e-a owner-local security-master threat boundary
+
+Cycle 3e-a has **prepared public engineering source only**. Its exact source
+transition and terminal evidence remain pending, and it has no real catalog,
+provider credential, source download, network operation, or private activation.
+It is not accepted or promoted.
+
+Assets at risk are the startup-fixed snapshot path and file identity; canonical
+snapshot bytes and exact digest; catalog/provenance/policy identity and
+chronology; source artifact locators and digests; eligible and excluded source
+counts; stable issuer, security, share-class, listing, and provider-mapping
+identities and their 1:N ancestry; current/former symbols and observation-time
+basis; CIK, issuer/security/share-class names, instrument type, U.S. listing
+declaration, and operating exchange MIC; the immutable in-memory search index;
+owner-session authority; and the absence of paths, raw policy, rejected rows,
+credentials, and internal failure detail from responses and logs.
+
+Primary threats are implicit mode activation; security-master configuration
+smuggled into synthetic, connected, vault, or earlier personal modes; relative,
+noncanonical, remote, linked, substituted, growing, or oversized snapshot
+files; caller-carrier getters/constructors/species hooks; digest mismatch;
+malformed UTF-8, duplicate keys, noncanonical JSON, unknown fields, or resource
+exhaustion; source/policy mismatch, downgrade, expiry, revocation, or unknown
+use treated as permission; false provenance or coverage; ticker, CIK, or FIGI
+mistaken for stable identity; broken parent links or history chronology;
+collapsed issuer/security/share-class cardinality; a declared U.S. country or
+operating MIC treated as upstream authentication; observed ticker times
+misrepresented as exchange-effective; duplicate active MIC-symbols or provider
+identities; ambiguous classification silently admitted; synthetic scale
+reported as real breadth; caller-order, Unicode, punctuation, locale, or tie-
+break nondeterminism; unbounded search or regex-like behavior; query parameter
+confusion, alternate percent encoding, control/format characters, or URL-
+selected local state; owner-session/Host/Origin/CORS bypass; and detailed
+denial, path, raw policy, rejected-row, or provider metadata disclosure.
+
+Prepared controls are:
+
+- exact opt-in `personal_single_user_local_security_master` mode and a
+  separate non-splitting server, with other modes rejecting security-master
+  startup inputs;
+- one fixed-name canonical absolute path and exact SHA-256 captured with the
+  owner bootstrap and deleted before listen, with no HTTP-selected file;
+- a bounded regular single-link file opened read-only and no-follow where
+  available, with canonical-path and pre/open/post identity, size, complete-
+  read, trailing-growth, and substitution checks;
+- intrinsic ordinary `Uint8Array`/`ArrayBuffer` validation and owned copies
+  without caller allocation hooks, followed by composition-owned byte wiping;
+- strict UTF-8, one-LF canonical JSON, closed keys, bounded structure, exact
+  timestamps and ordering, and all-or-nothing admission;
+- exact provenance artifacts and a same-source policy-document binding with
+  explicit effective/review/acquisition/as-of/expiry chronology, null
+  revocation, `fetch_snapshot`, and owner-local attribution/display/search/
+  cache/retention/deletion/export/redistribution decisions;
+- canonical query/fragment-free HTTPS artifact locations with no URI-authority
+  credential and owner review that no credential appears elsewhere in the
+  locator, with policy expiry failing closed at equality;
+- explicit source, admitted, ineligible, unsupported, stale, and quarantined
+  counts plus issuer/share-class cardinalities, with synthetic content
+  permanently labeled engineering-only;
+- stable globally distinct issuer, security, share-class, listing, and mapping
+  identifiers that cannot equal a CIK, ticker, or provider identifier; canonical
+  1:N ancestry, typed existing-entity mapping targets, ordering, unique provider
+  identities, and unique provider/kind/target triples;
+- active eligible common-stock/ADR records; exact U.S. and operating-MIC
+  declarations; coherent active/current listing state; nonoverlapping ticker
+  chronology labeled only SEC-filing-observed or prospective-snapshot-observed;
+  and global active MIC-symbol uniqueness, without an upstream MIC-
+  authenticity or exchange-effective-history claim;
+- fixed query normalization, issuer/security/share-class name matching, seven-
+  level rank order, exact current-symbol/MIC/normalized-security-name/
+  normalized-share-class-name/share-class-ID/security-ID/listing-ID tie breaks,
+  active-listing filtering, a 128-code-point raw query/name cap, a 512-code-
+  point normalized query/name cap, and immutable defensive output;
+- exact authenticated status and search routes with literal-loopback Host/
+  Origin, cookie, credentialed CORS, private/no-store, framing, negotiation,
+  and generic-failure controls;
+- canonical `q`-first and optional `limit`-second GET grammar that rejects
+  duplicate/unknown fields, alternate percent/UTF-8/plus encodings, non-NFC or
+  edge whitespace, control/format/surrogate characters, fragments, bodies, and
+  forbidden authority headers before catalog search, plus a parameter-free,
+  bodyless status route; and
+- a static runtime graph with no provider client, DNS/outbound socket, source
+  transport, credential adapter, vault, filing corpus, demo state, scheduler,
+  child process, or dynamic code; and
+- a fixed local-search measurement plan of 100 iterations over 32 ordered,
+  normalization-distinct queries at result limit 25, with the ordered raw query
+  set bound by canonical-JSON-plus-LF SHA-256 in the receipt.
+
+Residual risk remains deliberate. The stable-file checks cannot prove that an
+accepted Windows drive or POSIX path is not network-mounted; owner-local
+backing is an operator precondition. An admitted policy declaration is not
+legal advice, source attestation, entitlement validation, or proof that no
+revocation occurred after the offline snapshot. An owner-local catalog can be
+wrong, incomplete, stale, or malicious despite internal consistency. A hostile
+same-user process, administrator, filesystem, memory inspector, swap, or crash
+dump remains outside the boundary.
+
+Synthetic 3,000-record scale and timing prove only engineering behavior. The
+real exit requires an exact owner-approved rights-compatible snapshot with at
+least 3,000 eligible active U.S.-listed common stocks/ADRs, explicit exclusion
+counts, and nearest-rank search p95 below 200 ms on declared owner hardware
+with that exact universe and fixed measurement plan. The selected future
+`sec_openfigi_v1` inputs have not been acquired or admitted. Its SEC-filing-
+observed plus prospective ticker
+history is not complete exchange-effective corporate-action history.
+
+No browser search client, watchlist workflow, mutation, persistence, refresh,
+price, fundamentals, screening, portfolio integration, remote/multi-user/
+tenant/shared-service/commercial/production security, or competitor parity is
+claimed. Enterprise approvals are out of scope for the personal profile; exact
+owner source-terms review remains required. See
+[ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
+the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -2488,8 +2606,9 @@ nonclaims are in
    provider-neutral, no-transport chain and is not privately activated. Cycle
    3d's public/local-temporary vault boundary is promoted only for its exact
    corrected chain and has no actual vault or private activation. Cycle 3e-a
-   owner-local security-master snapshot admission and search is next, with no
-   real breadth claim until an exact rights-compatible source is admitted.
+   now has prepared owner-local security-master admission and search source,
+   but remains unpromoted with no real breadth claim until a later exact
+   owner-approved, rights-compatible source is admitted and measured.
    Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.

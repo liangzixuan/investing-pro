@@ -113,6 +113,19 @@ const personalFilingCorpusModule =
   "@research-cockpit/personal-filing-corpus" as const;
 const connectedSourcePolicyModule =
   "@research-cockpit/connected-source-policy" as const;
+const personalSecurityMasterModule =
+  "@research-cockpit/personal-security-master" as const;
+const personalSecurityMasterPackagePrefix =
+  "packages/personal-security-master/" as const;
+const personalSecurityMasterPackagePaths = [
+  `${personalSecurityMasterPackagePrefix}package.json`,
+  `${personalSecurityMasterPackagePrefix}src/index.ts`,
+  `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts`,
+  `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts`,
+  `${personalSecurityMasterPackagePrefix}src/personal-security-master.ts`,
+  `${personalSecurityMasterPackagePrefix}src/test-personal-security-master-builder.ts`,
+  `${personalSecurityMasterPackagePrefix}tsconfig.json`,
+].sort();
 const connectedSourcePolicyPackagePrefix =
   "packages/connected-source-policy/" as const;
 const connectedSourcePolicyPackagePaths = [
@@ -2141,6 +2154,7 @@ const workspacePackageNames =
   await collectWorkspacePackageNames(filesToInspect);
 violations.push(
   ...(await personalFilingCorpusBoundaryViolations()),
+  ...(await personalSecurityMasterBoundaryViolations()),
   ...(await connectedSourcePolicyBoundaryViolations()),
   ...(await localResearchVaultBoundaryViolations()),
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
@@ -5145,6 +5159,688 @@ function doubleQuotedShellArray(
     values.push(value);
   }
   return values;
+}
+
+function hasExactApiBuildEntries(content: string): boolean {
+  return /\bentry:\s*\[\s*"src\/server\.ts",\s*"src\/connected-server\.ts",\s*"src\/security-master-server\.ts",\s*"src\/vault-server\.ts",?\s*\]/u.test(
+    content,
+  );
+}
+
+async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) => path.startsWith(personalSecurityMasterPackagePrefix))
+    .sort();
+  if (
+    JSON.stringify(actualTree) !==
+    JSON.stringify(personalSecurityMasterPackagePaths)
+  ) {
+    found.push(
+      `${personalSecurityMasterPackagePrefix}: Cycle 3e-a package tree must remain the exact manifest, tsconfig, core, index, test builder, and two-test surface`,
+    );
+  }
+
+  const manifestPath = `${personalSecurityMasterPackagePrefix}package.json`;
+  const manifest = await cycle2kJson(manifestPath, found);
+  const expectedManifest = {
+    name: personalSecurityMasterModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
+    found.push(
+      `${manifestPath}: Cycle 3e-a security master must remain private, index-only, and zero-production-dependency`,
+    );
+  }
+
+  const tsconfigPath = `${personalSecurityMasterPackagePrefix}tsconfig.json`;
+  const tsconfig = await cycle2kJson(tsconfigPath, found);
+  const expectedTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts"],
+  };
+  if (JSON.stringify(tsconfig) !== JSON.stringify(expectedTsconfig)) {
+    found.push(`${tsconfigPath}: Cycle 3e-a tsconfig must remain exact`);
+  }
+
+  const corePath =
+    `${personalSecurityMasterPackagePrefix}src/personal-security-master.ts` as const;
+  const indexPath =
+    `${personalSecurityMasterPackagePrefix}src/index.ts` as const;
+  const builderPath =
+    `${personalSecurityMasterPackagePrefix}src/test-personal-security-master-builder.ts` as const;
+  const unitTestPath =
+    `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts` as const;
+  const securityTestPath =
+    `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts` as const;
+  const allowedTestModules = new Set([
+    "node:crypto",
+    "node:util/types",
+    "vitest",
+    "./index",
+    "./personal-security-master",
+    "./test-personal-security-master-builder",
+  ]);
+  for (const path of actualTree.filter((entry) => entry.endsWith(".ts"))) {
+    const content = await cycle2kText(path, found);
+    const modules = collectModuleSpecifiers(content);
+    if (
+      hasRuntimeDynamicImport(content) ||
+      hasForbiddenDynamicCodeCapability(content) ||
+      hasUnresolvedRuntimeModuleLoad(content) ||
+      hasIndirectRuntimeModuleLoad(content)
+    ) {
+      found.push(
+        `${path}: Cycle 3e-a runtime module loading and dynamic code are forbidden`,
+      );
+    }
+    if (
+      path === corePath &&
+      JSON.stringify(modules) !==
+        JSON.stringify(["node:crypto", "node:perf_hooks"])
+    ) {
+      found.push(
+        `${path}: security-master core imports must remain exact and in-memory only`,
+      );
+    } else if (
+      path === indexPath &&
+      JSON.stringify(modules) !== JSON.stringify(["./personal-security-master"])
+    ) {
+      found.push(`${path}: public entry must remain one exact named re-export`);
+    } else if (
+      path === builderPath &&
+      JSON.stringify(modules) !==
+        JSON.stringify(["node:crypto", "./personal-security-master"])
+    ) {
+      found.push(`${path}: test builder imports must remain exact`);
+    } else if (
+      (path === unitTestPath || path === securityTestPath) &&
+      (!modules.includes("vitest") ||
+        !modules.includes("./personal-security-master") ||
+        modules.some((module) => !allowedTestModules.has(module)))
+    ) {
+      found.push(
+        `${path}: security-master tests may use only the reviewed local, Vitest, crypto, and proxy-inspection imports`,
+      );
+    }
+  }
+
+  for (const path of [corePath, indexPath]) {
+    const content = await cycle2kText(path, found);
+    const productionViolation = personalSecurityMasterProductionViolation(
+      path,
+      content,
+    );
+    if (productionViolation !== null) {
+      found.push(`${path}: ${productionViolation}`);
+    }
+  }
+
+  const publicExports = [
+    ["PERSONAL_SECURITY_MASTER_CHECKS", false],
+    ["PERSONAL_SECURITY_MASTER_CLAIM", false],
+    ["PERSONAL_SECURITY_MASTER_FAILURE_CODES", false],
+    ["PERSONAL_SECURITY_MASTER_LIMITS", false],
+    ["PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN", false],
+    ["PERSONAL_SECURITY_MASTER_NOT_PROVEN", false],
+    ["PERSONAL_SECURITY_MASTER_PROFILE", false],
+    ["PERSONAL_SECURITY_MASTER_PROVIDER_MAPPING_TARGETS", false],
+    ["PERSONAL_SECURITY_MASTER_SCHEMA_VERSION", false],
+    ["PERSONAL_SECURITY_MASTER_SEARCH_NORMALIZATION", false],
+    ["PERSONAL_SECURITY_MASTER_SEARCH_RANKING", false],
+    ["PERSONAL_SECURITY_MASTER_SEARCH_TIE_BREAKS", false],
+    ["PERSONAL_SECURITY_MASTER_SYMBOL_NORMALIZATION", false],
+    ["PersonalSecurityMasterError", false],
+    ["admitPersonalSecurityMasterSnapshot", false],
+    ["measurePersonalSecurityMasterSearchP95", false],
+    ["searchPersonalSecurityMaster", false],
+    ["PersonalSecurityMasterAdmissionInput", true],
+    ["PersonalSecurityMasterCatalog", true],
+    ["PersonalSecurityMasterCatalogCoverage", true],
+    ["PersonalSecurityMasterContentKind", true],
+    ["PersonalSecurityMasterFailureCode", true],
+    ["PersonalSecurityMasterInstrumentType", true],
+    ["PersonalSecurityMasterMeasurement", true],
+    ["PersonalSecurityMasterMeasurementInput", true],
+    ["PersonalSecurityMasterProvenance", true],
+    ["PersonalSecurityMasterProvenanceArtifact", true],
+    ["PersonalSecurityMasterSearchInput", true],
+    ["PersonalSecurityMasterSearchMatchKind", true],
+    ["PersonalSecurityMasterSearchResponse", true],
+    ["PersonalSecurityMasterSearchResult", true],
+    ["PersonalSecurityMasterSourcePolicyCompatibility", true],
+  ] as const;
+  const indexSource = ts.createSourceFile(
+    indexPath,
+    await cycle2kText(indexPath, found),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    indexSource.statements.length !== 1 ||
+    !isExactNamedReExportDeclaration(
+      indexSource.statements[0],
+      "./personal-security-master",
+      publicExports,
+    )
+  ) {
+    found.push(
+      `${indexPath}: Cycle 3e-a public named export surface must remain exact`,
+    );
+  }
+
+  const allowedApiImporters = new Map<string, readonly string[]>([
+    [
+      "apps/api/src/personal-security-master-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
+      "apps/api/src/personal-security-master-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-app.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_PROFILE",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-composition-root.ts",
+      [
+        "admitPersonalSecurityMasterSnapshot",
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+      ],
+    ],
+  ]);
+  for (const file of externalCompositionFilesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    const content = await readFile(file, "utf8");
+    if (
+      !collectModuleSpecifiers(content).includes(personalSecurityMasterModule)
+    ) {
+      continue;
+    }
+    const expectedBindings = allowedApiImporters.get(path);
+    if (expectedBindings === undefined) {
+      found.push(
+        `${path}: only the exact reviewed security-master API production files and route test may import ${personalSecurityMasterModule}`,
+      );
+    } else if (
+      JSON.stringify(personalSecurityMasterImportBindings(content).sort()) !==
+      JSON.stringify([...expectedBindings].sort())
+    ) {
+      found.push(
+        `${path}: security-master imports must remain the exact reviewed bindings`,
+      );
+    }
+  }
+  for (const [path] of allowedApiImporters) {
+    const content = await cycle2kText(path, found);
+    if (
+      !collectModuleSpecifiers(content).includes(personalSecurityMasterModule)
+    ) {
+      found.push(`${path}: required Cycle 3e-a package binding is missing`);
+    }
+  }
+  for (const file of filesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    if (basename(path) !== "package.json") continue;
+    const content = await readFile(file, "utf8");
+    if (
+      content.includes(personalSecurityMasterModule) &&
+      path !== manifestPath &&
+      path !== "apps/api/package.json"
+    ) {
+      found.push(
+        `${path}: only apps/api may declare the security-master workspace package`,
+      );
+    }
+  }
+  const apiManifest = await cycle2kJson("apps/api/package.json", found);
+  if (
+    !isRecord(apiManifest?.dependencies) ||
+    apiManifest.dependencies[personalSecurityMasterModule] !== "workspace:*"
+  ) {
+    found.push(
+      "apps/api/package.json: exact Cycle 3e-a security-master workspace dependency is required",
+    );
+  }
+  if (
+    !isRecord(apiManifest?.scripts) ||
+    apiManifest.scripts["dev:security-master"] !==
+      "tsx watch src/security-master-server.ts" ||
+    apiManifest.scripts["start:security-master"] !==
+      "node dist/src/security-master-server.js"
+  ) {
+    found.push(
+      "apps/api/package.json: distinct Cycle 3e-a security-master development and start entries are required",
+    );
+  }
+
+  const securityMasterApiModulesByPath = new Map<string, readonly string[]>([
+    [
+      "apps/api/src/personal-security-master-routes.ts",
+      [
+        "@research-cockpit/contracts",
+        personalSecurityMasterModule,
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-app.ts",
+      [
+        "node:crypto",
+        "@fastify/cors",
+        "@fastify/helmet",
+        "@research-cockpit/contracts",
+        personalSecurityMasterModule,
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+        "./personal-security-master-routes",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-composition-root.ts",
+      [
+        "fastify",
+        "node:fs",
+        "node:fs/promises",
+        "node:path",
+        personalSecurityMasterModule,
+        "./listen-options",
+        "./personal-owner-session",
+        "./security-master-app",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-server.ts",
+      ["./security-master-composition-root", "./listen-options"],
+    ],
+  ]);
+  const securityMasterApiSources = new Map<string, string>();
+  for (const [path, expectedModules] of securityMasterApiModulesByPath) {
+    const content = await cycle2kText(path, found);
+    securityMasterApiSources.set(path, content);
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify(expectedModules)
+    ) {
+      found.push(
+        `${path}: Cycle 3e-a runtime imports must remain the exact reviewed loopback, owner-session, file-admission, and search allowlist`,
+      );
+    }
+  }
+  const apiBoundaryViolation = personalSecurityMasterApiBoundaryViolation(
+    securityMasterApiSources,
+  );
+  if (apiBoundaryViolation !== null) found.push(apiBoundaryViolation);
+
+  const ordinaryComposition = await cycle2kText(
+    "apps/api/src/composition-root.ts",
+    found,
+  );
+  const connectedComposition = await cycle2kText(
+    "apps/api/src/connected-composition-root.ts",
+    found,
+  );
+  const vaultComposition = await cycle2kText(
+    "apps/api/src/vault-composition-root.ts",
+    found,
+  );
+  const apiMode = await cycle2kText("apps/api/src/api-mode.ts", found);
+  if (
+    !apiMode.includes('"personal_single_user_local_security_master"') ||
+    !ordinaryComposition.includes(
+      "SECURITY_MASTER_MODE_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
+    ) ||
+    !ordinaryComposition.includes(
+      "SECURITY_MASTER_CONFIGURATION_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
+    ) ||
+    !connectedComposition.includes(
+      '"PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH"',
+    ) ||
+    !connectedComposition.includes(
+      '"PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256"',
+    ) ||
+    !vaultComposition.includes('"PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH"') ||
+    !vaultComposition.includes('"PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256"')
+  ) {
+    found.push(
+      "apps/api/: prior modes must reject the exact Cycle 3e-a mode and private snapshot configuration",
+    );
+  }
+
+  const regressions = [
+    JSON.stringify(personalSecurityMasterPackagePaths) !==
+      JSON.stringify([...personalSecurityMasterPackagePaths].sort()),
+    personalSecurityMasterProductionViolation(
+      corePath,
+      'import { createHash } from "node:crypto";\nimport { performance } from "node:perf_hooks";',
+    ) !== null,
+    personalSecurityMasterProductionViolation(
+      corePath,
+      'import { createHash } from "node:crypto";\nimport { performance } from "node:perf_hooks";\nvoid fetch("https://provider.example");',
+    ) === null,
+    personalSecurityMasterProductionViolation(
+      corePath,
+      'import { createHash } from "node:crypto";\nimport { performance } from "node:perf_hooks";\nconsole.log("private");',
+    ) === null,
+    personalSecurityMasterApiBoundaryViolation(
+      new Map(
+        [...securityMasterApiSources].map(([path, content]) => [
+          path,
+          path === "apps/api/src/security-master-app.ts"
+            ? `${content}\nvoid fetch("https://provider.example");`
+            : content,
+        ]),
+      ),
+    ) === null,
+  ];
+  const regression = regressions.indexOf(true);
+  if (regression !== -1) {
+    throw new Error(
+      `Cycle 3e-a security-master boundary classifier ${String(regression + 1)} regressed`,
+    );
+  }
+  return found;
+}
+
+function personalSecurityMasterProductionViolation(
+  path: string,
+  content: string,
+): string | null {
+  const expectedModules =
+    path === `${personalSecurityMasterPackagePrefix}src/index.ts`
+      ? ["./personal-security-master"]
+      : ["node:crypto", "node:perf_hooks"];
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(expectedModules)
+  ) {
+    return "production imports must remain the exact reviewed in-memory allowlist";
+  }
+  if (
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  ) {
+    return "runtime module loading and dynamic code are forbidden";
+  }
+  const source = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    findIdentifiers(
+      source,
+      new Set([
+        "EventSource",
+        "WebSocket",
+        "XMLHttpRequest",
+        "console",
+        "fetch",
+        "global",
+        "globalThis",
+        "process",
+        "queueMicrotask",
+        "self",
+        "setImmediate",
+        "setInterval",
+        "setTimeout",
+        "window",
+      ]),
+    ).length > 0
+  ) {
+    return "production source must not use network, process, logging, environment, or background globals";
+  }
+  let concreteEndpoint = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    ) {
+      concreteEndpoint = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return concreteEndpoint
+    ? "production source must remain source-neutral and embed no provider endpoint"
+    : null;
+}
+
+function personalSecurityMasterImportBindings(content: string): string[] {
+  const source = ts.createSourceFile(
+    "personal-security-master-import.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const bindings: string[] = [];
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteralLike(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== personalSecurityMasterModule
+    ) {
+      continue;
+    }
+    const clause = statement.importClause;
+    if (clause === undefined) {
+      bindings.push("<side-effect>");
+      continue;
+    }
+    if (clause.name !== undefined) {
+      bindings.push(`<default:${clause.name.text}>`);
+    }
+    const named = clause.namedBindings;
+    if (named === undefined) continue;
+    if (ts.isNamespaceImport(named)) {
+      bindings.push(`<namespace:${named.name.text}>`);
+      continue;
+    }
+    for (const element of named.elements) {
+      const imported = (element.propertyName ?? element.name).text;
+      const local = element.name.text;
+      const binding = imported === local ? imported : `${imported} as ${local}`;
+      bindings.push(
+        clause.isTypeOnly || element.isTypeOnly ? `type ${binding}` : binding,
+      );
+    }
+  }
+  return bindings;
+}
+
+function personalSecurityMasterApiBoundaryViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const requiredAnchors = new Map<string, readonly string[]>([
+    [
+      "apps/api/src/personal-security-master-routes.ts",
+      [
+        '"/v1/personal-filing/security-master/status"',
+        '"/v1/personal-filing/security-master/search"',
+        "exposeHeadRoute: false",
+        "authorizePersonalRouteRequest(",
+        "parseCanonicalSearchUrl(request.url)",
+        "CONTROL_FORMAT_OR_SURROGATE_CHARACTER",
+        "decodeURIComponent(",
+        "encodeURIComponent(",
+        "searchPersonalSecurityMaster(catalog,",
+        "snapshotReceipt(catalog)",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-app.ts",
+      [
+        "buildPersonalSecurityMasterApp(",
+        "registerPersonalOwnerSessionRoutes(",
+        "registerPersonalSecurityMasterRoutes(",
+        'header("Cache-Control", "private, no-store")',
+        'header("Pragma", "no-cache")',
+        'header("Vary", "Origin")',
+        "ownerSession.close()",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-composition-root.ts",
+      [
+        '"personal_single_user_local_security_master"',
+        '"PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH"',
+        '"PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256"',
+        '"personal-security-master.snapshot.json"',
+        "capturedSecurityMasterApiEnvironments.add(captured)",
+        "delete environment[key]",
+        "SECURITY_MASTER_MODE_REJECTS_OTHER_PRIVATE_CONFIGURATION",
+        "readStableSnapshot(snapshotPath)",
+        "admitPersonalSecurityMasterSnapshot({",
+        "snapshot.fill(0)",
+        "buildPersonalSecurityMasterApp(",
+        "constants.O_RDONLY | noFollow",
+        "constants.O_NOFOLLOW",
+        "sameFileState(",
+      ],
+    ],
+    [
+      "apps/api/src/security-master-server.ts",
+      [
+        "captureSecurityMasterApiEnvironment(process.env)",
+        "resolveDemoApiListenOptions(environment)",
+        "createSecurityMasterConfiguredApp(environment)",
+        "app.listen({ host, port })",
+        "process.stdout.write(",
+        '"Research Cockpit personal security-master API is listening.\\n"',
+        "process.stderr.write(",
+        '"Research Cockpit personal security-master API failed to start.\\n"',
+        "process.exitCode = 1",
+      ],
+    ],
+  ]);
+  for (const [path, anchors] of requiredAnchors) {
+    const content = sources.get(path);
+    if (
+      content === undefined ||
+      anchors.some((anchor) => !content.includes(anchor))
+    ) {
+      return `${path}: exact Cycle 3e-a mode, startup, stable-file, owner-auth, search, or private-response anchors regressed`;
+    }
+  }
+
+  for (const [path, content] of sources) {
+    if (
+      hasRuntimeDynamicImport(content) ||
+      hasForbiddenDynamicCodeCapability(content) ||
+      hasUnresolvedRuntimeModuleLoad(content) ||
+      hasIndirectRuntimeModuleLoad(content)
+    ) {
+      return `${path}: Cycle 3e-a API must not dynamically load modules or code`;
+    }
+    const source = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const forbiddenGlobals = new Set([
+      "EventSource",
+      "WebSocket",
+      "XMLHttpRequest",
+      "console",
+      "fetch",
+      "global",
+      "globalThis",
+      "queueMicrotask",
+      "self",
+      "setImmediate",
+      "setInterval",
+      "setTimeout",
+      "window",
+    ]);
+    if (path !== "apps/api/src/security-master-server.ts") {
+      forbiddenGlobals.add("process");
+    }
+    if (findIdentifiers(source, forbiddenGlobals).length > 0) {
+      return `${path}: Cycle 3e-a API must not use provider-network, process, logging, or background globals outside exact startup`;
+    }
+    if (
+      path === "apps/api/src/security-master-server.ts" &&
+      findIdentifiers(source, new Set(["process"])).length !== 4
+    ) {
+      return `${path}: process access must remain exact environment capture, fixed stdout/stderr, and exitCode only`;
+    }
+    let concreteEndpoint = false;
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isStringLiteralLike(node) &&
+        /(?:https?|wss?):\/\//iu.test(node.text) &&
+        !node.text.startsWith("https://research-cockpit.local/") &&
+        !/^http:\/\/(?:\[::1\]|localhost|127\.0\.0\.1)(?::[0-9]+)?(?:\/|$)/u.test(
+          node.text,
+        )
+      ) {
+        concreteEndpoint = true;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    if (concreteEndpoint) {
+      return `${path}: Cycle 3e-a API must embed no provider or real-network endpoint`;
+    }
+  }
+
+  const routes =
+    sources.get("apps/api/src/personal-security-master-routes.ts") ?? "";
+  if (routes.includes("sourceLocator")) {
+    return "apps/api/src/personal-security-master-routes.ts: owner-local composite-manifest locator must remain outside responses";
+  }
+  const composition =
+    sources.get("apps/api/src/security-master-composition-root.ts") ?? "";
+  const readPosition = composition.indexOf("readStableSnapshot(snapshotPath)");
+  const admitPosition = composition.indexOf(
+    "admitPersonalSecurityMasterSnapshot({",
+  );
+  const wipePosition = composition.indexOf("snapshot.fill(0)", admitPosition);
+  const buildPosition = composition.indexOf(
+    "buildPersonalSecurityMasterApp(",
+    admitPosition,
+  );
+  if (
+    readPosition < 0 ||
+    admitPosition <= readPosition ||
+    wipePosition <= admitPosition ||
+    buildPosition <= wipePosition
+  ) {
+    return "apps/api/src/security-master-composition-root.ts: stable read, complete admission, byte wipe, and app construction order regressed";
+  }
+  return null;
 }
 
 async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
@@ -8855,12 +9551,10 @@ function localResearchVaultApiConfigurationViolation(
   if (
     JSON.stringify(collectModuleSpecifiers(tsupConfig)) !==
       JSON.stringify(["node:path", "tsup", "./src/build-source-identity"]) ||
-    !tsupConfig.includes(
-      'entry: ["src/server.ts", "src/connected-server.ts", "src/vault-server.ts"]',
-    ) ||
+    !hasExactApiBuildEntries(tsupConfig) ||
     !tsupConfig.includes("splitting: false")
   )
-    return "apps/api/tsup.config.ts: ordinary, connected, and vault APIs require exact separate non-splitting build entries";
+    return "apps/api/tsup.config.ts: ordinary, connected, security-master, and vault APIs require exact separate non-splitting build entries";
   for (const [path, anchors] of localResearchVaultApiRequiredAnchors()) {
     const content = sources.get(path);
     if (
@@ -8886,12 +9580,14 @@ function localResearchVaultApiConfigurationViolation(
     "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
     "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
     "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+    "PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH",
+    "PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256",
   ];
   if (
     JSON.stringify(vaultForbiddenConfiguration) !==
     JSON.stringify(expectedVaultForbiddenConfiguration)
   )
-    return "apps/api/src/vault-composition-root.ts: vault mode must reject the exact connected and release configuration surface";
+    return "apps/api/src/vault-composition-root.ts: vault mode must reject the exact connected, release, and security-master configuration surface";
 
   const connectedOfflineConfiguration = localResearchVaultConstStringArray(
     sources.get("apps/api/src/connected-composition-root.ts") ?? "",
@@ -8908,11 +9604,13 @@ function localResearchVaultApiConfigurationViolation(
     "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
     "RESEARCH_COCKPIT_VAULT_ROOT",
     "RESEARCH_COCKPIT_VAULT_STARTUP",
+    "PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH",
+    "PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256",
   ];
   return JSON.stringify(connectedOfflineConfiguration) ===
     JSON.stringify(expectedConnectedOfflineConfiguration)
     ? null
-    : "apps/api/src/connected-composition-root.ts: connected mode must reject the exact offline and vault configuration surface";
+    : "apps/api/src/connected-composition-root.ts: connected mode must reject the exact offline, vault, and security-master configuration surface";
 }
 
 function localResearchVaultConstStringArray(
@@ -9398,6 +10096,8 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
         "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
         "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
         "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+        "PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH",
+        "PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256",
       ] as const;
     `,
   );
@@ -9415,6 +10115,8 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
         "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
         "RESEARCH_COCKPIT_VAULT_ROOT",
         "RESEARCH_COCKPIT_VAULT_STARTUP",
+        "PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH",
+        "PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256",
       ] as const;
     `,
   );
@@ -9422,9 +10124,11 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
     scripts: {
       dev: "tsx watch src/server.ts",
       "dev:connected": "tsx watch src/connected-server.ts",
+      "dev:security-master": "tsx watch src/security-master-server.ts",
       "dev:vault": "tsx watch src/vault-server.ts",
       start: "node dist/src/server.js",
       "start:connected": "node dist/src/connected-server.js",
+      "start:security-master": "node dist/src/security-master-server.js",
       "start:vault": "node dist/src/vault-server.js",
     },
   };
@@ -9432,7 +10136,7 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
     import "node:path";
     import "tsup";
     import "./src/build-source-identity";
-    entry: ["src/server.ts", "src/connected-server.ts", "src/vault-server.ts"];
+    entry: ["src/server.ts", "src/connected-server.ts", "src/security-master-server.ts", "src/vault-server.ts"];
     splitting: false;
   `;
 
@@ -9887,13 +10591,11 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
   if (
     JSON.stringify(collectModuleSpecifiers(tsupConfig)) !==
       JSON.stringify(["node:path", "tsup", "./src/build-source-identity"]) ||
-    !tsupConfig.includes(
-      'entry: ["src/server.ts", "src/connected-server.ts", "src/vault-server.ts"]',
-    ) ||
+    !hasExactApiBuildEntries(tsupConfig) ||
     !tsupConfig.includes("splitting: false")
   )
     found.push(
-      `${tsupConfigPath}: Cycle 3c and Cycle 3d require exact separate non-splitting ordinary, connected, and vault build entries`,
+      `${tsupConfigPath}: Cycle 3c, Cycle 3d, and Cycle 3e-a require exact separate non-splitting ordinary, connected, security-master, and vault build entries`,
     );
 
   const apiPaths = [

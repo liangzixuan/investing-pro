@@ -1234,10 +1234,40 @@ restore, or private activation. At terminal routing closure
 `3edb5464a3414313a980ffd9fecce5ca5257084a`, the full repository gate passed
 1,906 tests with 9 intentional skips, and the four terminal workflows passed. See
 [ADR 0056](./docs/adr/0056-durable-personal-local-research-vault.md) and the
-[Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md). Cycle 3e-a owner-local
-security-master snapshot admission and symbol/name search is the next planned
-functional slice. No real-universe breadth claim is available until an exact
-rights-compatible source snapshot is admitted.
+[Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md).
+
+Cycle 3e-a now has **prepared public engineering source only; it is not
+accepted or promoted**. The zero-production-dependency
+`@research-cockpit/personal-security-master` package prepares strict canonical
+snapshot admission, canonical 1:N issuer-to-security-to-share-class-to-listing
+identity, typed provider mappings, explicit coverage and source-policy
+compatibility, observed/prospective ticker-time labels, deterministic bounded
+symbol/name search, and a content-kind-bound p95 measurement whose synthetic
+result is explicitly engineering-only. The fixed measurement plan is 100
+iterations over 32 distinct normalized queries at result limit 25; its receipt
+binds the ordered raw query set by canonical-JSON-plus-LF SHA-256. Exact API mode
+`personal_single_user_local_security_master` starts through a separate server
+and exposes only owner-authenticated, private/no-store status and search routes.
+It takes one fixed-name owner-local snapshot path and exact digest before
+listen; no request can select the snapshot, source, policy, or ranking. See
+[ADR 0057](./docs/adr/0057-owner-local-security-master-snapshot-and-search.md)
+and the [Cycle 3e-a exit matrix](./docs/CYCLE_3E_A_EXIT_MATRIX.md).
+
+No real snapshot, provider credential, download, network adapter, browser
+search client, or private activation is included. Synthetic 3,000-record scale
+and timing verify only the implementation. Cycle 3e-a still requires a later
+exact owner-approved, rights-compatible real snapshot with at least 3,000
+eligible active U.S.-listed common stocks/ADRs and measured local search p95
+below 200 ms on declared owner hardware under that exact measurement plan.
+
+The selected future free/personal source profile is `sec_openfigi_v1`: pinned
+SEC current-company ticker/exchange data, SEC submissions and issuer-filed
+Inline XBRL cover facts, OpenFIGI v3 mappings, and a pinned ISO 10383 MIC
+snapshot. Its ticker history is explicitly limited to SEC-filing-observed
+history plus prospective diffs keyed by internal `listingId`; those intervals
+cannot be labeled exchange-effective, and complete history would require a
+separately licensed corporate-actions source. Enterprise/shared-service
+requirements remain out of scope.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

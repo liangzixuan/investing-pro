@@ -324,15 +324,19 @@ Any later operation on an actual personal vault must be explicitly and
 separately authorized and may publish only a coarse nonsecret outcome.
 
 Cycle 3e-a owner-local security-master snapshot admission and symbol/name search
-is the next planned functional slice. This promoted Cycle 3d public source does
-not authorize Cycle 3e data loading or network access, and no real-universe
-breadth claim exists without an exact rights-compatible source snapshot.
+now has prepared public engineering source only. It is not accepted or
+promoted. This promoted Cycle 3d source and the Cycle 3e-a prepared source
+authorize no data download or network adapter, and no real-universe breadth
+claim exists without a later exact owner-approved, rights-compatible source
+snapshot and declared-hardware measurement.
 
 ## References
 
 - [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md)
 - [ADR 0055](./0055-connected-personal-source-policy-registry.md)
+- [ADR 0057](./0057-owner-local-security-master-snapshot-and-search.md)
 - [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)
+- [Cycle 3e-a exit matrix](../CYCLE_3E_A_EXIT_MATRIX.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
 - [Threat model](../THREAT_MODEL.md)

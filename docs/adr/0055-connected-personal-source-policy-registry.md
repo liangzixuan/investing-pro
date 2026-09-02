@@ -292,14 +292,18 @@ evidence.
 Cycle 3d has a separate promoted public/local-temporary result, with no actual
 personal vault, recovery key, backup, restore, or private activation. Its schema
 explicitly excludes this process-memory policy, kill, reservation, replay, and
-budget state. Cycle 3e-a local security-master snapshot admission and search is
-next; it has no real breadth claim without an exact rights-compatible source.
+budget state. Cycle 3e-a local security-master admission and search now has
+prepared public engineering source only. It is not accepted or promoted and
+has no real breadth claim without a later exact owner-approved,
+rights-compatible source snapshot.
 
 ## References
 
 - [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)
 - [ADR 0056](./0056-durable-personal-local-research-vault.md)
+- [ADR 0057](./0057-owner-local-security-master-snapshot-and-search.md)
 - [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md)
+- [Cycle 3e-a exit matrix](../CYCLE_3E_A_EXIT_MATRIX.md)
 - [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

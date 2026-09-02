@@ -236,8 +236,10 @@ public/local-temporary chain rooted at
 `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`, with no actual personal vault, key,
 backup, restore, or private activation. Cycle 3e-a owner-local security-master
-snapshot admission and search is next, with no real breadth claim without an
-exact rights-compatible source.
+snapshot admission and search now has prepared public engineering source only.
+It is not accepted or promoted and has no real breadth claim until a later
+exact owner-approved, rights-compatible source snapshot is admitted and
+measured.
 Enterprise and shared-service requirements remain Out of scope for the
 personal profile. See
 [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
@@ -252,6 +254,8 @@ and the [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md).
 - [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)
 - [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
 - [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
+- [ADR 0057](./0057-owner-local-security-master-snapshot-and-search.md)
+- [Cycle 3e-a exit matrix](../CYCLE_3E_A_EXIT_MATRIX.md)
 - [Cycle 2w exit matrix](../CYCLE_2W_EXIT_MATRIX.md)
 - [ADR 0049](./0049-bounded-personal-raw-filing-selected-fact-extraction-agreement.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

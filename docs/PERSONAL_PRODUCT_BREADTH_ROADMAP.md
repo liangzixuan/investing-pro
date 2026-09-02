@@ -10,9 +10,12 @@ provider-neutral, no-transport public source revision
 Cycle 3d is promoted only for its exact corrected public/local-temporary chain
 rooted at `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
-backup, restore, or private activation has occurred. Cycles 3e-a, 3e-b, and 3f
-through 3q remain planned.** This does not alter the exact historical Cycle 2z
-personal result or make a feature-parity claim.
+backup, restore, or private activation has occurred. Cycle 3e-a has prepared
+public engineering source only; its exact source transition, terminal evidence,
+real snapshot, real-universe breadth, and real-hardware latency result remain
+pending, so it is not accepted or promoted. Cycle 3e-b and Cycles 3f through
+3q remain planned.** This does not alter the exact historical Cycle 2z personal
+result or make a feature-parity claim.
 
 ## Goal
 
@@ -151,7 +154,7 @@ Later subcycles may widen a universe only with the same checks.
 | Personal dossier composition            | Prepared fixed-snapshot composition; not promoted                   | Cycle 3b        |
 | Connected source governance             | Provider-neutral public control plane promoted; no source activated | Cycle 3c        |
 | Durable personal state                  | Public/local-temporary SQLite vault promoted; no actual vault       | Cycle 3d        |
-| Security universe and local search      | One synthetic symbol                                                | Cycle 3e-a      |
+| Security universe and local search      | Prepared exact-snapshot/search engine; no admitted real universe    | Cycle 3e-a      |
 | Owner-local watchlists                  | Generic vault record kind; no typed end-user workflow               | Cycle 3e-b      |
 | Automated filings and amendments        | Manually prepared exact filing corpus                               | Cycle 3f        |
 | Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart                | Cycle 3g        |
@@ -459,18 +462,27 @@ memory only so it cannot become a competing browser-durable source.
 
 The full repository gate at terminal routing closure
 `3edb5464a3414313a980ffd9fecce5ca5257084a` passed 1,906 tests with 9
-intentional skips, and its four workflows passed. Cycle 3e-a owner-local security-master
-snapshot admission and symbol/name search is the next planned functional slice.
-No security-master load or network access is authorized by the Cycle 3d result.
+intentional skips, and its four workflows passed. Cycle 3e-a now has prepared
+owner-local security-master admission and symbol/name-search engineering
+source, but no exact real snapshot or network access is authorized by either
+result.
 
 ### Cycle 3e — security master, search, and watchlists
 
 Target: move from one symbol to a useful local U.S. common-stock universe.
 
 The roadmap splits this milestone into two independently useful, ordered slices.
-Cycle 3e-a is next; Cycle 3e-b builds on its stable identities.
+Cycle 3e-a has prepared engineering source but remains unpromoted; Cycle 3e-b
+builds on the stable identities only after the real Cycle 3e-a exit is met.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
+
+Status: **Prepared public engineering source only; exact source transition and
+terminal evidence are pending. No real catalog, provider credential, download,
+network adapter, or private activation exists, and this cycle is not accepted
+or promoted.** See
+[ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
+the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
 Exit objectives:
 
@@ -478,13 +490,63 @@ Exit objectives:
   identifiers, CIK and provider mappings, exchange identity, ticker-change
   history, and no duplicate active exchange-symbol identity;
 - local symbol/name search with a measured p95 below 200 ms on the declared
-  hardware and loaded universe.
+  hardware and loaded universe under the exact fixed measurement plan.
 
 Cycle 3e-a admits only an exact owner-local snapshot with explicit provenance,
 digest, source-policy compatibility, and rights-compatible local use. Synthetic
 scale cases may verify the implementation but cannot establish a real-universe
 breadth result. No network adapter or real snapshot is authorized by the Cycle
 3c or Cycle 3d public promotions.
+
+The prepared engine enforces canonical bounded bytes, closed records, stable
+issuer/security/share-class/listing/provider-mapping identities with canonical
+1:N ancestry, exact U.S./operating-MIC declarations, observation-only ticker
+chronology, explicit admitted/ineligible/unsupported/stale/quarantined counts,
+and no duplicate active MIC-symbol pair. Search uses only active eligible
+listings; its name matches cover issuer, security, and share-class names, with
+fixed Unicode normalization, symbol/name ranking, stable tie breaks, a 128-
+code-point raw query/name bound, a 512-normalized-code-point bound, and a
+25-result cap. The separate owner-session-authenticated API exposes private/no-
+store snapshot status and search only.
+There is no browser search client, mutation, provider transport, vault write, or
+request-selected local path.
+
+The chosen future free/personal, U.S.-listed-only source profile is
+`sec_openfigi_v1`:
+
+- SEC `company_tickers_exchange.json` supplies the current CIK, name, ticker,
+  and exchange candidate set;
+- SEC submissions and issuer-filed Inline XBRL cover facts supply filing and
+  security-title evidence for common-stock/ADR classification;
+- OpenFIGI v3, with unlisted equities excluded, supplies candidate ticker/MIC
+  and FIGI metadata that must reconcile unambiguously as provider mappings,
+  never as internal identity; and
+- one pinned ISO 10383 MIC snapshot supplies exchange identity.
+
+The exact inputs, versions, retrieval metadata, digests, applicable terms, and
+source-policy record still require owner review before a real snapshot is
+admitted. Ambiguous reconciliation or disagreement between issuer-filed cover
+classification and the OpenFIGI mapping is quarantined. This profile defines
+ticker and provider mapping ambiguity to include more than one external ID for
+the same provider, mapping kind, and internal target. Source artifact URLs must
+be canonical query/fragment-free HTTPS locations with no URI-authority
+credential and must be owner-reviewed to contain no credential elsewhere in
+the locator. This profile defines ticker history only as
+`sec_filing_observed` or
+`prospective_snapshot_observed` intervals, with prospective diffs keyed by
+stable internal `listingId`; an OpenFIGI listing FIGI remains a mapping. These
+labels cannot establish an exchange-effective time. Complete pre-observation
+or exchange-effective history requires a separately rights-compatible licensed
+corporate-actions source and is outside this free profile unless later added.
+
+The measurement enforces 100 iterations over exactly 32 ordered queries that
+are distinct after normalization at result limit 25. It reports nearest-rank
+local p95 and binds its exact catalog, eligible count, digest, result limit,
+ordered raw-query-set canonical-JSON-plus-LF SHA-256, declared hardware, and
+synthetic or owner-local basis. A synthetic result is explicitly engineering-
+only. The real exit still requires p95 below 200 ms on declared owner hardware
+with the exact loaded real universe and that exact plan. Neither 3,000
+synthetic rows nor a synthetic timing result can close that gate.
 
 #### Cycle 3e-b — owner-local watchlists
 
@@ -854,8 +916,12 @@ not scrape around the restriction.
 - [InvestingPro plan comparison](https://www.investing.com/pro/pricing/plans)
 - [Investing.com API availability statement](https://pro.investing-support.com/hc/en-us/articles/4408847632017-Do-You-Offer-API-Access-at-Investing-com)
 - [Investing.com terms](https://www.investing.com/about-us/terms-and-conditions)
+- [SEC current company ticker/exchange snapshot](https://www.sec.gov/files/company_tickers_exchange.json)
 - [SEC EDGAR API documentation](https://www.sec.gov/search-filings/edgar-application-programming-interfaces)
 - [SEC fair-access guidance](https://www.sec.gov/about/developer-resources)
+- [OpenFIGI API documentation](https://www.openfigi.com/api/documentation)
+- [OpenFIGI terms of service](https://www.openfigi.com/docs/terms-of-service)
+- [ISO 10383 MIC source](https://www.iso20022.org/market-identifier-codes)
 
 ## Original diagnostic-model references
 

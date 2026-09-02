@@ -78,7 +78,12 @@ selected-fact release promoted only for exact source revision
 the permitted coarse outcome; and Cycle 3a personal local owner session
 promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`, with private evidence limited to
-the permitted coarse outcome.
+the permitted coarse outcome; Cycle 3c provider-neutral source-policy control
+plane and Cycle 3d public/local-temporary research vault promoted only for
+their exact recorded chains; and Cycle 3e-a owner-local security-master
+admission and search **prepared as public engineering source only**, with exact
+source transition, terminal evidence, real snapshot, real breadth, and real-
+hardware latency still pending and no acceptance or promotion.
 The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
@@ -2199,8 +2204,181 @@ verified the pinned corrected Cycle 3d chain. Exact promoted design, evidence,
 and nonclaims are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md). Cycle 3e-a owner-local
-security-master snapshot admission and symbol/name search is next. No real
-breadth claim is available without an exact rights-compatible source snapshot.
+security-master snapshot admission and symbol/name search now has prepared
+public engineering source only. No real breadth claim is available without a
+later exact owner-approved, rights-compatible source snapshot and declared-
+hardware measurement.
+
+## Cycle 3e-a owner-local security-master model
+
+Cycle 3e-a is **prepared public engineering source only; exact source
+transition and terminal evidence are pending**. No real security-master
+snapshot, provider credential, source download, network adapter, browser
+client, or private activation is recorded. It is not accepted or promoted.
+
+The zero-production-dependency package
+`@research-cockpit/personal-security-master` defines schema `1.0.0`, profile
+`personal_single_user_local_security_master`, and claim
+`bounded_exact_owner_local_security_master_snapshot_admitted`. The claim means
+only that one supplied byte document passed the bounded internal admission
+contract. It is not a source-authenticity, legal, completeness, real-breadth,
+or freshness conclusion.
+
+`PersonalSecurityMasterAdmissionInput` contains only an exact SHA-256 and a
+`Uint8Array` snapshot. Admission intrinsically brands the typed-array carrier
+and ordinary `ArrayBuffer`, owns and later wipes a copy, checks the digest,
+requires strict UTF-8 and canonical JSON with one terminal LF, and applies
+closed-key and resource bounds before returning an immutable catalog receipt.
+The private record/index graph remains in a `WeakMap` keyed by that catalog;
+caller-created lookalike receipts cannot search it.
+
+The snapshot root fixes `schemaVersion`, `profile`, `catalogId`,
+`catalogVersion`, `generatedAt`, `asOf`, `provenance`, `sourceCoverage`,
+`sourcePolicyCompatibility`, canonically ordered `issuers`, security `records`,
+and top-level `providerMappings`. Provenance names the source, exact composite-
+manifest digest/revision and matching owner-local locator, content kind,
+attribution, acquisition time, and one through 16 sorted exact source artifacts
+with a canonical query/fragment-free HTTPS URI containing no URI-authority
+credential, version, admitted media type, acquisition time, and content digest.
+The owner must additionally review that no credential appears elsewhere in the
+locator. Public HTTP receipts omit the composite locator and expose only bounded
+provenance metadata.
+
+Content kind is exactly `synthetic_engineering` or `owner_local_source`.
+Derived `PersonalSecurityMasterCatalogCoverage` reports issuer, share-class,
+total/admitted-source security, active-eligible security/listing, former-ticker,
+and provider-mapping counts plus reconciled source, ineligible, unsupported,
+stale, and quarantined counts. Admitted-source count equals both security-
+record length and total catalog securities.
+Its basis is
+`synthetic_engineering_only_not_real_universe` or
+`owner_declared_snapshot_only`. The `at_least_3000` band on synthetic input
+does not establish a real-universe criterion, and an owner declaration is not
+independent verification of source correctness or completeness.
+
+`PersonalSecurityMasterSourcePolicyCompatibility` binds the same `sourceId`,
+exact policy identity/version/document digest, connected-policy profile/schema,
+`fetch_snapshot` operation, intended personal-security-research use, effective,
+reviewed, acquired, `asOf`, and expiry chronology, null revocation, and exact
+attribution/display/search/cache/retention/deletion/export/redistribution
+decisions. Its compatible status records the owner's reviewed policy
+declaration. It cannot discover a later revocation while offline and does not
+provide legal advice, provider attestation, or entitlement validation. The
+chronology is exactly
+`effectiveAt <= reviewedAt <= acquiredAt <= asOf < expiresAt`; expiry is
+exclusive and equality fails closed.
+
+An issuer record has one stable internal `issuerId`, ten-digit CIK, and issuer
+name. CIK is unique and every issuer is referenced. A security record has its
+own `securityId`, references one issuer, declares `common_stock` or `adr`, and
+contains active eligibility plus one or more sorted share classes. Each share
+class has a distinct `shareClassId`, name, active state, parent security, and
+sorted listings. This graph permits canonical 1:N issuer-to-security-to-share-
+class cardinality rather than collapsing one issuer, security, or share class
+into another.
+
+A listing has its own `listingId`, exact security/share-class parents,
+`country: "US"`, `exchangeMicType: "operating"`, ISO MIC, active/current-
+symbol state, and ordered nonoverlapping ticker intervals. The active interval
+is the terminal open interval and equals the current symbol. Every interval
+declares `timeBasis` as exactly `sec_filing_observed` or
+`prospective_snapshot_observed`; neither is exchange-effective chronology. The
+U.S. and operating-MIC fields are exact snapshot declarations, not proof that
+the upstream ISO or exchange mapping is authentic.
+
+Top-level provider mappings have their own `mappingId`, provider/provider-
+security identity, target identity, and kind (`issuer`, `security`,
+`share_class`, `composite`, or `listing`). Each kind must target an existing
+entity of the corresponding type; a composite mapping targets a share class.
+Every share class must have at least one share-class or composite mapping and
+every listing must have a listing mapping. That internal structural coverage
+does not prove that real-world provider mappings are complete or current.
+Issuer, security, share-class, listing, and mapping identifiers are globally
+distinct and cannot be substituted by CIK, current/former ticker, or provider
+identifier. Parent references are exact, provider identities are unique, each
+`(providerId, mapping kind, targetId)` has at most one external identifier, and
+active `(exchange MIC, current symbol)` pairs are globally unique. All entity
+arrays are ordered so input order cannot choose among otherwise equivalent
+results. CIK, FIGI, provider identity, and ticker are mappings or attributes,
+never internal identity. No mapping-completeness claim follows.
+
+`searchPersonalSecurityMaster` searches only active eligible securities with
+active listings. Its input is bounded to 128 Unicode code points and a result
+limit from 1 through 25. Name normalization trims, applies NFKD, removes
+combining marks, uppercases, replaces non-letter/number runs with one space,
+and collapses/trims spaces. A separate symbol key applies trimmed NFKC and
+uppercase while preserving admitted dot/hyphen ticker punctuation. Control,
+format, and surrogate characters fail closed. Raw queries and admitted
+searchable names are bounded to 128 code points; their normalized name forms
+must be nonempty and no more than 512 code points. The exact rank order is
+current-symbol exact/prefix, former-symbol exact/prefix, name exact, name-token
+prefix, then name contains across issuer, security, and share-class names.
+Deterministic Unicode-code-point current symbol, exchange MIC, normalized
+security name, normalized share-class name, `shareClassId`, `securityId`, and
+`listingId` comparisons break ties in that order. The immutable response
+reports normalized query, applied limit, total matches, and bounded defensive
+results with match kind/value, CIK, U.S. country,
+issuer/security/share-class names, instrument type, current symbol/MIC, and
+stable issuer, security, share-class, and listing identities. It exposes no
+provider mapping or operating-MIC-type field.
+
+`measurePersonalSecurityMasterSearchP95` enforces exactly 100 iterations over
+32 ordered queries that are distinct after normalization, with result limit 25.
+Its result binds query and iteration counts, result limit, the ordered raw query
+set's SHA-256 over canonical JSON UTF-8 plus LF, exact catalog/digest, active
+eligible count, and caller-declared hardware profile and reports nearest-rank
+p95, maximum latency, and sample count. Its basis is either
+`synthetic_engineering_only_not_production_slo` or
+`owner_local_exact_snapshot_and_declared_hardware`; the latter still becomes
+Cycle 3e-a exit evidence only for the exact owner-approved real snapshot with
+at least 3,000 eligible active securities and p95 below 200 ms under that exact
+plan.
+
+Exact API mode is
+`RESEARCH_COCKPIT_MODE=personal_single_user_local_security_master`. It uses the
+separate non-splitting security-master server and startup-fixed
+`PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH`,
+`PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256`, and Cycle 3a owner bootstrap. The
+snapshot path must be canonical absolute and end in
+`personal-security-master.snapshot.json`. Composition pins one regular single-
+link file across canonical-path, pre-open, descriptor, read, and post-read
+checks, uses read-only/no-follow where available, rejects size/trailing-growth
+or substitution, and wipes owned bytes after admission. Captured private
+startup entries are deleted before listen.
+
+The data surface is limited to authenticated
+`GET /v1/personal-filing/security-master/status` and
+`GET /v1/personal-filing/security-master/search?q=<query>[&limit=<1..25>]`.
+Status is parameter-free and bodyless. Search requires canonical NFC/
+`encodeURIComponent` encoding with `q` first and optional canonical decimal
+`limit` second; repeated, unknown, misordered, alternate percent/UTF-8/plus-
+encoded, whitespace-edge, control/format/surrogate, fragmented, body-bearing,
+or authority-smuggling requests fail before search. An omitted limit is 10.
+Responses are bounded and private/no-store, and failure is generic. No request
+selects a path, snapshot, policy, source, rank, or history cutoff.
+
+The selected future source profile is `sec_openfigi_v1`: pinned SEC
+`company_tickers_exchange.json`, SEC submissions and issuer-filed Inline XBRL
+cover facts, OpenFIGI v3 mappings, and a pinned ISO 10383 MIC snapshot for the
+declared U.S.-listed common-stock/ADR universe only. Those inputs have not been
+fetched or admitted. The profile treats OpenFIGI values as
+typed provider mappings and defines ticker history only as
+`sec_filing_observed` or `prospective_snapshot_observed` intervals, with
+prospective diffs keyed by internal `listingId`. These observation labels are
+not exchange-effective dates. Complete pre-observation or exchange-effective
+history requires a separately rights-compatible licensed corporate-actions
+source.
+
+Synthetic scale can verify the model but cannot close product breadth. The
+remaining exit requires a later exact owner-approved source/policy binding,
+at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit
+exclusions, no duplicate active MIC-symbol, and search p95 below 200 ms on
+declared hardware with that exact loaded real universe and fixed measurement
+plan. Enterprise approvals, tenant controls, commercial use, and production
+operations remain out of scope for this personal profile. Exact prepared design
+and pending gates are in
+[ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
+the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

@@ -4,6 +4,7 @@ export type ApiMode =
   | "personal_fact_release"
   | "personal_dossier"
   | "personal_single_user_local_connected"
+  | "personal_single_user_local_security_master"
   | "personal_single_user_local_vault";
 
 export type ApiModeEnvironment = Readonly<Record<string, string | undefined>>;
@@ -25,6 +26,7 @@ export function resolveApiMode(environment: ApiModeEnvironment): ApiMode {
     value !== "personal_fact_release" &&
     value !== "personal_dossier" &&
     value !== "personal_single_user_local_connected" &&
+    value !== "personal_single_user_local_security_master" &&
     value !== "personal_single_user_local_vault"
   ) {
     throw new ApiModeError();

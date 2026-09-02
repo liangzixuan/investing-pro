@@ -190,10 +190,12 @@ public/local-temporary chain rooted at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; it has no actual personal vault,
 key, backup, restore, or private activation and does not widen this historical
 boundary. Cycle 3e-a owner-local security-master snapshot admission and search
-is next, with no real breadth claim without an exact rights-compatible source.
+now has prepared public engineering source only. It is not accepted or promoted
+and has no real breadth claim until a later exact owner-approved,
+rights-compatible source snapshot is admitted and measured.
 See
 [ADR 0052](./adr/0052-bounded-personal-owner-authorized-selected-fact-release.md)
-and the [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
+and the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
 ## Exit rule
 

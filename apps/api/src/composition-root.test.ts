@@ -37,6 +37,8 @@ describe("local API composition root", () => {
         "private-approval-path",
       PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH: "private-bundle-path",
       PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256: `sha256:${"2".repeat(64)}`,
+      PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH: "private-security-master-path",
+      PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256: `sha256:${"3".repeat(64)}`,
       RESEARCH_COCKPIT_MODE: "personal_readiness",
       RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET: "a".repeat(64),
     };
@@ -54,6 +56,8 @@ describe("local API composition root", () => {
       "PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH",
       "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH",
       "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256",
+      "PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH",
+      "PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256",
       "RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET",
     ]) {
       expect(environment[key]).toBeUndefined();
@@ -232,6 +236,29 @@ describe("local API composition root", () => {
     });
     expect(String(vaultMode)).not.toContain("private-vault-canary");
     expect(String(vaultBinding)).not.toContain("private-vault-canary");
+  });
+
+  it("refuses security-master mode and bindings at the ordinary entrypoint", async () => {
+    const securityMasterMode = await createConfiguredApp({
+      RESEARCH_COCKPIT_MODE: "personal_single_user_local_security_master",
+      RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET: freshSecret(),
+    }).catch((error: unknown) => error);
+    const securityMasterBinding = await createConfiguredApp({
+      PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH: "private-security-master-canary",
+    }).catch((error: unknown) => error);
+
+    expect(securityMasterMode).toMatchObject({
+      code: "SECURITY_MASTER_MODE_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
+    });
+    expect(securityMasterBinding).toMatchObject({
+      code: "SECURITY_MASTER_CONFIGURATION_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
+    });
+    expect(String(securityMasterMode)).not.toContain(
+      "private-security-master-canary",
+    );
+    expect(String(securityMasterBinding)).not.toContain(
+      "private-security-master-canary",
+    );
   });
 });
 

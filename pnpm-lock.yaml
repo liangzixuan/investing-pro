@@ -65,6 +65,9 @@ importers:
       '@research-cockpit/personal-filing-corpus':
         specifier: workspace:*
         version: link:../../packages/personal-filing-corpus
+      '@research-cockpit/personal-security-master':
+        specifier: workspace:*
+        version: link:../../packages/personal-security-master
       '@research-cockpit/research-core':
         specifier: workspace:*
         version: link:../../modules/research-core
@@ -203,6 +206,8 @@ importers:
   packages/local-research-vault: {}
 
   packages/personal-filing-corpus: {}
+
+  packages/personal-security-master: {}
 
 packages:
 

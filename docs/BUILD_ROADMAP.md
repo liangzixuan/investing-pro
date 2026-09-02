@@ -1985,8 +1985,11 @@ Cycle 3d is accepted and promoted only for its exact corrected
 public/local-temporary chain rooted at
 `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
-backup, restore, or private activation has occurred. Cycles 3e-a, 3e-b, and 3f
-through 3q remain planned.** No parity claim is made.
+backup, restore, or private activation has occurred. Cycle 3e-a has prepared
+public engineering source only; its exact source transition, terminal evidence,
+real snapshot, real-universe breadth, and real-hardware latency result remain
+pending, so it is not accepted or promoted. Cycle 3e-b and Cycles 3f through
+3q remain planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
@@ -1995,8 +1998,9 @@ is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
 dossier composition is prepared but not promoted. Cycle 3c's provider-neutral,
 no-transport public control plane and Cycle 3d's corrected
 public/local-temporary vault boundary are promoted only for their exact source
-chains. Cycle 3e-a owner-local security-master snapshot admission and search is
-the next planned functional slice. Any later networked source must still enter through the
+chains. Cycle 3e-a now prepares owner-local security-master snapshot admission
+and deterministic search, but synthetic scale cannot establish its declared
+real-catalog result. Any later networked source must still enter through the
 separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
@@ -2298,8 +2302,51 @@ alert, tenant, remote service, or production boundary. The local gate at
 terminal routing closure passed 1,906 tests with 9 intentional skips, and CI,
 cross-engine, parser isolation, and payload-custody workflows passed there at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`. Cycle 3e-a owner-local
-security-master snapshot admission and search is next. It cannot claim real
-breadth without an exact rights-compatible source snapshot.
+security-master snapshot admission and search now has prepared public
+engineering source only. It cannot claim real breadth without a later exact
+owner-approved, rights-compatible source snapshot.
+
+### Cycle 3e-a — owner-local security-master snapshot and search
+
+Status: **Prepared public engineering source only; exact source transition and
+terminal evidence are pending. No real catalog, source download, provider
+credential, network operation, or private activation exists, and Cycle 3e-a is
+not accepted or promoted.** See
+[ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
+the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
+
+The prepared package admits one exact canonical snapshot with explicit
+provenance, source-policy compatibility, source exclusion counts, stable
+issuer/security/share-class/listing/mapping identities, exact U.S./operating-
+MIC declarations, observation-only ticker chronology, and duplicate active
+MIC-symbol rejection. It supports canonical 1:N identity ancestry and
+constructs immutable in-memory indexes for a fixed symbol/name normalization,
+rank order, and tie break. A separate owner-session-
+authenticated API mode provides bounded private/no-store status and search
+only; it accepts no HTTP-selected snapshot or policy and composes no provider,
+credential, network, vault, filing, scheduler, or browser-search boundary.
+Raw queries and searchable names are at most 128 code points; their normalized
+name forms are nonempty and at most 512 code points.
+
+The selected future free/personal profile is `sec_openfigi_v1`: exact pinned
+SEC current ticker/exchange data, SEC submissions and issuer-filed Inline XBRL
+cover facts, OpenFIGI v3 mappings, and a pinned ISO 10383 MIC snapshot. Its
+ticker history is filing-observed plus prospective diffs keyed by stable
+internal `listingId`, with explicit observation-only time-basis labels;
+complete exchange-effective history requires a separately licensed corporate-
+actions source and is outside this profile unless later added.
+
+The public scale case may contain at least 3,000 synthetic records and the
+measurement helper may report synthetic latency, but both remain explicitly
+engineering-only. Its exact plan is 100 iterations over 32 distinct normalized
+queries at result limit 25, with the ordered raw query set bound by canonical-
+JSON-plus-LF SHA-256 in the receipt. Promotion still requires one exact owner-
+approved real snapshot with at least 3,000 eligible active U.S.-listed common
+stocks/ADRs,
+exact policy binding and explicit exclusions, plus local symbol/name search p95
+below 200 ms on declared owner hardware with that exact loaded universe and
+measurement plan. These are personal source and quality gates, not enterprise
+requirements.
 
 The delivery waves are:
 

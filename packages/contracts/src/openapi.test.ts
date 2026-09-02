@@ -14,6 +14,9 @@ import type {
   PersonalFilingReadinessDto,
   PersonalFilingSelectedFactDto,
   PersonalFilingSelectedFactsDto,
+  PersonalSecurityMasterSearchResponseDto,
+  PersonalSecurityMasterSnapshotReceiptDto,
+  PersonalSecurityMasterStatusDto,
   ThesisWriteRequestDto,
   ThesisWriteResponseDto,
 } from "./index";
@@ -112,7 +115,7 @@ describe("local API OpenAPI contract", () => {
   it("exposes only the exact local API routes", async () => {
     const source = await openApiSource();
     expect(source).toContain("openapi: 3.1.0");
-    expect(source).toContain("  version: 0.6.0");
+    expect(source).toContain("  version: 0.7.0");
     expect(source).toContain("  - url: http://127.0.0.1:3100");
     expect(source).not.toContain("0.0.0.0");
     expect(topLevelPaths(source)).toEqual([
@@ -128,6 +131,8 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/readiness",
       "/v1/personal-filing/selected-facts",
       "/v1/personal-filing/dossier",
+      "/v1/personal-filing/security-master/status",
+      "/v1/personal-filing/security-master/search",
       "/v1/personal-filing/connected-source-policy/status",
       "/v1/personal-filing/connected-source-policy/kill",
       "/v1/theses/{thesisId}",
@@ -530,6 +535,269 @@ describe("local API OpenAPI contract", () => {
       "PersonalFilingDossierChartSeries",
     );
     expect(unsupportedChart).toContain("NO_OWNER_APPROVED_CHART_FACTS");
+  });
+
+  it("freezes the offline owner-local security-master contract", async () => {
+    const source = await openApiSource();
+    const statusRoute = pathSection(
+      source,
+      "/v1/personal-filing/security-master/status",
+    );
+    const searchRoute = pathSection(
+      source,
+      "/v1/personal-filing/security-master/search",
+    );
+    const normalizedStatus = statusRoute.replace(/\s+/g, " ");
+    const normalizedSearch = searchRoute.replace(/\s+/g, " ");
+
+    expect(
+      statusRoute.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim()),
+    ).toEqual(["get:"]);
+    expect(statuses(statusRoute)).toEqual(["200", "403"]);
+    expect(statusRoute).not.toContain("parameters:");
+    expect(statusRoute).not.toContain("requestBody:");
+    expect(statusRoute).toContain("PersonalOwnerSession: []");
+    expect(statusRoute).toContain(
+      '$ref: "#/components/schemas/PersonalSecurityMasterStatus"',
+    );
+    expect(normalizedStatus).toContain("local snapshot path");
+    expect(normalizedStatus).toContain("raw policy document");
+    expect(normalizedStatus).toContain("performs no network fetch");
+    expect(normalizedStatus).toContain("HEAD is not exposed");
+
+    expect(
+      searchRoute.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim()),
+    ).toEqual(["get:"]);
+    expect(statuses(searchRoute)).toEqual(["200", "400", "403"]);
+    expect(searchRoute).not.toContain("requestBody:");
+    expect(searchRoute).toContain("PersonalOwnerSession: []");
+    expect(searchRoute).toContain("name: q");
+    expect(searchRoute).toContain("name: limit");
+    expect(searchRoute.indexOf("name: q")).toBeLessThan(
+      searchRoute.indexOf("name: limit"),
+    );
+    expect(searchRoute).toContain("maxLength: 128");
+    expect(searchRoute).toContain("maximum: 25");
+    expect(searchRoute).toContain("default: 10");
+    expect(normalizedSearch).toContain("unknown, missing, repeated, reordered");
+    expect(normalizedSearch).toContain("canonical encodeURIComponent encoding");
+    expect(normalizedSearch).toContain("surrogate, bidi, or NUL");
+    expect(normalizedSearch).toContain("Content-Length");
+    expect(normalizedSearch).toContain("Transfer-Encoding");
+    expect(normalizedSearch).toContain("provider mappings");
+    expect(normalizedSearch).toContain("HEAD is not exposed");
+    expect(
+      searchRoute.match(/#\/components\/headers\/PrivateNoStore/g),
+    ).toHaveLength(3);
+    expect(
+      searchRoute.match(/#\/components\/headers\/PragmaNoCache/g),
+    ).toHaveLength(3);
+
+    const status = schemaSection(
+      source,
+      "PersonalSecurityMasterStatus",
+      "PersonalSecurityMasterSearchResponse",
+    );
+    expect(requiredKeys(status)).toEqual(["snapshot"]);
+    expect(schemaKeys(status)).toEqual(["snapshot"]);
+    expect(status).toContain(
+      '$ref: "#/components/schemas/PersonalSecurityMasterSnapshotReceipt"',
+    );
+
+    const search = schemaSection(
+      source,
+      "PersonalSecurityMasterSearchResponse",
+      "PersonalSecurityMasterSearchResult",
+    );
+    expect(requiredKeys(search)).toEqual([
+      "limitApplied",
+      "normalizedQuery",
+      "results",
+      "snapshot",
+      "totalMatches",
+    ]);
+    expect(schemaKeys(search)).toEqual(requiredKeys(search));
+    expect(search).toContain("maxItems: 25");
+    expect(search).toContain("maximum: 25");
+    expect(
+      boundedSection(search, "        normalizedQuery:", "        results:"),
+    ).toContain("maxLength: 512");
+
+    const result = schemaSection(
+      source,
+      "PersonalSecurityMasterSearchResult",
+      "PersonalSecurityMasterSnapshotReceipt",
+    );
+    expect(requiredKeys(result)).toEqual([
+      "cik",
+      "country",
+      "exchangeMic",
+      "instrumentType",
+      "issuerId",
+      "issuerName",
+      "listingId",
+      "matchKind",
+      "matchedValue",
+      "securityId",
+      "securityName",
+      "shareClassId",
+      "shareClassName",
+      "symbol",
+    ]);
+    expect(schemaKeys(result)).toEqual(requiredKeys(result));
+    expect(result).not.toContain("providerSecurityId");
+    expect(result).not.toContain("providerMappings");
+    expect(result).not.toContain("tickerHistory");
+    expect(
+      listValues(
+        boundedSection(result, "        matchKind:", "        matchedValue:"),
+        /^ {12}- ([a-z_]+)$/gm,
+      ),
+    ).toEqual([
+      "current_symbol_exact",
+      "current_symbol_prefix",
+      "former_symbol_exact",
+      "former_symbol_prefix",
+      "name_exact",
+      "name_token_prefix",
+      "name_contains",
+    ]);
+
+    const receipt = schemaSection(
+      source,
+      "PersonalSecurityMasterSnapshotReceipt",
+      "PersonalSecurityMasterCoverage",
+    );
+    expect(requiredKeys(receipt)).toEqual([
+      "asOf",
+      "catalogId",
+      "catalogVersion",
+      "claim",
+      "coverage",
+      "generatedAt",
+      "profile",
+      "provenance",
+      "schemaVersion",
+      "snapshotSha256",
+      "sourcePolicyCompatibility",
+      "status",
+    ]);
+    expect(schemaKeys(receipt)).toEqual(requiredKeys(receipt));
+    expect(receipt).not.toContain("sourceLocator:");
+    expect(receipt).not.toContain("records:");
+    expect(receipt).toContain(
+      "bounded_exact_owner_local_security_master_snapshot_admitted",
+    );
+    expect(receipt).toContain("personal_single_user_local_security_master");
+    expect(receipt).toContain("admitted_for_personal_local_search");
+
+    const coverage = schemaSection(
+      source,
+      "PersonalSecurityMasterCoverage",
+      "PersonalSecurityMasterProvenanceReceipt",
+    );
+    expect(requiredKeys(coverage)).toEqual([
+      "activeEligibleSecurities",
+      "activeListings",
+      "admittedSourceRecords",
+      "basis",
+      "eligibleSecurityBand",
+      "formerTickerEntries",
+      "ineligibleSourceRecords",
+      "inactiveSecurities",
+      "issuers",
+      "providerMappings",
+      "quarantinedSourceRecords",
+      "sourceRecords",
+      "staleSourceRecords",
+      "shareClasses",
+      "totalSecurities",
+      "unsupportedSourceRecords",
+    ]);
+    expect(schemaKeys(coverage)).toEqual(requiredKeys(coverage));
+
+    const provenance = schemaSection(
+      source,
+      "PersonalSecurityMasterProvenanceReceipt",
+      "PersonalSecurityMasterProvenanceArtifact",
+    );
+    expect(requiredKeys(provenance)).toEqual([
+      "acquiredAt",
+      "artifacts",
+      "attribution",
+      "contentKind",
+      "sourceId",
+      "sourceRevision",
+    ]);
+    expect(schemaKeys(provenance)).toEqual(requiredKeys(provenance));
+    expect(provenance).not.toContain("sourceLocator");
+    expect(provenance).toContain("maxItems: 16");
+
+    const artifact = schemaSection(
+      source,
+      "PersonalSecurityMasterProvenanceArtifact",
+      "PersonalSecurityMasterSourcePolicyCompatibility",
+    );
+    expect(requiredKeys(artifact)).toEqual([
+      "acquiredAt",
+      "artifactId",
+      "contentSha256",
+      "mediaType",
+      "sourceUri",
+      "sourceVersion",
+    ]);
+    expect(schemaKeys(artifact)).toEqual(requiredKeys(artifact));
+    expect(
+      listValues(
+        boundedSection(artifact, "        mediaType:", "        sourceUri:"),
+        /^ {12}- ([a-z/]+)$/gm,
+      ),
+    ).toEqual([
+      "application/json",
+      "application/zip",
+      "text/csv",
+      "text/html",
+      "text/plain",
+    ]);
+    expect(artifact).toContain('pattern: "^https://"');
+
+    const policy = schemaSection(
+      source,
+      "PersonalSecurityMasterSourcePolicyCompatibility",
+      "ConnectedSourcePolicyStatus",
+    );
+    expect(requiredKeys(policy)).toEqual([
+      "attribution",
+      "cache",
+      "decision",
+      "deleteOnRequest",
+      "display",
+      "effectiveAt",
+      "expiresAt",
+      "export",
+      "intendedUse",
+      "localOnly",
+      "operation",
+      "policyDocumentSha256",
+      "policyId",
+      "policyProfile",
+      "policySchemaVersion",
+      "policyVersion",
+      "redistribution",
+      "retention",
+      "reviewedAt",
+      "revocationCheck",
+      "revokedAt",
+      "rightsBasis",
+      "search",
+      "sourceId",
+    ]);
+    expect(schemaKeys(policy)).toEqual(requiredKeys(policy));
+    const normalizedPolicy = policy.replace(/\s+/g, " ");
+    expect(normalizedPolicy).toContain("not the raw policy document");
+    expect(normalizedPolicy).toContain(
+      "does not activate a connected provider",
+    );
   });
 
   it("freezes the exact authenticated connected source-policy administration contract", async () => {
@@ -976,6 +1244,110 @@ describe("local API OpenAPI contract", () => {
         status: "unsupported",
       },
     } satisfies PersonalFilingDossierDto;
+    const personalSecurityMasterSnapshot = {
+      asOf: "2026-09-01T18:00:00.000Z",
+      catalogId: "personal-security-master-2026-09",
+      catalogVersion: "1.0.0",
+      claim: "bounded_exact_owner_local_security_master_snapshot_admitted",
+      coverage: {
+        activeEligibleSecurities: 2,
+        activeListings: 2,
+        admittedSourceRecords: 2,
+        basis: "synthetic_engineering_only_not_real_universe",
+        eligibleSecurityBand: "under_1000",
+        formerTickerEntries: 1,
+        ineligibleSourceRecords: 5,
+        inactiveSecurities: 0,
+        issuers: 2,
+        providerMappings: 2,
+        quarantinedSourceRecords: 3,
+        sourceRecords: 17,
+        staleSourceRecords: 4,
+        shareClasses: 2,
+        totalSecurities: 2,
+        unsupportedSourceRecords: 3,
+      },
+      generatedAt: "2026-09-01T17:30:00.000Z",
+      profile: "personal_single_user_local_security_master",
+      provenance: {
+        acquiredAt: "2026-09-01T17:00:00.000Z",
+        artifacts: [
+          {
+            acquiredAt: "2026-09-01T16:00:00.000Z",
+            artifactId: "synthetic-component-a",
+            contentSha256:
+              "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            mediaType: "application/json",
+            sourceUri: "https://example.invalid/security-master-component.json",
+            sourceVersion: "synthetic-component-v1",
+          },
+        ],
+        attribution: "Synthetic engineering fixture; not a real source.",
+        contentKind: "synthetic_engineering",
+        sourceId: "synthetic-security-source",
+        sourceRevision:
+          "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      },
+      schemaVersion: "1.0.0",
+      snapshotSha256:
+        "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      sourcePolicyCompatibility: {
+        attribution: "required",
+        cache: "permitted_owner_local",
+        decision: "compatible",
+        deleteOnRequest: true,
+        display: "permitted_owner_local",
+        effectiveAt: "2026-01-01T00:00:00.000Z",
+        expiresAt: "2027-01-01T00:00:00.000Z",
+        export: "prohibited",
+        intendedUse: "personal_security_research",
+        localOnly: true,
+        operation: "fetch_snapshot",
+        policyDocumentSha256:
+          "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        policyId: "synthetic-security-policy",
+        policyProfile: "personal_single_user_local_connected",
+        policySchemaVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        redistribution: "prohibited",
+        retention: "permitted_owner_local",
+        reviewedAt: "2026-08-01T00:00:00.000Z",
+        revocationCheck:
+          "offline_snapshot_only_cannot_discover_later_revocation",
+        revokedAt: null,
+        rightsBasis: "owner_reviewed_rights_compatible",
+        search: "permitted_owner_local",
+        sourceId: "synthetic-security-source",
+      },
+      status: "admitted_for_personal_local_search",
+    } satisfies PersonalSecurityMasterSnapshotReceiptDto;
+    const personalSecurityMasterStatus = {
+      snapshot: personalSecurityMasterSnapshot,
+    } satisfies PersonalSecurityMasterStatusDto;
+    const personalSecurityMasterSearch = {
+      limitApplied: 10,
+      normalizedQuery: "ZERO",
+      results: [
+        {
+          cik: "0000000001",
+          country: "US",
+          exchangeMic: "XNAS",
+          instrumentType: "adr",
+          issuerId: "iss-00000",
+          issuerName: "Zéro Alpha Holdings",
+          listingId: "lst-00000",
+          matchKind: "name_token_prefix",
+          matchedValue: "Zéro Alpha Holdings",
+          securityId: "sec-00000",
+          securityName: "Zéro Alpha Security",
+          shareClassId: "shr-00000",
+          shareClassName: "Zéro Alpha ADR",
+          symbol: "S00000",
+        },
+      ],
+      snapshot: personalSecurityMasterSnapshot,
+      totalMatches: 1,
+    } satisfies PersonalSecurityMasterSearchResponseDto;
     const connectedSourceBudgetQuantity = {
       limit: 100,
       used: 25,
@@ -1103,6 +1475,45 @@ describe("local API OpenAPI contract", () => {
       "status",
       "valuationInputs",
     ]);
+    expect(Object.keys(personalSecurityMasterStatus)).toEqual(["snapshot"]);
+    expect(Object.keys(personalSecurityMasterSnapshot)).toEqual([
+      "asOf",
+      "catalogId",
+      "catalogVersion",
+      "claim",
+      "coverage",
+      "generatedAt",
+      "profile",
+      "provenance",
+      "schemaVersion",
+      "snapshotSha256",
+      "sourcePolicyCompatibility",
+      "status",
+    ]);
+    expect(Object.keys(personalSecurityMasterSearch)).toEqual([
+      "limitApplied",
+      "normalizedQuery",
+      "results",
+      "snapshot",
+      "totalMatches",
+    ]);
+    expect(Object.keys(personalSecurityMasterSearch.results[0] ?? {})).toEqual([
+      "cik",
+      "country",
+      "exchangeMic",
+      "instrumentType",
+      "issuerId",
+      "issuerName",
+      "listingId",
+      "matchKind",
+      "matchedValue",
+      "securityId",
+      "securityName",
+      "shareClassId",
+      "shareClassName",
+      "symbol",
+    ]);
+    expect(personalSecurityMasterSearch).not.toHaveProperty("providerMappings");
     expect(Object.keys(connectedSourceBudgetQuantity)).toEqual([
       "limit",
       "used",

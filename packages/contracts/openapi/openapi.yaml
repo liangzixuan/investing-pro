@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Research Cockpit Local API
-  version: 0.6.0
+  version: 0.7.0
   description: >-
     Evidence-first loopback API. Research data and the two research-state PUT
     operations remain synthetic-only. An explicit personal-readiness mode may
@@ -11,7 +11,10 @@ info:
     mode may expose one startup-fixed, provenance-linked dossier graph through
     the same owner-session boundary. An explicit connected-personal mode exposes
     only startup-fixed policy status and a bodyless one-way kill action; it has
-    no data-request operation. X-Demo-Persona values are public selectors, not
+    no data-request operation. A distinct personal security-master mode may
+    expose one startup-admitted owner-local snapshot receipt and bounded
+    symbol/name search; it remains offline and does not activate a provider,
+    vault, or filing release. X-Demo-Persona values are public selectors, not
     secrets, credentials, or owner authentication.
 servers:
   - url: http://127.0.0.1:3100
@@ -350,6 +353,118 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: No owner-authorized personal dossier release is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/security-master/status:
+    get:
+      operationId: getPersonalSecurityMasterStatus
+      summary: Read the admitted owner-local security-master snapshot receipt.
+      description: >-
+        Authenticated, body-free status for the distinct personal security-master
+        process. It returns only a bounded immutable receipt for the exact
+        startup-admitted snapshot. The receipt omits the local snapshot path,
+        composite-manifest locator, raw policy document, provider mappings, and
+        admitted or rejected source rows. The process performs no network fetch,
+        provider activation, vault operation, filing release, or mutation. It
+        accepts no path or query parameters; HEAD is not exposed.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "200":
+          description: The exact admitted snapshot receipt is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalSecurityMasterStatus"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/security-master/search:
+    get:
+      operationId: searchPersonalSecurityMaster
+      summary: Search the startup-admitted catalog by symbol or name.
+      description: >-
+        Authenticated, deterministic read-only search over the immutable
+        startup-admitted catalog. The exact query string is q first and an
+        optional limit second; unknown, missing, repeated, reordered, or empty
+        fields are rejected. q uses canonical encodeURIComponent encoding,
+        Unicode NFC input, no leading or trailing whitespace, and no control,
+        format, surrogate, bidi, or NUL characters. Percent escapes are
+        uppercase and valid UTF-8; plus is not a space. limit is canonical
+        decimal 1 through 25 with no leading zero and defaults to 10. Requests
+        with a body, Content-Length, Content-Type, Transfer-Encoding,
+        conditional, Range, Authorization, or forwarding headers fail closed.
+        Results expose only bounded current listing and match fields plus the
+        snapshot receipt; provider mappings and source rows remain private.
+        HEAD is not exposed.
+      security:
+        - PersonalOwnerSession: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: >-
+            Canonically percent-encoded NFC symbol or issuer/security name;
+            the runtime limit counts Unicode code points.
+          allowReserved: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+        - name: limit
+          in: query
+          required: false
+          description: Canonical decimal result cap with no leading zero.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 10
+      responses:
+        "200":
+          description: A bounded deterministic catalog search result.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalSecurityMasterSearchResponse"
+        "400":
+          description: The accepted search could not be evaluated.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: The query grammar, request boundary, or owner session is not accepted.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -1457,6 +1572,454 @@ components:
         - operating_cash_flow
         - operating_income
         - revenue
+    PersonalSecurityMasterStatus:
+      type: object
+      description: >-
+        Bounded receipt for the immutable owner-local snapshot admitted before
+        the distinct security-master process listens.
+      additionalProperties: false
+      required:
+        - snapshot
+      properties:
+        snapshot:
+          $ref: "#/components/schemas/PersonalSecurityMasterSnapshotReceipt"
+    PersonalSecurityMasterSearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - limitApplied
+        - normalizedQuery
+        - results
+        - snapshot
+        - totalMatches
+      properties:
+        limitApplied:
+          type: integer
+          minimum: 1
+          maximum: 25
+        normalizedQuery:
+          type: string
+          minLength: 1
+          maxLength: 512
+        results:
+          type: array
+          maxItems: 25
+          items:
+            $ref: "#/components/schemas/PersonalSecurityMasterSearchResult"
+        snapshot:
+          $ref: "#/components/schemas/PersonalSecurityMasterSnapshotReceipt"
+        totalMatches:
+          type: integer
+          minimum: 0
+          maximum: 5120000
+    PersonalSecurityMasterSearchResult:
+      type: object
+      description: >-
+        Bounded public projection of one current listing and the value that
+        matched. Provider mappings and full ticker history are not exposed.
+      additionalProperties: false
+      required:
+        - cik
+        - country
+        - exchangeMic
+        - instrumentType
+        - issuerId
+        - issuerName
+        - listingId
+        - matchKind
+        - matchedValue
+        - securityId
+        - securityName
+        - shareClassId
+        - shareClassName
+        - symbol
+      properties:
+        cik:
+          type: string
+          minLength: 10
+          maxLength: 10
+          pattern: "^[0-9]{10}$"
+        country:
+          const: US
+        exchangeMic:
+          type: string
+          minLength: 4
+          maxLength: 4
+          pattern: "^[A-Z0-9]{4}$"
+        instrumentType:
+          type: string
+          enum:
+            - adr
+            - common_stock
+        issuerId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        issuerName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        listingId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        matchKind:
+          type: string
+          enum:
+            - current_symbol_exact
+            - current_symbol_prefix
+            - former_symbol_exact
+            - former_symbol_prefix
+            - name_exact
+            - name_token_prefix
+            - name_contains
+        matchedValue:
+          type: string
+          minLength: 1
+          maxLength: 256
+        securityId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        securityName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        shareClassId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        shareClassName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+    PersonalSecurityMasterSnapshotReceipt:
+      type: object
+      description: >-
+        Immutable startup admission receipt. It deliberately omits the local
+        file path, composite-manifest locator, raw policy document, catalog
+        rows, ticker history, and provider mappings.
+      additionalProperties: false
+      required:
+        - asOf
+        - catalogId
+        - catalogVersion
+        - claim
+        - coverage
+        - generatedAt
+        - profile
+        - provenance
+        - schemaVersion
+        - snapshotSha256
+        - sourcePolicyCompatibility
+        - status
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        catalogId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        catalogVersion:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        claim:
+          const: bounded_exact_owner_local_security_master_snapshot_admitted
+        coverage:
+          $ref: "#/components/schemas/PersonalSecurityMasterCoverage"
+        generatedAt:
+          type: string
+          format: date-time
+        profile:
+          const: personal_single_user_local_security_master
+        provenance:
+          $ref: "#/components/schemas/PersonalSecurityMasterProvenanceReceipt"
+        schemaVersion:
+          const: "1.0.0"
+        snapshotSha256:
+          type: string
+          pattern: "^sha256:[0-9a-f]{64}$"
+        sourcePolicyCompatibility:
+          $ref: "#/components/schemas/PersonalSecurityMasterSourcePolicyCompatibility"
+        status:
+          const: admitted_for_personal_local_search
+    PersonalSecurityMasterCoverage:
+      type: object
+      description: >-
+        Coarse admitted and source-disposition counts. It contains no rejected
+        row or rejection reason.
+      additionalProperties: false
+      required:
+        - activeEligibleSecurities
+        - activeListings
+        - admittedSourceRecords
+        - basis
+        - eligibleSecurityBand
+        - formerTickerEntries
+        - ineligibleSourceRecords
+        - inactiveSecurities
+        - issuers
+        - providerMappings
+        - quarantinedSourceRecords
+        - sourceRecords
+        - staleSourceRecords
+        - shareClasses
+        - totalSecurities
+        - unsupportedSourceRecords
+      properties:
+        activeEligibleSecurities:
+          type: integer
+          minimum: 0
+          maximum: 20000
+        activeListings:
+          type: integer
+          minimum: 0
+          maximum: 5120000
+        admittedSourceRecords:
+          type: integer
+          minimum: 1
+          maximum: 20000
+        basis:
+          type: string
+          enum:
+            - owner_declared_snapshot_only
+            - synthetic_engineering_only_not_real_universe
+        eligibleSecurityBand:
+          type: string
+          enum:
+            - at_least_3000
+            - from_1000_to_2999
+            - under_1000
+        formerTickerEntries:
+          type: integer
+          minimum: 0
+          maximum: 650240000
+        ineligibleSourceRecords:
+          type: integer
+          minimum: 0
+          maximum: 20000
+        inactiveSecurities:
+          type: integer
+          minimum: 0
+          maximum: 20000
+        issuers:
+          type: integer
+          minimum: 1
+          maximum: 20000
+        providerMappings:
+          type: integer
+          minimum: 1
+          maximum: 200000
+        quarantinedSourceRecords:
+          type: integer
+          minimum: 0
+          maximum: 20000
+        sourceRecords:
+          type: integer
+          minimum: 1
+          maximum: 20000
+        staleSourceRecords:
+          type: integer
+          minimum: 0
+          maximum: 20000
+        shareClasses:
+          type: integer
+          minimum: 1
+          maximum: 320000
+        totalSecurities:
+          type: integer
+          minimum: 1
+          maximum: 20000
+        unsupportedSourceRecords:
+          type: integer
+          minimum: 0
+          maximum: 20000
+    PersonalSecurityMasterProvenanceReceipt:
+      type: object
+      description: >-
+        Bounded composite-source receipt without the owner-local manifest
+        locator.
+      additionalProperties: false
+      required:
+        - acquiredAt
+        - artifacts
+        - attribution
+        - contentKind
+        - sourceId
+        - sourceRevision
+      properties:
+        acquiredAt:
+          type: string
+          format: date-time
+        artifacts:
+          type: array
+          minItems: 1
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/PersonalSecurityMasterProvenanceArtifact"
+        attribution:
+          type: string
+          minLength: 1
+          maxLength: 512
+        contentKind:
+          type: string
+          enum:
+            - owner_local_source
+            - synthetic_engineering
+        sourceId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        sourceRevision:
+          type: string
+          pattern: "^sha256:[0-9a-f]{64}$"
+    PersonalSecurityMasterProvenanceArtifact:
+      type: object
+      additionalProperties: false
+      required:
+        - acquiredAt
+        - artifactId
+        - contentSha256
+        - mediaType
+        - sourceUri
+        - sourceVersion
+      properties:
+        acquiredAt:
+          type: string
+          format: date-time
+        artifactId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        contentSha256:
+          type: string
+          pattern: "^sha256:[0-9a-f]{64}$"
+        mediaType:
+          type: string
+          enum:
+            - application/json
+            - application/zip
+            - text/csv
+            - text/html
+            - text/plain
+        sourceUri:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 2048
+          pattern: "^https://"
+        sourceVersion:
+          type: string
+          minLength: 1
+          maxLength: 256
+    PersonalSecurityMasterSourcePolicyCompatibility:
+      type: object
+      description: >-
+        Closed compatibility receipt admitted from the snapshot. This is not
+        the raw policy document and does not activate a connected provider.
+      additionalProperties: false
+      required:
+        - attribution
+        - cache
+        - decision
+        - deleteOnRequest
+        - display
+        - effectiveAt
+        - expiresAt
+        - export
+        - intendedUse
+        - localOnly
+        - operation
+        - policyDocumentSha256
+        - policyId
+        - policyProfile
+        - policySchemaVersion
+        - policyVersion
+        - redistribution
+        - retention
+        - reviewedAt
+        - revocationCheck
+        - revokedAt
+        - rightsBasis
+        - search
+        - sourceId
+      properties:
+        attribution:
+          const: required
+        cache:
+          const: permitted_owner_local
+        decision:
+          const: compatible
+        deleteOnRequest:
+          const: true
+        display:
+          const: permitted_owner_local
+        effectiveAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        export:
+          const: prohibited
+        intendedUse:
+          const: personal_security_research
+        localOnly:
+          const: true
+        operation:
+          const: fetch_snapshot
+        policyDocumentSha256:
+          type: string
+          pattern: "^sha256:[0-9a-f]{64}$"
+        policyId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        policyProfile:
+          const: personal_single_user_local_connected
+        policySchemaVersion:
+          const: "1.0.0"
+        policyVersion:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        redistribution:
+          const: prohibited
+        retention:
+          const: permitted_owner_local
+        reviewedAt:
+          type: string
+          format: date-time
+        revocationCheck:
+          const: offline_snapshot_only_cannot_discover_later_revocation
+        revokedAt:
+          type: "null"
+        rightsBasis:
+          const: owner_reviewed_rights_compatible
+        search:
+          const: permitted_owner_local
+        sourceId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
     ConnectedSourcePolicyStatus:
       type: object
       additionalProperties: false

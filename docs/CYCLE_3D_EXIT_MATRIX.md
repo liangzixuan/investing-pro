@@ -136,14 +136,18 @@ Local-temporary test vaults and keys are not actual personal activation
 evidence.
 
 Cycle 3e-a owner-local security-master snapshot admission and symbol/name search
-is the next planned functional slice. This promotion does not authorize a
-security-master load or network source, and no real-universe breadth claim may
-be made until an exact rights-compatible snapshot is separately admitted.
+now has prepared public engineering source only. It is not accepted or
+promoted. This Cycle 3d promotion and the Cycle 3e-a prepared source authorize
+no source download or network adapter, and no real-universe breadth claim may
+be made until a later exact owner-approved, rights-compatible snapshot is
+separately admitted and measured.
 
 ## References
 
 - [ADR 0056](./adr/0056-durable-personal-local-research-vault.md)
+- [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md)
 - [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md)
+- [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md)
 - [Personal product-breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](./BUILD_ROADMAP.md)
 - [Threat model](./THREAT_MODEL.md)

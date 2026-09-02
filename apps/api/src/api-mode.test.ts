@@ -27,11 +27,17 @@ describe("API mode", () => {
         RESEARCH_COCKPIT_MODE: "personal_single_user_local_vault",
       }),
     ).toBe("personal_single_user_local_vault");
+    expect(
+      resolveApiMode({
+        RESEARCH_COCKPIT_MODE: "personal_single_user_local_security_master",
+      }),
+    ).toBe("personal_single_user_local_security_master");
     for (const value of [
       "",
       "personal",
       "personal_connected",
       "PERSONAL_SINGLE_USER_LOCAL_CONNECTED",
+      "PERSONAL_SINGLE_USER_LOCAL_SECURITY_MASTER",
       "PERSONAL_SINGLE_USER_LOCAL_VAULT",
       "PERSONAL_READINESS",
       "production",

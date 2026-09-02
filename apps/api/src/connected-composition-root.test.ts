@@ -111,6 +111,10 @@ describe("connected API composition root", () => {
       PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH: "offline-private-canary",
       RESEARCH_COCKPIT_MODE: "personal_single_user_local_connected",
     }).catch((error: unknown) => error);
+    const securityMaster = await createConnectedConfiguredApp({
+      PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH: "security-master-private-canary",
+      RESEARCH_COCKPIT_MODE: "personal_single_user_local_connected",
+    }).catch((error: unknown) => error);
 
     expect(missingMode).toBeInstanceOf(ConnectedApiCompositionError);
     expect(missingMode).toMatchObject({ code: "CONNECTED_MODE_REQUIRED" });
@@ -118,6 +122,12 @@ describe("connected API composition root", () => {
       code: "CONNECTED_MODE_REJECTS_OFFLINE_CONFIGURATION",
     });
     expect(String(offline)).not.toContain("offline-private-canary");
+    expect(securityMaster).toMatchObject({
+      code: "CONNECTED_MODE_REJECTS_OFFLINE_CONFIGURATION",
+    });
+    expect(String(securityMaster)).not.toContain(
+      "security-master-private-canary",
+    );
   });
 
   it("fails closed on missing, partial, malformed, clockless, or ownerless configuration", async () => {
