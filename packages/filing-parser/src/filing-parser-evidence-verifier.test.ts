@@ -108,6 +108,10 @@ import {
   isCycle3cTransitionRoutingRequired,
   isCycle3dAclCorrectiveCommitDiffSetAllowed,
   isCycle3dAclCorrectiveTopologyAllowed,
+  isCycle3dApiWindowsFixtureStabilizationCommitDiffSetAllowed,
+  isCycle3dApiWindowsFixtureStabilizationRoutingClosureCommitDiffSetAllowed,
+  isCycle3dApiWindowsFixtureStabilizationRoutingClosureTopologyAllowed,
+  isCycle3dApiWindowsFixtureStabilizationTopologyAllowed,
   isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed,
   isCycle3dCorrectiveRoutingClosureTopologyAllowed,
   isCycle3dRoutingClosureCommitDiffSetAllowed,
@@ -751,6 +755,10 @@ const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION =
   "a8fe1518484a4d0d8962a8318f4e0baaec0b9d36" as const;
 const CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION =
   "c329b081019ac61fb857dc8f709315b3ae497398" as const;
+const CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION =
+  "fa5d31a0c1bc5f37e7b7f869cc8a888bd1f74021" as const;
+const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION =
+  "0228e253f5173fc5d8b73d00f5abbf486107999d" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1144,6 +1152,13 @@ const CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION = [
   },
 ];
 const CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION = [
+  ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
+];
+const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_TRANSITION = [
+  { path: "apps/api/src/personal-vault-routes.test.ts", status: "M" },
+  { path: "apps/api/src/vault-composition-root.test.ts", status: "M" },
+];
+const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION = [
   ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
 ];
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
@@ -3537,8 +3552,8 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
     }
   });
 
-  it("permits only one exact merge-free routing child after CI stabilization", () => {
-    const revision = "b".repeat(40);
+  it("pins the routing child after CI stabilization", () => {
+    const revision = CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION;
     const valid = [
       "19",
       "19",
@@ -3562,7 +3577,7 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
             ? "18"
             : "20"
           : index === 2
-            ? CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION
+            ? "b".repeat(40)
             : `${value} ${"f".repeat(40)}`;
       expect(
         isCycle3dStabilizationRoutingClosureTopologyAllowed(
@@ -3571,6 +3586,86 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
           >),
         ),
         `stabilization-routing:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("pins the API Windows fixture stabilization source", () => {
+    const valid = [
+      "20",
+      "20",
+      CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
+      `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}`,
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}`,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(
+      isCycle3dApiWindowsFixtureStabilizationTopologyAllowed(...valid),
+    ).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "19"
+            : "21"
+          : index === 2
+            ? "b".repeat(40)
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3dApiWindowsFixtureStabilizationTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3dApiWindowsFixtureStabilizationTopologyAllowed
+          >),
+        ),
+        `api-windows-fixture-stabilization:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("permits one exact routing child after API fixture stabilization", () => {
+    const revision = "c".repeat(40);
+    const valid = [
+      "21",
+      "21",
+      revision,
+      `${revision} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}`,
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}`,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(
+      isCycle3dApiWindowsFixtureStabilizationRoutingClosureTopologyAllowed(
+        ...valid,
+      ),
+    ).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "20"
+            : "22"
+          : index === 2
+            ? CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3dApiWindowsFixtureStabilizationRoutingClosureTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3dApiWindowsFixtureStabilizationRoutingClosureTopologyAllowed
+          >),
+        ),
+        `api-fixture-stabilization-routing:${index}`,
       ).toBe(false);
     }
   });
@@ -3610,6 +3705,18 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
       "stabilization-routing",
       CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
       isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed,
+      7,
+    ],
+    [
+      "api-windows-fixture-stabilization",
+      CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_TRANSITION,
+      isCycle3dApiWindowsFixtureStabilizationCommitDiffSetAllowed,
+      2,
+    ],
+    [
+      "api-fixture-stabilization-routing",
+      CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
+      isCycle3dApiWindowsFixtureStabilizationRoutingClosureCommitDiffSetAllowed,
       7,
     ],
   ] as const) {
@@ -3656,6 +3763,8 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
           ...CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION,
           ...CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION,
           ...CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
+          ...CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_TRANSITION,
+          ...CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
         ].map((entry) => entry.path),
       ),
     ];

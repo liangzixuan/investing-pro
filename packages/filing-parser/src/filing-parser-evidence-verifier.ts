@@ -142,6 +142,10 @@ const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION =
   "a8fe1518484a4d0d8962a8318f4e0baaec0b9d36" as const;
 const CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION =
   "c329b081019ac61fb857dc8f709315b3ae497398" as const;
+const CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION =
+  "fa5d31a0c1bc5f37e7b7f869cc8a888bd1f74021" as const;
+const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION =
+  "0228e253f5173fc5d8b73d00f5abbf486107999d" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2500,6 +2504,18 @@ const CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION = Object.freeze([
 const CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION = Object.freeze([
   ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
 ]);
+const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_TRANSITION = Object.freeze([
+  {
+    path: "apps/api/src/personal-vault-routes.test.ts",
+    status: "M",
+  },
+  {
+    path: "apps/api/src/vault-composition-root.test.ts",
+    status: "M",
+  },
+]);
+const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION =
+  Object.freeze([...CYCLE_3D_ROUTING_CLOSURE_TRANSITION]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2706,6 +2722,12 @@ const CYCLE_3D_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION.map(
+    (entry) => entry.path,
+  ),
+  ...CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_TRANSITION.map(
+    (entry) => entry.path,
+  ),
+  ...CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION.map(
     (entry) => entry.path,
   ),
 ]);
@@ -4693,7 +4715,7 @@ export function isCycle3dWindowsCiStabilizationTopologyAllowed(
   );
 }
 
-/** @internal One exact merge-free parser-routing child after CI stabilization. */
+/** @internal Exact pinned merge-free parser-routing child after CI stabilization. */
 export function isCycle3dStabilizationRoutingClosureTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -4721,16 +4743,140 @@ export function isCycle3dStabilizationRoutingClosureTopologyAllowed(
   return (
     successorCount === "19" &&
     firstParentCount === "19" &&
-    COMMIT_SHA.test(revision) &&
-    revision !== CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION &&
+    revision === CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}` &&
+      `${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}` &&
     cycle3dWindowsCiStabilizationParentLine ===
       `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}` &&
     isCycle3dWindowsCiStabilizationTopologyAllowed(
       "18",
       "18",
       CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bRoutingClosureParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal Exact pinned merge-free API Windows fixture stabilization. */
+export function isCycle3dApiWindowsFixtureStabilizationTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dStabilizationRoutingClosureParentLine: string,
+  cycle3dWindowsCiStabilizationParentLine: string,
+  cycle3dCorrectiveRoutingClosureParentLine: string,
+  cycle3dAclCorrectiveParentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bRoutingClosureParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "20" &&
+    firstParentCount === "20" &&
+    revision === CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION &&
+    parentLine ===
+      `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION}` &&
+    cycle3dStabilizationRoutingClosureParentLine ===
+      `${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}` &&
+    isCycle3dStabilizationRoutingClosureTopologyAllowed(
+      "19",
+      "19",
+      CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION,
+      cycle3dStabilizationRoutingClosureParentLine,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bRoutingClosureParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact routing child after API Windows fixture stabilization. */
+export function isCycle3dApiWindowsFixtureStabilizationRoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dApiWindowsFixtureStabilizationParentLine: string,
+  cycle3dStabilizationRoutingClosureParentLine: string,
+  cycle3dWindowsCiStabilizationParentLine: string,
+  cycle3dCorrectiveRoutingClosureParentLine: string,
+  cycle3dAclCorrectiveParentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bRoutingClosureParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "21" &&
+    firstParentCount === "21" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION}` &&
+    cycle3dApiWindowsFixtureStabilizationParentLine ===
+      `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3dApiWindowsFixtureStabilizationTopologyAllowed(
+      "20",
+      "20",
+      CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
+      cycle3dApiWindowsFixtureStabilizationParentLine,
+      cycle3dStabilizationRoutingClosureParentLine,
       cycle3dWindowsCiStabilizationParentLine,
       cycle3dCorrectiveRoutingClosureParentLine,
       cycle3dAclCorrectiveParentLine,
@@ -5976,6 +6122,26 @@ export function isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact Cycle 3d API Windows fixture stabilization transition. */
+export function isCycle3dApiWindowsFixtureStabilizationCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_TRANSITION,
+  );
+}
+
+/** @internal Exact routing after Cycle 3d API Windows fixture stabilization. */
+export function isCycle3dApiWindowsFixtureStabilizationRoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -7154,6 +7320,8 @@ async function verifyCycle2zTransition(
     CYCLE_3D_ACL_CORRECTIVE_REVISION,
     CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
     CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+    CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION,
+    CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -7365,6 +7533,30 @@ async function verifyCycle2zTransition(
         "--parents",
         "--max-count=1",
         CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+      ],
+      128,
+    ),
+  );
+  const cycle3dStabilizationRoutingClosureParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION,
+      ],
+      128,
+    ),
+  );
+  const cycle3dApiWindowsFixtureStabilizationParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
       ],
       128,
     ),
@@ -7641,12 +7833,67 @@ async function verifyCycle2zTransition(
       routingClosureParentLine,
       sourceParentLine,
     );
+  const cycle3dApiWindowsFixtureStabilization =
+    isCycle3dApiWindowsFixtureStabilizationTopologyAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+      cycle3dStabilizationRoutingClosureParentLine,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bRoutingClosureParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    );
+  const cycle3dApiWindowsFixtureStabilizationRoutingClosure =
+    isCycle3dApiWindowsFixtureStabilizationRoutingClosureTopologyAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+      cycle3dApiWindowsFixtureStabilizationParentLine,
+      cycle3dStabilizationRoutingClosureParentLine,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bRoutingClosureParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    );
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
     cycle3dCorrectiveRoutingClosure ||
     cycle3dWindowsCiStabilization ||
-    cycle3dStabilizationRoutingClosure;
+    cycle3dStabilizationRoutingClosure ||
+    cycle3dApiWindowsFixtureStabilization ||
+    cycle3dApiWindowsFixtureStabilizationRoutingClosure;
   if (
     !directSource &&
     !correctiveChild &&
@@ -7664,7 +7911,9 @@ async function verifyCycle2zTransition(
     !cycle3dAclCorrective &&
     !cycle3dCorrectiveRoutingClosure &&
     !cycle3dWindowsCiStabilization &&
-    !cycle3dStabilizationRoutingClosure
+    !cycle3dStabilizationRoutingClosure &&
+    !cycle3dApiWindowsFixtureStabilization &&
+    !cycle3dApiWindowsFixtureStabilizationRoutingClosure
   )
     invalidReview();
 
@@ -7885,7 +8134,9 @@ async function verifyCycle2zTransition(
     cycle3dAclCorrective ||
     cycle3dCorrectiveRoutingClosure ||
     cycle3dWindowsCiStabilization ||
-    cycle3dStabilizationRoutingClosure
+    cycle3dStabilizationRoutingClosure ||
+    cycle3dApiWindowsFixtureStabilization ||
+    cycle3dApiWindowsFixtureStabilizationRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -7897,7 +8148,9 @@ async function verifyCycle2zTransition(
   if (
     cycle3dCorrectiveRoutingClosure ||
     cycle3dWindowsCiStabilization ||
-    cycle3dStabilizationRoutingClosure
+    cycle3dStabilizationRoutingClosure ||
+    cycle3dApiWindowsFixtureStabilization ||
+    cycle3dApiWindowsFixtureStabilizationRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -7907,7 +8160,12 @@ async function verifyCycle2zTransition(
     if (!isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed(entries))
       invalidReview();
   }
-  if (cycle3dWindowsCiStabilization || cycle3dStabilizationRoutingClosure) {
+  if (
+    cycle3dWindowsCiStabilization ||
+    cycle3dStabilizationRoutingClosure ||
+    cycle3dApiWindowsFixtureStabilization ||
+    cycle3dApiWindowsFixtureStabilizationRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
@@ -7916,13 +8174,42 @@ async function verifyCycle2zTransition(
     if (!isCycle3dWindowsCiStabilizationCommitDiffSetAllowed(entries))
       invalidReview();
   }
-  if (cycle3dStabilizationRoutingClosure) {
+  if (
+    cycle3dStabilizationRoutingClosure ||
+    cycle3dApiWindowsFixtureStabilization ||
+    cycle3dApiWindowsFixtureStabilizationRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
-      revision,
+      CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed(entries))
+      invalidReview();
+  }
+  if (
+    cycle3dApiWindowsFixtureStabilization ||
+    cycle3dApiWindowsFixtureStabilizationRoutingClosure
+  ) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION,
+      CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
+    );
+    if (!isCycle3dApiWindowsFixtureStabilizationCommitDiffSetAllowed(entries))
+      invalidReview();
+  }
+  if (cycle3dApiWindowsFixtureStabilizationRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
+      revision,
+    );
+    if (
+      !isCycle3dApiWindowsFixtureStabilizationRoutingClosureCommitDiffSetAllowed(
+        entries,
+      )
+    )
       invalidReview();
   }
 
