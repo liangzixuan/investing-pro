@@ -14,12 +14,39 @@ const REQUEST_ENVIRONMENT_KEY =
 
 const ACL_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
+function Assert-OwnerOnlyAcl {
+  param(
+    [Security.AccessControl.FileSystemSecurity]$Security,
+    [bool]$IsContainer,
+    [Security.Principal.SecurityIdentifier]$ExpectedOwner,
+    [Security.Principal.SecurityIdentifier]$ExpectedTrustee
+  )
+  if (-not $Security.AreAccessRulesProtected) { throw 'inheritance enabled' }
+  $verifiedOwner = $Security.GetOwner([Security.Principal.SecurityIdentifier])
+  if ($verifiedOwner.Value -ne $ExpectedOwner.Value) { throw 'wrong owner' }
+  $rules = @($Security.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+  if ($rules.Count -ne 1) { throw 'unexpected access rule count' }
+  $access = $rules[0]
+  if ($access.IdentityReference.Value -ne $ExpectedTrustee.Value) { throw 'wrong trustee' }
+  if ($access.IsInherited) { throw 'inherited rule' }
+  if ($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { throw 'deny rule' }
+  if ($access.FileSystemRights -ne [Security.AccessControl.FileSystemRights]::FullControl) { throw 'unexpected rights' }
+  if ($access.PropagationFlags -ne [Security.AccessControl.PropagationFlags]::None) { throw 'propagation mismatch' }
+  if ($IsContainer) {
+    $requiredInheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+    if ($access.InheritanceFlags -ne $requiredInheritance) { throw 'missing child inheritance' }
+  } elseif ($access.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]::None) {
+    throw 'file inheritance mismatch'
+  }
+}
 $encoded = [Environment]::GetEnvironmentVariable('RESEARCH_COCKPIT_WINDOWS_ACL_REQUEST_BASE64', 'Process')
 if ([String]::IsNullOrWhiteSpace($encoded)) { throw 'missing request' }
 $json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded))
 $request = $json | ConvertFrom-Json
-$owner = [Security.Principal.WindowsIdentity]::GetCurrent().User
-if ($null -eq $owner) { throw 'missing owner' }
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$owner = $identity.User
+$tokenOwner = $identity.Owner
+if ($null -eq $owner -or $null -eq $tokenOwner) { throw 'missing owner' }
 foreach ($targetPath in @($request.targetPaths)) {
   $item = Get-Item -LiteralPath $targetPath -Force
   if ($request.mode -eq 'provision') {
@@ -31,7 +58,9 @@ foreach ($targetPath in @($request.targetPaths)) {
       $inheritance = [Security.AccessControl.InheritanceFlags]::None
     }
     $existingOwner = $security.GetOwner([Security.Principal.SecurityIdentifier])
-    if ($existingOwner.Value -ne $owner.Value) { throw 'wrong owner before provision' }
+    if ($existingOwner.Value -ne $owner.Value -and $existingOwner.Value -ne $tokenOwner.Value) {
+      throw 'wrong owner before provision'
+    }
     $security.SetAccessRuleProtection($true, $false)
     $existingRules = @($security.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier]))
     foreach ($existingRule in $existingRules) {
@@ -50,28 +79,27 @@ foreach ($targetPath in @($request.targetPaths)) {
     } else {
       [IO.File]::SetAccessControl($targetPath, $security)
     }
+    if ($existingOwner.Value -ne $owner.Value) {
+      if ($item.PSIsContainer) {
+        $narrowed = [IO.Directory]::GetAccessControl($targetPath)
+      } else {
+        $narrowed = [IO.File]::GetAccessControl($targetPath)
+      }
+      Assert-OwnerOnlyAcl $narrowed ([bool]$item.PSIsContainer) $tokenOwner $owner
+      $narrowed.SetOwner($owner)
+      if ($item.PSIsContainer) {
+        [IO.Directory]::SetAccessControl($targetPath, $narrowed)
+      } else {
+        [IO.File]::SetAccessControl($targetPath, $narrowed)
+      }
+    }
   }
   if ($item.PSIsContainer) {
     $verified = [IO.Directory]::GetAccessControl($targetPath)
   } else {
     $verified = [IO.File]::GetAccessControl($targetPath)
   }
-  $rules = @($verified.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
-  if (-not $verified.AreAccessRulesProtected) { throw 'inheritance enabled' }
-  $verifiedOwner = $verified.GetOwner([Security.Principal.SecurityIdentifier])
-  if ($verifiedOwner.Value -ne $owner.Value) { throw 'wrong owner' }
-  if ($rules.Count -ne 1) { throw 'unexpected access rule count' }
-  $access = $rules[0]
-  if ($access.IdentityReference.Value -ne $owner.Value) { throw 'wrong trustee' }
-  if ($access.IsInherited) { throw 'inherited rule' }
-  if ($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { throw 'deny rule' }
-  if (($access.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -ne [Security.AccessControl.FileSystemRights]::FullControl) { throw 'insufficient rights' }
-  if ($item.PSIsContainer) {
-    $requiredInheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
-    if (($access.InheritanceFlags -band $requiredInheritance) -ne $requiredInheritance) { throw 'missing child inheritance' }
-  } elseif ($access.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]::None) {
-    throw 'file inheritance mismatch'
-  }
+  Assert-OwnerOnlyAcl $verified ([bool]$item.PSIsContainer) $owner $owner
 }
 [Console]::Out.Write($owner.Value)
 `;

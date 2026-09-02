@@ -56,29 +56,58 @@ describe("Windows owner-only ACL adapter", () => {
 
   const windowsIt = process.platform === "win32" ? it : it.skip;
   windowsIt(
-    "modifies the current owner's directory and file DACL without ownership privileges",
+    "rejects an unverified target and normalizes fresh roots and children to the current user",
     async () => {
       const root = await mkdtemp(join(tmpdir(), "cycle3d-native-owner-acl-"));
-      const file = join(root, "vault.sqlite3");
-      await writeFile(file, "test-only");
-      const target: WindowsOwnerOnlyAclTarget = {
+      const rootTarget: WindowsOwnerOnlyAclTarget = {
         canonicalRootPath: root,
-        targetPaths: [root, file],
+        targetPaths: [root],
       };
 
       try {
         const port = createNativeWindowsOwnerOnlyAclPort();
-        await expect(
-          port.provisionAndVerifyOwnerOnly(target),
-        ).resolves.toMatchObject({
+        await expect(port.verifyOwnerOnly(rootTarget)).rejects.toMatchObject({
+          code: "VAULT_SECURITY_BOUNDARY_REJECTED",
+        });
+
+        const provisionedRoot =
+          await port.provisionAndVerifyOwnerOnly(rootTarget);
+        expect(provisionedRoot).toMatchObject({
           canonicalRootPath: root,
-          verifiedPaths: [root, file],
+          verifiedPaths: [root],
           ownerOnly: true,
           inheritanceProtected: true,
         });
-        await expect(port.verifyOwnerOnly(target)).resolves.toMatchObject({
+        const verifiedRoot = await port.verifyOwnerOnly(rootTarget);
+        expect(verifiedRoot).toMatchObject({
+          canonicalRootPath: root,
+          verifiedPaths: [root],
+          ownerIdentity: provisionedRoot.ownerIdentity,
+          ownerOnly: true,
+          inheritanceProtected: true,
+        });
+
+        const file = join(root, "vault.sqlite3");
+        await writeFile(file, "test-only");
+        const rootAndFileTarget: WindowsOwnerOnlyAclTarget = {
+          canonicalRootPath: root,
+          targetPaths: [root, file],
+        };
+        const provisionedRootAndFile =
+          await port.provisionAndVerifyOwnerOnly(rootAndFileTarget);
+        expect(provisionedRootAndFile).toMatchObject({
           canonicalRootPath: root,
           verifiedPaths: [root, file],
+          ownerIdentity: provisionedRoot.ownerIdentity,
+          ownerOnly: true,
+          inheritanceProtected: true,
+        });
+        await expect(
+          port.verifyOwnerOnly(rootAndFileTarget),
+        ).resolves.toMatchObject({
+          canonicalRootPath: root,
+          verifiedPaths: [root, file],
+          ownerIdentity: provisionedRoot.ownerIdentity,
           ownerOnly: true,
           inheritanceProtected: true,
         });
@@ -86,6 +115,6 @@ describe("Windows owner-only ACL adapter", () => {
         await rm(root, { force: true, recursive: true });
       }
     },
-    20_000,
+    40_000,
   );
 });
