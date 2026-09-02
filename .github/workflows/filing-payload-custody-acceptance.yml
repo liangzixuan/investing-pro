@@ -236,8 +236,8 @@ jobs:
           pnpm guardrails:filing-payload-custody-fixtures
 
       - name: Run filing payload custody acceptance
-        # Cycle 3d ACL-corrective routing is non-evidence only for inherited
-        # cross-engine anchors; custody still mints exact-HEAD v1 evidence.
+        # Cycle 3d Windows ACL and CI stabilization routing is non-evidence
+        # only for inherited anchors; custody still mints exact-HEAD evidence.
         env:
           CI: "true"
           FILING_PAYLOAD_CUSTODY_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json

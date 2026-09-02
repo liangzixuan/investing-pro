@@ -120,6 +120,10 @@ const CYCLE_3D_ROUTING_CLOSURE_REVISION =
   "1c831d59cf1558e1b63c9031c598825349bcd516" as const;
 const CYCLE_3D_ACL_CORRECTIVE_REVISION =
   "5041b396f4cc89652b01f896ff9f69531cc2cb7e" as const;
+const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION =
+  "a8fe1518484a4d0d8962a8318f4e0baaec0b9d36" as const;
+const CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION =
+  "c329b081019ac61fb857dc8f709315b3ae497398" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2512,6 +2516,19 @@ const CYCLE_3D_ACL_CORRECTIVE_TRANSITION = Object.freeze([
 const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION = Object.freeze([
   ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
 ]);
+const CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION = Object.freeze([
+  {
+    path: "packages/local-research-vault/src/encrypted-vault-backup.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/local-research-vault/src/sqlite-local-research-vault.test.ts",
+    status: "M",
+  },
+]);
+const CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION = Object.freeze([
+  ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2721,6 +2738,10 @@ const CYCLE_3D_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3D_ACL_CORRECTIVE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION.map(
+    (entry) => entry.path,
+  ),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -4406,7 +4427,7 @@ export function isCycle3dAclCorrectiveTopologyAllowed(
   );
 }
 
-/** @internal One exact merge-free custody-routing child after the ACL corrective. */
+/** @internal Exact pinned merge-free custody-routing child after the ACL corrective. */
 export function isCycle3dCorrectiveRoutingClosureTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -4432,15 +4453,132 @@ export function isCycle3dCorrectiveRoutingClosureTopologyAllowed(
   return (
     successorCount === "17" &&
     firstParentCount === "17" &&
-    COMMIT.test(revision) &&
-    revision !== CYCLE_3D_ACL_CORRECTIVE_REVISION &&
-    parentLine === `${revision} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}` &&
+    revision === CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION &&
+    parentLine ===
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}` &&
     cycle3dAclCorrectiveParentLine ===
       `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}` &&
     isCycle3dAclCorrectiveTopologyAllowed(
       "16",
       "16",
       CYCLE_3D_ACL_CORRECTIVE_REVISION,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal Exact pinned merge-free Windows CI stabilization source. */
+export function isCycle3dWindowsCiStabilizationTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dCorrectiveRoutingClosureParentLine: string,
+  cycle3dAclCorrectiveParentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bCorrectiveParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "18" &&
+    firstParentCount === "18" &&
+    revision === CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION &&
+    parentLine ===
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}` &&
+    cycle3dCorrectiveRoutingClosureParentLine ===
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}` &&
+    isCycle3dCorrectiveRoutingClosureTopologyAllowed(
+      "17",
+      "17",
+      CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact merge-free custody-routing child after CI stabilization. */
+export function isCycle3dStabilizationRoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dWindowsCiStabilizationParentLine: string,
+  cycle3dCorrectiveRoutingClosureParentLine: string,
+  cycle3dAclCorrectiveParentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bCorrectiveParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "19" &&
+    firstParentCount === "19" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}` &&
+    cycle3dWindowsCiStabilizationParentLine ===
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3dWindowsCiStabilizationTopologyAllowed(
+      "18",
+      "18",
+      CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
       cycle3dAclCorrectiveParentLine,
       cycle3dRoutingClosureParentLine,
       cycle3dSourceParentLine,
@@ -5553,6 +5691,26 @@ export function isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed(
   return exactCycle2pDiffSet(
     entries,
     CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
+/** @internal Exact Cycle 3d Windows CI stabilization source transition. */
+export function isCycle3dWindowsCiStabilizationCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION,
+  );
+}
+
+/** @internal Exact Cycle 3d stabilization custody-routing closure transition. */
+export function isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
   );
 }
 
@@ -6780,6 +6938,8 @@ async function verifyCycle2zTransition(
     CYCLE_3D_SOURCE_REVISION,
     CYCLE_3D_ROUTING_CLOSURE_REVISION,
     CYCLE_3D_ACL_CORRECTIVE_REVISION,
+    CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
+    CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -6968,6 +7128,31 @@ async function verifyCycle2zTransition(
         "--parents",
         "--max-count=1",
         CYCLE_3D_ACL_CORRECTIVE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
+  const cycle3dCorrectiveRoutingClosureParentLine =
+    decodeGitRevisionParentsLine(
+      await git(
+        repositoryPath,
+        [
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
+        ],
+        128,
+      ),
+    ).join(" ");
+  const cycle3dWindowsCiStabilizationParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
       ],
       128,
     ),
@@ -7189,10 +7374,61 @@ async function verifyCycle2zTransition(
       routingClosureParentLine,
       sourceParentLine,
     );
+  const cycle3dWindowsCiStabilization =
+    isCycle3dWindowsCiStabilizationTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    );
+  const cycle3dStabilizationRoutingClosure =
+    isCycle3dStabilizationRoutingClosureTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    );
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
-    cycle3dCorrectiveRoutingClosure;
+    cycle3dCorrectiveRoutingClosure ||
+    cycle3dWindowsCiStabilization ||
+    cycle3dStabilizationRoutingClosure;
   if (
     !directSource &&
     !correctiveChild &&
@@ -7208,7 +7444,9 @@ async function verifyCycle2zTransition(
     !cycle3dSource &&
     !cycle3dRoutingClosure &&
     !cycle3dAclCorrective &&
-    !cycle3dCorrectiveRoutingClosure
+    !cycle3dCorrectiveRoutingClosure &&
+    !cycle3dWindowsCiStabilization &&
+    !cycle3dStabilizationRoutingClosure
   )
     invalid();
 
@@ -7431,7 +7669,12 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3dRoutingClosureCommitDiffSetAllowed(entries)) invalid();
   }
-  if (cycle3dAclCorrective || cycle3dCorrectiveRoutingClosure) {
+  if (
+    cycle3dAclCorrective ||
+    cycle3dCorrectiveRoutingClosure ||
+    cycle3dWindowsCiStabilization ||
+    cycle3dStabilizationRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3D_ROUTING_CLOSURE_REVISION,
@@ -7439,13 +7682,35 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3dAclCorrectiveCommitDiffSetAllowed(entries)) invalid();
   }
-  if (cycle3dCorrectiveRoutingClosure) {
+  if (
+    cycle3dCorrectiveRoutingClosure ||
+    cycle3dWindowsCiStabilization ||
+    cycle3dStabilizationRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3D_ACL_CORRECTIVE_REVISION,
-      revision,
+      CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed(entries))
+      invalid();
+  }
+  if (cycle3dWindowsCiStabilization || cycle3dStabilizationRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION,
+      CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+    );
+    if (!isCycle3dWindowsCiStabilizationCommitDiffSetAllowed(entries))
+      invalid();
+  }
+  if (cycle3dStabilizationRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+      revision,
+    );
+    if (!isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed(entries))
       invalid();
   }
 

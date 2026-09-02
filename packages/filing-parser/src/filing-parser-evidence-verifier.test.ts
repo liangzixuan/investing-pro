@@ -114,7 +114,11 @@ import {
   isCycle3dRoutingClosureTopologyAllowed,
   isCycle3dSourceCommitDiffSetAllowed,
   isCycle3dSourceTopologyAllowed,
+  isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed,
+  isCycle3dStabilizationRoutingClosureTopologyAllowed,
   isCycle3dTransitionRoutingRequired,
+  isCycle3dWindowsCiStabilizationCommitDiffSetAllowed,
+  isCycle3dWindowsCiStabilizationTopologyAllowed,
   isCycle2rBaselineMergeBaseAllowed,
   isCycle2rCommitDiffSetAllowed,
   isCycle2rDirectChildAllowed,
@@ -743,6 +747,10 @@ const CYCLE_3D_ROUTING_CLOSURE_REVISION =
   "1c831d59cf1558e1b63c9031c598825349bcd516" as const;
 const CYCLE_3D_ACL_CORRECTIVE_REVISION =
   "5041b396f4cc89652b01f896ff9f69531cc2cb7e" as const;
+const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION =
+  "a8fe1518484a4d0d8962a8318f4e0baaec0b9d36" as const;
+const CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION =
+  "c329b081019ac61fb857dc8f709315b3ae497398" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1123,6 +1131,19 @@ const CYCLE_3D_ACL_CORRECTIVE_TRANSITION = [
   },
 ];
 const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION = [
+  ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
+];
+const CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION = [
+  {
+    path: "packages/local-research-vault/src/encrypted-vault-backup.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/local-research-vault/src/sqlite-local-research-vault.test.ts",
+    status: "M",
+  },
+];
+const CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION = [
   ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
 ];
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
@@ -3446,8 +3467,8 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
     }
   });
 
-  it("permits only one exact merge-free routing child after the ACL corrective", () => {
-    const revision = "a".repeat(40);
+  it("pins the corrective routing child after the ACL corrective", () => {
+    const revision = CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION;
     const valid = [
       "17",
       "17",
@@ -3469,7 +3490,7 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
             ? "16"
             : "18"
           : index === 2
-            ? CYCLE_3D_ACL_CORRECTIVE_REVISION
+            ? "a".repeat(40)
             : `${value} ${"f".repeat(40)}`;
       expect(
         isCycle3dCorrectiveRoutingClosureTopologyAllowed(
@@ -3478,6 +3499,78 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
           >),
         ),
         `corrective-routing:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("pins the Windows CI stabilization source after corrective routing", () => {
+    const valid = [
+      "18",
+      "18",
+      CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION,
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}`,
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}`,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(isCycle3dWindowsCiStabilizationTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "17"
+            : "19"
+          : index === 2
+            ? "a".repeat(40)
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3dWindowsCiStabilizationTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3dWindowsCiStabilizationTopologyAllowed
+          >),
+        ),
+        `windows-ci-stabilization:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("permits only one exact merge-free routing child after CI stabilization", () => {
+    const revision = "b".repeat(40);
+    const valid = [
+      "19",
+      "19",
+      revision,
+      `${revision} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}`,
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}`,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(isCycle3dStabilizationRoutingClosureTopologyAllowed(...valid)).toBe(
+      true,
+    );
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "18"
+            : "20"
+          : index === 2
+            ? CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3dStabilizationRoutingClosureTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3dStabilizationRoutingClosureTopologyAllowed
+          >),
+        ),
+        `stabilization-routing:${index}`,
       ).toBe(false);
     }
   });
@@ -3505,6 +3598,18 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
       "corrective-routing",
       CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION,
       isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed,
+      7,
+    ],
+    [
+      "windows-ci-stabilization",
+      CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION,
+      isCycle3dWindowsCiStabilizationCommitDiffSetAllowed,
+      2,
+    ],
+    [
+      "stabilization-routing",
+      CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
+      isCycle3dStabilizationRoutingClosureCommitDiffSetAllowed,
       7,
     ],
   ] as const) {
@@ -3549,6 +3654,8 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
           ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
           ...CYCLE_3D_ACL_CORRECTIVE_TRANSITION,
           ...CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION,
+          ...CYCLE_3D_WINDOWS_CI_STABILIZATION_TRANSITION,
+          ...CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
         ].map((entry) => entry.path),
       ),
     ];
