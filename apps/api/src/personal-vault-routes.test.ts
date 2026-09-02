@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -219,7 +219,8 @@ async function vaultApp(
   existingRoot?: string,
 ) {
   const parent =
-    existingParent ?? (await mkdtemp(join(tmpdir(), "api-vault-test-")));
+    existingParent ??
+    (await mkdtemp(join(await realpath(tmpdir()), "api-vault-test-")));
   if (existingParent === undefined) temporaryDirectories.push(parent);
   const root = existingRoot ?? join(parent, "vault");
   const options = {

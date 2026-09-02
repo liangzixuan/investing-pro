@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -101,7 +101,9 @@ describe("personal vault composition root", () => {
 });
 
 async function temporaryParent(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), "vault-composition-test-"));
+  const path = await mkdtemp(
+    join(await realpath(tmpdir()), "vault-composition-test-"),
+  );
   directories.push(path);
   return path;
 }
