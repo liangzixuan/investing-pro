@@ -236,7 +236,7 @@ jobs:
           pnpm guardrails:filing-payload-custody-fixtures
 
       - name: Run filing payload custody acceptance
-        # Cycle 3d Windows ACL, CI, and API-fixture stabilization routing is
+        # Cycle 3d Windows ACL, CI, API-fixture, and parser-timeout routing is
         # non-evidence only; custody still mints exact-HEAD evidence.
         env:
           CI: "true"

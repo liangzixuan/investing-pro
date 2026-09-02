@@ -161,6 +161,8 @@ jobs:
           cycle3d_windows_ci_stabilization="c329b081019ac61fb857dc8f709315b3ae497398"
           cycle3d_stabilization_routing="fa5d31a0c1bc5f37e7b7f869cc8a888bd1f74021"
           cycle3d_api_windows_fixture_stabilization="0228e253f5173fc5d8b73d00f5abbf486107999d"
+          cycle3d_api_fixture_stabilization_routing="3982631bb87c209044078e47bb1bec9c738a4fee"
+          cycle3d_windows_parser_timeout_stabilization="33e7ca938f19df4ec1e738b19c884860ee85fc7e"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -746,6 +748,12 @@ jobs:
             "M" "apps/api/src/vault-composition-root.test.ts"
           )
           expected_cycle3d_api_fixture_stabilization_routing=("${expected_cycle3d_routing[@]}")
+          expected_cycle3d_windows_parser_timeout_stabilization=(
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/parser-boundary.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+          )
+          expected_cycle3d_windows_parser_timeout_routing=("${expected_cycle3d_routing[@]}")
           cycle3b_protected=()
           for ((cycle3b_index = 1; cycle3b_index < ${#expected_cycle3b_source[@]}; cycle3b_index += 2)); do
             cycle3b_protected+=("${expected_cycle3b_source[$cycle3b_index]}")
@@ -781,6 +789,12 @@ jobs:
           done
           for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_api_fixture_stabilization_routing[@]}; cycle3d_index += 2)); do
             cycle3d_protected+=("${expected_cycle3d_api_fixture_stabilization_routing[$cycle3d_index]}")
+          done
+          for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_windows_parser_timeout_stabilization[@]}; cycle3d_index += 2)); do
+            cycle3d_protected+=("${expected_cycle3d_windows_parser_timeout_stabilization[$cycle3d_index]}")
+          done
+          for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_windows_parser_timeout_routing[@]}; cycle3d_index += 2)); do
+            cycle3d_protected+=("${expected_cycle3d_windows_parser_timeout_routing[$cycle3d_index]}")
           done
           matches_exactly() {
             local -n expected_values="$1"
@@ -888,7 +902,9 @@ jobs:
                    git cat-file -e "$cycle3d_corrective_routing^{commit}" && \
                    git cat-file -e "$cycle3d_windows_ci_stabilization^{commit}" && \
                    git cat-file -e "$cycle3d_stabilization_routing^{commit}" && \
-                   git cat-file -e "$cycle3d_api_windows_fixture_stabilization^{commit}"; then
+                   git cat-file -e "$cycle3d_api_windows_fixture_stabilization^{commit}" && \
+                   git cat-file -e "$cycle3d_api_fixture_stabilization_routing^{commit}" && \
+                   git cat-file -e "$cycle3d_windows_parser_timeout_stabilization^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_routing_closure")"
@@ -910,6 +926,8 @@ jobs:
                 read -r -a cycle3d_windows_ci_stabilization_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_windows_ci_stabilization")"
                 read -r -a cycle3d_stabilization_routing_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_stabilization_routing")"
                 read -r -a cycle3d_api_windows_fixture_stabilization_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_api_windows_fixture_stabilization")"
+                read -r -a cycle3d_api_fixture_stabilization_routing_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_api_fixture_stabilization_routing")"
+                read -r -a cycle3d_windows_parser_timeout_stabilization_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_windows_parser_timeout_stabilization")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -968,7 +986,13 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3d_stabilization_routing" "$cycle3d_api_windows_fixture_stabilization" --
                 )
                 mapfile -d '' -t cycle3d_api_fixture_stabilization_routing_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3d_api_windows_fixture_stabilization" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3d_api_windows_fixture_stabilization" "$cycle3d_api_fixture_stabilization_routing" --
+                )
+                mapfile -d '' -t cycle3d_windows_parser_timeout_stabilization_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3d_api_fixture_stabilization_routing" "$cycle3d_windows_parser_timeout_stabilization" --
+                )
+                mapfile -d '' -t cycle3d_windows_parser_timeout_routing_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3d_windows_parser_timeout_stabilization" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -1414,12 +1438,12 @@ jobs:
                     cycle3b=true
                     cycle3c=true
                     cycle3d=true
-                  elif [[ "$cycle2z_successor_count" == "21" ]] && \
-                       [[ "$cycle2z_first_parent_count" == "21" ]] && \
-                       [[ "$head_revision" != "$cycle3d_api_windows_fixture_stabilization" ]] && \
-                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
-                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
-                       [[ "${cycle2z_topology[1]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
+                   elif [[ "$cycle2z_successor_count" == "21" ]] && \
+                        [[ "$cycle2z_first_parent_count" == "21" ]] && \
+                        [[ "$head_revision" == "$cycle3d_api_fixture_stabilization_routing" ]] && \
+                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                        [[ "${cycle2z_topology[0]}" == "$cycle3d_api_fixture_stabilization_routing" ]] && \
+                        [[ "${cycle2z_topology[1]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
                        [[ "${#cycle3d_api_windows_fixture_stabilization_topology[@]}" == "2" ]] && \
                        [[ "${cycle3d_api_windows_fixture_stabilization_topology[0]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
                        [[ "${cycle3d_api_windows_fixture_stabilization_topology[1]}" == "$cycle3d_stabilization_routing" ]] && \
@@ -1462,9 +1486,121 @@ jobs:
                     cycle2z=true
                     cycle3a=true
                     cycle3b=true
-                    cycle3c=true
-                    cycle3d=true
-                  fi
+                     cycle3c=true
+                     cycle3d=true
+                   elif [[ "$cycle2z_successor_count" == "22" ]] && \
+                        [[ "$cycle2z_first_parent_count" == "22" ]] && \
+                        [[ "$head_revision" == "$cycle3d_windows_parser_timeout_stabilization" ]] && \
+                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                        [[ "${cycle2z_topology[0]}" == "$cycle3d_windows_parser_timeout_stabilization" ]] && \
+                        [[ "${cycle2z_topology[1]}" == "$cycle3d_api_fixture_stabilization_routing" ]] && \
+                        [[ "${#cycle3d_api_fixture_stabilization_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_api_fixture_stabilization_routing_topology[0]}" == "$cycle3d_api_fixture_stabilization_routing" ]] && \
+                        [[ "${cycle3d_api_fixture_stabilization_routing_topology[1]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
+                        [[ "${#cycle3d_api_windows_fixture_stabilization_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_api_windows_fixture_stabilization_topology[0]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
+                        [[ "${cycle3d_api_windows_fixture_stabilization_topology[1]}" == "$cycle3d_stabilization_routing" ]] && \
+                        [[ "${#cycle3d_stabilization_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_stabilization_routing_topology[0]}" == "$cycle3d_stabilization_routing" ]] && \
+                        [[ "${cycle3d_stabilization_routing_topology[1]}" == "$cycle3d_windows_ci_stabilization" ]] && \
+                        [[ "${#cycle3d_windows_ci_stabilization_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_windows_ci_stabilization_topology[0]}" == "$cycle3d_windows_ci_stabilization" ]] && \
+                        [[ "${cycle3d_windows_ci_stabilization_topology[1]}" == "$cycle3d_corrective_routing" ]] && \
+                        [[ "${#cycle3d_corrective_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_corrective_routing_topology[0]}" == "$cycle3d_corrective_routing" ]] && \
+                        [[ "${cycle3d_corrective_routing_topology[1]}" == "$cycle3d_acl_corrective" ]] && \
+                        [[ "${#cycle3d_acl_corrective_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_acl_corrective_topology[0]}" == "$cycle3d_acl_corrective" ]] && \
+                        [[ "${cycle3d_acl_corrective_topology[1]}" == "$cycle3d_routing" ]] && \
+                        [[ "${#cycle3d_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_routing_topology[0]}" == "$cycle3d_routing" ]] && \
+                        [[ "${cycle3d_routing_topology[1]}" == "$cycle3d_source" ]] && \
+                        [[ "${#cycle3d_source_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_source_topology[0]}" == "$cycle3d_source" ]] && \
+                        [[ "${cycle3d_source_topology[1]}" == "$cycle3c_routing" ]] && \
+                        matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                        matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                        matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                        matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                        matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                        matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                        matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                        matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                        matches_exactly expected_cycle3c_routing cycle3c_routing_actual && \
+                        matches_exactly expected_cycle3d_source cycle3d_source_actual && \
+                        matches_exactly expected_cycle3d_routing cycle3d_routing_actual && \
+                        matches_exactly expected_cycle3d_acl_corrective cycle3d_acl_corrective_actual && \
+                        matches_exactly expected_cycle3d_corrective_routing cycle3d_corrective_routing_actual && \
+                        matches_exactly expected_cycle3d_windows_ci_stabilization cycle3d_windows_ci_stabilization_actual && \
+                        matches_exactly expected_cycle3d_stabilization_routing cycle3d_stabilization_routing_actual && \
+                        matches_exactly expected_cycle3d_api_windows_fixture_stabilization cycle3d_api_windows_fixture_stabilization_actual && \
+                        matches_exactly expected_cycle3d_api_fixture_stabilization_routing cycle3d_api_fixture_stabilization_routing_actual && \
+                        matches_exactly expected_cycle3d_windows_parser_timeout_stabilization cycle3d_windows_parser_timeout_stabilization_actual; then
+                     exact=true
+                     cycle2z=true
+                     cycle3a=true
+                     cycle3b=true
+                     cycle3c=true
+                     cycle3d=true
+                   elif [[ "$cycle2z_successor_count" == "23" ]] && \
+                        [[ "$cycle2z_first_parent_count" == "23" ]] && \
+                        [[ "$head_revision" != "$cycle3d_windows_parser_timeout_stabilization" ]] && \
+                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                        [[ "${cycle2z_topology[1]}" == "$cycle3d_windows_parser_timeout_stabilization" ]] && \
+                        [[ "${#cycle3d_windows_parser_timeout_stabilization_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_windows_parser_timeout_stabilization_topology[0]}" == "$cycle3d_windows_parser_timeout_stabilization" ]] && \
+                        [[ "${cycle3d_windows_parser_timeout_stabilization_topology[1]}" == "$cycle3d_api_fixture_stabilization_routing" ]] && \
+                        [[ "${#cycle3d_api_fixture_stabilization_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_api_fixture_stabilization_routing_topology[0]}" == "$cycle3d_api_fixture_stabilization_routing" ]] && \
+                        [[ "${cycle3d_api_fixture_stabilization_routing_topology[1]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
+                        [[ "${#cycle3d_api_windows_fixture_stabilization_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_api_windows_fixture_stabilization_topology[0]}" == "$cycle3d_api_windows_fixture_stabilization" ]] && \
+                        [[ "${cycle3d_api_windows_fixture_stabilization_topology[1]}" == "$cycle3d_stabilization_routing" ]] && \
+                        [[ "${#cycle3d_stabilization_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_stabilization_routing_topology[0]}" == "$cycle3d_stabilization_routing" ]] && \
+                        [[ "${cycle3d_stabilization_routing_topology[1]}" == "$cycle3d_windows_ci_stabilization" ]] && \
+                        [[ "${#cycle3d_windows_ci_stabilization_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_windows_ci_stabilization_topology[0]}" == "$cycle3d_windows_ci_stabilization" ]] && \
+                        [[ "${cycle3d_windows_ci_stabilization_topology[1]}" == "$cycle3d_corrective_routing" ]] && \
+                        [[ "${#cycle3d_corrective_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_corrective_routing_topology[0]}" == "$cycle3d_corrective_routing" ]] && \
+                        [[ "${cycle3d_corrective_routing_topology[1]}" == "$cycle3d_acl_corrective" ]] && \
+                        [[ "${#cycle3d_acl_corrective_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_acl_corrective_topology[0]}" == "$cycle3d_acl_corrective" ]] && \
+                        [[ "${cycle3d_acl_corrective_topology[1]}" == "$cycle3d_routing" ]] && \
+                        [[ "${#cycle3d_routing_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_routing_topology[0]}" == "$cycle3d_routing" ]] && \
+                        [[ "${cycle3d_routing_topology[1]}" == "$cycle3d_source" ]] && \
+                        [[ "${#cycle3d_source_topology[@]}" == "2" ]] && \
+                        [[ "${cycle3d_source_topology[0]}" == "$cycle3d_source" ]] && \
+                        [[ "${cycle3d_source_topology[1]}" == "$cycle3c_routing" ]] && \
+                        matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                        matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                        matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                        matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                        matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                        matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                        matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                        matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                        matches_exactly expected_cycle3c_routing cycle3c_routing_actual && \
+                        matches_exactly expected_cycle3d_source cycle3d_source_actual && \
+                        matches_exactly expected_cycle3d_routing cycle3d_routing_actual && \
+                        matches_exactly expected_cycle3d_acl_corrective cycle3d_acl_corrective_actual && \
+                        matches_exactly expected_cycle3d_corrective_routing cycle3d_corrective_routing_actual && \
+                        matches_exactly expected_cycle3d_windows_ci_stabilization cycle3d_windows_ci_stabilization_actual && \
+                        matches_exactly expected_cycle3d_stabilization_routing cycle3d_stabilization_routing_actual && \
+                        matches_exactly expected_cycle3d_api_windows_fixture_stabilization cycle3d_api_windows_fixture_stabilization_actual && \
+                        matches_exactly expected_cycle3d_api_fixture_stabilization_routing cycle3d_api_fixture_stabilization_routing_actual && \
+                        matches_exactly expected_cycle3d_windows_parser_timeout_stabilization cycle3d_windows_parser_timeout_stabilization_actual && \
+                        matches_exactly expected_cycle3d_windows_parser_timeout_routing cycle3d_windows_parser_timeout_routing_actual; then
+                     exact=true
+                     cycle2z=true
+                     cycle3a=true
+                     cycle3b=true
+                     cycle3c=true
+                     cycle3d=true
+                   fi
                 fi
               fi
             fi
@@ -1477,7 +1613,7 @@ jobs:
           echo "cycle3c=$cycle3c" >> "$GITHUB_OUTPUT"
           echo "cycle3d=$cycle3d" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, Cycle 3d, or Cycle 3d Windows/API-corrective closure; refusing inherited evidence routing." >&2
+            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, Cycle 3d, or Cycle 3d Windows/API/parser-timeout corrective closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2w personal raw fact extraction before inherited routes
@@ -2516,7 +2652,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
-              echo "Cycle 3d, including its bounded Windows ACL, CI, and API-fixture stabilizations, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
+              echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, and parser-timeout stabilizations, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
               echo "Cycle 3c is a provider-neutral connected-source policy route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3b }}" == "true" ]]; then

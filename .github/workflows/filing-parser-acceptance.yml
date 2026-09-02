@@ -107,7 +107,7 @@ jobs:
           pnpm guardrails:filing-parser-fixtures
 
       - name: Run one-shot filing parser acceptance
-        # Cycle 3d Windows ACL, CI, and API-fixture stabilization routing
+        # Cycle 3d Windows ACL, CI, API-fixture, and parser-timeout routing
         # preserves the parser contract; this still verifies exact-HEAD evidence.
         env:
           CI: "true"
