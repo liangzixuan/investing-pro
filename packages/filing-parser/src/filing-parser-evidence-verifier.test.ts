@@ -136,6 +136,8 @@ import {
   isCycle3eaSyntheticBenchmarkTimeoutStabilizationCommitDiffSetAllowed,
   isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed,
   isCycle3eaTransitionRoutingRequired,
+  isCycle3eaWindowsStableFileStabilizationCommitDiffSetAllowed,
+  isCycle3eaWindowsStableFileStabilizationTopologyAllowed,
   isCycle3eaWorkflowExpressionStabilizationCommitDiffSetAllowed,
   isCycle3eaWorkflowExpressionStabilizationTopologyAllowed,
   isCycle2rBaselineMergeBaseAllowed,
@@ -788,6 +790,8 @@ const CYCLE_3E_A_ROUTING_CLOSURE_REVISION =
   "14874709bffc24155f459f790ee34ac27c50eb2c" as const;
 const CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION =
   "88124260e727c67018dca4417c1b8d471ae50d4f" as const;
+const CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION =
+  "04cd7793694c1e59f91d17a7a3501b37c95b43d2" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1429,6 +1433,36 @@ const CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION = [
   },
   {
     path: "packages/personal-security-master/src/personal-security-master.test.ts",
+    status: "M",
+  },
+];
+const CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "apps/api/src/security-master-composition-root.test.ts",
+    status: "M",
+  },
+  {
+    path: "apps/api/src/security-master-composition-root.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
     status: "M",
   },
 ];
@@ -4251,6 +4285,13 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION} ${CYCLE_3E_A_ROUTING_CLOSURE_REVISION}`,
     routingTopology,
   ] as const;
+  const syntheticBenchmarkTimeoutStabilizationTopology = [
+    "28",
+    "28",
+    CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
+    `${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}`,
+    workflowExpressionStabilizationTopology,
+  ] as const;
 
   it("pins the exact merge-free source after the public promotion", () => {
     expect(isCycle3eaSourceTopologyAllowed(...sourceTopology)).toBe(true);
@@ -4340,25 +4381,24 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     }
   });
 
-  it("allows exactly one dynamic merge-free synthetic-benchmark-timeout stabilization child", () => {
-    const revision = "d".repeat(40);
-    const valid = [
-      "28",
-      "28",
-      revision,
-      `${revision} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}`,
-      workflowExpressionStabilizationTopology,
-    ] as const;
+  it("pins the exact merge-free synthetic-benchmark-timeout stabilization", () => {
     expect(
-      isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(...valid),
+      isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(
+        ...syntheticBenchmarkTimeoutStabilizationTopology,
+      ),
     ).toBe(true);
     for (const [index, replacement] of [
       [0, "27"],
       [1, "29"],
       [2, CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION],
-      [3, `${revision} ${CYCLE_3E_A_ROUTING_CLOSURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3E_A_ROUTING_CLOSURE_REVISION}`,
+      ],
     ] as const) {
-      const changed = [...valid];
+      const changed: unknown[] = [
+        ...syntheticBenchmarkTimeoutStabilizationTopology,
+      ];
       changed[index] = replacement;
       expect(
         isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(
@@ -4369,18 +4409,67 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         `timeout-stabilization:${index}`,
       ).toBe(false);
     }
+  });
+
+  it("allows exactly one dynamic merge-free Windows stable-file stabilization child", () => {
+    const revision = "c".repeat(40);
+    const valid = [
+      "29",
+      "29",
+      revision,
+      `${revision} ${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION}`,
+      syntheticBenchmarkTimeoutStabilizationTopology,
+    ] as const;
     expect(
-      isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(
-        "28",
-        "28",
+      isCycle3eaWindowsStableFileStabilizationTopologyAllowed(...valid),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "28"],
+      [1, "30"],
+      [2, CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION],
+      [
+        3,
+        `${revision} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}`,
+      ],
+    ] as const) {
+      const changed = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3eaWindowsStableFileStabilizationTopologyAllowed
+          >),
+        ),
+        `windows-stabilization:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
+        "29",
+        "29",
         "not-a-commit",
-        `not-a-commit ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}`,
-        workflowExpressionStabilizationTopology,
+        `not-a-commit ${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION}`,
+        syntheticBenchmarkTimeoutStabilizationTopology,
+      ),
+    ).toBe(false);
+    const changedBenchmark: unknown[] = [
+      ...syntheticBenchmarkTimeoutStabilizationTopology,
+    ];
+    changedBenchmark[3] = `${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION} ${"f".repeat(40)}`;
+    expect(
+      isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
+        "29",
+        "29",
+        revision,
+        `${revision} ${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION}`,
+        changedBenchmark as unknown as Parameters<
+          typeof isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed
+        >,
       ),
     ).toBe(false);
   });
 
-  it("freezes the exact 51, 7, 5, and 6-file transitions", () => {
+  it("freezes the exact 51, 7, 5, 6, and 7-file transitions", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
       CYCLE_3E_A_SOURCE_TRANSITION,
@@ -4401,6 +4490,11 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION,
       6,
     );
+    expectExactTransition(
+      isCycle3eaWindowsStableFileStabilizationCommitDiffSetAllowed,
+      CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -4412,6 +4506,9 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         (entry) => entry.path,
       ),
       ...CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION.map(
+        (entry) => entry.path,
+      ),
+      ...CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION.map(
         (entry) => entry.path,
       ),
     ]);

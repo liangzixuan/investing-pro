@@ -273,7 +273,22 @@ function isExpectedFile(metadata: BigIntStats): boolean {
   );
 }
 
-function sameFileState(left: BigIntStats, right: BigIntStats): boolean {
+/** @internal Pure regression seam for platform-specific snapshot state checks. */
+export function isSecurityMasterSnapshotFileStateStable(
+  left: Pick<
+    BigIntStats,
+    "ctimeNs" | "dev" | "ino" | "mode" | "mtimeNs" | "nlink" | "size"
+  >,
+  right: Pick<
+    BigIntStats,
+    "ctimeNs" | "dev" | "ino" | "mode" | "mtimeNs" | "nlink" | "size"
+  >,
+  runtimeFamily: "posix" | "win32" = sep === "\\" ? "win32" : "posix",
+): boolean {
+  // Windows ctime is not a portable snapshot-byte identity signal across
+  // pathname and descriptor metadata views.
+  const ctimeIsStable =
+    runtimeFamily === "win32" || left.ctimeNs === right.ctimeNs;
   return (
     left.dev === right.dev &&
     left.ino === right.ino &&
@@ -281,8 +296,12 @@ function sameFileState(left: BigIntStats, right: BigIntStats): boolean {
     left.nlink === right.nlink &&
     left.size === right.size &&
     left.mtimeNs === right.mtimeNs &&
-    left.ctimeNs === right.ctimeNs
+    ctimeIsStable
   );
+}
+
+function sameFileState(left: BigIntStats, right: BigIntStats): boolean {
+  return isSecurityMasterSnapshotFileStateStable(left, right);
 }
 
 function isValidSnapshotPath(value: unknown): value is string {

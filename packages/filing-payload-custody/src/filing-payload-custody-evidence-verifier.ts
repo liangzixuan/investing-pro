@@ -142,6 +142,8 @@ const CYCLE_3E_A_ROUTING_CLOSURE_REVISION =
   "14874709bffc24155f459f790ee34ac27c50eb2c" as const;
 const CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION =
   "88124260e727c67018dca4417c1b8d471ae50d4f" as const;
+const CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION =
+  "04cd7793694c1e59f91d17a7a3501b37c95b43d2" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2805,6 +2807,36 @@ const CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION =
       status: "M",
     },
   ]);
+const CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "apps/api/src/security-master-composition-root.test.ts",
+    status: "M",
+  },
+  {
+    path: "apps/api/src/security-master-composition-root.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3040,6 +3072,9 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
     (entry) => entry.path,
   ),
   ...CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION.map(
+    (entry) => entry.path,
+  ),
+  ...CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION.map(
     (entry) => entry.path,
   ),
 ]);
@@ -5301,8 +5336,8 @@ export function isCycle3eaWorkflowExpressionStabilizationTopologyAllowed(
 }
 
 /**
- * @internal One merge-free synthetic-benchmark-timeout stabilization child of
- * the exact workflow-expression stabilization. It remains prepared and
+ * @internal Exact merge-free synthetic-benchmark-timeout stabilization child
+ * of the workflow-expression stabilization. It remains prepared and
  * unpromoted.
  */
 export function isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(
@@ -5319,16 +5354,50 @@ export function isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(
   return (
     successorCount === "28" &&
     firstParentCount === "28" &&
-    COMMIT.test(revision) &&
-    revision !== CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION &&
+    revision ===
+      CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}` &&
+      `${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}` &&
     workflowStabilizationTopology[2] ===
       CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION &&
     workflowStabilizationTopology[3] ===
       `${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION} ${CYCLE_3E_A_ROUTING_CLOSURE_REVISION}` &&
     isCycle3eaWorkflowExpressionStabilizationTopologyAllowed(
       ...workflowStabilizationTopology,
+    )
+  );
+}
+
+/**
+ * @internal One merge-free Windows stable-file stabilization child of the
+ * exact synthetic-benchmark-timeout stabilization. It remains prepared and
+ * unpromoted.
+ */
+export function isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  benchmarkStabilizationTopology: readonly [
+    ...Parameters<
+      typeof isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed
+    >,
+  ],
+): boolean {
+  return (
+    successorCount === "29" &&
+    firstParentCount === "29" &&
+    COMMIT.test(revision) &&
+    revision !==
+      CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION}` &&
+    benchmarkStabilizationTopology[2] ===
+      CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION &&
+    benchmarkStabilizationTopology[3] ===
+      `${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION}` &&
+    isCycle3eaSyntheticBenchmarkTimeoutStabilizationTopologyAllowed(
+      ...benchmarkStabilizationTopology,
     )
   );
 }
@@ -6535,6 +6604,16 @@ export function isCycle3eaSyntheticBenchmarkTimeoutStabilizationCommitDiffSetAll
   return exactCycle2pDiffSet(
     entries,
     CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION,
+  );
+}
+
+/** @internal Exact Cycle 3e-a Windows stable-file stabilization. */
+export function isCycle3eaWindowsStableFileStabilizationCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION,
   );
 }
 
@@ -7773,6 +7852,7 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A_SOURCE_REVISION,
     CYCLE_3E_A_ROUTING_CLOSURE_REVISION,
     CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION,
+    CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -8102,6 +8182,19 @@ async function verifyCycle2zTransition(
           "--parents",
           "--max-count=1",
           CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION,
+        ],
+        128,
+      ),
+    ).join(" ");
+  const cycle3eaSyntheticBenchmarkTimeoutStabilizationParentLine =
+    decodeGitRevisionParentsLine(
+      await git(
+        repositoryPath,
+        [
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
         ],
         128,
       ),
@@ -8554,6 +8647,13 @@ async function verifyCycle2zTransition(
     cycle3eaWorkflowExpressionStabilizationParentLine,
     pinnedCycle3eaRoutingClosureTopology,
   ] as const;
+  const pinnedCycle3eaSyntheticBenchmarkTimeoutStabilizationTopology = [
+    "28",
+    "28",
+    CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
+    cycle3eaSyntheticBenchmarkTimeoutStabilizationParentLine,
+    pinnedCycle3eaWorkflowExpressionStabilizationTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -8584,11 +8684,20 @@ async function verifyCycle2zTransition(
       parentLine,
       pinnedCycle3eaWorkflowExpressionStabilizationTopology,
     );
+  const cycle3eaWindowsStableFileStabilization =
+    isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      pinnedCycle3eaSyntheticBenchmarkTimeoutStabilizationTopology,
+    );
   const cycle3eRouting =
     cycle3eaSource ||
     cycle3eaRoutingClosure ||
     cycle3eaWorkflowExpressionStabilization ||
-    cycle3eaSyntheticBenchmarkTimeoutStabilization;
+    cycle3eaSyntheticBenchmarkTimeoutStabilization ||
+    cycle3eaWindowsStableFileStabilization;
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
@@ -9006,7 +9115,12 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3eaSourceCommitDiffSetAllowed(entries)) invalid();
   }
-  if (cycle3eaRoutingClosure || cycle3eaWorkflowExpressionStabilization) {
+  if (
+    cycle3eaRoutingClosure ||
+    cycle3eaWorkflowExpressionStabilization ||
+    cycle3eaSyntheticBenchmarkTimeoutStabilization ||
+    cycle3eaWindowsStableFileStabilization
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_SOURCE_REVISION,
@@ -9016,7 +9130,8 @@ async function verifyCycle2zTransition(
   }
   if (
     cycle3eaWorkflowExpressionStabilization ||
-    cycle3eaSyntheticBenchmarkTimeoutStabilization
+    cycle3eaSyntheticBenchmarkTimeoutStabilization ||
+    cycle3eaWindowsStableFileStabilization
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9028,17 +9143,31 @@ async function verifyCycle2zTransition(
     if (!isCycle3eaWorkflowExpressionStabilizationCommitDiffSetAllowed(entries))
       invalid();
   }
-  if (cycle3eaSyntheticBenchmarkTimeoutStabilization) {
+  if (
+    cycle3eaSyntheticBenchmarkTimeoutStabilization ||
+    cycle3eaWindowsStableFileStabilization
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION,
-      revision,
+      cycle3eaSyntheticBenchmarkTimeoutStabilization
+        ? revision
+        : CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
     );
     if (
       !isCycle3eaSyntheticBenchmarkTimeoutStabilizationCommitDiffSetAllowed(
         entries,
       )
     )
+      invalid();
+  }
+  if (cycle3eaWindowsStableFileStabilization) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
+      revision,
+    );
+    if (!isCycle3eaWindowsStableFileStabilizationCommitDiffSetAllowed(entries))
       invalid();
   }
 

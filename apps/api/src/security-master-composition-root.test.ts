@@ -9,6 +9,7 @@ import {
   captureSecurityMasterApiEnvironment,
   createSecurityMasterConfiguredApp,
   disposeCapturedSecurityMasterApiEnvironment,
+  isSecurityMasterSnapshotFileStateStable,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_FILENAME,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH_ENVIRONMENT_KEY,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY,
@@ -36,6 +37,52 @@ afterEach(async () => {
 });
 
 describe("personal security-master API composition", () => {
+  it("applies the narrow Windows ctime exception without weakening stable file state", () => {
+    const baseline = {
+      ctimeNs: 7n,
+      dev: 11n,
+      ino: 13n,
+      mode: 33_188n,
+      mtimeNs: 17n,
+      nlink: 1n,
+      size: 19n,
+    } as const;
+
+    expect(
+      isSecurityMasterSnapshotFileStateStable(
+        baseline,
+        { ...baseline, ctimeNs: baseline.ctimeNs + 1n },
+        "win32",
+      ),
+    ).toBe(true);
+    expect(
+      isSecurityMasterSnapshotFileStateStable(
+        baseline,
+        { ...baseline, ctimeNs: baseline.ctimeNs + 1n },
+        "posix",
+      ),
+    ).toBe(false);
+
+    const changedStableFields = [
+      ["dev", baseline.dev + 1n],
+      ["ino", baseline.ino + 1n],
+      ["mode", baseline.mode + 1n],
+      ["nlink", baseline.nlink + 1n],
+      ["size", baseline.size + 1n],
+      ["mtimeNs", baseline.mtimeNs + 1n],
+    ] as const;
+    for (const [field, changedValue] of changedStableFields) {
+      expect(
+        isSecurityMasterSnapshotFileStateStable(
+          baseline,
+          { ...baseline, [field]: changedValue },
+          "win32",
+        ),
+        field,
+      ).toBe(false);
+    }
+  });
+
   it("scrubs exact private startup inputs and retains only the admitted catalog", async () => {
     const fixture = await createSnapshotFixture();
     const bootstrapSecret = freshSecret();
