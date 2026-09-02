@@ -3,12 +3,16 @@
 Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
 source but no fresh owner authorization, terminal exact-source result, private
-activation, acceptance, or promotion. Cycle 3c has prepared public source only;
-it is not privately activated, accepted, or promoted. Cycle 3d has prepared
-public source and local-temporary verification only; no actual personal vault,
-key, backup, restore, activation, acceptance, or promotion has occurred.
-Cycles 3e through 3q remain planned.** This does not alter the exact historical
-Cycle 2z personal result or make a feature-parity claim.
+activation, acceptance, or promotion. Cycle 3c is promoted only for exact
+provider-neutral, no-transport public source revision
+`4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`; it is not privately activated.
+Cycle 3d is promoted only for its exact corrected public/local-temporary chain
+rooted at `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
+`3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
+backup, restore, or private activation has occurred. Cycles 3e-a, 3e-b, and 3f
+through 3q remain planned.** This does not alter the exact historical Cycle 2z
+personal result or make a feature-parity claim.
 
 ## Goal
 
@@ -37,10 +41,11 @@ owner, local-only offline research, no customers, no redistribution, and no
 production service. The startup-fixed Cycle 2z release remains exact and
 historical.
 
-### Prepared connected control-plane profile
+### Promoted connected control-plane source
 
-`personal_single_user_local_connected` is prepared as a separate, explicit
-opt-in control-plane profile. It does not yet connect to a source. A later
+`personal_single_user_local_connected` is promoted as a separate, explicit
+opt-in provider-neutral control-plane profile. It does not yet connect to a
+source. A later
 execution gateway may retain one-owner local UI and storage while allowing only
 configured outbound sources. Admission requires:
 
@@ -60,7 +65,7 @@ configured outbound sources. Admission requires:
 A later concrete execution gateway must separately add identified clients,
 rate limits, bounded retry/backoff, and source-backed freshness plus
 delayed/real-time labels before any live data feature can rely on them. Those
-controls are not fields or admission claims of the prepared Cycle 3c registry.
+controls are not fields or admission claims of the promoted Cycle 3c registry.
 
 Every admitted source has an owner-operated kill switch. Expired, revoked, or
 incompatible terms disable its network operations and dependent refresh jobs
@@ -140,28 +145,29 @@ Later subcycles may widen a universe only with the same checks.
 
 ## Gap-to-milestone map
 
-| Capability gap                          | Current baseline                                              | Planned closure |
-| --------------------------------------- | ------------------------------------------------------------- | --------------- |
-| Owner authentication                    | Cycle 3a promoted only for its exact source                   | Cycle 3a        |
-| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted             | Cycle 3b        |
-| Connected source governance             | Provider-neutral control plane prepared; no source activated  | Cycle 3c        |
-| Durable personal state                  | Prepared SQLite vault/API; browser thesis/rule is memory only | Cycle 3d        |
-| Security universe, search, watchlists   | One synthetic symbol                                          | Cycle 3e        |
-| Automated filings and amendments        | Manually prepared exact filing corpus                         | Cycle 3f        |
-| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart          | Cycle 3g        |
-| Transparent technical indicators        | No end-user price/volume indicator workspace                  | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set   | Cycle 3h        |
-| Multi-model valuation                   | One exit-multiple model                                       | Cycle 3i        |
-| Peers, health, quality, and risk scores | No end-user comparison or scorecards                          | Cycle 3j        |
-| Screener and saved views                | No universe query                                             | Cycle 3k        |
-| Earnings, dividends, news, calendars    | No daily event workflow                                       | Cycle 3l        |
-| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow           | Cycle 3l-b      |
-| Transcript discovery                    | No transcript metadata or permitted-text workflow             | Cycle 3l-c      |
-| Holdings and portfolio performance      | No portfolio model                                            | Cycle 3m        |
-| Background delivered alerts             | One immediate local rule evaluation                           | Cycle 3n        |
-| Reports, exports, custom views          | No end-user export or saved layout                            | Cycle 3o        |
-| Evidence-grounded AI and strategies     | No model integration                                          | Cycle 3p        |
-| Installable daily-use application       | Responsive local web demo                                     | Cycle 3q        |
+| Capability gap                          | Current baseline                                                    | Planned closure |
+| --------------------------------------- | ------------------------------------------------------------------- | --------------- |
+| Owner authentication                    | Cycle 3a promoted only for its exact source                         | Cycle 3a        |
+| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted                   | Cycle 3b        |
+| Connected source governance             | Provider-neutral public control plane promoted; no source activated | Cycle 3c        |
+| Durable personal state                  | Public/local-temporary SQLite vault promoted; no actual vault       | Cycle 3d        |
+| Security universe and local search      | One synthetic symbol                                                | Cycle 3e-a      |
+| Owner-local watchlists                  | Generic vault record kind; no typed end-user workflow               | Cycle 3e-b      |
+| Automated filings and amendments        | Manually prepared exact filing corpus                               | Cycle 3f        |
+| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart                | Cycle 3g        |
+| Transparent technical indicators        | No end-user price/volume indicator workspace                        | Cycle 3g-b      |
+| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set         | Cycle 3h        |
+| Multi-model valuation                   | One exit-multiple model                                             | Cycle 3i        |
+| Peers, health, quality, and risk scores | No end-user comparison or scorecards                                | Cycle 3j        |
+| Screener and saved views                | No universe query                                                   | Cycle 3k        |
+| Earnings, dividends, news, calendars    | No daily event workflow                                             | Cycle 3l        |
+| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow                 | Cycle 3l-b      |
+| Transcript discovery                    | No transcript metadata or permitted-text workflow                   | Cycle 3l-c      |
+| Holdings and portfolio performance      | No portfolio model                                                  | Cycle 3m        |
+| Background delivered alerts             | One immediate local rule evaluation                                 | Cycle 3n        |
+| Reports, exports, custom views          | No end-user export or saved layout                                  | Cycle 3o        |
+| Evidence-grounded AI and strategies     | No model integration                                                | Cycle 3p        |
+| Installable daily-use application       | Responsive local web demo                                           | Cycle 3q        |
 
 ## Wave 1 — usable personal core
 
@@ -322,7 +328,7 @@ The prepared Cycle 3b source does not authorize private execution. Promotion req
 fresh owner review of the exact canonical response and one source-bound,
 single-use `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization. The
 prior Cycle 2z and Cycle 3a approvals are incompatible. Cycle 3c now has a
-separate prepared connected-personal source-policy control plane and remains
+separate promoted connected-personal source-policy control plane and remains
 outside this offline scope.
 
 ### Cycle 3c — connected-personal profile and source-policy registry
@@ -330,14 +336,16 @@ outside this offline scope.
 Target: prepare the admission and owner-control boundary required before any
 later network access, without silently widening the completed offline profile.
 
-Status: **Provider-neutral prepared public source only; not privately activated, accepted, or
-promoted.** The prepared control plane includes no actual provider/source
+Status: **Accepted and promoted only for exact provider-neutral public source
+revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`; not privately activated.** The
+promoted control plane includes no actual provider/source
 credential, provider secret adapter, external request, entitlement or legal
 determination, provider billing ceiling, SEC refresh, or market-data adapter. See
 [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
 [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
 
-Prepared interfaces:
+Promoted interfaces:
 
 - package `@research-cockpit/connected-source-policy` publishes
   `CONNECTED_SOURCE_POLICY_SCHEMA_VERSION`,
@@ -396,20 +404,21 @@ Exit criteria:
 - focused hostile tests, full repository verification, Windows/Linux CI,
   independent review, and exact source topology pass before promotion.
 
-Cycle 3d now has separate prepared public source and local-temporary
-verification only. It is not activated, accepted, or promoted and does not make
-the Cycle 3c process-memory policy, kill, reservation, replay, or budget state
-durable.
+Cycle 3d has a separate promoted public/local-temporary result. It has no actual
+vault or private activation and does not make the Cycle 3c process-memory
+policy, kill, reservation, replay, or budget state durable.
 
 ### Cycle 3d — durable local research vault
 
 Target: provide restart-safe personal state behind the existing application
 ports without introducing tenant or cloud scope.
 
-Status: **Prepared public source and local-temporary verification only; exact
-source not yet declared. No actual personal vault, recovery key, backup,
-restore, private activation, acceptance, or promotion has been performed.**
-See [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
+Status: **Accepted and promoted only for the exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at terminal routing
+closure `3edb5464a3414313a980ffd9fecce5ca5257084a`. No actual personal vault,
+recovery key, backup, restore, or private activation has been performed.** See
+[ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
 
 Exit criteria:
@@ -419,12 +428,12 @@ Exit criteria:
 - optimistic concurrency, idempotency, schema migration, explicit deletion,
   corruption detection, and clean rollback are tested;
 - database and secret files are restricted to the owner account;
-- an encrypted backup and clean-machine restore reproduce declared record and
+- an encrypted backup and offline absent-root restore reproduce declared record and
   attachment digests; and
 - the browser contains only short-lived presentation state, not the durable
   source of truth.
 
-The prepared source uses exact profile `personal_single_user_local_vault`, one
+The promoted source uses exact profile `personal_single_user_local_vault`, one
 startup-fixed owner-only root, and exact SQLite V2. New initialization applies
 the reviewed V1 base and V2 unique-ledger-request-binding suffix atomically;
 opening fully verified V1 may run only that reviewed migration, with failure
@@ -448,26 +457,44 @@ provider connection, scheduler execution, delivered alert, remote service,
 tenant, or production boundary is included. The demo thesis/alert form is page
 memory only so it cannot become a competing browser-durable source.
 
-Cycle 3e security master, search, and watchlists is the next planned functional
-blocker only after Cycle 3d exact-source tests, full verification,
-Windows/Linux CI, independent review, and promotion topology are terminal.
+The full repository gate at terminal routing closure
+`3edb5464a3414313a980ffd9fecce5ca5257084a` passed 1,906 tests with 9
+intentional skips, and its four workflows passed. Cycle 3e-a owner-local security-master
+snapshot admission and symbol/name search is the next planned functional slice.
+No security-master load or network access is authorized by the Cycle 3d result.
 
 ### Cycle 3e — security master, search, and watchlists
 
 Target: move from one symbol to a useful local U.S. common-stock universe.
 
-Breadth objectives:
+The roadmap splits this milestone into two independently useful, ordered slices.
+Cycle 3e-a is next; Cycle 3e-b builds on its stable identities.
+
+#### Cycle 3e-a — owner-local security-master snapshot and search
+
+Exit objectives:
 
 - at least 3,000 active U.S.-listed common stocks and ADRs with stable internal
   identifiers, CIK and provider mappings, exchange identity, ticker-change
   history, and no duplicate active exchange-symbol identity;
 - local symbol/name search with a measured p95 below 200 ms on the declared
-  hardware and loaded universe; and
+  hardware and loaded universe.
+
+Cycle 3e-a admits only an exact owner-local snapshot with explicit provenance,
+digest, source-policy compatibility, and rights-compatible local use. Synthetic
+scale cases may verify the implementation but cannot establish a real-universe
+breadth result. No network adapter or real snapshot is authorized by the Cycle
+3c or Cycle 3d public promotions.
+
+#### Cycle 3e-b — owner-local watchlists
+
+Exit objectives:
+
 - owner-local watchlist CRUD, tags, ordering, notes, import, export, and a
   10,000-membership aggregate stress case across all lists, allowing the same
   security to appear in multiple lists, without a plan-imposed quota.
 
-An objective is admitted only for the exact loaded security-master snapshot;
+Each objective is admitted only for the exact loaded security-master snapshot;
 it is not a claim of complete U.S. or global coverage.
 
 ### Cycle 3f — automated SEC filing refresh and amendment discovery
@@ -797,16 +824,17 @@ The dependency graph is:
 
 - 3b depends on 3a;
 - 3c and 3d depend on 3a and may proceed in parallel;
-- 3e depends on 3c and 3d;
-- 3f depends on 3c through 3e and may proceed alongside 3b;
-- 3g depends on 3c through 3e and may proceed alongside 3f;
+- 3e-a depends on 3c and 3d;
+- 3e-b depends on 3e-a and 3d;
+- 3f depends on 3c through 3e-a and may proceed alongside 3b;
+- 3g depends on 3c through 3e-a and may proceed alongside 3f;
 - 3h-a depends on 3f; market-derived extensions also depend on 3g;
 - 3i depends on the applicable 3g and 3h subcycles;
 - 3j depends on 3g and 3h;
-- 3k depends on 3e, 3h, and the applicable 3j inputs;
+- 3k depends on 3e-a, 3h, and the applicable 3j inputs;
 - 3l subcycles depend only on the source and data capabilities they consume
-  from 3c, 3e, 3f, 3g, and 3h;
-- 3m depends on 3d, 3e, 3g, and applicable 3h inputs;
+  from 3c, 3e-a, 3f, 3g, and 3h;
+- 3m depends on 3d, 3e-a, 3g, and applicable 3h inputs;
 - each 3n alert type depends on 3d plus the feature that supplies its event;
 - each 3o export depends only on the workflow it exports;
 - 3p depends on the admitted 3h through 3o evidence it consumes; and

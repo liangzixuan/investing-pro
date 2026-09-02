@@ -1977,21 +1977,26 @@ They are not current personal-profile blockers.
 Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
 source but no fresh owner authorization, terminal exact-source result, private
-activation, acceptance, or promotion. Cycle 3c has prepared public source only;
-it is not privately activated, accepted, or promoted. Cycle 3d has prepared
-public source and local-temporary verification only; no actual personal vault,
-key, backup, restore, activation, acceptance, or promotion has occurred.
-Cycles 3e through 3q remain planned.** No parity claim is made.
+activation, acceptance, or promotion. Cycle 3c is accepted and promoted only
+for exact provider-neutral, no-transport public source revision
+`4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`; it is not privately activated.
+Cycle 3d is accepted and promoted only for its exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
+`3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
+backup, restore, or private activation has occurred. Cycles 3e-a, 3e-b, and 3f
+through 3q remain planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
 is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
-dossier composition is prepared but not promoted; Cycle 3c connected-personal
-source-policy control plane is prepared but not promoted; Cycle 3d now prepares
-a separate durable local vault but is not terminally verified or promoted.
-Cycle 3e is the next planned functional blocker only after the Cycle 3d gates
-are terminal. Any later networked source must still enter through the
+dossier composition is prepared but not promoted. Cycle 3c's provider-neutral,
+no-transport public control plane and Cycle 3d's corrected
+public/local-temporary vault boundary are promoted only for their exact source
+chains. Cycle 3e-a owner-local security-master snapshot admission and search is
+the next planned functional slice. Any later networked source must still enter through the
 separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
@@ -2164,8 +2169,10 @@ connected-personal source-policy control plane below without widening Cycle 3b.
 
 ### Cycle 3c — provider-neutral connected-personal source-policy control plane
 
-Status: **Provider-neutral prepared public source only; not privately activated, accepted, or
-promoted.** The exact decision and pending gates are in
+Status: **Accepted and promoted only for exact provider-neutral public source
+revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`; not privately activated.** The
+exact decision and terminal public gates are in
 [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
 [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
 
@@ -2221,7 +2228,7 @@ Startup performs no credential-readiness probe and resolves no credential. A
 future execution gateway may resolve that reference just in time only after
 policy and budget admission.
 
-This prepared source contains no actual provider/source credential, provider
+This promoted public source contains no actual provider/source credential, provider
 secret adapter, external request, provider response, entitlement or legal
 determination, provider billing ceiling, SEC refresh, EDGAR fetch, or
 market-data adapter. Application budgets
@@ -2233,18 +2240,20 @@ kill, reservation, replay, or budget state durable.
 
 ### Cycle 3d — durable personal local research vault
 
-Status: **Prepared public source and local-temporary verification only; exact
-source not yet declared. No actual personal vault, recovery key, backup,
-restore, private activation, acceptance, or promotion has been performed.**
-The exact decision and pending gates are in
+Status: **Accepted and promoted only for the exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at terminal routing
+closure `3edb5464a3414313a980ffd9fecce5ca5257084a`. No actual personal vault,
+recovery key, backup, restore, or private activation has been performed.** The
+exact decision and terminal public gates are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
 
 The zero-production-dependency
-`@research-cockpit/local-research-vault` package prepares exact profile
+`@research-cockpit/local-research-vault` package provides exact profile
 `personal_single_user_local_vault` and closed record kinds `thesis`,
 `settings`, `watchlist`, `alert_definition`, `job_state`, and `portfolio`.
-The prepared adapter's final schema is exact V2. New initialization applies the
+The promoted adapter's final schema is exact V2. New initialization applies the
 reviewed V1 base and V2 unique-ledger-request-binding suffix in one transaction;
 opening an exact fully verified V1 applies only that reviewed suffix, and a
 failed constraint migration rolls back to retryable V1. Arbitrary or
@@ -2285,10 +2294,12 @@ browser-data migration.
 Cycle 3d explicitly excludes Cycle 3c policy, kill, reservation, replay, and
 budget state; those remain process-local across restart. It also adds no source
 credential, network request, provider adapter, scheduler execution, delivered
-alert, tenant, remote service, or production boundary. Cycle 3e security
-master, search, and watchlists is the next planned functional blocker only
-after exact-source tests, full verification, Windows/Linux CI, independent
-review, and promotion topology make the Cycle 3d gates terminal.
+alert, tenant, remote service, or production boundary. The local gate at
+terminal routing closure passed 1,906 tests with 9 intentional skips, and CI,
+cross-engine, parser isolation, and payload-custody workflows passed there at
+`3edb5464a3414313a980ffd9fecce5ca5257084a`. Cycle 3e-a owner-local
+security-master snapshot admission and search is next. It cannot claim real
+breadth without an exact rights-compatible source snapshot.
 
 The delivery waves are:
 

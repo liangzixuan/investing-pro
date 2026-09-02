@@ -193,12 +193,17 @@ terminal exact-source evidence, private activation, acceptance, or promotion.
 Its required fresh action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; Cycle 2z and Cycle 3a approvals
 are incompatible. Dynamic selection, refresh, promoted personal persistence,
-and background work remain later outcomes. Cycle 3c connected-personal source policy now has
-provider-neutral prepared public source only, with no provider or private
-activation. Cycle 3d now has separate prepared public source and local-temporary
-verification only; it has no actual personal vault, key, backup, restore,
-activation, acceptance, or promotion and does not alter the promoted Cycle 3a
-boundary. Cycle 3e is the next planned functional blocker only after the Cycle
-3d gates are terminal. See
+and background work remain later outcomes. Cycle 3c is promoted only for exact
+provider-neutral, no-transport public source revision
+`4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`, with no private activation or
+provider result. Cycle 3d is promoted only for its exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
+`3edb5464a3414313a980ffd9fecce5ca5257084a`; it has no actual personal vault,
+key, backup, restore, or private activation and does not alter the promoted
+Cycle 3a boundary. Cycle 3e-a owner-local security-master snapshot admission and
+search is next, with no real breadth claim without an exact rights-compatible
+source. See
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).

@@ -1,58 +1,60 @@
 # Cycle 3c exit matrix
 
-Scope: prepare the provider-neutral explicit
+Scope: close the provider-neutral explicit
 `personal_single_user_local_connected` control
 plane and one startup-fixed source-policy registry without connecting to a
 provider or widening any offline personal mode. The decision is recorded in
 [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md).
 
-Implementation status: **Provider-neutral prepared public source only; exact source not yet
-declared.**
+Implementation status: **Pass for exact provider-neutral public source revision
+`4e9f011434382ccaae66f396fd5b163e4c0fc6be` and exact routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`.**
 
-Terminal verification status: **Pending.**
+Terminal verification status: **Pass.**
 
 Private activation status: **Not performed or authorized.**
 
-Acceptance/promotion status: **Not accepted or promoted.**
+Acceptance/promotion status: **Accepted and promoted only for the exact
+provider-neutral, no-transport public scope above.**
 
 ## Gate matrix
 
-| Gate                         | Required result                                                                                                                                                                                                                          | Current status                      |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Synthetic default            | Missing mode remains `synthetic_demo`; connected configuration is rejected rather than inferred                                                                                                                                          | Prepared; terminal evidence pending |
-| Offline isolation            | `personal_readiness`, `personal_fact_release`, and `personal_dossier` keep their exact contracts and reject connected-only inputs                                                                                                        | Prepared; terminal evidence pending |
-| Explicit connected mode      | Only exact `personal_single_user_local_connected` selects the control plane; case variants, aliases, and partial configuration fail before listen                                                                                        | Prepared; terminal evidence pending |
-| Static entry isolation       | A separate non-splitting connected server owns this mode; the ordinary server refuses it, and its exact static graph excludes demo, corpus, dossier/fact, research-state, and command-execution modules                                  | Prepared; terminal evidence pending |
-| Canonical registry           | One bounded, immutable, startup-fixed registry admits exact schemas and rejects unknown fields, duplicates, ambiguity, noncanonical encoding, and mutable or inherited inputs                                                            | Prepared; terminal evidence pending |
-| Source identity              | Every policy binds a stable source identifier, exact provider product/tier, opaque entitlement identifier, and exact terms/license URI and version                                                                                       | Prepared; terminal evidence pending |
-| Policy lifecycle             | Effective, review, expiry, revocation, termination, and compatibility state are explicit; unavailable, malformed, or throwing clock input denies eligibility                                                                             | Prepared; terminal evidence pending |
-| Clock rollback nonclaim      | Valid-shaped backward clock movement is not detected or claimed as safe                                                                                                                                                                  | Explicit nonclaim                   |
-| Terms coverage               | Purpose, geography, device, attribution, display, derivation, cache, history, export, retention, deletion, and termination decisions are explicit; unknown never means permitted                                                         | Prepared; terminal evidence pending |
-| Host/operation closure       | Only exact admitted host/operation pairs exist; no wildcard, caller URL, userinfo, redirect, alternate-port inference, or implicit provider fallback is representable                                                                    | Prepared; terminal evidence pending |
-| Application budgets          | Exact request, response-byte, stored-byte, and estimated-spend units fail closed before excess work; request/response limits hard-cap at 1 MiB and request count at 10,000                                                               | Prepared; terminal evidence pending |
-| Billing nonclaim             | Application budgets are never described as provider billing ceilings, invoices, quotes, or total-cost guarantees                                                                                                                         | Explicit nonclaim                   |
-| Opaque secret references     | Policy may contain only `owner-local-ref:v1:<store>:<entry>` with no separate provider-credential field; locator identifiers must be non-secret operator metadata                                                                        | Prepared; terminal evidence pending |
-| No startup credential probe  | Startup neither resolves nor validates a credential and makes no secret-store, entitlement, or credential-readiness claim                                                                                                                | Prepared; terminal evidence pending |
-| Startup-input cleanup        | Owned bundle bytes are wiped and captured path, digest, and opaque-reference entries are deleted before listen; cryptographic JavaScript-string erasure is not claimed                                                                   | Prepared; terminal evidence pending |
-| Bundle path locality         | Windows paths must be drive-qualified and POSIX paths single-rooted; UNC, device, double-root, and root-relative Windows forms fail before file access; mapped/network-mounted backing remains an operator precondition                  | Prepared; terminal evidence pending |
-| Future just-in-time boundary | The abstract execution gateway may resolve a reference only after exact policy and budget admission; it is not composed by the running API, and Cycle 3c performs no credential use                                                      | Explicit nonclaim                   |
-| Authenticated status         | The parameter-free status operation requires the Cycle 3a owner session and returns only a canonical, credential/reference-free, private/noncacheable view; its source/policy identifiers must be non-secret metadata                    | Prepared; terminal evidence pending |
-| Authenticated kill           | A bodyless, parameter-free kill operation requires the owner session and exact `connected-source-policy-kill` intent; it disables eligibility before future dependent work                                                               | Prepared; terminal evidence pending |
-| Kill semantics               | Repeated authenticated kill is idempotent with `204` and preserves killed state; malformed requests and attempts to restore eligibility fail closed; restart is not claimed as durable revocation                                        | Prepared; terminal evidence pending |
-| Generic control failure      | Runnable status, kill, denial, and failure reveal no credential, private value, provider payload, local path, hash, policy internals, authorization detail, or operation detail                                                          | Prepared; terminal evidence pending |
-| Adapter confidentiality      | A future concrete secret/transport adapter is a trust boundary and needs adapter-specific leak tests; generic core cannot stop a hostile adapter from echoing or transforming credentials                                                | Explicit nonclaim                   |
-| No composed transport        | API mode receives no secret adapter or transport capability and can execute no outbound DNS, provider socket, TLS/HTTP client, provider SDK, redirect, retry, fetch, queue, scheduler, or background work; its loopback listener remains | Prepared; terminal evidence pending |
-| Abstract gateway seams       | Core `authorizeOperation`, `reserveBudget`, and `execute` seams remain uncomposed; injected interface coverage is not a provider or external-request result                                                                              | Prepared; terminal evidence pending |
-| No provider                  | No actual provider, account, subscription, tier, entitlement, provider/source credential, provider secret adapter, external request, or response is included                                                                             | Explicit nonclaim                   |
-| No source adapter            | No SEC refresh, EDGAR fetch, market-data, quote, price-history, corporate-action, news, fundamentals, chart, or security-master adapter is included                                                                                      | Explicit nonclaim                   |
-| Legal nonclaim               | A configured record does not prove rights, entitlement, legal validity, terms compliance, or organizational approval                                                                                                                     | Explicit nonclaim                   |
-| Preserved evidence           | Cycle 2z, Cycle 3a, and Cycle 3b contracts, approvals, source bindings, and evidence remain unchanged                                                                                                                                    | Prepared; terminal evidence pending |
-| Remote/shared profile        | Multi-user, tenant, shared-service, commercial, production, organizational stewardship, and provider billing operations remain outside the personal scope                                                                                | Out of scope                        |
-| Public verification          | Focused hostile tests, full local verification, Windows/Linux CI, and independent review pass at one exact source                                                                                                                        | Pending                             |
-| Private activation           | Any later required private activation is separately authorized and publishes no policy, identifier, secret reference, credential, or provider detail                                                                                     | Not performed or authorized         |
-| Promotion topology           | Exact merge-free source and documentation-promotion transitions are pinned and verified                                                                                                                                                  | Pending                             |
+| Gate                         | Required result                                                                                                                                                                                                                          | Current status                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Synthetic default            | Missing mode remains `synthetic_demo`; connected configuration is rejected rather than inferred                                                                                                                                          | Pass                                                                            |
+| Offline isolation            | `personal_readiness`, `personal_fact_release`, and `personal_dossier` keep their exact contracts and reject connected-only inputs                                                                                                        | Pass                                                                            |
+| Explicit connected mode      | Only exact `personal_single_user_local_connected` selects the control plane; case variants, aliases, and partial configuration fail before listen                                                                                        | Pass                                                                            |
+| Static entry isolation       | A separate non-splitting connected server owns this mode; the ordinary server refuses it, and its exact static graph excludes demo, corpus, dossier/fact, research-state, and command-execution modules                                  | Pass                                                                            |
+| Canonical registry           | One bounded, immutable, startup-fixed registry admits exact schemas and rejects unknown fields, duplicates, ambiguity, noncanonical encoding, and mutable or inherited inputs                                                            | Pass                                                                            |
+| Source identity              | Every policy binds a stable source identifier, exact provider product/tier, opaque entitlement identifier, and exact terms/license URI and version                                                                                       | Pass                                                                            |
+| Policy lifecycle             | Effective, review, expiry, revocation, termination, and compatibility state are explicit; unavailable, malformed, or throwing clock input denies eligibility                                                                             | Pass                                                                            |
+| Clock rollback nonclaim      | Valid-shaped backward clock movement is not detected or claimed as safe                                                                                                                                                                  | Explicit nonclaim                                                               |
+| Terms coverage               | Purpose, geography, device, attribution, display, derivation, cache, history, export, retention, deletion, and termination decisions are explicit; unknown never means permitted                                                         | Pass                                                                            |
+| Host/operation closure       | Only exact admitted host/operation pairs exist; no wildcard, caller URL, userinfo, redirect, alternate-port inference, or implicit provider fallback is representable                                                                    | Pass                                                                            |
+| Application budgets          | Exact request, response-byte, stored-byte, and estimated-spend units fail closed before excess work; request/response limits hard-cap at 1 MiB and request count at 10,000                                                               | Pass                                                                            |
+| Billing nonclaim             | Application budgets are never described as provider billing ceilings, invoices, quotes, or total-cost guarantees                                                                                                                         | Explicit nonclaim                                                               |
+| Opaque secret references     | Policy may contain only `owner-local-ref:v1:<store>:<entry>` with no separate provider-credential field; locator identifiers must be non-secret operator metadata                                                                        | Pass                                                                            |
+| No startup credential probe  | Startup neither resolves nor validates a credential and makes no secret-store, entitlement, or credential-readiness claim                                                                                                                | Pass                                                                            |
+| Startup-input cleanup        | Owned bundle bytes are wiped and captured path, digest, and opaque-reference entries are deleted before listen; cryptographic JavaScript-string erasure is not claimed                                                                   | Pass                                                                            |
+| Bundle path locality         | Windows paths must be drive-qualified and POSIX paths single-rooted; UNC, device, double-root, and root-relative Windows forms fail before file access; mapped/network-mounted backing remains an operator precondition                  | Pass                                                                            |
+| Future just-in-time boundary | The abstract execution gateway may resolve a reference only after exact policy and budget admission; it is not composed by the running API, and Cycle 3c performs no credential use                                                      | Explicit nonclaim                                                               |
+| Authenticated status         | The parameter-free status operation requires the Cycle 3a owner session and returns only a canonical, credential/reference-free, private/noncacheable view; its source/policy identifiers must be non-secret metadata                    | Pass                                                                            |
+| Authenticated kill           | A bodyless, parameter-free kill operation requires the owner session and exact `connected-source-policy-kill` intent; it disables eligibility before future dependent work                                                               | Pass                                                                            |
+| Kill semantics               | Repeated authenticated kill is idempotent with `204` and preserves killed state; malformed requests and attempts to restore eligibility fail closed; restart is not claimed as durable revocation                                        | Pass                                                                            |
+| Generic control failure      | Runnable status, kill, denial, and failure reveal no credential, private value, provider payload, local path, hash, policy internals, authorization detail, or operation detail                                                          | Pass                                                                            |
+| Adapter confidentiality      | A future concrete secret/transport adapter is a trust boundary and needs adapter-specific leak tests; generic core cannot stop a hostile adapter from echoing or transforming credentials                                                | Explicit nonclaim                                                               |
+| No composed transport        | API mode receives no secret adapter or transport capability and can execute no outbound DNS, provider socket, TLS/HTTP client, provider SDK, redirect, retry, fetch, queue, scheduler, or background work; its loopback listener remains | Pass                                                                            |
+| Abstract gateway seams       | Core `authorizeOperation`, `reserveBudget`, and `execute` seams remain uncomposed; injected interface coverage is not a provider or external-request result                                                                              | Pass                                                                            |
+| No provider                  | No actual provider, account, subscription, tier, entitlement, provider/source credential, provider secret adapter, external request, or response is included                                                                             | Explicit nonclaim                                                               |
+| No source adapter            | No SEC refresh, EDGAR fetch, market-data, quote, price-history, corporate-action, news, fundamentals, chart, or security-master adapter is included                                                                                      | Explicit nonclaim                                                               |
+| Legal nonclaim               | A configured record does not prove rights, entitlement, legal validity, terms compliance, or organizational approval                                                                                                                     | Explicit nonclaim                                                               |
+| Preserved evidence           | Cycle 2z, Cycle 3a, and Cycle 3b contracts, approvals, source bindings, and evidence remain unchanged                                                                                                                                    | Pass                                                                            |
+| Remote/shared profile        | Multi-user, tenant, shared-service, commercial, production, organizational stewardship, and provider billing operations remain outside the personal scope                                                                                | Out of scope                                                                    |
+| Public verification          | Focused hostile tests, full local verification, terminal routing-tip Windows/Linux CI validating the pinned exact source chain, and independent review pass                                                                              | Pass — six push workflows at routing closure; main run `33543662683`            |
+| Private activation           | Any later required private activation is separately authorized and publishes no policy, identifier, secret reference, credential, or provider detail                                                                                     | Not performed or authorized                                                     |
+| Promotion topology           | Exact merge-free source and routing revisions are pinned; the documentation-promotion transition is exact-diff verified                                                                                                                  | Pass — source and routing revisions pinned; this transition exact-diff verified |
 
-## Prepared interface boundary
+## Promoted interface boundary
 
 The exact startup selector is
 `RESEARCH_COCKPIT_MODE=personal_single_user_local_connected`. Exact connected
@@ -103,19 +105,23 @@ the exact source, host, operation, lifecycle, and budgets, then resolve the
 reference just in time. Those uncomposed seams are not an actual provider,
 secret, adapter, or external request.
 
-## Exit and next blocker
+## Exit and next milestone
 
-Cycle 3c cannot be marked Pass until its exact-source focused tests, full public
-gates, CI, independent review, source topology, and any separately required
-private activation are terminal. Prepared source and synthetic fixtures are not
-provider, entitlement, legal, billing, freshness, or adapter evidence.
+Cycle 3c is Pass only for source revision
+`4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`. Focused tests, the full public
+gate, independent review, and all six exact-routing-closure push workflows are
+terminal; the main CI run is `33543662683`. This promotion is not provider,
+credential, entitlement, legal, billing, freshness, transport, or adapter
+evidence. No private activation was performed or required for this exact
+provider-neutral, no-transport public result.
 
-Cycle 3d now has separate prepared public source and local-temporary
-verification only. It has no actual personal vault, recovery key, backup,
-restore, activation, acceptance, or promotion. Its schema explicitly excludes
-this process-memory policy, kill, reservation, replay, and budget state, so
-those values still reset on restart. Cycle 3e is the next planned functional
-blocker only after the Cycle 3d gates are terminal.
+Cycle 3d has a separate promoted public/local-temporary result. It has no actual
+personal vault, recovery key, backup, restore, or private activation. Its schema
+explicitly excludes this process-memory policy, kill, reservation, replay, and
+budget state, so those values still reset on restart. Cycle 3e-a local
+security-master snapshot admission and search is next; no real breadth claim is
+available without an exact rights-compatible source snapshot.
 
 ## References
 

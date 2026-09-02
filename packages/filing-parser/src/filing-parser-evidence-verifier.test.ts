@@ -106,6 +106,8 @@ import {
   isCycle3cSourceCommitDiffSetAllowed,
   isCycle3cSourceTopologyAllowed,
   isCycle3cTransitionRoutingRequired,
+  isCycle3c3dPublicPromotionCommitDiffSetAllowed,
+  isCycle3c3dPublicPromotionTopologyAllowed,
   isCycle3dAclCorrectiveCommitDiffSetAllowed,
   isCycle3dAclCorrectiveTopologyAllowed,
   isCycle3dApiWindowsFixtureStabilizationCommitDiffSetAllowed,
@@ -767,6 +769,8 @@ const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION =
   "3982631bb87c209044078e47bb1bec9c738a4fee" as const;
 const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION =
   "33e7ca938f19df4ec1e738b19c884860ee85fc7e" as const;
+const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION =
+  "3edb5464a3414313a980ffd9fecce5ca5257084a" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1185,6 +1189,65 @@ const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_TRANSITION = [
 ];
 const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_TRANSITION =
   [...CYCLE_3D_ROUTING_CLOSURE_TRANSITION];
+const CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3D_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    status: "M",
+  },
+  { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
+  {
+    path: "docs/adr/0054-authenticated-personal-dossier-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0055-connected-personal-source-policy-registry.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0056-durable-personal-local-research-vault.md",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set(
     [...CYCLE_2Z_SOURCE_TRANSITION, ...CYCLE_2Z_CORRECTIVE_TRANSITION].map(
@@ -3735,13 +3798,14 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
     }
   });
 
-  it("permits one exact routing child after parser-timeout stabilization", () => {
-    const revision = "d".repeat(40);
+  it("pins the exact routing child after parser-timeout stabilization", () => {
+    const revision =
+      CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION;
     const valid = [
       "23",
       "23",
       revision,
-      `${revision} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION}`,
       `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
       `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION}`,
       `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
@@ -3775,6 +3839,47 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
           >),
         ),
         `windows-parser-timeout-routing:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("permits one exact joint Cycle 3c/3d public-promotion child", () => {
+    const revision = "d".repeat(40);
+    const valid = [
+      "24",
+      "24",
+      revision,
+      `${revision} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION}`,
+      `${CYCLE_3D_WINDOWS_CI_STABILIZATION_REVISION} ${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}`,
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}`,
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}`,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(isCycle3c3dPublicPromotionTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "23"
+            : "25"
+          : index === 2
+            ? CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3c3dPublicPromotionTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3c3dPublicPromotionTopologyAllowed
+          >),
+        ),
+        `joint-public-promotion:${index}`,
       ).toBe(false);
     }
   });
@@ -3840,6 +3945,12 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
       isCycle3dWindowsParserTimeoutStabilizationRoutingClosureCommitDiffSetAllowed,
       7,
     ],
+    [
+      "joint-cycle3c-cycle3d-public-promotion",
+      CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION,
+      isCycle3c3dPublicPromotionCommitDiffSetAllowed,
+      24,
+    ],
   ] as const) {
     it(`freezes the exact ${name} name-status tuple`, () => {
       expect(entries).toHaveLength(count);
@@ -3888,6 +3999,7 @@ describe("Cycle 3d durable personal local-vault routing closure", () => {
           ...CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
           ...CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_TRANSITION,
           ...CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
+          ...CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION,
         ].map((entry) => entry.path),
       ),
     ];

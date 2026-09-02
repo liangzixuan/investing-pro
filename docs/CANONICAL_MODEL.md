@@ -2010,8 +2010,10 @@ out-of-scope. Cycle 3c source policy remains a separate control plane. See
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
-Cycle 3c has provider-neutral prepared public source only and is not privately activated,
-accepted, or promoted. It adds the distinct
+Cycle 3c is accepted and promoted only for provider-neutral public source
+revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`; it is not privately activated. It
+adds the distinct
 `personal_single_user_local_connected` control-plane profile without changing
 the preserved offline profile. The canonical implementation lives in
 `@research-cockpit/connected-source-policy`; schema `1.0.0` is anchored by
@@ -2084,20 +2086,25 @@ backed bundle storage is an operator precondition.
 This model contains no actual provider/source credential, provider secret
 adapter, external request, provider response, entitlement or legal
 determination, provider billing ceiling, SEC refresh, or market-data adapter.
-Application budgets are local admission
-limits, not provider invoice guarantees. Enterprise/shared-service controls
-remain out of scope for the personal profile. Exact prepared design and gates
-are in [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and
-the [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md). Cycle 3d remains a
-separate persistence boundary and does not make this control plane durable.
+Application budgets are local admission limits, not provider invoice
+guarantees. Enterprise/shared-service controls remain out of scope for the
+personal profile. Terminal routing-tip CI at
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581` verified the pinned merge-free
+Cycle 3c source chain; it did not run at or convert the source revision into a
+provider result. Exact promoted design, evidence, and nonclaims are in
+[ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
+[Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md). Cycle 3d remains a separate
+persistence boundary and does not make this control plane durable.
 
 ## Cycle 3d durable personal local research-vault model
 
-Cycle 3d has **prepared public source and local-temporary verification only**.
-Its exact source is not yet declared, and no actual personal vault, recovery
-key, backup, restore, private activation, acceptance, or promotion is recorded.
-The separate canonical profile is `personal_single_user_local_vault`, provided
-by the private zero-production-dependency package
+Cycle 3d is **accepted and promoted only for its exact corrected
+public/local-temporary chain** rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at terminal routing
+closure `3edb5464a3414313a980ffd9fecce5ca5257084a`. No actual personal vault,
+recovery key, backup, restore, or private activation is recorded. The separate
+canonical profile is `personal_single_user_local_vault`, provided by the private
+zero-production-dependency package
 `@research-cockpit/local-research-vault`.
 
 The record-kind vocabulary is closed to `thesis`, `settings`, `watchlist`,
@@ -2128,7 +2135,7 @@ verify the application identifier, V2 user/schema version, both exact
 migration/schema digests, exact table/index inventory, full
 `PRAGMA integrity_check(1)`, and foreign-key check. Foreign keys,
 `trusted_schema=OFF`, `secure_delete=ON`, WAL, `synchronous=FULL`, extensions
-off, defensive mode, and a runtime authorizer are part of the prepared
+off, defensive mode, and a runtime authorizer are part of the promoted
 boundary. Unknown schema or ambiguous rollback fails closed; only the exact
 reviewed V1-to-V2 migration is supported, not a general migrator.
 
@@ -2169,7 +2176,7 @@ restoration may reintroduce deleted records.
 Exact API mode is `RESEARCH_COCKPIT_MODE=personal_single_user_local_vault` and
 starts through the separate non-splitting `vault-server`. Its static graph is
 limited to vault app/composition/routes, the Cycle 3a owner session, listen
-options, and server. The prepared business routes are authenticated status,
+options, and server. The promoted business routes are authenticated status,
 record list, record read, record create/update, and record delete below
 `/v1/personal-filing/vault`. Create/update/delete require exact intents,
 idempotency, and exact conditional-version headers. Authentication and mutation
@@ -2187,11 +2194,13 @@ provider/SEC/market-data adapters, scheduler execution, delivered alerts,
 remote/multi-device/multi-user/tenant/shared-service/commercial/production
 operation, and parity remain outside the model.
 
-Exact prepared design and pending gates are in
+Terminal routing-tip CI at `3edb5464a3414313a980ffd9fecce5ca5257084a`
+verified the pinned corrected Cycle 3d chain. Exact promoted design, evidence,
+and nonclaims are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
-[Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md). Cycle 3e security master,
-search, and watchlists is the next planned functional blocker only after the
-Cycle 3d gates are terminal.
+[Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md). Cycle 3e-a owner-local
+security-master snapshot admission and symbol/name search is next. No real
+breadth claim is available without an exact rights-compatible source snapshot.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

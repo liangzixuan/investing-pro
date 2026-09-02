@@ -132,6 +132,8 @@ const CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION =
   "3982631bb87c209044078e47bb1bec9c738a4fee" as const;
 const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION =
   "33e7ca938f19df4ec1e738b19c884860ee85fc7e" as const;
+const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION =
+  "3edb5464a3414313a980ffd9fecce5ca5257084a" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2565,6 +2567,68 @@ const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_TRANSITION = Object.freeze([
 ]);
 const CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_TRANSITION =
   Object.freeze([...CYCLE_3D_ROUTING_CLOSURE_TRANSITION]);
+const CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3C_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3D_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0053-personal-local-owner-session.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0054-authenticated-personal-dossier-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0055-connected-personal-source-policy-registry.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0056-durable-personal-local-research-vault.md",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2790,6 +2854,7 @@ const CYCLE_3D_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_TRANSITION.map(
     (entry) => entry.path,
   ),
+  ...CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -4836,7 +4901,7 @@ export function isCycle3dWindowsParserTimeoutStabilizationTopologyAllowed(
   );
 }
 
-/** @internal One exact routing child after Windows parser-timeout stabilization. */
+/** @internal Exact pinned routing after Windows parser-timeout stabilization. */
 export function isCycle3dWindowsParserTimeoutStabilizationRoutingClosureTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -4868,16 +4933,87 @@ export function isCycle3dWindowsParserTimeoutStabilizationRoutingClosureTopology
   return (
     successorCount === "23" &&
     firstParentCount === "23" &&
-    COMMIT.test(revision) &&
-    revision !== CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION &&
+    revision ===
+      CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION}` &&
+      `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION}` &&
     cycle3dWindowsParserTimeoutStabilizationParentLine ===
       `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION}` &&
     isCycle3dWindowsParserTimeoutStabilizationTopologyAllowed(
       "22",
       "22",
       CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION,
+      cycle3dWindowsParserTimeoutStabilizationParentLine,
+      cycle3dApiWindowsFixtureStabilizationRoutingClosureParentLine,
+      cycle3dApiWindowsFixtureStabilizationParentLine,
+      cycle3dStabilizationRoutingClosureParentLine,
+      cycle3dWindowsCiStabilizationParentLine,
+      cycle3dCorrectiveRoutingClosureParentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact joint Cycle 3c/3d public-promotion child. */
+export function isCycle3c3dPublicPromotionTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dWindowsParserTimeoutStabilizationRoutingClosureParentLine: string,
+  cycle3dWindowsParserTimeoutStabilizationParentLine: string,
+  cycle3dApiWindowsFixtureStabilizationRoutingClosureParentLine: string,
+  cycle3dApiWindowsFixtureStabilizationParentLine: string,
+  cycle3dStabilizationRoutingClosureParentLine: string,
+  cycle3dWindowsCiStabilizationParentLine: string,
+  cycle3dCorrectiveRoutingClosureParentLine: string,
+  cycle3dAclCorrectiveParentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bCorrectiveParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "24" &&
+    firstParentCount === "24" &&
+    COMMIT.test(revision) &&
+    revision !==
+      CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION}` &&
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosureParentLine ===
+      `${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION}` &&
+    isCycle3dWindowsParserTimeoutStabilizationRoutingClosureTopologyAllowed(
+      "23",
+      "23",
+      CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION,
+      cycle3dWindowsParserTimeoutStabilizationRoutingClosureParentLine,
       cycle3dWindowsParserTimeoutStabilizationParentLine,
       cycle3dApiWindowsFixtureStabilizationRoutingClosureParentLine,
       cycle3dApiWindowsFixtureStabilizationParentLine,
@@ -6057,6 +6193,13 @@ export function isCycle3dWindowsParserTimeoutStabilizationRoutingClosureCommitDi
     entries,
     CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_TRANSITION,
   );
+}
+
+/** @internal Exact joint Cycle 3c/3d public-promotion transition seam. */
+export function isCycle3c3dPublicPromotionCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION);
 }
 
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
@@ -7289,6 +7432,7 @@ async function verifyCycle2zTransition(
     CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_REVISION,
     CYCLE_3D_API_WINDOWS_FIXTURE_STABILIZATION_ROUTING_CLOSURE_REVISION,
     CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION,
+    CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -7554,6 +7698,19 @@ async function verifyCycle2zTransition(
           "--parents",
           "--max-count=1",
           CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION,
+        ],
+        128,
+      ),
+    ).join(" ");
+  const cycle3dWindowsParserTimeoutStabilizationRoutingClosureParentLine =
+    decodeGitRevisionParentsLine(
+      await git(
+        repositoryPath,
+        [
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION,
         ],
         128,
       ),
@@ -7934,6 +8091,35 @@ async function verifyCycle2zTransition(
       routingClosureParentLine,
       sourceParentLine,
     );
+  const cycle3c3dPublicPromotion = isCycle3c3dPublicPromotionTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosureParentLine,
+    cycle3dWindowsParserTimeoutStabilizationParentLine,
+    cycle3dApiWindowsFixtureStabilizationRoutingClosureParentLine,
+    cycle3dApiWindowsFixtureStabilizationParentLine,
+    cycle3dStabilizationRoutingClosureParentLine,
+    cycle3dWindowsCiStabilizationParentLine,
+    cycle3dCorrectiveRoutingClosureParentLine,
+    cycle3dAclCorrectiveParentLine,
+    cycle3dRoutingClosureParentLine,
+    cycle3dSourceParentLine,
+    cycle3cRoutingClosureParentLine,
+    cycle3cSourceParentLine,
+    cycle3bCorrectiveParentLine,
+    cycle3bSourceParentLine,
+    cycle3aPromotionParentLine,
+    cycle3aSourceParentLine,
+    ubuntuCiStabilizationParentLine,
+    roadmapRebaselineParentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
@@ -7943,7 +8129,8 @@ async function verifyCycle2zTransition(
     cycle3dApiWindowsFixtureStabilization ||
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure;
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion;
   if (
     !directSource &&
     !correctiveChild &&
@@ -7965,7 +8152,8 @@ async function verifyCycle2zTransition(
     !cycle3dApiWindowsFixtureStabilization &&
     !cycle3dApiWindowsFixtureStabilizationRoutingClosure &&
     !cycle3dWindowsParserTimeoutStabilization &&
-    !cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    !cycle3dWindowsParserTimeoutStabilizationRoutingClosure &&
+    !cycle3c3dPublicPromotion
   )
     invalid();
 
@@ -8196,7 +8384,8 @@ async function verifyCycle2zTransition(
     cycle3dApiWindowsFixtureStabilization ||
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8212,7 +8401,8 @@ async function verifyCycle2zTransition(
     cycle3dApiWindowsFixtureStabilization ||
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8228,7 +8418,8 @@ async function verifyCycle2zTransition(
     cycle3dApiWindowsFixtureStabilization ||
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8243,7 +8434,8 @@ async function verifyCycle2zTransition(
     cycle3dApiWindowsFixtureStabilization ||
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8257,7 +8449,8 @@ async function verifyCycle2zTransition(
     cycle3dApiWindowsFixtureStabilization ||
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8270,7 +8463,8 @@ async function verifyCycle2zTransition(
   if (
     cycle3dApiWindowsFixtureStabilizationRoutingClosure ||
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8286,7 +8480,8 @@ async function verifyCycle2zTransition(
   }
   if (
     cycle3dWindowsParserTimeoutStabilization ||
-    cycle3dWindowsParserTimeoutStabilizationRoutingClosure
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -8298,11 +8493,14 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (cycle3dWindowsParserTimeoutStabilizationRoutingClosure) {
+  if (
+    cycle3dWindowsParserTimeoutStabilizationRoutingClosure ||
+    cycle3c3dPublicPromotion
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_REVISION,
-      revision,
+      CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION,
     );
     if (
       !isCycle3dWindowsParserTimeoutStabilizationRoutingClosureCommitDiffSetAllowed(
@@ -8310,6 +8508,14 @@ async function verifyCycle2zTransition(
       )
     )
       invalid();
+  }
+  if (cycle3c3dPublicPromotion) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_WINDOWS_PARSER_TIMEOUT_STABILIZATION_ROUTING_CLOSURE_REVISION,
+      revision,
+    );
+    if (!isCycle3c3dPublicPromotionCommitDiffSetAllowed(entries)) invalid();
   }
 
   await verifyCycle2xTransition(

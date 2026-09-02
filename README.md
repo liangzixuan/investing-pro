@@ -1166,7 +1166,9 @@ refresh, network access, promoted personal persistence, and background work
 remain later outcomes. The separate Cycle 3c control plane and Cycle 3d vault
 below do not authorize or promote Cycle 3b.
 
-Cycle 3c now has provider-neutral prepared public source for the explicit
+Cycle 3c is accepted and promoted only for provider-neutral public source
+revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`. It provides the explicit
 `personal_single_user_local_connected` control plane. The
 `@research-cockpit/connected-source-policy` package parses one canonical,
 startup-fixed source policy and exposes process-memory `status`, `kill`,
@@ -1191,14 +1193,17 @@ are non-secret; that is an operator precondition. The same precondition applies
 to status-visible source and policy identifiers. The public source includes no
 actual provider/source credential, provider secret adapter, external request,
 entitlement or legal determination, provider billing ceiling, SEC refresh, or
-market-data adapter. It has not been
-privately activated, accepted, or promoted. See
+market-data adapter. No private activation was performed, and this public
+result is not provider, credential, entitlement, legal, billing, freshness,
+transport, or adapter evidence. All six routing-closure push workflows passed,
+including main CI run `33543662683`. See
 [ADR 0055](./docs/adr/0055-connected-personal-source-policy-registry.md) and the
 [Cycle 3c exit matrix](./docs/CYCLE_3C_EXIT_MATRIX.md).
 
-Cycle 3d now has prepared public source and local-temporary verification for the
-separate `personal_single_user_local_vault` profile; exact source is not yet
-declared. The private
+Cycle 3d is accepted and promoted only for the exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at terminal routing
+closure `3edb5464a3414313a980ffd9fecce5ca5257084a`. The private
 zero-production-dependency `@research-cockpit/local-research-vault` package
 prepares restart-safe `thesis`, `settings`, `watchlist`, `alert_definition`,
 `job_state`, and `portfolio` records plus package-level attachments, encrypted
@@ -1225,11 +1230,14 @@ record list/read, and conditional idempotent create/update/delete under
 routes. The demo thesis/alert form is now page memory only and no longer writes
 Web Storage, but Cycle 3d includes no browser vault client or migration of
 actual browser data. It has no actual personal vault, recovery key, backup,
-restore, private activation, acceptance, or promotion. See
+restore, or private activation. At terminal routing closure
+`3edb5464a3414313a980ffd9fecce5ca5257084a`, the full repository gate passed
+1,906 tests with 9 intentional skips, and the four terminal workflows passed. See
 [ADR 0056](./docs/adr/0056-durable-personal-local-research-vault.md) and the
-[Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md). Cycle 3e security
-master, search, and watchlists is the next planned functional blocker only
-after the Cycle 3d gates are terminal.
+[Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md). Cycle 3e-a owner-local
+security-master snapshot admission and symbol/name search is the next planned
+functional slice. No real-universe breadth claim is available until an exact
+rights-compatible source snapshot is admitted.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

@@ -1,8 +1,10 @@
 # ADR 0056: durable personal local research vault
 
-Status: **Prepared public source and local-temporary verification only. Exact
-source is not yet declared. No actual personal vault, recovery key, backup,
-restore, private activation, acceptance, or promotion has been performed or
+Status: **Accepted and promoted only for the exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at terminal routing
+closure `3edb5464a3414313a980ffd9fecce5ca5257084a`. No actual personal vault,
+recovery key, backup, restore, or private activation has been performed or
 recorded.**
 
 ## Context
@@ -15,7 +17,7 @@ memory. The demo thesis and alert surfaces previously used browser storage,
 which would become a competing durable source if a server-side vault were
 added without an explicit cutover.
 
-Cycle 3d prepares the narrow persistence boundary needed by one person on one
+Cycle 3d establishes the narrow persistence boundary needed by one person on one
 local machine. It does not add a tenant, remote service, provider connection,
 or browser product workflow. The source must fail closed on path ambiguity,
 unexpected schema or files, corruption, stale writes, replay conflicts, and
@@ -53,9 +55,9 @@ loading this capability.
 The vault root is fixed before listen. HTTP requests cannot select a database,
 root, attachment path, backup path, recovery-key path, or restore destination.
 
-## Prepared record and transaction model
+## Promoted record and transaction model
 
-The prepared adapter uses the Node 24 `node:sqlite` surface and one synchronous
+The promoted adapter uses the Node 24 `node:sqlite` surface and one synchronous
 SQLite connection. Its exact V2 schema contains records, attachments,
 tombstones, idempotency results, payload-free audit metadata, one migration
 ledger, and one schema metadata row. It has no Cycle 3c policy, kill,
@@ -156,7 +158,7 @@ one. Recovery-key loss makes the backup unrecoverable. A live delete does not
 rewrite or erase old backups; an older backup can reintroduce a deleted record
 when deliberately restored.
 
-## Prepared API and browser boundary
+## Promoted API and browser boundary
 
 The dedicated vault app inherits the exact Cycle 3a literal-loopback Host,
 Origin, credentialed CORS, cookie, negotiation, framing, and owner-session
@@ -187,7 +189,7 @@ Storage; it is presentation memory for that page only. No browser vault client
 or durable end-user vault workflow is prepared in this cycle, so the browser
 cannot yet create, edit, back up, or restore vault records.
 
-## Prepared implementation and security checklist
+## Promoted implementation and security checklist
 
 Cycle 3d source is complete only when all of these public properties are
 implemented and terminally verified:
@@ -270,24 +272,61 @@ vault root, recovery key, backups, operating-system account, and machine.
 
 ## Evidence and promotion rule
 
-This repository state prepares public source and local-temporary verification
-only. Tests may create disposable synthetic/local-temporary vaults, keys,
-records, attachments, backups, and restores; those are not the owner's actual
-personal vault or private activation evidence. No actual path, recovery key,
-personal payload, backup, or restore result may enter source, fixtures, logs,
-public CI, or public evidence.
+Cycle 3d is accepted and promoted only for the exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c`, a merge-free count-14 child of
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581` with the exact 63-file,
+10,267-insertion, 159-deletion source transition. Its exact adjacent stages are:
 
-Cycle 3d cannot be accepted or promoted until its exact source is declared;
-focused package, path, ACL, schema, mutation, API, crash, backup, restore, and
-browser-cutover tests pass; the full repository gate and exact-source
-Windows/Linux CI are terminal; independent review closes actionable findings;
-and the exact source/promotion topology is recorded. Any later operation on an
-actual personal vault must be explicitly and separately authorized and may
-publish only a coarse nonsecret outcome.
+1. routing closure `1c831d59cf1558e1b63c9031c598825349bcd516`, seven files,
+   merge-free count 15;
+2. Windows ACL correction `5041b396f4cc89652b01f896ff9f69531cc2cb7e`,
+   two files, count 16;
+3. corrective route `a8fe1518484a4d0d8962a8318f4e0baaec0b9d36`, seven files,
+   count 17;
+4. Windows fixture stabilization
+   `c329b081019ac61fb857dc8f709315b3ae497398`, two files, count 18;
+5. stabilization route `fa5d31a0c1bc5f37e7b7f869cc8a888bd1f74021`, seven
+   files, count 19;
+6. API fixture correction `0228e253f5173fc5d8b73d00f5abbf486107999d`, two
+   files, count 20;
+7. API correction route `3982631bb87c209044078e47bb1bec9c738a4fee`, seven
+   files, count 21;
+8. parser timeout correction `33e7ca938f19df4ec1e738b19c884860ee85fc7e`,
+   three files, count 22; and
+9. terminal route `3edb5464a3414313a980ffd9fecce5ca5257084a`, seven
+   files, merge-free first-parent and total count 23.
 
-Cycle 3e security master, search, and watchlists is the next planned functional
-milestone only after the Cycle 3d gates are terminal. Prepared Cycle 3d source
-does not itself authorize Cycle 3e data loading or network access.
+Tests may create disposable synthetic/local-temporary vaults, keys, records,
+attachments, backups, and restores; those are not the owner's actual personal
+vault or private activation evidence. No actual path, recovery key, personal
+payload, backup, or restore result may enter source, fixtures, logs, public CI,
+or public evidence.
+
+Focused package, path, ACL, schema, mutation, API, crash, backup, restore, and
+browser-cutover tests passed. At terminal routing closure
+`3edb5464a3414313a980ffd9fecce5ca5257084a`, the full repository gate passed
+1,906 tests with 9 intentional skips, independent review closed actionable
+findings, and the exact corrected topology is recorded. Routing-tip CI validated the
+pinned exact chain:
+
+- [CI run `33593192127`](https://github.com/liangzixuan/investing-pro/actions/runs/33593192127),
+  Ubuntu job `100131233014`, and Windows job `100131233105`;
+- [cross-engine run `33593192168`](https://github.com/liangzixuan/investing-pro/actions/runs/33593192168),
+  job `100131233432`;
+- [parser isolation run `33593192135`](https://github.com/liangzixuan/investing-pro/actions/runs/33593192135),
+  job `100131232872`; and
+- [payload custody run `33593192126`](https://github.com/liangzixuan/investing-pro/actions/runs/33593192126),
+  job `100131233056`.
+
+No Actions run occurred directly at the root source revision.
+Any later operation on an actual personal vault must be explicitly and
+separately authorized and may publish only a coarse nonsecret outcome.
+
+Cycle 3e-a owner-local security-master snapshot admission and symbol/name search
+is the next planned functional slice. This promoted Cycle 3d public source does
+not authorize Cycle 3e data loading or network access, and no real-universe
+breadth claim exists without an exact rights-compatible source snapshot.
 
 ## References
 

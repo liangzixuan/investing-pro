@@ -166,13 +166,18 @@ Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
 Cycle 3b authenticated personal dossier composition has prepared public source
 but no fresh owner authorization, terminal exact-source evidence, private
-activation, acceptance, or promotion. Cycle 3c connected-personal source policy
-now has provider-neutral prepared public source only, with no provider or private
-activation. Cycle 3d now has separate prepared public source and local-temporary
-verification only, with no actual personal vault, key, backup, restore,
-activation, acceptance, or promotion. Cycle 3e is the next planned functional
-blocker only after the Cycle 3d gates are terminal; same-user hostile-process
-resistance remains unproven.
+activation, acceptance, or promotion. Cycle 3c is promoted only for exact
+provider-neutral, no-transport public source revision
+`4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`, with no private activation or
+provider result. Cycle 3d is promoted only for its exact corrected
+public/local-temporary chain rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
+`3edb5464a3414313a980ffd9fecce5ca5257084a`, with no actual personal vault, key,
+backup, restore, or private activation. Cycle 3e-a owner-local security-master
+snapshot admission and search is next, with no real breadth claim without an
+exact rights-compatible source; same-user hostile-process resistance remains
+unproven.
 
 ## References
 

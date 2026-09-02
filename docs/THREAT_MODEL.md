@@ -1,4 +1,4 @@
-# Sprint 0 through prepared Cycle 3d threat model
+# Sprint 0 through promoted public/local-temporary Cycle 3d threat model
 
 ## Current trust boundaries
 
@@ -26,9 +26,11 @@ optional browser memory and adds no persistence boundary. Cycle 3a separately
 closes the short-lived local owner-session boundary only for exact source
 revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`; it adds no persistent
 identity or remote/shared-service boundary.
-Cycle 3d separately prepares public source and local-temporary verification for
-one durable owner-local vault, but has no actual personal vault, key, backup,
-restore, activation, acceptance, or promotion and no browser vault client.
+Cycle 3c separately has a promoted provider-neutral, no-transport public result
+with no private activation or provider operation. Cycle 3d separately has a
+promoted public/local-temporary result for one durable owner-local vault, but no
+actual personal vault, key, backup, restore, private activation, or browser
+vault client.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2214,10 +2216,12 @@ Exact prepared design and pending gates are in
 
 ## Cycle 3c connected-personal source-policy threat boundary
 
-Cycle 3c has **provider-neutral prepared public source only**. It has not been privately
-activated, accepted, or promoted. No actual provider/source credential,
-provider secret adapter, external request, entitlement or legal determination,
-provider billing ceiling, SEC refresh, or market-data adapter is present.
+Cycle 3c is **accepted and promoted only for exact provider-neutral public
+source revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`**. It has not been privately
+activated. No actual provider/source credential, provider secret adapter,
+external request, entitlement or legal determination, provider billing ceiling,
+SEC refresh, or market-data adapter is present.
 
 Assets at risk are offline-mode isolation; the canonical policy bundle and
 digest; source, provider, product, tier, entitlement, policy, and terms
@@ -2241,7 +2245,7 @@ intent bypass on status/kill; detailed denial or crash output; and treating an
 abstract adapter seam as proof of a real provider, legal right, bill cap, or
 source freshness.
 
-Prepared controls are:
+Promoted controls are:
 
 - exact opt-in `personal_single_user_local_connected` mode, with synthetic
   default and every prior offline mode rejecting connected-only inputs;
@@ -2314,15 +2318,20 @@ from the injected wall clock is not detected.
 Remote, multi-user, tenant, shared-service, commercial, and production
 security; organizational rights/steward/counsel approval; billing operations;
 and competitor parity remain out of scope. Personal use does not override
-provider terms. Exact prepared design and pending gates are in
+provider terms. Terminal routing-tip CI at
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581` verified the pinned merge-free
+source chain; it is not CI at the source hash and is not provider evidence.
+Exact promoted design, evidence, and nonclaims are in
 [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
 [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
 
 ## Cycle 3d durable personal local-vault threat boundary
 
-Cycle 3d has **prepared public source and local-temporary verification only**.
-Its exact source is not yet declared. No actual personal vault, recovery key,
-backup, restore, private activation, acceptance, or promotion is present.
+Cycle 3d is **accepted and promoted only for its exact corrected
+public/local-temporary chain** rooted at
+`520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at terminal routing
+closure `3edb5464a3414313a980ffd9fecce5ca5257084a`. No actual personal vault,
+recovery key, backup, restore, or private activation is present.
 
 Assets at risk are the startup-fixed root and its identity; owner account and
 effective file permissions; recovery-key bytes; record payloads and attachment
@@ -2349,7 +2358,7 @@ owner-session, intent, conditional-header, duplicate-header, or request-body
 ordering bypass; browser Web Storage becoming a second durable source; and
 treating local-temporary tests as actual personal activation evidence.
 
-Prepared controls are:
+Promoted controls are:
 
 - exact opt-in `personal_single_user_local_vault` mode and a distinct
   non-splitting vault server, with every other entry rejecting vault-only
@@ -2422,8 +2431,10 @@ vault schema and therefore still resets on restart. Cycle 3d adds no source
 credential, provider request, SEC refresh, market-data adapter, scheduler
 execution, delivered alert, or background ingestion. Remote, multi-device,
 multi-user, tenant, shared-service, commercial, organizational, production,
-and competitor-parity claims remain out of scope. Exact prepared design and
-pending gates are in
+and competitor-parity claims remain out of scope. Terminal routing-tip CI at
+`3edb5464a3414313a980ffd9fecce5ca5257084a` verified the pinned corrected chain;
+it did not run at the root source hash. Exact promoted design, evidence, and
+nonclaims are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
 
@@ -2473,12 +2484,13 @@ pending gates are in
    composition only for its exact source. Cycle 3b authenticated personal
    dossier composition is prepared but not promoted and still requires fresh
    exact owner authorization and terminal evidence. Cycle 3c connected-personal
-   source-policy control-plane source is prepared but neither privately
-   activated nor promoted; it composes no provider transport. Cycle 3d durable
-   local-vault source and local-temporary verification are prepared but not
-   activated, accepted, or promoted. Cycle 3e security master, search, and
-   watchlists is the next planned functional blocker only after the Cycle 3d
-   gates are terminal. Organizational
+   source-policy control-plane public source is promoted only for its exact
+   provider-neutral, no-transport chain and is not privately activated. Cycle
+   3d's public/local-temporary vault boundary is promoted only for its exact
+   corrected chain and has no actual vault or private activation. Cycle 3e-a
+   owner-local security-master snapshot admission and search is next, with no
+   real breadth claim until an exact rights-compatible source is admitted.
+   Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

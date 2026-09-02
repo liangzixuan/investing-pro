@@ -1,9 +1,11 @@
 # ADR 0055: connected-personal source-policy control plane
 
-Status: **Provider-neutral prepared public source only. Cycle 3c has not been privately
-activated, accepted, or promoted. It includes no actual provider/source
-credential, provider secret adapter, external request, entitlement or legal
-determination, provider billing ceiling, SEC refresh, or market-data adapter.**
+Status: **Accepted and promoted only for exact provider-neutral public source
+revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`. Cycle 3c has not been privately
+activated. It includes no actual provider/source credential, provider secret
+adapter, external request, entitlement or legal determination, provider billing
+ceiling, SEC refresh, or market-data adapter.**
 
 ## Context
 
@@ -13,7 +15,7 @@ snapshot, but it neither selects nor contacts a network source. Adding ambient
 provider configuration to an offline mode would erase that boundary and make
 network authority difficult to review, disable, budget, or revoke.
 
-Cycle 3c therefore prepares only a separate connected-personal control plane.
+Cycle 3c therefore establishes only a separate connected-personal control plane.
 It must make the intended source, operation, terms, lifecycle, retention, and
 application budget reviewable before a later execution gateway can perform
 work. A policy record is an application constraint, not proof that the owner
@@ -93,7 +95,7 @@ public CI. The API composes neither that execution seam nor any secret or
 transport adapter, so Cycle 3c performs no actual credential resolution or
 external request.
 
-## Prepared source interfaces
+## Promoted source interfaces
 
 The zero-production-dependency package is
 `@research-cockpit/connected-source-policy`. Its public schema and profile
@@ -120,7 +122,7 @@ it is never given either adapter or a transport capability and never calls `auth
 
 ## Runtime control decision
 
-Within the connected-source-policy business/control surface, the prepared mode
+Within the connected-source-policy business/control surface, the promoted mode
 exposes only two owner-session-protected operations:
 
 1. authenticated `GET /v1/personal-filing/connected-source-policy/status`; and
@@ -164,7 +166,7 @@ provider-side usage, taxes, credits, rounding, price changes, minimum charges,
 delayed metering, and provider enforcement remain unknown. The budgets are not
 a provider billing ceiling.
 
-## Prepared implementation and security checklist
+## Promoted implementation and security checklist
 
 Cycle 3c source is complete only when all of these public properties are
 implemented and verified:
@@ -215,9 +217,10 @@ implemented and verified:
     evidence remain unchanged; connected policy cannot authorize an offline
     release or reuse its approval.
 13. **Exact-source evidence:** focused hostile tests, full repository
-    verification, Windows/Linux CI, independent review, exact source topology,
-    and any later expressly authorized private activation must finish before
-    acceptance or promotion is recorded.
+    verification, terminal routing-tip Windows/Linux CI validating the pinned
+    source chain, independent review, and exact source topology must finish
+    before public-source promotion is recorded. Any private activation required
+    by a later scope remains separately authorized.
 
 ## Exact nonclaims
 
@@ -259,24 +262,38 @@ follow the terms of any source they later configure.
 
 ## Evidence and promotion rule
 
-This repository state prepares public source and synthetic verification only.
-It records no exact promoted source, private activation, actual policy or
-secret, external provider interaction, acceptance, or promotion.
+Cycle 3c is accepted and promoted only for exact provider-neutral source
+revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be`, a merge-free count-12 child
+of `074c65ba5b9912230891d030236d634f4f36a2ac` with an exact 47-file,
+7,725-insertion, 95-deletion transition, and routing closure
+`86e712574a5eee4e9f636c25ebd5d6fb70f20581`, its merge-free count-13 child with
+an exact seven-file, 1,218-insertion, 62-deletion transition. Focused tests, the
+full repository gate, independent review, and all six routing-tip push workflows
+passed on attempt 1:
 
-Promotion requires the focused policy, lifecycle, budget, secret-reference,
-authorization, no-transport, confidentiality, and historical-mode tests; the
-full repository gate; exact-source Windows and Linux CI; independent review;
-and an exact source/promotion topology. If a later private activation is
+- main CI run `33543662683`, Windows job `99975819186`, and Ubuntu job
+  `99975819602`;
+- cross-engine run `33543662758`;
+- parser isolation run `33543662637`;
+- normalization run `33543662642`;
+- payload custody run `33543662708`; and
+- PostgreSQL run `33543662661`.
+
+Those runs occurred at the routing tip and validated the pinned merge-free
+source chain; no Actions run occurred directly at the source revision.
+
+This public-source promotion records no private activation, actual policy or
+secret, or external provider interaction. If a later private activation is
 required, it must be separately authorized and may publish only a coarse,
-nonsecret outcome. A green public test run cannot be described as an external
-provider or legal result.
+nonsecret outcome. The green public result cannot be described as provider,
+credential, entitlement, legal, billing, freshness, transport, or adapter
+evidence.
 
-Cycle 3d now has separate prepared public source and local-temporary
-verification only, with no actual personal vault, recovery key, backup,
-restore, activation, acceptance, or promotion. Its schema explicitly excludes
-this process-memory policy, kill, reservation, replay, and budget state. Cycle
-3e is the next planned functional blocker only after the Cycle 3d gates are
-terminal.
+Cycle 3d has a separate promoted public/local-temporary result, with no actual
+personal vault, recovery key, backup, restore, or private activation. Its schema
+explicitly excludes this process-memory policy, kill, reservation, replay, and
+budget state. Cycle 3e-a local security-master snapshot admission and search is
+next; it has no real breadth claim without an exact rights-compatible source.
 
 ## References
 
