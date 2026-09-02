@@ -106,6 +106,11 @@ import {
   isCycle3cSourceCommitDiffSetAllowed,
   isCycle3cSourceTopologyAllowed,
   isCycle3cTransitionRoutingRequired,
+  isCycle3dRoutingClosureCommitDiffSetAllowed,
+  isCycle3dRoutingClosureTopologyAllowed,
+  isCycle3dSourceCommitDiffSetAllowed,
+  isCycle3dSourceTopologyAllowed,
+  isCycle3dTransitionRoutingRequired,
   isCycle2rBaselineMergeBaseAllowed,
   isCycle2rCommitDiffSetAllowed,
   isCycle2rDirectChildAllowed,
@@ -726,6 +731,10 @@ const CYCLE_3B_ROUTING_CLOSURE_REVISION =
   "074c65ba5b9912230891d030236d634f4f36a2ac" as const;
 const CYCLE_3C_SOURCE_REVISION =
   "4e9f011434382ccaae66f396fd5b163e4c0fc6be" as const;
+const CYCLE_3C_ROUTING_CLOSURE_REVISION =
+  "86e712574a5eee4e9f636c25ebd5d6fb70f20581" as const;
+const CYCLE_3D_SOURCE_REVISION =
+  "520fb9f860600c699b9a5a6fee940bc3e1cb185c" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1014,6 +1023,86 @@ const CYCLE_3C_SOURCE_TRANSITION = [
 ].map(([path, status]) => ({ path: path!, status: status! }));
 const CYCLE_3C_ROUTING_CLOSURE_TRANSITION = [
   ...CYCLE_3B_ROUTING_CLOSURE_TRANSITION,
+];
+const CYCLE_3D_SOURCE_TRANSITION = [
+  ["README.md", "M"],
+  ["apps/api/package.json", "M"],
+  ["apps/api/src/api-mode.test.ts", "M"],
+  ["apps/api/src/api-mode.ts", "M"],
+  ["apps/api/src/composition-root.test.ts", "M"],
+  ["apps/api/src/composition-root.ts", "M"],
+  ["apps/api/src/connected-composition-root.ts", "M"],
+  ["apps/api/src/personal-owner-session-routes.ts", "M"],
+  ["apps/api/src/personal-vault-routes.test.ts", "A"],
+  ["apps/api/src/personal-vault-routes.ts", "A"],
+  ["apps/api/src/vault-app.ts", "A"],
+  ["apps/api/src/vault-composition-root.test.ts", "A"],
+  ["apps/api/src/vault-composition-root.ts", "A"],
+  ["apps/api/src/vault-server.ts", "A"],
+  ["apps/api/src/vault-static-graph.test.ts", "A"],
+  ["apps/api/tsup.config.ts", "M"],
+  ["apps/web/app/layout.tsx", "M"],
+  ["apps/web/src/features/research/LegacyLocalStateCleanup.tsx", "A"],
+  ["apps/web/src/features/research/ThesisMonitor.tsx", "M"],
+  ["apps/web/src/lib/legacy-local-state-cleanup.test.ts", "A"],
+  ["apps/web/src/lib/legacy-local-state-cleanup.ts", "A"],
+  ["apps/web/src/lib/local-state.ts", "D"],
+  ["docs/BUILD_ROADMAP.md", "M"],
+  ["docs/CANONICAL_MODEL.md", "M"],
+  ["docs/CYCLE_2X_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_2Y_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_2Z_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3A_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3B_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3C_EXIT_MATRIX.md", "M"],
+  ["docs/CYCLE_3D_EXIT_MATRIX.md", "A"],
+  ["docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "M"],
+  ["docs/THREAT_MODEL.md", "M"],
+  [
+    "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    "M",
+  ],
+  ["docs/adr/0051-bounded-personal-quality-readiness-composition.md", "M"],
+  [
+    "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    "M",
+  ],
+  ["docs/adr/0053-personal-local-owner-session.md", "M"],
+  ["docs/adr/0054-authenticated-personal-dossier-composition.md", "M"],
+  ["docs/adr/0055-connected-personal-source-policy-registry.md", "M"],
+  ["docs/adr/0056-durable-personal-local-research-vault.md", "A"],
+  [
+    "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts",
+    "M",
+  ],
+  ["packages/local-research-vault/package.json", "A"],
+  ["packages/local-research-vault/src/canonical-json.ts", "A"],
+  ["packages/local-research-vault/src/crash-recovery.test.ts", "A"],
+  ["packages/local-research-vault/src/encrypted-vault-backup.test.ts", "A"],
+  ["packages/local-research-vault/src/encrypted-vault-backup.ts", "A"],
+  ["packages/local-research-vault/src/errors.ts", "A"],
+  ["packages/local-research-vault/src/fixtures/cycle3d-crash-worker.ts", "A"],
+  ["packages/local-research-vault/src/index.ts", "A"],
+  ["packages/local-research-vault/src/local-research-vault.ts", "A"],
+  ["packages/local-research-vault/src/local-vault-paths.test.ts", "A"],
+  ["packages/local-research-vault/src/local-vault-paths.ts", "A"],
+  ["packages/local-research-vault/src/model.ts", "A"],
+  ["packages/local-research-vault/src/recovery-key-file.ts", "A"],
+  [
+    "packages/local-research-vault/src/sqlite-local-research-vault.test.ts",
+    "A",
+  ],
+  ["packages/local-research-vault/src/sqlite-local-research-vault.ts", "A"],
+  ["packages/local-research-vault/src/vault-crypto.ts", "A"],
+  ["packages/local-research-vault/src/vault-schema.ts", "A"],
+  ["packages/local-research-vault/src/windows-owner-only-acl.test.ts", "A"],
+  ["packages/local-research-vault/src/windows-owner-only-acl.ts", "A"],
+  ["packages/local-research-vault/tsconfig.json", "A"],
+  ["pnpm-lock.yaml", "M"],
+  ["scripts/verify-boundaries.ts", "M"],
+].map(([path, status]) => ({ path: path!, status: status! }));
+const CYCLE_3D_ROUTING_CLOSURE_TRANSITION = [
+  ...CYCLE_3C_ROUTING_CLOSURE_TRANSITION,
 ];
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set(
@@ -3134,7 +3223,7 @@ describe("Cycle 3c connected-source policy routing closure", () => {
   });
 
   it("permits only one exact merge-free routing child", () => {
-    const revision = "a".repeat(40);
+    const revision = CYCLE_3C_ROUTING_CLOSURE_REVISION;
     const valid = [
       "13",
       "13",
@@ -3152,7 +3241,7 @@ describe("Cycle 3c connected-source policy routing closure", () => {
             ? "12"
             : "14"
           : index === 2
-            ? CYCLE_3C_SOURCE_REVISION
+            ? "a".repeat(40)
             : `${value} ${"f".repeat(40)}`;
       expect(
         isCycle3cRoutingClosureTopologyAllowed(
@@ -3224,6 +3313,151 @@ describe("Cycle 3c connected-source policy routing closure", () => {
     expect(isCycle3cTransitionRoutingRequired(undefined)).toBe(false);
     expect(isCycle3cTransitionRoutingRequired([])).toBe(false);
     expect(isCycle3cTransitionRoutingRequired(["unreviewed"])).toBe(false);
+  });
+});
+
+describe("Cycle 3d durable personal local-vault routing closure", () => {
+  const historicalParents = [
+    `${CYCLE_3C_ROUTING_CLOSURE_REVISION} ${CYCLE_3C_SOURCE_REVISION}`,
+    `${CYCLE_3C_SOURCE_REVISION} ${CYCLE_3B_ROUTING_CLOSURE_REVISION}`,
+    `${CYCLE_3B_ROUTING_CLOSURE_REVISION} ${CYCLE_3B_SOURCE_REVISION}`,
+    `${CYCLE_3B_SOURCE_REVISION} ${CYCLE_3A_PROMOTION_REVISION}`,
+    `${CYCLE_3A_PROMOTION_REVISION} ${CYCLE_3A_SOURCE_REVISION}`,
+    `${CYCLE_3A_SOURCE_REVISION} ${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION}`,
+    `${CYCLE_2Z_UBUNTU_CI_STABILIZATION_REVISION} ${CYCLE_2Z_ROADMAP_REBASELINE_REVISION}`,
+    `${CYCLE_2Z_ROADMAP_REBASELINE_REVISION} ${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION}`,
+    `${CYCLE_2Z_COMMIT_BOUNDARY_CORRECTIVE_REVISION} ${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION}`,
+    `${CYCLE_2Z_WINDOWS_TIMEOUT_STABILIZATION_REVISION} ${CYCLE_2Z_PROMOTION_REVISION}`,
+    `${CYCLE_2Z_PROMOTION_REVISION} ${CYCLE_2Z_ROUTING_CLOSURE_REVISION}`,
+    `${CYCLE_2Z_ROUTING_CLOSURE_REVISION} ${CYCLE_2Z_SOURCE_REVISION}`,
+    `${CYCLE_2Z_SOURCE_REVISION} ${CYCLE_2Z_BASELINE_REVISION}`,
+  ] as const;
+
+  it("pins the source to one merge-free child of the Cycle 3c routing closure", () => {
+    const valid = [
+      "14",
+      "14",
+      CYCLE_3D_SOURCE_REVISION,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(isCycle3dSourceTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "13"
+            : "15"
+          : index === 2
+            ? "not-a-commit"
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3dSourceTopologyAllowed(
+          ...(changed as Parameters<typeof isCycle3dSourceTopologyAllowed>),
+        ),
+        `source:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  it("permits only one exact merge-free routing child", () => {
+    const revision = "a".repeat(40);
+    const valid = [
+      "15",
+      "15",
+      revision,
+      `${revision} ${CYCLE_3D_SOURCE_REVISION}`,
+      `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}`,
+      ...historicalParents,
+    ] as const;
+    expect(isCycle3dRoutingClosureTopologyAllowed(...valid)).toBe(true);
+    for (const [index, value] of valid.entries()) {
+      const changed: string[] = [...valid];
+      changed[index] =
+        index === 0 || index === 1
+          ? index === 0
+            ? "14"
+            : "16"
+          : index === 2
+            ? CYCLE_3D_SOURCE_REVISION
+            : `${value} ${"f".repeat(40)}`;
+      expect(
+        isCycle3dRoutingClosureTopologyAllowed(
+          ...(changed as Parameters<
+            typeof isCycle3dRoutingClosureTopologyAllowed
+          >),
+        ),
+        `routing:${index}`,
+      ).toBe(false);
+    }
+  });
+
+  for (const [name, entries, allowed, count] of [
+    [
+      "source",
+      CYCLE_3D_SOURCE_TRANSITION,
+      isCycle3dSourceCommitDiffSetAllowed,
+      63,
+    ],
+    [
+      "routing",
+      CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
+      isCycle3dRoutingClosureCommitDiffSetAllowed,
+      7,
+    ],
+  ] as const) {
+    it(`freezes the exact ${name} name-status tuple`, () => {
+      expect(entries).toHaveLength(count);
+      expect(allowed(entries)).toBe(true);
+      expect(allowed([...entries].reverse())).toBe(false);
+      for (const [index, entry] of entries.entries()) {
+        expect(
+          allowed(entries.filter((_, candidate) => candidate !== index)),
+          `${name}:missing:${entry.path}`,
+        ).toBe(false);
+        expect(
+          allowed(
+            entries.map((candidate, candidateIndex) =>
+              candidateIndex === index
+                ? {
+                    ...candidate,
+                    status: candidate.status === "M" ? "A" : "M",
+                  }
+                : candidate,
+            ),
+          ),
+          `${name}:status:${entry.path}`,
+        ).toBe(false);
+        expect(
+          allowed([...entries, entry]),
+          `${name}:duplicate:${entry.path}`,
+        ).toBe(false);
+      }
+      expect(allowed([...entries, { path: "unreviewed", status: "M" }])).toBe(
+        false,
+      );
+    });
+  }
+
+  it("routes every Cycle 3d source and routing surface through inherited checks", () => {
+    const protectedPaths = [
+      ...new Set(
+        [
+          ...CYCLE_3D_SOURCE_TRANSITION,
+          ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
+        ].map((entry) => entry.path),
+      ),
+    ];
+    for (const path of protectedPaths) {
+      expect(isCycle3dTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle3cTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle3bTransitionRoutingRequired([path]), path).toBe(true);
+      expect(isCycle2zTransitionRoutingRequired([path]), path).toBe(true);
+    }
+    expect(isCycle3dTransitionRoutingRequired(undefined)).toBe(false);
+    expect(isCycle3dTransitionRoutingRequired([])).toBe(false);
+    expect(isCycle3dTransitionRoutingRequired(["unreviewed"])).toBe(false);
   });
 });
 

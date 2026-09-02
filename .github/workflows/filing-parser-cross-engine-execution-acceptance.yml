@@ -28,12 +28,15 @@ on:
       - apps/api/src/personal-readiness-routes.ts
       - apps/api/src/personal-selected-fact-release.test.ts
       - apps/api/src/personal-selected-fact-routes.ts
+      - apps/api/src/personal-vault-*.ts
       - apps/api/src/server.ts
       - apps/api/src/test-personal-owner-session-builder.ts
       - apps/api/src/test-personal-dossier-release-builder.ts
       - apps/api/src/test-personal-selected-fact-release-builder.ts
       - apps/api/src/test-connected-source-policy-builder.ts
+      - apps/api/src/vault-*.ts
       - apps/api/tsup.config.ts
+      - apps/web/app/layout.tsx
       - apps/web/app/globals.css
       - apps/web/app/page.tsx
       - apps/web/app/personal/page.tsx
@@ -46,11 +49,15 @@ on:
       - apps/web/src/features/research/PersonalResearchWorkspace.tsx
       - apps/web/src/features/research/ResearchWorkspace.test.tsx
       - apps/web/src/features/research/ResearchWorkspace.tsx
+      - apps/web/src/features/research/LegacyLocalStateCleanup.tsx
+      - apps/web/src/features/research/ThesisMonitor.tsx
       - apps/web/src/features/research/owner-session-lifecycle.test.ts
       - apps/web/src/features/research/owner-session-lifecycle.ts
       - apps/web/src/features/research/test-personal-dossier-builder.ts
       - apps/web/src/lib/api.test.ts
       - apps/web/src/lib/api.ts
+      - apps/web/src/lib/legacy-local-state-*.ts
+      - apps/web/src/lib/local-state.ts
       - apps/web/src/lib/personal-api.ts
       - apps/web/src/lib/web-mode.test.ts
       - apps/web/src/lib/web-mode.ts
@@ -63,6 +70,7 @@ on:
       - docs/CYCLE_3A_EXIT_MATRIX.md
       - docs/CYCLE_3B_EXIT_MATRIX.md
       - docs/CYCLE_3C_EXIT_MATRIX.md
+      - docs/CYCLE_3D_EXIT_MATRIX.md
       - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
       - docs/THREAT_MODEL.md
       - docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md
@@ -71,6 +79,7 @@ on:
       - docs/adr/0053-personal-local-owner-session.md
       - docs/adr/0054-authenticated-personal-dossier-composition.md
       - docs/adr/0055-connected-personal-source-policy-registry.md
+      - docs/adr/0056-durable-personal-local-research-vault.md
       - fixtures/synthetic/filing-parser-cross-engine-execution/**
       - LICENSE_POLICY.md
       - package.json
@@ -86,6 +95,7 @@ on:
       - packages/filing-parser-normalization-handoff/**
       - packages/filing-parser-quality-composition/**
       - packages/filing-payload-custody/**
+      - packages/local-research-vault/**
       - packages/personal-filing-corpus/**
       - packages/contracts/openapi/openapi.yaml
       - packages/connected-source-policy/**
@@ -115,7 +125,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, or Cycle 3c personal filing closure
+      - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
         id: cycle2x_source
         if: ${{ success() }}
         shell: bash
@@ -126,6 +136,7 @@ jobs:
           cycle3a=false
           cycle3b=false
           cycle3c=false
+          cycle3d=false
           baseline="716a3f6b7ad5a43c48a6a61d18b59c2cd5645018"
           source="c0138a3121361fc06f210e42febe6af4c6fa3e13"
           validator_isolation="7f7163d4673360645e332d0b7d28467c15656f8a"
@@ -142,6 +153,8 @@ jobs:
           cycle3b_source="8755cb81e3202136a52cb1eccb75aa1c1602eeba"
           cycle3b_corrective="074c65ba5b9912230891d030236d634f4f36a2ac"
           cycle3c_source="4e9f011434382ccaae66f396fd5b163e4c0fc6be"
+          cycle3c_routing="86e712574a5eee4e9f636c25ebd5d6fb70f20581"
+          cycle3d_source="520fb9f860600c699b9a5a6fee940bc3e1cb185c"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -646,6 +659,72 @@ jobs:
             "M" "scripts/verify-boundaries.ts"
           )
           expected_cycle3c_routing=("${expected_cycle3b_corrective[@]}")
+          expected_cycle3d_source=(
+            "M" "README.md"
+            "M" "apps/api/package.json"
+            "M" "apps/api/src/api-mode.test.ts"
+            "M" "apps/api/src/api-mode.ts"
+            "M" "apps/api/src/composition-root.test.ts"
+            "M" "apps/api/src/composition-root.ts"
+            "M" "apps/api/src/connected-composition-root.ts"
+            "M" "apps/api/src/personal-owner-session-routes.ts"
+            "A" "apps/api/src/personal-vault-routes.test.ts"
+            "A" "apps/api/src/personal-vault-routes.ts"
+            "A" "apps/api/src/vault-app.ts"
+            "A" "apps/api/src/vault-composition-root.test.ts"
+            "A" "apps/api/src/vault-composition-root.ts"
+            "A" "apps/api/src/vault-server.ts"
+            "A" "apps/api/src/vault-static-graph.test.ts"
+            "M" "apps/api/tsup.config.ts"
+            "M" "apps/web/app/layout.tsx"
+            "A" "apps/web/src/features/research/LegacyLocalStateCleanup.tsx"
+            "M" "apps/web/src/features/research/ThesisMonitor.tsx"
+            "A" "apps/web/src/lib/legacy-local-state-cleanup.test.ts"
+            "A" "apps/web/src/lib/legacy-local-state-cleanup.ts"
+            "D" "apps/web/src/lib/local-state.ts"
+            "M" "docs/BUILD_ROADMAP.md"
+            "M" "docs/CANONICAL_MODEL.md"
+            "M" "docs/CYCLE_2X_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_2Y_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_2Z_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3A_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3B_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3C_EXIT_MATRIX.md"
+            "A" "docs/CYCLE_3D_EXIT_MATRIX.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M" "docs/THREAT_MODEL.md"
+            "M" "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md"
+            "M" "docs/adr/0051-bounded-personal-quality-readiness-composition.md"
+            "M" "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md"
+            "M" "docs/adr/0053-personal-local-owner-session.md"
+            "M" "docs/adr/0054-authenticated-personal-dossier-composition.md"
+            "M" "docs/adr/0055-connected-personal-source-policy-registry.md"
+            "A" "docs/adr/0056-durable-personal-local-research-vault.md"
+            "M" "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts"
+            "A" "packages/local-research-vault/package.json"
+            "A" "packages/local-research-vault/src/canonical-json.ts"
+            "A" "packages/local-research-vault/src/crash-recovery.test.ts"
+            "A" "packages/local-research-vault/src/encrypted-vault-backup.test.ts"
+            "A" "packages/local-research-vault/src/encrypted-vault-backup.ts"
+            "A" "packages/local-research-vault/src/errors.ts"
+            "A" "packages/local-research-vault/src/fixtures/cycle3d-crash-worker.ts"
+            "A" "packages/local-research-vault/src/index.ts"
+            "A" "packages/local-research-vault/src/local-research-vault.ts"
+            "A" "packages/local-research-vault/src/local-vault-paths.test.ts"
+            "A" "packages/local-research-vault/src/local-vault-paths.ts"
+            "A" "packages/local-research-vault/src/model.ts"
+            "A" "packages/local-research-vault/src/recovery-key-file.ts"
+            "A" "packages/local-research-vault/src/sqlite-local-research-vault.test.ts"
+            "A" "packages/local-research-vault/src/sqlite-local-research-vault.ts"
+            "A" "packages/local-research-vault/src/vault-crypto.ts"
+            "A" "packages/local-research-vault/src/vault-schema.ts"
+            "A" "packages/local-research-vault/src/windows-owner-only-acl.test.ts"
+            "A" "packages/local-research-vault/src/windows-owner-only-acl.ts"
+            "A" "packages/local-research-vault/tsconfig.json"
+            "M" "pnpm-lock.yaml"
+            "M" "scripts/verify-boundaries.ts"
+          )
+          expected_cycle3d_routing=("${expected_cycle3c_routing[@]}")
           cycle3b_protected=()
           for ((cycle3b_index = 1; cycle3b_index < ${#expected_cycle3b_source[@]}; cycle3b_index += 2)); do
             cycle3b_protected+=("${expected_cycle3b_source[$cycle3b_index]}")
@@ -656,6 +735,13 @@ jobs:
           done
           for ((cycle3c_index = 1; cycle3c_index < ${#expected_cycle3c_routing[@]}; cycle3c_index += 2)); do
             cycle3c_protected+=("${expected_cycle3c_routing[$cycle3c_index]}")
+          done
+          cycle3d_protected=()
+          for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_source[@]}; cycle3d_index += 2)); do
+            cycle3d_protected+=("${expected_cycle3d_source[$cycle3d_index]}")
+          done
+          for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_routing[@]}; cycle3d_index += 2)); do
+            cycle3d_protected+=("${expected_cycle3d_routing[$cycle3d_index]}")
           done
           matches_exactly() {
             local -n expected_values="$1"
@@ -682,10 +768,14 @@ jobs:
             mapfile -d '' -t cycle3c_protected_actual < <(
               git diff --name-only --no-renames -z "$baseline" HEAD -- "${cycle3c_protected[@]}"
             )
+            mapfile -d '' -t cycle3d_protected_actual < <(
+              git diff --name-only --no-renames -z "$baseline" HEAD -- "${cycle3d_protected[@]}"
+            )
             if [[ "${#protected_actual[@]}" != "0" || \
                   "${#cycle3a_protected_actual[@]}" != "0" || \
                   "${#cycle3b_protected_actual[@]}" != "0" || \
-                  "${#cycle3c_protected_actual[@]}" != "0" ]]; then
+                  "${#cycle3c_protected_actual[@]}" != "0" || \
+                  "${#cycle3d_protected_actual[@]}" != "0" ]]; then
               required=true
               head_revision="$(git rev-parse HEAD)"
               if git cat-file -e "$source^{commit}" && \
@@ -751,7 +841,9 @@ jobs:
                    git cat-file -e "$cycle3a_promotion^{commit}" && \
                    git cat-file -e "$cycle3b_source^{commit}" && \
                    git cat-file -e "$cycle3b_corrective^{commit}" && \
-                   git cat-file -e "$cycle3c_source^{commit}"; then
+                   git cat-file -e "$cycle3c_source^{commit}" && \
+                   git cat-file -e "$cycle3c_routing^{commit}" && \
+                   git cat-file -e "$cycle3d_source^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_routing_closure")"
@@ -765,6 +857,8 @@ jobs:
                 read -r -a cycle3b_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3b_source")"
                 read -r -a cycle3b_corrective_topology <<< "$(git rev-list --parents -n 1 "$cycle3b_corrective")"
                 read -r -a cycle3c_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3c_source")"
+                read -r -a cycle3c_routing_topology <<< "$(git rev-list --parents -n 1 "$cycle3c_routing")"
+                read -r -a cycle3d_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_source")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -799,7 +893,13 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3b_corrective" "$cycle3c_source" --
                 )
                 mapfile -d '' -t cycle3c_routing_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3c_source" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3c_source" "$cycle3c_routing" --
+                )
+                mapfile -d '' -t cycle3d_source_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3c_routing" "$cycle3d_source" --
+                )
+                mapfile -d '' -t cycle3d_routing_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3d_source" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -974,7 +1074,7 @@ jobs:
                     cycle3c=true
                   elif [[ "$cycle2z_successor_count" == "13" ]] && \
                        [[ "$cycle2z_first_parent_count" == "13" ]] && \
-                       [[ "$head_revision" != "$cycle3c_source" ]] && \
+                       [[ "$head_revision" == "$cycle3c_routing" ]] && \
                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle3c_source" ]] && \
@@ -998,6 +1098,63 @@ jobs:
                     cycle3a=true
                     cycle3b=true
                     cycle3c=true
+                  elif [[ "$cycle2z_successor_count" == "14" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "14" ]] && \
+                       [[ "$head_revision" == "$cycle3d_source" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3c_routing" ]] && \
+                       [[ "${#cycle3c_routing_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3c_routing_topology[0]}" == "$cycle3c_routing" ]] && \
+                       [[ "${cycle3c_routing_topology[1]}" == "$cycle3c_source" ]] && \
+                       [[ "${#cycle3c_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3c_source_topology[0]}" == "$cycle3c_source" ]] && \
+                       [[ "${cycle3c_source_topology[1]}" == "$cycle3b_corrective" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                       matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                       matches_exactly expected_cycle3c_routing cycle3c_routing_actual && \
+                       matches_exactly expected_cycle3d_source cycle3d_source_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                    cycle3c=true
+                    cycle3d=true
+                  elif [[ "$cycle2z_successor_count" == "15" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "15" ]] && \
+                       [[ "$head_revision" != "$cycle3d_source" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3d_source" ]] && \
+                       [[ "${#cycle3d_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3d_source_topology[0]}" == "$cycle3d_source" ]] && \
+                       [[ "${cycle3d_source_topology[1]}" == "$cycle3c_routing" ]] && \
+                       [[ "${#cycle3c_routing_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3c_routing_topology[0]}" == "$cycle3c_routing" ]] && \
+                       [[ "${cycle3c_routing_topology[1]}" == "$cycle3c_source" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                       matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                       matches_exactly expected_cycle3c_routing cycle3c_routing_actual && \
+                       matches_exactly expected_cycle3d_source cycle3d_source_actual && \
+                       matches_exactly expected_cycle3d_routing cycle3d_routing_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                    cycle3c=true
+                    cycle3d=true
                   fi
                 fi
               fi
@@ -1009,8 +1166,9 @@ jobs:
           echo "cycle3a=$cycle3a" >> "$GITHUB_OUTPUT"
           echo "cycle3b=$cycle3b" >> "$GITHUB_OUTPUT"
           echo "cycle3c=$cycle3c" >> "$GITHUB_OUTPUT"
+          echo "cycle3d=$cycle3d" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, or Cycle 3c closure; refusing inherited evidence routing." >&2
+            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2w personal raw fact extraction before inherited routes
@@ -2048,7 +2206,9 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v4.json"
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
-            if [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
+            if [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
+              echo "Cycle 3d is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
+            elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
               echo "Cycle 3c is a provider-neutral connected-source policy route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3b }}" == "true" ]]; then
               echo "Cycle 3b is an authenticated personal dossier-composition route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."

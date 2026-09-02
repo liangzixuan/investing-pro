@@ -27,12 +27,15 @@ on:
       - apps/api/src/personal-readiness-routes.ts
       - apps/api/src/personal-selected-fact-release.test.ts
       - apps/api/src/personal-selected-fact-routes.ts
+      - apps/api/src/personal-vault-*.ts
       - apps/api/src/server.ts
       - apps/api/src/test-personal-owner-session-builder.ts
       - apps/api/src/test-personal-dossier-release-builder.ts
       - apps/api/src/test-personal-selected-fact-release-builder.ts
       - apps/api/src/test-connected-source-policy-builder.ts
+      - apps/api/src/vault-*.ts
       - apps/api/tsup.config.ts
+      - apps/web/app/layout.tsx
       - apps/web/app/globals.css
       - apps/web/app/page.tsx
       - apps/web/app/personal/page.tsx
@@ -45,11 +48,15 @@ on:
       - apps/web/src/features/research/PersonalResearchWorkspace.tsx
       - apps/web/src/features/research/ResearchWorkspace.test.tsx
       - apps/web/src/features/research/ResearchWorkspace.tsx
+      - apps/web/src/features/research/LegacyLocalStateCleanup.tsx
+      - apps/web/src/features/research/ThesisMonitor.tsx
       - apps/web/src/features/research/owner-session-lifecycle.test.ts
       - apps/web/src/features/research/owner-session-lifecycle.ts
       - apps/web/src/features/research/test-personal-dossier-builder.ts
       - apps/web/src/lib/api.test.ts
       - apps/web/src/lib/api.ts
+      - apps/web/src/lib/legacy-local-state-*.ts
+      - apps/web/src/lib/local-state.ts
       - apps/web/src/lib/personal-api.ts
       - apps/web/src/lib/web-mode.test.ts
       - apps/web/src/lib/web-mode.ts
@@ -62,6 +69,7 @@ on:
       - docs/CYCLE_3A_EXIT_MATRIX.md
       - docs/CYCLE_3B_EXIT_MATRIX.md
       - docs/CYCLE_3C_EXIT_MATRIX.md
+      - docs/CYCLE_3D_EXIT_MATRIX.md
       - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
       - docs/THREAT_MODEL.md
       - docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md
@@ -70,13 +78,16 @@ on:
       - docs/adr/0053-personal-local-owner-session.md
       - docs/adr/0054-authenticated-personal-dossier-composition.md
       - docs/adr/0055-connected-personal-source-policy-registry.md
+      - docs/adr/0056-durable-personal-local-research-vault.md
       - LICENSE_POLICY.md
       - THIRD_PARTY_NOTICES.md
       - fixtures/synthetic/filing-payload-custody/**
       - package.json
       - packages/filing-parser/src/filing-parser-evidence-verifier.test.ts
       - packages/filing-parser/src/filing-parser-evidence-verifier.ts
+      - packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts
       - packages/filing-payload-custody/**
+      - packages/local-research-vault/**
       - packages/personal-filing-corpus/**
       - packages/contracts/openapi/openapi.yaml
       - packages/contracts/src/index.ts
@@ -113,12 +124,15 @@ on:
       - apps/api/src/personal-readiness-routes.ts
       - apps/api/src/personal-selected-fact-release.test.ts
       - apps/api/src/personal-selected-fact-routes.ts
+      - apps/api/src/personal-vault-*.ts
       - apps/api/src/server.ts
       - apps/api/src/test-personal-owner-session-builder.ts
       - apps/api/src/test-personal-dossier-release-builder.ts
       - apps/api/src/test-personal-selected-fact-release-builder.ts
       - apps/api/src/test-connected-source-policy-builder.ts
+      - apps/api/src/vault-*.ts
       - apps/api/tsup.config.ts
+      - apps/web/app/layout.tsx
       - apps/web/app/globals.css
       - apps/web/app/page.tsx
       - apps/web/app/personal/page.tsx
@@ -131,11 +145,15 @@ on:
       - apps/web/src/features/research/PersonalResearchWorkspace.tsx
       - apps/web/src/features/research/ResearchWorkspace.test.tsx
       - apps/web/src/features/research/ResearchWorkspace.tsx
+      - apps/web/src/features/research/LegacyLocalStateCleanup.tsx
+      - apps/web/src/features/research/ThesisMonitor.tsx
       - apps/web/src/features/research/owner-session-lifecycle.test.ts
       - apps/web/src/features/research/owner-session-lifecycle.ts
       - apps/web/src/features/research/test-personal-dossier-builder.ts
       - apps/web/src/lib/api.test.ts
       - apps/web/src/lib/api.ts
+      - apps/web/src/lib/legacy-local-state-*.ts
+      - apps/web/src/lib/local-state.ts
       - apps/web/src/lib/personal-api.ts
       - apps/web/src/lib/web-mode.test.ts
       - apps/web/src/lib/web-mode.ts
@@ -148,6 +166,7 @@ on:
       - docs/CYCLE_3A_EXIT_MATRIX.md
       - docs/CYCLE_3B_EXIT_MATRIX.md
       - docs/CYCLE_3C_EXIT_MATRIX.md
+      - docs/CYCLE_3D_EXIT_MATRIX.md
       - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
       - docs/THREAT_MODEL.md
       - docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md
@@ -156,13 +175,16 @@ on:
       - docs/adr/0053-personal-local-owner-session.md
       - docs/adr/0054-authenticated-personal-dossier-composition.md
       - docs/adr/0055-connected-personal-source-policy-registry.md
+      - docs/adr/0056-durable-personal-local-research-vault.md
       - LICENSE_POLICY.md
       - THIRD_PARTY_NOTICES.md
       - fixtures/synthetic/filing-payload-custody/**
       - package.json
       - packages/filing-parser/src/filing-parser-evidence-verifier.test.ts
       - packages/filing-parser/src/filing-parser-evidence-verifier.ts
+      - packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts
       - packages/filing-payload-custody/**
+      - packages/local-research-vault/**
       - packages/personal-filing-corpus/**
       - packages/contracts/openapi/openapi.yaml
       - packages/contracts/src/index.ts
