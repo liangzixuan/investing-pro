@@ -25,6 +25,7 @@ on:
       - packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts
       - packages/filing-payload-custody/**
       - packages/local-research-vault/**
+      - packages/personal-security-master/**
       - packages/personal-filing-corpus/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -55,6 +56,7 @@ on:
       - packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts
       - packages/filing-payload-custody/**
       - packages/local-research-vault/**
+      - packages/personal-security-master/**
       - packages/personal-filing-corpus/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
