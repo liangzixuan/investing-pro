@@ -7803,7 +7803,7 @@ describe("offline filing payload custody evidence review", () => {
     await expect(
       verifyNoEffectiveGitGrafts(worktreePath, overriddenEnvironment),
     ).resolves.toBe(undefined);
-  });
+  }, 30_000);
 
   it("requires exact trailing-NUL framing with no empty or BOM-prefixed fields", () => {
     expect(

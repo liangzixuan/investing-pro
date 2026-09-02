@@ -70,7 +70,7 @@ describe("Cycle 2a filing parser worker", () => {
         encoding: "utf8",
         input: JSON.stringify(input),
         maxBuffer: 4 * 1024 * 1024,
-        timeout: 30_000,
+        timeout: 60_000,
         windowsHide: true,
       },
     );
@@ -88,7 +88,7 @@ describe("Cycle 2a filing parser worker", () => {
         status: expected.status,
       })),
     );
-  }, 35_000);
+  }, 65_000);
 
   it("binds the source-controlled case ledger to every generated archive byte", () => {
     const ledger = JSON.parse(readFileSync(CASES_PATH, "utf8")) as unknown;

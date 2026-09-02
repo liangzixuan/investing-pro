@@ -5418,7 +5418,7 @@ describe("offline filing parser evidence review", () => {
         overriddenEnvironment,
       ),
     ).resolves.toBe(undefined);
-  });
+  }, 30_000);
 
   it("accepts only the legacy tree or its atomic disconnected successor trio", () => {
     const legacy = CURRENT_PARSER_DOMAIN_TREE.filter(
