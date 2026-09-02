@@ -653,10 +653,15 @@ function candidateOverlayPaths(
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line) => {
-      const match = /^(A|M)\t([^\t\r\n]+)$/u.exec(line);
-      if (match?.[2] === undefined) throw new Error("fixture setup failed");
-      return match[2].replaceAll("\\", "/");
-    });
+      const match = /^(A|D|M)\t([^\t\r\n]+)$/u.exec(line);
+      if (match?.[1] === undefined || match[2] === undefined)
+        throw new Error("fixture setup failed");
+      // The legacy V3 evidence transition admits only source files that exist
+      // at its synthetic revision. Later unrelated deletions are intentionally
+      // absent from this compatibility overlay rather than misreported as A/M.
+      return match[1] === "D" ? undefined : match[2].replaceAll("\\", "/");
+    })
+    .filter((path): path is string => path !== undefined);
   const untracked = runAnchoredGit(git, sourceRepository, [
     "ls-files",
     "--others",

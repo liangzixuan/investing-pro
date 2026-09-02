@@ -168,13 +168,17 @@ Cycle 3b authenticated personal dossier composition has prepared public source
 but no fresh owner authorization, terminal exact-source evidence, private
 activation, acceptance, or promotion. Cycle 3c connected-personal source policy
 now has provider-neutral prepared public source only, with no provider or private
-activation. Cycle 3d durable local research vault is the next functional product
-blocker; same-user hostile-process resistance remains unproven.
+activation. Cycle 3d now has separate prepared public source and local-temporary
+verification only, with no actual personal vault, key, backup, restore,
+activation, acceptance, or promotion. Cycle 3e is the next planned functional
+blocker only after the Cycle 3d gates are terminal; same-user hostile-process
+resistance remains unproven.
 
 ## References
 
 - [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
 - [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
+- [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md)
 - [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
 - [ADR 0052](./0052-bounded-personal-owner-authorized-selected-fact-release.md)

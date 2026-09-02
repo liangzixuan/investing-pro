@@ -124,6 +124,41 @@ const connectedSourcePolicyPackagePaths = [
   `${connectedSourcePolicyPackagePrefix}src/test-connected-source-policy-builder.ts`,
   `${connectedSourcePolicyPackagePrefix}tsconfig.json`,
 ].sort();
+const localResearchVaultModule =
+  "@research-cockpit/local-research-vault" as const;
+const localResearchVaultPackagePrefix =
+  "packages/local-research-vault/" as const;
+const localResearchVaultWindowsAclPath =
+  `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.ts` as const;
+const localResearchVaultCrashRecoveryTestPath =
+  `${localResearchVaultPackagePrefix}src/crash-recovery.test.ts` as const;
+const localResearchVaultPackagePaths = [
+  `${localResearchVaultPackagePrefix}package.json`,
+  `${localResearchVaultPackagePrefix}src/canonical-json.ts`,
+  localResearchVaultCrashRecoveryTestPath,
+  `${localResearchVaultPackagePrefix}src/encrypted-vault-backup.test.ts`,
+  `${localResearchVaultPackagePrefix}src/encrypted-vault-backup.ts`,
+  `${localResearchVaultPackagePrefix}src/errors.ts`,
+  `${localResearchVaultPackagePrefix}src/fixtures/cycle3d-crash-worker.ts`,
+  `${localResearchVaultPackagePrefix}src/index.ts`,
+  `${localResearchVaultPackagePrefix}src/local-research-vault.ts`,
+  `${localResearchVaultPackagePrefix}src/local-vault-paths.test.ts`,
+  `${localResearchVaultPackagePrefix}src/local-vault-paths.ts`,
+  `${localResearchVaultPackagePrefix}src/model.ts`,
+  `${localResearchVaultPackagePrefix}src/recovery-key-file.ts`,
+  `${localResearchVaultPackagePrefix}src/sqlite-local-research-vault.test.ts`,
+  `${localResearchVaultPackagePrefix}src/sqlite-local-research-vault.ts`,
+  `${localResearchVaultPackagePrefix}src/vault-crypto.ts`,
+  `${localResearchVaultPackagePrefix}src/vault-schema.ts`,
+  `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.test.ts`,
+  localResearchVaultWindowsAclPath,
+  `${localResearchVaultPackagePrefix}tsconfig.json`,
+].sort();
+const legacyLocalStateCleanupPath =
+  "apps/web/src/lib/legacy-local-state-cleanup.ts" as const;
+const legacyLocalStateCleanupComponentPath =
+  "apps/web/src/features/research/LegacyLocalStateCleanup.tsx" as const;
+const webRootLayoutPath = "apps/web/app/layout.tsx" as const;
 const personalFilingCorpusPackagePrefix =
   "packages/personal-filing-corpus/" as const;
 const cycle2rPersonalFilingCorpusPackagePaths = [
@@ -2107,6 +2142,7 @@ const workspacePackageNames =
 violations.push(
   ...(await personalFilingCorpusBoundaryViolations()),
   ...(await connectedSourcePolicyBoundaryViolations()),
+  ...(await localResearchVaultBoundaryViolations()),
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
   ...(await filingParserQualityCompositionBoundaryViolations()),
   ...(await filingPayloadCustodyReviewedSurfaceBoundaryViolations()),
@@ -7876,6 +7912,1722 @@ async function filingParserQualityCompositionBoundaryViolations(): Promise<
   return found;
 }
 
+async function localResearchVaultBoundaryViolations(): Promise<string[]> {
+  const found: string[] = [];
+  const actualTree = [...filesToInspect]
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .filter((path) => path.startsWith(localResearchVaultPackagePrefix))
+    .sort();
+  if (!localResearchVaultExactTree(actualTree))
+    found.push(
+      `${localResearchVaultPackagePrefix}: Cycle 3d package tree must remain the exact twenty-file reviewed vault surface`,
+    );
+
+  const manifestPath = `${localResearchVaultPackagePrefix}package.json`;
+  const manifest = await localResearchVaultJson(manifestPath, found);
+  const expectedManifest = {
+    name: localResearchVaultModule,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: {
+      build: "tsc --noEmit",
+      typecheck: "tsc --noEmit",
+      test: "vitest run",
+    },
+  };
+  if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest))
+    found.push(
+      `${manifestPath}: Cycle 3d vault must remain private, index-only, and zero-production-dependency`,
+    );
+
+  const tsconfigPath = `${localResearchVaultPackagePrefix}tsconfig.json`;
+  const tsconfig = await localResearchVaultJson(tsconfigPath, found);
+  const expectedTsconfig = {
+    extends: "../../tsconfig.base.json",
+    compilerOptions: { noEmit: true, types: ["node"] },
+    include: ["src/**/*.ts"],
+  };
+  if (JSON.stringify(tsconfig) !== JSON.stringify(expectedTsconfig))
+    found.push(`${tsconfigPath}: Cycle 3d tsconfig must remain exact`);
+
+  const packageModules = localResearchVaultExpectedModulesByPath();
+  for (const path of actualTree.filter((entry) => entry.endsWith(".ts"))) {
+    const content = await localResearchVaultText(path, found);
+    const expectedModules = packageModules.get(path);
+    if (expectedModules === undefined) {
+      found.push(`${path}: unclassified Cycle 3d vault source`);
+      continue;
+    }
+    const sourceViolation = localResearchVaultSourceViolation(
+      path,
+      content,
+      expectedModules,
+    );
+    if (sourceViolation !== null) found.push(`${path}: ${sourceViolation}`);
+  }
+  for (const path of packageModules.keys()) {
+    if (!actualTree.includes(path))
+      found.push(`${path}: required Cycle 3d vault source is missing`);
+  }
+
+  const indexPath = `${localResearchVaultPackagePrefix}src/index.ts`;
+  const indexViolation = localResearchVaultIndexViolation(
+    await localResearchVaultText(indexPath, found),
+  );
+  if (indexViolation !== null) found.push(`${indexPath}: ${indexViolation}`);
+
+  const allowedApiBindings = localResearchVaultAllowedApiBindings();
+  for (const file of externalCompositionFilesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    if (path.startsWith(localResearchVaultPackagePrefix)) continue;
+    const content = await readFile(file, "utf8");
+    const reference = localResearchVaultExternalReference(path, content);
+    if (!reference.bare && !reference.deep) continue;
+    if (reference.deep) {
+      found.push(
+        `${path}: deep or relative imports of the Cycle 3d vault package are forbidden`,
+      );
+      continue;
+    }
+    const expectedBindings = allowedApiBindings.get(path);
+    if (expectedBindings === undefined) {
+      found.push(
+        `${path}: only the exact reviewed apps/api vault files may import ${localResearchVaultModule}`,
+      );
+      continue;
+    }
+    if (
+      JSON.stringify(localResearchVaultImportBindings(content).sort()) !==
+      JSON.stringify([...expectedBindings].sort())
+    )
+      found.push(
+        `${path}: Cycle 3d vault imports must remain the exact reviewed bindings`,
+      );
+  }
+  for (const [path, expectedBindings] of allowedApiBindings) {
+    const content = await localResearchVaultText(path, found);
+    if (
+      !collectModuleSpecifiers(content).includes(localResearchVaultModule) ||
+      JSON.stringify(localResearchVaultImportBindings(content).sort()) !==
+        JSON.stringify([...expectedBindings].sort())
+    )
+      found.push(
+        `${path}: required exact Cycle 3d vault package binding is missing`,
+      );
+  }
+
+  for (const file of filesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    if (basename(path) !== "package.json") continue;
+    const content = await readFile(file, "utf8");
+    if (!content.includes(localResearchVaultModule)) continue;
+    let candidate: unknown;
+    try {
+      candidate = JSON.parse(content) as unknown;
+    } catch {
+      continue;
+    }
+    for (const section of localResearchVaultDependencySections(candidate)) {
+      if (path !== "apps/api/package.json" || section !== "dependencies")
+        found.push(
+          `${path}: only apps/api dependencies may declare the Cycle 3d vault package`,
+        );
+    }
+  }
+
+  const apiManifest = await localResearchVaultJson(
+    "apps/api/package.json",
+    found,
+  );
+  if (
+    !isRecord(apiManifest?.dependencies) ||
+    apiManifest.dependencies[localResearchVaultModule] !== "workspace:*"
+  )
+    found.push(
+      "apps/api/package.json: exact Cycle 3d vault workspace dependency is required",
+    );
+
+  const apiGraphModules = localResearchVaultApiModulesByPath();
+  const apiSources = new Map<string, string>();
+  for (const path of [
+    ...apiGraphModules.keys(),
+    "apps/api/src/api-mode.ts",
+    "apps/api/src/composition-root.ts",
+    "apps/api/src/connected-composition-root.ts",
+  ]) {
+    if (!apiSources.has(path))
+      apiSources.set(path, await localResearchVaultText(path, found));
+  }
+  for (const [path, expectedModules] of apiGraphModules) {
+    const content = apiSources.get(path) ?? "";
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify(expectedModules)
+    )
+      found.push(
+        `${path}: runnable Cycle 3d API imports must remain the exact reviewed vault graph allowlist`,
+      );
+  }
+  const apiGraphViolation = localResearchVaultApiGraphViolation(apiSources);
+  if (apiGraphViolation !== null) found.push(apiGraphViolation);
+
+  const apiConfigurationViolation = localResearchVaultApiConfigurationViolation(
+    apiManifest,
+    await localResearchVaultText("apps/api/tsup.config.ts", found),
+    apiSources,
+  );
+  if (apiConfigurationViolation !== null) found.push(apiConfigurationViolation);
+
+  const serverProcessViolation = localResearchVaultServerProcessViolation(
+    apiSources.get("apps/api/src/vault-server.ts") ?? "",
+  );
+  if (serverProcessViolation !== null)
+    found.push(`apps/api/src/vault-server.ts: ${serverProcessViolation}`);
+
+  const authBoundarySources = new Map(apiSources);
+  authBoundarySources.set(
+    "apps/api/src/personal-vault-routes.ts",
+    apiSources.get("apps/api/src/personal-vault-routes.ts") ?? "",
+  );
+  authBoundarySources.set(
+    "apps/api/src/personal-owner-session-routes.ts",
+    apiSources.get("apps/api/src/personal-owner-session-routes.ts") ?? "",
+  );
+  const authBoundaryViolation =
+    localResearchVaultAuthBeforeParseViolation(authBoundarySources);
+  if (authBoundaryViolation !== null) found.push(authBoundaryViolation);
+
+  const allPaths = [...filesToInspect].map((file) =>
+    relative(root, file).replaceAll("\\", "/"),
+  );
+  if (allPaths.includes("apps/web/src/lib/local-state.ts"))
+    found.push(
+      "apps/web/src/lib/local-state.ts: superseded durable browser storage module must remain absent",
+    );
+  for (const file of externalCompositionFilesToInspect) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    if (!localResearchVaultIsProductionWebSource(path)) continue;
+    const content = await readFile(file, "utf8");
+    const storageViolation = localResearchVaultBrowserStorageViolation(
+      path,
+      content,
+    );
+    if (storageViolation !== null) found.push(`${path}: ${storageViolation}`);
+  }
+
+  const cleanup = await localResearchVaultText(
+    legacyLocalStateCleanupPath,
+    found,
+  );
+  const cleanupViolation = localResearchVaultLegacyCleanupViolation(cleanup);
+  if (cleanupViolation !== null)
+    found.push(`${legacyLocalStateCleanupPath}: ${cleanupViolation}`);
+  const cleanupComponent = await localResearchVaultText(
+    legacyLocalStateCleanupComponentPath,
+    found,
+  );
+  const cleanupComponentViolation =
+    localResearchVaultCleanupComponentViolation(cleanupComponent);
+  if (cleanupComponentViolation !== null)
+    found.push(
+      `${legacyLocalStateCleanupComponentPath}: ${cleanupComponentViolation}`,
+    );
+  const layoutViolation = localResearchVaultLayoutCleanupViolation(
+    await localResearchVaultText(webRootLayoutPath, found),
+  );
+  if (layoutViolation !== null)
+    found.push(`${webRootLayoutPath}: ${layoutViolation}`);
+
+  verifyLocalResearchVaultBoundaryClassifiers();
+  return found;
+}
+
+async function localResearchVaultText(
+  path: string,
+  found: string[],
+): Promise<string> {
+  try {
+    return await readFile(join(root, path), "utf8");
+  } catch {
+    found.push(`${path}: required Cycle 3d file is missing`);
+    return "";
+  }
+}
+
+async function localResearchVaultJson(
+  path: string,
+  found: string[],
+): Promise<Record<string, unknown> | null> {
+  const content = await localResearchVaultText(path, found);
+  try {
+    const value = JSON.parse(content) as unknown;
+    return isRecord(value) ? value : null;
+  } catch {
+    found.push(`${path}: Cycle 3d JSON must parse`);
+    return null;
+  }
+}
+
+function localResearchVaultExactTree(actual: readonly string[]): boolean {
+  return (
+    JSON.stringify([...actual].sort()) ===
+    JSON.stringify(localResearchVaultPackagePaths)
+  );
+}
+
+function localResearchVaultExpectedModulesByPath(): ReadonlyMap<
+  string,
+  readonly string[]
+> {
+  return new Map([
+    [
+      `${localResearchVaultPackagePrefix}src/canonical-json.ts`,
+      ["node:crypto", "./model", "./errors"],
+    ],
+    [
+      localResearchVaultCrashRecoveryTestPath,
+      [
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:sqlite",
+        "node:child_process",
+        "vitest",
+        "./sqlite-local-research-vault",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/encrypted-vault-backup.test.ts`,
+      [
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "vitest",
+        "./encrypted-vault-backup",
+        "./errors",
+        "./local-vault-paths",
+        "./local-research-vault",
+        "./sqlite-local-research-vault",
+        "./windows-owner-only-acl",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/encrypted-vault-backup.ts`,
+      [
+        "node:crypto",
+        "node:fs/promises",
+        "node:path",
+        "node:sqlite",
+        "./canonical-json",
+        "./errors",
+        "./local-vault-paths",
+        "./model",
+        "./recovery-key-file",
+        "./sqlite-local-research-vault",
+        "./vault-crypto",
+        "./vault-schema",
+      ],
+    ],
+    [`${localResearchVaultPackagePrefix}src/errors.ts`, []],
+    [
+      `${localResearchVaultPackagePrefix}src/fixtures/cycle3d-crash-worker.ts`,
+      ["node:sqlite", "../sqlite-local-research-vault"],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/index.ts`,
+      [
+        "./local-research-vault",
+        "./local-research-vault",
+        "./errors",
+        "./errors",
+        "./model",
+        "./model",
+        "./encrypted-vault-backup",
+        "./local-vault-paths",
+        "./local-vault-paths",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/local-research-vault.ts`,
+      [
+        "node:fs/promises",
+        "./encrypted-vault-backup",
+        "./errors",
+        "./local-vault-paths",
+        "./model",
+        "./recovery-key-file",
+        "./sqlite-local-research-vault",
+        "./windows-owner-only-acl",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/local-vault-paths.test.ts`,
+      [
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "vitest",
+        "./local-vault-paths.js",
+        "./local-vault-paths.js",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/local-vault-paths.ts`,
+      ["node:fs/promises", "node:fs", "node:path"],
+    ],
+    [`${localResearchVaultPackagePrefix}src/model.ts`, []],
+    [
+      `${localResearchVaultPackagePrefix}src/recovery-key-file.ts`,
+      ["node:crypto", "node:fs/promises", "./errors", "./local-vault-paths"],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/sqlite-local-research-vault.test.ts`,
+      [
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:sqlite",
+        "vitest",
+        "./errors",
+        "./canonical-json",
+        "./model",
+        "./sqlite-local-research-vault",
+        "./vault-crypto",
+        "./vault-schema",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/sqlite-local-research-vault.ts`,
+      [
+        "node:crypto",
+        "node:sqlite",
+        "./canonical-json",
+        "./errors",
+        "./model",
+        "./vault-schema",
+        "./vault-crypto",
+      ],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/vault-crypto.ts`,
+      ["node:crypto", "./errors", "./model"],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/vault-schema.ts`,
+      ["node:crypto", "node:sqlite", "./errors", "./model"],
+    ],
+    [
+      `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.test.ts`,
+      [
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "vitest",
+        "./local-vault-paths",
+        "./windows-owner-only-acl",
+      ],
+    ],
+    [
+      localResearchVaultWindowsAclPath,
+      ["node:child_process", "node:path", "./local-vault-paths", "./errors"],
+    ],
+  ]);
+}
+
+function localResearchVaultSourceViolation(
+  path: string,
+  content: string,
+  expectedModules: readonly string[],
+): string | null {
+  const modules = collectModuleSpecifiers(content);
+  if (JSON.stringify(modules) !== JSON.stringify(expectedModules))
+    return "Cycle 3d imports and re-exports must remain the exact reviewed per-file allowlist";
+  if (
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  )
+    return "Cycle 3d runtime module loading and dynamic code are forbidden";
+
+  const childProcessModule = /^(?:node:)?child_process(?:\/|$)/u;
+  if (
+    modules.some((module) => childProcessModule.test(module)) &&
+    path !== localResearchVaultWindowsAclPath &&
+    path !== localResearchVaultCrashRecoveryTestPath
+  )
+    return "production child_process capability is restricted to the Windows owner-only ACL adapter";
+  const forbiddenNetworkModule =
+    /^(?:node:)?(?:cluster|dgram|dns|http|http2|https|net|tls|worker_threads)(?:\/|$)/u;
+  if (modules.some((module) => forbiddenNetworkModule.test(module)))
+    return "network and worker modules are forbidden in the local vault package";
+
+  const source = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    findIdentifiers(
+      source,
+      new Set([
+        "Bun",
+        "Deno",
+        "EventSource",
+        "WebSocket",
+        "XMLHttpRequest",
+        "console",
+        "fetch",
+        "global",
+        "globalThis",
+        "navigator",
+        "self",
+        "window",
+      ]),
+    ).length > 0
+  )
+    return "network, global-runtime, and console logging capabilities are forbidden in the local vault package";
+
+  let processLog = false;
+  let concreteEndpoint = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, new Set(["stderr", "stdout"])) !== null
+    ) {
+      const expression = unwrapBoundaryExpression(node.expression);
+      if (ts.isIdentifier(expression) && expression.text === "process")
+        processLog = true;
+    }
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      concreteEndpoint = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (processLog)
+    return "process stdout/stderr logging is forbidden in the local vault package";
+  return concreteEndpoint
+    ? "concrete network endpoints are forbidden in the local vault package"
+    : null;
+}
+
+function localResearchVaultExpectedIndexSurface(): readonly unknown[] {
+  return [
+    {
+      module: "./local-research-vault",
+      typeOnly: false,
+      exports: [
+        {
+          exported: "LocalResearchVault",
+          local: "LocalResearchVault",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./local-research-vault",
+      typeOnly: true,
+      exports: [
+        {
+          exported: "LocalResearchVaultStartupOptions",
+          local: "LocalResearchVaultStartupOptions",
+          typeOnly: false,
+        },
+        {
+          exported: "RestoredLocalResearchVaultRuntime",
+          local: "RestoredLocalResearchVaultRuntime",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./errors",
+      typeOnly: false,
+      exports: [
+        {
+          exported: "LocalResearchVaultError",
+          local: "LocalResearchVaultError",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./errors",
+      typeOnly: true,
+      exports: [
+        {
+          exported: "LocalResearchVaultErrorCode",
+          local: "LocalResearchVaultErrorCode",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./model",
+      typeOnly: false,
+      exports: [
+        {
+          exported: "LOCAL_RESEARCH_RECORD_KINDS",
+          local: "LOCAL_RESEARCH_RECORD_KINDS",
+          typeOnly: false,
+        },
+        {
+          exported: "LOCAL_RESEARCH_VAULT_PROFILE",
+          local: "LOCAL_RESEARCH_VAULT_PROFILE",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./model",
+      typeOnly: true,
+      exports: [
+        "DeleteLocalResearchRecordCommand",
+        "JsonValue",
+        "LocalResearchAttachment",
+        "LocalResearchMutationReceipt",
+        "LocalResearchRecord",
+        "LocalResearchRecordKind",
+        "LocalResearchRecordSummary",
+        "LocalResearchVaultInventory",
+        "PutLocalResearchAttachmentCommand",
+        "PutLocalResearchRecordCommand",
+      ].map((name) => ({
+        exported: name,
+        local: name,
+        typeOnly: false,
+      })),
+    },
+    {
+      module: "./encrypted-vault-backup",
+      typeOnly: true,
+      exports: [
+        {
+          exported: "EncryptedLocalVaultBackupReceipt",
+          local: "EncryptedLocalVaultBackupReceipt",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./local-vault-paths",
+      typeOnly: false,
+      exports: [
+        {
+          exported: "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+          local: "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+          typeOnly: false,
+        },
+      ],
+    },
+    {
+      module: "./local-vault-paths",
+      typeOnly: true,
+      exports: [
+        "WindowsOwnerOnlyAclPort",
+        "WindowsOwnerOnlyAclTarget",
+        "WindowsOwnerOnlyAclVerificationReceipt",
+      ].map((name) => ({
+        exported: name,
+        local: name,
+        typeOnly: false,
+      })),
+    },
+  ];
+}
+
+function localResearchVaultIndexViolation(content: string): string | null {
+  const source = ts.createSourceFile(
+    `${localResearchVaultPackagePrefix}src/index.ts`,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const surface: unknown[] = [];
+  for (const statement of source.statements) {
+    if (
+      !ts.isExportDeclaration(statement) ||
+      statement.moduleSpecifier === undefined ||
+      !ts.isStringLiteralLike(statement.moduleSpecifier) ||
+      statement.exportClause === undefined ||
+      !ts.isNamedExports(statement.exportClause)
+    )
+      return "Cycle 3d public index may contain only exact named re-exports";
+    surface.push({
+      module: statement.moduleSpecifier.text,
+      typeOnly: statement.isTypeOnly,
+      exports: statement.exportClause.elements.map((element) => ({
+        exported: element.name.text,
+        local: (element.propertyName ?? element.name).text,
+        typeOnly: element.isTypeOnly,
+      })),
+    });
+  }
+  return JSON.stringify(surface) ===
+    JSON.stringify(localResearchVaultExpectedIndexSurface())
+    ? null
+    : "Cycle 3d public value/type export surface must remain exact";
+}
+
+function localResearchVaultAllowedApiBindings(): ReadonlyMap<
+  string,
+  readonly string[]
+> {
+  return new Map([
+    [
+      "apps/api/src/personal-vault-routes.test.ts",
+      [
+        "LocalResearchVault",
+        "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+        "type WindowsOwnerOnlyAclPort",
+        "type WindowsOwnerOnlyAclTarget",
+        "type WindowsOwnerOnlyAclVerificationReceipt",
+      ],
+    ],
+    [
+      "apps/api/src/personal-vault-routes.ts",
+      [
+        "LOCAL_RESEARCH_RECORD_KINDS",
+        "LOCAL_RESEARCH_VAULT_PROFILE",
+        "LocalResearchVaultError",
+        "type JsonValue",
+        "type LocalResearchRecordKind",
+        "type LocalResearchVault",
+      ],
+    ],
+    [
+      "apps/api/src/vault-app.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    ["apps/api/src/vault-composition-root.ts", ["LocalResearchVault"]],
+  ]);
+}
+
+function localResearchVaultImportBindings(content: string): string[] {
+  const source = ts.createSourceFile(
+    "local-research-vault-import.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const bindings: string[] = [];
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteralLike(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== localResearchVaultModule
+    )
+      continue;
+    const clause = statement.importClause;
+    if (clause === undefined) {
+      bindings.push("<side-effect>");
+      continue;
+    }
+    if (clause.name !== undefined)
+      bindings.push(`<default:${clause.name.text}>`);
+    const named = clause.namedBindings;
+    if (named === undefined) continue;
+    if (ts.isNamespaceImport(named)) {
+      bindings.push(`<namespace:${named.name.text}>`);
+      continue;
+    }
+    for (const element of named.elements) {
+      const imported = (element.propertyName ?? element.name).text;
+      const local = element.name.text;
+      const binding = imported === local ? imported : `${imported} as ${local}`;
+      bindings.push(
+        clause.isTypeOnly || element.isTypeOnly ? `type ${binding}` : binding,
+      );
+    }
+  }
+  return bindings;
+}
+
+function localResearchVaultExternalReference(
+  importerPath: string,
+  content: string,
+): { readonly bare: boolean; readonly deep: boolean } {
+  let bare = false;
+  let deep = false;
+  for (const rawSpecifier of collectModuleSpecifiers(content)) {
+    const specifier = rawSpecifier.replaceAll("\\", "/");
+    if (specifier === localResearchVaultModule) {
+      bare = true;
+      continue;
+    }
+    if (
+      specifier.startsWith(`${localResearchVaultModule}/`) ||
+      specifier.includes(localResearchVaultPackagePrefix)
+    ) {
+      deep = true;
+      continue;
+    }
+    if (!specifier.startsWith(".")) continue;
+    const resolved = posixNormalize(
+      `${posixDirname(importerPath)}/${specifier}`,
+    );
+    if (resolved.startsWith(localResearchVaultPackagePrefix)) deep = true;
+  }
+  return { bare, deep };
+}
+
+function localResearchVaultDependencySections(value: unknown): string[] {
+  if (!isRecord(value)) return [];
+  return dependencySections.filter(
+    (section) =>
+      isRecord(value[section]) &&
+      Object.hasOwn(value[section], localResearchVaultModule),
+  );
+}
+
+function localResearchVaultApiModulesByPath(): ReadonlyMap<
+  string,
+  readonly string[]
+> {
+  return new Map([
+    ["apps/api/src/listen-options.ts", []],
+    [
+      "apps/api/src/personal-owner-session-routes.ts",
+      [
+        "@research-cockpit/contracts",
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+      ],
+    ],
+    [
+      "apps/api/src/personal-owner-session.ts",
+      ["node:crypto", "node:perf_hooks"],
+    ],
+    [
+      "apps/api/src/personal-vault-routes.ts",
+      [
+        "@research-cockpit/contracts",
+        localResearchVaultModule,
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+      ],
+    ],
+    [
+      "apps/api/src/vault-app.ts",
+      [
+        "node:crypto",
+        "@fastify/cors",
+        "@fastify/helmet",
+        "@research-cockpit/contracts",
+        localResearchVaultModule,
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+        "./personal-vault-routes",
+      ],
+    ],
+    [
+      "apps/api/src/vault-composition-root.ts",
+      [
+        "fastify",
+        localResearchVaultModule,
+        "./listen-options",
+        "./personal-owner-session",
+        "./vault-app",
+      ],
+    ],
+    [
+      "apps/api/src/vault-server.ts",
+      ["./vault-composition-root", "./listen-options"],
+    ],
+  ]);
+}
+
+function localResearchVaultApiGraphViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const expected = [...localResearchVaultApiModulesByPath().keys()].sort();
+  const pending = ["apps/api/src/vault-server.ts"];
+  const visited = new Set<string>();
+  while (pending.length > 0) {
+    const path = pending.pop();
+    if (path === undefined || visited.has(path)) continue;
+    visited.add(path);
+    const content = sources.get(path);
+    if (content === undefined) continue;
+    for (const specifier of collectModuleSpecifiers(content)) {
+      if (!specifier.startsWith(".")) continue;
+      let target = posixNormalize(`${posixDirname(path)}/${specifier}`);
+      target = target.replace(/\.(?:c|m)?js$/u, ".ts");
+      if (!/\.[cm]?[jt]sx?$/u.test(target)) target += ".ts";
+      pending.push(target);
+    }
+  }
+  return JSON.stringify([...visited].sort()) === JSON.stringify(expected)
+    ? null
+    : "apps/api/src/vault-server.ts: Cycle 3d vault runtime graph must remain the exact seven-file isolated composition";
+}
+
+function localResearchVaultApiRequiredAnchors(): ReadonlyMap<
+  string,
+  readonly string[]
+> {
+  return new Map([
+    [
+      "apps/api/src/api-mode.ts",
+      [
+        '| "personal_single_user_local_vault"',
+        'value !== "personal_single_user_local_vault"',
+      ],
+    ],
+    [
+      "apps/api/src/composition-root.ts",
+      [
+        '"RESEARCH_COCKPIT_VAULT_ROOT"',
+        '"RESEARCH_COCKPIT_VAULT_STARTUP"',
+        'mode === "personal_single_user_local_vault"',
+        "VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT",
+        "hasVaultConfiguration",
+        "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT",
+      ],
+    ],
+    [
+      "apps/api/src/connected-composition-root.ts",
+      [
+        '"RESEARCH_COCKPIT_VAULT_ROOT"',
+        '"RESEARCH_COCKPIT_VAULT_STARTUP"',
+        "OFFLINE_PRIVATE_ENVIRONMENT_KEYS",
+        "CONNECTED_MODE_REJECTS_OFFLINE_CONFIGURATION",
+      ],
+    ],
+    [
+      "apps/api/src/vault-composition-root.ts",
+      [
+        '"personal_single_user_local_vault"',
+        '"RESEARCH_COCKPIT_VAULT_ROOT"',
+        '"RESEARCH_COCKPIT_VAULT_STARTUP"',
+        "FORBIDDEN_PRIVATE_CONFIGURATION_KEYS",
+        "VAULT_PRIVATE_ENVIRONMENT_KEYS",
+        "capturedVaultApiEnvironments.add(captured)",
+        "delete environment[key]",
+        "environment.RESEARCH_COCKPIT_MODE !== VAULT_API_MODE",
+        "VAULT_MODE_REJECTS_OTHER_PRIVATE_CONFIGURATION",
+        'startupAction !== "initialize" && startupAction !== "open"',
+        "LocalResearchVault.initialize(startupOptions)",
+        "LocalResearchVault.open(startupOptions)",
+      ],
+    ],
+    [
+      "apps/api/src/vault-server.ts",
+      [
+        "captureVaultApiEnvironment(process.env)",
+        "createVaultConfiguredApp(environment)",
+      ],
+    ],
+  ]);
+}
+
+function localResearchVaultApiConfigurationViolation(
+  apiManifest: Record<string, unknown> | null,
+  tsupConfig: string,
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const scripts = isRecord(apiManifest?.scripts) ? apiManifest.scripts : null;
+  if (
+    scripts === null ||
+    scripts["dev:vault"] !== "tsx watch src/vault-server.ts" ||
+    scripts["start:vault"] !== "node dist/src/vault-server.js" ||
+    new Set([scripts.dev, scripts["dev:connected"], scripts["dev:vault"]])
+      .size !== 3 ||
+    new Set([scripts.start, scripts["start:connected"], scripts["start:vault"]])
+      .size !== 3
+  )
+    return "apps/api/package.json: distinct exact Cycle 3d vault development and start entries are required";
+  if (
+    JSON.stringify(collectModuleSpecifiers(tsupConfig)) !==
+      JSON.stringify(["node:path", "tsup", "./src/build-source-identity"]) ||
+    !tsupConfig.includes(
+      'entry: ["src/server.ts", "src/connected-server.ts", "src/vault-server.ts"]',
+    ) ||
+    !tsupConfig.includes("splitting: false")
+  )
+    return "apps/api/tsup.config.ts: ordinary, connected, and vault APIs require exact separate non-splitting build entries";
+  for (const [path, anchors] of localResearchVaultApiRequiredAnchors()) {
+    const content = sources.get(path);
+    if (
+      content === undefined ||
+      anchors.some((anchor) => !content.includes(anchor))
+    )
+      return `${path}: exact Cycle 3d mode, environment capture, isolation, or startup anchors regressed`;
+  }
+
+  const vaultForbiddenConfiguration = localResearchVaultConstStringArray(
+    sources.get("apps/api/src/vault-composition-root.ts") ?? "",
+    "FORBIDDEN_PRIVATE_CONFIGURATION_KEYS",
+  );
+  const expectedVaultForbiddenConfiguration = [
+    "CONNECTED_SOURCE_POLICY_BUNDLE_PATH",
+    "CONNECTED_SOURCE_POLICY_BUNDLE_SHA256",
+    "CONNECTED_SOURCE_POLICY_SECRET_REFERENCE",
+    "PERSONAL_FILING_QUALITY_RESULT_PATH",
+    "PERSONAL_FILING_QUALITY_RESULT_SHA256",
+    "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH",
+    "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256",
+    "PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH",
+    "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
+    "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
+    "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+  ];
+  if (
+    JSON.stringify(vaultForbiddenConfiguration) !==
+    JSON.stringify(expectedVaultForbiddenConfiguration)
+  )
+    return "apps/api/src/vault-composition-root.ts: vault mode must reject the exact connected and release configuration surface";
+
+  const connectedOfflineConfiguration = localResearchVaultConstStringArray(
+    sources.get("apps/api/src/connected-composition-root.ts") ?? "",
+    "OFFLINE_PRIVATE_ENVIRONMENT_KEYS",
+  );
+  const expectedConnectedOfflineConfiguration = [
+    "PERSONAL_FILING_QUALITY_RESULT_PATH",
+    "PERSONAL_FILING_QUALITY_RESULT_SHA256",
+    "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH",
+    "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256",
+    "PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH",
+    "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
+    "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
+    "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+    "RESEARCH_COCKPIT_VAULT_ROOT",
+    "RESEARCH_COCKPIT_VAULT_STARTUP",
+  ];
+  return JSON.stringify(connectedOfflineConfiguration) ===
+    JSON.stringify(expectedConnectedOfflineConfiguration)
+    ? null
+    : "apps/api/src/connected-composition-root.ts: connected mode must reject the exact offline and vault configuration surface";
+}
+
+function localResearchVaultConstStringArray(
+  content: string,
+  declarationName: string,
+): string[] | null {
+  const source = ts.createSourceFile(
+    "cycle3d-configuration.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        !ts.isIdentifier(declaration.name) ||
+        declaration.name.text !== declarationName ||
+        declaration.initializer === undefined
+      )
+        continue;
+      const initializer = unwrapBoundaryExpression(declaration.initializer);
+      if (!ts.isArrayLiteralExpression(initializer)) return null;
+      const values: string[] = [];
+      for (const element of initializer.elements) {
+        const value = staticStringValue(element);
+        if (value === null) return null;
+        values.push(value);
+      }
+      return values;
+    }
+  }
+  return null;
+}
+
+function localResearchVaultServerProcessViolation(
+  content: string,
+): string | null {
+  const source = ts.createSourceFile(
+    "apps/api/src/vault-server.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const positions = {
+    env: [] as number[],
+    exitCode: [] as number[],
+    stderr: [] as number[],
+    stdout: [] as number[],
+  };
+  let invalid = false;
+  const fixedWrites = new Map([
+    ["stderr", "Research Cockpit personal vault API failed to start.\n"],
+    ["stdout", "Research Cockpit personal vault API is listening.\n"],
+  ]);
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && node.text === "process") {
+      const access = node.parent;
+      if (
+        !ts.isPropertyAccessExpression(access) ||
+        access.expression !== node
+      ) {
+        invalid = true;
+      } else if (access.name.text === "env") {
+        const call = access.parent;
+        if (
+          !ts.isCallExpression(call) ||
+          !ts.isIdentifier(call.expression) ||
+          call.expression.text !== "captureVaultApiEnvironment" ||
+          call.arguments.length !== 1 ||
+          call.arguments[0] !== access
+        ) {
+          invalid = true;
+        } else {
+          positions.env.push(access.getStart(source));
+        }
+      } else if (
+        access.name.text === "stdout" ||
+        access.name.text === "stderr"
+      ) {
+        const writeAccess = access.parent;
+        const call = writeAccess.parent;
+        const argument = ts.isCallExpression(call) ? call.arguments[0] : null;
+        if (
+          !ts.isPropertyAccessExpression(writeAccess) ||
+          writeAccess.expression !== access ||
+          writeAccess.name.text !== "write" ||
+          !ts.isCallExpression(call) ||
+          call.expression !== writeAccess ||
+          call.arguments.length !== 1 ||
+          argument === undefined ||
+          argument === null ||
+          !ts.isStringLiteralLike(argument) ||
+          argument.text !== fixedWrites.get(access.name.text)
+        ) {
+          invalid = true;
+        } else {
+          positions[access.name.text].push(access.getStart(source));
+        }
+      } else if (access.name.text === "exitCode") {
+        const assignment = access.parent;
+        if (
+          !ts.isBinaryExpression(assignment) ||
+          assignment.left !== access ||
+          assignment.operatorToken.kind !== ts.SyntaxKind.EqualsToken ||
+          !ts.isNumericLiteral(assignment.right) ||
+          assignment.right.text !== "1"
+        ) {
+          invalid = true;
+        } else {
+          positions.exitCode.push(access.getStart(source));
+        }
+      } else {
+        invalid = true;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (
+    invalid ||
+    positions.env.length !== 1 ||
+    positions.stdout.length !== 1 ||
+    positions.stderr.length !== 1 ||
+    positions.exitCode.length !== 1 ||
+    !(
+      positions.env[0]! < positions.stdout[0]! &&
+      positions.stdout[0]! < positions.stderr[0]! &&
+      positions.stderr[0]! < positions.exitCode[0]!
+    )
+  )
+    return "process access must remain one first-step environment capture followed only by fixed stdout/stderr messages and exitCode assignment";
+  return null;
+}
+
+function localResearchVaultAuthBeforeParseViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const routePath = "apps/api/src/personal-vault-routes.ts";
+  const routes = sources.get(routePath);
+  if (routes === undefined)
+    return `${routePath}: Cycle 3d vault routes are missing`;
+  const source = ts.createSourceFile(
+    routePath,
+    routes,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const mutationCalls: ts.CallExpression[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "app" &&
+      node.expression.name.text === "post"
+    )
+      mutationCalls.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (mutationCalls.length !== 2)
+    return `${routePath}: exactly two vault mutation routes must remain registered`;
+  for (const call of mutationCalls) {
+    const options = call.arguments[1];
+    if (!options || !ts.isObjectLiteralExpression(options))
+      return `${routePath}: vault mutation authorization must remain a route-level onRequest hook`;
+    const onRequest = options.properties.find(
+      (property) =>
+        (ts.isPropertyAssignment(property) ||
+          ts.isMethodDeclaration(property)) &&
+        boundaryPropertyName(property.name) === "onRequest",
+    );
+    if (onRequest === undefined)
+      return `${routePath}: vault mutation authorization must remain a route-level onRequest hook`;
+    const guardText = onRequest.getText(source);
+    if (
+      !guardText.includes("authorizePersonalVaultMutationRouteRequest(") ||
+      /\brequest\s*\.\s*body\b/u.test(guardText)
+    )
+      return `${routePath}: every vault mutation must authenticate before body parsing or access`;
+  }
+
+  const ownerBoundaryPath = "apps/api/src/personal-owner-session-routes.ts";
+  const ownerBoundary = sources.get(ownerBoundaryPath) ?? "";
+  const requiredOwnerBoundaryAnchors = [
+    'body: "json" | "none"',
+    'body === "json" ? "vault-json" : "vault-empty"',
+    'bodyPolicy: "none" | "vault-empty" | "vault-json" = "none"',
+    "request.raw.rawHeaders",
+    'rawNames.includes("transfer-encoding")',
+    "count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1",
+    'bodyPolicy === "vault-json"',
+    "Number(contentLength.value) > 300 * 1_024",
+    'contentType.value.toLowerCase() !== "application/json"',
+  ];
+  return requiredOwnerBoundaryAnchors.every((anchor) =>
+    ownerBoundary.includes(anchor),
+  )
+    ? null
+    : `${ownerBoundaryPath}: exact auth-before-parse body framing and raw-header controls regressed`;
+}
+
+function localResearchVaultIsProductionWebSource(path: string): boolean {
+  return (
+    (path.startsWith("apps/web/app/") || path.startsWith("apps/web/src/")) &&
+    executableSourceExtensions.has(extname(path).toLowerCase()) &&
+    !/(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/iu.test(path)
+  );
+}
+
+function localResearchVaultBrowserStorageViolation(
+  path: string,
+  content: string,
+): string | null {
+  const forbiddenStorageModule =
+    /^(?:dexie|idb|localforage|local-storage|store2)(?:\/|$)/u;
+  if (
+    collectModuleSpecifiers(content).some((module) =>
+      forbiddenStorageModule.test(module),
+    )
+  )
+    return "browser durable-storage libraries are forbidden";
+  const source = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const cleanup = path === legacyLocalStateCleanupPath;
+  const forbiddenNames = new Set([
+    "CacheStorage",
+    "FileSystemDirectoryHandle",
+    "FileSystemFileHandle",
+    "IDBDatabase",
+    "IDBFactory",
+    "StorageManager",
+    "caches",
+    "cookieStore",
+    "createWritable",
+    "indexedDB",
+    "openDatabase",
+    "setItem",
+    "showDirectoryPicker",
+    "showSaveFilePicker",
+  ]);
+  if (!cleanup) {
+    forbiddenNames.add("localStorage");
+    forbiddenNames.add("removeItem");
+    forbiddenNames.add("sessionStorage");
+  } else {
+    forbiddenNames.add("sessionStorage");
+  }
+  if (findIdentifiers(source, forbiddenNames).length > 0)
+    return cleanup
+      ? "legacy cleanup may only remove the two reviewed localStorage namespaces"
+      : "browser durable storage reads and writes are forbidden outside the one-way legacy cleanup";
+
+  let forbiddenProperty = false;
+  const forbiddenProperties = new Set(forbiddenNames);
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, forbiddenProperties) !== null
+    )
+      forbiddenProperty = true;
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, new Set(["cookie"])) !== null
+    ) {
+      const owner = unwrapBoundaryExpression(node.expression);
+      if (ts.isIdentifier(owner) && owner.text === "document")
+        forbiddenProperty = true;
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, new Set(["storage"])) !== null
+    ) {
+      const owner = unwrapBoundaryExpression(node.expression);
+      if (ts.isIdentifier(owner) && owner.text === "navigator")
+        forbiddenProperty = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return forbiddenProperty
+    ? "browser durable storage reads and writes are forbidden outside the one-way legacy cleanup"
+    : null;
+}
+
+function localResearchVaultLegacyCleanupViolation(
+  content: string,
+): string | null {
+  const storageViolation = localResearchVaultBrowserStorageViolation(
+    legacyLocalStateCleanupPath,
+    content,
+  );
+  if (storageViolation !== null) return storageViolation;
+  if (collectModuleSpecifiers(content).length !== 0)
+    return "legacy cleanup must remain dependency-free";
+  const source = ts.createSourceFile(
+    legacyLocalStateCleanupPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const prefixes: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isStringLiteralLike(node) &&
+      node.text.startsWith("research-cockpit:")
+    )
+      prefixes.push(node.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (
+    JSON.stringify(prefixes) !==
+    JSON.stringify(["research-cockpit:alert:", "research-cockpit:thesis:"])
+  )
+    return "legacy cleanup prefixes must remain the exact two superseded namespaces";
+  const required = [
+    "LEGACY_RESEARCH_STATE_PREFIXES.some((prefix) => key.startsWith(prefix))",
+    "storage.removeItem(key)",
+    "scrubLegacyLocalResearchState(window.localStorage)",
+  ];
+  if (
+    required.some((anchor) => !content.includes(anchor)) ||
+    content.split("storage.removeItem(key)").length !== 2
+  )
+    return "legacy cleanup must remain a bounded one-way removeItem scrub";
+  return null;
+}
+
+function localResearchVaultCleanupComponentViolation(
+  content: string,
+): string | null {
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(["react", "@/lib/legacy-local-state-cleanup"])
+  )
+    return "cleanup component imports must remain exact";
+  const required = [
+    '"use client"',
+    "export function LegacyLocalStateCleanup()",
+    "useEffect(() => {",
+    "scrubLegacyLocalResearchStateFromWindow()",
+    "}, [])",
+    "return null",
+  ];
+  return required.every((anchor) => content.includes(anchor))
+    ? null
+    : "cleanup component must run the one-way scrub once at global client mount";
+}
+
+function localResearchVaultLayoutCleanupViolation(
+  content: string,
+): string | null {
+  const cleanupModule = "@/features/research/LegacyLocalStateCleanup" as const;
+  const source = ts.createSourceFile(
+    webRootLayoutPath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const matchingImports = source.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteralLike(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === cleanupModule,
+  );
+  if (matchingImports.length !== 1)
+    return "global layout must import the legacy cleanup exactly once";
+  const clause = matchingImports[0]?.importClause;
+  if (
+    clause === undefined ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings) ||
+    clause.namedBindings.elements.length !== 1 ||
+    clause.namedBindings.elements[0]?.name.text !== "LegacyLocalStateCleanup" ||
+    clause.namedBindings.elements[0].propertyName !== undefined
+  )
+    return "global layout cleanup import binding must remain exact";
+
+  let mountedInsideBody = 0;
+  const visit = (node: ts.Node): void => {
+    const tag = ts.isJsxSelfClosingElement(node)
+      ? node.tagName
+      : ts.isJsxOpeningElement(node)
+        ? node.tagName
+        : null;
+    if (tag?.getText(source) === "LegacyLocalStateCleanup") {
+      let current: ts.Node | undefined = node.parent;
+      let insideBody = false;
+      while (current !== undefined) {
+        if (
+          ts.isJsxElement(current) &&
+          current.openingElement.tagName.getText(source) === "body"
+        ) {
+          insideBody = true;
+          break;
+        }
+        current = current.parent;
+      }
+      if (insideBody) mountedInsideBody += 1;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return mountedInsideBody === 1
+    ? null
+    : "global layout must mount exactly one legacy cleanup inside body";
+}
+
+function verifyLocalResearchVaultBoundaryClassifiers(): void {
+  const canonicalSource = [
+    'import "node:crypto";',
+    'import "./model";',
+    'import "./errors";',
+  ].join("\n");
+  const canonicalPath = `${localResearchVaultPackagePrefix}src/canonical-json.ts`;
+  const canonicalModules = ["node:crypto", "./model", "./errors"];
+  const exactIndex = `
+    export { LocalResearchVault } from "./local-research-vault";
+    export type { LocalResearchVaultStartupOptions, RestoredLocalResearchVaultRuntime } from "./local-research-vault";
+    export { LocalResearchVaultError } from "./errors";
+    export type { LocalResearchVaultErrorCode } from "./errors";
+    export { LOCAL_RESEARCH_RECORD_KINDS, LOCAL_RESEARCH_VAULT_PROFILE } from "./model";
+    export type {
+      DeleteLocalResearchRecordCommand,
+      JsonValue,
+      LocalResearchAttachment,
+      LocalResearchMutationReceipt,
+      LocalResearchRecord,
+      LocalResearchRecordKind,
+      LocalResearchRecordSummary,
+      LocalResearchVaultInventory,
+      PutLocalResearchAttachmentCommand,
+      PutLocalResearchRecordCommand,
+    } from "./model";
+    export type { EncryptedLocalVaultBackupReceipt } from "./encrypted-vault-backup";
+    export { WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE } from "./local-vault-paths";
+    export type { WindowsOwnerOnlyAclPort, WindowsOwnerOnlyAclTarget, WindowsOwnerOnlyAclVerificationReceipt } from "./local-vault-paths";
+  `;
+
+  const graphSources = new Map<string, string>();
+  for (const [path, modules] of localResearchVaultApiModulesByPath())
+    graphSources.set(
+      path,
+      modules.map((module) => `import ${JSON.stringify(module)};`).join("\n"),
+    );
+  const driftedGraphSources = new Map(graphSources);
+  driftedGraphSources.set(
+    "apps/api/src/vault-server.ts",
+    `${driftedGraphSources.get("apps/api/src/vault-server.ts") ?? ""}\nimport "./app";`,
+  );
+
+  const configurationSources = new Map<string, string>();
+  for (const [path, anchors] of localResearchVaultApiRequiredAnchors())
+    configurationSources.set(path, anchors.join("\n"));
+  configurationSources.set(
+    "apps/api/src/vault-composition-root.ts",
+    `${configurationSources.get("apps/api/src/vault-composition-root.ts") ?? ""}
+      const FORBIDDEN_PRIVATE_CONFIGURATION_KEYS = [
+        "CONNECTED_SOURCE_POLICY_BUNDLE_PATH",
+        "CONNECTED_SOURCE_POLICY_BUNDLE_SHA256",
+        "CONNECTED_SOURCE_POLICY_SECRET_REFERENCE",
+        "PERSONAL_FILING_QUALITY_RESULT_PATH",
+        "PERSONAL_FILING_QUALITY_RESULT_SHA256",
+        "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH",
+        "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256",
+        "PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH",
+        "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
+        "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
+        "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+      ] as const;
+    `,
+  );
+  configurationSources.set(
+    "apps/api/src/connected-composition-root.ts",
+    `${configurationSources.get("apps/api/src/connected-composition-root.ts") ?? ""}
+      const OFFLINE_PRIVATE_ENVIRONMENT_KEYS = [
+        "PERSONAL_FILING_QUALITY_RESULT_PATH",
+        "PERSONAL_FILING_QUALITY_RESULT_SHA256",
+        "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_PATH",
+        "PERSONAL_FILING_SELECTED_FACT_RELEASE_BUNDLE_SHA256",
+        "PERSONAL_FILING_SELECTED_FACT_RELEASE_APPROVAL_PATH",
+        "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
+        "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
+        "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+        "RESEARCH_COCKPIT_VAULT_ROOT",
+        "RESEARCH_COCKPIT_VAULT_STARTUP",
+      ] as const;
+    `,
+  );
+  const configurationManifest = {
+    scripts: {
+      dev: "tsx watch src/server.ts",
+      "dev:connected": "tsx watch src/connected-server.ts",
+      "dev:vault": "tsx watch src/vault-server.ts",
+      start: "node dist/src/server.js",
+      "start:connected": "node dist/src/connected-server.js",
+      "start:vault": "node dist/src/vault-server.js",
+    },
+  };
+  const configurationTsup = `
+    import "node:path";
+    import "tsup";
+    import "./src/build-source-identity";
+    entry: ["src/server.ts", "src/connected-server.ts", "src/vault-server.ts"];
+    splitting: false;
+  `;
+
+  const ownerBoundaryFixture = `
+    body: "json" | "none"
+    body === "json" ? "vault-json" : "vault-empty"
+    bodyPolicy: "none" | "vault-empty" | "vault-json" = "none"
+    request.raw.rawHeaders
+    rawNames.includes("transfer-encoding")
+    count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1
+    bodyPolicy === "vault-json"
+    Number(contentLength.value) > 300 * 1_024
+    contentType.value.toLowerCase() !== "application/json"
+  `;
+  const mutationRouteFixture = `
+    app.post("/one", {
+      onRequest: async () => {
+        authorizePersonalVaultMutationRouteRequest();
+      },
+    }, (request) => request.body);
+    app.post("/two/delete", {
+      onRequest: async () => {
+        authorizePersonalVaultMutationRouteRequest();
+      },
+    }, () => undefined);
+  `;
+  const authSources = new Map([
+    ["apps/api/src/personal-vault-routes.ts", mutationRouteFixture],
+    ["apps/api/src/personal-owner-session-routes.ts", ownerBoundaryFixture],
+  ]);
+  const driftedAuthSources = new Map(authSources);
+  driftedAuthSources.set(
+    "apps/api/src/personal-vault-routes.ts",
+    mutationRouteFixture.replace("onRequest:", "preHandler:"),
+  );
+
+  const cleanupFixture = `
+    const LEGACY_RESEARCH_STATE_PREFIXES = [
+      "research-cockpit:alert:",
+      "research-cockpit:thesis:",
+    ] as const;
+    LEGACY_RESEARCH_STATE_PREFIXES.some((prefix) => key.startsWith(prefix));
+    storage.removeItem(key);
+    scrubLegacyLocalResearchState(window.localStorage);
+  `;
+  const cleanupComponentFixture = `
+    "use client";
+    import { useEffect } from "react";
+    import { scrubLegacyLocalResearchStateFromWindow } from "@/lib/legacy-local-state-cleanup";
+    export function LegacyLocalStateCleanup() {
+      useEffect(() => {
+        scrubLegacyLocalResearchStateFromWindow();
+      }, []);
+      return null;
+    }
+  `;
+  const layoutFixture = `
+    import { LegacyLocalStateCleanup } from "@/features/research/LegacyLocalStateCleanup";
+    function RootLayout() {
+      return <html><body><LegacyLocalStateCleanup /></body></html>;
+    }
+  `;
+  const serverFixture = `
+    const environment = captureVaultApiEnvironment(process.env);
+    process.stdout.write("Research Cockpit personal vault API is listening.\\n");
+    process.stderr.write("Research Cockpit personal vault API failed to start.\\n");
+    process.exitCode = 1;
+  `;
+
+  const regressions = [
+    !localResearchVaultExactTree(localResearchVaultPackagePaths),
+    localResearchVaultExactTree([
+      ...localResearchVaultPackagePaths,
+      `${localResearchVaultPackagePrefix}src/network-client.ts`,
+    ]),
+    localResearchVaultSourceViolation(
+      canonicalPath,
+      canonicalSource,
+      canonicalModules,
+    ) !== null,
+    localResearchVaultSourceViolation(
+      canonicalPath,
+      `${canonicalSource}\nvoid fetch("https://provider.invalid");`,
+      canonicalModules,
+    ) === null,
+    localResearchVaultSourceViolation(
+      canonicalPath,
+      `${canonicalSource}\nvoid import("./runtime-module");`,
+      canonicalModules,
+    ) === null,
+    localResearchVaultSourceViolation(
+      canonicalPath,
+      `${canonicalSource}\nconsole.log("private");`,
+      canonicalModules,
+    ) === null,
+    localResearchVaultSourceViolation(
+      `${localResearchVaultPackagePrefix}src/vault-schema.ts`,
+      'import "node:child_process";',
+      ["node:child_process"],
+    ) === null,
+    localResearchVaultSourceViolation(
+      localResearchVaultWindowsAclPath,
+      'import "node:child_process";',
+      ["node:child_process"],
+    ) !== null,
+    localResearchVaultIndexViolation(exactIndex) !== null,
+    localResearchVaultIndexViolation(
+      `${exactIndex}\nexport { deep } from "./sqlite-local-research-vault";`,
+    ) === null,
+    localResearchVaultExternalReference(
+      "apps/api/src/vault-app.ts",
+      `import ${JSON.stringify(localResearchVaultModule)};`,
+    ).deep,
+    !localResearchVaultExternalReference(
+      "apps/web/src/deep-vault.ts",
+      'import "../../../packages/local-research-vault/src/model";',
+    ).deep,
+    JSON.stringify(
+      localResearchVaultImportBindings(
+        `import { LOCAL_RESEARCH_VAULT_PROFILE, type LocalResearchVault } from ${JSON.stringify(localResearchVaultModule)};`,
+      ).sort(),
+    ) !==
+      JSON.stringify(
+        ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"].sort(),
+      ),
+    JSON.stringify(
+      localResearchVaultDependencySections({
+        dependencies: { [localResearchVaultModule]: "workspace:*" },
+      }),
+    ) !== JSON.stringify(["dependencies"]),
+    localResearchVaultApiGraphViolation(graphSources) !== null,
+    localResearchVaultApiGraphViolation(driftedGraphSources) === null,
+    localResearchVaultApiConfigurationViolation(
+      configurationManifest,
+      configurationTsup,
+      configurationSources,
+    ) !== null,
+    localResearchVaultApiConfigurationViolation(
+      configurationManifest,
+      configurationTsup,
+      new Map(
+        [...configurationSources].map(([path, content]) => [
+          path,
+          path === "apps/api/src/api-mode.ts"
+            ? content.replace(
+                'value !== "personal_single_user_local_vault"',
+                'value !== "drifted_vault_mode"',
+              )
+            : content,
+        ]),
+      ),
+    ) === null,
+    localResearchVaultServerProcessViolation(serverFixture) !== null,
+    localResearchVaultServerProcessViolation(
+      `process.stdout.write(process.env.PRIVATE_CANARY ?? "");\n${serverFixture}`,
+    ) === null,
+    localResearchVaultAuthBeforeParseViolation(authSources) !== null,
+    localResearchVaultAuthBeforeParseViolation(driftedAuthSources) === null,
+    localResearchVaultBrowserStorageViolation(
+      legacyLocalStateCleanupPath,
+      "storage.removeItem(key); window.localStorage;",
+    ) !== null,
+    localResearchVaultBrowserStorageViolation(
+      "apps/web/src/features/research/ThesisMonitor.tsx",
+      'window["local" + "Storage"].setItem("thesis", "private");',
+    ) === null,
+    localResearchVaultBrowserStorageViolation(
+      "apps/web/src/features/research/ThesisMonitor.tsx",
+      'storage.removeItem("private");',
+    ) === null,
+    localResearchVaultBrowserStorageViolation(
+      "apps/web/src/features/research/ThesisMonitor.tsx",
+      'indexedDB.open("private");',
+    ) === null,
+    localResearchVaultLegacyCleanupViolation(cleanupFixture) !== null,
+    localResearchVaultLegacyCleanupViolation(
+      cleanupFixture.replace(
+        "storage.removeItem(key)",
+        'storage.setItem(key, "private")',
+      ),
+    ) === null,
+    localResearchVaultCleanupComponentViolation(cleanupComponentFixture) !==
+      null,
+    localResearchVaultLayoutCleanupViolation(layoutFixture) !== null,
+    localResearchVaultLayoutCleanupViolation(
+      layoutFixture.replace("<LegacyLocalStateCleanup />", ""),
+    ) === null,
+  ];
+  const regression = regressions.indexOf(true);
+  if (regression !== -1)
+    throw new Error(
+      `Cycle 3d local-research-vault boundary classifier ${String(regression + 1)} regressed`,
+    );
+}
+
 async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
   const found: string[] = [];
   const actualTree = [...filesToInspect]
@@ -8136,12 +9888,12 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
     JSON.stringify(collectModuleSpecifiers(tsupConfig)) !==
       JSON.stringify(["node:path", "tsup", "./src/build-source-identity"]) ||
     !tsupConfig.includes(
-      'entry: ["src/server.ts", "src/connected-server.ts"]',
+      'entry: ["src/server.ts", "src/connected-server.ts", "src/vault-server.ts"]',
     ) ||
     !tsupConfig.includes("splitting: false")
   )
     found.push(
-      `${tsupConfigPath}: Cycle 3c requires exact separate non-splitting ordinary and connected build entries`,
+      `${tsupConfigPath}: Cycle 3c and Cycle 3d require exact separate non-splitting ordinary, connected, and vault build entries`,
     );
 
   const apiPaths = [

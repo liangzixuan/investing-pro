@@ -59,6 +59,9 @@ importers:
       '@research-cockpit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@research-cockpit/local-research-vault':
+        specifier: workspace:*
+        version: link:../../packages/local-research-vault
       '@research-cockpit/personal-filing-corpus':
         specifier: workspace:*
         version: link:../../packages/personal-filing-corpus
@@ -196,6 +199,8 @@ importers:
       '@research-cockpit/filing-quality-measurement':
         specifier: workspace:*
         version: link:../filing-quality-measurement
+
+  packages/local-research-vault: {}
 
   packages/personal-filing-corpus: {}
 

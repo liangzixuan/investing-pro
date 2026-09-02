@@ -1162,9 +1162,9 @@ requires a fresh single-use
 exact source and canonical response. See
 [ADR 0054](./docs/adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./docs/CYCLE_3B_EXIT_MATRIX.md). Dynamic selection,
-refresh, network access, persistence, and background work remain later
-milestones. The separate Cycle 3c control plane below does not authorize or
-promote Cycle 3b.
+refresh, network access, promoted personal persistence, and background work
+remain later outcomes. The separate Cycle 3c control plane and Cycle 3d vault
+below do not authorize or promote Cycle 3b.
 
 Cycle 3c now has provider-neutral prepared public source for the explicit
 `personal_single_user_local_connected` control plane. The
@@ -1194,8 +1194,42 @@ entitlement or legal determination, provider billing ceiling, SEC refresh, or
 market-data adapter. It has not been
 privately activated, accepted, or promoted. See
 [ADR 0055](./docs/adr/0055-connected-personal-source-policy-registry.md) and the
-[Cycle 3c exit matrix](./docs/CYCLE_3C_EXIT_MATRIX.md). Cycle 3d durable local
-research vault is the next functional implementation blocker.
+[Cycle 3c exit matrix](./docs/CYCLE_3C_EXIT_MATRIX.md).
+
+Cycle 3d now has prepared public source and local-temporary verification for the
+separate `personal_single_user_local_vault` profile; exact source is not yet
+declared. The private
+zero-production-dependency `@research-cockpit/local-research-vault` package
+prepares restart-safe `thesis`, `settings`, `watchlist`, `alert_definition`,
+`job_state`, and `portfolio` records plus package-level attachments, encrypted
+backup, and offline absent-root restore. Its exact SQLite V2 boundary uses
+optimistic concurrency, idempotency, tombstones, payload-free audit metadata,
+schema/integrity verification, fixed owner-only paths, and fail-closed
+corruption handling. The final schema is exact V2: initialization applies V1
+and the reviewed V2 unique-ledger-request-binding suffix atomically, while an
+exact verified V1 may migrate through only that suffix and failed migration
+rolls back to retryable V1. Verification uses full
+`PRAGMA integrity_check(1)`.
+
+Record payloads and attachment bytes use AES-256-GCM, but SQLite metadata and
+process memory are not whole-file encrypted. The backup KDF uses the current
+fixed domain-separation salt and fresh random GCM nonces; no per-backup random-
+salt claim is made. Backup uses a unique owner-only external snapshot whose
+identity is pinned through readback, then publishes the synced encrypted
+pending file by a same-directory no-replace hard link followed by pending-name
+unlink and final verification.
+
+The dedicated non-splitting `vault-server` exposes owner-authenticated status,
+record list/read, and conditional idempotent create/update/delete under
+`/v1/personal-filing/vault`. Attachments, backup, and restore are not HTTP
+routes. The demo thesis/alert form is now page memory only and no longer writes
+Web Storage, but Cycle 3d includes no browser vault client or migration of
+actual browser data. It has no actual personal vault, recovery key, backup,
+restore, private activation, acceptance, or promotion. See
+[ADR 0056](./docs/adr/0056-durable-personal-local-research-vault.md) and the
+[Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md). Cycle 3e security
+master, search, and watchlists is the next planned functional blocker only
+after the Cycle 3d gates are terminal.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

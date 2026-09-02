@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { LegacyLocalStateCleanup } from "@/features/research/LegacyLocalStateCleanup";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +16,10 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <LegacyLocalStateCleanup />
+        {children}
+      </body>
     </html>
   );
 }

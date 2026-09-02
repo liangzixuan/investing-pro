@@ -160,16 +160,20 @@ fresh owner authorization, terminal exact-source evidence, private activation,
 acceptance, or promotion. Its required
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` action is deliberately
 incompatible with this ADR's narrower approval. Dynamic selection, refresh,
-persistence, and background work remain later. Cycle 3c connected-personal
-source policy now has provider-neutral prepared public source only, with no
-provider or private activation. Cycle 3d durable local research vault is the
-next functional product blocker. Enterprise and shared-service controls remain
-Out of scope for the personal profile.
+promoted personal persistence, and background work remain later outcomes.
+Cycle 3c connected-personal source policy now has provider-neutral prepared
+public source only, with no provider or private activation. Cycle 3d now has
+separate prepared public source and local-temporary verification only, with no
+actual personal vault, key, backup, restore, activation, acceptance, or
+promotion. Cycle 3e is the next planned functional blocker only after the Cycle
+3d gates are terminal. Enterprise and shared-service controls remain Out of
+scope for the personal profile.
 
 ## References
 
 - [Cycle 2z exit matrix](../CYCLE_2Z_EXIT_MATRIX.md)
 - [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
+- [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md)
 - [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Cycle 2y exit matrix](../CYCLE_2Y_EXIT_MATRIX.md)
 - [ADR 0051](./0051-bounded-personal-quality-readiness-composition.md)

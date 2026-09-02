@@ -24,6 +24,8 @@ export const PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME =
   "x-research-cockpit-bootstrap" as const;
 export const PERSONAL_OWNER_INTENT_HEADER_NAME =
   "x-research-cockpit-intent" as const;
+export const PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME =
+  "x-research-cockpit-idempotency-key" as const;
 
 const ACTIVE_COOKIE_ATTRIBUTES =
   `Path=/v1/personal-filing; HttpOnly; SameSite=Strict` as const;
@@ -49,6 +51,8 @@ const FORBIDDEN_NEGOTIATION_HEADERS = new Set([
 
 type PersonalOwnerIntent = "bootstrap" | "logout" | "revoke" | "rotate";
 export type PersonalOwnerMutationIntent = "connected-source-policy-kill";
+export type PersonalVaultMutationIntent =
+  "personal-vault-create" | "personal-vault-delete" | "personal-vault-update";
 type ParsedHeader =
   | { readonly kind: "invalid" }
   | { readonly kind: "missing" }
@@ -195,6 +199,39 @@ export function authorizePersonalMutationRouteRequest(
   return authorizeBoundary(authority, boundary);
 }
 
+/**
+ * Route-specific onRequest guard for vault mutations. It authenticates before
+ * Fastify parses a JSON body and admits only the exact body framing declared by
+ * the route. Preconditions and idempotency are validated separately by the
+ * vault route while still in onRequest.
+ */
+export function authorizePersonalVaultMutationRouteRequest(
+  request: FastifyRequest,
+  authority: PersonalOwnerSessionAuthority,
+  listenOptions: DemoApiListenOptions,
+  expectedPath: string,
+  expectedIntent: PersonalVaultMutationIntent,
+  body: "json" | "none",
+): boolean {
+  if (!isPersonalOwnerSessionAuthority(authority)) return false;
+  const boundary = inspectPersonalRequest(
+    request,
+    listenOptions,
+    expectedPath,
+    "POST",
+    expectedIntent,
+    body === "json" ? "vault-json" : "vault-empty",
+  );
+  return authorizeBoundary(authority, boundary);
+}
+
+export function sendPersonalOwnerSessionProblem(
+  reply: FastifyReply,
+  request: FastifyRequest,
+) {
+  return sendOwnerSessionProblem(reply, request);
+}
+
 export function personalBrowserOrigin(
   listenOptions: DemoApiListenOptions,
 ): string {
@@ -244,7 +281,11 @@ function inspectPersonalRequest(
   listenOptions: DemoApiListenOptions,
   expectedPath: string,
   expectedMethod: "GET" | "POST",
-  expectedIntent?: PersonalOwnerIntent | PersonalOwnerMutationIntent,
+  expectedIntent?:
+    | PersonalOwnerIntent
+    | PersonalOwnerMutationIntent
+    | PersonalVaultMutationIntent,
+  bodyPolicy: "none" | "vault-empty" | "vault-json" = "none",
 ): PersonalRequestBoundary | undefined {
   if (
     request.method !== expectedMethod ||
@@ -265,9 +306,18 @@ function inspectPersonalRequest(
     count(rawNames, PERSONAL_OWNER_INTENT_HEADER_NAME) > 1 ||
     count(rawNames, PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME) > 1 ||
     rawNames.some((name) => FORWARDED_HEADERS.has(name)) ||
-    rawNames.some((name) => FORBIDDEN_NEGOTIATION_HEADERS.has(name)) ||
+    rawNames.some(
+      (name) =>
+        FORBIDDEN_NEGOTIATION_HEADERS.has(name) &&
+        !(
+          bodyPolicy !== "none" &&
+          (name === "if-match" || name === "if-none-match")
+        ),
+    ) ||
     rawNames.includes("transfer-encoding") ||
-    rawNames.includes("content-type")
+    (bodyPolicy === "none" && rawNames.includes("content-type")) ||
+    (bodyPolicy !== "none" &&
+      count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1)
   ) {
     return undefined;
   }
@@ -275,8 +325,25 @@ function inspectPersonalRequest(
   const contentLength = readSingleHeader(request, "content-length");
   if (
     contentLength.kind === "invalid" ||
-    (expectedMethod === "GET" && contentLength.kind !== "missing") ||
-    (contentLength.kind === "value" && contentLength.value !== "0")
+    (bodyPolicy === "none" &&
+      ((expectedMethod === "GET" && contentLength.kind !== "missing") ||
+        (contentLength.kind === "value" && contentLength.value !== "0"))) ||
+    (bodyPolicy === "vault-empty" &&
+      contentLength.kind === "value" &&
+      contentLength.value !== "0") ||
+    (bodyPolicy === "vault-json" &&
+      (contentLength.kind !== "value" ||
+        !/^[1-9][0-9]{0,5}$/u.test(contentLength.value) ||
+        Number(contentLength.value) > 300 * 1_024))
+  ) {
+    return undefined;
+  }
+  const contentType = readSingleHeader(request, "content-type");
+  if (
+    (bodyPolicy === "vault-json" &&
+      (contentType.kind !== "value" ||
+        contentType.value.toLowerCase() !== "application/json")) ||
+    (bodyPolicy !== "vault-json" && contentType.kind !== "missing")
   ) {
     return undefined;
   }

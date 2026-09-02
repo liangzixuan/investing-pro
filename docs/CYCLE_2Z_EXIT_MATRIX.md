@@ -126,11 +126,14 @@ only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
 Hostile same-user processes remain unproven. Cycle 3b authenticated personal
 dossier composition has prepared public source but no fresh owner
 authorization, terminal exact-source evidence, private activation, acceptance,
-or promotion. Dynamic selection, refresh, persistence, and background work
-remain later milestones. Cycle 3c connected-personal source policy now has
+or promotion. Dynamic selection, refresh, promoted personal persistence, and
+background work remain later outcomes. Cycle 3c connected-personal source policy now has
 provider-neutral prepared public source only, with no provider or private
-activation. Cycle 3d durable local research vault is the next functional
-product blocker. Enterprise and shared-service controls remain Out of scope.
+activation. Cycle 3d now has separate prepared public source and local-temporary
+verification only; it has no actual personal vault, key, backup, restore,
+activation, acceptance, or promotion and does not alter this exact Cycle 2z
+result. Cycle 3e is the next planned functional blocker only after the Cycle 3d
+gates are terminal. Enterprise and shared-service controls remain Out of scope.
 
 ## Exit rule
 

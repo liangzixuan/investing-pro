@@ -2002,7 +2002,8 @@ and Cycle 3a approvals cannot authorize it. Its required action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`.
 
 No fresh approval or private execution is authorized by the prepared source.
-Dynamic selection, refresh, connected sources, persistence, background work,
+Dynamic selection, refresh, connected sources, promoted personal persistence,
+background work,
 security-master mapping, prices, broad statements, owner corrections, personal
 thesis/alerts/exports, and remote/shared authentication remain later or
 out-of-scope. Cycle 3c source policy remains a separate control plane. See
@@ -2087,8 +2088,110 @@ Application budgets are local admission
 limits, not provider invoice guarantees. Enterprise/shared-service controls
 remain out of scope for the personal profile. Exact prepared design and gates
 are in [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and
-the [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md). Cycle 3d durable local
-research vault is the next functional implementation blocker.
+the [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md). Cycle 3d remains a
+separate persistence boundary and does not make this control plane durable.
+
+## Cycle 3d durable personal local research-vault model
+
+Cycle 3d has **prepared public source and local-temporary verification only**.
+Its exact source is not yet declared, and no actual personal vault, recovery
+key, backup, restore, private activation, acceptance, or promotion is recorded.
+The separate canonical profile is `personal_single_user_local_vault`, provided
+by the private zero-production-dependency package
+`@research-cockpit/local-research-vault`.
+
+The record-kind vocabulary is closed to `thesis`, `settings`, `watchlist`,
+`alert_definition`, `job_state`, and `portfolio`. A `LocalResearchRecord` binds
+profile, kind, identifier, positive version, canonical JSON payload, payload
+SHA-256, and creation/update timestamps. Create uses expected version zero;
+update and delete use an exact positive version. An idempotency key binds the
+canonical request and recorded result. Same-request replay returns that result;
+different input under the same key fails. Delete removes live attachments and
+replaces the live row with a tombstone. Attachment identity, record/version
+binding, media type, byte length, digest, time, and bytes are a separate
+package-level model.
+
+The Node 24 SQLite adapter's final schema is exact V2 and contains records,
+attachments, tombstones, idempotency results, payload-free audit metadata,
+migration history, and schema metadata. Initialization applies the reviewed V1
+base and V2 `unique-ledger-request-bindings` suffix in one `BEGIN IMMEDIATE`.
+Opening exact V1 first verifies its complete identity, ledger, tables, indexes,
+full `PRAGMA integrity_check(1)`, and foreign keys, then applies only the
+reviewed V2 suffix in one transaction. A constraint failure rolls back to the
+unchanged, retryable V1 state. V2 adds unique request-digest indexes for both
+idempotency and audit ledgers; arbitrary or unreviewed migrations beyond that
+exact transition fail closed.
+
+Mutation, version comparison, idempotency result, tombstone where applicable,
+and audit row share one `BEGIN IMMEDIATE` transaction. Initialization and open
+verify the application identifier, V2 user/schema version, both exact
+migration/schema digests, exact table/index inventory, full
+`PRAGMA integrity_check(1)`, and foreign-key check. Foreign keys,
+`trusted_schema=OFF`, `secure_delete=ON`, WAL, `synchronous=FULL`, extensions
+off, defensive mode, and a runtime authorizer are part of the prepared
+boundary. Unknown schema or ambiguous rollback fails closed; only the exact
+reviewed V1-to-V2 migration is supported, not a general migrator.
+
+The root comes only from startup-fixed `RESEARCH_COCKPIT_VAULT_ROOT` with exact
+startup action `RESEARCH_COCKPIT_VAULT_STARTUP=initialize|open`. It must be one
+canonical absolute direct child of an existing real parent. Only the fixed
+recovery-key, SQLite, WAL, SHM, and temporary staging names are admitted.
+Relative/URI/UNC/device/double-root/dot/alternate-stream paths, symlinks,
+junctions, hardlinks, nonregular or unknown children, and identity changes fail
+closed. POSIX verifies `0700` directories and `0600` files. Windows requires a
+receipt binding canonical root, verified paths, owner SID, protected
+inheritance, and owner-only access. Correct native ACL inspection remains a
+trusted-adapter assumption.
+
+Initialization creates a fresh 32-byte recovery key in a separate owner-only
+file, outside SQLite and excluded from the backup. Domain-separated
+HKDF-SHA-256 keys protect record payloads, attachment bytes, and backup
+containers with AES-256-GCM, fresh random nonces, and authenticated context.
+The current KDF salt is fixed for domain separation; there is no per-backup
+random-salt claim. Payload/content encryption is not whole-file encryption:
+schema, identifiers, versions, timestamps, sizes, digests, tombstone,
+idempotency, and audit metadata remain observable to someone who bypasses the
+owner-only file boundary. Memory, swap, crash-dump, administrator, hostile
+same-user, and forensic resistance remain nonclaims.
+
+A package-level backup reserves a unique owner-only snapshot in the validated
+external backup parent and pins its device/inode identity across SQLite
+snapshot creation, normalization, and readback. It verifies the snapshot and
+inventory, encrypts the manifest and database bytes, and writes and syncs a
+separate exclusive owner-only pending file. Publication creates the
+same-directory final path as a no-replace hard link to the pending file, then
+unlinks the pending name and decrypts/verifies the final container. Offline
+restore requires separately supplied recovery-key bytes, validates before
+target creation, and restores only into an absent root. Key loss is
+unrecoverable. Live deletion does not rewrite old backups; deliberate
+restoration may reintroduce deleted records.
+
+Exact API mode is `RESEARCH_COCKPIT_MODE=personal_single_user_local_vault` and
+starts through the separate non-splitting `vault-server`. Its static graph is
+limited to vault app/composition/routes, the Cycle 3a owner session, listen
+options, and server. The prepared business routes are authenticated status,
+record list, record read, record create/update, and record delete below
+`/v1/personal-filing/vault`. Create/update/delete require exact intents,
+idempotency, and exact conditional-version headers. Authentication and mutation
+headers are checked before JSON parsing; success/failure is private/no-store
+and generic where disclosure would widen the boundary. Attachments, backup,
+and restore have no HTTP route.
+
+The demo thesis/alert controls are page memory only and no longer use Web
+Storage. This removes a competing browser-durable source but does not create a
+Cycle 3d browser vault client, editor, backup/restore UI, or actual browser-data
+migration.
+The vault schema excludes Cycle 3c policy, kill, reservation, replay, and budget
+state, so those remain process-local across restart. Network sources,
+provider/SEC/market-data adapters, scheduler execution, delivered alerts,
+remote/multi-device/multi-user/tenant/shared-service/commercial/production
+operation, and parity remain outside the model.
+
+Exact prepared design and pending gates are in
+[ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
+[Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md). Cycle 3e security master,
+search, and watchlists is the next planned functional blocker only after the
+Cycle 3d gates are terminal.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

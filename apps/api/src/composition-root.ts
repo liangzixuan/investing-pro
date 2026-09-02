@@ -43,6 +43,8 @@ const LOCAL_API_PRIVATE_ENVIRONMENT_KEYS = [
   "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_PATH",
   "PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256",
   "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
+  "RESEARCH_COCKPIT_VAULT_ROOT",
+  "RESEARCH_COCKPIT_VAULT_STARTUP",
 ] as const;
 
 export class LocalApiCompositionError extends Error {
@@ -56,7 +58,9 @@ export class LocalApiCompositionError extends Error {
     | "PERSONAL_FACT_RELEASE_UNAVAILABLE"
     | "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID"
     | "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED"
-    | "PERSONAL_READINESS_UNAVAILABLE";
+    | "PERSONAL_READINESS_UNAVAILABLE"
+    | "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT"
+    | "VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT";
 
   constructor(code: LocalApiCompositionError["code"]) {
     super("The requested local API composition is unavailable.");
@@ -96,6 +100,8 @@ export function captureLocalApiEnvironment(
       environment.PERSONAL_FILING_DOSSIER_RELEASE_BUNDLE_SHA256,
     PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH:
       environment.PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH,
+    RESEARCH_COCKPIT_VAULT_ROOT: environment.RESEARCH_COCKPIT_VAULT_ROOT,
+    RESEARCH_COCKPIT_VAULT_STARTUP: environment.RESEARCH_COCKPIT_VAULT_STARTUP,
   };
   for (const key of LOCAL_API_PRIVATE_ENVIRONMENT_KEYS) {
     delete environment[key];
@@ -166,14 +172,25 @@ function prepareConfiguredApp(
     CONNECTED_SOURCE_POLICY_BUNDLE_SHA256_KEY,
     CONNECTED_SOURCE_POLICY_SECRET_REFERENCE_KEY,
   ].some((key) => environment[key] !== undefined);
+  const hasVaultConfiguration =
+    environment.RESEARCH_COCKPIT_VAULT_ROOT !== undefined ||
+    environment.RESEARCH_COCKPIT_VAULT_STARTUP !== undefined;
   if (mode === "personal_single_user_local_connected") {
     throw new LocalApiCompositionError(
       "CONNECTED_MODE_REQUIRES_CONNECTED_ENTRYPOINT",
     );
   }
+  if (mode === "personal_single_user_local_vault") {
+    throw new LocalApiCompositionError("VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT");
+  }
   if (hasConnectedConfiguration) {
     throw new LocalApiCompositionError(
       "CONNECTED_CONFIGURATION_REQUIRES_EXPLICIT_MODE",
+    );
+  }
+  if (hasVaultConfiguration) {
+    throw new LocalApiCompositionError(
+      "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT",
     );
   }
 

@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:connected": "tsx watch src/connected-server.ts",
+    "dev:vault": "tsx watch src/vault-server.ts",
     "build": "tsup --config tsup.config.ts",
     "start": "node dist/src/server.js",
     "start:connected": "node dist/src/connected-server.js",
+    "start:vault": "node dist/src/vault-server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -17,6 +19,7 @@
     "@fastify/helmet": "13.1.0",
     "@research-cockpit/connected-source-policy": "workspace:*",
     "@research-cockpit/contracts": "workspace:*",
+    "@research-cockpit/local-research-vault": "workspace:*",
     "@research-cockpit/personal-filing-corpus": "workspace:*",
     "@research-cockpit/research-core": "workspace:*",
     "@research-cockpit/research-state": "workspace:*",

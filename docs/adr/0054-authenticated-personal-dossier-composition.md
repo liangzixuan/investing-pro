@@ -173,12 +173,16 @@ Until those gates pass, Cycle 3b remains prepared and not promoted. Cycle 3c
 now has separate prepared public source for a connected-personal source-policy
 control plane. It contains no actual provider or external request and must not
 be composed into or treated as promotion of this offline milestone. Cycle 3d
-durable local research vault is the next functional implementation blocker.
+now has separate prepared public source and local-temporary verification only,
+with no actual personal vault, key, backup, restore, activation, acceptance, or
+promotion. It cannot silently persist this dossier. Cycle 3e is the next
+planned functional blocker only after the Cycle 3d gates are terminal.
 
 ## References
 
 - [Cycle 3b exit matrix](../CYCLE_3B_EXIT_MATRIX.md)
 - [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)
+- [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md)
 - [ADR 0053](./0053-personal-local-owner-session.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

@@ -214,6 +214,25 @@ describe("local API composition root", () => {
     expect(String(connectedMode)).not.toContain("private-connected-canary");
     expect(String(connectedBinding)).not.toContain("private-connected-canary");
   });
+
+  it("refuses vault mode and vault bindings at the ordinary entrypoint", async () => {
+    const vaultMode = await createConfiguredApp({
+      RESEARCH_COCKPIT_MODE: "personal_single_user_local_vault",
+      RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET: freshSecret(),
+    }).catch((error: unknown) => error);
+    const vaultBinding = await createConfiguredApp({
+      RESEARCH_COCKPIT_VAULT_ROOT: "private-vault-canary",
+    }).catch((error: unknown) => error);
+
+    expect(vaultMode).toMatchObject({
+      code: "VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT",
+    });
+    expect(vaultBinding).toMatchObject({
+      code: "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT",
+    });
+    expect(String(vaultMode)).not.toContain("private-vault-canary");
+    expect(String(vaultBinding)).not.toContain("private-vault-canary");
+  });
 });
 
 function freshSecret(): string {

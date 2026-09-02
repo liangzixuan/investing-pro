@@ -10,13 +10,6 @@ import type {
 import { evaluateLocalAlert } from "@research-cockpit/research-core";
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  loadAlert,
-  loadThesis,
-  saveAlert,
-  saveThesis,
-} from "@/lib/local-state";
-
 export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
   const [thesis, setThesis] = useState<LocalThesisDto>(() =>
     defaultThesis(dossier),
@@ -26,13 +19,13 @@ export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
   );
   const [evaluation, setEvaluation] = useState<AlertEvaluationDto | null>(null);
   const [saveMessage, setSaveMessage] = useState(
-    "Stored only in this browser.",
+    "Held in memory for this page only.",
   );
   const [alertError, setAlertError] = useState<string | null>(null);
 
   useEffect(() => {
-    setThesis(loadThesis(dossier.instrument.id) ?? defaultThesis(dossier));
-    setRule(loadAlert(dossier.instrument.id) ?? defaultRule(dossier));
+    setThesis(defaultThesis(dossier));
+    setRule(defaultRule(dossier));
     setEvaluation(null);
     setAlertError(null);
   }, [dossier]);
@@ -54,9 +47,8 @@ export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
 
   function persistThesis() {
     const updated = { ...thesis, updatedAt: dossier.generatedAt };
-    saveThesis(updated);
     setThesis(updated);
-    setSaveMessage("Saved locally in this browser.");
+    setSaveMessage("Kept in memory until this page closes.");
   }
 
   function evaluateRule() {
@@ -70,7 +62,6 @@ export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
         id: ruleId(rule),
         createdAt: dossier.generatedAt,
       };
-      saveAlert(normalized);
       setRule(normalized);
       setEvaluation(
         evaluateLocalAlert(
@@ -96,9 +87,8 @@ export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
         <p className="section-number">03 · Commit</p>
         <h2 id="thesis-title">Write down what would change your mind.</h2>
         <p>
-          The thesis and rule below stay in local browser storage. They are
-          never sent to the demo API and are not suitable for sensitive
-          information.
+          The thesis and rule below are short-lived presentation state. They are
+          never written to browser storage or sent to the demo API.
         </p>
       </div>
       <div className="commit-layout">
@@ -114,7 +104,7 @@ export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
               <span className="eyebrow">Thesis card</span>
               <h3>Make the claim falsifiable</h3>
             </div>
-            <span className="local-badge">Local only</span>
+            <span className="local-badge">Memory only</span>
           </div>
           <TextAreaField
             label="Claim"
@@ -138,7 +128,7 @@ export function ThesisMonitor({ dossier }: { dossier: DossierDto }) {
           />
           <div className="form-footer">
             <button className="primary-action compact-action" type="submit">
-              Save thesis locally
+              Keep thesis for this page
             </button>
             <span role="status">{saveMessage}</span>
           </div>

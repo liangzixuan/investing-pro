@@ -110,13 +110,18 @@ gates, CI, independent review, source topology, and any separately required
 private activation are terminal. Prepared source and synthetic fixtures are not
 provider, entitlement, legal, billing, freshness, or adapter evidence.
 
-Cycle 3d durable local research vault is the next functional implementation
-blocker. It remains separate and cannot silently make this process-memory
-policy or kill state durable.
+Cycle 3d now has separate prepared public source and local-temporary
+verification only. It has no actual personal vault, recovery key, backup,
+restore, activation, acceptance, or promotion. Its schema explicitly excludes
+this process-memory policy, kill, reservation, replay, and budget state, so
+those values still reset on restart. Cycle 3e is the next planned functional
+blocker only after the Cycle 3d gates are terminal.
 
 ## References
 
 - [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md)
+- [ADR 0056](./adr/0056-durable-personal-local-research-vault.md)
+- [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md)
 - [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md)
 - [Personal product-breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](./BUILD_ROADMAP.md)

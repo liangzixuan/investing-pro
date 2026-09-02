@@ -271,13 +271,18 @@ required, it must be separately authorized and may publish only a coarse,
 nonsecret outcome. A green public test run cannot be described as an external
 provider or legal result.
 
-Cycle 3d durable local research vault is the next functional implementation
-blocker. It must not retroactively add persistence to this process-memory
-control plane.
+Cycle 3d now has separate prepared public source and local-temporary
+verification only, with no actual personal vault, recovery key, backup,
+restore, activation, acceptance, or promotion. Its schema explicitly excludes
+this process-memory policy, kill, reservation, replay, and budget state. Cycle
+3e is the next planned functional blocker only after the Cycle 3d gates are
+terminal.
 
 ## References
 
 - [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)
+- [ADR 0056](./0056-durable-personal-local-research-vault.md)
+- [Cycle 3d exit matrix](../CYCLE_3D_EXIT_MATRIX.md)
 - [ADR 0054](./0054-authenticated-personal-dossier-composition.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)

@@ -1,9 +1,10 @@
-# Sprint 0 through promoted Cycle 3a threat model
+# Sprint 0 through prepared Cycle 3d threat model
 
 ## Current trust boundaries
 
 The browser accepts dossier JSON only from the local Fastify API and keeps its
-thesis and alert profile local. Synthetic startup remains the default. In that
+demo thesis and alert profile in page memory only. Synthetic startup remains
+the default. In that
 default mode, the API reads only source-controlled synthetic fixtures and has
 exactly two additional update-only routes over seeded synthetic in-memory
 research state. The write composition accepts only an exact loopback peer and
@@ -25,6 +26,9 @@ optional browser memory and adds no persistence boundary. Cycle 3a separately
 closes the short-lived local owner-session boundary only for exact source
 revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`; it adds no persistent
 identity or remote/shared-service boundary.
+Cycle 3d separately prepares public source and local-temporary verification for
+one durable owner-local vault, but has no actual personal vault, key, backup,
+restore, activation, acceptance, or promotion and no browser vault client.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2263,8 +2267,9 @@ Prepared controls are:
   storage-byte, and estimated-spend-microunit budgets, replay-bound branded
   reservations, and post-result overrun failure semantics in the uncomposed
   core gateway;
-- monotonic process-local kill, fail-closed lifecycle and clock handling, and
-  no restart-safe kill claim before the Cycle 3d vault;
+- monotonic process-local kill and fail-closed lifecycle and clock handling;
+  the Cycle 3d schema explicitly excludes connected policy, kill,
+  reservation, replay, and budget state, so no restart-safe claim exists;
 - startup acceptance of only the designated
   `owner-local-ref:v1:<store>:<entry>` locator, with no separate
   provider-credential field, credential-readiness probe, secret resolution, or
@@ -2312,6 +2317,115 @@ and competitor parity remain out of scope. Personal use does not override
 provider terms. Exact prepared design and pending gates are in
 [ADR 0055](./adr/0055-connected-personal-source-policy-registry.md) and the
 [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md).
+
+## Cycle 3d durable personal local-vault threat boundary
+
+Cycle 3d has **prepared public source and local-temporary verification only**.
+Its exact source is not yet declared. No actual personal vault, recovery key,
+backup, restore, private activation, acceptance, or promotion is present.
+
+Assets at risk are the startup-fixed root and its identity; owner account and
+effective file permissions; recovery-key bytes; record payloads and attachment
+bytes; record identity, version, digest, and chronology; tombstones;
+idempotency and audit metadata; SQLite schema, migration ledger, WAL/SHM, and
+transaction integrity; encrypted backup container, manifest, inventory, and
+restore destination; Cycle 3a owner-session authority; and the absence of
+private values, paths, keys, backups, or internal errors from HTTP and logs.
+
+Primary threats are implicit vault-mode activation; vault configuration
+smuggled into synthetic, connected, or earlier offline modes; caller-selected
+database, key, backup, restore, or SQL input; relative/URI/UNC/device/
+double-root/dot/alternate-stream ambiguity; symlink, junction, hardlink,
+nonregular-file, unknown-child, parent/root/file substitution, or stale
+identity races; permissive POSIX modes or Windows inheritance/trustee errors;
+missing initialized data silently replaced with a blank vault; schema,
+migration, pragma, extension, or authorizer bypass; stale-version writes;
+idempotency collision or replay confusion; partial mutation/audit/tombstone
+commit; rollback ambiguity; process crash during mutation, backup, or restore;
+plaintext payload or attachment recovery from the database or backup;
+wrong-key/tampered-backup acceptance; overwrite of a live vault or existing
+backup; loss of the only recovery key; old backups resurrecting deleted data;
+owner-session, intent, conditional-header, duplicate-header, or request-body
+ordering bypass; browser Web Storage becoming a second durable source; and
+treating local-temporary tests as actual personal activation evidence.
+
+Prepared controls are:
+
+- exact opt-in `personal_single_user_local_vault` mode and a distinct
+  non-splitting vault server, with every other entry rejecting vault-only
+  configuration;
+- capture and deletion of `RESEARCH_COCKPIT_VAULT_ROOT`,
+  `RESEARCH_COCKPIT_VAULT_STARTUP`, and owner-bootstrap inputs before listen;
+  the root and initialize/open action are fixed before HTTP composition;
+- a frozen first-party static graph limited to vault app/composition/routes,
+  owner-session boundary, listen options, and server, excluding demo,
+  connected policy, corpus, dossier/fact, research-state, and command paths;
+- one canonical absolute direct-child root, closed ASCII filenames, unknown-
+  child rejection, regular-file/link-count and pre/post identity checks, and
+  no HTTP-selected local path;
+- exact POSIX `0700`/`0600` verification or a Windows effective-ACL receipt
+  binding canonical root, verified paths, owner SID, protected inheritance,
+  and owner-only access;
+- one exact SQLite V2 application/schema identity, two-entry migration ledger
+  and inventory, full `integrity_check(1)` and foreign-key checks, WAL,
+  `synchronous=FULL`, foreign keys, `trusted_schema=OFF`, `secure_delete=ON`,
+  extensions disabled, defensive mode, and a runtime authorizer that denies
+  schema/attach/detach/unreviewed pragma work;
+- atomic initialization through the reviewed V1 base and V2 unique-ledger-
+  request-binding suffix, plus exact pre-migration verification and a single
+  retryable V1-to-V2 path whose failure rolls back, while unknown versions and
+  arbitrary or unreviewed migrations fail closed;
+- exact `BEGIN IMMEDIATE` mutations combining CAS, state change, idempotency,
+  tombstone where applicable, and payload-free audit metadata, with close on
+  ambiguous rollback and child-process restart verification;
+- a separate owner-only 32-byte recovery-key file, domain-separated
+  HKDF-SHA-256 keys, and AES-256-GCM record, attachment, and backup protection
+  with fresh random nonces and authenticated context;
+- a bounded backup containing its verified snapshot and manifest inside the
+  ciphertext, with unique owner-only external snapshot staging whose identity
+  is pinned across creation/normalization/readback, exclusive pending creation
+  and sync, same-directory hard-link no-replace publication followed by pending
+  unlink, and final decrypt/integrity verification before success;
+- offline wrong-key/tamper rejection before target creation and restore only
+  into an absent fixed root, followed by exact schema/inventory/digest and
+  permission verification;
+- exact owner-authenticated status, record list/read, conditional idempotent
+  create/update, and delete routes under `/v1/personal-filing/vault`, with
+  authorization and mutation headers checked before JSON parsing and all
+  responses private/no-store and generic where needed; and
+- removal of the demo browser-durable thesis/alert source; the remaining form
+  is page memory only, the web app does not import the vault package, and no
+  Cycle 3d browser vault client exists.
+
+Residual risk remains deliberate. AES-GCM protects record payload and
+attachment plaintext, not the whole SQLite file: schema, identifiers,
+versions, times, media types, sizes, digests, tombstones, idempotency, and audit
+metadata remain observable to an actor who bypasses the owner-only boundary.
+The current derivation uses a fixed domain-separation KDF salt; it does not
+claim a fresh random salt for each backup. Key bytes and decrypted values exist
+in process memory. Swap, crash dumps, malware, a hostile same-user process,
+administrator, physical/offline access, and forensic erasure remain outside
+the model. The TypeScript layer trusts the native Windows adapter to inspect
+effective ACLs correctly.
+
+Recovery-key loss makes encrypted backup recovery impossible. Live deletion
+does not inventory, expire, rewrite, or erase old backups; a deliberately
+restored older backup may reintroduce deleted records. `secure_delete=ON` is
+not proof of storage-device erasure. The bounded child-process test is not a
+power-loss, filesystem, disk-controller, RPO, RTO, or disaster-recovery result.
+There is no arbitrary or unreviewed migration beyond the exact V1-to-V2 path,
+arbitrary/online restore, live-vault overwrite, browser vault workflow, or
+actual clean-machine owner restore.
+
+Cycle 3c policy, kill, reservation, replay, and budget state is absent from the
+vault schema and therefore still resets on restart. Cycle 3d adds no source
+credential, provider request, SEC refresh, market-data adapter, scheduler
+execution, delivered alert, or background ingestion. Remote, multi-device,
+multi-user, tenant, shared-service, commercial, organizational, production,
+and competitor-parity claims remain out of scope. Exact prepared design and
+pending gates are in
+[ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
+[Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
 
 ## Gates before adding new trust boundaries
 
@@ -2361,7 +2475,10 @@ provider terms. Exact prepared design and pending gates are in
    exact owner authorization and terminal evidence. Cycle 3c connected-personal
    source-policy control-plane source is prepared but neither privately
    activated nor promoted; it composes no provider transport. Cycle 3d durable
-   local vault is the next functional implementation blocker. Organizational
+   local-vault source and local-temporary verification are prepared but not
+   activated, accepted, or promoted. Cycle 3e security master, search, and
+   watchlists is the next planned functional blocker only after the Cycle 3d
+   gates are terminal. Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.
 3. **External URLs or files:** add SSRF allowlists, DNS/IP revalidation, MIME and size checks, sandboxed parsing, malware scanning, and stored-XSS sanitization.

@@ -4,9 +4,11 @@ Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
 source but no fresh owner authorization, terminal exact-source result, private
 activation, acceptance, or promotion. Cycle 3c has prepared public source only;
-it is not privately activated, accepted, or promoted. Cycles 3d through 3q
-remain planned.** This does not alter the exact historical Cycle 2z personal
-result or make a feature-parity claim.
+it is not privately activated, accepted, or promoted. Cycle 3d has prepared
+public source and local-temporary verification only; no actual personal vault,
+key, backup, restore, activation, acceptance, or promotion has occurred.
+Cycles 3e through 3q remain planned.** This does not alter the exact historical
+Cycle 2z personal result or make a feature-parity claim.
 
 ## Goal
 
@@ -138,28 +140,28 @@ Later subcycles may widen a universe only with the same checks.
 
 ## Gap-to-milestone map
 
-| Capability gap                          | Current baseline                                             | Planned closure |
-| --------------------------------------- | ------------------------------------------------------------ | --------------- |
-| Owner authentication                    | Cycle 3a promoted only for its exact source                  | Cycle 3a        |
-| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted            | Cycle 3b        |
-| Connected source governance             | Provider-neutral control plane prepared; no source activated | Cycle 3c        |
-| Durable personal state                  | Browser-local thesis/rule and disconnected database proofs   | Cycle 3d        |
-| Security universe, search, watchlists   | One synthetic symbol                                         | Cycle 3e        |
-| Automated filings and amendments        | Manually prepared exact filing corpus                        | Cycle 3f        |
-| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart         | Cycle 3g        |
-| Transparent technical indicators        | No end-user price/volume indicator workspace                 | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set  | Cycle 3h        |
-| Multi-model valuation                   | One exit-multiple model                                      | Cycle 3i        |
-| Peers, health, quality, and risk scores | No end-user comparison or scorecards                         | Cycle 3j        |
-| Screener and saved views                | No universe query                                            | Cycle 3k        |
-| Earnings, dividends, news, calendars    | No daily event workflow                                      | Cycle 3l        |
-| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow          | Cycle 3l-b      |
-| Transcript discovery                    | No transcript metadata or permitted-text workflow            | Cycle 3l-c      |
-| Holdings and portfolio performance      | No portfolio model                                           | Cycle 3m        |
-| Background delivered alerts             | One immediate local rule evaluation                          | Cycle 3n        |
-| Reports, exports, custom views          | No end-user export or saved layout                           | Cycle 3o        |
-| Evidence-grounded AI and strategies     | No model integration                                         | Cycle 3p        |
-| Installable daily-use application       | Responsive local web demo                                    | Cycle 3q        |
+| Capability gap                          | Current baseline                                              | Planned closure |
+| --------------------------------------- | ------------------------------------------------------------- | --------------- |
+| Owner authentication                    | Cycle 3a promoted only for its exact source                   | Cycle 3a        |
+| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted             | Cycle 3b        |
+| Connected source governance             | Provider-neutral control plane prepared; no source activated  | Cycle 3c        |
+| Durable personal state                  | Prepared SQLite vault/API; browser thesis/rule is memory only | Cycle 3d        |
+| Security universe, search, watchlists   | One synthetic symbol                                          | Cycle 3e        |
+| Automated filings and amendments        | Manually prepared exact filing corpus                         | Cycle 3f        |
+| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart          | Cycle 3g        |
+| Transparent technical indicators        | No end-user price/volume indicator workspace                  | Cycle 3g-b      |
+| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set   | Cycle 3h        |
+| Multi-model valuation                   | One exit-multiple model                                       | Cycle 3i        |
+| Peers, health, quality, and risk scores | No end-user comparison or scorecards                          | Cycle 3j        |
+| Screener and saved views                | No universe query                                             | Cycle 3k        |
+| Earnings, dividends, news, calendars    | No daily event workflow                                       | Cycle 3l        |
+| Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow           | Cycle 3l-b      |
+| Transcript discovery                    | No transcript metadata or permitted-text workflow             | Cycle 3l-c      |
+| Holdings and portfolio performance      | No portfolio model                                            | Cycle 3m        |
+| Background delivered alerts             | One immediate local rule evaluation                           | Cycle 3n        |
+| Reports, exports, custom views          | No end-user export or saved layout                            | Cycle 3o        |
+| Evidence-grounded AI and strategies     | No model integration                                          | Cycle 3p        |
+| Installable daily-use application       | Responsive local web demo                                     | Cycle 3q        |
 
 ## Wave 1 — usable personal core
 
@@ -313,8 +315,8 @@ Exit criteria:
 - adversarial tests find no private value, label, count, path, hash, or
   authorization leakage through denial and failure surfaces.
 
-Dynamic selection, refresh, persistence, and background work remain later
-milestones.
+Dynamic selection, refresh, promoted personal persistence, and background work
+remain later outcomes.
 
 The prepared Cycle 3b source does not authorize private execution. Promotion requires
 fresh owner review of the exact canonical response and one source-bound,
@@ -394,14 +396,21 @@ Exit criteria:
 - focused hostile tests, full repository verification, Windows/Linux CI,
   independent review, and exact source topology pass before promotion.
 
-Cycle 3d durable local research vault is the next functional implementation
-blocker. It must not silently make the Cycle 3c process-memory kill state or
-budget counters durable.
+Cycle 3d now has separate prepared public source and local-temporary
+verification only. It is not activated, accepted, or promoted and does not make
+the Cycle 3c process-memory policy, kill, reservation, replay, or budget state
+durable.
 
 ### Cycle 3d — durable local research vault
 
 Target: provide restart-safe personal state behind the existing application
 ports without introducing tenant or cloud scope.
+
+Status: **Prepared public source and local-temporary verification only; exact
+source not yet declared. No actual personal vault, recovery key, backup,
+restore, private activation, acceptance, or promotion has been performed.**
+See [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
+[Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
 
 Exit criteria:
 
@@ -414,6 +423,34 @@ Exit criteria:
   attachment digests; and
 - the browser contains only short-lived presentation state, not the durable
   source of truth.
+
+The prepared source uses exact profile `personal_single_user_local_vault`, one
+startup-fixed owner-only root, and exact SQLite V2. New initialization applies
+the reviewed V1 base and V2 unique-ledger-request-binding suffix atomically;
+opening fully verified V1 may run only that reviewed migration, with failure
+rolling back to retryable V1 and arbitrary/unreviewed migrations rejected.
+Verification uses full `PRAGMA integrity_check(1)`. Runtime behavior adds
+optimistic concurrency, idempotency, tombstones, payload-free audit metadata,
+and fail-closed corruption/restart handling.
+
+Record payloads and attachment bytes use AES-256-GCM; this is not full-file,
+filesystem, memory, or forensic encryption. The backup KDF uses the current
+fixed domain-separation salt and fresh random GCM nonces, not a claimed random
+salt for each backup. Backup snapshot staging is unique, external, owner-only,
+and identity-pinned; final publication is a same-directory no-replace hard link
+from the synced pending file followed by pending-name unlink and final
+verification. Recovery requires the separate key, and old backups may
+reintroduce deleted records.
+
+The owner-authenticated HTTP surface is record-only. Attachments, backup, and
+restore remain package interfaces, and no browser vault client, migration UI,
+provider connection, scheduler execution, delivered alert, remote service,
+tenant, or production boundary is included. The demo thesis/alert form is page
+memory only so it cannot become a competing browser-durable source.
+
+Cycle 3e security master, search, and watchlists is the next planned functional
+blocker only after Cycle 3d exact-source tests, full verification,
+Windows/Linux CI, independent review, and promotion topology are terminal.
 
 ### Cycle 3e — security master, search, and watchlists
 

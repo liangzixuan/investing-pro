@@ -1963,9 +1963,9 @@ only for coarse readiness. Cycle 2z closes the separate atomic same-snapshot
 selected-fact release boundary under explicit owner authorization and a
 nonpersistent response for the exact frozen source and personal scope. Cycle
 3a closes request-time authenticated owner-browser composition only for exact
-source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Broader personal
-dossier, persistence, queueing, fetching, alerts, and background ingestion
-remain later.
+source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. A promoted broader
+personal dossier, actual personal-vault activation, queueing, fetching, alerts,
+and background ingestion remain later outcomes.
 
 The fixed 100-filing representative corpus, 2,000 independently adjudicated
 assertions, organizational rights/steward approval, B15/V15, multi-user
@@ -1978,17 +1978,21 @@ Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
 source but no fresh owner authorization, terminal exact-source result, private
 activation, acceptance, or promotion. Cycle 3c has prepared public source only;
-it is not privately activated, accepted, or promoted. Cycles 3d through 3q
-remain planned.** No parity claim is made.
+it is not privately activated, accepted, or promoted. Cycle 3d has prepared
+public source and local-temporary verification only; no actual personal vault,
+key, backup, restore, activation, acceptance, or promotion has occurred.
+Cycles 3e through 3q remain planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
 is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
 dossier composition is prepared but not promoted; Cycle 3c connected-personal
-source-policy control plane is prepared but not promoted; Cycle 3d durable
-local vault is the next functional implementation blocker. Any later networked
-source must still enter through the separately declared, explicitly enabled
+source-policy control plane is prepared but not promoted; Cycle 3d now prepares
+a separate durable local vault but is not terminally verified or promoted.
+Cycle 3e is the next planned functional blocker only after the Cycle 3d gates
+are terminal. Any later networked source must still enter through the
+separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
 provenance, retention/export rules, local secret handling, and owner-set
 request, storage, and estimated-spend budgets. Those application budgets are
@@ -2152,8 +2156,8 @@ fresh owner review of the exact canonical dossier and one single-use
 exact source, bundle, quality result, plan, and response, followed by terminal
 public and private evidence. This prepared source authorizes no private run.
 
-Dynamic selection or `knownAt`, connected source execution, refresh, persistence,
-background work, security-master mapping, prices, broad statements, owner
+Dynamic selection or `knownAt`, connected source execution, refresh, promoted
+personal persistence, background work, security-master mapping, prices, broad statements, owner
 corrections, personal thesis/alerts/exports, hostile same-user resistance, and
 remote/shared authentication remain nonclaims. Cycle 3c prepares the separate
 connected-personal source-policy control plane below without widening Cycle 3b.
@@ -2224,8 +2228,67 @@ market-data adapter. Application budgets
 constrain only future work the project may start; they do not cap a provider
 invoice. Organizational stewardship, tenant controls, commercial use, shared
 service operation, and production billing remain personal-profile out-of-scope
-enterprise work. Cycle 3d durable local research vault is the next functional
-implementation blocker.
+enterprise work. Cycle 3d remains separate and does not make this policy,
+kill, reservation, replay, or budget state durable.
+
+### Cycle 3d — durable personal local research vault
+
+Status: **Prepared public source and local-temporary verification only; exact
+source not yet declared. No actual personal vault, recovery key, backup,
+restore, private activation, acceptance, or promotion has been performed.**
+The exact decision and pending gates are in
+[ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
+[Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md).
+
+The zero-production-dependency
+`@research-cockpit/local-research-vault` package prepares exact profile
+`personal_single_user_local_vault` and closed record kinds `thesis`,
+`settings`, `watchlist`, `alert_definition`, `job_state`, and `portfolio`.
+The prepared adapter's final schema is exact V2. New initialization applies the
+reviewed V1 base and V2 unique-ledger-request-binding suffix in one transaction;
+opening an exact fully verified V1 applies only that reviewed suffix, and a
+failed constraint migration rolls back to retryable V1. Arbitrary or
+unreviewed migrations fail closed. V2 identity, both ledger entries, exact
+tables/indexes, full `PRAGMA integrity_check(1)`, and foreign keys are verified
+before use. Runtime mutations use optimistic concurrency and idempotency,
+write tombstones and payload-free audit metadata in the transaction, and
+reject missing, unexpected, corrupt, or ambiguous state instead of creating a
+blank vault. Child-process crash verification, attachment integrity, and
+restart persistence use local-temporary data only.
+
+The vault root is one startup-fixed canonical direct child with fixed file
+names. Symlinks, junctions, hardlinks, unknown children, nonregular files, and
+identity changes fail closed. POSIX requires exact owner-only modes; Windows
+requires a native effective-ACL inspection receipt binding the owner and every
+verified path. Native ACL inspection remains a trusted-adapter boundary.
+
+A separate owner-only 32-byte recovery-key file derives domain-separated
+record, attachment, and backup keys. Record payloads and attachment bytes use
+AES-256-GCM with fresh random nonces. This is not whole-database, filesystem,
+memory, or forensic encryption. The current backup derivation uses a fixed
+domain-separation salt, not a claimed random per-backup KDF salt. Backup uses a
+unique owner-only external snapshot with identity pinned across creation,
+normalization, and readback. It publishes the synced encrypted pending file by
+creating the same-directory final as a no-replace hard link, then unlinks the
+pending name and verifies the final container. Restore is offline, wrong-key/
+tamper rejecting, and limited to an absent root. Old backups may retain and
+later reintroduce records deleted from the live vault.
+
+The separate non-splitting `vault-server` composes only the owner session and
+vault record routes. Status, list, read, conditional create/update, and delete
+are private/no-store and require exact owner authorization, intent,
+idempotency, and strong version preconditions where applicable. Attachments,
+backup, and restore have no HTTP route. The demo thesis/alert form no longer
+uses Web Storage, but there is no Cycle 3d browser vault client or actual
+browser-data migration.
+
+Cycle 3d explicitly excludes Cycle 3c policy, kill, reservation, replay, and
+budget state; those remain process-local across restart. It also adds no source
+credential, network request, provider adapter, scheduler execution, delivered
+alert, tenant, remote service, or production boundary. Cycle 3e security
+master, search, and watchlists is the next planned functional blocker only
+after exact-source tests, full verification, Windows/Linux CI, independent
+review, and promotion topology make the Cycle 3d gates terminal.
 
 The delivery waves are:
 
