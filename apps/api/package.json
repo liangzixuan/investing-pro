@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
-    "@fastify/helmet": "13.1.0",
+    "@fastify/helmet": "13.1.1",
     "@research-cockpit/connected-source-policy": "workspace:*",
     "@research-cockpit/contracts": "workspace:*",
     "@research-cockpit/local-research-vault": "workspace:*",
