@@ -9,7 +9,8 @@ import {
   captureSecurityMasterApiEnvironment,
   createSecurityMasterConfiguredApp,
   disposeCapturedSecurityMasterApiEnvironment,
-  isSecurityMasterSnapshotFileStateStable,
+  isSecurityMasterSnapshotDescriptorStateStable,
+  isSecurityMasterSnapshotPathHandleIdentityStable,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_FILENAME,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH_ENVIRONMENT_KEY,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY,
@@ -37,7 +38,7 @@ afterEach(async () => {
 });
 
 describe("personal security-master API composition", () => {
-  it("applies the narrow Windows ctime exception without weakening stable file state", () => {
+  it("separates cross-view identity from descriptor state stability", () => {
     const baseline = {
       ctimeNs: 7n,
       dev: 11n,
@@ -48,15 +49,44 @@ describe("personal security-master API composition", () => {
       size: 19n,
     } as const;
 
+    const differentPathViewRepresentation = {
+      ...baseline,
+      ctimeNs: baseline.ctimeNs + 1n,
+      mode: baseline.mode + 1n,
+      mtimeNs: baseline.mtimeNs + 1n,
+    };
     expect(
-      isSecurityMasterSnapshotFileStateStable(
+      isSecurityMasterSnapshotPathHandleIdentityStable(
+        baseline,
+        differentPathViewRepresentation,
+      ),
+    ).toBe(true);
+
+    const changedIdentityFields = [
+      ["dev", baseline.dev + 1n],
+      ["ino", baseline.ino + 1n],
+      ["nlink", baseline.nlink + 1n],
+      ["size", baseline.size + 1n],
+    ] as const;
+    for (const [field, changedValue] of changedIdentityFields) {
+      expect(
+        isSecurityMasterSnapshotPathHandleIdentityStable(baseline, {
+          ...baseline,
+          [field]: changedValue,
+        }),
+        field,
+      ).toBe(false);
+    }
+
+    expect(
+      isSecurityMasterSnapshotDescriptorStateStable(
         baseline,
         { ...baseline, ctimeNs: baseline.ctimeNs + 1n },
         "win32",
       ),
     ).toBe(true);
     expect(
-      isSecurityMasterSnapshotFileStateStable(
+      isSecurityMasterSnapshotDescriptorStateStable(
         baseline,
         { ...baseline, ctimeNs: baseline.ctimeNs + 1n },
         "posix",
@@ -73,7 +103,7 @@ describe("personal security-master API composition", () => {
     ] as const;
     for (const [field, changedValue] of changedStableFields) {
       expect(
-        isSecurityMasterSnapshotFileStateStable(
+        isSecurityMasterSnapshotDescriptorStateStable(
           baseline,
           { ...baseline, [field]: changedValue },
           "win32",
@@ -228,13 +258,25 @@ describe("personal security-master API composition", () => {
 
   it("fails closed for a digest mismatch, noncanonical file name, and hard link", async () => {
     const digestFixture = await createSnapshotFixture();
+    const digestBootstrapSecret = freshSecret();
     const wrongDigest = await createSecurityMasterConfiguredApp({
       ...digestFixture.environment,
       RESEARCH_COCKPIT_MODE: SECURITY_MASTER_API_MODE,
-      [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: freshSecret(),
+      [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: digestBootstrapSecret,
       [PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY]: `sha256:${"0".repeat(64)}`,
     }).catch((reason: unknown) => reason);
-    expect(wrongDigest).toMatchObject({ code: "SECURITY_MASTER_UNAVAILABLE" });
+    expect(wrongDigest).toMatchObject({
+      code: "SECURITY_MASTER_UNAVAILABLE",
+      stage: "snapshot_admission",
+    });
+    expect(Object.keys(wrongDigest as object)).toContain("stage");
+    expect(JSON.stringify(wrongDigest)).not.toContain(
+      digestFixture.snapshotPath,
+    );
+    expect(JSON.stringify(wrongDigest)).not.toContain(
+      digestFixture.expectedSha256,
+    );
+    expect(JSON.stringify(wrongDigest)).not.toContain(digestBootstrapSecret);
 
     const wrongNamePath = join(
       digestFixture.directory,
@@ -272,6 +314,7 @@ describe("personal security-master API composition", () => {
     }).catch((reason: unknown) => reason);
     expect(hardLinkError).toMatchObject({
       code: "SECURITY_MASTER_UNAVAILABLE",
+      stage: "snapshot_read",
     });
   });
 
@@ -297,11 +340,12 @@ describe("personal security-master API composition", () => {
 
   it("scrubs private inputs before invalid listen configuration rejects", async () => {
     const fixture = await createSnapshotFixture();
+    const bootstrapSecret = freshSecret();
     const environment: Record<string, string | undefined> = {
       ...fixture.environment,
       HOST: "not-loopback",
       RESEARCH_COCKPIT_MODE: SECURITY_MASTER_API_MODE,
-      [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: freshSecret(),
+      [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: bootstrapSecret,
     };
     const captured = captureSecurityMasterApiEnvironment(environment);
     const errorPromise = createSecurityMasterConfiguredApp(captured);
@@ -313,9 +357,15 @@ describe("personal security-master API composition", () => {
       captured[PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY],
     ).toBeUndefined();
     expect(captured[PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]).toBeUndefined();
-    await expect(errorPromise).rejects.toMatchObject({
+    const error = await errorPromise.catch((reason: unknown) => reason);
+    expect(error).toMatchObject({
       code: "SECURITY_MASTER_UNAVAILABLE",
+      stage: "app_build",
     });
+    expect(Object.keys(error as object)).toContain("stage");
+    expect(JSON.stringify(error)).not.toContain(fixture.snapshotPath);
+    expect(JSON.stringify(error)).not.toContain(fixture.expectedSha256);
+    expect(JSON.stringify(error)).not.toContain(bootstrapSecret);
   });
 });
 

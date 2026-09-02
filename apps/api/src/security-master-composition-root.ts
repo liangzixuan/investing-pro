@@ -29,6 +29,8 @@ export type SecurityMasterApiEnvironment = Readonly<
   Record<string, string | undefined>
 >;
 type MutableSecurityMasterApiEnvironment = Record<string, string | undefined>;
+export type SecurityMasterApiUnavailableStage =
+  "app_build" | "snapshot_admission" | "snapshot_read";
 
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const capturedSecurityMasterApiEnvironments = new WeakSet<object>();
@@ -62,11 +64,16 @@ export class SecurityMasterApiCompositionError extends Error {
     | "SECURITY_MASTER_MODE_REJECTS_OTHER_PRIVATE_CONFIGURATION"
     | "SECURITY_MASTER_MODE_REQUIRED"
     | "SECURITY_MASTER_UNAVAILABLE";
+  readonly stage?: SecurityMasterApiUnavailableStage;
 
-  constructor(code: SecurityMasterApiCompositionError["code"]) {
+  constructor(
+    code: SecurityMasterApiCompositionError["code"],
+    stage?: SecurityMasterApiUnavailableStage,
+  ) {
     super("The personal security-master API composition is unavailable.");
     this.name = "SecurityMasterApiCompositionError";
     this.code = code;
+    if (stage !== undefined) this.stage = stage;
   }
 }
 
@@ -165,14 +172,17 @@ async function prepareSecurityMasterConfiguredApp(
   }
 
   let snapshot: Uint8Array | undefined;
+  let unavailableStage: SecurityMasterApiUnavailableStage = "snapshot_read";
   try {
     snapshot = await readStableSnapshot(snapshotPath);
+    unavailableStage = "snapshot_admission";
     const catalog = admitPersonalSecurityMasterSnapshot({
       expectedSha256: expectedSha256 as `sha256:${string}`,
       snapshot,
     });
     snapshot.fill(0);
     snapshot = undefined;
+    unavailableStage = "app_build";
     return await buildPersonalSecurityMasterApp(
       catalog,
       ownerSession,
@@ -180,7 +190,10 @@ async function prepareSecurityMasterConfiguredApp(
     );
   } catch {
     ownerSession.close();
-    throw new SecurityMasterApiCompositionError("SECURITY_MASTER_UNAVAILABLE");
+    throw new SecurityMasterApiCompositionError(
+      "SECURITY_MASTER_UNAVAILABLE",
+      unavailableStage,
+    );
   } finally {
     snapshot?.fill(0);
   }
@@ -206,7 +219,7 @@ async function readStableSnapshot(path: string): Promise<Uint8Array> {
       const opened = await handle.stat({ bigint: true });
       if (
         !isExpectedFile(opened) ||
-        !sameFileState(pathBefore, opened) ||
+        !isSecurityMasterSnapshotPathHandleIdentityStable(pathBefore, opened) ||
         opened.size > BigInt(PERSONAL_SECURITY_MASTER_LIMITS.snapshotBytes)
       ) {
         fail();
@@ -243,7 +256,10 @@ async function readStableSnapshot(path: string): Promise<Uint8Array> {
         !isExpectedFile(openedAfter) ||
         !isExpectedFile(pathAfter) ||
         !sameFileState(opened, openedAfter) ||
-        !sameFileState(openedAfter, pathAfter) ||
+        !isSecurityMasterSnapshotPathHandleIdentityStable(
+          openedAfter,
+          pathAfter,
+        ) ||
         !samePath(canonicalBefore, canonicalAfter) ||
         !samePath(canonicalAfter, path)
       ) {
@@ -273,8 +289,21 @@ function isExpectedFile(metadata: BigIntStats): boolean {
   );
 }
 
-/** @internal Pure regression seam for platform-specific snapshot state checks. */
-export function isSecurityMasterSnapshotFileStateStable(
+/** @internal Pure regression seam for pathname-to-descriptor identity checks. */
+export function isSecurityMasterSnapshotPathHandleIdentityStable(
+  left: Pick<BigIntStats, "dev" | "ino" | "nlink" | "size">,
+  right: Pick<BigIntStats, "dev" | "ino" | "nlink" | "size">,
+): boolean {
+  return (
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.nlink === right.nlink &&
+    left.size === right.size
+  );
+}
+
+/** @internal Pure regression seam for descriptor stability checks. */
+export function isSecurityMasterSnapshotDescriptorStateStable(
   left: Pick<
     BigIntStats,
     "ctimeNs" | "dev" | "ino" | "mode" | "mtimeNs" | "nlink" | "size"
@@ -301,7 +330,7 @@ export function isSecurityMasterSnapshotFileStateStable(
 }
 
 function sameFileState(left: BigIntStats, right: BigIntStats): boolean {
-  return isSecurityMasterSnapshotFileStateStable(left, right);
+  return isSecurityMasterSnapshotDescriptorStateStable(left, right);
 }
 
 function isValidSnapshotPath(value: unknown): value is string {
