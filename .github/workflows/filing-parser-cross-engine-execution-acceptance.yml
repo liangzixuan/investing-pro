@@ -155,6 +155,8 @@ jobs:
           cycle3c_source="4e9f011434382ccaae66f396fd5b163e4c0fc6be"
           cycle3c_routing="86e712574a5eee4e9f636c25ebd5d6fb70f20581"
           cycle3d_source="520fb9f860600c699b9a5a6fee940bc3e1cb185c"
+          cycle3d_routing="1c831d59cf1558e1b63c9031c598825349bcd516"
+          cycle3d_acl_corrective="5041b396f4cc89652b01f896ff9f69531cc2cb7e"
           protected=(
             ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
             "packages/filing-parser/src/corpus-admission.ts"
@@ -725,6 +727,11 @@ jobs:
             "M" "scripts/verify-boundaries.ts"
           )
           expected_cycle3d_routing=("${expected_cycle3c_routing[@]}")
+          expected_cycle3d_acl_corrective=(
+            "M" "packages/local-research-vault/src/windows-owner-only-acl.test.ts"
+            "M" "packages/local-research-vault/src/windows-owner-only-acl.ts"
+          )
+          expected_cycle3d_corrective_routing=("${expected_cycle3d_routing[@]}")
           cycle3b_protected=()
           for ((cycle3b_index = 1; cycle3b_index < ${#expected_cycle3b_source[@]}; cycle3b_index += 2)); do
             cycle3b_protected+=("${expected_cycle3b_source[$cycle3b_index]}")
@@ -742,6 +749,12 @@ jobs:
           done
           for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_routing[@]}; cycle3d_index += 2)); do
             cycle3d_protected+=("${expected_cycle3d_routing[$cycle3d_index]}")
+          done
+          for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_acl_corrective[@]}; cycle3d_index += 2)); do
+            cycle3d_protected+=("${expected_cycle3d_acl_corrective[$cycle3d_index]}")
+          done
+          for ((cycle3d_index = 1; cycle3d_index < ${#expected_cycle3d_corrective_routing[@]}; cycle3d_index += 2)); do
+            cycle3d_protected+=("${expected_cycle3d_corrective_routing[$cycle3d_index]}")
           done
           matches_exactly() {
             local -n expected_values="$1"
@@ -843,7 +856,9 @@ jobs:
                    git cat-file -e "$cycle3b_corrective^{commit}" && \
                    git cat-file -e "$cycle3c_source^{commit}" && \
                    git cat-file -e "$cycle3c_routing^{commit}" && \
-                   git cat-file -e "$cycle3d_source^{commit}"; then
+                   git cat-file -e "$cycle3d_source^{commit}" && \
+                   git cat-file -e "$cycle3d_routing^{commit}" && \
+                   git cat-file -e "$cycle3d_acl_corrective^{commit}"; then
                 read -r -a cycle2z_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a cycle2z_source_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_source")"
                 read -r -a cycle2z_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle2z_routing_closure")"
@@ -859,6 +874,8 @@ jobs:
                 read -r -a cycle3c_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3c_source")"
                 read -r -a cycle3c_routing_topology <<< "$(git rev-list --parents -n 1 "$cycle3c_routing")"
                 read -r -a cycle3d_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_source")"
+                read -r -a cycle3d_routing_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_routing")"
+                read -r -a cycle3d_acl_corrective_topology <<< "$(git rev-list --parents -n 1 "$cycle3d_acl_corrective")"
                 cycle2z_merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 cycle2z_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 cycle2z_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
@@ -899,7 +916,13 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3c_routing" "$cycle3d_source" --
                 )
                 mapfile -d '' -t cycle3d_routing_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3d_source" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3d_source" "$cycle3d_routing" --
+                )
+                mapfile -d '' -t cycle3d_acl_corrective_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3d_routing" "$cycle3d_acl_corrective" --
+                )
+                mapfile -d '' -t cycle3d_corrective_routing_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3d_acl_corrective" HEAD --
                 )
                 if [[ "$head_revision" == "$GITHUB_SHA" ]] && \
                    [[ "$cycle2z_merge_base" == "$cycle2z_baseline" ]] && \
@@ -1128,7 +1151,7 @@ jobs:
                     cycle3d=true
                   elif [[ "$cycle2z_successor_count" == "15" ]] && \
                        [[ "$cycle2z_first_parent_count" == "15" ]] && \
-                       [[ "$head_revision" != "$cycle3d_source" ]] && \
+                       [[ "$head_revision" == "$cycle3d_routing" ]] && \
                        [[ "${#cycle2z_topology[@]}" == "2" ]] && \
                        [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
                        [[ "${cycle2z_topology[1]}" == "$cycle3d_source" ]] && \
@@ -1155,6 +1178,70 @@ jobs:
                     cycle3b=true
                     cycle3c=true
                     cycle3d=true
+                  elif [[ "$cycle2z_successor_count" == "16" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "16" ]] && \
+                       [[ "$head_revision" == "$cycle3d_acl_corrective" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3d_routing" ]] && \
+                       [[ "${#cycle3d_routing_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3d_routing_topology[0]}" == "$cycle3d_routing" ]] && \
+                       [[ "${cycle3d_routing_topology[1]}" == "$cycle3d_source" ]] && \
+                       [[ "${#cycle3d_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3d_source_topology[0]}" == "$cycle3d_source" ]] && \
+                       [[ "${cycle3d_source_topology[1]}" == "$cycle3c_routing" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                       matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                       matches_exactly expected_cycle3c_routing cycle3c_routing_actual && \
+                       matches_exactly expected_cycle3d_source cycle3d_source_actual && \
+                       matches_exactly expected_cycle3d_routing cycle3d_routing_actual && \
+                       matches_exactly expected_cycle3d_acl_corrective cycle3d_acl_corrective_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                    cycle3c=true
+                    cycle3d=true
+                  elif [[ "$cycle2z_successor_count" == "17" ]] && \
+                       [[ "$cycle2z_first_parent_count" == "17" ]] && \
+                       [[ "$head_revision" != "$cycle3d_acl_corrective" ]] && \
+                       [[ "${#cycle2z_topology[@]}" == "2" ]] && \
+                       [[ "${cycle2z_topology[0]}" == "$GITHUB_SHA" ]] && \
+                       [[ "${cycle2z_topology[1]}" == "$cycle3d_acl_corrective" ]] && \
+                       [[ "${#cycle3d_acl_corrective_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3d_acl_corrective_topology[0]}" == "$cycle3d_acl_corrective" ]] && \
+                       [[ "${cycle3d_acl_corrective_topology[1]}" == "$cycle3d_routing" ]] && \
+                       [[ "${#cycle3d_routing_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3d_routing_topology[0]}" == "$cycle3d_routing" ]] && \
+                       [[ "${cycle3d_routing_topology[1]}" == "$cycle3d_source" ]] && \
+                       [[ "${#cycle3d_source_topology[@]}" == "2" ]] && \
+                       [[ "${cycle3d_source_topology[0]}" == "$cycle3d_source" ]] && \
+                       [[ "${cycle3d_source_topology[1]}" == "$cycle3c_routing" ]] && \
+                       matches_exactly expected_cycle2z_maintenance_routing cycle2z_maintenance_parent_actual && \
+                       matches_exactly expected_cycle2z_roadmap_rebaseline cycle2z_roadmap_rebaseline_actual && \
+                       matches_exactly expected_cycle2z_ubuntu_ci_stabilization cycle2z_ubuntu_ci_stabilization_actual && \
+                       matches_exactly expected_cycle3a_source cycle3a_source_actual && \
+                       matches_exactly expected_cycle3a_promotion cycle3a_promotion_actual && \
+                       matches_exactly expected_cycle3b_source cycle3b_source_actual && \
+                       matches_exactly expected_cycle3b_corrective cycle3b_corrective_actual && \
+                       matches_exactly expected_cycle3c_source cycle3c_source_actual && \
+                       matches_exactly expected_cycle3c_routing cycle3c_routing_actual && \
+                       matches_exactly expected_cycle3d_source cycle3d_source_actual && \
+                       matches_exactly expected_cycle3d_routing cycle3d_routing_actual && \
+                       matches_exactly expected_cycle3d_acl_corrective cycle3d_acl_corrective_actual && \
+                       matches_exactly expected_cycle3d_corrective_routing cycle3d_corrective_routing_actual; then
+                    exact=true
+                    cycle2z=true
+                    cycle3a=true
+                    cycle3b=true
+                    cycle3c=true
+                    cycle3d=true
                   fi
                 fi
               fi
@@ -1168,7 +1255,7 @@ jobs:
           echo "cycle3c=$cycle3c" >> "$GITHUB_OUTPUT"
           echo "cycle3d=$cycle3d" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d closure; refusing inherited evidence routing." >&2
+            echo "Protected personal filing surfaces changed outside the exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, Cycle 3d, or Cycle 3d ACL-corrective closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2w personal raw fact extraction before inherited routes
@@ -2207,7 +2294,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
-              echo "Cycle 3d is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
+              echo "Cycle 3d, including its bounded Windows ACL corrective, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
               echo "Cycle 3c is a provider-neutral connected-source policy route only. Cycle 2o canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c; no replacement artifact was generated."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3b }}" == "true" ]]; then

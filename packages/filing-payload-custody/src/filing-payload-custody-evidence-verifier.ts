@@ -116,6 +116,10 @@ const CYCLE_3C_ROUTING_CLOSURE_REVISION =
   "86e712574a5eee4e9f636c25ebd5d6fb70f20581" as const;
 const CYCLE_3D_SOURCE_REVISION =
   "520fb9f860600c699b9a5a6fee940bc3e1cb185c" as const;
+const CYCLE_3D_ROUTING_CLOSURE_REVISION =
+  "1c831d59cf1558e1b63c9031c598825349bcd516" as const;
+const CYCLE_3D_ACL_CORRECTIVE_REVISION =
+  "5041b396f4cc89652b01f896ff9f69531cc2cb7e" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2495,6 +2499,19 @@ const CYCLE_3D_SOURCE_TRANSITION = Object.freeze(
 const CYCLE_3D_ROUTING_CLOSURE_TRANSITION = Object.freeze([
   ...CYCLE_3C_ROUTING_CLOSURE_TRANSITION,
 ]);
+const CYCLE_3D_ACL_CORRECTIVE_TRANSITION = Object.freeze([
+  {
+    path: "packages/local-research-vault/src/windows-owner-only-acl.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/local-research-vault/src/windows-owner-only-acl.ts",
+    status: "M",
+  },
+]);
+const CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION = Object.freeze([
+  ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION,
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -2702,6 +2719,8 @@ const CYCLE_3D_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3C_PROTECTED_SURFACE_PATHS,
   ...CYCLE_3D_SOURCE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3D_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3D_ACL_CORRECTIVE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -4283,7 +4302,7 @@ export function isCycle3dSourceTopologyAllowed(
   );
 }
 
-/** @internal One exact merge-free custody-routing child after Cycle 3d source. */
+/** @internal Exact pinned merge-free custody-routing child after Cycle 3d source. */
 export function isCycle3dRoutingClosureTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -4307,15 +4326,123 @@ export function isCycle3dRoutingClosureTopologyAllowed(
   return (
     successorCount === "15" &&
     firstParentCount === "15" &&
-    COMMIT.test(revision) &&
-    revision !== CYCLE_3D_SOURCE_REVISION &&
-    parentLine === `${revision} ${CYCLE_3D_SOURCE_REVISION}` &&
+    revision === CYCLE_3D_ROUTING_CLOSURE_REVISION &&
+    parentLine ===
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}` &&
     cycle3dSourceParentLine ===
       `${CYCLE_3D_SOURCE_REVISION} ${CYCLE_3C_ROUTING_CLOSURE_REVISION}` &&
     isCycle3dSourceTopologyAllowed(
       "14",
       "14",
       CYCLE_3D_SOURCE_REVISION,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal Exact pinned merge-free Windows ACL corrective source. */
+export function isCycle3dAclCorrectiveTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bCorrectiveParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "16" &&
+    firstParentCount === "16" &&
+    revision === CYCLE_3D_ACL_CORRECTIVE_REVISION &&
+    parentLine ===
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}` &&
+    cycle3dRoutingClosureParentLine ===
+      `${CYCLE_3D_ROUTING_CLOSURE_REVISION} ${CYCLE_3D_SOURCE_REVISION}` &&
+    isCycle3dRoutingClosureTopologyAllowed(
+      "15",
+      "15",
+      CYCLE_3D_ROUTING_CLOSURE_REVISION,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    )
+  );
+}
+
+/** @internal One exact merge-free custody-routing child after the ACL corrective. */
+export function isCycle3dCorrectiveRoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  cycle3dAclCorrectiveParentLine: string,
+  cycle3dRoutingClosureParentLine: string,
+  cycle3dSourceParentLine: string,
+  cycle3cRoutingClosureParentLine: string,
+  cycle3cSourceParentLine: string,
+  cycle3bCorrectiveParentLine: string,
+  cycle3bSourceParentLine: string,
+  cycle3aPromotionParentLine: string,
+  cycle3aSourceParentLine: string,
+  ubuntuCiStabilizationParentLine: string,
+  roadmapRebaselineParentLine: string,
+  commitBoundaryCorrectiveParentLine: string,
+  stabilizationParentLine: string,
+  promotionParentLine: string,
+  routingClosureParentLine: string,
+  sourceParentLine: string,
+): boolean {
+  return (
+    successorCount === "17" &&
+    firstParentCount === "17" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_3D_ACL_CORRECTIVE_REVISION &&
+    parentLine === `${revision} ${CYCLE_3D_ACL_CORRECTIVE_REVISION}` &&
+    cycle3dAclCorrectiveParentLine ===
+      `${CYCLE_3D_ACL_CORRECTIVE_REVISION} ${CYCLE_3D_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3dAclCorrectiveTopologyAllowed(
+      "16",
+      "16",
+      CYCLE_3D_ACL_CORRECTIVE_REVISION,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
       cycle3dSourceParentLine,
       cycle3cRoutingClosureParentLine,
       cycle3cSourceParentLine,
@@ -5410,6 +5537,23 @@ export function isCycle3dRoutingClosureCommitDiffSetAllowed(
   }[],
 ): boolean {
   return exactCycle2pDiffSet(entries, CYCLE_3D_ROUTING_CLOSURE_TRANSITION);
+}
+
+/** @internal Exact Cycle 3d Windows ACL corrective source transition. */
+export function isCycle3dAclCorrectiveCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_3D_ACL_CORRECTIVE_TRANSITION);
+}
+
+/** @internal Exact Cycle 3d corrective custody-routing closure transition. */
+export function isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_3D_CORRECTIVE_ROUTING_CLOSURE_TRANSITION,
+  );
 }
 
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
@@ -6634,6 +6778,8 @@ async function verifyCycle2zTransition(
     CYCLE_3C_SOURCE_REVISION,
     CYCLE_3C_ROUTING_CLOSURE_REVISION,
     CYCLE_3D_SOURCE_REVISION,
+    CYCLE_3D_ROUTING_CLOSURE_REVISION,
+    CYCLE_3D_ACL_CORRECTIVE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -6802,6 +6948,30 @@ async function verifyCycle2zTransition(
     revision,
     parentLine,
   );
+  const cycle3dRoutingClosureParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3D_ROUTING_CLOSURE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
+  const cycle3dAclCorrectiveParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3D_ACL_CORRECTIVE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
   const correctiveChild = isCycle2zCorrectiveTopologyAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -6955,7 +7125,7 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
-  const cycle3dRoutingClosure = isCycle3dRoutingClosureTopologyAllowed(
+  const cycle3dOriginalRoutingClosure = isCycle3dRoutingClosureTopologyAllowed(
     String(successorCount),
     String(firstParentCount),
     revision,
@@ -6975,6 +7145,54 @@ async function verifyCycle2zTransition(
     routingClosureParentLine,
     sourceParentLine,
   );
+  const cycle3dAclCorrective = isCycle3dAclCorrectiveTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    cycle3dRoutingClosureParentLine,
+    cycle3dSourceParentLine,
+    cycle3cRoutingClosureParentLine,
+    cycle3cSourceParentLine,
+    cycle3bCorrectiveParentLine,
+    cycle3bSourceParentLine,
+    cycle3aPromotionParentLine,
+    cycle3aSourceParentLine,
+    ubuntuCiStabilizationParentLine,
+    roadmapRebaselineParentLine,
+    commitBoundaryCorrectiveParentLine,
+    stabilizationParentLine,
+    promotionParentLine,
+    routingClosureParentLine,
+    sourceParentLine,
+  );
+  const cycle3dCorrectiveRoutingClosure =
+    isCycle3dCorrectiveRoutingClosureTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      cycle3dAclCorrectiveParentLine,
+      cycle3dRoutingClosureParentLine,
+      cycle3dSourceParentLine,
+      cycle3cRoutingClosureParentLine,
+      cycle3cSourceParentLine,
+      cycle3bCorrectiveParentLine,
+      cycle3bSourceParentLine,
+      cycle3aPromotionParentLine,
+      cycle3aSourceParentLine,
+      ubuntuCiStabilizationParentLine,
+      roadmapRebaselineParentLine,
+      commitBoundaryCorrectiveParentLine,
+      stabilizationParentLine,
+      promotionParentLine,
+      routingClosureParentLine,
+      sourceParentLine,
+    );
+  const cycle3dRoutingClosure =
+    cycle3dOriginalRoutingClosure ||
+    cycle3dAclCorrective ||
+    cycle3dCorrectiveRoutingClosure;
   if (
     !directSource &&
     !correctiveChild &&
@@ -6988,7 +7206,9 @@ async function verifyCycle2zTransition(
     !cycle3cSource &&
     !cycle3cRoutingClosure &&
     !cycle3dSource &&
-    !cycle3dRoutingClosure
+    !cycle3dRoutingClosure &&
+    !cycle3dAclCorrective &&
+    !cycle3dCorrectiveRoutingClosure
   )
     invalid();
 
@@ -7207,9 +7427,26 @@ async function verifyCycle2zTransition(
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3D_SOURCE_REVISION,
-      revision,
+      CYCLE_3D_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle3dRoutingClosureCommitDiffSetAllowed(entries)) invalid();
+  }
+  if (cycle3dAclCorrective || cycle3dCorrectiveRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_ROUTING_CLOSURE_REVISION,
+      CYCLE_3D_ACL_CORRECTIVE_REVISION,
+    );
+    if (!isCycle3dAclCorrectiveCommitDiffSetAllowed(entries)) invalid();
+  }
+  if (cycle3dCorrectiveRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3D_ACL_CORRECTIVE_REVISION,
+      revision,
+    );
+    if (!isCycle3dCorrectiveRoutingClosureCommitDiffSetAllowed(entries))
+      invalid();
   }
 
   await verifyCycle2xTransition(

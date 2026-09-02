@@ -107,6 +107,8 @@ jobs:
           pnpm guardrails:filing-parser-fixtures
 
       - name: Run one-shot filing parser acceptance
+        # Cycle 3d ACL-corrective routing preserves the inherited parser
+        # contract; this job still verifies exact-HEAD parser evidence.
         env:
           CI: "true"
           FILING_PARSER_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-isolation-v1.json
