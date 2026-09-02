@@ -164,6 +164,8 @@ const CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION =
   "04cd7793694c1e59f91d17a7a3501b37c95b43d2" as const;
 const CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION =
   "9053de8c7ef10dcf05267f0b4b30907fab9d7271" as const;
+const CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION =
+  "543a0bd806d02e9e527be243f4dd98dc1c17c3c9" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2841,6 +2843,37 @@ const CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_TRANSITION =
       status: "M",
     },
   ]);
+const CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION =
+  Object.freeze([
+    {
+      path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      status: "M",
+    },
+    {
+      path: "apps/api/src/security-master-composition-root.test.ts",
+      status: "M",
+    },
+    {
+      path: "apps/api/src/security-master-composition-root.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      status: "M",
+    },
+  ]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3077,6 +3110,9 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
     (entry) => entry.path,
   ),
   ...CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_TRANSITION.map(
+    (entry) => entry.path,
+  ),
+  ...CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION.map(
     (entry) => entry.path,
   ),
 ]);
@@ -5590,8 +5626,8 @@ export function isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
 }
 
 /**
- * @internal One merge-free metadata-view/diagnostic stabilization child of the
- * exact Windows stable-file stabilization. Prepared and unpromoted.
+ * @internal Exact merge-free metadata-view/diagnostic stabilization child of
+ * the Windows stable-file stabilization. Prepared and unpromoted.
  */
 export function isCycle3eaWindowsSnapshotMetadataStabilizationTopologyAllowed(
   successorCount: string,
@@ -5607,16 +5643,47 @@ export function isCycle3eaWindowsSnapshotMetadataStabilizationTopologyAllowed(
   return (
     successorCount === "30" &&
     firstParentCount === "30" &&
-    COMMIT_SHA.test(revision) &&
-    revision !== CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION &&
+    revision === CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION}` &&
+      `${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION} ${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION}` &&
     windowsStabilizationTopology[2] ===
       CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION &&
     windowsStabilizationTopology[3] ===
       `${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION} ${CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION}` &&
     isCycle3eaWindowsStableFileStabilizationTopologyAllowed(
       ...windowsStabilizationTopology,
+    )
+  );
+}
+
+/**
+ * @internal One merge-free canonical-temp-fixture stabilization child of the
+ * exact Windows snapshot-metadata stabilization. Prepared and unpromoted.
+ */
+export function isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  metadataStabilizationTopology: readonly [
+    ...Parameters<
+      typeof isCycle3eaWindowsSnapshotMetadataStabilizationTopologyAllowed
+    >,
+  ],
+): boolean {
+  return (
+    successorCount === "31" &&
+    firstParentCount === "31" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION}` &&
+    metadataStabilizationTopology[2] ===
+      CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION &&
+    metadataStabilizationTopology[3] ===
+      `${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION} ${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION}` &&
+    isCycle3eaWindowsSnapshotMetadataStabilizationTopologyAllowed(
+      ...metadataStabilizationTopology,
     )
   );
 }
@@ -6963,6 +7030,16 @@ export function isCycle3eaWindowsSnapshotMetadataStabilizationCommitDiffSetAllow
   );
 }
 
+/** @internal Exact Cycle 3e-a canonical-temp-fixture stabilization. */
+export function isCycle3eaCanonicalTempFixtureStabilizationCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -8152,6 +8229,7 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_REVISION,
     CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_REVISION,
     CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION,
+    CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -8498,6 +8576,19 @@ async function verifyCycle2zTransition(
       128,
     ),
   );
+  const cycle3eaWindowsSnapshotMetadataStabilizationParentLine =
+    decodeGitParentLine(
+      await git(
+        repositoryPath,
+        [
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
+        ],
+        128,
+      ),
+    );
   const directSource = isCycle2zDirectChildAllowed(
     successorCount,
     firstParentCount,
@@ -8973,6 +9064,13 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsStableFileStabilizationParentLine,
     pinnedCycle3eaSyntheticBenchmarkTimeoutStabilizationTopology,
   ] as const;
+  const pinnedCycle3eaWindowsSnapshotMetadataStabilizationTopology = [
+    "30",
+    "30",
+    CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
+    cycle3eaWindowsSnapshotMetadataStabilizationParentLine,
+    pinnedCycle3eaWindowsStableFileStabilizationTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     successorCount,
     firstParentCount,
@@ -9019,13 +9117,22 @@ async function verifyCycle2zTransition(
       parentLine,
       pinnedCycle3eaWindowsStableFileStabilizationTopology,
     );
+  const cycle3eaCanonicalTempFixtureStabilization =
+    isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+      pinnedCycle3eaWindowsSnapshotMetadataStabilizationTopology,
+    );
   const cycle3eRouting =
     cycle3eaSource ||
     cycle3eaRoutingClosure ||
     cycle3eaWorkflowExpressionStabilization ||
     cycle3eaSyntheticBenchmarkTimeoutStabilization ||
     cycle3eaWindowsStableFileStabilization ||
-    cycle3eaWindowsSnapshotMetadataStabilization;
+    cycle3eaWindowsSnapshotMetadataStabilization ||
+    cycle3eaCanonicalTempFixtureStabilization;
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
@@ -9443,7 +9550,8 @@ async function verifyCycle2zTransition(
     cycle3eaWorkflowExpressionStabilization ||
     cycle3eaSyntheticBenchmarkTimeoutStabilization ||
     cycle3eaWindowsStableFileStabilization ||
-    cycle3eaWindowsSnapshotMetadataStabilization
+    cycle3eaWindowsSnapshotMetadataStabilization ||
+    cycle3eaCanonicalTempFixtureStabilization
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9456,7 +9564,8 @@ async function verifyCycle2zTransition(
     cycle3eaWorkflowExpressionStabilization ||
     cycle3eaSyntheticBenchmarkTimeoutStabilization ||
     cycle3eaWindowsStableFileStabilization ||
-    cycle3eaWindowsSnapshotMetadataStabilization
+    cycle3eaWindowsSnapshotMetadataStabilization ||
+    cycle3eaCanonicalTempFixtureStabilization
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9471,7 +9580,8 @@ async function verifyCycle2zTransition(
   if (
     cycle3eaSyntheticBenchmarkTimeoutStabilization ||
     cycle3eaWindowsStableFileStabilization ||
-    cycle3eaWindowsSnapshotMetadataStabilization
+    cycle3eaWindowsSnapshotMetadataStabilization ||
+    cycle3eaCanonicalTempFixtureStabilization
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9489,7 +9599,8 @@ async function verifyCycle2zTransition(
   }
   if (
     cycle3eaWindowsStableFileStabilization ||
-    cycle3eaWindowsSnapshotMetadataStabilization
+    cycle3eaWindowsSnapshotMetadataStabilization ||
+    cycle3eaCanonicalTempFixtureStabilization
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9501,16 +9612,32 @@ async function verifyCycle2zTransition(
     if (!isCycle3eaWindowsStableFileStabilizationCommitDiffSetAllowed(entries))
       invalidReview();
   }
-  if (cycle3eaWindowsSnapshotMetadataStabilization) {
+  if (
+    cycle3eaWindowsSnapshotMetadataStabilization ||
+    cycle3eaCanonicalTempFixtureStabilization
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION,
-      revision,
+      cycle3eaWindowsSnapshotMetadataStabilization
+        ? revision
+        : CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
     );
     if (
       !isCycle3eaWindowsSnapshotMetadataStabilizationCommitDiffSetAllowed(
         entries,
       )
+    )
+      invalidReview();
+  }
+  if (cycle3eaCanonicalTempFixtureStabilization) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
+      revision,
+    );
+    if (
+      !isCycle3eaCanonicalTempFixtureStabilizationCommitDiffSetAllowed(entries)
     )
       invalidReview();
   }

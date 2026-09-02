@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { link, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { link, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -294,7 +294,10 @@ describe("personal security-master API composition", () => {
     });
 
     const hardLinkDirectory = await mkdtemp(
-      join(tmpdir(), "research-cockpit-security-master-hardlink-"),
+      join(
+        await realpath(tmpdir()),
+        "research-cockpit-security-master-hardlink-",
+      ),
     );
     directories.push(hardLinkDirectory);
     const original = join(hardLinkDirectory, "original.json");
@@ -371,7 +374,7 @@ describe("personal security-master API composition", () => {
 
 async function createSnapshotFixture() {
   const directory = await mkdtemp(
-    join(tmpdir(), "research-cockpit-security-master-"),
+    join(await realpath(tmpdir()), "research-cockpit-security-master-"),
   );
   directories.push(directory);
   const snapshotPath = join(

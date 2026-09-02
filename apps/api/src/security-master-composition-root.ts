@@ -205,6 +205,8 @@ async function readStableSnapshot(path: string): Promise<Uint8Array> {
     const resolvedPath = resolve(path);
     const canonicalBefore = await realpath(path);
     const pathBefore = await lstat(path, { bigint: true });
+    // Require the configured path itself to be canonical. Silently substituting
+    // canonicalBefore would accept aliases and weaken the pathname checks.
     if (
       !samePath(resolvedPath, path) ||
       !samePath(canonicalBefore, path) ||

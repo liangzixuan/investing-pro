@@ -146,6 +146,7 @@ jobs:
           workflow_stabilization="88124260e727c67018dca4417c1b8d471ae50d4f"
           benchmark_stabilization="04cd7793694c1e59f91d17a7a3501b37c95b43d2"
           windows_stable_file_stabilization="9053de8c7ef10dcf05267f0b4b30907fab9d7271"
+          windows_snapshot_metadata_stabilization="543a0bd806d02e9e527be243f4dd98dc1c17c3c9"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -241,6 +242,15 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_windows_canonical_temp_fixture_stabilization=(
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" "apps/api/src/security-master-composition-root.test.ts"
+            "M" "apps/api/src/security-master-composition-root.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
@@ -259,6 +269,9 @@ jobs:
           done
           for ((index = 1; index < ${#expected_windows_snapshot_metadata_stabilization[@]}; index += 2)); do
             protected+=("${expected_windows_snapshot_metadata_stabilization[$index]}")
+          done
+          for ((index = 1; index < ${#expected_windows_canonical_temp_fixture_stabilization[@]}; index += 2)); do
+            protected+=("${expected_windows_canonical_temp_fixture_stabilization[$index]}")
           done
           matches_exactly() {
             local -n expected_values="$1"
@@ -285,7 +298,8 @@ jobs:
                  git cat-file -e "$routing^{commit}" && \
                  git cat-file -e "$workflow_stabilization^{commit}" && \
                  git cat-file -e "$benchmark_stabilization^{commit}" && \
-                 git cat-file -e "$windows_stable_file_stabilization^{commit}"; then
+                 git cat-file -e "$windows_stable_file_stabilization^{commit}" && \
+                 git cat-file -e "$windows_snapshot_metadata_stabilization^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -293,6 +307,7 @@ jobs:
                 read -r -a workflow_stabilization_topology <<< "$(git rev-list --parents -n 1 "$workflow_stabilization")"
                 read -r -a benchmark_stabilization_topology <<< "$(git rev-list --parents -n 1 "$benchmark_stabilization")"
                 read -r -a windows_stable_file_stabilization_topology <<< "$(git rev-list --parents -n 1 "$windows_stable_file_stabilization")"
+                read -r -a windows_snapshot_metadata_stabilization_topology <<< "$(git rev-list --parents -n 1 "$windows_snapshot_metadata_stabilization")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -306,6 +321,8 @@ jobs:
                 benchmark_stabilization_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$benchmark_stabilization")"
                 windows_stable_file_stabilization_successor_count="$(git rev-list --count "$cycle2z_baseline".."$windows_stable_file_stabilization")"
                 windows_stable_file_stabilization_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$windows_stable_file_stabilization")"
+                windows_snapshot_metadata_stabilization_successor_count="$(git rev-list --count "$cycle2z_baseline".."$windows_snapshot_metadata_stabilization")"
+                windows_snapshot_metadata_stabilization_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$windows_snapshot_metadata_stabilization")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
@@ -324,7 +341,10 @@ jobs:
                   git diff --name-status --no-renames -z "$benchmark_stabilization" "$windows_stable_file_stabilization" --
                 )
                 mapfile -d '' -t windows_snapshot_metadata_stabilization_actual < <(
-                  git diff --name-status --no-renames -z "$windows_stable_file_stabilization" HEAD --
+                  git diff --name-status --no-renames -z "$windows_stable_file_stabilization" "$windows_snapshot_metadata_stabilization" --
+                )
+                mapfile -d '' -t windows_canonical_temp_fixture_stabilization_actual < <(
+                  git diff --name-status --no-renames -z "$windows_snapshot_metadata_stabilization" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -448,15 +468,11 @@ jobs:
                    exact=true
                 elif [[ "$history_exact" == "true" ]] && \
                      [[ "$head_revision" == "$GITHUB_SHA" ]] && \
-                     [[ "$head_revision" != "$source" ]] && \
-                     [[ "$head_revision" != "$routing" ]] && \
-                     [[ "$head_revision" != "$workflow_stabilization" ]] && \
-                     [[ "$head_revision" != "$benchmark_stabilization" ]] && \
-                     [[ "$head_revision" != "$windows_stable_file_stabilization" ]] && \
+                     [[ "$head_revision" == "$windows_snapshot_metadata_stabilization" ]] && \
                      [[ "$head_successor_count" == "30" ]] && \
                      [[ "$head_first_parent_count" == "30" ]] && \
                      [[ "${#head_topology[@]}" == "2" ]] && \
-                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[0]}" == "$windows_snapshot_metadata_stabilization" ]] && \
                      [[ "${head_topology[1]}" == "$windows_stable_file_stabilization" ]] && \
                      [[ "$routing_successor_count" == "26" ]] && \
                      [[ "$routing_first_parent_count" == "26" ]] && \
@@ -478,11 +494,61 @@ jobs:
                      [[ "${#windows_stable_file_stabilization_topology[@]}" == "2" ]] && \
                      [[ "${windows_stable_file_stabilization_topology[0]}" == "$windows_stable_file_stabilization" ]] && \
                      [[ "${windows_stable_file_stabilization_topology[1]}" == "$benchmark_stabilization" ]] && \
+                     [[ "$windows_snapshot_metadata_stabilization_successor_count" == "30" ]] && \
+                     [[ "$windows_snapshot_metadata_stabilization_first_parent_count" == "30" ]] && \
+                     [[ "${#windows_snapshot_metadata_stabilization_topology[@]}" == "2" ]] && \
+                     [[ "${windows_snapshot_metadata_stabilization_topology[0]}" == "$windows_snapshot_metadata_stabilization" ]] && \
+                     [[ "${windows_snapshot_metadata_stabilization_topology[1]}" == "$windows_stable_file_stabilization" ]] && \
                      matches_exactly expected_routing routing_actual && \
                      matches_exactly expected_workflow_stabilization stabilization_actual && \
                      matches_exactly expected_benchmark_stabilization benchmark_stabilization_actual && \
                      matches_exactly expected_windows_stable_file_stabilization windows_stable_file_stabilization_actual && \
                      matches_exactly expected_windows_snapshot_metadata_stabilization windows_snapshot_metadata_stabilization_actual; then
+                   exact=true
+                elif [[ "$history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$source" ]] && \
+                     [[ "$head_revision" != "$routing" ]] && \
+                     [[ "$head_revision" != "$workflow_stabilization" ]] && \
+                     [[ "$head_revision" != "$benchmark_stabilization" ]] && \
+                     [[ "$head_revision" != "$windows_stable_file_stabilization" ]] && \
+                     [[ "$head_revision" != "$windows_snapshot_metadata_stabilization" ]] && \
+                     [[ "$head_successor_count" == "31" ]] && \
+                     [[ "$head_first_parent_count" == "31" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[1]}" == "$windows_snapshot_metadata_stabilization" ]] && \
+                     [[ "$routing_successor_count" == "26" ]] && \
+                     [[ "$routing_first_parent_count" == "26" ]] && \
+                     [[ "${#routing_topology[@]}" == "2" ]] && \
+                     [[ "${routing_topology[0]}" == "$routing" ]] && \
+                     [[ "${routing_topology[1]}" == "$source" ]] && \
+                     [[ "$workflow_stabilization_successor_count" == "27" ]] && \
+                     [[ "$workflow_stabilization_first_parent_count" == "27" ]] && \
+                     [[ "${#workflow_stabilization_topology[@]}" == "2" ]] && \
+                     [[ "${workflow_stabilization_topology[0]}" == "$workflow_stabilization" ]] && \
+                     [[ "${workflow_stabilization_topology[1]}" == "$routing" ]] && \
+                     [[ "$benchmark_stabilization_successor_count" == "28" ]] && \
+                     [[ "$benchmark_stabilization_first_parent_count" == "28" ]] && \
+                     [[ "${#benchmark_stabilization_topology[@]}" == "2" ]] && \
+                     [[ "${benchmark_stabilization_topology[0]}" == "$benchmark_stabilization" ]] && \
+                     [[ "${benchmark_stabilization_topology[1]}" == "$workflow_stabilization" ]] && \
+                     [[ "$windows_stable_file_stabilization_successor_count" == "29" ]] && \
+                     [[ "$windows_stable_file_stabilization_first_parent_count" == "29" ]] && \
+                     [[ "${#windows_stable_file_stabilization_topology[@]}" == "2" ]] && \
+                     [[ "${windows_stable_file_stabilization_topology[0]}" == "$windows_stable_file_stabilization" ]] && \
+                     [[ "${windows_stable_file_stabilization_topology[1]}" == "$benchmark_stabilization" ]] && \
+                     [[ "$windows_snapshot_metadata_stabilization_successor_count" == "30" ]] && \
+                     [[ "$windows_snapshot_metadata_stabilization_first_parent_count" == "30" ]] && \
+                     [[ "${#windows_snapshot_metadata_stabilization_topology[@]}" == "2" ]] && \
+                     [[ "${windows_snapshot_metadata_stabilization_topology[0]}" == "$windows_snapshot_metadata_stabilization" ]] && \
+                     [[ "${windows_snapshot_metadata_stabilization_topology[1]}" == "$windows_stable_file_stabilization" ]] && \
+                     matches_exactly expected_routing routing_actual && \
+                     matches_exactly expected_workflow_stabilization stabilization_actual && \
+                     matches_exactly expected_benchmark_stabilization benchmark_stabilization_actual && \
+                     matches_exactly expected_windows_stable_file_stabilization windows_stable_file_stabilization_actual && \
+                     matches_exactly expected_windows_snapshot_metadata_stabilization windows_snapshot_metadata_stabilization_actual && \
+                     matches_exactly expected_windows_canonical_temp_fixture_stabilization windows_canonical_temp_fixture_stabilization_actual; then
                    exact=true
                 fi
               fi
@@ -491,7 +557,7 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Cycle 3e-a protected surfaces changed outside its exact prepared source and pinned stabilization chain, or one merge-free Windows snapshot-metadata stabilization child; refusing inherited evidence routing." >&2
+            echo "Cycle 3e-a protected surfaces changed outside its exact prepared source and pinned stabilization chain, or one merge-free Windows canonical-temp-fixture stabilization child; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
@@ -3133,7 +3199,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3e }}" == "true" ]]; then
-              echo "Cycle 3e-a is a prepared, unpromoted owner-local security-master source with its exact merge-free routing and stabilization chain, including Windows snapshot-metadata stabilization. No real security-master source bytes, breadth claim, private payload, or replacement Cycle 2o artifact was generated; prior Cycle 3c/3d promotion evidence remains preserved and canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
+              echo "Cycle 3e-a is a prepared, unpromoted owner-local security-master source with its exact merge-free routing and stabilization chain, including Windows snapshot-metadata and canonical-temp-fixture stabilization. No real security-master source bytes, breadth claim, private payload, or replacement Cycle 2o artifact was generated; prior Cycle 3c/3d promotion evidence remains preserved and canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
               echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, parser-timeout, and joint Cycle 3c/3d public-promotion stages, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
