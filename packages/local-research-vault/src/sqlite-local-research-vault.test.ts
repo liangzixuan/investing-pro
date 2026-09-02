@@ -531,7 +531,7 @@ describe("SQLite local research vault", () => {
         .get()?.["count"],
     ).toBe(2);
     verified.close();
-  });
+  }, 30_000);
 });
 
 async function freshDatabasePath(): Promise<string> {

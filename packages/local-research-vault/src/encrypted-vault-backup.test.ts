@@ -1,4 +1,12 @@
-import { chmod, lstat, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -191,7 +199,9 @@ describe("encrypted local research vault backup", () => {
 });
 
 async function privateTemporaryDirectory(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), "cycle3d-backup-test-"));
+  const path = await mkdtemp(
+    join(await realpath(tmpdir()), "cycle3d-backup-test-"),
+  );
   temporaryDirectories.push(path);
   if (process.platform === "win32") {
     const port = createNativeWindowsOwnerOnlyAclPort();
