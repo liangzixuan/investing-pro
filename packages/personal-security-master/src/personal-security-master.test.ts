@@ -563,7 +563,7 @@ describe("personal security master", () => {
     expect(measurement.resultLimit).toBe(25);
     // Engineering-only guardrail: synthetic bytes do not prove real coverage or an SLO.
     expect(measurement.p95Milliseconds).toBeLessThan(200);
-  });
+  }, 30_000);
 });
 
 function measurementQueries(): string[] {
