@@ -131,7 +131,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact prepared Cycle 3e-a source or merge-free routing child
+      - name: Classify exact prepared Cycle 3e-a source or merge-free routing chain
         id: cycle3e_source
         if: ${{ success() }}
         shell: bash
@@ -142,6 +142,7 @@ jobs:
           public_promotion="1d15cc11be8322a05120783defce8112ac3c84da"
           public_parent="3edb5464a3414313a980ffd9fecce5ca5257084a"
           source="5186103977b906d3c035599b3b2b00793926fca3"
+          routing="14874709bffc24155f459f790ee34ac27c50eb2c"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -204,12 +205,22 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_stabilization=(
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
           done
           for ((index = 1; index < ${#expected_routing[@]}; index += 2)); do
             protected+=("${expected_routing[$index]}")
+          done
+          for ((index = 1; index < ${#expected_stabilization[@]}; index += 2)); do
+            protected+=("${expected_stabilization[$index]}")
           done
           matches_exactly() {
             local -n expected_values="$1"
@@ -232,22 +243,29 @@ jobs:
               head_revision="$(git rev-parse HEAD)"
               if git cat-file -e "$public_parent^{commit}" && \
                  git cat-file -e "$public_promotion^{commit}" && \
-                 git cat-file -e "$source^{commit}"; then
+                 git cat-file -e "$source^{commit}" && \
+                 git cat-file -e "$routing^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
+                read -r -a routing_topology <<< "$(git rev-list --parents -n 1 "$routing")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
                 source_successor_count="$(git rev-list --count "$cycle2z_baseline".."$source")"
                 source_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$source")"
+                routing_successor_count="$(git rev-list --count "$cycle2z_baseline".."$routing")"
+                routing_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$routing")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
                   git diff --name-status --no-renames -z "$public_promotion" "$source" --
                 )
                 mapfile -d '' -t routing_actual < <(
-                  git diff --name-status --no-renames -z "$source" HEAD --
+                  git diff --name-status --no-renames -z "$source" "$routing" --
+                )
+                mapfile -d '' -t stabilization_actual < <(
+                  git diff --name-status --no-renames -z "$routing" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -275,13 +293,35 @@ jobs:
                   exact=true
                 elif [[ "$history_exact" == "true" ]] && \
                      [[ "$head_revision" == "$GITHUB_SHA" ]] && \
-                     [[ "$head_revision" != "$source" ]] && \
+                     [[ "$head_revision" == "$routing" ]] && \
                      [[ "$head_successor_count" == "26" ]] && \
                      [[ "$head_first_parent_count" == "26" ]] && \
                      [[ "${#head_topology[@]}" == "2" ]] && \
-                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[0]}" == "$routing" ]] && \
                      [[ "${head_topology[1]}" == "$source" ]] && \
+                     [[ "$routing_successor_count" == "26" ]] && \
+                     [[ "$routing_first_parent_count" == "26" ]] && \
+                     [[ "${#routing_topology[@]}" == "2" ]] && \
+                     [[ "${routing_topology[0]}" == "$routing" ]] && \
+                     [[ "${routing_topology[1]}" == "$source" ]] && \
                      matches_exactly expected_routing routing_actual; then
+                  exact=true
+                elif [[ "$history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$source" ]] && \
+                     [[ "$head_revision" != "$routing" ]] && \
+                     [[ "$head_successor_count" == "27" ]] && \
+                     [[ "$head_first_parent_count" == "27" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[1]}" == "$routing" ]] && \
+                     [[ "$routing_successor_count" == "26" ]] && \
+                     [[ "$routing_first_parent_count" == "26" ]] && \
+                     [[ "${#routing_topology[@]}" == "2" ]] && \
+                     [[ "${routing_topology[0]}" == "$routing" ]] && \
+                     [[ "${routing_topology[1]}" == "$source" ]] && \
+                     matches_exactly expected_routing routing_actual && \
+                     matches_exactly expected_stabilization stabilization_actual; then
                   exact=true
                 fi
               fi
@@ -290,12 +330,14 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Cycle 3e-a protected surfaces changed outside its exact prepared source or one merge-free routing child; refusing inherited evidence routing." >&2
+            echo "Cycle 3e-a protected surfaces changed outside its exact prepared source, pinned merge-free routing child, or one merge-free workflow-expression stabilization child; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
         id: cycle2x_source
         if: ${{ success() }}
+        env:
+          CYCLE3E_EXACT: ${{ steps.cycle3e_source.outputs.exact }}
         shell: bash
         run: |
           exact=false
@@ -306,7 +348,7 @@ jobs:
           cycle3c=false
           cycle3d=false
           cycle3e=false
-          if [[ "${{ steps.cycle3e_source.outputs.exact }}" == "true" ]]; then
+          if [[ "$CYCLE3E_EXACT" == "true" ]]; then
             echo "required=true" >> "$GITHUB_OUTPUT"
             echo "exact=true" >> "$GITHUB_OUTPUT"
             echo "cycle2z=true" >> "$GITHUB_OUTPUT"
@@ -2930,7 +2972,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3e }}" == "true" ]]; then
-              echo "Cycle 3e-a is a prepared, unpromoted owner-local security-master source and merge-free routing closure only. No real security-master source bytes, breadth claim, private payload, or replacement Cycle 2o artifact was generated; prior Cycle 3c/3d promotion evidence remains preserved and canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
+              echo "Cycle 3e-a is a prepared, unpromoted owner-local security-master source, merge-free routing closure, and workflow-expression stabilization route only. No real security-master source bytes, breadth claim, private payload, or replacement Cycle 2o artifact was generated; prior Cycle 3c/3d promotion evidence remains preserved and canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
               echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, parser-timeout, and joint Cycle 3c/3d public-promotion stages, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then

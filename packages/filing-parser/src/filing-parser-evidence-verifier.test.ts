@@ -134,6 +134,8 @@ import {
   isCycle3eaSourceCommitDiffSetAllowed,
   isCycle3eaSourceTopologyAllowed,
   isCycle3eaTransitionRoutingRequired,
+  isCycle3eaWorkflowExpressionStabilizationCommitDiffSetAllowed,
+  isCycle3eaWorkflowExpressionStabilizationTopologyAllowed,
   isCycle2rBaselineMergeBaseAllowed,
   isCycle2rCommitDiffSetAllowed,
   isCycle2rDirectChildAllowed,
@@ -780,6 +782,8 @@ const CYCLE_3C_3D_PUBLIC_PROMOTION_REVISION =
   "1d15cc11be8322a05120783defce8112ac3c84da" as const;
 const CYCLE_3E_A_SOURCE_REVISION =
   "5186103977b906d3c035599b3b2b00793926fca3" as const;
+const CYCLE_3E_A_ROUTING_CLOSURE_REVISION =
+  "14874709bffc24155f459f790ee34ac27c50eb2c" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1357,6 +1361,28 @@ const CYCLE_3E_A_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
     status: "M",
   },
   {
@@ -4181,6 +4207,13 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A_SOURCE_REVISION} ${CYCLE_3C_3D_PUBLIC_PROMOTION_REVISION}`,
     publicPromotionTopology,
   ] as const;
+  const routingTopology = [
+    "26",
+    "26",
+    CYCLE_3E_A_ROUTING_CLOSURE_REVISION,
+    `${CYCLE_3E_A_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A_SOURCE_REVISION}`,
+    sourceTopology,
+  ] as const;
 
   it("pins the exact merge-free source after the public promotion", () => {
     expect(isCycle3eaSourceTopologyAllowed(...sourceTopology)).toBe(true);
@@ -4216,23 +4249,20 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("allows exactly one dynamic merge-free routing child", () => {
-    const revision = "e".repeat(40);
-    const valid = [
-      "26",
-      "26",
-      revision,
-      `${revision} ${CYCLE_3E_A_SOURCE_REVISION}`,
-      sourceTopology,
-    ] as const;
-    expect(isCycle3eaRoutingClosureTopologyAllowed(...valid)).toBe(true);
+  it("pins the exact merge-free routing child", () => {
+    expect(isCycle3eaRoutingClosureTopologyAllowed(...routingTopology)).toBe(
+      true,
+    );
     for (const [index, replacement] of [
       [0, "25"],
       [1, "27"],
       [2, CYCLE_3E_A_SOURCE_REVISION],
-      [3, `${revision} ${CYCLE_3C_3D_PUBLIC_PROMOTION_REVISION}`],
+      [
+        3,
+        `${CYCLE_3E_A_ROUTING_CLOSURE_REVISION} ${CYCLE_3C_3D_PUBLIC_PROMOTION_REVISION}`,
+      ],
     ] as const) {
-      const changed = [...valid];
+      const changed: unknown[] = [...routingTopology];
       changed[index] = replacement;
       expect(
         isCycle3eaRoutingClosureTopologyAllowed(
@@ -4243,18 +4273,49 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         `routing:${index}`,
       ).toBe(false);
     }
+  });
+
+  it("allows exactly one dynamic merge-free workflow-expression stabilization child", () => {
+    const revision = "e".repeat(40);
+    const valid = [
+      "27",
+      "27",
+      revision,
+      `${revision} ${CYCLE_3E_A_ROUTING_CLOSURE_REVISION}`,
+      routingTopology,
+    ] as const;
     expect(
-      isCycle3eaRoutingClosureTopologyAllowed(
-        "26",
-        "26",
+      isCycle3eaWorkflowExpressionStabilizationTopologyAllowed(...valid),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "26"],
+      [1, "28"],
+      [2, CYCLE_3E_A_ROUTING_CLOSURE_REVISION],
+      [3, `${revision} ${CYCLE_3E_A_SOURCE_REVISION}`],
+    ] as const) {
+      const changed = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3eaWorkflowExpressionStabilizationTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3eaWorkflowExpressionStabilizationTopologyAllowed
+          >),
+        ),
+        `stabilization:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3eaWorkflowExpressionStabilizationTopologyAllowed(
+        "27",
+        "27",
         "not-a-commit",
-        `not-a-commit ${CYCLE_3E_A_SOURCE_REVISION}`,
-        sourceTopology,
+        `not-a-commit ${CYCLE_3E_A_ROUTING_CLOSURE_REVISION}`,
+        routingTopology,
       ),
     ).toBe(false);
   });
 
-  it("freezes the exact 51-file source and 7-file routing transitions", () => {
+  it("freezes the exact 51-file source, 7-file routing, and 5-file stabilization transitions", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
       CYCLE_3E_A_SOURCE_TRANSITION,
@@ -4265,6 +4326,11 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_A_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3eaWorkflowExpressionStabilizationCommitDiffSetAllowed,
+      CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_TRANSITION,
+      5,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -4272,6 +4338,9 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3C_3D_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_A_SOURCE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_A_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_TRANSITION.map(
+        (entry) => entry.path,
+      ),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
