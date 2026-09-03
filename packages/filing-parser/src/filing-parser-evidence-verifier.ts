@@ -168,6 +168,8 @@ const CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION =
   "543a0bd806d02e9e527be243f4dd98dc1c17c3c9" as const;
 const CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION =
   "fda5148a4251a36861196029bbc6df6b7d1a84d0" as const;
+const CYCLE_3E_A1_SOURCE_PREPARATION_REVISION =
+  "0cf87021648e05c191eebbeb95aee6742c4c0f09" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -2927,6 +2929,28 @@ const CYCLE_3E_A1_SOURCE_PREPARATION_TRANSITION = Object.freeze([
   },
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ]);
+const CYCLE_3E_A1_ROUTING_CLOSURE_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3169,6 +3193,7 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
     (entry) => entry.path,
   ),
   ...CYCLE_3E_A1_SOURCE_PREPARATION_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3E_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2K_TRANSITION_PATHS = new Set(
   CYCLE_2K_TRANSITION.map((entry) => entry.path),
@@ -5742,8 +5767,8 @@ export function isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed(
 }
 
 /**
- * @internal One dynamic merge-free Cycle 3e-a1 source-preparation child of
- * the exact canonical-temp-fixture stabilization. Prepared and unpromoted.
+ * @internal Exact merge-free Cycle 3e-a1 source-preparation child of the
+ * exact canonical-temp-fixture stabilization. Prepared and unpromoted.
  */
 export function isCycle3ea1SourcePreparationTopologyAllowed(
   successorCount: string,
@@ -5759,10 +5784,9 @@ export function isCycle3ea1SourcePreparationTopologyAllowed(
   return (
     successorCount === "32" &&
     firstParentCount === "32" &&
-    COMMIT_SHA.test(revision) &&
-    revision !== CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION &&
+    revision === CYCLE_3E_A1_SOURCE_PREPARATION_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION}` &&
+      `${CYCLE_3E_A1_SOURCE_PREPARATION_REVISION} ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION}` &&
     canonicalTempFixtureTopology[2] ===
       CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION &&
     canonicalTempFixtureTopology[3] ===
@@ -5770,6 +5794,32 @@ export function isCycle3ea1SourcePreparationTopologyAllowed(
     isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed(
       ...canonicalTempFixtureTopology,
     )
+  );
+}
+
+/**
+ * @internal One dynamic merge-free Cycle 3e-a1 routing-closure child of the
+ * exact source-preparation revision. Prepared and unpromoted.
+ */
+export function isCycle3ea1RoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  sourcePreparationTopology: readonly [
+    ...Parameters<typeof isCycle3ea1SourcePreparationTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "33" &&
+    firstParentCount === "33" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_3E_A1_SOURCE_PREPARATION_REVISION &&
+    parentLine === `${revision} ${CYCLE_3E_A1_SOURCE_PREPARATION_REVISION}` &&
+    sourcePreparationTopology[2] === CYCLE_3E_A1_SOURCE_PREPARATION_REVISION &&
+    sourcePreparationTopology[3] ===
+      `${CYCLE_3E_A1_SOURCE_PREPARATION_REVISION} ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION}` &&
+    isCycle3ea1SourcePreparationTopologyAllowed(...sourcePreparationTopology)
   );
 }
 
@@ -7135,6 +7185,16 @@ export function isCycle3ea1SourcePreparationCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact Cycle 3e-a1 evidence-routing closure transition. */
+export function isCycle3ea1RoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3E_A1_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -8332,6 +8392,7 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION,
     CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
     CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION,
+    CYCLE_3E_A1_SOURCE_PREPARATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -8704,6 +8765,18 @@ async function verifyCycle2zTransition(
         128,
       ),
     );
+  const cycle3ea1SourcePreparationParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3E_A1_SOURCE_PREPARATION_REVISION,
+      ],
+      128,
+    ),
+  );
   const directSource = isCycle2zDirectChildAllowed(
     successorCount,
     firstParentCount,
@@ -9193,6 +9266,13 @@ async function verifyCycle2zTransition(
     cycle3eaCanonicalTempFixtureStabilizationParentLine,
     pinnedCycle3eaWindowsSnapshotMetadataStabilizationTopology,
   ] as const;
+  const pinnedCycle3ea1SourcePreparationTopology = [
+    "32",
+    "32",
+    CYCLE_3E_A1_SOURCE_PREPARATION_REVISION,
+    cycle3ea1SourcePreparationParentLine,
+    pinnedCycle3eaCanonicalTempFixtureStabilizationTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     successorCount,
     firstParentCount,
@@ -9255,6 +9335,13 @@ async function verifyCycle2zTransition(
       parentLine,
       pinnedCycle3eaCanonicalTempFixtureStabilizationTopology,
     );
+  const cycle3ea1RoutingClosure = isCycle3ea1RoutingClosureTopologyAllowed(
+    successorCount,
+    firstParentCount,
+    revision,
+    parentLine,
+    pinnedCycle3ea1SourcePreparationTopology,
+  );
   const cycle3eRouting =
     cycle3eaSource ||
     cycle3eaRoutingClosure ||
@@ -9263,7 +9350,8 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsStableFileStabilization ||
     cycle3eaWindowsSnapshotMetadataStabilization ||
     cycle3eaCanonicalTempFixtureStabilization ||
-    cycle3ea1SourcePreparation;
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure;
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
@@ -9683,7 +9771,8 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsStableFileStabilization ||
     cycle3eaWindowsSnapshotMetadataStabilization ||
     cycle3eaCanonicalTempFixtureStabilization ||
-    cycle3ea1SourcePreparation
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9698,7 +9787,8 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsStableFileStabilization ||
     cycle3eaWindowsSnapshotMetadataStabilization ||
     cycle3eaCanonicalTempFixtureStabilization ||
-    cycle3ea1SourcePreparation
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9715,7 +9805,8 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsStableFileStabilization ||
     cycle3eaWindowsSnapshotMetadataStabilization ||
     cycle3eaCanonicalTempFixtureStabilization ||
-    cycle3ea1SourcePreparation
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9735,7 +9826,8 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsStableFileStabilization ||
     cycle3eaWindowsSnapshotMetadataStabilization ||
     cycle3eaCanonicalTempFixtureStabilization ||
-    cycle3ea1SourcePreparation
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9750,7 +9842,8 @@ async function verifyCycle2zTransition(
   if (
     cycle3eaWindowsSnapshotMetadataStabilization ||
     cycle3eaCanonicalTempFixtureStabilization ||
-    cycle3ea1SourcePreparation
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -9766,7 +9859,11 @@ async function verifyCycle2zTransition(
     )
       invalidReview();
   }
-  if (cycle3eaCanonicalTempFixtureStabilization || cycle3ea1SourcePreparation) {
+  if (
+    cycle3eaCanonicalTempFixtureStabilization ||
+    cycle3ea1SourcePreparation ||
+    cycle3ea1RoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION,
@@ -9779,13 +9876,24 @@ async function verifyCycle2zTransition(
     )
       invalidReview();
   }
-  if (cycle3ea1SourcePreparation) {
+  if (cycle3ea1SourcePreparation || cycle3ea1RoutingClosure) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION,
-      revision,
+      cycle3ea1SourcePreparation
+        ? revision
+        : CYCLE_3E_A1_SOURCE_PREPARATION_REVISION,
     );
     if (!isCycle3ea1SourcePreparationCommitDiffSetAllowed(entries))
+      invalidReview();
+  }
+  if (cycle3ea1RoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A1_SOURCE_PREPARATION_REVISION,
+      revision,
+    );
+    if (!isCycle3ea1RoutingClosureCommitDiffSetAllowed(entries))
       invalidReview();
   }
 
