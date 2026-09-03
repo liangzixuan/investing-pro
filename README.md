@@ -1254,7 +1254,12 @@ compatibility, observed/prospective ticker-time labels, deterministic bounded
 symbol/name search, and a content-kind-bound p95 measurement whose synthetic
 result is explicitly engineering-only. The fixed measurement plan is 100
 iterations over 32 distinct normalized queries at result limit 25; its receipt
-binds the ordered raw query set by canonical-JSON-plus-LF SHA-256. Exact API mode
+binds the ordered raw query set by canonical-JSON-plus-LF SHA-256. A bounded
+Cycle 3e-a2 source-stage correction now removes the measurement helper's caller-
+clock seam, makes its public API exactly two arguments, privately captures the
+monotonic `node:perf_hooks` clock, and binds the exact clock and timed region
+into the receipt. That correction does not yet have a recorded public
+engineering Pass. Exact API mode
 `personal_single_user_local_security_master` starts through a separate server
 and exposes only owner-authenticated, private/no-store status and search routes.
 It takes one fixed-name owner-local snapshot path and exact digest before
@@ -1310,6 +1315,28 @@ accepted or promoted until that real snapshot contains at least 3,000 eligible
 active U.S.-listed common stocks/ADRs and measures below 200 ms p95 on declared
 owner hardware under the exact plan. The recorded Cycle 3e-a1 public result
 does not authorize or constitute that real operation.
+
+Cycle 3e-a2 is a **prepared public engineering correction only**. Its exact
+source/routing transitions, terminal verification, independent review, and CI
+evidence have not yet been frozen or recorded as Pass. The exact public
+measurement signature becomes
+`measurePersonalSecurityMasterSearchP95(catalog, input)`; any third argument
+fails with `PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID` and a hostile callback
+is never invoked. The package privately captures bound `performance.now` from
+`node:perf_hooks` as `READ_MONOTONIC_MILLISECONDS`. The plan and
+receipt bind
+`clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and
+`timedRegion: "normalize_request_and_search_in_memory_catalog"`. A static AST
+guardrail pins the two-argument surface, clock capture, timed region, receipt
+bindings, and absence of another timing seam. See
+[ADR 0059](./docs/adr/0059-package-owned-security-master-measurement-clock.md)
+and the [Cycle 3e-a2 exit matrix](./docs/CYCLE_3E_A2_EXIT_MATRIX.md).
+
+No real data or private operation is needed to verify that repository-owned
+correction. It establishes no real breadth or latency result and cannot accept
+or promote Cycle 3e-a. Any later owner-only latency evidence must use the
+accepted package-owned-clock implementation on the exact admitted real
+snapshot and declared hardware.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

@@ -13,6 +13,10 @@ Terminal verification status: **Pass at `5e27bed`: full local verification
 passed 2,051 tests with 9 intentional skips, and exact-tip Windows/Linux CI,
 custody, normalization, cross-engine, and parser-isolation workflows passed.**
 
+Later measurement-integrity status: **Cycle 3e-a2 has prepared public
+engineering correction source only; exact source/routing and terminal evidence
+have not been recorded as Pass.**
+
 Real-source authorization and operation status: **Pending separate exact owner
 review and fresh authorization; no private operation has occurred.**
 
@@ -47,6 +51,7 @@ Acceptance/promotion status: **Recorded public engineering Pass only; Cycle
 | Owner source review          | Exact inputs, versions, digests, retrieval metadata, terms, attribution, cache/retention/deletion/export/redistribution controls, and policy record are approved                                                                                                    | Pending owner-only operation          |
 | Real snapshot breadth        | Exact admitted snapshot contains at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit exclusions                                                                                                                                            | Pending owner-only operation          |
 | Real search latency          | Fixed 100-iteration, 32-distinct-query, limit-25 measurement is below 200 ms p95 on declared owner hardware and exact snapshot                                                                                                                                      | Pending owner-only operation          |
+| Trusted measurement boundary | The later measurement uses the accepted exact two-argument Cycle 3e-a2 API, package-owned `node:perf_hooks` monotonic clock, bound clock/timed-region receipt, and static no-injection guard                                                                        | Cycle 3e-a2 prepared source only      |
 | Public evidence minimization | Only an expressly allowed coarse nonsecret result may become public; private artifacts and operation details remain outside Git and logs                                                                                                                            | Required for later operation          |
 | No promotion by preparation  | Public preparation source, synthetic scale, or a prepared snapshot cannot alone accept or promote Cycle 3e-a                                                                                                                                                        | Explicit nonclaim                     |
 
@@ -106,6 +111,13 @@ authorization. Private bytes, credentials, paths, rejected rows, restricted
 metadata, full approvals, and runner/retry/cleanup material cannot enter Git,
 public CI, fixtures, or retained logs.
 
+That later authorization must also bind an accepted Cycle 3e-a2 measurement
+implementation. Its public API takes exactly `(catalog, input)`, rejects a
+third callback without invoking it, uses the private module-captured
+`node:perf_hooks` monotonic clock, and binds exact `clock` and `timedRegion`
+literals into its receipt. Cycle 3e-a2 is currently prepared source only and
+does not yet have exact public engineering evidence.
+
 ## Stop conditions
 
 Stop without output or promotion on any digest, role, canonical-form, schema,
@@ -128,6 +140,8 @@ readiness, promotion, or competitor parity.
 - [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md)
 - [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md)
 - [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md)
+- [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md)
+- [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md)
 - [Personal product-breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](./BUILD_ROADMAP.md)
 - [Threat model](./THREAT_MODEL.md)

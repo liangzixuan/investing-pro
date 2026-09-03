@@ -40,11 +40,13 @@ describe("personal security master", () => {
     ).toBe(512);
     expect(PERSONAL_SECURITY_MASTER_LIMITS.searchableNameCodePoints).toBe(128);
     expect(PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN).toEqual({
+      clock: "module_captured_node_perf_hooks_performance_now_monotonic",
       iterations: 100,
       queryCount: 32,
       querySetDigestMethod:
         "sha256_of_utf8_canonical_json_ordered_raw_query_array_with_lf",
       resultLimit: 25,
+      timedRegion: "normalize_request_and_search_in_memory_catalog",
     });
     expect(PERSONAL_SECURITY_MASTER_CHECKS).toContain(
       "exact_source_admitted_and_exclusion_coverage_accounting",
@@ -54,6 +56,9 @@ describe("personal security master", () => {
     );
     expect(PERSONAL_SECURITY_MASTER_NOT_PROVEN).toContain(
       "later_policy_revocation_after_offline_snapshot",
+    );
+    expect(PERSONAL_SECURITY_MASTER_NOT_PROVEN).toContain(
+      "production_hardware_latency_slo",
     );
     expect(PERSONAL_SECURITY_MASTER_SEARCH_NORMALIZATION).toEqual([
       "trim_unicode_whitespace",
@@ -500,34 +505,25 @@ describe("personal security master", () => {
     );
   });
 
-  it("uses deterministic nearest-rank p95 measurement semantics", () => {
+  it("uses the fixed package-owned monotonic measurement plan", () => {
     const catalog = admitPersonalSecurityMasterSnapshot(
       buildSecurityMasterAdmission(),
     );
-    let now = 0;
-    const measurement = measurePersonalSecurityMasterSearchP95(
-      catalog,
-      {
-        hardwareProfile: "deterministic-test-clock",
-        iterations: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.iterations,
-        queries: measurementQueries(),
-        resultLimit: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.resultLimit,
-      },
-      () => {
-        now += 1;
-        return now;
-      },
-    );
-    expect(measurement).toEqual({
+    const measurement = measurePersonalSecurityMasterSearchP95(catalog, {
+      hardwareProfile: "vitest-process-unspecified-ci-hardware",
+      iterations: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.iterations,
+      queries: measurementQueries(),
+      resultLimit: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.resultLimit,
+    });
+    expect(measurement).toMatchObject({
       activeEligibleSecurities: 2,
       basis: "synthetic_engineering_only_not_production_slo",
       catalogId: catalog.catalogId,
       catalogVersion: catalog.catalogVersion,
-      hardwareProfile: "deterministic-test-clock",
+      clock: "module_captured_node_perf_hooks_performance_now_monotonic",
+      hardwareProfile: "vitest-process-unspecified-ci-hardware",
       iterations: 100,
-      maximumMilliseconds: 1,
       method: "nearest_rank_p95_of_individual_local_searches",
-      p95Milliseconds: 1,
       queryCount: 32,
       querySetDigestMethod:
         "sha256_of_utf8_canonical_json_ordered_raw_query_array_with_lf",
@@ -536,7 +532,14 @@ describe("personal security master", () => {
       resultLimit: 25,
       sampleCount: 3_200,
       snapshotSha256: catalog.snapshotSha256,
+      timedRegion: "normalize_request_and_search_in_memory_catalog",
     });
+    expect(Number.isFinite(measurement.p95Milliseconds)).toBe(true);
+    expect(measurement.p95Milliseconds).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(measurement.maximumMilliseconds)).toBe(true);
+    expect(measurement.maximumMilliseconds).toBeGreaterThanOrEqual(
+      measurement.p95Milliseconds,
+    );
     expect(Object.isFrozen(measurement)).toBe(true);
   });
 
@@ -561,6 +564,12 @@ describe("personal security master", () => {
     );
     expect(measurement.sampleCount).toBe(3_200);
     expect(measurement.resultLimit).toBe(25);
+    expect(measurement.clock).toBe(
+      "module_captured_node_perf_hooks_performance_now_monotonic",
+    );
+    expect(measurement.timedRegion).toBe(
+      "normalize_request_and_search_in_memory_catalog",
+    );
     // Engineering-only guardrail: synthetic bytes do not prove real coverage or an SLO.
     expect(measurement.p95Milliseconds).toBeLessThan(200);
   }, 30_000);

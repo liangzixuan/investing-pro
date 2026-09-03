@@ -75,6 +75,7 @@ on:
       - docs/CYCLE_3C_EXIT_MATRIX.md
       - docs/CYCLE_3D_EXIT_MATRIX.md
       - docs/CYCLE_3E_A1_EXIT_MATRIX.md
+      - docs/CYCLE_3E_A2_EXIT_MATRIX.md
       - docs/CYCLE_3E_A_EXIT_MATRIX.md
       - docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md
       - docs/THREAT_MODEL.md
@@ -87,6 +88,7 @@ on:
       - docs/adr/0056-durable-personal-local-research-vault.md
       - docs/adr/0057-owner-local-security-master-snapshot-and-search.md
       - docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md
+      - docs/adr/0059-package-owned-security-master-measurement-clock.md
       - fixtures/synthetic/filing-parser-cross-engine-execution/**
       - LICENSE_POLICY.md
       - package.json
@@ -133,7 +135,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 3e-a engineering chain or 3e-a1 source, routing, and record
+      - name: Classify exact Cycle 3e-a engineering chain through 3e-a2 clock closure
         id: cycle3e_source
         if: ${{ success() }}
         shell: bash
@@ -152,6 +154,7 @@ jobs:
           windows_canonical_temp_fixture_stabilization="fda5148a4251a36861196029bbc6df6b7d1a84d0"
           cycle3ea1_source_preparation="0cf87021648e05c191eebbeb95aee6742c4c0f09"
           cycle3ea1_routing_closure="5e27bed1a11956bb207f523739083131aea254f0"
+          cycle3ea1_public_engineering_evidence_record="d34266037ca997d72bea440e9be942cddd223da9"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -300,6 +303,42 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3ea2_measurement_clock_closure=(
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" "README.md"
+            "M" "docs/BUILD_ROADMAP.md"
+            "M" "docs/CANONICAL_MODEL.md"
+            "M" "docs/CYCLE_2X_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_2Y_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_2Z_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3A_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3B_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3C_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3D_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3E_A1_EXIT_MATRIX.md"
+            "A" "docs/CYCLE_3E_A2_EXIT_MATRIX.md"
+            "M" "docs/CYCLE_3E_A_EXIT_MATRIX.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M" "docs/THREAT_MODEL.md"
+            "M" "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md"
+            "M" "docs/adr/0051-bounded-personal-quality-readiness-composition.md"
+            "M" "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md"
+            "M" "docs/adr/0053-personal-local-owner-session.md"
+            "M" "docs/adr/0054-authenticated-personal-dossier-composition.md"
+            "M" "docs/adr/0055-connected-personal-source-policy-registry.md"
+            "M" "docs/adr/0056-durable-personal-local-research-vault.md"
+            "M" "docs/adr/0057-owner-local-security-master-snapshot-and-search.md"
+            "M" "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md"
+            "A" "docs/adr/0059-package-owned-security-master-measurement-clock.md"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M" "packages/personal-security-master/src/personal-security-master-security.test.ts"
+            "M" "packages/personal-security-master/src/personal-security-master.test.ts"
+            "M" "packages/personal-security-master/src/personal-security-master.ts"
+            "M" "scripts/verify-boundaries.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
@@ -331,6 +370,9 @@ jobs:
           for ((index = 1; index < ${#expected_cycle3ea1_public_engineering_evidence_record[@]}; index += 2)); do
             protected+=("${expected_cycle3ea1_public_engineering_evidence_record[$index]}")
           done
+          for ((index = 1; index < ${#expected_cycle3ea2_measurement_clock_closure[@]}; index += 2)); do
+            protected+=("${expected_cycle3ea2_measurement_clock_closure[$index]}")
+          done
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -360,7 +402,8 @@ jobs:
                  git cat-file -e "$windows_snapshot_metadata_stabilization^{commit}" && \
                  git cat-file -e "$windows_canonical_temp_fixture_stabilization^{commit}" && \
                  git cat-file -e "$cycle3ea1_source_preparation^{commit}" && \
-                 git cat-file -e "$cycle3ea1_routing_closure^{commit}"; then
+                 git cat-file -e "$cycle3ea1_routing_closure^{commit}" && \
+                 git cat-file -e "$cycle3ea1_public_engineering_evidence_record^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -372,6 +415,7 @@ jobs:
                 read -r -a windows_canonical_temp_fixture_stabilization_topology <<< "$(git rev-list --parents -n 1 "$windows_canonical_temp_fixture_stabilization")"
                 read -r -a cycle3ea1_source_preparation_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea1_source_preparation")"
                 read -r -a cycle3ea1_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea1_routing_closure")"
+                read -r -a cycle3ea1_public_engineering_evidence_record_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea1_public_engineering_evidence_record")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -393,6 +437,8 @@ jobs:
                 cycle3ea1_source_preparation_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea1_source_preparation")"
                 cycle3ea1_routing_closure_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ea1_routing_closure")"
                 cycle3ea1_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea1_routing_closure")"
+                cycle3ea1_public_engineering_evidence_record_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ea1_public_engineering_evidence_record")"
+                cycle3ea1_public_engineering_evidence_record_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea1_public_engineering_evidence_record")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
@@ -423,7 +469,10 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3ea1_source_preparation" "$cycle3ea1_routing_closure" --
                 )
                 mapfile -d '' -t cycle3ea1_public_engineering_evidence_record_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3ea1_routing_closure" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3ea1_routing_closure" "$cycle3ea1_public_engineering_evidence_record" --
+                )
+                mapfile -d '' -t cycle3ea2_measurement_clock_closure_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ea1_public_engineering_evidence_record" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -499,6 +548,16 @@ jobs:
                    [[ "${cycle3ea1_routing_closure_topology[1]}" == "$cycle3ea1_source_preparation" ]] && \
                    matches_exactly expected_cycle3ea1_routing_closure cycle3ea1_routing_closure_actual; then
                   routing_closure_history_exact=true
+                fi
+                public_engineering_evidence_record_history_exact=false
+                if [[ "$routing_closure_history_exact" == "true" ]] && \
+                   [[ "$cycle3ea1_public_engineering_evidence_record_successor_count" == "34" ]] && \
+                   [[ "$cycle3ea1_public_engineering_evidence_record_first_parent_count" == "34" ]] && \
+                   [[ "${#cycle3ea1_public_engineering_evidence_record_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ea1_public_engineering_evidence_record_topology[0]}" == "$cycle3ea1_public_engineering_evidence_record" ]] && \
+                   [[ "${cycle3ea1_public_engineering_evidence_record_topology[1]}" == "$cycle3ea1_routing_closure" ]] && \
+                   matches_exactly expected_cycle3ea1_public_engineering_evidence_record cycle3ea1_public_engineering_evidence_record_actual; then
+                  public_engineering_evidence_record_history_exact=true
                 fi
                 if [[ "$history_exact" == "true" ]] && \
                    [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -702,15 +761,24 @@ jobs:
                      [[ "${head_topology[0]}" == "$cycle3ea1_routing_closure" ]] && \
                      [[ "${head_topology[1]}" == "$cycle3ea1_source_preparation" ]]; then
                   exact=true
-                elif [[ "$routing_closure_history_exact" == "true" ]] && \
+                elif [[ "$public_engineering_evidence_record_history_exact" == "true" ]] && \
                      [[ "$head_revision" == "$GITHUB_SHA" ]] && \
-                     [[ "$head_revision" != "$cycle3ea1_routing_closure" ]] && \
+                     [[ "$head_revision" == "$cycle3ea1_public_engineering_evidence_record" ]] && \
                      [[ "$head_successor_count" == "34" ]] && \
                      [[ "$head_first_parent_count" == "34" ]] && \
                      [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3ea1_public_engineering_evidence_record" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ea1_routing_closure" ]]; then
+                  exact=true
+                elif [[ "$public_engineering_evidence_record_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$cycle3ea1_public_engineering_evidence_record" ]] && \
+                     [[ "$head_successor_count" == "35" ]] && \
+                     [[ "$head_first_parent_count" == "35" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
                      [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
-                     [[ "${head_topology[1]}" == "$cycle3ea1_routing_closure" ]] && \
-                     matches_exactly expected_cycle3ea1_public_engineering_evidence_record cycle3ea1_public_engineering_evidence_record_actual; then
+                     [[ "${head_topology[1]}" == "$cycle3ea1_public_engineering_evidence_record" ]] && \
+                     matches_exactly expected_cycle3ea2_measurement_clock_closure cycle3ea2_measurement_clock_closure_actual; then
                   exact=true
                 fi
               fi
@@ -719,7 +787,7 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Cycle 3e-a protected surfaces changed outside its exact source/stabilization chain, exact Cycle 3e-a1 source preparation and routing closure, or one merge-free Cycle 3e-a1 public-engineering record child; refusing inherited evidence routing." >&2
+            echo "Cycle 3e-a protected surfaces changed outside its exact source/stabilization chain, exact Cycle 3e-a1 source/routing/evidence record, or one merge-free Cycle 3e-a2 measurement-clock closure child; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure

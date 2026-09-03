@@ -1,4 +1,4 @@
-# Sprint 0 through recorded public Cycle 3e-a1 threat model
+# Sprint 0 through prepared public Cycle 3e-a2 threat model
 
 ## Current trust boundaries
 
@@ -35,7 +35,9 @@ one exact owner-local security-master snapshot and authenticated local search,
 but no real catalog, source download, provider credential, network adapter, or
 private activation. Cycle 3e-a1 has a recorded public engineering Pass only for
 its separate offline six-artifact source handoff, with no acquisition or private
-operation. Cycle 3e-a is not accepted or promoted.
+operation. Cycle 3e-a2 has only prepared public correction source for the
+measurement-integrity gap and no recorded Pass. Cycle 3e-a is not accepted or
+promoted.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2484,6 +2486,9 @@ break nondeterminism; unbounded search or regex-like behavior; query parameter
 confusion, alternate percent encoding, control/format characters, or URL-
 selected local state; owner-session/Host/Origin/CORS bypass; and detailed
 denial, path, raw policy, rejected-row, or provider metadata disclosure.
+The later latency gate additionally risks a caller-supplied clock fabricating
+elapsed durations or a receipt failing to say which clock and timed region
+produced the result.
 
 Recorded public engineering controls are:
 
@@ -2534,9 +2539,16 @@ Recorded public engineering controls are:
 - a static runtime graph with no provider client, DNS/outbound socket, source
   transport, credential adapter, vault, filing corpus, demo state, scheduler,
   child process, or dynamic code; and
-- a fixed local-search measurement plan of 100 iterations over 32 ordered,
+- the historically recorded fixed local-search measurement plan of 100
+  iterations over 32 ordered,
   normalization-distinct queries at result limit 25, with the ordered raw query
   set bound by canonical-JSON-plus-LF SHA-256 in the receipt.
+
+That historical record did not close caller independence of the timer. Cycle
+3e-a2 now prepares, but has not yet recorded evidence for, an exact two-argument
+API, private module-captured `node:perf_hooks` monotonic clock, explicit clock/
+timed-region receipt bindings, hostile third-argument rejection, and static
+regression guard.
 
 Residual risk remains deliberate. The stable-file checks cannot prove that an
 accepted Windows drive or POSIX path is not network-mounted; owner-local
@@ -2656,6 +2668,54 @@ without fallback, partial release, automatic retry, or synthetic substitution.
 See [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and
 the [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
 
+## Cycle 3e-a2 package-owned measurement-clock threat boundary
+
+Cycle 3e-a2 has **prepared public engineering correction source only**. No exact
+source/routing revisions, terminal local result, independent review, CI
+evidence, real measurement, acceptance, or promotion are recorded. The earlier
+Cycle 3e-a and Cycle 3e-a1 public engineering records remain limited to their
+exact historical chains.
+
+Assets at risk are the integrity of each elapsed sample, the attribution of its
+clock and timed region, and the prohibition on converting caller-chosen time or
+synthetic timing into real declared-hardware evidence. Primary threats are an
+optional/hidden third parameter, callback or options injection, a replaceable
+global clock, a moved or mislabeled timed region, omitted/mutable receipt
+fields, and source drift that focused tests alone do not detect.
+
+The prepared controls are:
+
+- exactly `measurePersonalSecurityMasterSearchP95(catalog, input)` at both the
+  TypeScript and runtime boundaries;
+- immediate `PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID` rejection for a
+  third argument without invoking a hostile callback;
+- private module initialization capture of bound `performance.now` from
+  `node:perf_hooks` as `READ_MONOTONIC_MILLISECONDS`, with no
+  input, option, overload, export, global lookup, or test clock seam;
+- finite, nondecreasing start/finish readings around request normalization plus
+  in-memory catalog search only;
+- immutable plan and receipt bindings
+  `clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and
+  `timedRegion: "normalize_request_and_search_in_memory_catalog"`; and
+- focused hostile tests plus
+  `personalSecurityMasterMeasurementBoundaryViolation` and representative
+  mutations pinning arity, capture/use, timed region, receipt fields, and the
+  absence of another timing path.
+
+These are source-stage statements, not recorded successful controls. Stop
+without a public engineering Pass if exact source/routing topology, focused and
+static tests, mutation coverage, full local verification, independent review,
+or terminal Windows/Linux CI and acceptance evidence is incomplete.
+
+This correction requires no real source bytes and proves no real universe,
+owner authorization, real-hardware latency, below-200-ms result, production
+safety, Cycle 3e-a acceptance/promotion, or feature parity. A later owner-only
+latency result may count only after Cycle 3e-a2 is accepted as an exact public
+engineering boundary and the run is bound to the exact admitted real snapshot,
+declared hardware, and fixed plan. See
+[ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
+[Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -2708,7 +2768,8 @@ the [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
    corrected chain and has no actual vault or private activation. Cycle 3e-a
    now has a recorded owner-local security-master admission/search public
    engineering Pass, and Cycle 3e-a1 records its separate offline source
-   handoff as a public engineering Pass only, but Cycle 3e-a remains unpromoted
+   handoff as a public engineering Pass only. Cycle 3e-a2 has only prepared
+   source for the package-owned measurement correction. Cycle 3e-a remains unpromoted
    with no real breadth claim until a
    later exact owner-approved, rights-compatible source is prepared, admitted,
    and measured.

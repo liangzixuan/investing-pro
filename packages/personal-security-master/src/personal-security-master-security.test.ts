@@ -1,3 +1,5 @@
+import { performance } from "node:perf_hooks";
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -282,7 +284,68 @@ describe("personal security master security boundary", () => {
     );
   });
 
-  it("fails closed for malformed measurement declarations and clocks", () => {
+  it("rejects a caller clock before it can forge owner-local latency", () => {
+    const catalog = admitPersonalSecurityMasterSnapshot(
+      admissionFromDocument(
+        buildMutableSecurityMasterDocument(3_000, "owner_local_source"),
+      ),
+    );
+    expect(catalog.coverage).toMatchObject({
+      activeEligibleSecurities: 3_000,
+      basis: "owner_declared_snapshot_only",
+      eligibleSecurityBand: "at_least_3000",
+    });
+    const hostileZeroClock = vi.fn(() => 0);
+    expectFailure(
+      () =>
+        Reflect.apply(measurePersonalSecurityMasterSearchP95, undefined, [
+          catalog,
+          {
+            hardwareProfile: "declared-owner-hardware",
+            iterations: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.iterations,
+            queries: measurementQueries(),
+            resultLimit: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.resultLimit,
+          },
+          hostileZeroClock,
+        ]),
+      "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID",
+    );
+    expect(hostileZeroClock).not.toHaveBeenCalled();
+  });
+
+  it("retains its captured clock after performance.now is replaced", () => {
+    const catalog = admitPersonalSecurityMasterSnapshot(
+      buildSecurityMasterAdmission(),
+    );
+    const replacement = vi.spyOn(performance, "now").mockReturnValue(0);
+    let replacementCalls = -1;
+    const measurement = (() => {
+      try {
+        const result = measurePersonalSecurityMasterSearchP95(catalog, {
+          hardwareProfile: "post-import-clock-mutation-probe",
+          iterations: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.iterations,
+          queries: measurementQueries(),
+          resultLimit: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.resultLimit,
+        });
+        replacementCalls = replacement.mock.calls.length;
+        return result;
+      } finally {
+        replacement.mockRestore();
+      }
+    })();
+    expect(replacementCalls).toBe(0);
+    expect(measurement.clock).toBe(
+      "module_captured_node_perf_hooks_performance_now_monotonic",
+    );
+    expect(measurement.timedRegion).toBe(
+      "normalize_request_and_search_in_memory_catalog",
+    );
+    expect(measurement.maximumMilliseconds).toBeGreaterThanOrEqual(
+      measurement.p95Milliseconds,
+    );
+  });
+
+  it("fails closed for malformed measurement declarations", () => {
     const catalog = admitPersonalSecurityMasterSnapshot(
       buildSecurityMasterAdmission(),
     );
@@ -296,40 +359,6 @@ describe("personal security master security boundary", () => {
         }),
       "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID",
     );
-    expectFailure(
-      () =>
-        measurePersonalSecurityMasterSearchP95(
-          catalog,
-          {
-            hardwareProfile: "test-clock",
-            iterations: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.iterations,
-            queries: measurementQueries(),
-            resultLimit: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.resultLimit,
-          },
-          () => Number.NaN,
-        ),
-      "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID",
-    );
-
-    let clockCalls = 0;
-    expectFailure(
-      () =>
-        measurePersonalSecurityMasterSearchP95(
-          catalog,
-          {
-            hardwareProfile: "overflow-test-clock",
-            iterations: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.iterations,
-            queries: measurementQueries(),
-            resultLimit: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.resultLimit,
-          },
-          () => {
-            clockCalls += 1;
-            return clockCalls === 1 ? -Number.MAX_VALUE : Number.MAX_VALUE;
-          },
-        ),
-      "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID",
-    );
-
     for (const input of [
       {
         hardwareProfile: "invalid-iterations",

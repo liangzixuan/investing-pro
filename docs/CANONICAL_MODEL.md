@@ -88,7 +88,9 @@ and real-hardware latency still pending and no acceptance or promotion; and
 Cycle 3e-a1 has a recorded public engineering Pass only for exact source
 revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
 `5e27bed1a11956bb207f523739083131aea254f0`, with no real source or private
-operation.
+operation; and Cycle 3e-a2 has only prepared public correction source for the
+measurement clock and timed-region integrity gap, with no recorded Pass,
+acceptance, or promotion.
 The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
@@ -2337,10 +2339,19 @@ provider mapping or operating-MIC-type field.
 
 `measurePersonalSecurityMasterSearchP95` enforces exactly 100 iterations over
 32 ordered queries that are distinct after normalization, with result limit 25.
-Its result binds query and iteration counts, result limit, the ordered raw query
+A prepared Cycle 3e-a2 correction makes `(catalog, input)` its exact two-
+argument public/runtime surface, rejects any third argument before it can run,
+and removes the caller-controlled clock seam. The package privately captures
+bound `performance.now` from `node:perf_hooks` as
+`READ_MONOTONIC_MILLISECONDS` and uses that monotonic clock for every sample. Its
+result binds query and iteration counts, result limit, the ordered raw query
 set's SHA-256 over canonical JSON UTF-8 plus LF, exact catalog/digest, active
-eligible count, and caller-declared hardware profile and reports nearest-rank
-p95, maximum latency, and sample count. Its basis is either
+eligible count, caller-declared hardware profile,
+`clock: "module_captured_node_perf_hooks_performance_now_monotonic"`, and
+`timedRegion: "normalize_request_and_search_in_memory_catalog"`, and reports
+nearest-rank p95, maximum latency, and sample count. Each timed sample begins
+before request normalization and ends after in-memory catalog search. Its basis
+is either
 `synthetic_engineering_only_not_production_slo` or
 `owner_local_exact_snapshot_and_declared_hardware`; the latter still becomes
 Cycle 3e-a exit evidence only for the exact owner-approved real snapshot with
@@ -2458,6 +2469,45 @@ operations remain out of scope for this personal profile. Exact recorded engine
 design and pending real-product gates are in
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
+
+### Cycle 3e-a2 package-owned measurement-integrity model
+
+Cycle 3e-a2 is **prepared public engineering correction source only**. No exact
+source or routing revision, terminal local result, independent review, CI run,
+real measurement, acceptance, or promotion has been recorded. The earlier
+Cycle 3e-a engine/API and Cycle 3e-a1 offline-preparation records remain limited
+to their exact historical chains; neither pre-approves this correction.
+
+The exact signature is
+`measurePersonalSecurityMasterSearchP95(catalog, input)`. Runtime arity must be
+exactly two, so an extra callback fails with
+`PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID` without invocation. The only
+timer is the private module-captured `READ_MONOTONIC_MILLISECONDS` bound callable
+from `node:perf_hooks`. No input,
+option, overload, export, global lookup, or test-only seam may replace it.
+
+The frozen plan and receipt bind the exact clock and timed-region literals. The
+receipt property types derive from the plan members, so another clock or region
+cannot silently use the same result shape. Each of the 3,200 samples covers
+only `normalizeSearchRequest` followed by `searchState`; input snapshotting,
+query-set digesting, sample sorting, percentile calculation, and receipt
+construction remain outside the per-query interval.
+
+Focused runtime tests must prove hostile third-argument noninvocation and the
+exact receipt. The Cycle 3e-a static boundary adds
+`personalSecurityMasterMeasurementBoundaryViolation` to pin the
+`node:perf_hooks` capture, arity, use sites, timed region, receipt fields, and
+absence of another timing path; representative mutations must fail that guard.
+Exact design and source-stage evidence limits are in
+[ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
+[Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
+
+This correction is testable without private material. It establishes no real
+source, snapshot, breadth, owner authorization, real-hardware latency, or
+below-200-ms result and cannot accept or promote Cycle 3e-a. A later exact
+owner-only measurement may become exit evidence only after this correction has
+recorded exact public engineering evidence and is bound to the admitted real
+snapshot and declared hardware.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

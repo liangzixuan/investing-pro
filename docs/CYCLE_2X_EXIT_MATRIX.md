@@ -199,7 +199,8 @@ public/local-temporary chain rooted at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; it has no actual personal vault,
 key, backup, restore, or private activation and does not widen this historical
 boundary. Cycle 3e-a owner-local security-master snapshot admission and search
-now has prepared public engineering source only. It is not accepted or promoted
+has a recorded public engineering Pass only for its exact engine/API chain. It
+is not accepted or promoted
 and has no real breadth claim until a later exact owner-approved,
 rights-compatible source snapshot is admitted and measured.
 See

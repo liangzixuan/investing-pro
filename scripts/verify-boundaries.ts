@@ -5240,6 +5240,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation-security.test.ts` as const;
   const allowedTestModules = new Set([
     "node:crypto",
+    "node:perf_hooks",
     "node:util/types",
     "vitest",
     "./index",
@@ -5602,6 +5603,52 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     );
   }
 
+  const exactMeasurementBoundaryProbe = `import { createHash } from "node:crypto";
+import { performance } from "node:perf_hooks";
+const READ_MONOTONIC_MILLISECONDS = performance.now.bind(performance);
+export const PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN = Object.freeze({
+  clock: "module_captured_node_perf_hooks_performance_now_monotonic" as const,
+  iterations: 100,
+  queryCount: 32,
+  querySetDigestMethod: "sha256_of_utf8_canonical_json_ordered_raw_query_array_with_lf" as const,
+  resultLimit: 25,
+  timedRegion: "normalize_request_and_search_in_memory_catalog" as const,
+});
+export function measurePersonalSecurityMasterSearchP95(
+  catalog: PersonalSecurityMasterCatalog,
+  input: PersonalSecurityMasterMeasurementInput,
+): PersonalSecurityMasterMeasurement {
+  if (arguments.length !== 2) throw new Error();
+  void catalog;
+  void input;
+  const request = { queries: ["fixture"], resultLimit: 25 };
+  const state = {} as SecurityMasterState;
+  for (const query of request.queries) {
+    const start = READ_MONOTONIC_MILLISECONDS();
+    const searchRequest = normalizeSearchRequest(
+      query,
+      request.resultLimit,
+    );
+    searchState(state, searchRequest);
+    const finish = READ_MONOTONIC_MILLISECONDS();
+    const elapsed = finish - start;
+    void elapsed;
+  }
+  return {
+    clock: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.clock,
+    timedRegion: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.timedRegion,
+  } as PersonalSecurityMasterMeasurement;
+}`;
+  const measurementProbeViolation = (content: string): string | null =>
+    personalSecurityMasterMeasurementBoundaryViolation(
+      ts.createSourceFile(
+        "personal-security-master-measurement-probe.ts",
+        content,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS,
+      ),
+    );
   const exactSourcePreparationProbeImports = `import { createHash } from "node:crypto";
 import {
   PERSONAL_SECURITY_MASTER_PROFILE,
@@ -5626,8 +5673,94 @@ import {
       JSON.stringify([...personalSecurityMasterPackagePaths].sort()),
     personalSecurityMasterProductionViolation(
       corePath,
-      'import { createHash } from "node:crypto";\nimport { performance } from "node:perf_hooks";',
+      exactMeasurementBoundaryProbe,
     ) !== null,
+    measurementProbeViolation(exactMeasurementBoundaryProbe) !== null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "  input: PersonalSecurityMasterMeasurementInput,\n)",
+        "  input: PersonalSecurityMasterMeasurementInput,\n  readNowMilliseconds: (() => number) | undefined = undefined,\n)",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "  input: PersonalSecurityMasterMeasurementInput,\n)",
+        "  input: PersonalSecurityMasterMeasurementInput,\n  testClock?: () => number,\n)",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "const start = READ_MONOTONIC_MILLISECONDS();",
+        "const start = Date.now();",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "const start = READ_MONOTONIC_MILLISECONDS();",
+        "const start = performance.now();",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "const start = READ_MONOTONIC_MILLISECONDS();",
+        "const start = Reflect.apply(READ_MONOTONIC_MILLISECONDS, undefined, []);",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        `    const start = READ_MONOTONIC_MILLISECONDS();
+    const searchRequest = normalizeSearchRequest(
+      query,
+      request.resultLimit,
+    );`,
+        `    const searchRequest = normalizeSearchRequest(
+      query,
+      request.resultLimit,
+    );
+    const start = READ_MONOTONIC_MILLISECONDS();`,
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        `    searchState(state, searchRequest);
+    const finish = READ_MONOTONIC_MILLISECONDS();`,
+        `    const finish = READ_MONOTONIC_MILLISECONDS();
+    searchState(state, searchRequest);`,
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "    searchState(state, searchRequest);",
+        "    searchState(state, query);",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "    const elapsed = finish - start;",
+        "    const elapsed = finish - finish;",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "const READ_MONOTONIC_MILLISECONDS = performance.now.bind(performance);",
+        "const READ_MONOTONIC_MILLISECONDS = () => 0;",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      `${exactMeasurementBoundaryProbe}\nexport function measurePersonalSecurityMasterSearchP95ForTesting(clock: () => number): number { return clock(); }`,
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "module_captured_node_perf_hooks_performance_now_monotonic",
+        "caller_supplied_clock",
+      ),
+    ) === null,
+    measurementProbeViolation(
+      exactMeasurementBoundaryProbe.replace(
+        "clock: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.clock,",
+        'clock: "unbound",',
+      ),
+    ) === null,
     personalSecurityMasterProductionViolation(
       corePath,
       'import { createHash } from "node:crypto";\nimport { performance } from "node:perf_hooks";\nvoid fetch("https://provider.example");',
@@ -5795,9 +5928,433 @@ function personalSecurityMasterProductionViolation(
     ts.forEachChild(node, visit);
   };
   visit(source);
+  if (path !== `${personalSecurityMasterPackagePrefix}src/index.ts`) {
+    const measurementViolation =
+      personalSecurityMasterMeasurementBoundaryViolation(source);
+    if (measurementViolation !== null) return measurementViolation;
+  }
   return concreteEndpoint
     ? "production source must remain source-neutral and embed no provider endpoint"
     : null;
+}
+
+function personalSecurityMasterMeasurementBoundaryViolation(
+  source: ts.SourceFile,
+): string | null {
+  const exportedFunctionNames: string[] = [];
+  for (const statement of source.statements) {
+    const exported =
+      ts.canHaveModifiers(statement) &&
+      (ts
+        .getModifiers(statement)
+        ?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ??
+        false);
+    if (ts.isExportDeclaration(statement) && !statement.isTypeOnly) {
+      return "security-master core must not export a measurement test seam";
+    }
+    if (ts.isExportAssignment(statement)) {
+      return "security-master core must not export a measurement test seam";
+    }
+    if (exported && ts.isFunctionDeclaration(statement)) {
+      if (statement.name === undefined) {
+        return "security-master core exports must remain named";
+      }
+      exportedFunctionNames.push(statement.name.text);
+    }
+    if (exported && ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (
+          declaration.initializer !== undefined &&
+          (ts.isArrowFunction(
+            unwrapBoundaryExpression(declaration.initializer),
+          ) ||
+            ts.isFunctionExpression(
+              unwrapBoundaryExpression(declaration.initializer),
+            ))
+        ) {
+          return "security-master core must not export a measurement test seam";
+        }
+      }
+    }
+  }
+  if (
+    exportedFunctionNames.some(
+      (name) =>
+        ![
+          "admitPersonalSecurityMasterSnapshot",
+          "measurePersonalSecurityMasterSearchP95",
+          "searchPersonalSecurityMaster",
+        ].includes(name),
+    )
+  ) {
+    return "security-master core must not export a measurement test seam";
+  }
+
+  const planDeclarations: ts.VariableDeclaration[] = [];
+  const capturedClockDeclarations: ts.VariableDeclaration[] = [];
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      if (
+        declaration.name.text === "PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN"
+      ) {
+        planDeclarations.push(declaration);
+      }
+      if (declaration.name.text === "READ_MONOTONIC_MILLISECONDS") {
+        if (
+          statement.modifiers?.some(
+            (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+          )
+        ) {
+          return "security-master monotonic clock must remain module-private";
+        }
+        capturedClockDeclarations.push(declaration);
+      }
+    }
+  }
+  if (planDeclarations.length !== 1) {
+    return "security-master measurement plan must remain one exact fixed declaration";
+  }
+  const planInitializer = planDeclarations[0]?.initializer;
+  const planCall =
+    planInitializer === undefined
+      ? undefined
+      : unwrapBoundaryExpression(planInitializer);
+  const planFreeze =
+    planCall !== undefined && ts.isCallExpression(planCall)
+      ? namedBoundaryPropertyAccess(
+          unwrapBoundaryExpression(planCall.expression),
+          new Set(["freeze"]),
+        )
+      : null;
+  const planOwner =
+    planFreeze === null
+      ? null
+      : unwrapBoundaryExpression(planFreeze.expression);
+  const planObject =
+    planCall !== undefined &&
+    ts.isCallExpression(planCall) &&
+    planCall.arguments.length === 1
+      ? unwrapBoundaryExpression(planCall.arguments[0]!)
+      : undefined;
+  if (
+    planFreeze === null ||
+    planOwner === null ||
+    !ts.isIdentifier(planOwner) ||
+    planOwner.text !== "Object" ||
+    planObject === undefined ||
+    !ts.isObjectLiteralExpression(planObject)
+  ) {
+    return "security-master measurement plan must remain one exact frozen object";
+  }
+  const planValues = new Map<string, string | number>();
+  for (const property of planObject.properties) {
+    if (
+      !ts.isPropertyAssignment(property) ||
+      (!ts.isIdentifier(property.name) &&
+        !ts.isStringLiteralLike(property.name))
+    ) {
+      return "security-master measurement plan must contain only exact data properties";
+    }
+    const value = unwrapBoundaryExpression(property.initializer);
+    if (ts.isStringLiteralLike(value)) {
+      planValues.set(property.name.text, value.text);
+    } else if (ts.isNumericLiteral(value)) {
+      planValues.set(property.name.text, Number(value.text));
+    } else {
+      return "security-master measurement plan must contain only exact literal values";
+    }
+  }
+  const expectedPlan = new Map<string, string | number>([
+    ["clock", "module_captured_node_perf_hooks_performance_now_monotonic"],
+    ["iterations", 100],
+    ["queryCount", 32],
+    [
+      "querySetDigestMethod",
+      "sha256_of_utf8_canonical_json_ordered_raw_query_array_with_lf",
+    ],
+    ["resultLimit", 25],
+    ["timedRegion", "normalize_request_and_search_in_memory_catalog"],
+  ]);
+  if (
+    planValues.size !== expectedPlan.size ||
+    [...expectedPlan].some(([name, value]) => planValues.get(name) !== value)
+  ) {
+    return "security-master measurement plan must bind the exact clock and timed region";
+  }
+
+  if (capturedClockDeclarations.length !== 1) {
+    return "security-master measurement must retain one module-captured monotonic clock";
+  }
+  if ((capturedClockDeclarations[0]!.parent.flags & ts.NodeFlags.Const) === 0) {
+    return "security-master monotonic clock binding must remain constant";
+  }
+  const capturedClockInitializer =
+    capturedClockDeclarations[0]?.initializer?.getText(source) ?? "";
+  if (
+    capturedClockInitializer.replaceAll(/\s/gu, "") !==
+    "performance.now.bind(performance)"
+  ) {
+    return "security-master measurement must bind node:perf_hooks performance.now exactly once at module initialization";
+  }
+
+  const measurementFunctions = source.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "measurePersonalSecurityMasterSearchP95",
+  );
+  if (measurementFunctions.length !== 1) {
+    return "security-master measurement must retain one exact public function";
+  }
+  const measurement = measurementFunctions[0]!;
+  if (
+    !measurement.modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+    ) ||
+    measurement.body === undefined ||
+    measurement.parameters.length !== 2 ||
+    measurement.parameters.some(
+      (parameter) =>
+        parameter.dotDotDotToken !== undefined ||
+        parameter.questionToken !== undefined ||
+        parameter.initializer !== undefined ||
+        !ts.isIdentifier(parameter.name),
+    ) ||
+    measurement.parameters[0]?.name.getText(source) !== "catalog" ||
+    measurement.parameters[0]?.type?.getText(source) !==
+      "PersonalSecurityMasterCatalog" ||
+    measurement.parameters[1]?.name.getText(source) !== "input" ||
+    measurement.parameters[1]?.type?.getText(source) !==
+      "PersonalSecurityMasterMeasurementInput"
+  ) {
+    return "security-master measurement public API must accept exactly catalog and input with no optional, rest, callback, or test-clock parameter";
+  }
+
+  let exactArityChecks = 0;
+  let startClockReads = 0;
+  let finishClockReads = 0;
+  let exactTimedRegionSequences = 0;
+  let forbiddenDateNow = false;
+  let forbiddenPerformanceNow = false;
+  let forbiddenReflectApply = false;
+  let callbackParameter = false;
+  const isCapturedClockRead = (value: ts.Expression): boolean => {
+    const call = unwrapBoundaryExpression(value);
+    return (
+      ts.isCallExpression(call) &&
+      call.arguments.length === 0 &&
+      ts.isIdentifier(unwrapBoundaryExpression(call.expression)) &&
+      unwrapBoundaryExpression(call.expression).getText(source) ===
+        "READ_MONOTONIC_MILLISECONDS"
+    );
+  };
+  const exactConstDeclaration = (
+    statement: ts.Statement | undefined,
+    name: string,
+  ): ts.VariableDeclaration | null => {
+    if (
+      statement === undefined ||
+      !ts.isVariableStatement(statement) ||
+      (statement.declarationList.flags & ts.NodeFlags.Const) === 0 ||
+      statement.declarationList.declarations.length !== 1
+    ) {
+      return null;
+    }
+    const declaration = statement.declarationList.declarations[0]!;
+    return ts.isIdentifier(declaration.name) && declaration.name.text === name
+      ? declaration
+      : null;
+  };
+  const isExactIdentifier = (
+    value: ts.Expression | undefined,
+    name: string,
+  ): boolean =>
+    value !== undefined &&
+    ts.isIdentifier(unwrapBoundaryExpression(value)) &&
+    (unwrapBoundaryExpression(value) as ts.Identifier).text === name;
+  const isExactRequestProperty = (
+    value: ts.Expression | undefined,
+    property: string,
+  ): boolean => {
+    if (value === undefined) return false;
+    const access = unwrapBoundaryExpression(value);
+    return (
+      ts.isPropertyAccessExpression(access) &&
+      ts.isIdentifier(unwrapBoundaryExpression(access.expression)) &&
+      (unwrapBoundaryExpression(access.expression) as ts.Identifier).text ===
+        "request" &&
+      access.name.text === property
+    );
+  };
+  const isExactNormalizeDeclaration = (
+    statement: ts.Statement | undefined,
+  ): boolean => {
+    const declaration = exactConstDeclaration(statement, "searchRequest");
+    if (declaration?.initializer === undefined) return false;
+    const call = unwrapBoundaryExpression(declaration.initializer);
+    return (
+      ts.isCallExpression(call) &&
+      isExactIdentifier(call.expression, "normalizeSearchRequest") &&
+      call.arguments.length === 2 &&
+      isExactIdentifier(call.arguments[0], "query") &&
+      isExactRequestProperty(call.arguments[1], "resultLimit")
+    );
+  };
+  const isExactSearchStatement = (
+    statement: ts.Statement | undefined,
+  ): boolean => {
+    if (statement === undefined || !ts.isExpressionStatement(statement)) {
+      return false;
+    }
+    const call = unwrapBoundaryExpression(statement.expression);
+    return (
+      ts.isCallExpression(call) &&
+      isExactIdentifier(call.expression, "searchState") &&
+      call.arguments.length === 2 &&
+      isExactIdentifier(call.arguments[0], "state") &&
+      isExactIdentifier(call.arguments[1], "searchRequest")
+    );
+  };
+  const isExactElapsedDeclaration = (
+    statement: ts.Statement | undefined,
+  ): boolean => {
+    const declaration = exactConstDeclaration(statement, "elapsed");
+    if (declaration?.initializer === undefined) return false;
+    const difference = unwrapBoundaryExpression(declaration.initializer);
+    return (
+      ts.isBinaryExpression(difference) &&
+      difference.operatorToken.kind === ts.SyntaxKind.MinusToken &&
+      isExactIdentifier(difference.left, "finish") &&
+      isExactIdentifier(difference.right, "start")
+    );
+  };
+  const countExactTimedRegionSequence = (block: ts.Block): void => {
+    const loop = block.parent;
+    if (
+      !ts.isForOfStatement(loop) ||
+      loop.awaitModifier !== undefined ||
+      !ts.isVariableDeclarationList(loop.initializer) ||
+      (loop.initializer.flags & ts.NodeFlags.Const) === 0 ||
+      loop.initializer.declarations.length !== 1 ||
+      !ts.isIdentifier(loop.initializer.declarations[0]!.name) ||
+      loop.initializer.declarations[0]!.name.text !== "query" ||
+      loop.initializer.declarations[0]!.initializer !== undefined ||
+      !isExactRequestProperty(loop.expression, "queries")
+    ) {
+      return;
+    }
+    for (let index = 0; index + 4 < block.statements.length; index += 1) {
+      const start = exactConstDeclaration(block.statements[index], "start");
+      const finish = exactConstDeclaration(
+        block.statements[index + 3],
+        "finish",
+      );
+      if (
+        start?.initializer !== undefined &&
+        isCapturedClockRead(start.initializer) &&
+        isExactNormalizeDeclaration(block.statements[index + 1]) &&
+        isExactSearchStatement(block.statements[index + 2]) &&
+        finish?.initializer !== undefined &&
+        isCapturedClockRead(finish.initializer) &&
+        isExactElapsedDeclaration(block.statements[index + 4])
+      ) {
+        exactTimedRegionSequences += 1;
+      }
+    }
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isBlock(node)) countExactTimedRegionSequence(node);
+    if (ts.isParameter(node) && node.type !== undefined) {
+      const type = node.type;
+      if (ts.isFunctionTypeNode(type)) callbackParameter = true;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken &&
+      ts.isNumericLiteral(unwrapBoundaryExpression(node.right)) &&
+      Number(
+        (unwrapBoundaryExpression(node.right) as ts.NumericLiteral).text,
+      ) === 2
+    ) {
+      const left = namedBoundaryPropertyAccess(
+        unwrapBoundaryExpression(node.left),
+        new Set(["length"]),
+      );
+      const owner =
+        left === null ? null : unwrapBoundaryExpression(left.expression);
+      if (
+        owner !== null &&
+        ts.isIdentifier(owner) &&
+        owner.text === "arguments"
+      ) {
+        exactArityChecks += 1;
+      }
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer !== undefined &&
+      isCapturedClockRead(node.initializer)
+    ) {
+      if (node.name.text === "start") startClockReads += 1;
+      if (node.name.text === "finish") finishClockReads += 1;
+    }
+    if (
+      ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)
+    ) {
+      const nowAccess = namedBoundaryPropertyAccess(node, new Set(["now"]));
+      const owner =
+        nowAccess === null
+          ? null
+          : unwrapBoundaryExpression(nowAccess.expression);
+      if (owner !== null && ts.isIdentifier(owner)) {
+        if (owner.text === "Date") forbiddenDateNow = true;
+        if (owner.text === "performance") forbiddenPerformanceNow = true;
+      }
+      const applyAccess = namedBoundaryPropertyAccess(node, new Set(["apply"]));
+      const applyOwner =
+        applyAccess === null
+          ? null
+          : unwrapBoundaryExpression(applyAccess.expression);
+      if (
+        applyOwner !== null &&
+        ts.isIdentifier(applyOwner) &&
+        applyOwner.text === "Reflect"
+      ) {
+        forbiddenReflectApply = true;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(measurement);
+  if (callbackParameter) {
+    return "security-master measurement must not accept a runtime or test clock callback";
+  }
+  if (forbiddenDateNow || forbiddenPerformanceNow || forbiddenReflectApply) {
+    return "security-master measurement must use only its module-captured monotonic clock";
+  }
+  if (
+    exactArityChecks !== 1 ||
+    startClockReads !== 1 ||
+    finishClockReads !== 1 ||
+    exactTimedRegionSequences !== 1
+  ) {
+    return "security-master measurement must reject non-two-argument calls and preserve start, normalization, search, finish, and elapsed wiring for the exact timed region";
+  }
+  const measurementText = measurement.getText(source);
+  if (
+    !measurementText.includes(
+      "clock: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.clock",
+    ) ||
+    !measurementText.includes(
+      "timedRegion: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.timedRegion",
+    )
+  ) {
+    return "security-master measurement receipt must bind the fixed clock and timed region";
+  }
+  return null;
 }
 
 function personalSecurityMasterSourcePreparationProductionViolation(

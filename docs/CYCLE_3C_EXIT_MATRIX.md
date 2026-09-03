@@ -120,8 +120,9 @@ Cycle 3d has a separate promoted public/local-temporary result. It has no actual
 personal vault, recovery key, backup, restore, or private activation. Its schema
 explicitly excludes this process-memory policy, kill, reservation, replay, and
 budget state, so those values still reset on restart. Cycle 3e-a local
-security-master admission and search now has prepared public engineering source
-only. It is not accepted or promoted and has no real breadth claim without a
+security-master admission and search has a recorded public engineering Pass
+only for its exact engine/API chain. It is not accepted or promoted and has no
+real breadth claim without a
 later exact owner-approved, rights-compatible source snapshot.
 
 ## References

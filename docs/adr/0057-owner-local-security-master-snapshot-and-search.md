@@ -6,8 +6,9 @@ Status: **Recorded public engineering Pass for the exact merge-free chain from
 provider credential, download, network request, or private activation has
 occurred. The separate Cycle 3e-a1 offline preparation boundary is recorded only
 for exact source `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
-`5e27bed1a11956bb207f523739083131aea254f0`. Cycle 3e-a is not accepted or
-promoted.**
+`5e27bed1a11956bb207f523739083131aea254f0`. Cycle 3e-a2 has only prepared
+public correction source for measurement-clock integrity and no recorded Pass.
+Cycle 3e-a is not accepted or promoted.**
 
 ## Context
 
@@ -144,6 +145,14 @@ It repeatedly measures individual local searches and reports nearest-rank p95,
 maximum latency, query/iteration/sample counts, result limit, ordered raw-query-
 set SHA-256 over canonical JSON UTF-8 plus LF, declared hardware profile,
 catalog identity/digest, eligible count, and an exact content-kind basis.
+Cycle 3e-a2 prepares a correction that makes `(catalog, input)` the exact public
+and runtime API, rejects any third argument before a hostile callback can run,
+and uses only the private module-captured `node:perf_hooks` monotonic clock. The
+plan and receipt also bind
+`clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and
+`timedRegion: "normalize_request_and_search_in_memory_catalog"`; the interval
+starts before normalization and finishes after in-memory search. This
+correction has not yet received exact-source or terminal public evidence.
 Synthetic input is labeled
 `synthetic_engineering_only_not_production_slo`; owner input is labeled
 `owner_local_exact_snapshot_and_declared_hardware`. A synthetic timing is
@@ -283,6 +292,12 @@ were verified:
     review, and exact merge-free source topology passed before the engineering
     boundary was recorded.
 
+That historical checklist did not establish caller-independent timestamps for
+a future real measurement. The prepared Cycle 3e-a2 correction adds the exact
+two-argument API, package-owned clock, receipt bindings, hostile-third-argument
+test, and static `personalSecurityMasterMeasurementBoundaryViolation` guard. It
+must receive its own exact evidence before any later latency result can count.
+
 ## Exact nonclaims
 
 This prepared Cycle 3e-a slice does not establish:
@@ -334,6 +349,12 @@ custody run `33806494300`, normalization run `33806494295`, cross-engine run
 does not authorize a real source or private operation; see
 [ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md).
 
+Cycle 3e-a2 is currently prepared public engineering correction source only.
+It has no frozen source/routing chain, terminal local result, independent review
+record, CI evidence, real measurement, acceptance, or promotion. See
+[ADR 0059](./0059-package-owned-security-master-measurement-clock.md) and the
+[Cycle 3e-a2 exit matrix](../CYCLE_3E_A2_EXIT_MATRIX.md).
+
 Cycle 3e-a itself remains **not accepted or promoted** until a later exact
 owner-approved `owner_local_source` snapshot:
 
@@ -356,6 +377,8 @@ profile.
 - [Cycle 3e-a exit matrix](../CYCLE_3E_A_EXIT_MATRIX.md)
 - [ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md)
 - [Cycle 3e-a1 exit matrix](../CYCLE_3E_A1_EXIT_MATRIX.md)
+- [ADR 0059](./0059-package-owned-security-master-measurement-clock.md)
+- [Cycle 3e-a2 exit matrix](../CYCLE_3E_A2_EXIT_MATRIX.md)
 - [ADR 0055](./0055-connected-personal-source-policy-registry.md)
 - [ADR 0056](./0056-durable-personal-local-research-vault.md)
 - [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)

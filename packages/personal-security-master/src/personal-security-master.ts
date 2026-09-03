@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
+const READ_MONOTONIC_MILLISECONDS = performance.now.bind(performance);
+
 export const PERSONAL_SECURITY_MASTER_SCHEMA_VERSION = "1.0.0" as const;
 export const PERSONAL_SECURITY_MASTER_PROFILE =
   "personal_single_user_local_security_master" as const;
@@ -30,11 +32,13 @@ export const PERSONAL_SECURITY_MASTER_LIMITS = Object.freeze({
 });
 
 export const PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN = Object.freeze({
+  clock: "module_captured_node_perf_hooks_performance_now_monotonic" as const,
   iterations: 100,
   queryCount: 32,
   querySetDigestMethod:
     "sha256_of_utf8_canonical_json_ordered_raw_query_array_with_lf" as const,
   resultLimit: 25,
+  timedRegion: "normalize_request_and_search_in_memory_catalog" as const,
 });
 
 export const PERSONAL_SECURITY_MASTER_SEARCH_NORMALIZATION = Object.freeze([
@@ -283,6 +287,7 @@ export interface PersonalSecurityMasterMeasurement {
     | "synthetic_engineering_only_not_production_slo";
   readonly catalogId: string;
   readonly catalogVersion: string;
+  readonly clock: typeof PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.clock;
   readonly hardwareProfile: string;
   readonly iterations: number;
   readonly maximumMilliseconds: number;
@@ -294,6 +299,7 @@ export interface PersonalSecurityMasterMeasurement {
   readonly resultLimit: number;
   readonly sampleCount: number;
   readonly snapshotSha256: `sha256:${string}`;
+  readonly timedRegion: typeof PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.timedRegion;
 }
 
 interface RawSecurityRecord {
@@ -522,14 +528,13 @@ export function searchPersonalSecurityMaster(
 export function measurePersonalSecurityMasterSearchP95(
   catalog: PersonalSecurityMasterCatalog,
   input: PersonalSecurityMasterMeasurementInput,
-  readNowMilliseconds: () => number = () => performance.now(),
 ): PersonalSecurityMasterMeasurement {
   try {
-    if (arguments.length < 2 || arguments.length > 3) {
+    if (arguments.length !== 2) {
       fail("PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID");
     }
     const state = CATALOG_STATES.get(catalog);
-    if (state === undefined || typeof readNowMilliseconds !== "function") {
+    if (state === undefined) {
       fail("PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID");
     }
     const request = snapshotMeasurementInput(input);
@@ -537,13 +542,13 @@ export function measurePersonalSecurityMasterSearchP95(
     const samples: number[] = [];
     for (let iteration = 0; iteration < request.iterations; iteration += 1) {
       for (const query of request.queries) {
-        const start = readNowMilliseconds();
+        const start = READ_MONOTONIC_MILLISECONDS();
         const searchRequest = normalizeSearchRequest(
           query,
           request.resultLimit,
         );
         searchState(state, searchRequest);
-        const finish = readNowMilliseconds();
+        const finish = READ_MONOTONIC_MILLISECONDS();
         const elapsed = finish - start;
         if (
           !Number.isFinite(start) ||
@@ -571,6 +576,7 @@ export function measurePersonalSecurityMasterSearchP95(
           : "owner_local_exact_snapshot_and_declared_hardware",
       catalogId: state.catalogId,
       catalogVersion: state.catalogVersion,
+      clock: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.clock,
       hardwareProfile: request.hardwareProfile,
       iterations: request.iterations,
       maximumMilliseconds,
@@ -583,6 +589,7 @@ export function measurePersonalSecurityMasterSearchP95(
       resultLimit: request.resultLimit,
       sampleCount: samples.length,
       snapshotSha256: state.snapshotSha256,
+      timedRegion: PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN.timedRegion,
     });
   } catch (error) {
     throw publicError(error, "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID");

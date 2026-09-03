@@ -21,6 +21,11 @@ exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing
 closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source or private
 operation is recorded.**
 
+Measurement-integrity correction status: **Cycle 3e-a2 has prepared public
+engineering correction source only. Its exact source/routing transitions,
+terminal verification, independent review, and CI evidence have not been
+frozen or recorded as Pass.**
+
 Real-snapshot authorization and admission status: **Pending exact owner review;
 no real snapshot or private activation has occurred.**
 
@@ -58,6 +63,9 @@ Acceptance/promotion status: **Not accepted or promoted.**
 | Synthetic scale                  | At least 3,000 synthetic records exercise admission/search without being counted as real breadth                                                                                                                                                                                                       | Recorded engineering evidence only                               |
 | Real catalog breadth             | One exact admitted snapshot contains at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit exclusions                                                                                                                                                                           | Pending exact owner-approved real snapshot                       |
 | Real search latency              | Nearest-rank p95 is below 200 ms on declared owner hardware and exact loaded real universe under the fixed 100-iteration, 32-distinct-query, limit-25 plan whose ordered raw query set is digest-bound                                                                                                 | Pending exact real-snapshot measurement                          |
+| Package-owned measurement clock  | `measurePersonalSecurityMasterSearchP95(catalog,input)` has exactly two public/runtime arguments, rejects a hostile third callback without invocation, and uses only the private module-captured `node:perf_hooks` monotonic clock                                                                     | Cycle 3e-a2 prepared source only; exact evidence pending         |
+| Measurement receipt integrity    | Plan and receipt bind `clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and `timedRegion: "normalize_request_and_search_in_memory_catalog"` with receipt types derived from the plan; each sample spans request normalization through in-memory search                              | Cycle 3e-a2 prepared source only; exact evidence pending         |
+| Measurement static guard         | `personalSecurityMasterMeasurementBoundaryViolation` and mutation coverage pin exact arity, clock capture/use, timed region, receipt bindings, and absence of an alternate timing seam                                                                                                                 | Cycle 3e-a2 prepared source only; exact evidence pending         |
 | Offline source preparation       | Cycle 3e-a1 consumes six exact canonical `sec_openfigi_v1` artifacts and emits one admission-verified snapshot through an identity-bound one-shot handoff                                                                                                                                              | Recorded public engineering Pass only; no real operation         |
 | Ticker-history limitation        | Filing-observed plus prospective diffs are labeled honestly; complete exchange-effective history requires a separately licensed corporate-actions source                                                                                                                                               | Explicit free/personal-profile limitation                        |
 | No network or credential         | No SEC/OpenFIGI fetch, key, provider adapter, refresh, scheduler, or real source payload exists in this slice                                                                                                                                                                                          | Explicit nonclaim                                                |
@@ -99,7 +107,12 @@ rank p95 measurement. A result from synthetic input is explicitly labeled
 engineering-only rather than a production SLO. The helper enforces 100
 iterations, 32 ordered queries distinct after normalization, and result limit
 25; its receipt includes the result limit and SHA-256 of the canonical JSON
-ordered raw query array plus LF.
+ordered raw query array plus LF. Cycle 3e-a2 prepares a correction that makes
+the helper exactly two arguments, rejects any third callback before invocation,
+and privately captures the monotonic `node:perf_hooks` clock. Its receipt also
+binds that clock and the per-sample region from request normalization through
+in-memory search. The correction remains source-stage and is not covered by the
+earlier recorded Pass.
 
 The admitted graph separates stable issuer, security, share-class, listing, and
 provider-mapping identities. It permits 1:N issuer-to-security-to-share-class
@@ -158,6 +171,30 @@ controls, identity assignments, and classification/reconciliation result
 before any real admission. Public preparation source and synthetic artifacts
 do not perform or authorize that operation.
 
+## Cycle 3e-a2 measurement-integrity boundary
+
+Cycle 3e-a2 is prepared public engineering correction source only. Its exact
+signature is `measurePersonalSecurityMasterSearchP95(catalog, input)`, with
+exactly two runtime arguments. A third argument fails with
+`PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID`, and a hostile callback is never
+invoked. The private `READ_MONOTONIC_MILLISECONDS` bound callable is captured
+from `node:perf_hooks` at module initialization and cannot be supplied through an
+input, option, overload, export, or test seam.
+
+The frozen plan and measurement receipt bind
+`clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and
+`timedRegion: "normalize_request_and_search_in_memory_catalog"`. Focused tests
+and `personalSecurityMasterMeasurementBoundaryViolation` are prepared to guard
+the exact arity, clock capture, timed region, receipt bindings, and absence of
+an alternate caller timer. See
+[ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
+[Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
+
+No exact source/routing revision, terminal local result, review conclusion, CI
+run, or public engineering Pass is recorded yet. The correction uses no real
+source and establishes no real breadth, latency, owner authorization,
+acceptance, or promotion.
+
 Ticker history under this free profile contains only
 `sec_filing_observed` and `prospective_snapshot_observed` intervals, with
 prospective diffs keyed by stable internal `listingId`. An OpenFIGI listing FIGI
@@ -175,8 +212,13 @@ repository gates, independent review, routing transitions, and terminal CI.
 Cycle 3e-a nonetheless remains unpromoted until an exact real source snapshot is
 owner-approved, prepared, and admitted.
 
-The highest-priority remaining product blocker is that exact real snapshot and
-its declared-hardware measurement: at least 3,000 eligible active U.S.-listed
+The highest-priority repository-controlled blocker is first to freeze and
+verify the Cycle 3e-a2 measurement-integrity correction. Only after that exact
+public engineering boundary passes can a future owner-only measurement be
+considered trustworthy exit evidence.
+
+The highest-priority remaining private product blocker is then the exact real
+snapshot and its declared-hardware measurement: at least 3,000 eligible active U.S.-listed
 common stocks/ADRs, explicit exclusions, exact policy compatibility, no
 duplicate active MIC-symbol, and search p95 below 200 ms under the exact fixed
 measurement plan. Synthetic volume and
@@ -190,6 +232,8 @@ must follow the exact source terms and authorize the real local operation.
 - [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md)
 - [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md)
 - [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md)
+- [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md)
+- [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md)
 - [Cycle 3c exit matrix](./CYCLE_3C_EXIT_MATRIX.md)
 - [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md)
 - [Personal product-breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)

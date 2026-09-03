@@ -1993,8 +1993,10 @@ universe breadth, and real-hardware latency result remain pending, so it is not
 accepted or promoted. Cycle 3e-a1 has a recorded public engineering Pass only
 for exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and
 routing closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source
-or private operation is recorded. Cycle 3e-b and Cycles 3f through 3q remain
-planned.** No parity claim is made.
+or private operation is recorded. Cycle 3e-a2 has only a prepared public
+engineering correction for the caller-controlled measurement clock; it has no
+frozen source/routing transition or recorded Pass. Cycle 3e-b and Cycles 3f
+through 3q remain planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
@@ -2008,6 +2010,9 @@ and deterministic search as a verified public engineering boundary, but
 synthetic scale cannot establish its declared real-catalog result. Cycle 3e-a1
 separately records only an offline deterministic handoff from six exact
 canonical source-preparation roles into that admission boundary. Any later
+real latency evidence must also use the Cycle 3e-a2 package-owned monotonic
+clock and explicitly bound timed region after that correction receives exact
+public engineering evidence. Any later
 networked source must still enter through the
 separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
@@ -2355,7 +2360,11 @@ The public scale case may contain at least 3,000 synthetic records and the
 measurement helper may report synthetic latency, but both remain explicitly
 engineering-only. Its exact plan is 100 iterations over 32 distinct normalized
 queries at result limit 25, with the ordered raw query set bound by canonical-
-JSON-plus-LF SHA-256 in the receipt. Promotion still requires one exact owner-
+JSON-plus-LF SHA-256 in the receipt. A Cycle 3e-a2 source-stage correction
+removes the optional caller clock, requires exactly two arguments, captures the
+`node:perf_hooks` monotonic clock inside the package, and binds exact `clock`
+and `timedRegion` literals into the receipt. It is not yet a recorded public
+engineering Pass. Promotion still requires one exact owner-
 approved real snapshot with at least 3,000 eligible active U.S.-listed common
 stocks/ADRs,
 exact policy binding and explicit exclusions, plus local symbol/name search p95
@@ -2410,6 +2419,37 @@ credentials, paths, row-level mappings, rejected rows, generated snapshot,
 measurement inputs, and runner/retry/cleanup material out of Git and public
 logs. Neither Cycle 3e-a1 source nor synthetic evidence accepts or promotes
 Cycle 3e-a.
+
+#### Cycle 3e-a2 — package-owned security-master measurement clock
+
+Status: **Prepared public engineering correction only. No exact source or
+routing revision, terminal local result, independent review, CI evidence, real
+measurement, acceptance, or promotion is recorded.** See
+[ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
+[Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
+
+The correction makes
+`measurePersonalSecurityMasterSearchP95(catalog, input)` the exact two-argument
+public and runtime API. A third argument fails immediately with
+`PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID`; a hostile callback cannot run.
+The package privately captures bound `performance.now` from
+`node:perf_hooks` as `READ_MONOTONIC_MILLISECONDS` and uses it around only request
+normalization plus in-memory catalog search.
+
+Both `PERSONAL_SECURITY_MASTER_MEASUREMENT_PLAN` and the immutable measurement
+receipt bind
+`clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and
+`timedRegion: "normalize_request_and_search_in_memory_catalog"`. Focused hostile
+tests and `personalSecurityMasterMeasurementBoundaryViolation` statically guard
+the clock capture, exact arity, timed region, receipt fields, and absence of an
+alternate caller timing seam.
+
+This is a repository-controlled integrity correction, so no real source
+operation is needed to test it. Public source and synthetic timing establish no
+real catalog, breadth, declared-hardware latency, below-200-ms result, owner
+authorization, Cycle 3e-a acceptance/promotion, or feature parity. Exact source,
+routing, local, review, and CI evidence must be recorded before Cycle 3e-a2 can
+receive even a public engineering Pass.
 
 The delivery waves are:
 

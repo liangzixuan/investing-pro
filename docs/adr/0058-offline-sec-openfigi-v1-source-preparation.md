@@ -4,7 +4,9 @@ Status: **Recorded public engineering Pass only for exact merge-free source
 revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
 `5e27bed1a11956bb207f523739083131aea254f0`. No real source artifact, provider
 credential, network request, generated real snapshot, owner authorization, or
-private activation is recorded. Cycle 3e-a remains not accepted or promoted.**
+private activation is recorded. Cycle 3e-a2 has only prepared public correction
+source for measurement-clock integrity and no recorded Pass. Cycle 3e-a remains
+not accepted or promoted.**
 
 ## Context
 
@@ -155,7 +157,8 @@ The owner must review exact source versions and digests, retrieval metadata,
 applicable terms, attribution, cache, retention, deletion, display, search,
 export, and redistribution controls. A fresh, exact, single-use authorization
 must bind the six artifacts, preparation implementation revision, output plan,
-and measurement plan before the owner-only run. A retry requires a new
+and an accepted exact Cycle 3e-a2 package-owned-clock measurement plan before
+the owner-only run. A retry requires a new
 authorization and must preserve the failed operation only in value-free,
 private audit material. Public evidence may record only an explicitly allowed
 coarse, nonsecret outcome after successful preparation, admission, breadth
@@ -225,11 +228,21 @@ boundary. Cycle 3e-a remains not accepted or promoted until the separate owner-
 only real source preparation, exact snapshot admission, at-least-3,000 breadth
 gate, and fixed declared-hardware p95 measurement all pass.
 
+Cycle 3e-a2 has prepared public correction source only for that later
+measurement. It makes the API exactly `(catalog, input)`, rejects a hostile
+third clock callback without invoking it, privately captures the
+`node:perf_hooks` monotonic clock, and binds exact clock and timed-region
+literals into the receipt. No exact source/routing chain or terminal evidence
+has been recorded for the correction; it authorizes no real operation and
+establishes no real latency result.
+
 ## References
 
 - [Cycle 3e-a1 exit matrix](../CYCLE_3E_A1_EXIT_MATRIX.md)
 - [ADR 0057](./0057-owner-local-security-master-snapshot-and-search.md)
 - [Cycle 3e-a exit matrix](../CYCLE_3E_A_EXIT_MATRIX.md)
+- [ADR 0059](./0059-package-owned-security-master-measurement-clock.md)
+- [Cycle 3e-a2 exit matrix](../CYCLE_3E_A2_EXIT_MATRIX.md)
 - [ADR 0055](./0055-connected-personal-source-policy-registry.md)
 - [Personal product-breadth roadmap](../PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 - [Build roadmap](../BUILD_ROADMAP.md)
