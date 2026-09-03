@@ -4,7 +4,10 @@ Status: **Recorded public engineering Pass for the exact merge-free chain from
 `5186103977b906d3c035599b3b2b00793926fca3` through
 `fda5148a4251a36861196029bbc6df6b7d1a84d0`. No real security-master snapshot,
 provider credential, download, network request, or private activation has
-occurred. Cycle 3e-a is not accepted or promoted.**
+occurred. The separate Cycle 3e-a1 offline preparation boundary is recorded only
+for exact source `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. Cycle 3e-a is not accepted or
+promoted.**
 
 ## Context
 
@@ -320,9 +323,16 @@ Ubuntu job `100450725750` and Windows job `100450725932`; parser acceptance run
 acceptance run `33691407952` also succeeded.
 
 Those public gates establish only the synthetic engine/API engineering
-boundary. Cycle 3e-a1 source preparation is separately governed by
-[ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md) and does not
-inherit authorization from this recorded chain.
+boundary. The separately governed Cycle 3e-a1 source-preparation boundary has a
+recorded public engineering Pass only for exact source revision
+`0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. At that routing tip, the full
+local gate passed 2,051 tests with 9 intentional skips. Exact-tip CI run
+`33806494548` passed Windows job `100818110497` and Ubuntu job `100818110717`;
+custody run `33806494300`, normalization run `33806494295`, cross-engine run
+`33806494318`, and parser-isolation run `33806494364` also passed. That record
+does not authorize a real source or private operation; see
+[ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md).
 
 Cycle 3e-a itself remains **not accepted or promoted** until a later exact
 owner-approved `owner_local_source` snapshot:

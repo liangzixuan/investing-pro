@@ -1,10 +1,10 @@
 # ADR 0058: offline `sec_openfigi_v1` source preparation
 
-Status: **Cycle 3e-a1 public engineering source is being prepared for exact
-source review. Its source transition, routing closure, terminal CI, and any
-owner-only operation remain pending. No real source artifact, provider
-credential, network request, generated real snapshot, or private activation is
-recorded.**
+Status: **Recorded public engineering Pass only for exact merge-free source
+revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. No real source artifact, provider
+credential, network request, generated real snapshot, owner authorization, or
+private activation is recorded. Cycle 3e-a remains not accepted or promoted.**
 
 ## Context
 
@@ -212,12 +212,18 @@ exact source revision `5186103977b906d3c035599b3b2b00793926fca3` through
 terminal stabilization `fda5148a4251a36861196029bbc6df6b7d1a84d0`. That
 record does not authorize this source-preparation operation.
 
-Cycle 3e-a1 becomes recorded public engineering source only after its exact
-merge-free source and routing transitions, focused synthetic/security tests,
-full local gate, independent review, and terminal exact-chain CI pass. Even
-then, Cycle 3e-a remains not accepted or promoted until the separate owner-only
-real source preparation, exact snapshot admission, at-least-3,000 breadth gate,
-and fixed declared-hardware p95 measurement all pass.
+Cycle 3e-a1 is recorded as a public engineering Pass only for exact merge-free
+source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and its sole routing-
+closure child `5e27bed1a11956bb207f523739083131aea254f0`. At the routing tip,
+the full local gate passed 2,051 tests with 9 intentional skips. Exact-tip CI run
+`33806494548` passed Windows job `100818110497` and Ubuntu job `100818110717`;
+custody run `33806494300`, normalization run `33806494295`, cross-engine run
+`33806494318`, and parser-isolation run `33806494364` also passed.
+
+That record establishes only the public offline source-preparation engineering
+boundary. Cycle 3e-a remains not accepted or promoted until the separate owner-
+only real source preparation, exact snapshot admission, at-least-3,000 breadth
+gate, and fixed declared-hardware p95 measurement all pass.
 
 ## References
 

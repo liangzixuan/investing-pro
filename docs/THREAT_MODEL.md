@@ -1,4 +1,4 @@
-# Sprint 0 through prepared public Cycle 3e-a threat model
+# Sprint 0 through recorded public Cycle 3e-a1 threat model
 
 ## Current trust boundaries
 
@@ -33,9 +33,9 @@ actual personal vault, key, backup, restore, private activation, or browser
 vault client. Cycle 3e-a separately has a recorded public engineering Pass for
 one exact owner-local security-master snapshot and authenticated local search,
 but no real catalog, source download, provider credential, network adapter, or
-private activation. Cycle 3e-a1 prepares a separate offline six-artifact source
-handoff with no acquisition or private operation. Cycle 3e-a is not accepted or
-promoted.
+private activation. Cycle 3e-a1 has a recorded public engineering Pass only for
+its separate offline six-artifact source handoff, with no acquisition or private
+operation. Cycle 3e-a is not accepted or promoted.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2566,8 +2566,16 @@ the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
 ## Cycle 3e-a1 offline source-preparation threat boundary
 
-Cycle 3e-a1 prepares public engineering source for exact review. It does not
-acquire, store, or authorize real source material. Its assets are the six exact
+Cycle 3e-a1 has a **recorded public engineering Pass only** for exact merge-free
+source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. At the routing tip, the full
+local gate passed 2,051 tests with 9 intentional skips. Exact-tip CI run
+`33806494548` passed Windows job `100818110497` and Ubuntu job `100818110717`;
+custody run `33806494300`, normalization run `33806494295`, cross-engine run
+`33806494318`, and parser-isolation run `33806494364` also passed.
+
+The recorded boundary does not acquire, store, or authorize real source
+material. Its assets are the six exact
 canonical artifact roles and digests; preparation-plan bindings and chronology;
 the value-free aggregate receipt; stable opaque identity assignments; the
 derived canonical snapshot and digest; the identity-bound one-shot capability;
@@ -2588,7 +2596,7 @@ cross-instance substitution, or replay; retained source/snapshot bytes after
 return or failed read; and value, path, digest detail, credential, or rejected-
 row disclosure through a receipt, error, or public test.
 
-Prepared controls are:
+Recorded public engineering controls are:
 
 - exact `expectedSha256` and `artifacts` maps with only
   `preparationPlan`, `secCandidates`, `normalizedSecCoverEvidence`,
@@ -2699,8 +2707,9 @@ the [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
    3d's public/local-temporary vault boundary is promoted only for its exact
    corrected chain and has no actual vault or private activation. Cycle 3e-a
    now has a recorded owner-local security-master admission/search public
-   engineering Pass, and Cycle 3e-a1 prepares its separate offline source
-   handoff, but Cycle 3e-a remains unpromoted with no real breadth claim until a
+   engineering Pass, and Cycle 3e-a1 records its separate offline source
+   handoff as a public engineering Pass only, but Cycle 3e-a remains unpromoted
+   with no real breadth claim until a
    later exact owner-approved, rights-compatible source is prepared, admitted,
    and measured.
    Organizational

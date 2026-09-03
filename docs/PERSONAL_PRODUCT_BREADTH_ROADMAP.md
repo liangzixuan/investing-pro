@@ -15,11 +15,12 @@ public engineering Pass for its exact chain from
 `5186103977b906d3c035599b3b2b00793926fca3` through
 `fda5148a4251a36861196029bbc6df6b7d1a84d0`, but its real snapshot, real-
 universe breadth, and real-hardware latency result remain pending, so it is not
-accepted or promoted. Cycle 3e-a1 prepares the public offline
-`sec_openfigi_v1` handoff; its exact source transition and terminal evidence
-remain pending. Cycle 3e-b and Cycles 3f through 3q remain planned.** This does
-not alter the exact historical Cycle 2z personal result or make a feature-
-parity claim.
+accepted or promoted. Cycle 3e-a1 has a recorded public engineering Pass only
+for exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and
+routing closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source
+or private operation is recorded. Cycle 3e-b and Cycles 3f through 3q remain
+planned.** This does not alter the exact historical Cycle 2z personal result or
+make a feature-parity claim.
 
 ## Goal
 
@@ -481,7 +482,7 @@ Target: move from one symbol to a useful local U.S. common-stock universe.
 
 The roadmap splits this milestone into ordered boundaries. Cycle 3e-a has a
 recorded engine/API engineering Pass but remains unpromoted. Cycle 3e-a1
-prepares the separately reviewable offline source handoff. Cycle 3e-b builds on
+records the separately reviewable offline source handoff. Cycle 3e-b builds on
 the stable identities only after the real Cycle 3e-a exit is met.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
@@ -560,12 +561,20 @@ synthetic rows nor a synthetic timing result can close that gate.
 
 #### Cycle 3e-a1 — offline `sec_openfigi_v1` source preparation
 
-Status: **Prepared public engineering source for exact review; its source and
-routing transitions and terminal evidence are pending. No real acquisition,
-provider credential, owner authorization, private operation, or generated real
-snapshot exists.** See
+Status: **Recorded public engineering Pass only for exact merge-free source
+revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. No real acquisition, provider
+credential, owner authorization, private operation, or generated real snapshot
+exists.** See
 [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and the
 [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
+
+At routing tip `5e27bed1a11956bb207f523739083131aea254f0`, the full local
+gate passed 2,051 tests with 9 intentional skips. Exact-tip CI run `33806494548`
+passed Windows job `100818110497` and Ubuntu job `100818110717`; custody run
+`33806494300`, normalization run `33806494295`, cross-engine run `33806494318`,
+and parser-isolation run `33806494364` also passed. This records only the
+public offline source-preparation engineering boundary.
 
 The exact public entry accepts digest and byte maps for six canonical roles:
 `preparationPlan`, `secCandidates`, `normalizedSecCoverEvidence`,

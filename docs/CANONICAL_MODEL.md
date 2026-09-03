@@ -85,8 +85,10 @@ and search has a **recorded public engineering Pass** for its exact chain from
 `5186103977b906d3c035599b3b2b00793926fca3` through
 `fda5148a4251a36861196029bbc6df6b7d1a84d0`, with real snapshot, real breadth,
 and real-hardware latency still pending and no acceptance or promotion; and
-Cycle 3e-a1 prepares a public offline `sec_openfigi_v1` source handoff whose
-exact transition and terminal evidence remain pending.
+Cycle 3e-a1 has a recorded public engineering Pass only for exact source
+revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`, with no real source or private
+operation.
 The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
@@ -2382,8 +2384,16 @@ source.
 
 ### Cycle 3e-a1 offline source-preparation model
 
-Cycle 3e-a1 adds no acquisition or runtime source dependency. Its exact public
-entry is `prepareSecOpenFigiV1Source({expectedSha256,artifacts})`. Each map has
+Cycle 3e-a1 has a **recorded public engineering Pass only** for exact merge-free
+source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. At the routing tip, the full
+local gate passed 2,051 tests with 9 intentional skips. Exact-tip CI run
+`33806494548` passed Windows job `100818110497` and Ubuntu job `100818110717`;
+custody run `33806494300`, normalization run `33806494295`, cross-engine run
+`33806494318`, and parser-isolation run `33806494364` also passed.
+
+The recorded model adds no acquisition or runtime source dependency. Its exact
+public entry is `prepareSecOpenFigiV1Source({expectedSha256,artifacts})`. Each map has
 only six properties: `preparationPlan`, `secCandidates`,
 `normalizedSecCoverEvidence`, `aggregatedOpenFigiMappings`, `isoMicRegistry`,
 and `opaqueIdentityAssignments`. Their canonical root `artifactRole` values are
@@ -2435,7 +2445,8 @@ retrieval and policy evidence, exact implementation revision, output plan, and
 fixed measurement plan. Source bytes, credentials, paths, row-level mappings,
 rejected rows, restricted metadata, generated snapshot, and approval/runner/
 retry/cleanup material remain outside Git and public logs. The public preparer
-does not accept or promote Cycle 3e-a.
+and its recorded public engineering evidence do not accept or promote Cycle
+3e-a.
 
 Synthetic scale can verify the model but cannot close product breadth. The
 remaining exit requires a later exact owner-approved source/policy binding,

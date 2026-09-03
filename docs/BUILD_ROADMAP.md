@@ -1990,10 +1990,11 @@ public engineering Pass for its exact chain from
 `5186103977b906d3c035599b3b2b00793926fca3` through
 `fda5148a4251a36861196029bbc6df6b7d1a84d0`, but its real snapshot, real-
 universe breadth, and real-hardware latency result remain pending, so it is not
-accepted or promoted. Cycle 3e-a1 prepares the next public, offline
-`sec_openfigi_v1` handoff; its exact source transition and terminal evidence
-remain pending. Cycle 3e-b and Cycles 3f through 3q remain planned.** No parity
-claim is made.
+accepted or promoted. Cycle 3e-a1 has a recorded public engineering Pass only
+for exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and
+routing closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source
+or private operation is recorded. Cycle 3e-b and Cycles 3f through 3q remain
+planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
@@ -2005,7 +2006,7 @@ public/local-temporary vault boundary are promoted only for their exact source
 chains. Cycle 3e-a now records owner-local security-master snapshot admission
 and deterministic search as a verified public engineering boundary, but
 synthetic scale cannot establish its declared real-catalog result. Cycle 3e-a1
-separately prepares only an offline deterministic handoff from six exact
+separately records only an offline deterministic handoff from six exact
 canonical source-preparation roles into that admission boundary. Any later
 networked source must still enter through the
 separately declared, explicitly enabled
@@ -2364,12 +2365,19 @@ requirements.
 
 #### Cycle 3e-a1 — offline `sec_openfigi_v1` source preparation
 
-Status: **Prepared public engineering source for exact review; exact source and
-routing transitions and terminal evidence are pending. No real source,
-credential, owner authorization, private operation, or generated real snapshot
-exists.** See
+Status: **Recorded public engineering Pass only for exact merge-free source
+revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
+`5e27bed1a11956bb207f523739083131aea254f0`. No real source, credential,
+owner authorization, private operation, or generated real snapshot exists.** See
 [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and the
 [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
+
+At routing tip `5e27bed1a11956bb207f523739083131aea254f0`, the full local
+gate passed 2,051 tests with 9 intentional skips. Exact-tip CI run `33806494548`
+passed Windows job `100818110497` and Ubuntu job `100818110717`; custody run
+`33806494300`, normalization run `33806494295`, cross-engine run `33806494318`,
+and parser-isolation run `33806494364` also passed. This evidence records only
+the public offline source-preparation engineering boundary.
 
 The public entry `prepareSecOpenFigiV1Source` accepts exact digest maps and
 canonical byte maps for six roles: preparation plan, SEC candidates,
