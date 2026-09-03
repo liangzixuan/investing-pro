@@ -80,10 +80,13 @@ promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`, with private evidence limited to
 the permitted coarse outcome; Cycle 3c provider-neutral source-policy control
 plane and Cycle 3d public/local-temporary research vault promoted only for
-their exact recorded chains; and Cycle 3e-a owner-local security-master
-admission and search **prepared as public engineering source only**, with exact
-source transition, terminal evidence, real snapshot, real breadth, and real-
-hardware latency still pending and no acceptance or promotion.
+their exact recorded chains; Cycle 3e-a owner-local security-master admission
+and search has a **recorded public engineering Pass** for its exact chain from
+`5186103977b906d3c035599b3b2b00793926fca3` through
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`, with real snapshot, real breadth,
+and real-hardware latency still pending and no acceptance or promotion; and
+Cycle 3e-a1 prepares a public offline `sec_openfigi_v1` source handoff whose
+exact transition and terminal evidence remain pending.
 The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
@@ -2204,17 +2207,25 @@ verified the pinned corrected Cycle 3d chain. Exact promoted design, evidence,
 and nonclaims are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md). Cycle 3e-a owner-local
-security-master snapshot admission and symbol/name search now has prepared
-public engineering source only. No real breadth claim is available without a
-later exact owner-approved, rights-compatible source snapshot and declared-
-hardware measurement.
+security-master snapshot admission and symbol/name search now has a recorded
+public engineering Pass. No real breadth claim is available without a later
+exact owner-approved, rights-compatible source snapshot and declared-hardware
+measurement.
 
 ## Cycle 3e-a owner-local security-master model
 
-Cycle 3e-a is **prepared public engineering source only; exact source
-transition and terminal evidence are pending**. No real security-master
+Cycle 3e-a has a **recorded public engineering Pass** for exact merge-free
+source revision `5186103977b906d3c035599b3b2b00793926fca3` and its exact
+stabilization chain through `fda5148a4251a36861196029bbc6df6b7d1a84d0`. At
+that terminal tip, the full local gate passed 2,024 tests with 9 intentional
+skips. CI run `33691407884` passed Ubuntu job `100450725750` and Windows job
+`100450725932`; parser acceptance run `33691407866`, custody acceptance run
+`33691407885`, and cross-engine acceptance run `33691407952` also passed.
+
+That record covers public synthetic engineering only. No real security-master
 snapshot, provider credential, source download, network adapter, browser
-client, or private activation is recorded. It is not accepted or promoted.
+client, or private activation is recorded. Cycle 3e-a is not accepted or
+promoted.
 
 The zero-production-dependency package
 `@research-cockpit/personal-security-master` defines schema `1.0.0`, profile
@@ -2369,14 +2380,71 @@ not exchange-effective dates. Complete pre-observation or exchange-effective
 history requires a separately rights-compatible licensed corporate-actions
 source.
 
+### Cycle 3e-a1 offline source-preparation model
+
+Cycle 3e-a1 adds no acquisition or runtime source dependency. Its exact public
+entry is `prepareSecOpenFigiV1Source({expectedSha256,artifacts})`. Each map has
+only six properties: `preparationPlan`, `secCandidates`,
+`normalizedSecCoverEvidence`, `aggregatedOpenFigiMappings`, `isoMicRegistry`,
+and `opaqueIdentityAssignments`. Their canonical root `artifactRole` values are
+respectively `preparation_plan`, `sec_candidates`,
+`normalized_sec_cover_evidence`, `aggregated_openfigi_mappings`,
+`iso_mic_registry`, and `opaque_identity_assignments`; every root also binds
+profile `sec_openfigi_v1` and schema version `1.0.0`. The plan binds the five
+non-plan artifact digests, `asOf`, `generatedAt`, and `staleBefore`; fixed
+implementation limits are not caller-selected.
+
+The preparer owns intrinsic byte copies, verifies each expected digest, admits
+only strict one-LF canonical JSON under closed bounded role schemas, prevents
+row order from choosing reconciliation/admission ordering, and sorts emitted
+records deterministically. Exact-byte differences remain bound through
+artifact/bundle digests, provenance, and output source revision. The preparer
+reconciles candidate, cover-evidence, mapping, MIC, and opaque-identity records
+deterministically. External identifiers remain attributes or typed mappings.
+Ambiguity and conflict are quarantined rather than guessed;
+unsupported classification, cover evidence with `observedAt < staleBefore`,
+and one resolved inactive/non-U.S./non-operating MIC receive their distinct
+unsupported, stale, and ineligible counts. Cover `observedAt` also cannot be
+later than the plan provenance acquisition time. Every candidate is counted
+exactly once.
+
+A result with no admitted candidate has only a frozen aggregate receipt. A
+nonempty result also has an identity-bound single-use `capability` and
+synchronous `readSnapshot(capability)`. The factory wipes all six captured
+source copies before it returns; only the derived canonical snapshot copy
+remains behind the capability. The first read attempt consumes the capability,
+returns a fresh caller-owned snapshot copy on success, and wipes the retained
+copy in all outcomes. The catalog is produced by
+`admitPersonalSecurityMasterSnapshot`; replay or cross-instance substitution
+cannot release bytes. The frozen receipt uses value-free
+`exclusionReasonCounts`, and mixed success is `prepared_with_exclusions`.
+Public errors are fixed and value-free.
+
+The module has no network, DNS, provider SDK, credential, environment,
+filesystem-path, persistence, scheduler, clock, or randomness surface. Public
+tests use synthetic canonical artifacts, including any at-least-3,000-row case,
+and cannot establish a real source, rights, authenticity, identity randomness,
+breadth, or latency result. Exact design, stop conditions, and the owner-only
+boundary are in
+[ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and the
+[Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
+
+A later private invocation requires exact owner review and fresh single-use
+authorization bound to the six canonical artifacts, source versions/digests,
+retrieval and policy evidence, exact implementation revision, output plan, and
+fixed measurement plan. Source bytes, credentials, paths, row-level mappings,
+rejected rows, restricted metadata, generated snapshot, and approval/runner/
+retry/cleanup material remain outside Git and public logs. The public preparer
+does not accept or promote Cycle 3e-a.
+
 Synthetic scale can verify the model but cannot close product breadth. The
 remaining exit requires a later exact owner-approved source/policy binding,
 at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit
 exclusions, no duplicate active MIC-symbol, and search p95 below 200 ms on
 declared hardware with that exact loaded real universe and fixed measurement
 plan. Enterprise approvals, tenant controls, commercial use, and production
-operations remain out of scope for this personal profile. Exact prepared design
-and pending gates are in
+operations remain out of scope for this personal profile. Exact recorded engine
+design and pending real-product gates are in
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 

@@ -115,6 +115,8 @@ const connectedSourcePolicyModule =
   "@research-cockpit/connected-source-policy" as const;
 const personalSecurityMasterModule =
   "@research-cockpit/personal-security-master" as const;
+const personalSecurityMasterSourcePreparationModule =
+  `${personalSecurityMasterModule}/sec-openfigi-v1-source-preparation` as const;
 const personalSecurityMasterPackagePrefix =
   "packages/personal-security-master/" as const;
 const personalSecurityMasterPackagePaths = [
@@ -123,6 +125,9 @@ const personalSecurityMasterPackagePaths = [
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master.ts`,
+  `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation-security.test.ts`,
+  `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation.test.ts`,
+  `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation.ts`,
   `${personalSecurityMasterPackagePrefix}src/test-personal-security-master-builder.ts`,
   `${personalSecurityMasterPackagePrefix}tsconfig.json`,
 ].sort();
@@ -5178,7 +5183,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     JSON.stringify(personalSecurityMasterPackagePaths)
   ) {
     found.push(
-      `${personalSecurityMasterPackagePrefix}: Cycle 3e-a package tree must remain the exact manifest, tsconfig, core, index, test builder, and two-test surface`,
+      `${personalSecurityMasterPackagePrefix}: Cycle 3e-a package tree must remain the exact manifest, tsconfig, root core/index/test surface, and isolated Cycle 3e-a1 source-preparation subpath`,
     );
   }
 
@@ -5189,7 +5194,11 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     version: "0.1.0",
     private: true,
     type: "module",
-    exports: { ".": "./src/index.ts" },
+    exports: {
+      ".": "./src/index.ts",
+      "./sec-openfigi-v1-source-preparation":
+        "./src/sec-openfigi-v1-source-preparation.ts",
+    },
     scripts: {
       build: "tsc --noEmit",
       typecheck: "tsc --noEmit",
@@ -5198,7 +5207,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
   };
   if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
     found.push(
-      `${manifestPath}: Cycle 3e-a security master must remain private, index-only, and zero-production-dependency`,
+      `${manifestPath}: Cycle 3e-a security master must remain private with the exact root and isolated source-preparation exports and zero production dependencies`,
     );
   }
 
@@ -5223,6 +5232,12 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts` as const;
   const securityTestPath =
     `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts` as const;
+  const sourcePreparationPath =
+    `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation.ts` as const;
+  const sourcePreparationUnitTestPath =
+    `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation.test.ts` as const;
+  const sourcePreparationSecurityTestPath =
+    `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation-security.test.ts` as const;
   const allowedTestModules = new Set([
     "node:crypto",
     "node:util/types",
@@ -5230,6 +5245,13 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     "./index",
     "./personal-security-master",
     "./test-personal-security-master-builder",
+  ]);
+  const allowedSourcePreparationTestModules = new Set([
+    "node:crypto",
+    "node:util/types",
+    "vitest",
+    "./personal-security-master",
+    "./sec-openfigi-v1-source-preparation",
   ]);
   for (const path of actualTree.filter((entry) => entry.endsWith(".ts"))) {
     const content = await cycle2kText(path, found);
@@ -5263,6 +5285,35 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         JSON.stringify(["node:crypto", "./personal-security-master"])
     ) {
       found.push(`${path}: test builder imports must remain exact`);
+    } else if (path === sourcePreparationPath) {
+      const allowedProductionModules = new Set([
+        "node:crypto",
+        "./personal-security-master",
+      ]);
+      if (
+        !modules.includes("./personal-security-master") ||
+        new Set(modules).size !== modules.length ||
+        modules.some((module) => !allowedProductionModules.has(module))
+      ) {
+        found.push(
+          `${path}: Cycle 3e-a1 source preparation may import only node:crypto and the local security-master core`,
+        );
+      }
+    } else if (
+      path === sourcePreparationUnitTestPath ||
+      path === sourcePreparationSecurityTestPath
+    ) {
+      if (
+        !modules.includes("vitest") ||
+        !modules.includes("./sec-openfigi-v1-source-preparation") ||
+        modules.some(
+          (module) => !allowedSourcePreparationTestModules.has(module),
+        )
+      ) {
+        found.push(
+          `${path}: Cycle 3e-a1 tests may use only the reviewed local, Vitest, crypto, and proxy-inspection imports`,
+        );
+      }
     } else if (
       (path === unitTestPath || path === securityTestPath) &&
       (!modules.includes("vitest") ||
@@ -5284,6 +5335,17 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     if (productionViolation !== null) {
       found.push(`${path}: ${productionViolation}`);
     }
+  }
+  const sourcePreparationContent = await cycle2kText(
+    sourcePreparationPath,
+    found,
+  );
+  const sourcePreparationViolation =
+    personalSecurityMasterSourcePreparationProductionViolation(
+      sourcePreparationContent,
+    );
+  if (sourcePreparationViolation !== null) {
+    found.push(`${sourcePreparationPath}: ${sourcePreparationViolation}`);
   }
 
   const publicExports = [
@@ -5372,6 +5434,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
   for (const file of externalCompositionFilesToInspect) {
     const path = relative(root, file).replaceAll("\\", "/");
     const content = await readFile(file, "utf8");
+    if (
+      !path.startsWith(personalSecurityMasterPackagePrefix) &&
+      personalSecurityMasterSourcePreparationExternalReference(path, content)
+    ) {
+      found.push(
+        `${path}: Cycle 3e-a1 source preparation must remain outside API, web, vault, connected-source-policy, and all other runtime graphs`,
+      );
+    }
     if (
       !collectModuleSpecifiers(content).includes(personalSecurityMasterModule)
     ) {
@@ -5532,6 +5602,25 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     );
   }
 
+  const exactSourcePreparationProbeImports = `import { createHash } from "node:crypto";
+import {
+  PERSONAL_SECURITY_MASTER_PROFILE,
+  PERSONAL_SECURITY_MASTER_SCHEMA_VERSION,
+  admitPersonalSecurityMasterSnapshot,
+  type PersonalSecurityMasterCatalog,
+  type PersonalSecurityMasterContentKind,
+  type PersonalSecurityMasterSourcePolicyCompatibility,
+} from "./personal-security-master";`;
+  const extraSourcePreparationCoreValueProbe =
+    exactSourcePreparationProbeImports.replace(
+      "  admitPersonalSecurityMasterSnapshot,",
+      "  admitPersonalSecurityMasterSnapshot,\n  searchPersonalSecurityMaster,",
+    );
+  const widenedSourcePreparationCoreTypeProbe =
+    exactSourcePreparationProbeImports.replace(
+      "  type PersonalSecurityMasterCatalog,",
+      "  PersonalSecurityMasterCatalog,",
+    );
   const regressions = [
     JSON.stringify(personalSecurityMasterPackagePaths) !==
       JSON.stringify([...personalSecurityMasterPackagePaths].sort()),
@@ -5547,6 +5636,82 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       corePath,
       'import { createHash } from "node:crypto";\nimport { performance } from "node:perf_hooks";\nconsole.log("private");',
     ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${exactSourcePreparationProbeImports}\nvoid createHash; const retainedSnapshot = new Uint8Array(3); const snapshotSha256 = "sha256:fixture"; void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot });`,
+    ) !== null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${extraSourcePreparationCoreValueProbe}\nvoid createHash; const retainedSnapshot = new Uint8Array(3); const snapshotSha256 = "sha256:fixture"; void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot });`,
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${widenedSourcePreparationCoreTypeProbe}\nvoid createHash; const retainedSnapshot = new Uint8Array(3); const snapshotSha256 = "sha256:fixture"; void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot });`,
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { readFile } from "node:fs/promises";\nimport { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid readFile; void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    [
+      "node:child_process",
+      "node:dns",
+      "node:fs",
+      "node:http",
+      "node:https",
+      "node:net",
+      "node:tls",
+      "node:worker_threads",
+      "@research-cockpit/connected-source-policy",
+      "@research-cockpit/local-research-vault",
+      "../../../apps/api/src/security-master-app",
+      "../../../apps/web/app/layout",
+      "./credentials",
+    ].some(
+      (forbiddenModule) =>
+        personalSecurityMasterSourcePreparationProductionViolation(
+          `import "${forbiddenModule}";\nimport { admitPersonalSecurityMasterSnapshot } from "./personal-security-master"; void admitPersonalSecurityMasterSnapshot;`,
+        ) === null,
+    ),
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid fetch("https://provider.example"); void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid process.env.SECRET; void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nconst credentials = { apiKey: "private" }; void credentials; void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid import("./personal-security-master"); void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { createHash, randomBytes } from "node:crypto";\nimport { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid createHash; void randomBytes(32); void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { createHash } from "node:crypto";\nimport { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid createHash; void Date.now(); void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { createHash } from "node:crypto";\nimport { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid createHash; void Math.random(); void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      'import { createHash } from "node:crypto";\nimport { admitPersonalSecurityMasterSnapshot } from "./personal-security-master";\nvoid createHash; void performance.now(); void admitPersonalSecurityMasterSnapshot;',
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${exactSourcePreparationProbeImports}\nvoid createHash; const retainedSnapshot = new Uint8Array(3); const snapshotSha256 = "sha256:fixture"; void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: copyBytes(retainedSnapshot) });`,
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${exactSourcePreparationProbeImports}\nvoid createHash; const retainedSnapshot = new Uint8Array(3); const admissionSnapshot = retainedSnapshot; const snapshotSha256 = "sha256:fixture"; void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: admissionSnapshot });`,
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${exactSourcePreparationProbeImports}\nvoid createHash; const retainedSnapshot = new Uint8Array(3); const snapshotSha256 = "sha256:fixture"; void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot }); void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot });`,
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `import { prepare } from "${personalSecurityMasterSourcePreparationModule}"; void prepare;`,
+    ) === null,
+    !personalSecurityMasterSourcePreparationExternalReference(
+      "apps/api/src/source-preparation-probe.ts",
+      `import { prepare } from "${personalSecurityMasterSourcePreparationModule}"; void prepare;`,
+    ),
+    personalSecurityMasterSourcePreparationExternalReference(
+      sourcePreparationUnitTestPath,
+      'import { prepare } from "./sec-openfigi-v1-source-preparation"; void prepare;',
+    ),
     personalSecurityMasterApiBoundaryViolation(
       new Map(
         [...securityMasterApiSources].map(([path, content]) => [
@@ -5633,6 +5798,398 @@ function personalSecurityMasterProductionViolation(
   return concreteEndpoint
     ? "production source must remain source-neutral and embed no provider endpoint"
     : null;
+}
+
+function personalSecurityMasterSourcePreparationProductionViolation(
+  content: string,
+): string | null {
+  const modules = collectModuleSpecifiers(content);
+  const allowedModules = new Set(["node:crypto", "./personal-security-master"]);
+  if (
+    !modules.includes("./personal-security-master") ||
+    new Set(modules).size !== modules.length ||
+    modules.some((module) => !allowedModules.has(module))
+  ) {
+    return "Cycle 3e-a1 production imports may contain only node:crypto and the local security-master core";
+  }
+  if (
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  ) {
+    return "Cycle 3e-a1 runtime module loading and dynamic code are forbidden";
+  }
+  const source = ts.createSourceFile(
+    "sec-openfigi-v1-source-preparation.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const cryptoImports = source.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "node:crypto",
+  );
+  if (
+    cryptoImports.length !== 1 ||
+    !isExactFilingPayloadCustodyImport(cryptoImports[0], "node:crypto", [
+      ["createHash", "createHash"],
+    ])
+  ) {
+    return "Cycle 3e-a1 production source must retain the exact named node:crypto createHash binding";
+  }
+  const coreImports = source.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "./personal-security-master",
+  );
+  if (
+    coreImports.length !== 1 ||
+    !isExactPersonalSecurityMasterSourcePreparationCoreImport(coreImports[0])
+  ) {
+    return "Cycle 3e-a1 production source must retain only the exact reviewed security-master value and type bindings";
+  }
+  const admissionLifecycleViolation =
+    personalSecurityMasterSourcePreparationAdmissionLifecycleViolation(source);
+  if (admissionLifecycleViolation !== null) return admissionLifecycleViolation;
+  if (
+    findIdentifiers(
+      source,
+      new Set([
+        "Bun",
+        "BroadcastChannel",
+        "Deno",
+        "EventSource",
+        "MessageChannel",
+        "SharedWorker",
+        "WebTransport",
+        "WebSocket",
+        "Worker",
+        "XMLHttpRequest",
+        "caches",
+        "console",
+        "crypto",
+        "document",
+        "fetch",
+        "getRandomValues",
+        "global",
+        "globalThis",
+        "hrtime",
+        "indexedDB",
+        "localStorage",
+        "location",
+        "navigator",
+        "performance",
+        "process",
+        "pseudoRandomBytes",
+        "queueMicrotask",
+        "random",
+        "randomBytes",
+        "randomFill",
+        "randomFillSync",
+        "randomInt",
+        "randomUUID",
+        "self",
+        "sessionStorage",
+        "setImmediate",
+        "setInterval",
+        "setTimeout",
+        "Temporal",
+        "timeOrigin",
+        "uptime",
+        "window",
+      ]),
+    ).length > 0
+  ) {
+    return "Cycle 3e-a1 production source must not use network, process/environment, logging, worker, clock, randomness, or background globals";
+  }
+  const credentialNames = new Set([
+    "accessToken",
+    "apiKey",
+    "authorization",
+    "credential",
+    "credentials",
+    "refreshToken",
+    "secret",
+    "secrets",
+  ]);
+  if (findIdentifiers(source, credentialNames).length > 0) {
+    return "Cycle 3e-a1 production source must not accept, resolve, or retain credential material";
+  }
+  let environmentAccess = false;
+  let credentialAccess = false;
+  let ambientClockAccess = false;
+  const clockPropertyNames = new Set(["now"]);
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)
+    ) {
+      const access = namedBoundaryPropertyAccess(node, clockPropertyNames);
+      const owner =
+        access === null ? null : unwrapBoundaryExpression(access.expression);
+      if (owner !== null && ts.isIdentifier(owner) && owner.text === "Date") {
+        ambientClockAccess = true;
+        return;
+      }
+    }
+    if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+      const callee = unwrapBoundaryExpression(node.expression);
+      if (
+        ts.isIdentifier(callee) &&
+        callee.text === "Date" &&
+        (node.arguments?.length ?? 0) === 0
+      ) {
+        ambientClockAccess = true;
+        return;
+      }
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, new Set(["env"])) !== null
+    ) {
+      environmentAccess = true;
+      return;
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, credentialNames) !== null
+    ) {
+      credentialAccess = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (ambientClockAccess) {
+    return "Cycle 3e-a1 production source must not read an ambient clock";
+  }
+  if (environmentAccess) {
+    return "Cycle 3e-a1 production source must not read an environment surface";
+  }
+  return credentialAccess
+    ? "Cycle 3e-a1 production source must not access credential material"
+    : null;
+}
+
+function isExactPersonalSecurityMasterSourcePreparationCoreImport(
+  declaration: ts.ImportDeclaration | undefined,
+): boolean {
+  if (
+    declaration === undefined ||
+    declaration.attributes !== undefined ||
+    !ts.isStringLiteral(declaration.moduleSpecifier) ||
+    declaration.moduleSpecifier.text !== "./personal-security-master"
+  ) {
+    return false;
+  }
+  const clause = declaration.importClause;
+  if (
+    clause === undefined ||
+    clause.isTypeOnly ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings)
+  ) {
+    return false;
+  }
+  const actual = clause.namedBindings.elements.map((specifier) => ({
+    imported: specifier.propertyName?.text ?? specifier.name.text,
+    local: specifier.name.text,
+    typeOnly: specifier.isTypeOnly,
+  }));
+  return (
+    JSON.stringify(actual) ===
+    JSON.stringify([
+      {
+        imported: "PERSONAL_SECURITY_MASTER_PROFILE",
+        local: "PERSONAL_SECURITY_MASTER_PROFILE",
+        typeOnly: false,
+      },
+      {
+        imported: "PERSONAL_SECURITY_MASTER_SCHEMA_VERSION",
+        local: "PERSONAL_SECURITY_MASTER_SCHEMA_VERSION",
+        typeOnly: false,
+      },
+      {
+        imported: "admitPersonalSecurityMasterSnapshot",
+        local: "admitPersonalSecurityMasterSnapshot",
+        typeOnly: false,
+      },
+      {
+        imported: "PersonalSecurityMasterCatalog",
+        local: "PersonalSecurityMasterCatalog",
+        typeOnly: true,
+      },
+      {
+        imported: "PersonalSecurityMasterContentKind",
+        local: "PersonalSecurityMasterContentKind",
+        typeOnly: true,
+      },
+      {
+        imported: "PersonalSecurityMasterSourcePolicyCompatibility",
+        local: "PersonalSecurityMasterSourcePolicyCompatibility",
+        typeOnly: true,
+      },
+    ])
+  );
+}
+
+function personalSecurityMasterSourcePreparationAdmissionLifecycleViolation(
+  source: ts.SourceFile,
+): string | null {
+  const admissionName = "admitPersonalSecurityMasterSnapshot" as const;
+  const coreImports = source.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "./personal-security-master",
+  );
+  const coreImport = coreImports[0];
+  const clause = coreImport?.importClause;
+  const namedBindings = clause?.namedBindings;
+  const admissionImports =
+    namedBindings !== undefined && ts.isNamedImports(namedBindings)
+      ? namedBindings.elements.filter(
+          (element) =>
+            (element.propertyName ?? element.name).text === admissionName,
+        )
+      : [];
+  if (
+    coreImports.length !== 1 ||
+    clause === undefined ||
+    clause.isTypeOnly ||
+    admissionImports.length !== 1 ||
+    admissionImports[0]?.isTypeOnly === true ||
+    admissionImports[0]?.propertyName !== undefined ||
+    admissionImports[0]?.name.text !== admissionName
+  ) {
+    return "Cycle 3e-a1 admission must retain one exact unaliased runtime core binding";
+  }
+
+  const admissionCalls: ts.CallExpression[] = [];
+  let shadowedAdmissionBinding = false;
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && node.text === admissionName) {
+      const parent = node.parent;
+      const binding =
+        ((ts.isVariableDeclaration(parent) ||
+          ts.isParameter(parent) ||
+          ts.isBindingElement(parent) ||
+          ts.isFunctionDeclaration(parent) ||
+          ts.isFunctionExpression(parent) ||
+          ts.isClassDeclaration(parent) ||
+          ts.isClassExpression(parent) ||
+          ts.isTypeAliasDeclaration(parent) ||
+          ts.isInterfaceDeclaration(parent) ||
+          ts.isEnumDeclaration(parent)) &&
+          parent.name === node) ||
+        (ts.isImportSpecifier(parent) && parent.name === node) ||
+        (ts.isNamespaceImport(parent) && parent.name === node) ||
+        (ts.isImportClause(parent) && parent.name === node);
+      if (
+        binding &&
+        !(
+          ts.isImportSpecifier(parent) &&
+          parent === admissionImports[0] &&
+          parent.name === node
+        )
+      ) {
+        shadowedAdmissionBinding = true;
+      }
+    }
+    if (
+      ts.isCallExpression(node) &&
+      node.questionDotToken === undefined &&
+      ts.isIdentifier(unwrapBoundaryExpression(node.expression)) &&
+      (unwrapBoundaryExpression(node.expression) as ts.Identifier).text ===
+        admissionName
+    ) {
+      admissionCalls.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (shadowedAdmissionBinding || admissionCalls.length !== 1) {
+    return "Cycle 3e-a1 must call the unshadowed admission boundary exactly once";
+  }
+
+  const call = admissionCalls[0];
+  const input = call?.arguments[0];
+  if (
+    call?.arguments.length !== 1 ||
+    input === undefined ||
+    !ts.isObjectLiteralExpression(unwrapBoundaryExpression(input))
+  ) {
+    return "Cycle 3e-a1 admission must receive one exact object literal";
+  }
+  const objectLiteral = unwrapBoundaryExpression(
+    input,
+  ) as ts.ObjectLiteralExpression;
+  if (
+    objectLiteral.properties.length !== 2 ||
+    objectLiteral.properties.some(
+      (property) => !ts.isPropertyAssignment(property),
+    )
+  ) {
+    return "Cycle 3e-a1 admission object must contain only exact digest and retained-snapshot assignments";
+  }
+  const properties =
+    objectLiteral.properties as ts.NodeArray<ts.PropertyAssignment>;
+  const expectedSha256Properties = properties.filter(
+    (property) =>
+      ts.isIdentifier(property.name) && property.name.text === "expectedSha256",
+  );
+  const snapshotProperties = properties.filter(
+    (property) =>
+      ts.isIdentifier(property.name) && property.name.text === "snapshot",
+  );
+  const snapshotInitializer = snapshotProperties[0]?.initializer;
+  if (
+    expectedSha256Properties.length !== 1 ||
+    snapshotProperties.length !== 1 ||
+    snapshotInitializer === undefined ||
+    !ts.isIdentifier(unwrapBoundaryExpression(snapshotInitializer)) ||
+    (unwrapBoundaryExpression(snapshotInitializer) as ts.Identifier).text !==
+      "retainedSnapshot"
+  ) {
+    return "Cycle 3e-a1 admission snapshot must be the direct retainedSnapshot identifier";
+  }
+  return null;
+}
+
+function personalSecurityMasterSourcePreparationExternalReference(
+  importerPath: string,
+  content: string,
+): boolean {
+  if (importerPath.startsWith(personalSecurityMasterPackagePrefix)) {
+    return false;
+  }
+  const sourcePreparationPath = `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation`;
+  for (const rawSpecifier of collectModuleSpecifiers(content)) {
+    const specifier = rawSpecifier.replaceAll("\\", "/");
+    if (
+      specifier === personalSecurityMasterSourcePreparationModule ||
+      specifier.startsWith(
+        `${personalSecurityMasterSourcePreparationModule}/`,
+      ) ||
+      specifier.includes(sourcePreparationPath)
+    ) {
+      return true;
+    }
+    if (!specifier.startsWith(".")) continue;
+    const resolved = posixNormalize(
+      `${posixDirname(importerPath)}/${specifier}`,
+    ).replace(/\.(?:c|m)?[jt]sx?$/u, "");
+    if (resolved === sourcePreparationPath) return true;
+  }
+  return false;
 }
 
 function personalSecurityMasterImportBindings(content: string): string[] {

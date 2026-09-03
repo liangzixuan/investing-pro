@@ -10,12 +10,16 @@ provider-neutral, no-transport public source revision
 Cycle 3d is promoted only for its exact corrected public/local-temporary chain
 rooted at `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
-backup, restore, or private activation has occurred. Cycle 3e-a has prepared
-public engineering source only; its exact source transition, terminal evidence,
-real snapshot, real-universe breadth, and real-hardware latency result remain
-pending, so it is not accepted or promoted. Cycle 3e-b and Cycles 3f through
-3q remain planned.** This does not alter the exact historical Cycle 2z personal
-result or make a feature-parity claim.
+backup, restore, or private activation has occurred. Cycle 3e-a has a recorded
+public engineering Pass for its exact chain from
+`5186103977b906d3c035599b3b2b00793926fca3` through
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`, but its real snapshot, real-
+universe breadth, and real-hardware latency result remain pending, so it is not
+accepted or promoted. Cycle 3e-a1 prepares the public offline
+`sec_openfigi_v1` handoff; its exact source transition and terminal evidence
+remain pending. Cycle 3e-b and Cycles 3f through 3q remain planned.** This does
+not alter the exact historical Cycle 2z personal result or make a feature-
+parity claim.
 
 ## Goal
 
@@ -462,25 +466,31 @@ memory only so it cannot become a competing browser-durable source.
 
 The full repository gate at terminal routing closure
 `3edb5464a3414313a980ffd9fecce5ca5257084a` passed 1,906 tests with 9
-intentional skips, and its four workflows passed. Cycle 3e-a now has prepared
-owner-local security-master admission and symbol/name-search engineering
-source, but no exact real snapshot or network access is authorized by either
+intentional skips, and its four workflows passed. Cycle 3e-a now has a recorded
+owner-local security-master admission and symbol/name-search public engineering
+Pass at terminal tip `fda5148a4251a36861196029bbc6df6b7d1a84d0`. Its local
+gate passed 2,024 tests with 9 intentional skips; CI run `33691407884` passed
+Ubuntu job `100450725750` and Windows job `100450725932`, and parser
+`33691407866`, custody `33691407885`, and cross-engine `33691407952` acceptance
+runs passed. No exact real snapshot or network access is authorized by either
 result.
 
 ### Cycle 3e — security master, search, and watchlists
 
 Target: move from one symbol to a useful local U.S. common-stock universe.
 
-The roadmap splits this milestone into two independently useful, ordered slices.
-Cycle 3e-a has prepared engineering source but remains unpromoted; Cycle 3e-b
-builds on the stable identities only after the real Cycle 3e-a exit is met.
+The roadmap splits this milestone into ordered boundaries. Cycle 3e-a has a
+recorded engine/API engineering Pass but remains unpromoted. Cycle 3e-a1
+prepares the separately reviewable offline source handoff. Cycle 3e-b builds on
+the stable identities only after the real Cycle 3e-a exit is met.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
 
-Status: **Prepared public engineering source only; exact source transition and
-terminal evidence are pending. No real catalog, provider credential, download,
-network adapter, or private activation exists, and this cycle is not accepted
-or promoted.** See
+Status: **Recorded public engineering Pass for the exact merge-free chain from
+`5186103977b906d3c035599b3b2b00793926fca3` through
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`. No real catalog, provider
+credential, download, network adapter, or private activation exists, and this
+cycle is not accepted or promoted.** See
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
@@ -547,6 +557,46 @@ synthetic or owner-local basis. A synthetic result is explicitly engineering-
 only. The real exit still requires p95 below 200 ms on declared owner hardware
 with the exact loaded real universe and that exact plan. Neither 3,000
 synthetic rows nor a synthetic timing result can close that gate.
+
+#### Cycle 3e-a1 — offline `sec_openfigi_v1` source preparation
+
+Status: **Prepared public engineering source for exact review; its source and
+routing transitions and terminal evidence are pending. No real acquisition,
+provider credential, owner authorization, private operation, or generated real
+snapshot exists.** See
+[ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and the
+[Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
+
+The exact public entry accepts digest and byte maps for six canonical roles:
+`preparationPlan`, `secCandidates`, `normalizedSecCoverEvidence`,
+`aggregatedOpenFigiMappings`, `isoMicRegistry`, and
+`opaqueIdentityAssignments`. The role documents use fixed snake-case role
+literals, profile `sec_openfigi_v1`, and schema `1.0.0`; the plan binds the
+other five role digests and its exact stale cutoff. Fixed implementation limits
+are not plan-selected. The module performs no retrieval. It validates closed
+bounded canonical inputs and prevents row order from choosing reconciliation/
+admission ordering, while exact-byte differences remain visible through
+digests, provenance, and output source revision. It deterministically
+reconciles SEC classification, OpenFIGI mapping, operating MIC, and supplied
+opaque identities and separates admitted/ineligible/stale/unsupported/
+quarantined counts before sending one canonical output through the recorded
+admission engine.
+
+A nonempty result returns a frozen aggregate receipt, an identity-bound single-
+use capability, and synchronous `readSnapshot`. The factory wipes all six
+captured source copies before returning. The first read attempt consumes the
+capability, returns a fresh caller-owned snapshot copy on success, and wipes
+the retained derived copy in all outcomes. A result with no admitted candidate
+has no capability. Public failures and `exclusionReasonCounts` are fixed and
+value-free, and public tests use synthetic artifacts, including the at-least-
+3,000-row case.
+
+Actual input acquisition, normalization, terms review, identity assignment,
+and authorization remain owner-only. Every private artifact, key, path,
+rejected row, restricted field, generated snapshot, measurement input, and
+runner/retry/cleanup record stays outside Git and public logs. A real run needs
+fresh exact single-use authorization. Cycle 3e-a1 public source cannot itself
+satisfy breadth, latency, acceptance, or promotion.
 
 #### Cycle 3e-b — owner-local watchlists
 
@@ -887,6 +937,9 @@ The dependency graph is:
 - 3b depends on 3a;
 - 3c and 3d depend on 3a and may proceed in parallel;
 - 3e-a depends on 3c and 3d;
+- 3e-a1 depends on the recorded 3e-a engine/API boundary;
+- the real 3e-a exit depends on 3e-a1 plus separate owner-approved source
+  preparation, admission, breadth, and declared-hardware measurement;
 - 3e-b depends on 3e-a and 3d;
 - 3f depends on 3c through 3e-a and may proceed alongside 3b;
 - 3g depends on 3c through 3e-a and may proceed alongside 3f;

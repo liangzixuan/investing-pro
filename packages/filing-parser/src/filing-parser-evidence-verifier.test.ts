@@ -13,6 +13,7 @@ import {
   decodeFilingParserAbsoluteGitPath,
   filingParserGitArgumentsWithoutReplacementObjects,
   filingParserGitEnvironmentWithoutGrafts,
+  cycle2zTransitionSurfaceDiffPaths,
   isAdmissionValidityBridgeBaselineMergeBaseAllowed,
   isAdmissionValidityBridgeCommitDiffSetAllowed,
   isAdmissionValidityBridgeCorrectiveChainAllowed,
@@ -131,6 +132,8 @@ import {
   isCycle3dWindowsParserTimeoutStabilizationTopologyAllowed,
   isCycle3eaCanonicalTempFixtureStabilizationCommitDiffSetAllowed,
   isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed,
+  isCycle3ea1SourcePreparationCommitDiffSetAllowed,
+  isCycle3ea1SourcePreparationTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -800,6 +803,8 @@ const CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION =
   "9053de8c7ef10dcf05267f0b4b30907fab9d7271" as const;
 const CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION =
   "543a0bd806d02e9e527be243f4dd98dc1c17c3c9" as const;
+const CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION =
+  "fda5148a4251a36861196029bbc6df6b7d1a84d0" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1533,6 +1538,57 @@ const CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION = [
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
     status: "M",
   },
+];
+const CYCLE_3E_A1_SOURCE_PREPARATION_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_3E_A1_EXIT_MATRIX.md", status: "A" },
+  { path: "docs/CYCLE_3E_A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0057-owner-local-security-master-snapshot-and-search.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md",
+    status: "A",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "packages/personal-security-master/package.json", status: "M" },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.ts",
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
 ];
 
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
@@ -4374,6 +4430,75 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION} ${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION}`,
     windowsStableFileStabilizationTopology,
   ] as const;
+  const canonicalTempFixtureStabilizationTopology = [
+    "31",
+    "31",
+    CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION,
+    `${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION}`,
+    windowsSnapshotMetadataStabilizationTopology,
+  ] as const;
+
+  it("selects every Cycle 3e and 3e-a1 path in the production Git pathspec", async () => {
+    const repositoryPath = "repository";
+    const revision = "d".repeat(40);
+    const calls: Array<{
+      readonly cwd: string;
+      readonly args: readonly string[];
+      readonly maximumOutputBytes: number | undefined;
+    }> = [];
+    const encoder = new TextEncoder();
+    await expect(
+      cycle2zTransitionSurfaceDiffPaths(
+        repositoryPath,
+        revision,
+        (cwd, args, maximumOutputBytes) => {
+          calls.push({ cwd, args: [...args], maximumOutputBytes });
+          return Promise.resolve(
+            args[0] === "merge-base"
+              ? encoder.encode(`${CYCLE_2Z_BASELINE_REVISION}\n`)
+              : new Uint8Array(),
+          );
+        },
+      ),
+    ).resolves.toEqual([]);
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual({
+      cwd: repositoryPath,
+      args: ["merge-base", CYCLE_2Z_BASELINE_REVISION, revision],
+      maximumOutputBytes: 64,
+    });
+    const diffCall = calls[1];
+    expect(diffCall).toBeDefined();
+    expect(diffCall?.cwd).toBe(repositoryPath);
+    expect(diffCall?.maximumOutputBytes).toBeUndefined();
+    expect(diffCall?.args.slice(0, 7)).toEqual([
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      CYCLE_2Z_BASELINE_REVISION,
+      revision,
+      "--",
+    ]);
+    const selectedPaths = diffCall?.args.slice(7) ?? [];
+    const selectedPathSet = new Set(selectedPaths);
+    const requiredCycle3ePaths = new Set(
+      [
+        ...CYCLE_3E_A_SOURCE_TRANSITION,
+        ...CYCLE_3E_A_ROUTING_CLOSURE_TRANSITION,
+        ...CYCLE_3E_A_WORKFLOW_EXPRESSION_STABILIZATION_TRANSITION,
+        ...CYCLE_3E_A_SYNTHETIC_BENCHMARK_TIMEOUT_STABILIZATION_TRANSITION,
+        ...CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_TRANSITION,
+        ...CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_TRANSITION,
+        ...CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION,
+        ...CYCLE_3E_A1_SOURCE_PREPARATION_TRANSITION,
+      ].map((entry) => entry.path),
+    );
+    expect(selectedPaths).toHaveLength(selectedPathSet.size);
+    for (const path of requiredCycle3ePaths)
+      expect(selectedPathSet.has(path), path).toBe(true);
+  });
 
   it("pins the exact merge-free source after the public promotion", () => {
     expect(isCycle3eaSourceTopologyAllowed(...sourceTopology)).toBe(true);
@@ -4595,28 +4720,22 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("allows exactly one dynamic merge-free canonical-temp-fixture stabilization child", () => {
-    const revision = "c".repeat(40);
-    const valid = [
-      "31",
-      "31",
-      revision,
-      `${revision} ${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION}`,
-      windowsSnapshotMetadataStabilizationTopology,
-    ] as const;
+  it("pins the exact merge-free canonical-temp-fixture stabilization child", () => {
+    const revision = CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION;
+    const valid = canonicalTempFixtureStabilizationTopology;
     expect(
       isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed(...valid),
     ).toBe(true);
     for (const [index, replacement] of [
       [0, "30"],
       [1, "32"],
-      [2, CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION],
+      [2, "c".repeat(40)],
       [
         3,
         `${revision} ${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION}`,
       ],
     ] as const) {
-      const changed = [...valid];
+      const changed: unknown[] = [...valid];
       changed[index] = replacement;
       expect(
         isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed(
@@ -4653,7 +4772,72 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("freezes the exact 51, 7, 5, 6, 7, 7, and 7-file transitions", () => {
+  it("allows exactly one dynamic merge-free Cycle 3e-a1 source-preparation child", () => {
+    const revision = "d".repeat(40);
+    const valid = [
+      "32",
+      "32",
+      revision,
+      `${revision} ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION}`,
+      canonicalTempFixtureStabilizationTopology,
+    ] as const;
+    expect(isCycle3ea1SourcePreparationTopologyAllowed(...valid)).toBe(true);
+    for (const [index, replacement] of [
+      [0, "31"],
+      [1, "33"],
+      [2, CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION],
+      [
+        3,
+        `${revision} ${CYCLE_3E_A_WINDOWS_SNAPSHOT_METADATA_STABILIZATION_REVISION}`,
+      ],
+    ] as const) {
+      const changed = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3ea1SourcePreparationTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ea1SourcePreparationTopologyAllowed
+          >),
+        ),
+        `source-preparation:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3ea1SourcePreparationTopologyAllowed(
+        "32",
+        "32",
+        "not-a-commit",
+        `not-a-commit ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION}`,
+        canonicalTempFixtureStabilizationTopology,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle3ea1SourcePreparationTopologyAllowed(
+        "32",
+        "32",
+        revision,
+        `${revision} ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION} ${"e".repeat(40)}`,
+        canonicalTempFixtureStabilizationTopology,
+      ),
+    ).toBe(false);
+    const changedCanonical: unknown[] = [
+      ...canonicalTempFixtureStabilizationTopology,
+    ];
+    changedCanonical[3] = `${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION} ${CYCLE_3E_A_WINDOWS_STABLE_FILE_STABILIZATION_REVISION}`;
+    expect(
+      isCycle3ea1SourcePreparationTopologyAllowed(
+        "32",
+        "32",
+        revision,
+        `${revision} ${CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_REVISION}`,
+        changedCanonical as unknown as Parameters<
+          typeof isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("freezes the exact 51, 7, 5, 6, 7, 7, 7, and 19-file transitions", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
       CYCLE_3E_A_SOURCE_TRANSITION,
@@ -4689,6 +4873,11 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ea1SourcePreparationCommitDiffSetAllowed,
+      CYCLE_3E_A1_SOURCE_PREPARATION_TRANSITION,
+      19,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -4711,6 +4900,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3E_A_CANONICAL_TEMP_FIXTURE_STABILIZATION_TRANSITION.map(
         (entry) => entry.path,
       ),
+      ...CYCLE_3E_A1_SOURCE_PREPARATION_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -4736,6 +4926,12 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       expect(
         allowed(entries.filter((_, candidate) => candidate !== index)),
       ).toBe(false);
+      const changedStatus = [...entries];
+      changedStatus[index] = {
+        path: entry.path,
+        status: entry.status === "M" ? "A" : "M",
+      };
+      expect(allowed(changedStatus)).toBe(false);
       expect(
         allowed([
           ...entries,

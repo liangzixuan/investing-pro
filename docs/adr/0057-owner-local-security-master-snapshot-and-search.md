@@ -1,9 +1,10 @@
 # ADR 0057: owner-local security-master snapshot and search
 
-Status: **Prepared public engineering source only; exact source transition and
-terminal evidence are pending. No real security-master snapshot, provider
-credential, download, network request, or private activation has occurred.
-Cycle 3e-a is not accepted or promoted.**
+Status: **Recorded public engineering Pass for the exact merge-free chain from
+`5186103977b906d3c035599b3b2b00793926fca3` through
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`. No real security-master snapshot,
+provider credential, download, network request, or private activation has
+occurred. Cycle 3e-a is not accepted or promoted.**
 
 ## Context
 
@@ -227,17 +228,21 @@ exact exchange-effective ticker history. That stronger result requires a
 rights-compatible licensed corporate-actions source and remains outside
 `sec_openfigi_v1` unless the owner later adds one.
 
-Source selection is not source admission. Before use, the owner must pin and
-review the exact SEC, OpenFIGI, and ISO inputs and applicable terms, attribution,
-cache, retention, deletion, and export rules. SEC fair-access behavior belongs
-to a later network acquisition workflow, not this offline slice. The public
-repository contains no OpenFIGI key, real source payload, generated real
-catalog, or claim that ISO's public download page grants unrestricted reuse.
+Source selection is not source admission. Cycle 3e-a1 and
+[ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md) now define the
+separate public, deterministic, offline preparation handoff over six exact
+canonical roles. That handoff still does not acquire or authorize a source.
+Before real use, the owner must pin and review the exact SEC, OpenFIGI, and ISO
+inputs and applicable terms, attribution, cache, retention, deletion, and
+export rules. SEC fair-access behavior belongs to a later network acquisition
+workflow, not either offline slice. The public repository contains no
+OpenFIGI key, real source payload, generated real catalog, or claim that ISO's
+public download page grants unrestricted reuse.
 
 ## Prepared implementation and security checklist
 
-Cycle 3e-a engineering source is ready for terminal review only when all of
-these properties are verified:
+Cycle 3e-a engineering source was recorded only after all of these properties
+were verified:
 
 1. **Mode closure:** exact opt-in mode and distinct entry; default, connected,
    vault, and earlier personal modes reject security-master-only inputs.
@@ -272,8 +277,8 @@ these properties are verified:
     process, or dynamic code enters the security-master runtime graph.
 12. **Exact-source evidence:** focused hostile and scale tests, full repository
     verification, Windows/Linux CI at the terminal routing tip, independent
-    review, and exact merge-free source topology pass before the prepared
-    engineering source is recorded.
+    review, and exact merge-free source topology passed before the engineering
+    boundary was recorded.
 
 ## Exact nonclaims
 
@@ -305,10 +310,19 @@ approval remain required because personal use does not override source terms.
 
 ## Evidence and promotion rule
 
-The repository-visible engineering transition is not yet frozen or declared.
-It must first pass focused tests, the full local gate, independent review, and
-terminal exact-chain CI before its source and routing revisions may be recorded.
-Those public gates can establish only the prepared engine/API boundary.
+The repository-visible engineering transition is frozen and recorded as the
+exact merge-free chain from source revision
+`5186103977b906d3c035599b3b2b00793926fca3` through terminal stabilization
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`. At that tip, the full local gate
+passed 2,024 tests with 9 intentional skips. CI run `33691407884` succeeded for
+Ubuntu job `100450725750` and Windows job `100450725932`; parser acceptance run
+`33691407866`, custody acceptance run `33691407885`, and cross-engine
+acceptance run `33691407952` also succeeded.
+
+Those public gates establish only the synthetic engine/API engineering
+boundary. Cycle 3e-a1 source preparation is separately governed by
+[ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md) and does not
+inherit authorization from this recorded chain.
 
 Cycle 3e-a itself remains **not accepted or promoted** until a later exact
 owner-approved `owner_local_source` snapshot:
@@ -330,6 +344,8 @@ profile.
 ## References
 
 - [Cycle 3e-a exit matrix](../CYCLE_3E_A_EXIT_MATRIX.md)
+- [ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md)
+- [Cycle 3e-a1 exit matrix](../CYCLE_3E_A1_EXIT_MATRIX.md)
 - [ADR 0055](./0055-connected-personal-source-policy-registry.md)
 - [ADR 0056](./0056-durable-personal-local-research-vault.md)
 - [Cycle 3c exit matrix](../CYCLE_3C_EXIT_MATRIX.md)

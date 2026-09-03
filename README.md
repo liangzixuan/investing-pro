@@ -1236,8 +1236,17 @@ restore, or private activation. At terminal routing closure
 [ADR 0056](./docs/adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md).
 
-Cycle 3e-a now has **prepared public engineering source only; it is not
-accepted or promoted**. The zero-production-dependency
+Cycle 3e-a now has a **recorded public engineering Pass for its exact
+merge-free source/stabilization chain; it is not accepted or promoted**. The
+chain begins at `5186103977b906d3c035599b3b2b00793926fca3` and terminates at
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`. At that tip, the full local gate
+passed 2,024 tests with 9 intentional skips. CI run `33691407884` succeeded for
+Ubuntu job `100450725750` and Windows job `100450725932`; parser acceptance run
+`33691407866`, custody acceptance run `33691407885`, and cross-engine
+acceptance run `33691407952` also succeeded. This evidence records only the
+public synthetic engine/API boundary.
+
+The zero-production-dependency
 `@research-cockpit/personal-security-master` package prepares strict canonical
 snapshot admission, canonical 1:N issuer-to-security-to-share-class-to-listing
 identity, typed provider mappings, explicit coverage and source-policy
@@ -1268,6 +1277,29 @@ history plus prospective diffs keyed by internal `listingId`; those intervals
 cannot be labeled exchange-effective, and complete history would require a
 separately licensed corporate-actions source. Enterprise/shared-service
 requirements remain out of scope.
+
+Cycle 3e-a1 now defines the next bounded public engineering slice: an offline,
+memory-only `prepareSecOpenFigiV1Source` protocol over six exact canonical
+roles—preparation plan, SEC candidates, normalized SEC cover evidence,
+aggregated OpenFIGI mappings, ISO MIC registry, and opaque internal identity
+assignments. It verifies exact digests and plan bindings, prevents row order
+from choosing reconciliation/admission ordering while preserving exact-byte
+differences in digests and provenance, applies the plan's stale cutoff,
+separates admitted/ineligible/stale/unsupported/quarantined counts, passes one
+canonical output through the recorded snapshot-admission engine, and releases
+successful bytes only through an identity-bound single-use capability. Public
+tests and fixtures remain synthetic, including any 3,000-record case. See
+[ADR 0058](./docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md) and
+the [Cycle 3e-a1 exit matrix](./docs/CYCLE_3E_A1_EXIT_MATRIX.md).
+
+Cycle 3e-a1 performs no fetch and contains no real source bytes, provider key,
+owner authorization, generated real snapshot, or private result. The later
+owner-only operation must bind and review the exact six artifacts, applicable
+terms and source-policy record, implementation revision, output, and fixed
+measurement plan under fresh single-use authorization. Cycle 3e-a remains not
+accepted or promoted until that real snapshot contains at least 3,000 eligible
+active U.S.-listed common stocks/ADRs and measures below 200 ms p95 on declared
+owner hardware under the exact plan.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

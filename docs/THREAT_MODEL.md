@@ -30,11 +30,12 @@ Cycle 3c separately has a promoted provider-neutral, no-transport public result
 with no private activation or provider operation. Cycle 3d separately has a
 promoted public/local-temporary result for one durable owner-local vault, but no
 actual personal vault, key, backup, restore, private activation, or browser
-vault client. Cycle 3e-a separately has prepared public engineering source for
+vault client. Cycle 3e-a separately has a recorded public engineering Pass for
 one exact owner-local security-master snapshot and authenticated local search,
-but no exact source transition, terminal evidence, real catalog, source
-download, provider credential, network adapter, or private activation. It is
-not accepted or promoted.
+but no real catalog, source download, provider credential, network adapter, or
+private activation. Cycle 3e-a1 prepares a separate offline six-artifact source
+handoff with no acquisition or private operation. Cycle 3e-a is not accepted or
+promoted.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2444,10 +2445,17 @@ nonclaims are in
 
 ## Cycle 3e-a owner-local security-master threat boundary
 
-Cycle 3e-a has **prepared public engineering source only**. Its exact source
-transition and terminal evidence remain pending, and it has no real catalog,
+Cycle 3e-a has a **recorded public engineering Pass** for exact source revision
+`5186103977b906d3c035599b3b2b00793926fca3` and the exact merge-free
+stabilization chain through `fda5148a4251a36861196029bbc6df6b7d1a84d0`.
+The full local gate at that tip passed 2,024 tests with 9 intentional skips. CI
+run `33691407884` passed Ubuntu job `100450725750` and Windows job
+`100450725932`; parser acceptance run `33691407866`, custody acceptance run
+`33691407885`, and cross-engine acceptance run `33691407952` also passed.
+
+This records public synthetic engineering only. It has no real catalog,
 provider credential, source download, network operation, or private activation.
-It is not accepted or promoted.
+Cycle 3e-a is not accepted or promoted.
 
 Assets at risk are the startup-fixed snapshot path and file identity; canonical
 snapshot bytes and exact digest; catalog/provenance/policy identity and
@@ -2477,7 +2485,7 @@ confusion, alternate percent encoding, control/format characters, or URL-
 selected local state; owner-session/Host/Origin/CORS bypass; and detailed
 denial, path, raw policy, rejected-row, or provider metadata disclosure.
 
-Prepared controls are:
+Recorded public engineering controls are:
 
 - exact opt-in `personal_single_user_local_security_master` mode and a
   separate non-splitting server, with other modes rejecting security-master
@@ -2556,6 +2564,90 @@ owner source-terms review remains required. See
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
+## Cycle 3e-a1 offline source-preparation threat boundary
+
+Cycle 3e-a1 prepares public engineering source for exact review. It does not
+acquire, store, or authorize real source material. Its assets are the six exact
+canonical artifact roles and digests; preparation-plan bindings and chronology;
+the value-free aggregate receipt; stable opaque identity assignments; the
+derived canonical snapshot and digest; the identity-bound one-shot capability;
+and the absence of source values, credentials, local paths, rejected rows, and
+restricted metadata from public failures, receipts, fixtures, and logs.
+
+Primary threats are a missing, extra, duplicated, swapped, aliased, mutated, or
+digest-mismatched role; noncanonical or oversized JSON; caller hooks or hostile
+typed-array carriers; a plan that does not bind the other five role digests;
+caller-selected limits; invalid `staleBefore`/`asOf` chronology; cover evidence
+observed after acquisition; input order choosing an identity; ticker, CIK, or
+FIGI used as internal identity; missing or multiple opaque assignments;
+ambiguous mapping or MIC silently resolved; classification disagreement;
+inactive/non-U.S./non-operating MIC admitted; stale or unsupported evidence
+reported as quarantine or admission; duplicate active MIC-symbol or provider
+identity; incomplete candidate accounting; partial output; capability forgery,
+cross-instance substitution, or replay; retained source/snapshot bytes after
+return or failed read; and value, path, digest detail, credential, or rejected-
+row disclosure through a receipt, error, or public test.
+
+Prepared controls are:
+
+- exact `expectedSha256` and `artifacts` maps with only
+  `preparationPlan`, `secCandidates`, `normalizedSecCoverEvidence`,
+  `aggregatedOpenFigiMappings`, `isoMicRegistry`, and
+  `opaqueIdentityAssignments`;
+- exact root roles `preparation_plan`, `sec_candidates`,
+  `normalized_sec_cover_evidence`, `aggregated_openfigi_mappings`,
+  `iso_mic_registry`, and `opaque_identity_assignments`, all under profile
+  `sec_openfigi_v1` and schema `1.0.0`;
+- a plan that binds the five non-plan digests plus exact output identity,
+  provenance, policy compatibility, `generatedAt`, `asOf`, and
+  `staleBefore <= asOf`, evaluated under fixed implementation limits;
+- intrinsic owned byte copies, pre-parse SHA-256 verification, strict UTF-8,
+  one-LF canonical JSON, closed bounded schemas, fixed generic errors, and no
+  partial result;
+- reconciliation/admission ordering independent of input row order, with
+  deterministic emitted-record sorting and exact-byte differences preserved in
+  artifact/bundle digests, provenance, and output source revision;
+- exact SEC-cover, OpenFIGI, ISO operating-MIC, opaque-identity, classification,
+  ancestry, provider-identity, and active MIC-symbol reconciliation;
+- distinct admitted, ineligible, stale, unsupported, and quarantined counts:
+  `observedAt < staleBefore` is stale, one resolved inactive/non-U.S./non-
+  operating MIC is ineligible, an unsupported classification is unsupported,
+  and missing/ambiguous/conflicting joins are quarantined;
+- bounded value-free `exclusionReasonCounts`, `prepared`,
+  `prepared_with_exclusions`, or all-zero-output `quarantined` status, with no
+  source value or rejected row in the receipt;
+- mandatory handoff of derived canonical bytes through
+  `admitPersonalSecurityMasterSnapshot` before a capability is returned;
+- factory-`finally` wiping of all six captured source copies before return;
+  only the derived canonical snapshot remains retained behind the capability;
+- identity-bound single-use `readSnapshot`, whose first attempt consumes the
+  capability, returns a fresh caller-owned copy only on success, and wipes the
+  retained derived copy in `finally` on every outcome; and
+- no network, DNS, provider SDK, credential, environment, filesystem-path,
+  persistence, scheduler, clock, or randomness surface.
+
+Residual risk remains deliberate. The owner-prepared normalized artifacts can
+be false, stale, incomplete, malicious, or rights-incompatible despite passing
+internal checks. Supplied opaque identifiers have no public randomness,
+secrecy, or minting-independence proof. A process can inspect a caller-owned
+returned snapshot; a hostile same-user process, administrator, memory
+inspector, swap, or crash dump remains outside the boundary. Public synthetic
+tests, including 3,000 or more rows, do not authenticate a provider or prove
+real breadth, source rights, correct mapping, complete history, or latency.
+
+The later owner-only operation must bind exact private artifacts, versions,
+digests, retrieval metadata, terms, policy/attribution/cache/retention/deletion/
+export controls, implementation revision, output, and measurement plan under
+fresh single-use authorization. Private source bytes, an OpenFIGI key, paths,
+row-level mappings, rejected rows, restricted metadata, generated snapshot,
+and approval/runner/retry/cleanup material stay outside Git and public logs.
+Any role, digest, canonical form, chronology, reconciliation, coverage,
+admission, cleanup, policy, breadth, latency, or confidentiality failure stops
+without fallback, partial release, automatic retry, or synthetic substitution.
+
+See [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and
+the [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -2606,9 +2698,11 @@ the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
    provider-neutral, no-transport chain and is not privately activated. Cycle
    3d's public/local-temporary vault boundary is promoted only for its exact
    corrected chain and has no actual vault or private activation. Cycle 3e-a
-   now has prepared owner-local security-master admission and search source,
-   but remains unpromoted with no real breadth claim until a later exact
-   owner-approved, rights-compatible source is admitted and measured.
+   now has a recorded owner-local security-master admission/search public
+   engineering Pass, and Cycle 3e-a1 prepares its separate offline source
+   handoff, but Cycle 3e-a remains unpromoted with no real breadth claim until a
+   later exact owner-approved, rights-compatible source is prepared, admitted,
+   and measured.
    Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.
