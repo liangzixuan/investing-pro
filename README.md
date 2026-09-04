@@ -1140,10 +1140,12 @@ remain nonclaims. See
 [ADR 0053](./docs/adr/0053-personal-local-owner-session.md) and the
 [Cycle 3a exit matrix](./docs/CYCLE_3A_EXIT_MATRIX.md).
 
-Cycle 3b authenticated personal dossier composition now has prepared public
-source, but it has not received fresh owner authorization, run against the
-private corpus, completed terminal exact-source verification, or been promoted.
-The prepared boundary adds exact API startup with
+Cycle 3b authenticated personal dossier composition is **accepted and promoted
+only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`**. Private evidence is limited to
+this statement: **Coarse owner-approved private personal-dossier release
+outcome: Pass for the exact frozen personal scope.** The promoted boundary adds
+exact API startup with
 `RESEARCH_COCKPIT_MODE=personal_dossier`, matching browser startup with
 `RESEARCH_COCKPIT_WEB_MODE=personal_dossier`, the parameter-free `/personal`
 browser route, and authenticated `GET /v1/personal-filing/dossier` API access.
@@ -1156,15 +1158,15 @@ manifest cannot avoid cryptographically binding its later entries merely by
 ignoring document-array suffixes. The resulting distinct personal dossier has
 facts, evidence, in-corpus lineage, a fixed filing-fact chart, valuation inputs,
 and explicit unsupported states in one closed reference graph. No
-synthetic value may enter that graph or its browser presentation. Promotion
-requires a fresh single-use
-`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization bound to the later
-exact source and canonical response. See
+synthetic value may enter that graph or its browser presentation. The release
+contract requires a fresh single-use
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization for each exact
+release; earlier authorizations remain incompatible. See
 [ADR 0054](./docs/adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./docs/CYCLE_3B_EXIT_MATRIX.md). Dynamic selection,
 refresh, network access, promoted personal persistence, and background work
-remain later outcomes. The separate Cycle 3c control plane and Cycle 3d vault
-below do not authorize or promote Cycle 3b.
+remain later outcomes. The separate Cycle 3c control plane, Cycle 3d vault, and
+later cycles do not broaden this exact Cycle 3b promotion.
 
 Cycle 3c is accepted and promoted only for provider-neutral public source
 revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
@@ -1621,11 +1623,11 @@ For the default synthetic demo, open
 default.
 
 Personal mode is a separate explicit startup. The runnable example below covers
-the promoted Cycle 3a readiness-only mode; it does not authorize the prepared
-Cycle 3b source or a private dossier run. Cycle 3b instead requires the matching
-API and web literals `personal_dossier` and the parameter-free `/personal`
-browser route, but it must remain inactive until its fresh exact-source owner
-approval exists. In the API terminal, first set the existing complete
+the promoted Cycle 3a readiness-only mode; it does not start a Cycle 3b dossier
+run. The exact promoted Cycle 3b boundary instead requires the matching API and
+web literals `personal_dossier` and the parameter-free `/personal` browser
+route. Any later dossier run requires a newly reviewed packet and its own fresh
+exact-source owner approval before startup. In the API terminal, first set the existing complete
 personal-mode inputs. Build before creating authority, then generate one fresh
 32-byte bootstrap
 with the platform CSPRNG and place it in the API environment and clipboard

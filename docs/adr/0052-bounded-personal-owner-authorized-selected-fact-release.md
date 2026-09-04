@@ -155,11 +155,12 @@ persistent data plane.
 Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`;
 it still does not prove resistance to hostile same-user processes. Cycle 3b
-authenticated personal dossier composition has prepared public source but no
-fresh owner authorization, terminal exact-source evidence, private activation,
-acceptance, or promotion. Its required
+authenticated personal dossier composition is promoted only for exact source
+revision `3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence
+limited to the permitted coarse outcome recorded in the Cycle 3b exit matrix. Its required
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` action is deliberately
-incompatible with this ADR's narrower approval. Dynamic selection, refresh,
+incompatible with this ADR's narrower approval. The later Cycle 3b promotion
+does not alter this exact Cycle 2z scope. Dynamic selection, refresh,
 promoted personal persistence, and background work remain later outcomes.
 Cycle 3c is promoted only for exact provider-neutral, no-transport public source
 revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure

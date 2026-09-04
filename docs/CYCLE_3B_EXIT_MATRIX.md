@@ -7,52 +7,53 @@ unsupported states, and valuation inputs must form one closed reference graph
 with no synthetic/personal mixing. The decision is recorded in
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md).
 
-Implementation status: **Prepared public source only; exact source not yet
-declared.**
+Implementation status: **Pass only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`.**
 
-Terminal verification status: **Pending.**
+Terminal verification status: **Pass at that exact source revision.**
 
-Private authorization and execution status: **Pending fresh exact owner review
-and single-use authorization.**
+Private evidence status: **Limited to the permitted coarse outcome recorded
+below.**
 
-Promotion status: **Not accepted or promoted.**
+Promotion status: **Accepted and promoted only for the exact source revision
+above and the declared personal scope.**
 
-| Gate                       | Required result                                                                                                                                                                          | Current status                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Synthetic default          | Existing synthetic API and web behavior remain the default and unchanged                                                                                                                 | Prepared; terminal evidence pending            |
-| Historical modes           | `personal_readiness` and `personal_fact_release` retain their exact prior contracts                                                                                                      | Prepared; terminal evidence pending            |
-| Explicit dossier modes     | Only exact API and web `personal_dossier` configuration can compose or render the dossier capability                                                                                     | Prepared; terminal evidence pending            |
-| Closed configuration       | Missing, partial, cross-mode, malformed, mismatched, or consumed inputs fail before listen                                                                                               | Prepared; terminal evidence pending            |
-| Fixed plan                 | `exact_candidate_document_index.v1` fixes the terminal index of one separately sealed declaration, manifest, and quality-plan prefix plus canonical selected and chart keys              | Prepared; terminal evidence pending            |
-| Prefix chronology          | Composition decodes only the matching raw/source array prefix; an earlier snapshot requires its own prefix-sealed artifact because a full manifest binds all later manifest entries      | Prepared; terminal evidence pending            |
-| One normalization result   | Facts, evidence, lineage, chart, and valuation references come from one admitted normalization result                                                                                    | Prepared; terminal evidence pending            |
-| Distinct personal contract | `PersonalFilingDossierDto` cannot be confused with or populated from synthetic `DossierDto`                                                                                              | Prepared; terminal evidence pending            |
-| Closed reference graph     | Every identifier is canonical and every reference resolves exactly once inside the response                                                                                              | Prepared; terminal evidence pending            |
-| Fact source of truth       | Facts are the sole primary-fact registry; chart, lineage, and valuation reference them, while derived evidence alone retains its exact immutable operands                                | Prepared; terminal evidence pending            |
-| Evidence coverage          | Every displayed personal value retains `knownFrom`/`knownToExclusive` and links to same-snapshot evidence with source accession/concept, period, unit, accepted time, and available time | Prepared; terminal evidence pending            |
-| Derivation coverage        | Every displayed derived value retains its versioned formula and exactly two ordered operands with role, concept, value, unit, and period                                                 | Prepared; terminal evidence pending            |
-| Restatement lineage        | Supersession is limited to the exact frozen-manifest prefix; root-only and superseded states are explicit                                                                                | Prepared; terminal evidence pending            |
-| Chart                      | The contract exposes honest unsupported state; terminal promotion requires a ready nonempty owner-approved chart using only same-snapshot fact references                                | Prepared; terminal evidence pending            |
-| Valuation inputs           | The contract exposes honest unsupported state; terminal promotion requires ready same-snapshot required inputs with no synthetic fallback                                                | Prepared; terminal evidence pending            |
-| Omission semantics         | Owner-fixed omissions and unsupported contract variants remain explicit; invalid, conflicting, stale, or quarantined composition fails closed behind generic unavailability              | Prepared; terminal evidence pending            |
-| Exact routes               | The only dossier data operation is `GET /v1/personal-filing/dossier`; the browser uses parameter-free `/personal`, and neither surface admits request-selected state                     | Prepared; terminal evidence pending            |
-| Authorization ordering     | The Cycle 3a owner session is accepted before private capability access or serialization                                                                                                 | Prepared; terminal evidence pending            |
-| Request boundary           | Exact loopback Host/Origin, cookie, CORS, service-worker, proxy, negotiation, and framing checks remain fail closed                                                                      | Prepared; terminal evidence pending            |
-| Cache denial               | Every success, denial, unavailable response, and malformed-request outcome is private and noncacheable                                                                                   | Prepared; terminal evidence pending            |
-| Generic failure            | Denial and failure reveal no private value, label, key set, count, period, unit, locator, path, hash, metadata, authorization, or operation detail                                       | Prepared; terminal evidence pending            |
-| Browser atomicity          | Authenticated load and every clear condition replace or remove the whole personal presentation as one unit                                                                               | Prepared; terminal evidence pending            |
-| No browser persistence     | Response, lifecycle state, and derived presentation enter no Web Storage, IndexedDB, service worker, database, cache, telemetry, or log                                                  | Prepared; terminal evidence pending            |
-| No mixing                  | No synthetic value enters a personal dossier, formula, chart, valuation, thesis evaluation, or error path                                                                                | Prepared; terminal evidence pending            |
-| Personal thesis/alerts     | Personal thesis, alert evaluation, and persistence remain disabled                                                                                                                       | Explicit nonclaim                              |
-| Dynamic work               | Dynamic selection, refresh, network fetch, persistence, and background work remain absent                                                                                                | Explicit nonclaim                              |
-| Broader identity/data      | Security-master mapping, prices, multi-year statements, broad metrics, owner corrections, and external currentness remain absent                                                         | Explicit nonclaim                              |
-| Remote/shared profile      | Remote, multi-user, tenant, shared-service, production, and enterprise controls remain outside the personal scope                                                                        | Out of scope                                   |
-| Fresh approval             | Exact response requires a new `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` artifact; prior approvals are incompatible                                                                | Pending owner action after exact source freeze |
-| Private activation         | Exact read-only, memory-only run succeeds once, consumes approval, revokes session, and closes server                                                                                    | Pending                                        |
-| Public verification        | Full local gate, focused tests, Windows/Linux CI, and independent review pass at the exact source                                                                                        | Pending                                        |
-| Promotion topology         | Exact merge-free source and documentation-promotion transitions are pinned and verified                                                                                                  | Pending                                        |
+| Gate                       | Required result                                                                                                                                                                          | Current status                  |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Synthetic default          | Existing synthetic API and web behavior remain the default and unchanged                                                                                                                 | Pass at exact source revision   |
+| Historical modes           | `personal_readiness` and `personal_fact_release` retain their exact prior contracts                                                                                                      | Pass at exact source revision   |
+| Explicit dossier modes     | Only exact API and web `personal_dossier` configuration can compose or render the dossier capability                                                                                     | Pass at exact source revision   |
+| Closed configuration       | Missing, partial, cross-mode, malformed, mismatched, or consumed inputs fail before listen                                                                                               | Pass at exact source revision   |
+| Fixed plan                 | `exact_candidate_document_index.v1` fixes the terminal index of one separately sealed declaration, manifest, and quality-plan prefix plus canonical selected and chart keys              | Pass at exact source revision   |
+| Prefix chronology          | Composition decodes only the matching raw/source array prefix; an earlier snapshot requires its own prefix-sealed artifact because a full manifest binds all later manifest entries      | Pass at exact source revision   |
+| One normalization result   | Facts, evidence, lineage, chart, and valuation references come from one admitted normalization result                                                                                    | Pass at exact source revision   |
+| Distinct personal contract | `PersonalFilingDossierDto` cannot be confused with or populated from synthetic `DossierDto`                                                                                              | Pass at exact source revision   |
+| Closed reference graph     | Every identifier is canonical and every reference resolves exactly once inside the response                                                                                              | Pass at exact source revision   |
+| Fact source of truth       | Facts are the sole primary-fact registry; chart, lineage, and valuation reference them, while derived evidence alone retains its exact immutable operands                                | Pass at exact source revision   |
+| Evidence coverage          | Every displayed personal value retains `knownFrom`/`knownToExclusive` and links to same-snapshot evidence with source accession/concept, period, unit, accepted time, and available time | Pass at exact source revision   |
+| Derivation coverage        | Every displayed derived value retains its versioned formula and exactly two ordered operands with role, concept, value, unit, and period                                                 | Pass at exact source revision   |
+| Restatement lineage        | Supersession is limited to the exact frozen-manifest prefix; root-only and superseded states are explicit                                                                                | Pass at exact source revision   |
+| Chart                      | The contract exposes honest unsupported state; terminal promotion requires a ready nonempty owner-approved chart using only same-snapshot fact references                                | See permitted coarse outcome    |
+| Valuation inputs           | The contract exposes honest unsupported state; terminal promotion requires ready same-snapshot required inputs with no synthetic fallback                                                | See permitted coarse outcome    |
+| Omission semantics         | Owner-fixed omissions and unsupported contract variants remain explicit; invalid, conflicting, stale, or quarantined composition fails closed behind generic unavailability              | Pass at exact source revision   |
+| Exact routes               | The only dossier data operation is `GET /v1/personal-filing/dossier`; the browser uses parameter-free `/personal`, and neither surface admits request-selected state                     | Pass at exact source revision   |
+| Authorization ordering     | The Cycle 3a owner session is accepted before private capability access or serialization                                                                                                 | Pass at exact source revision   |
+| Request boundary           | Exact loopback Host/Origin, cookie, CORS, service-worker, proxy, negotiation, and framing checks remain fail closed                                                                      | Pass at exact source revision   |
+| Cache denial               | Every success, denial, unavailable response, and malformed-request outcome is private and noncacheable                                                                                   | Pass at exact source revision   |
+| Generic failure            | Denial and failure reveal no private value, label, key set, count, period, unit, locator, path, hash, metadata, authorization, or operation detail                                       | Pass at exact source revision   |
+| Browser atomicity          | Authenticated load and every clear condition replace or remove the whole personal presentation as one unit                                                                               | Pass at exact source revision   |
+| No browser persistence     | Response, lifecycle state, and derived presentation enter no Web Storage, IndexedDB, service worker, database, cache, telemetry, or log                                                  | Pass at exact source revision   |
+| No mixing                  | No synthetic value enters a personal dossier, formula, chart, valuation, thesis evaluation, or error path                                                                                | Pass at exact source revision   |
+| Personal thesis/alerts     | Personal thesis, alert evaluation, and persistence remain disabled                                                                                                                       | Explicit nonclaim               |
+| Dynamic work               | Dynamic selection, refresh, network fetch, persistence, and background work remain absent                                                                                                | Explicit nonclaim               |
+| Broader identity/data      | Security-master mapping, prices, multi-year statements, broad metrics, owner corrections, and external currentness remain absent                                                         | Explicit nonclaim               |
+| Remote/shared profile      | Remote, multi-user, tenant, shared-service, production, and enterprise controls remain outside the personal scope                                                                        | Out of scope                    |
+| Fresh approval             | Exact response requires a new `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` artifact; prior approvals are incompatible                                                                | See permitted coarse outcome    |
+| Private activation         | Exact bounded owner-authorized activation completes without publishing a private sub-result                                                                                              | See permitted coarse outcome    |
+| Public verification        | Full local gate, focused tests, Windows/Linux CI, and independent review pass at the exact source                                                                                        | Pass at exact source revision   |
+| Promotion topology         | Exact source and documentation-promotion transition are pinned                                                                                                                           | Pass with this promotion record |
 
-## Prepared scope
+## Promoted scope
 
 The new bundle role is `personal_dossier_release_bundle`; the plan role is
 `personal_dossier_release_plan`. The exact loader surface is
@@ -79,8 +80,8 @@ prefix and the exact normalization used for candidate commitment.
 `chart.status: "unsupported"` with
 `NO_OWNER_APPROVED_CHART_FACTS`. Missing or out-of-domain valuation inputs also
 produce an exact unsupported variant. These are required fail-closed semantics,
-but they do not independently close the end-user chart or valuation-input gate;
-the later owner-approved response must make both ready for terminal promotion.
+but they do not independently close the end-user chart or valuation-input gate.
+The private gate's status is represented only by the permitted coarse outcome.
 
 The browser may render the admitted facts, evidence passports, lineage, chart,
 valuation inputs, and explicit unsupported states only after owner-session
@@ -96,10 +97,10 @@ locator, source metadata, path, hash, response, authorization material,
 commitment, or operation detail.
 
 The exact Cycle 2z and Cycle 3a approvals cannot authorize the wider Cycle 3b
-response. After the exact source and canonical response are frozen, the owner
-must review every response field and provide one fresh single-use approval with
-action `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`. No private execution is
-authorized by this prepared document.
+response. Repository-visible evidence for the Cycle 3b private gate is limited
+to this statement: **Coarse owner-approved private personal-dossier release
+outcome: Pass for the exact frozen personal scope.** No private sub-result or
+operation detail is public evidence.
 
 ## Exact nonclaims
 
@@ -111,11 +112,12 @@ or taxonomy correctness, personal thesis/alerts/exports, hostile same-user or
 hostile-browser resistance, remote/shared authentication, enterprise controls,
 commercial use, or competitor feature parity.
 
-## Exit and next blocker
+## Exit and next boundary
 
-Cycle 3b cannot be marked Pass until the exact-source public gates and the
-fresh owner-authorized private activation both complete. A prepared source or a
-large synthetic test count is not a substitute for that end-user result.
+The exact-source public gates are complete for source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`; the private gate is represented
+only by the permitted coarse outcome above. This promotion is limited to that
+revision and the declared personal scope. Later-cycle work does not broaden it.
 
 Cycle 3c is promoted only for exact provider-neutral, no-transport public source
 revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure

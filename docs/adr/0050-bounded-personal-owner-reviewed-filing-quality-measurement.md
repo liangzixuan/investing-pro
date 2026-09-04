@@ -225,9 +225,9 @@ the permitted coarse outcome, and it does not widen this quality-measurement
 decision. Cycle 3a separately closes request-time authenticated owner-browser
 composition only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b authenticated personal
-dossier composition has prepared public source but no fresh owner
-authorization, terminal exact-source evidence, private activation, acceptance,
-or promotion. Cycle 3c is promoted only for exact provider-neutral,
+dossier composition is promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix. Cycle 3c is promoted only for exact provider-neutral,
 no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
 `86e712574a5eee4e9f636c25ebd5d6fb70f20581`, with no private activation or

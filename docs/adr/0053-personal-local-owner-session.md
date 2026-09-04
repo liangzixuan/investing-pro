@@ -230,14 +230,13 @@ operator-configured local bootstrap and a short-lived session. Fresh CSPRNG
 generation per process remains an operator precondition. The design deliberately
 favors fail-closed restart and rebootstrap over persistence.
 
-Cycle 3b remains separate from the exact promoted Cycle 3a source. A later
-public source is prepared to compose the admitted personal snapshot into one
-coherent dossier, evidence passport, in-corpus restatement lineage, fixed
-filing-fact chart, and valuation-input boundary without synthetic/personal
-mixing. It has no fresh owner authorization, terminal exact-source evidence,
-private activation, acceptance, or promotion. Its exact approval action is
+Cycle 3b remains separate from the exact promoted Cycle 3a source. It is
+accepted and promoted only for its later exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix. Its exact approval action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; the Cycle 3a approval cannot be
-reused. Dynamic selection, refresh, promoted personal persistence, and
+reused. This later promotion does not alter the exact Cycle 3a source or scope.
+Dynamic selection, refresh, promoted personal persistence, and
 background work remain later outcomes. Cycle 3c is promoted only for exact
 provider-neutral, no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure

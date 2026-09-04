@@ -1975,9 +1975,10 @@ They are not current personal-profile blockers.
 ## Cycle 3 — product breadth
 
 Status: **Cycle 3a is promoted only for exact source revision
-`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
-source but no fresh owner authorization, terminal exact-source result, private
-activation, acceptance, or promotion. Cycle 3c is accepted and promoted only
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b is accepted and promoted
+only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix. Cycle 3c is accepted and promoted only
 for exact provider-neutral, no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
 `86e712574a5eee4e9f636c25ebd5d6fb70f20581`; it is not privately activated.
@@ -2004,7 +2005,7 @@ Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
 result remain unchanged. Request-time authenticated owner-browser composition
 is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
-dossier composition is prepared but not promoted. Cycle 3c's provider-neutral,
+dossier composition is closed only for its exact promoted source. Cycle 3c's provider-neutral,
 no-transport public control plane and Cycle 3d's corrected
 public/local-temporary vault boundary are promoted only for their exact source
 chains. Cycle 3e-a now records owner-local security-master snapshot admission
@@ -2143,9 +2144,11 @@ remain separate from the synthetic dossier.
 
 ### Cycle 3b — authenticated personal dossier composition
 
-Status: **Prepared public source only; not owner-authorized, privately run,
-terminally verified, accepted, or promoted.** The exact decision and pending
-gates are in [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md)
+Status: **Accepted and promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`. Private evidence is limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix.** The exact
+decision and gates are in
+[ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md)
 and the [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
 Exact API startup with `RESEARCH_COCKPIT_MODE=personal_dossier` prepares one
@@ -2168,22 +2171,23 @@ resolution. The browser admits no synthetic fallback and persists no personal
 state.
 
 The public contract exposes explicit unsupported chart and valuation variants
-for honest failure semantics. Those variants do not close the Cycle 3b end-user
-result: terminal promotion requires the later exact owner-approved response to
-contain a ready nonempty filing-fact chart and ready same-snapshot valuation
-inputs.
+for honest failure semantics. Those variants alone do not close the Cycle 3b
+end-user result. The private gate's status is represented only by the permitted
+coarse outcome; no private sub-result is public evidence.
 
-The prior Cycle 2z and Cycle 3a approvals are incompatible. Promotion requires
-fresh owner review of the exact canonical dossier and one single-use
-`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization bound to a later
-exact source, bundle, quality result, plan, and response, followed by terminal
-public and private evidence. This prepared source authorizes no private run.
+The prior Cycle 2z and Cycle 3a approvals are incompatible. The Cycle 3b
+contract requires fresh owner review of the exact canonical dossier and one
+single-use `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization bound
+to the exact source, bundle, quality result, plan, and response.
+Repository-visible private evidence is limited to the permitted coarse outcome
+recorded in the Cycle 3b exit matrix.
 
 Dynamic selection or `knownAt`, connected source execution, refresh, promoted
 personal persistence, background work, security-master mapping, prices, broad statements, owner
 corrections, personal thesis/alerts/exports, hostile same-user resistance, and
 remote/shared authentication remain nonclaims. Cycle 3c prepares the separate
 connected-personal source-policy control plane below without widening Cycle 3b.
+Cycle 3d and every later cycle likewise do not broaden this exact promotion.
 
 ### Cycle 3c — provider-neutral connected-personal source-policy control plane
 

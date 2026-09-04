@@ -26,6 +26,9 @@ optional browser memory and adds no persistence boundary. Cycle 3a separately
 closes the short-lived local owner-session boundary only for exact source
 revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`; it adds no persistent
 identity or remote/shared-service boundary.
+Cycle 3b separately closes authenticated personal dossier composition only for
+exact source revision `3fe17a21330b6a8ee438298628a832f274fc7216`, with private
+evidence limited to the permitted coarse outcome recorded in its exit matrix.
 Cycle 3c separately has a promoted provider-neutral, no-transport public result
 with no private activation or provider operation. Cycle 3d separately has a
 promoted public/local-temporary result for one durable owner-local vault, but no
@@ -2192,8 +2195,11 @@ thesis, alerts, export, persistence, fetcher, and background flows. Exact Cycle
 [ADR 0053](./adr/0053-personal-local-owner-session.md) and the
 [Cycle 3a exit matrix](./CYCLE_3A_EXIT_MATRIX.md).
 
-Cycle 3b now has prepared public source only. It is not owner-authorized,
-privately run, terminally verified, accepted, or promoted. The added assets are
+Cycle 3b is **accepted and promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`**. Repository-visible private
+evidence is limited to this statement: **Coarse owner-approved private
+personal-dossier release outcome: Pass for the exact frozen personal scope.**
+The added assets are
 the exact dossier bundle and plan, canonical personal dossier response, fresh
 single-use approval mechanism and any later supplied authorization material,
 process-memory capability, authenticated response, and transient browser
@@ -2204,7 +2210,7 @@ synthetic values into personal chart or valuation state; racing authorization
 or browser lifecycle clearing; and extracting private labels, values, counts,
 paths, hashes, source metadata, or authorization detail from failures.
 
-The prepared controls are exact pre-listen bundle, quality, source, plan,
+The promoted controls are exact pre-listen bundle, quality, source, plan,
 response, and approval binding; atomic one-use approval consumption; manifest-
 prefix-only composition from a separately sealed declaration, manifest, and
 quality-plan prefix whose selected index is terminal; raw/source array suffix
@@ -2216,10 +2222,11 @@ web mode are both `personal_dossier`; the browser renders only at parameter-free
 `/personal`, and `/research/[symbol]` redirects before request-selected state is
 resolved. The required new action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; every prior approval is
-incompatible. No private run is authorized by this public source.
-Exact prepared design and pending gates are in
+incompatible, and any later execution requires fresh exact-source owner
+authorization. Exact promoted design and gates are in
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
+No later cycle broadens this exact promotion.
 
 ## Cycle 3c connected-personal source-policy threat boundary
 
@@ -2774,8 +2781,9 @@ snapshot, declared hardware, and fixed plan. See
    Cycle 2z separately closes only the exact atomic same-snapshot selected-fact
    release. Cycle 3a separately closes request-time authenticated owner-browser
    composition only for its exact source. Cycle 3b authenticated personal
-   dossier composition is prepared but not promoted and still requires fresh
-   exact owner authorization and terminal evidence. Cycle 3c connected-personal
+   dossier composition is promoted only for exact source revision
+   `3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+   the permitted coarse outcome recorded in the Cycle 3b exit matrix. Cycle 3c connected-personal
    source-policy control-plane public source is promoted only for its exact
    provider-neutral, no-transport chain and is not privately activated. Cycle
    3d's public/local-temporary vault boundary is promoted only for its exact

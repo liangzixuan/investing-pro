@@ -1,9 +1,10 @@
 # Personal product-breadth roadmap
 
 Status: **Cycle 3a is promoted only for exact source revision
-`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b has prepared public
-source but no fresh owner authorization, terminal exact-source result, private
-activation, acceptance, or promotion. Cycle 3c is promoted only for exact
+`ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b is accepted and promoted
+only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix. Cycle 3c is promoted only for exact
 provider-neutral, no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
 `86e712574a5eee4e9f636c25ebd5d6fb70f20581`; it is not privately activated.
@@ -161,7 +162,7 @@ Later subcycles may widen a universe only with the same checks.
 | Capability gap                          | Current baseline                                                    | Planned closure |
 | --------------------------------------- | ------------------------------------------------------------------- | --------------- |
 | Owner authentication                    | Cycle 3a promoted only for its exact source                         | Cycle 3a        |
-| Personal dossier composition            | Prepared fixed-snapshot composition; not promoted                   | Cycle 3b        |
+| Personal dossier composition            | Promoted fixed-snapshot composition only for its exact source       | Cycle 3b        |
 | Connected source governance             | Provider-neutral public control plane promoted; no source activated | Cycle 3c        |
 | Durable personal state                  | Public/local-temporary SQLite vault promoted; no actual vault       | Cycle 3d        |
 | Security universe and local search      | Prepared exact-snapshot/search engine; no admitted real universe    | Cycle 3e-a      |
@@ -294,12 +295,13 @@ owner review and fresh single-use authorization.
 Target: compose the admitted personal snapshot into the actual research
 workflow instead of leaving it as a disconnected fact panel.
 
-Status: **Prepared public source only; not owner-authorized, privately run,
-terminally verified, accepted, or promoted.** See
+Status: **Accepted and promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix.** See
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
 
-The prepared scope is exact API startup with
+The promoted scope is exact API startup with
 `RESEARCH_COCKPIT_MODE=personal_dossier`, exact browser startup with
 `RESEARCH_COCKPIT_WEB_MODE=personal_dossier`, the parameter-free `/personal`
 browser route, and authenticated `GET /v1/personal-filing/dossier`. The
@@ -316,9 +318,8 @@ lineage, chart, and valuation inputs reference those same-snapshot facts. There
 is no synthetic fallback.
 
 The public contract exposes honest unsupported chart and valuation variants,
-but those variants do not close the end-user result. Terminal promotion
-requires the later exact owner-approved response to contain a ready nonempty
-filing-fact chart and ready same-snapshot valuation inputs.
+but those variants do not independently establish a private sub-result. The
+private gate's status is represented only by the permitted coarse outcome.
 
 Exit criteria:
 
@@ -337,12 +338,12 @@ Exit criteria:
 Dynamic selection, refresh, promoted personal persistence, and background work
 remain later outcomes.
 
-The prepared Cycle 3b source does not authorize private execution. Promotion requires
-fresh owner review of the exact canonical response and one source-bound,
-single-use `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization. The
-prior Cycle 2z and Cycle 3a approvals are incompatible. Cycle 3c now has a
-separate promoted connected-personal source-policy control plane and remains
-outside this offline scope.
+The Cycle 3b contract requires fresh owner review of the canonical response and
+one source-bound, single-use
+`APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization. The prior Cycle
+2z and Cycle 3a approvals remain incompatible. Cycle 3c has a separate promoted
+connected-personal source-policy control plane and remains outside this offline
+scope. It and every later cycle do not broaden this exact Cycle 3b promotion.
 
 ### Cycle 3c — connected-personal profile and source-policy registry
 

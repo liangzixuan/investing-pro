@@ -1,8 +1,8 @@
 # ADR 0054: authenticated personal dossier composition
 
-Status: **Prepared public source only. Cycle 3b has not received fresh owner
-authorization, has not run against the private filing corpus, has no terminal
-exact-source verification result, and is not accepted or promoted.**
+Status: **Accepted and promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`. Private evidence is limited to
+the permitted coarse owner-approved outcome below.**
 
 ## Context
 
@@ -73,9 +73,9 @@ The public contract supports honest unsupported chart and valuation variants.
 An empty `chartFactKeys` set produces
 `NO_OWNER_APPROVED_CHART_FACTS`; absent or out-of-domain valuation inputs
 produce their exact unsupported reason. Those variants prove failure semantics,
-not the Cycle 3b end-user chart or valuation-input exit. Terminal promotion
-therefore requires the later owner-approved canonical response to contain a
-ready nonempty chart and ready same-snapshot valuation inputs.
+not the Cycle 3b end-user chart or valuation-input exit. The private gate's
+status is represented only by the permitted coarse outcome; its sub-results
+remain outside public evidence.
 
 `loadPersonalDossierRelease` validates the exact bundle, quality result,
 runtime source binding, canonical response binding, and one fresh approval with
@@ -146,14 +146,12 @@ Cycle 3b does not establish:
 11. enterprise rights/steward approval, commercial redistribution, competitor
     feature parity, or authorization for another source or release.
 
-## Evidence and promotion rule
+## Evidence and promotion record
 
-This repository state prepares the public design and synthetic verification
-surface only. It records no source revision, terminal local result, CI result,
-independent-review result, private authorization, private execution, or
-promotion claim.
+Cycle 3b is accepted and promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216` and the declared personal scope.
 
-Promotion requires all of the following at one later exact source:
+The promotion contract requires:
 
 1. the full repository verification gate and the focused contract, composition,
    API, browser, lifecycle, no-mixing, and confidentiality tests pass;
@@ -163,13 +161,18 @@ Promotion requires all of the following at one later exact source:
 4. the owner reviews the exact canonical dossier response and provides a fresh
    single-use `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE` authorization
    bound to that exact source, bundle, quality result, plan, and response;
-5. the exact read-only, memory-only private run succeeds once, consumes the
-   approval, revokes the owner session, and closes the server; and
+5. the exact bounded private activation completes; and
 6. public promotion records only a permitted coarse private outcome and the
    exact source/promotion topology. No private sub-result enters Git or public
    CI.
 
-Until those gates pass, Cycle 3b remains prepared and not promoted. Cycle 3c is
+The public source gates passed for the exact source above. Repository-visible
+evidence for the private gate is limited to this statement: **Coarse
+owner-approved private personal-dossier release outcome: Pass for the exact
+frozen personal scope.** It does not independently prove or disclose any
+private sub-result or operation detail.
+
+Cycle 3c is
 promoted only for exact provider-neutral, no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
 `86e712574a5eee4e9f636c25ebd5d6fb70f20581`. It contains no actual provider or
@@ -184,6 +187,8 @@ has a recorded public engineering Pass only for its exact engine/API chain. It
 is not accepted or promoted
 and has no real breadth claim until a later exact owner-approved,
 rights-compatible source snapshot is admitted and measured.
+Neither Cycle 3c, Cycle 3d, Cycle 3e-a, nor any later cycle broadens this exact
+Cycle 3b promotion.
 
 ## References
 

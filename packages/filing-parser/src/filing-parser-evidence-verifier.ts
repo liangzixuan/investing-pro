@@ -178,6 +178,8 @@ const CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION =
   "8c2166fa01f5e1f471887ccdeb9484b132a02bb0" as const;
 const CYCLE_3E_A2_ROUTING_CLOSURE_REVISION =
   "0374becdf96c1e9891d80e73024c8be0440fd812" as const;
+const CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION =
+  "3fe17a21330b6a8ee438298628a832f274fc7216" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -3151,6 +3153,55 @@ const CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION = Object.freeze(
     },
   ],
 );
+const CYCLE_3B_PUBLIC_PROMOTION_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_2X_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Y_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_2Z_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3B_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0050-bounded-personal-owner-reviewed-filing-quality-measurement.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0051-bounded-personal-quality-readiness-composition.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0052-bounded-personal-owner-authorized-selected-fact-release.md",
+    status: "M",
+  },
+  { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
+  {
+    path: "docs/adr/0054-authenticated-personal-dossier-composition.md",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3404,6 +3455,7 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION.map(
     (entry) => entry.path,
   ),
+  ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2K_TRANSITION_PATHS = new Set(
   CYCLE_2K_TRANSITION.map((entry) => entry.path),
@@ -6122,7 +6174,7 @@ export function isCycle3ea2RoutingClosureTopologyAllowed(
 }
 
 /**
- * @internal One dynamic merge-free Cycle 3e-a2 public-engineering evidence-
+ * @internal The exact merge-free Cycle 3e-a2 public-engineering evidence-
  * record child of the exact routing closure. This records public engineering
  * evidence only and cannot establish real breadth/latency or promote Cycle 3e-a.
  */
@@ -6139,12 +6191,46 @@ export function isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
     successorCount === "37" &&
     firstParentCount === "37" &&
     COMMIT_SHA.test(revision) &&
-    revision !== CYCLE_3E_A2_ROUTING_CLOSURE_REVISION &&
-    parentLine === `${revision} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}` &&
+    revision === CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION &&
+    parentLine ===
+      `${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}` &&
     routingClosureTopology[2] === CYCLE_3E_A2_ROUTING_CLOSURE_REVISION &&
     routingClosureTopology[3] ===
       `${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}` &&
     isCycle3ea2RoutingClosureTopologyAllowed(...routingClosureTopology)
+  );
+}
+
+/**
+ * @internal One dynamic merge-free Cycle 3b public-promotion child of the exact
+ * Cycle 3e-a2 public-engineering evidence record. The exact per-commit diff is
+ * checked separately; no merge or later descendant is admitted here.
+ */
+export function isCycle3bPublicPromotionTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  publicEngineeringEvidenceRecordTopology: readonly [
+    ...Parameters<
+      typeof isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed
+    >,
+  ],
+): boolean {
+  return (
+    successorCount === "38" &&
+    firstParentCount === "38" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}` &&
+    publicEngineeringEvidenceRecordTopology[2] ===
+      CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION &&
+    publicEngineeringEvidenceRecordTopology[3] ===
+      `${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
+      ...publicEngineeringEvidenceRecordTopology,
+    )
   );
 }
 
@@ -7560,6 +7646,16 @@ export function isCycle3ea2PublicEngineeringEvidenceRecordCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact Cycle 3b public-promotion transition. */
+export function isCycle3bPublicPromotionCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3B_PUBLIC_PROMOTION_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -8762,6 +8858,7 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
     CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION,
     CYCLE_3E_A2_ROUTING_CLOSURE_REVISION,
+    CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -9195,6 +9292,19 @@ async function verifyCycle2zTransition(
       128,
     ),
   );
+  const cycle3ea2PublicEngineeringEvidenceRecordParentLine =
+    decodeGitParentLine(
+      await git(
+        repositoryPath,
+        [
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
+        ],
+        128,
+      ),
+    );
   const directSource = isCycle2zDirectChildAllowed(
     successorCount,
     firstParentCount,
@@ -9719,6 +9829,13 @@ async function verifyCycle2zTransition(
     cycle3ea2RoutingClosureParentLine,
     pinnedCycle3ea2MeasurementClockClosureTopology,
   ] as const;
+  const pinnedCycle3ea2PublicEngineeringEvidenceRecordTopology = [
+    "37",
+    "37",
+    CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
+    cycle3ea2PublicEngineeringEvidenceRecordParentLine,
+    pinnedCycle3ea2RoutingClosureTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     successorCount,
     firstParentCount,
@@ -9819,6 +9936,13 @@ async function verifyCycle2zTransition(
       parentLine,
       pinnedCycle3ea2RoutingClosureTopology,
     );
+  const cycle3bPublicPromotion = isCycle3bPublicPromotionTopologyAllowed(
+    successorCount,
+    firstParentCount,
+    revision,
+    parentLine,
+    pinnedCycle3ea2PublicEngineeringEvidenceRecordTopology,
+  );
   const cycle3eRouting =
     cycle3eaSource ||
     cycle3eaRoutingClosure ||
@@ -9832,7 +9956,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord;
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion;
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
@@ -10257,7 +10382,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10277,7 +10403,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10299,7 +10426,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10324,7 +10452,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10344,7 +10473,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10367,7 +10497,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10387,7 +10518,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10404,7 +10536,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10418,7 +10551,8 @@ async function verifyCycle2zTransition(
     cycle3ea1PublicEngineeringEvidenceRecord ||
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10435,7 +10569,8 @@ async function verifyCycle2zTransition(
   if (
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
-    cycle3ea2PublicEngineeringEvidenceRecord
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10447,7 +10582,11 @@ async function verifyCycle2zTransition(
     if (!isCycle3ea2MeasurementClockClosureCommitDiffSetAllowed(entries))
       invalidReview();
   }
-  if (cycle3ea2RoutingClosure || cycle3ea2PublicEngineeringEvidenceRecord) {
+  if (
+    cycle3ea2RoutingClosure ||
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION,
@@ -10456,16 +10595,26 @@ async function verifyCycle2zTransition(
     if (!isCycle3ea2RoutingClosureCommitDiffSetAllowed(entries))
       invalidReview();
   }
-  if (cycle3ea2PublicEngineeringEvidenceRecord) {
+  if (cycle3ea2PublicEngineeringEvidenceRecord || cycle3bPublicPromotion) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A2_ROUTING_CLOSURE_REVISION,
-      revision,
+      cycle3ea2PublicEngineeringEvidenceRecord
+        ? revision
+        : CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
     );
     if (
       !isCycle3ea2PublicEngineeringEvidenceRecordCommitDiffSetAllowed(entries)
     )
       invalidReview();
+  }
+  if (cycle3bPublicPromotion) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
+      revision,
+    );
+    if (!isCycle3bPublicPromotionCommitDiffSetAllowed(entries)) invalidReview();
   }
 
   await verifyCycle2xTransition(

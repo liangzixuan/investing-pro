@@ -124,9 +124,9 @@ released facts or any private release detail.
 Cycle 3a separately closes request-time authenticated owner-browser composition
 only for exact source revision `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`.
 Hostile same-user processes remain unproven. Cycle 3b authenticated personal
-dossier composition has prepared public source but no fresh owner
-authorization, terminal exact-source evidence, private activation, acceptance,
-or promotion. Dynamic selection, refresh, promoted personal persistence, and
+dossier composition is promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix. Dynamic selection, refresh, promoted personal persistence, and
 background work remain later outcomes. Cycle 3c is promoted only for exact
 provider-neutral, no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure

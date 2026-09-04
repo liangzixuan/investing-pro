@@ -59,7 +59,7 @@ below.**
 | Same-user/browser adversary  | Hostile same-user processes, extensions, developer tools, screenshots, clipboard readers, and memory inspection                                                            | Explicit nonclaim             |
 | Remote/shared authentication | Remote, multi-user, tenant, shared-service, service-account, and production authentication                                                                                 | Out of scope                  |
 | Persistence                  | Durable login, persistent session survival across restart, credentialless restart recovery, cross-process sharing, and credential storage                                  | Out of scope                  |
-| Cycle 3b                     | Not part of the exact Cycle 3a source; a later public source is prepared but not authorized, verified, accepted, or promoted                                               | Prepared later source         |
+| Cycle 3b                     | Not part of the exact Cycle 3a source; separately promoted later only for its own exact source                                                                             | Separate later promotion      |
 
 ## Configuration and bootstrap boundary
 
@@ -185,14 +185,13 @@ for the permitted coarse private outcome. No public promotion text contains a
 private sub-result. Cycle 3a is promoted only for the exact source revision and
 declared personal scope above.
 
-Cycle 3b authenticated personal dossier composition now has prepared public
-source for one coherent admitted snapshot spanning dossier, evidence passport,
-in-corpus restatement lineage, a fixed filing-fact chart, and valuation inputs,
-with no synthetic/personal mixing. It has no fresh owner authorization,
-terminal exact-source evidence, private activation, acceptance, or promotion.
-Its required fresh action is
+Cycle 3b authenticated personal dossier composition is separately accepted and
+promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix. Its required action remains
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`; Cycle 2z and Cycle 3a approvals
-are incompatible. Dynamic selection, refresh, promoted personal persistence,
+are incompatible. This later promotion does not alter the exact Cycle 3a
+separation or scope. Dynamic selection, refresh, promoted personal persistence,
 and background work remain later outcomes. Cycle 3c is promoted only for exact
 provider-neutral, no-transport public source revision
 `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure

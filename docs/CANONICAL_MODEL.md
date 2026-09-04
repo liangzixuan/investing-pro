@@ -78,7 +78,10 @@ selected-fact release promoted only for exact source revision
 the permitted coarse outcome; and Cycle 3a personal local owner session
 promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`, with private evidence limited to
-the permitted coarse outcome; Cycle 3c provider-neutral source-policy control
+the permitted coarse outcome; Cycle 3b authenticated personal dossier
+composition promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`, with private evidence limited to
+the permitted coarse outcome recorded in the Cycle 3b exit matrix; Cycle 3c provider-neutral source-policy control
 plane and Cycle 3d public/local-temporary research vault promoted only for
 their exact recorded chains; Cycle 3e-a owner-local security-master admission
 and search has a **recorded public engineering Pass** for its exact chain from
@@ -1968,8 +1971,10 @@ beyond the narrow controlling-service-worker guard remain nonclaims. Remote,
 multi-user, tenant, service-account, shared-service, durable, and production
 authentication remain outside the model.
 
-Cycle 3b has prepared public source but is not owner-authorized, privately run,
-terminally verified, accepted, or promoted. The prepared API mode is exact
+Cycle 3b is accepted and promoted only for exact source revision
+`3fe17a21330b6a8ee438298628a832f274fc7216`. Repository-visible private evidence
+is limited to this statement: **Coarse owner-approved private personal-dossier
+release outcome: Pass for the exact frozen personal scope.** The promoted API mode is exact
 `RESEARCH_COCKPIT_MODE=personal_dossier`; its matching browser mode is exact
 `RESEARCH_COCKPIT_WEB_MODE=personal_dossier` and exposes the parameter-free
 `/personal` route. A request to `/research/[symbol]` redirects before resolving
@@ -2002,9 +2007,9 @@ out-of-domain inputs are explicitly unsupported. `omissions` keeps its count
 undisclosed and names the owner-fixed scope. Outside the required immutable
 derivation operands, no structure may copy a personal numeric value from the
 fact registry or refer to a foreign or missing fact.
-Unsupported chart and valuation variants prove honest failure semantics; the
-later terminal owner-approved response must make both ready to close the Cycle
-3b end-user result.
+Unsupported chart and valuation variants prove honest failure semantics but do
+not independently establish a private sub-result. The private gate's status is
+represented only by the permitted coarse outcome.
 
 The only dossier data operation is authenticated
 `GET /v1/personal-filing/dossier`, with no request-selected path, query, body,
@@ -2014,7 +2019,8 @@ runtime-source, response, and fresh approval bindings pass. The prior Cycle 2z
 and Cycle 3a approvals cannot authorize it. Its required action is
 `APPROVE_EXACT_CYCLE3B_PERSONAL_DOSSIER_RELEASE`.
 
-No fresh approval or private execution is authorized by the prepared source.
+Earlier approvals remain incompatible, and any later execution requires its own
+fresh exact-source owner authorization.
 Dynamic selection, refresh, connected sources, promoted personal persistence,
 background work,
 security-master mapping, prices, broad statements, owner corrections, personal
@@ -2022,6 +2028,8 @@ thesis/alerts/exports, and remote/shared authentication remain later or
 out-of-scope. Cycle 3c source policy remains a separate control plane. See
 [ADR 0054](./adr/0054-authenticated-personal-dossier-composition.md) and the
 [Cycle 3b exit matrix](./CYCLE_3B_EXIT_MATRIX.md).
+Cycle 3c, Cycle 3d, and every later cycle remain separate and do not broaden
+this exact Cycle 3b promotion.
 
 Cycle 3c is accepted and promoted only for provider-neutral public source
 revision `4e9f011434382ccaae66f396fd5b163e4c0fc6be` and routing closure
