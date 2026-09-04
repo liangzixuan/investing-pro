@@ -147,6 +147,8 @@ import {
   isCycle3ea1SourcePreparationTopologyAllowed,
   isCycle3ea2MeasurementClockClosureCommitDiffSetAllowed,
   isCycle3ea2MeasurementClockClosureTopologyAllowed,
+  isCycle3ea2RoutingClosureCommitDiffSetAllowed,
+  isCycle3ea2RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -824,6 +826,8 @@ const CYCLE_3E_A1_ROUTING_CLOSURE_REVISION =
   "5e27bed1a11956bb207f523739083131aea254f0" as const;
 const CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION =
   "d34266037ca997d72bea440e9be942cddd223da9" as const;
+const CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION =
+  "8c2166fa01f5e1f471887ccdeb9484b132a02bb0" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1754,6 +1758,28 @@ const CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_TRANSITION = [
     status: "M",
   },
   { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
 ];
 
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
@@ -4623,6 +4649,13 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION} ${CYCLE_3E_A1_ROUTING_CLOSURE_REVISION}`,
     sourcePreparationRoutingClosureTopology,
   ] as const;
+  const measurementClockClosureTopology = [
+    "35",
+    "35",
+    CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION,
+    `${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION} ${CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
+    publicEngineeringEvidenceRecordTopology,
+  ] as const;
 
   it("selects every Cycle 3e and 3e-a1 path in the production Git pathspec", async () => {
     const repositoryPath = "repository";
@@ -4682,6 +4715,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         ...CYCLE_3E_A1_ROUTING_CLOSURE_TRANSITION,
         ...CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION,
         ...CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_TRANSITION,
+        ...CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION,
       ].map((entry) => entry.path),
     );
     expect(selectedPaths).toHaveLength(selectedPathSet.size);
@@ -5181,8 +5215,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("allows exactly one dynamic merge-free Cycle 3e-a2 measurement-clock-closure child", () => {
-    const revision = "d".repeat(40);
+  it("pins the exact merge-free Cycle 3e-a2 measurement-clock-closure child", () => {
+    const revision = CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION;
     const valid = [
       "35",
       "35",
@@ -5196,7 +5230,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     for (const [index, replacement] of [
       [0, "34"],
       [1, "36"],
-      [2, CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION],
+      [2, "d".repeat(40)],
       [3, `${revision} ${CYCLE_3E_A1_ROUTING_CLOSURE_REVISION}`],
     ] as const) {
       const changed: unknown[] = [...valid];
@@ -5245,7 +5279,70 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("freezes the exact 51, 7, 5, 6, 7, 7, 7, 19, 5, 14, and 34-file transitions", () => {
+  it("allows exactly one dynamic merge-free Cycle 3e-a2 routing-closure child", () => {
+    const revision = "d".repeat(40);
+    const valid = [
+      "36",
+      "36",
+      revision,
+      `${revision} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}`,
+      measurementClockClosureTopology,
+    ] as const;
+    expect(isCycle3ea2RoutingClosureTopologyAllowed(...valid)).toBe(true);
+    for (const [index, replacement] of [
+      [0, "35"],
+      [1, "37"],
+      [2, CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION],
+      [
+        3,
+        `${revision} ${CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3ea2RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ea2RoutingClosureTopologyAllowed
+          >),
+        ),
+        `routing-closure:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3ea2RoutingClosureTopologyAllowed(
+        "36",
+        "36",
+        "not-a-commit",
+        `not-a-commit ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}`,
+        measurementClockClosureTopology,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle3ea2RoutingClosureTopologyAllowed(
+        "36",
+        "36",
+        revision,
+        `${revision} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION} ${"e".repeat(40)}`,
+        measurementClockClosureTopology,
+      ),
+    ).toBe(false);
+    const changedSource: unknown[] = [...measurementClockClosureTopology];
+    changedSource[3] = `${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION} ${CYCLE_3E_A1_ROUTING_CLOSURE_REVISION}`;
+    expect(
+      isCycle3ea2RoutingClosureTopologyAllowed(
+        "36",
+        "36",
+        revision,
+        `${revision} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}`,
+        changedSource as unknown as Parameters<
+          typeof isCycle3ea2MeasurementClockClosureTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("freezes the exact 51, 7, 5, 6, 7, 7, 7, 19, 5, 14, 34, and 5-file transitions", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
       CYCLE_3E_A_SOURCE_TRANSITION,
@@ -5301,6 +5398,11 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_TRANSITION,
       34,
     );
+    expectExactTransition(
+      isCycle3ea2RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION,
+      5,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -5331,6 +5433,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_TRANSITION.map(
         (entry) => entry.path,
       ),
+      ...CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
