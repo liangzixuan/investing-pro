@@ -4,9 +4,10 @@ Status: **Recorded public engineering Pass only for exact merge-free source
 revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
 `5e27bed1a11956bb207f523739083131aea254f0`. No real source artifact, provider
 credential, network request, generated real snapshot, owner authorization, or
-private activation is recorded. Cycle 3e-a2 has only prepared public correction
-source for measurement-clock integrity and no recorded Pass. Cycle 3e-a remains
-not accepted or promoted.**
+private activation is recorded. Cycle 3e-a2 records a public engineering Pass
+only for exact source `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing
+closure `0374becdf96c1e9891d80e73024c8be0440fd812`. Cycle 3e-a remains not
+accepted or promoted.**
 
 ## Context
 
@@ -157,7 +158,7 @@ The owner must review exact source versions and digests, retrieval metadata,
 applicable terms, attribution, cache, retention, deletion, display, search,
 export, and redistribution controls. A fresh, exact, single-use authorization
 must bind the six artifacts, preparation implementation revision, output plan,
-and an accepted exact Cycle 3e-a2 package-owned-clock measurement plan before
+and the exact recorded Cycle 3e-a2 package-owned-clock measurement plan before
 the owner-only run. A retry requires a new
 authorization and must preserve the failed operation only in value-free,
 private audit material. Public evidence may record only an explicitly allowed
@@ -228,13 +229,28 @@ boundary. Cycle 3e-a remains not accepted or promoted until the separate owner-
 only real source preparation, exact snapshot admission, at-least-3,000 breadth
 gate, and fixed declared-hardware p95 measurement all pass.
 
-Cycle 3e-a2 has prepared public correction source only for that later
-measurement. It makes the API exactly `(catalog, input)`, rejects a hostile
-third clock callback without invoking it, privately captures the
-`node:perf_hooks` monotonic clock, and binds exact clock and timed-region
-literals into the receipt. No exact source/routing chain or terminal evidence
-has been recorded for the correction; it authorizes no real operation and
-establishes no real latency result.
+Cycle 3e-a2 has a recorded public engineering Pass only for exact merge-free
+source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. It makes the API exactly
+`(catalog, input)`, rejects a hostile third clock callback without invoking it,
+privately captures the `node:perf_hooks` monotonic clock, and binds exact clock
+and timed-region literals into the receipt.
+
+The source passed 2,058 local tests with 9 intentional skips. Attempt-1 CI run
+`33816810188` passed jobs `100850647775` and `100850648064`; custody run
+`33816810200`/job `100850647942`, normalization run `33816810227`/job
+`100850647938`, cross-engine run `33816810267`/job `100850648210`, and parser-
+isolation run `33816810173`/job `100850647900` also passed. Final source review
+was clean after the pre-commit timed-region AST-order blocker was fixed.
+
+The routing closure passed 2,060 local tests with 9 intentional skips and clean
+independent review. Attempt-1 CI run `33823588896` passed jobs `100871341851`
+and `100871342201`; custody run `33823588891`/job `100871342729`, parser-
+isolation run `33823588916`/job `100871341920`, and cross-engine run
+`33823588901`/job `100871342184` also passed. No routing-tip normalization run
+was triggered or required by the exact five-path routing transition. The
+correction authorizes no real operation, establishes no real breadth or
+latency, and cannot accept or promote Cycle 3e-a or establish parity.
 
 ## References
 

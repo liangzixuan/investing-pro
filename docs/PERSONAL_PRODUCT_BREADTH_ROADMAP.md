@@ -18,9 +18,12 @@ universe breadth, and real-hardware latency result remain pending, so it is not
 accepted or promoted. Cycle 3e-a1 has a recorded public engineering Pass only
 for exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and
 routing closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source
-or private operation is recorded. Cycle 3e-a2 has prepared public engineering
-correction source only for the measurement-integrity gap and has no recorded
-Pass. Cycle 3e-b and Cycles 3f through 3q remain planned.** This does not alter
+or private operation is recorded. Cycle 3e-a2 has a recorded public engineering
+Pass only for exact source revision
+`8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
+breadth, latency, or private operation. Cycle 3e-b and Cycles 3f through 3q
+remain planned.** This does not alter
 the exact historical Cycle 2z personal result or
 make a feature-parity claim.
 
@@ -484,9 +487,9 @@ Target: move from one symbol to a useful local U.S. common-stock universe.
 
 The roadmap splits this milestone into ordered boundaries. Cycle 3e-a has a
 recorded engine/API engineering Pass but remains unpromoted. Cycle 3e-a1
-records the separately reviewable offline source handoff. Cycle 3e-a2 prepares
-the repository-owned measurement-integrity correction that must be recorded
-before any later private latency result can count. Cycle 3e-b builds on the
+records the separately reviewable offline source handoff. Cycle 3e-a2 records
+the repository-owned measurement-integrity correction that must be used before
+any later private latency result can count. Cycle 3e-b builds on the
 stable identities only after the real Cycle 3e-a exit is met.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
@@ -559,10 +562,10 @@ are distinct after normalization at result limit 25. It reports nearest-rank
 local p95 and binds its exact catalog, eligible count, digest, result limit,
 ordered raw-query-set canonical-JSON-plus-LF SHA-256, declared hardware, and
 synthetic or owner-local basis. A synthetic result is explicitly engineering-
-only. A prepared Cycle 3e-a2 correction removes the caller-supplied clock,
-requires exactly `(catalog, input)`, privately captures the monotonic
-`node:perf_hooks` clock, and binds exact clock and timed-region literals in the
-receipt. That correction is not yet a recorded Pass. The real exit still
+only. The recorded Cycle 3e-a2 public engineering correction removes the caller-
+supplied clock, requires exactly `(catalog, input)`, privately captures the
+monotonic `node:perf_hooks` clock, and binds exact clock and timed-region
+literals in the receipt. The real exit still
 requires p95 below 200 ms on declared owner hardware
 with the exact loaded real universe and that exact plan. Neither 3,000
 synthetic rows nor a synthetic timing result can close that gate.
@@ -617,11 +620,29 @@ satisfy breadth, latency, acceptance, or promotion.
 
 #### Cycle 3e-a2 — package-owned security-master measurement clock
 
-Status: **Prepared public engineering correction only. No exact source/routing
-transition, terminal repository result, independent review, CI evidence, real
-measurement, acceptance, or promotion is recorded.** See
+Status: **Recorded public engineering Pass only for exact merge-free source
+revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. No real source, snapshot,
+breadth, declared-hardware latency, private operation, Cycle 3e-a acceptance/
+promotion, or parity is recorded.** See
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
+
+The source revision passed 2,058 local tests with 9 intentional skips. Its
+attempt-1 CI run `33816810188` passed Windows job `100850647775` and Ubuntu job
+`100850648064`; custody run `33816810200`/job `100850647942`, normalization run
+`33816810227`/job `100850647938`, cross-engine run `33816810267`/job
+`100850648210`, and parser-isolation run `33816810173`/job `100850647900` also
+passed. Final independent review was clean after the pre-commit timed-region
+AST-order blocker was fixed.
+
+The sole routing child passed 2,060 local tests with 9 intentional skips and
+clean independent review. Its attempt-1 CI run `33823588896` passed Windows job
+`100871341851` and Ubuntu job `100871342201`; custody run `33823588891`/job
+`100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
+cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
+normalization run was triggered or required because the exact five-path routing
+transition did not match that workflow's path filters.
 
 The exact measurement API has two arguments and rejects any third argument with
 `PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID` before a hostile callback can
@@ -633,10 +654,11 @@ starts before normalization and ends after in-memory catalog search.
 
 Focused hostile tests plus the static
 `personalSecurityMasterMeasurementBoundaryViolation` guard and representative
-mutations must pin the arity, clock capture/use, timed region, receipt fields,
-and lack of an alternate timing seam. This work needs no real source operation,
-but public source and synthetic timing cannot prove real breadth, real latency,
-a below-200-ms result, or Cycle 3e-a acceptance/promotion.
+mutations pin the arity, clock capture/use, timed region, receipt fields, and
+lack of an alternate timing seam. This recorded work used no real source
+operation, and public source plus synthetic timing cannot prove real breadth,
+real latency, a below-200-ms result, Cycle 3e-a acceptance/promotion, or feature
+parity.
 
 #### Cycle 3e-b — owner-local watchlists
 
@@ -978,9 +1000,10 @@ The dependency graph is:
 - 3c and 3d depend on 3a and may proceed in parallel;
 - 3e-a depends on 3c and 3d;
 - 3e-a1 depends on the recorded 3e-a engine/API boundary;
-- 3e-a2 depends on the recorded 3e-a engine/API boundary and must close before
-  a later real latency result can count;
-- the real 3e-a exit depends on 3e-a1, an accepted 3e-a2 measurement boundary,
+- 3e-a2 depends on the recorded 3e-a engine/API boundary; its exact public
+  engineering Pass is now recorded;
+- the real 3e-a exit depends on 3e-a1, the recorded 3e-a2 public engineering
+  measurement boundary,
   plus separate owner-approved source
   preparation, admission, breadth, and declared-hardware measurement;
 - 3e-b depends on 3e-a and 3d;

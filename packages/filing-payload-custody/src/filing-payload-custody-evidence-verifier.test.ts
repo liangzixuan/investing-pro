@@ -142,6 +142,8 @@ import {
   isCycle3ea1SourcePreparationTopologyAllowed,
   isCycle3ea2MeasurementClockClosureCommitDiffSetAllowed,
   isCycle3ea2MeasurementClockClosureTopologyAllowed,
+  isCycle3ea2PublicEngineeringEvidenceRecordCommitDiffSetAllowed,
+  isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed,
   isCycle3ea2RoutingClosureCommitDiffSetAllowed,
   isCycle3ea2RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
@@ -796,6 +798,8 @@ const CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION =
   "d34266037ca997d72bea440e9be942cddd223da9" as const;
 const CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION =
   "8c2166fa01f5e1f471887ccdeb9484b132a02bb0" as const;
+const CYCLE_3E_A2_ROUTING_CLOSURE_REVISION =
+  "0374becdf96c1e9891d80e73024c8be0440fd812" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1936,6 +1940,48 @@ const CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_TRANSITION = [
 const CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION = [
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/CYCLE_3E_A1_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3E_A2_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/CYCLE_3E_A_EXIT_MATRIX.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0057-owner-local-security-master-snapshot-and-search.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md",
+    status: "M",
+  },
+  {
+    path: "docs/adr/0059-package-owned-security-master-measurement-clock.md",
     status: "M",
   },
   {
@@ -5432,6 +5478,13 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION} ${CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
     publicEngineeringEvidenceRecordTopology,
   ] as const;
+  const cycle3ea2RoutingClosureTopology = [
+    "36",
+    "36",
+    CYCLE_3E_A2_ROUTING_CLOSURE_REVISION,
+    `${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}`,
+    measurementClockClosureTopology,
+  ] as const;
 
   it("pins the exact merge-free source after the public promotion", () => {
     expect(isCycle3eaSourceTopologyAllowed(...sourceTopology)).toBe(true);
@@ -5983,20 +6036,14 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("allows exactly one dynamic merge-free Cycle 3e-a2 routing-closure child", () => {
-    const revision = "f".repeat(40);
-    const valid = [
-      "36",
-      "36",
-      revision,
-      `${revision} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}`,
-      measurementClockClosureTopology,
-    ] as const;
+  it("pins the exact merge-free Cycle 3e-a2 routing-closure child", () => {
+    const revision = CYCLE_3E_A2_ROUTING_CLOSURE_REVISION;
+    const valid = cycle3ea2RoutingClosureTopology;
     expect(isCycle3ea2RoutingClosureTopologyAllowed(...valid)).toBe(true);
     for (const [index, replacement] of [
       [0, "35"],
       [1, "37"],
-      [2, CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION],
+      [2, "f".repeat(40)],
       [
         3,
         `${revision} ${CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
@@ -6046,7 +6093,69 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("freezes the exact 51, 7, 5, 6, 7, 7, 7, 19, 5, 14, 34, and 5-file transitions", () => {
+  it("allows exactly one dynamic merge-free Cycle 3e-a2 public-engineering evidence-record child", () => {
+    const revision = "f".repeat(40);
+    const valid = [
+      "37",
+      "37",
+      revision,
+      `${revision} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}`,
+      cycle3ea2RoutingClosureTopology,
+    ] as const;
+    expect(
+      isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(...valid),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "36"],
+      [1, "38"],
+      [2, CYCLE_3E_A2_ROUTING_CLOSURE_REVISION],
+      [3, `${revision} ${CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION}`],
+    ] as const) {
+      const changed: unknown[] = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed
+          >),
+        ),
+        `public-engineering-evidence-record:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
+        "37",
+        "37",
+        "not-a-commit",
+        `not-a-commit ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}`,
+        cycle3ea2RoutingClosureTopology,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
+        "37",
+        "37",
+        revision,
+        `${revision} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION} ${"e".repeat(40)}`,
+        cycle3ea2RoutingClosureTopology,
+      ),
+    ).toBe(false);
+    const changedRouting: unknown[] = [...cycle3ea2RoutingClosureTopology];
+    changedRouting[3] = `${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A1_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`;
+    expect(
+      isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
+        "37",
+        "37",
+        revision,
+        `${revision} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}`,
+        changedRouting as unknown as Parameters<
+          typeof isCycle3ea2RoutingClosureTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("freezes the exact 51, 7, 5, 6, 7, 7, 7, 19, 5, 14, 34, 5, and 16-file transitions", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
       CYCLE_3E_A_SOURCE_TRANSITION,
@@ -6107,6 +6216,11 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION,
       5,
     );
+    expectExactTransition(
+      isCycle3ea2PublicEngineeringEvidenceRecordCommitDiffSetAllowed,
+      CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION,
+      16,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -6138,6 +6252,9 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         (entry) => entry.path,
       ),
       ...CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION.map(
+        (entry) => entry.path,
+      ),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -6221,6 +6338,9 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         (entry) => entry.path,
       ),
       ...CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_TRANSITION.map(
+        (entry) => entry.path,
+      ),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);

@@ -88,9 +88,10 @@ and real-hardware latency still pending and no acceptance or promotion; and
 Cycle 3e-a1 has a recorded public engineering Pass only for exact source
 revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
 `5e27bed1a11956bb207f523739083131aea254f0`, with no real source or private
-operation; and Cycle 3e-a2 has only prepared public correction source for the
-measurement clock and timed-region integrity gap, with no recorded Pass,
-acceptance, or promotion.
+operation; and Cycle 3e-a2 has a recorded public engineering Pass only for exact
+source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`, with no real source, breadth,
+latency, acceptance, or promotion.
 The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
@@ -2339,9 +2340,9 @@ provider mapping or operating-MIC-type field.
 
 `measurePersonalSecurityMasterSearchP95` enforces exactly 100 iterations over
 32 ordered queries that are distinct after normalization, with result limit 25.
-A prepared Cycle 3e-a2 correction makes `(catalog, input)` its exact two-
-argument public/runtime surface, rejects any third argument before it can run,
-and removes the caller-controlled clock seam. The package privately captures
+The recorded Cycle 3e-a2 public engineering correction makes `(catalog, input)`
+its exact two-argument public/runtime surface, rejects any third argument before
+it can run, and removes the caller-controlled clock seam. The package privately captures
 bound `performance.now` from `node:perf_hooks` as
 `READ_MONOTONIC_MILLISECONDS` and uses that monotonic clock for every sample. Its
 result binds query and iteration counts, result limit, the ordered raw query
@@ -2472,11 +2473,26 @@ the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
 ### Cycle 3e-a2 package-owned measurement-integrity model
 
-Cycle 3e-a2 is **prepared public engineering correction source only**. No exact
-source or routing revision, terminal local result, independent review, CI run,
-real measurement, acceptance, or promotion has been recorded. The earlier
-Cycle 3e-a engine/API and Cycle 3e-a1 offline-preparation records remain limited
-to their exact historical chains; neither pre-approves this correction.
+Cycle 3e-a2 has a **recorded public engineering Pass only** for exact merge-free
+source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. The source revision passed 2,058
+local tests with 9 intentional skips. Its attempt-1 CI run `33816810188` passed
+Windows job `100850647775` and Ubuntu job `100850648064`; custody run
+`33816810200`/job `100850647942`, normalization run `33816810227`/job
+`100850647938`, cross-engine run `33816810267`/job `100850648210`, and parser-
+isolation run `33816810173`/job `100850647900` also passed. Final independent
+source review was clean after the pre-commit timed-region AST-order blocker was
+fixed.
+
+The sole routing child passed 2,060 local tests with 9 intentional skips and
+clean independent review. Its attempt-1 CI run `33823588896` passed Windows job
+`100871341851` and Ubuntu job `100871342201`; custody run `33823588891`/job
+`100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
+cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
+normalization run was triggered or required because the exact five-path routing
+transition did not match that workflow's path filters. The earlier Cycle 3e-a
+engine/API and Cycle 3e-a1 offline-preparation records remain limited to their
+exact historical chains.
 
 The exact signature is
 `measurePersonalSecurityMasterSearchP95(catalog, input)`. Runtime arity must be
@@ -2493,21 +2509,21 @@ only `normalizeSearchRequest` followed by `searchState`; input snapshotting,
 query-set digesting, sample sorting, percentile calculation, and receipt
 construction remain outside the per-query interval.
 
-Focused runtime tests must prove hostile third-argument noninvocation and the
+Focused runtime tests prove hostile third-argument noninvocation and the
 exact receipt. The Cycle 3e-a static boundary adds
 `personalSecurityMasterMeasurementBoundaryViolation` to pin the
 `node:perf_hooks` capture, arity, use sites, timed region, receipt fields, and
-absence of another timing path; representative mutations must fail that guard.
-Exact design and source-stage evidence limits are in
+absence of another timing path; representative mutations fail that guard.
+Exact design and evidence limits are in
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
 
-This correction is testable without private material. It establishes no real
-source, snapshot, breadth, owner authorization, real-hardware latency, or
-below-200-ms result and cannot accept or promote Cycle 3e-a. A later exact
-owner-only measurement may become exit evidence only after this correction has
-recorded exact public engineering evidence and is bound to the admitted real
-snapshot and declared hardware.
+This recorded correction used no private material. It establishes no real
+source, snapshot, breadth, owner authorization, real-hardware latency, or below-
+200-ms result and cannot accept or promote Cycle 3e-a or establish competitor
+parity. A later exact owner-only measurement may become exit evidence only when
+freshly authorized and bound to the admitted real snapshot, declared hardware,
+and exact recorded package-owned-clock implementation.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

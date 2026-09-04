@@ -1,10 +1,10 @@
 # ADR 0059: package-owned security-master measurement clock
 
-Status: **Prepared public engineering correction only. The exact source and
-routing transitions, terminal local result, independent review, and CI evidence
-have not yet been frozen or recorded as Pass. No real source, snapshot,
-declared-hardware latency result, owner authorization, acceptance, or promotion
-is recorded.**
+Status: **Recorded public engineering Pass only for exact merge-free source
+revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. No real source, snapshot,
+breadth, declared-hardware latency result, owner authorization, Cycle 3e-a
+acceptance/promotion, or parity is recorded.**
 
 ## Context
 
@@ -93,51 +93,72 @@ region, receipt bindings, and absence of an alternate injectable timing path.
 Boundary-verifier mutation coverage must show that representative changes to
 those invariants are rejected.
 
-## Evidence stage and stop conditions
+## Recorded evidence and stop conditions
 
-This ADR records a prepared source-stage correction, not a successful gate. A
-later evidence-routing transition may record Cycle 3e-a2 as a public engineering
-Pass only after all of the following are bound to exact revisions:
+Cycle 3e-a2 is recorded as a public engineering Pass only for exact merge-free
+source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and its sole
+routing-closure child `0374becdf96c1e9891d80e73024c8be0440fd812`. The source is
+the 35/35 successor of the Cycle 2z baseline and has an exact 34-path transition
+(32 modified, 2 added). The routing closure is the 36/36 successor and has an
+exact five-path modified-only transition.
 
-1. focused package behavior and hostile-input tests pass;
-2. the static measurement boundary and its mutation coverage pass;
-3. full repository verification passes with exact test and intentional-skip
-   counts;
-4. independent review finds no concrete blocker;
+The source revision passed 2,058 local tests with 9 intentional skips. Its
+attempt-1 CI run `33816810188` passed Windows job `100850647775` and Ubuntu job
+`100850648064`; custody run `33816810200`/job `100850647942`, normalization run
+`33816810227`/job `100850647938`, cross-engine run `33816810267`/job
+`100850648210`, and parser-isolation run `33816810173`/job `100850647900` also
+passed. Independent source review initially found a timed-region AST-order
+blocker; it was fixed before commit, and final review was clean.
+
+The routing closure passed 2,060 local tests with 9 intentional skips and clean
+independent review. Its attempt-1 CI run `33823588896` passed Windows job
+`100871341851` and Ubuntu job `100871342201`; custody run `33823588891`/job
+`100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
+cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
+normalization run was triggered or required because the exact five-path routing
+transition did not match that workflow's path filters; source normalization run
+`33816810227` is the applicable normalization evidence.
+
+This exact record establishes that:
+
+1. focused package behavior and hostile-input tests passed;
+2. the static measurement boundary and its mutation coverage passed;
+3. full repository verification passed with the exact test and intentional-skip
+   counts above;
+4. final independent review found no concrete blocker;
 5. the source-to-routing topology and changed paths are exact and merge-free;
    and
-6. required Windows/Linux CI and acceptance workflows pass at the terminal
+6. required Windows/Linux CI and acceptance workflows passed at the terminal
    routing tip.
 
-Stop without recording a Pass if the public function accepts any arity other
-than two, an extra callback can run, time can be supplied or mutated by the
-caller, the clock is not the captured `node:perf_hooks` monotonic source, the
-timed region moves, either receipt binding is absent or mutable, the static
-guardrail does not detect a representative regression, or exact terminal
-evidence is incomplete.
+The recorded Pass does not carry forward across a change. Stop without a new
+exact record if the public function accepts any arity other than two, an extra
+callback can run, time can be supplied or mutated by the caller, the clock is
+not the captured `node:perf_hooks` monotonic source, the timed region moves,
+either receipt binding is absent or mutable, the static guardrail does not
+detect a representative regression, or exact terminal evidence is incomplete.
 
 ## Exact nonclaims
 
-This prepared correction does not establish:
+This recorded public engineering correction does not establish:
 
-1. a recorded Cycle 3e-a2 public engineering Pass;
-2. any real SEC, OpenFIGI, ISO, or other source material;
-3. a real owner-local snapshot, source-policy approval, private operation, or
+1. any real SEC, OpenFIGI, ISO, or other source material;
+2. a real owner-local snapshot, source-policy approval, private operation, or
    owner authorization;
-4. at least 3,000 real eligible active U.S.-listed common stocks/ADRs;
-5. any real, declared-hardware, production, or below-200-ms latency result;
-6. correctness, completeness, currency, rights, or authenticity of a source;
-7. browser search, watchlists, persistence, refresh, market data, or another
+3. at least 3,000 real eligible active U.S.-listed common stocks/ADRs;
+4. any real, declared-hardware, production, or below-200-ms latency result;
+5. correctness, completeness, currency, rights, or authenticity of a source;
+6. browser search, watchlists, persistence, refresh, market data, or another
    product feature;
-8. remote, multi-user, enterprise, commercial, redistribution, or production
+7. remote, multi-user, enterprise, commercial, redistribution, or production
    safety;
-9. Cycle 3e-a acceptance or promotion; or
-10. competitor feature parity.
+8. Cycle 3e-a acceptance or promotion; or
+9. competitor feature parity.
 
 Synthetic timing remains engineering-only even after this correction. The real
 Cycle 3e-a exit still requires the separately owner-approved exact source,
 admission and breadth result, plus a fresh measurement on declared owner
-hardware using the accepted package-owned-clock implementation and exact loaded
+hardware using the exact recorded package-owned-clock implementation and exact loaded
 real universe.
 
 ## References

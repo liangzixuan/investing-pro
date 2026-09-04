@@ -6,9 +6,11 @@ Status: **Recorded public engineering Pass for the exact merge-free chain from
 provider credential, download, network request, or private activation has
 occurred. The separate Cycle 3e-a1 offline preparation boundary is recorded only
 for exact source `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
-`5e27bed1a11956bb207f523739083131aea254f0`. Cycle 3e-a2 has only prepared
-public correction source for measurement-clock integrity and no recorded Pass.
-Cycle 3e-a is not accepted or promoted.**
+`5e27bed1a11956bb207f523739083131aea254f0`. Cycle 3e-a2 records a public
+engineering Pass only for exact source
+`8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. Cycle 3e-a is not accepted or
+promoted.**
 
 ## Context
 
@@ -145,15 +147,14 @@ It repeatedly measures individual local searches and reports nearest-rank p95,
 maximum latency, query/iteration/sample counts, result limit, ordered raw-query-
 set SHA-256 over canonical JSON UTF-8 plus LF, declared hardware profile,
 catalog identity/digest, eligible count, and an exact content-kind basis.
-Cycle 3e-a2 prepares a correction that makes `(catalog, input)` the exact public
-and runtime API, rejects any third argument before a hostile callback can run,
-and uses only the private module-captured `node:perf_hooks` monotonic clock. The
+The recorded Cycle 3e-a2 public engineering correction makes `(catalog, input)`
+the exact public and runtime API, rejects any third argument before a hostile
+callback can run, and uses only the private module-captured `node:perf_hooks`
+monotonic clock. The
 plan and receipt also bind
 `clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and
 `timedRegion: "normalize_request_and_search_in_memory_catalog"`; the interval
-starts before normalization and finishes after in-memory search. This
-correction has not yet received exact-source or terminal public evidence.
-Synthetic input is labeled
+starts before normalization and finishes after in-memory search. Synthetic input is labeled
 `synthetic_engineering_only_not_production_slo`; owner input is labeled
 `owner_local_exact_snapshot_and_declared_hardware`. A synthetic timing is
 useful for regression detection but cannot satisfy the Cycle 3e-a real-
@@ -293,10 +294,12 @@ were verified:
     boundary was recorded.
 
 That historical checklist did not establish caller-independent timestamps for
-a future real measurement. The prepared Cycle 3e-a2 correction adds the exact
-two-argument API, package-owned clock, receipt bindings, hostile-third-argument
-test, and static `personalSecurityMasterMeasurementBoundaryViolation` guard. It
-must receive its own exact evidence before any later latency result can count.
+a future real measurement. The separately recorded Cycle 3e-a2 correction adds
+the exact two-argument API, package-owned clock, receipt bindings, hostile-third-
+argument test, and static
+`personalSecurityMasterMeasurementBoundaryViolation` guard. A later latency
+result can count only when a freshly authorized run uses that exact accepted
+boundary.
 
 ## Exact nonclaims
 
@@ -349,9 +352,24 @@ custody run `33806494300`, normalization run `33806494295`, cross-engine run
 does not authorize a real source or private operation; see
 [ADR 0058](./0058-offline-sec-openfigi-v1-source-preparation.md).
 
-Cycle 3e-a2 is currently prepared public engineering correction source only.
-It has no frozen source/routing chain, terminal local result, independent review
-record, CI evidence, real measurement, acceptance, or promotion. See
+Cycle 3e-a2 has a recorded public engineering Pass only for exact merge-free
+source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. The source passed 2,058 local
+tests with 9 intentional skips and final clean review after the pre-commit
+timed-region AST-order blocker was fixed. Its attempt-1 CI run `33816810188`
+passed jobs `100850647775` and `100850648064`; custody run `33816810200`/job
+`100850647942`, normalization run `33816810227`/job `100850647938`, cross-
+engine run `33816810267`/job `100850648210`, and parser-isolation run
+`33816810173`/job `100850647900` also passed.
+
+The routing closure passed 2,060 local tests with 9 intentional skips and clean
+independent review. Its attempt-1 CI run `33823588896` passed jobs
+`100871341851` and `100871342201`; custody run `33823588891`/job
+`100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
+cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
+normalization run was triggered or required because the exact five-path routing
+transition did not match that workflow's path filters. This record establishes
+no real measurement, breadth, Cycle 3e-a acceptance/promotion, or parity. See
 [ADR 0059](./0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](../CYCLE_3E_A2_EXIT_MATRIX.md).
 

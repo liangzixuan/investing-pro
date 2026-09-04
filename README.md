@@ -1255,11 +1255,11 @@ symbol/name search, and a content-kind-bound p95 measurement whose synthetic
 result is explicitly engineering-only. The fixed measurement plan is 100
 iterations over 32 distinct normalized queries at result limit 25; its receipt
 binds the ordered raw query set by canonical-JSON-plus-LF SHA-256. A bounded
-Cycle 3e-a2 source-stage correction now removes the measurement helper's caller-
-clock seam, makes its public API exactly two arguments, privately captures the
-monotonic `node:perf_hooks` clock, and binds the exact clock and timed region
-into the receipt. That correction does not yet have a recorded public
-engineering Pass. Exact API mode
+Cycle 3e-a2 now records the bounded correction that removes the measurement
+helper's caller-clock seam, makes its public API exactly two arguments,
+privately captures the monotonic `node:perf_hooks` clock, and binds the exact
+clock and timed region into the receipt. Its public engineering Pass is limited
+to the exact source/routing chain recorded below. Exact API mode
 `personal_single_user_local_security_master` starts through a separate server
 and exposes only owner-authenticated, private/no-store status and search routes.
 It takes one fixed-name owner-local snapshot path and exact digest before
@@ -1316,10 +1316,26 @@ active U.S.-listed common stocks/ADRs and measures below 200 ms p95 on declared
 owner hardware under the exact plan. The recorded Cycle 3e-a1 public result
 does not authorize or constitute that real operation.
 
-Cycle 3e-a2 is a **prepared public engineering correction only**. Its exact
-source/routing transitions, terminal verification, independent review, and CI
-evidence have not yet been frozen or recorded as Pass. The exact public
-measurement signature becomes
+Cycle 3e-a2 now has a **recorded public engineering Pass only** for exact
+merge-free source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and its
+sole routing-closure child `0374becdf96c1e9891d80e73024c8be0440fd812`.
+The source revision passed 2,058 local tests with 9 intentional skips. Its
+attempt-1 CI run `33816810188` passed Windows job `100850647775` and Ubuntu job
+`100850648064`; custody run `33816810200`/job `100850647942`, normalization run
+`33816810227`/job `100850647938`, cross-engine run `33816810267`/job
+`100850648210`, and parser-isolation run `33816810173`/job `100850647900` also
+passed. An independent source review first identified a timed-region AST-order
+gap; that gap was fixed before the source commit, and final review was clean.
+
+The routing closure passed 2,060 local tests with 9 intentional skips and clean
+independent review. Its attempt-1 CI run `33823588896` passed Windows job
+`100871341851` and Ubuntu job `100871342201`; custody run `33823588891`/job
+`100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
+cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
+normalization run was triggered or required because the exact five-path routing
+transition did not match that workflow's path filters.
+
+The exact public measurement signature is
 `measurePersonalSecurityMasterSearchP95(catalog, input)`; any third argument
 fails with `PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID` and a hostile callback
 is never invoked. The package privately captures bound `performance.now` from
@@ -1332,11 +1348,12 @@ bindings, and absence of another timing seam. See
 [ADR 0059](./docs/adr/0059-package-owned-security-master-measurement-clock.md)
 and the [Cycle 3e-a2 exit matrix](./docs/CYCLE_3E_A2_EXIT_MATRIX.md).
 
-No real data or private operation is needed to verify that repository-owned
-correction. It establishes no real breadth or latency result and cannot accept
-or promote Cycle 3e-a. Any later owner-only latency evidence must use the
-accepted package-owned-clock implementation on the exact admitted real
-snapshot and declared hardware.
+This recorded public engineering correction uses no real data or private
+operation. It establishes no real breadth or latency result and cannot accept
+or promote Cycle 3e-a or establish competitor parity. Any later owner-only
+latency evidence must use the exact recorded package-owned-clock implementation on
+the exact admitted real snapshot and declared hardware under fresh exact
+authorization.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

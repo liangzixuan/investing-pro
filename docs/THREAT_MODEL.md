@@ -1,4 +1,4 @@
-# Sprint 0 through prepared public Cycle 3e-a2 threat model
+# Sprint 0 through recorded public Cycle 3e-a2 threat model
 
 ## Current trust boundaries
 
@@ -35,9 +35,9 @@ one exact owner-local security-master snapshot and authenticated local search,
 but no real catalog, source download, provider credential, network adapter, or
 private activation. Cycle 3e-a1 has a recorded public engineering Pass only for
 its separate offline six-artifact source handoff, with no acquisition or private
-operation. Cycle 3e-a2 has only prepared public correction source for the
-measurement-integrity gap and no recorded Pass. Cycle 3e-a is not accepted or
-promoted.
+operation. Cycle 3e-a2 has a recorded public engineering Pass only for its exact
+package-owned measurement-integrity chain, with no real source, breadth,
+latency, or private operation. Cycle 3e-a is not accepted or promoted.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2544,11 +2544,11 @@ Recorded public engineering controls are:
   normalization-distinct queries at result limit 25, with the ordered raw query
   set bound by canonical-JSON-plus-LF SHA-256 in the receipt.
 
-That historical record did not close caller independence of the timer. Cycle
-3e-a2 now prepares, but has not yet recorded evidence for, an exact two-argument
-API, private module-captured `node:perf_hooks` monotonic clock, explicit clock/
-timed-region receipt bindings, hostile third-argument rejection, and static
-regression guard.
+That historical record did not close caller independence of the timer. The
+separately recorded Cycle 3e-a2 public engineering boundary closes that bounded
+gap with an exact two-argument API, private module-captured `node:perf_hooks`
+monotonic clock, explicit clock/timed-region receipt bindings, hostile third-
+argument rejection, and static regression guard.
 
 Residual risk remains deliberate. The stable-file checks cannot prove that an
 accepted Windows drive or POSIX path is not network-mounted; owner-local
@@ -2670,11 +2670,25 @@ the [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
 
 ## Cycle 3e-a2 package-owned measurement-clock threat boundary
 
-Cycle 3e-a2 has **prepared public engineering correction source only**. No exact
-source/routing revisions, terminal local result, independent review, CI
-evidence, real measurement, acceptance, or promotion are recorded. The earlier
-Cycle 3e-a and Cycle 3e-a1 public engineering records remain limited to their
-exact historical chains.
+Cycle 3e-a2 has a **recorded public engineering Pass only** for exact merge-free
+source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
+`0374becdf96c1e9891d80e73024c8be0440fd812`. The source passed 2,058 local
+tests with 9 intentional skips. Attempt-1 CI run `33816810188` passed Windows
+job `100850647775` and Ubuntu job `100850648064`; custody run `33816810200`/job
+`100850647942`, normalization run `33816810227`/job `100850647938`, cross-
+engine run `33816810267`/job `100850648210`, and parser-isolation run
+`33816810173`/job `100850647900` also passed. Final source review was clean
+after the pre-commit timed-region AST-order blocker was fixed.
+
+The sole routing child passed 2,060 local tests with 9 intentional skips and
+clean independent review. Attempt-1 CI run `33823588896` passed Windows job
+`100871341851` and Ubuntu job `100871342201`; custody run `33823588891`/job
+`100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
+cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
+normalization run was triggered or required because the exact five-path routing
+transition did not match that workflow's path filters. The earlier Cycle 3e-a
+and Cycle 3e-a1 public engineering records remain limited to their exact
+historical chains.
 
 Assets at risk are the integrity of each elapsed sample, the attribution of its
 clock and timed region, and the prohibition on converting caller-chosen time or
@@ -2683,7 +2697,7 @@ optional/hidden third parameter, callback or options injection, a replaceable
 global clock, a moved or mislabeled timed region, omitted/mutable receipt
 fields, and source drift that focused tests alone do not detect.
 
-The prepared controls are:
+The recorded public engineering controls are:
 
 - exactly `measurePersonalSecurityMasterSearchP95(catalog, input)` at both the
   TypeScript and runtime boundaries;
@@ -2702,17 +2716,17 @@ The prepared controls are:
   mutations pinning arity, capture/use, timed region, receipt fields, and the
   absence of another timing path.
 
-These are source-stage statements, not recorded successful controls. Stop
-without a public engineering Pass if exact source/routing topology, focused and
-static tests, mutation coverage, full local verification, independent review,
-or terminal Windows/Linux CI and acceptance evidence is incomplete.
+These controls are recorded only for the exact source/routing chain above. Stop
+without preserving the public engineering Pass if a later change breaks exact
+topology, focused or static tests, mutation coverage, full local verification,
+independent review, or terminal Windows/Linux CI and acceptance evidence.
 
 This correction requires no real source bytes and proves no real universe,
 owner authorization, real-hardware latency, below-200-ms result, production
 safety, Cycle 3e-a acceptance/promotion, or feature parity. A later owner-only
-latency result may count only after Cycle 3e-a2 is accepted as an exact public
-engineering boundary and the run is bound to the exact admitted real snapshot,
-declared hardware, and fixed plan. See
+latency result may count only when a fresh exact authorization binds the run to
+this exact recorded package-owned-clock implementation, the exact admitted real
+snapshot, declared hardware, and fixed plan. See
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
 
@@ -2768,9 +2782,9 @@ declared hardware, and fixed plan. See
    corrected chain and has no actual vault or private activation. Cycle 3e-a
    now has a recorded owner-local security-master admission/search public
    engineering Pass, and Cycle 3e-a1 records its separate offline source
-   handoff as a public engineering Pass only. Cycle 3e-a2 has only prepared
-   source for the package-owned measurement correction. Cycle 3e-a remains unpromoted
-   with no real breadth claim until a
+   handoff as a public engineering Pass only. Cycle 3e-a2 records only its exact
+   package-owned measurement correction as a public engineering Pass. Cycle
+   3e-a remains unpromoted with no real breadth claim until a
    later exact owner-approved, rights-compatible source is prepared, admitted,
    and measured.
    Organizational
