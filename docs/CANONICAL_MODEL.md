@@ -2438,6 +2438,11 @@ unsupported, stale, and ineligible counts. Cover `observedAt` also cannot be
 later than the plan provenance acquisition time. Every candidate is counted
 exactly once.
 
+A listing `figi` equal to its `compositeFigi` is one valid OpenFIGI identity,
+not an ambiguity: preparation emits the listing and distinct share-class
+mappings only. Share-class equality or reuse of that provider identity across
+resolved source rows remains invalid or ambiguous and is never admitted.
+
 A result with no admitted candidate has only a frozen aggregate receipt. A
 nonempty result also has an identity-bound single-use `capability` and
 synchronous `readSnapshot(capability)`. The factory wipes all six captured

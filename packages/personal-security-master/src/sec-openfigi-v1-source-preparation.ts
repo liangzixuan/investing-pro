@@ -873,8 +873,8 @@ function validateAggregatedOpenFigiMappings(
       !isFigi(record.shareClassFigi) ||
       !isSymbol(record.ticker) ||
       record.unlisted !== false ||
-      new Set([record.compositeFigi, record.figi, record.shareClassFigi])
-        .size !== 3
+      record.shareClassFigi === record.compositeFigi ||
+      record.shareClassFigi === record.figi
     ) {
       fail("SEC_OPENFIGI_V1_ARTIFACT_INVALID");
     }
@@ -1134,9 +1134,14 @@ function reconcile(
   );
   const providerIdentityCounts = countBy(
     resolutions.flatMap((resolution) => [
-      resolution.mapping.compositeFigi,
-      resolution.mapping.figi,
-      resolution.mapping.shareClassFigi,
+      // OpenFIGI can use the country-composite FIGI for its primary listing.
+      // Count that sanctioned intra-row alias once while preserving cross-row
+      // reuse as an ambiguity below.
+      ...new Set([
+        resolution.mapping.compositeFigi,
+        resolution.mapping.figi,
+        resolution.mapping.shareClassFigi,
+      ]),
     ]),
     (identity) => identity,
   );
@@ -1235,14 +1240,21 @@ function buildPersonalSecurityMasterSnapshot(
         ]),
       }),
     );
+    // A primary listing can share its FIGI with the country composite. The
+    // listing mapping is mandatory; emitting both would violate the catalog's
+    // global provider-identity uniqueness without adding information.
+    if (mapping.compositeFigi !== mapping.figi) {
+      providerMappings.push(
+        Object.freeze({
+          mappingId: assignment.mappingIds.compositeFigi,
+          mappingKind: "composite",
+          providerId: "openfigi_v3",
+          providerSecurityId: mapping.compositeFigi,
+          targetId: assignment.shareClassId,
+        }),
+      );
+    }
     providerMappings.push(
-      Object.freeze({
-        mappingId: assignment.mappingIds.compositeFigi,
-        mappingKind: "composite",
-        providerId: "openfigi_v3",
-        providerSecurityId: mapping.compositeFigi,
-        targetId: assignment.shareClassId,
-      }),
       Object.freeze({
         mappingId: assignment.mappingIds.listingFigi,
         mappingKind: "listing",

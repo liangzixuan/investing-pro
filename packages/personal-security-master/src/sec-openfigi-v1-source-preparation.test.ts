@@ -114,6 +114,75 @@ describe("sec_openfigi_v1 source preparation", () => {
     );
   });
 
+  it("admits a listing FIGI equal to its composite FIGI without emitting a redundant composite mapping", () => {
+    const documents = buildDocuments(1);
+    const mapping = documentRecords(documents.aggregatedOpenFigiMappings)[0]!;
+    mapping.compositeFigi = mapping.figi;
+
+    const prepared = prepareSecOpenFigiV1Source(assembleFixture(documents));
+
+    expect(prepared.status).toBe("prepared");
+    expect(prepared.receipt).toMatchObject({
+      admittedRecords: 1,
+      candidateRecords: 1,
+      quarantinedRecords: 0,
+    });
+    if (prepared.status === "quarantined") throw new Error("unexpected");
+    const snapshot = JSON.parse(
+      new TextDecoder().decode(
+        prepared.readSnapshot(prepared.capability).snapshot,
+      ),
+    ) as { providerMappings: JsonRecord[] };
+    expect(snapshot.providerMappings).toEqual([
+      expect.objectContaining({
+        mappingKind: "listing",
+        providerSecurityId: mapping.figi,
+      }),
+      expect.objectContaining({
+        mappingKind: "share_class",
+        providerSecurityId: mapping.shareClassFigi,
+      }),
+    ]);
+    expect(snapshot.providerMappings).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mappingKind: "composite" }),
+      ]),
+    );
+  });
+
+  it("rejects share-class FIGI equality and quarantines provider identity reuse across rows", () => {
+    for (const equalTo of ["compositeFigi", "figi"] as const) {
+      const documents = buildDocuments(1);
+      const mapping = documentRecords(documents.aggregatedOpenFigiMappings)[0]!;
+      mapping.shareClassFigi = mapping[equalTo];
+
+      expect(() =>
+        prepareSecOpenFigiV1Source(assembleFixture(documents)),
+      ).toThrowError(
+        expect.objectContaining({ code: "SEC_OPENFIGI_V1_ARTIFACT_INVALID" }),
+      );
+    }
+
+    const reusedDocuments = buildDocuments(2);
+    const reusedMappings = documentRecords(
+      reusedDocuments.aggregatedOpenFigiMappings,
+    );
+    reusedMappings[0]!.compositeFigi = reusedMappings[0]!.figi;
+    reusedMappings[1]!.compositeFigi = reusedMappings[0]!.figi;
+
+    const reused = prepareSecOpenFigiV1Source(assembleFixture(reusedDocuments));
+
+    expect(reused.status).toBe("quarantined");
+    expect(reused.receipt).toMatchObject({
+      admittedRecords: 0,
+      candidateRecords: 2,
+      quarantinedRecords: 2,
+    });
+    expect(reused.receipt.exclusionReasonCounts).toMatchObject({
+      missingOrAmbiguousOpenFigiMapping: 2,
+    });
+  });
+
   it("uses deterministic precedence and aggregate-only accounting for every exclusion class", () => {
     const documents = buildDocuments(7);
     const covers = documentRecords(documents.normalizedSecCoverEvidence);

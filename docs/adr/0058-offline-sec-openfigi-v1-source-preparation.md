@@ -100,6 +100,12 @@ bounded `exclusionReasonCounts`; it does not expose source values, symbols,
 provider identifiers, rejected rows, paths, or credentials. Mixed success is
 `prepared_with_exclusions`, not a claim that excluded records were admitted.
 
+OpenFIGI may validly return a listing `figi` equal to its `compositeFigi`. The
+preparer admits that row as one listing mapping plus its distinct share-class
+mapping and does not emit a redundant composite mapping. `shareClassFigi` must
+remain distinct from both values, and reuse of any provider identifier across
+resolved source rows remains ambiguous and is quarantined.
+
 If no candidate is admitted, preparation returns the frozen aggregate receipt
 without a snapshot-read capability. Otherwise it returns a frozen aggregate
 receipt, one identity-bound single-use `capability`, and
