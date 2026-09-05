@@ -162,6 +162,10 @@ const CYCLE_3E_A2_ROUTING_CLOSURE_REVISION =
   "0374becdf96c1e9891d80e73024c8be0440fd812" as const;
 const CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION =
   "3fe17a21330b6a8ee438298628a832f274fc7216" as const;
+const CYCLE_3B_PUBLIC_PROMOTION_REVISION =
+  "89dbab5f50c8c4ee0e4ede6b187c372e9e6b8473" as const;
+const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION =
+  "a1180532f6432d211831aeb420cb6d6d8326733f" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -3175,6 +3179,43 @@ const CYCLE_3B_PUBLIC_PROMOTION_TRANSITION = Object.freeze([
     status: "M",
   },
 ]);
+const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION = Object.freeze([
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md",
+    status: "M",
+  },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.ts",
+    status: "M",
+  },
+]);
+const CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3434,6 +3475,10 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
     (entry) => entry.path,
   ),
   ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION.map(
+    (entry) => entry.path,
+  ),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -5994,11 +6039,7 @@ export function isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
   );
 }
 
-/**
- * @internal One dynamic merge-free Cycle 3b public-promotion child of the exact
- * Cycle 3e-a2 public-engineering evidence record. The exact per-commit diff is
- * checked separately; no merge or later descendant is admitted here.
- */
+/** @internal The exact merge-free Cycle 3b public-promotion child. */
 export function isCycle3bPublicPromotionTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -6013,10 +6054,9 @@ export function isCycle3bPublicPromotionTopologyAllowed(
   return (
     successorCount === "38" &&
     firstParentCount === "38" &&
-    COMMIT.test(revision) &&
-    revision !== CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION &&
+    revision === CYCLE_3B_PUBLIC_PROMOTION_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}` &&
+      `${CYCLE_3B_PUBLIC_PROMOTION_REVISION} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}` &&
     publicEngineeringEvidenceRecordTopology[2] ===
       CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION &&
     publicEngineeringEvidenceRecordTopology[3] ===
@@ -6024,6 +6064,56 @@ export function isCycle3bPublicPromotionTopologyAllowed(
     isCycle3ea2PublicEngineeringEvidenceRecordTopologyAllowed(
       ...publicEngineeringEvidenceRecordTopology,
     )
+  );
+}
+
+/** @internal The exact merge-free OpenFIGI alias-correction source child. */
+export function isCycle3eaOpenFigiAliasSourceTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  publicPromotionTopology: readonly [
+    ...Parameters<typeof isCycle3bPublicPromotionTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "39" &&
+    firstParentCount === "39" &&
+    revision === CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION &&
+    parentLine ===
+      `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}` &&
+    publicPromotionTopology[2] === CYCLE_3B_PUBLIC_PROMOTION_REVISION &&
+    publicPromotionTopology[3] ===
+      `${CYCLE_3B_PUBLIC_PROMOTION_REVISION} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}` &&
+    isCycle3bPublicPromotionTopologyAllowed(...publicPromotionTopology)
+  );
+}
+
+/**
+ * @internal One dynamic merge-free routing-closure child of the exact
+ * OpenFIGI alias-correction source. The exact five-file diff is checked
+ * separately, so no merge or later descendant is admitted.
+ */
+export function isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  sourceTopology: readonly [
+    ...Parameters<typeof isCycle3eaOpenFigiAliasSourceTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "40" &&
+    firstParentCount === "40" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION &&
+    parentLine === `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}` &&
+    sourceTopology[2] === CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION &&
+    sourceTopology[3] ===
+      `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}` &&
+    isCycle3eaOpenFigiAliasSourceTopologyAllowed(...sourceTopology)
   );
 }
 
@@ -7323,6 +7413,26 @@ export function isCycle3bPublicPromotionCommitDiffSetAllowed(
   return exactCycle2pDiffSet(entries, CYCLE_3B_PUBLIC_PROMOTION_TRANSITION);
 }
 
+/** @internal Exact OpenFIGI alias-correction source transition. */
+export function isCycle3eaOpenFigiAliasSourceCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION,
+  );
+}
+
+/** @internal Exact OpenFIGI alias-correction routing closure. */
+export function isCycle3eaOpenFigiAliasRoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(
+    entries,
+    CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -8574,6 +8684,8 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A2_MEASUREMENT_CLOCK_CLOSURE_REVISION,
     CYCLE_3E_A2_ROUTING_CLOSURE_REVISION,
     CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
+    CYCLE_3B_PUBLIC_PROMOTION_REVISION,
+    CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -9034,6 +9146,30 @@ async function verifyCycle2zTransition(
         128,
       ),
     ).join(" ");
+  const cycle3bPublicPromotionParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3B_PUBLIC_PROMOTION_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
+  const cycle3eaOpenFigiAliasSourceParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
   const maintenanceChild = isCycle2zMaintenanceTopologyAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -9552,6 +9688,20 @@ async function verifyCycle2zTransition(
     cycle3ea2PublicEngineeringEvidenceRecordParentLine,
     pinnedCycle3ea2RoutingClosureTopology,
   ] as const;
+  const pinnedCycle3bPublicPromotionTopology = [
+    "38",
+    "38",
+    CYCLE_3B_PUBLIC_PROMOTION_REVISION,
+    cycle3bPublicPromotionParentLine,
+    pinnedCycle3ea2PublicEngineeringEvidenceRecordTopology,
+  ] as const;
+  const pinnedCycle3eaOpenFigiAliasSourceTopology = [
+    "39",
+    "39",
+    CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+    cycle3eaOpenFigiAliasSourceParentLine,
+    pinnedCycle3bPublicPromotionTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -9659,6 +9809,22 @@ async function verifyCycle2zTransition(
     parentLine,
     pinnedCycle3ea2PublicEngineeringEvidenceRecordTopology,
   );
+  const cycle3eaOpenFigiAliasSource =
+    isCycle3eaOpenFigiAliasSourceTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      pinnedCycle3bPublicPromotionTopology,
+    );
+  const cycle3eaOpenFigiAliasRoutingClosure =
+    isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+      String(successorCount),
+      String(firstParentCount),
+      revision,
+      parentLine,
+      pinnedCycle3eaOpenFigiAliasSourceTopology,
+    );
   const cycle3eRouting =
     cycle3eaSource ||
     cycle3eaRoutingClosure ||
@@ -9673,7 +9839,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion;
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure;
   const cycle3dRoutingClosure =
     cycle3dOriginalRoutingClosure ||
     cycle3dAclCorrective ||
@@ -10104,7 +10272,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10125,7 +10295,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10148,7 +10320,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10174,7 +10348,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10195,7 +10371,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10219,7 +10397,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10240,7 +10420,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10257,7 +10439,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10271,7 +10455,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10289,7 +10475,9 @@ async function verifyCycle2zTransition(
     cycle3ea2MeasurementClockClosure ||
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10304,7 +10492,9 @@ async function verifyCycle2zTransition(
   if (
     cycle3ea2RoutingClosure ||
     cycle3ea2PublicEngineeringEvidenceRecord ||
-    cycle3bPublicPromotion
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10313,7 +10503,12 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3ea2RoutingClosureCommitDiffSetAllowed(entries)) invalid();
   }
-  if (cycle3ea2PublicEngineeringEvidenceRecord || cycle3bPublicPromotion) {
+  if (
+    cycle3ea2PublicEngineeringEvidenceRecord ||
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A2_ROUTING_CLOSURE_REVISION,
@@ -10326,13 +10521,36 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (cycle3bPublicPromotion) {
+  if (
+    cycle3bPublicPromotion ||
+    cycle3eaOpenFigiAliasSource ||
+    cycle3eaOpenFigiAliasRoutingClosure
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
-      revision,
+      cycle3bPublicPromotion ? revision : CYCLE_3B_PUBLIC_PROMOTION_REVISION,
     );
     if (!isCycle3bPublicPromotionCommitDiffSetAllowed(entries)) invalid();
+  }
+  if (cycle3eaOpenFigiAliasSource || cycle3eaOpenFigiAliasRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3B_PUBLIC_PROMOTION_REVISION,
+      cycle3eaOpenFigiAliasSource
+        ? revision
+        : CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+    );
+    if (!isCycle3eaOpenFigiAliasSourceCommitDiffSetAllowed(entries)) invalid();
+  }
+  if (cycle3eaOpenFigiAliasRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+      revision,
+    );
+    if (!isCycle3eaOpenFigiAliasRoutingClosureCommitDiffSetAllowed(entries))
+      invalid();
   }
 
   await verifyCycle2xTransition(

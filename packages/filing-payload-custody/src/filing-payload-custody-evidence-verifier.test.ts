@@ -136,6 +136,10 @@ import {
   isCycle3dWindowsParserTimeoutStabilizationTopologyAllowed,
   isCycle3eaCanonicalTempFixtureStabilizationCommitDiffSetAllowed,
   isCycle3eaCanonicalTempFixtureStabilizationTopologyAllowed,
+  isCycle3eaOpenFigiAliasRoutingClosureCommitDiffSetAllowed,
+  isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed,
+  isCycle3eaOpenFigiAliasSourceCommitDiffSetAllowed,
+  isCycle3eaOpenFigiAliasSourceTopologyAllowed,
   isCycle3ea1PublicEngineeringEvidenceRecordCommitDiffSetAllowed,
   isCycle3ea1PublicEngineeringEvidenceRecordTopologyAllowed,
   isCycle3ea1RoutingClosureCommitDiffSetAllowed,
@@ -804,6 +808,10 @@ const CYCLE_3E_A2_ROUTING_CLOSURE_REVISION =
   "0374becdf96c1e9891d80e73024c8be0440fd812" as const;
 const CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION =
   "3fe17a21330b6a8ee438298628a832f274fc7216" as const;
+const CYCLE_3B_PUBLIC_PROMOTION_REVISION =
+  "89dbab5f50c8c4ee0e4ede6b187c372e9e6b8473" as const;
+const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION =
+  "a1180532f6432d211831aeb420cb6d6d8326733f" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -2035,6 +2043,43 @@ const CYCLE_3B_PUBLIC_PROMOTION_TRANSITION = [
   { path: "docs/adr/0053-personal-local-owner-session.md", status: "M" },
   {
     path: "docs/adr/0054-authenticated-personal-dossier-composition.md",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION = [
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  {
+    path: "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md",
+    status: "M",
+  },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.ts",
+    status: "M",
+  },
+];
+const CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION = [
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
     status: "M",
   },
   {
@@ -5545,6 +5590,20 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}`,
     cycle3ea2RoutingClosureTopology,
   ] as const;
+  const cycle3bPublicPromotionTopology = [
+    "38",
+    "38",
+    CYCLE_3B_PUBLIC_PROMOTION_REVISION,
+    `${CYCLE_3B_PUBLIC_PROMOTION_REVISION} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
+    cycle3ea2PublicEngineeringEvidenceRecordTopology,
+  ] as const;
+  const openFigiAliasSourceTopology = [
+    "39",
+    "39",
+    CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+    `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`,
+    cycle3bPublicPromotionTopology,
+  ] as const;
 
   it("pins the exact merge-free source after the public promotion", () => {
     expect(isCycle3eaSourceTopologyAllowed(...sourceTopology)).toBe(true);
@@ -6219,20 +6278,14 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("allows exactly one dynamic merge-free Cycle 3b public-promotion child", () => {
-    const revision = "d".repeat(40);
-    const valid = [
-      "38",
-      "38",
-      revision,
-      `${revision} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
-      cycle3ea2PublicEngineeringEvidenceRecordTopology,
-    ] as const;
+  it("pins the exact merge-free Cycle 3b public-promotion child", () => {
+    const revision = CYCLE_3B_PUBLIC_PROMOTION_REVISION;
+    const valid = cycle3bPublicPromotionTopology;
     expect(isCycle3bPublicPromotionTopologyAllowed(...valid)).toBe(true);
     for (const [index, replacement] of [
       [0, "37"],
       [1, "39"],
-      [2, CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION],
+      [2, "d".repeat(40)],
       [3, `${revision} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}`],
     ] as const) {
       const changed: unknown[] = [...valid];
@@ -6281,7 +6334,119 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("freezes the exact 51, 7, 5, 6, 7, 7, 7, 19, 5, 14, 34, 5, 16, and 20-file transitions", () => {
+  it("pins the exact merge-free OpenFIGI alias-correction source", () => {
+    expect(
+      isCycle3eaOpenFigiAliasSourceTopologyAllowed(
+        ...openFigiAliasSourceTopology,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "38"],
+      [1, "40"],
+      [2, "e".repeat(40)],
+      [
+        3,
+        `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...openFigiAliasSourceTopology];
+      changed[index] = replacement;
+      expect(
+        isCycle3eaOpenFigiAliasSourceTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3eaOpenFigiAliasSourceTopologyAllowed
+          >),
+        ),
+        `openfigi-alias-source:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3eaOpenFigiAliasSourceTopologyAllowed(
+        "39",
+        "39",
+        CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+        `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION} ${"e".repeat(40)}`,
+        cycle3bPublicPromotionTopology,
+      ),
+    ).toBe(false);
+    const changedPromotion: unknown[] = [...cycle3bPublicPromotionTopology];
+    changedPromotion[3] = `${CYCLE_3B_PUBLIC_PROMOTION_REVISION} ${CYCLE_3E_A2_ROUTING_CLOSURE_REVISION}`;
+    expect(
+      isCycle3eaOpenFigiAliasSourceTopologyAllowed(
+        "39",
+        "39",
+        CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+        `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`,
+        changedPromotion as unknown as Parameters<
+          typeof isCycle3bPublicPromotionTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("allows one exact-inventory merge-free OpenFIGI alias routing child", () => {
+    const revision = "f".repeat(40);
+    const valid = [
+      "40",
+      "40",
+      revision,
+      `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`,
+      openFigiAliasSourceTopology,
+    ] as const;
+    expect(isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(...valid)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "39"],
+      [1, "41"],
+      [2, CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION],
+      [3, `${revision} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`],
+    ] as const) {
+      const changed: unknown[] = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed
+          >),
+        ),
+        `openfigi-alias-routing:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+        "40",
+        "40",
+        "not-a-commit",
+        `not-a-commit ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`,
+        openFigiAliasSourceTopology,
+      ),
+    ).toBe(false);
+    expect(
+      isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+        "40",
+        "40",
+        revision,
+        `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`,
+        openFigiAliasSourceTopology,
+      ),
+    ).toBe(false);
+    const changedSource: unknown[] = [...openFigiAliasSourceTopology];
+    changedSource[3] = `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION}`;
+    expect(
+      isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+        "40",
+        "40",
+        revision,
+        `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`,
+        changedSource as unknown as Parameters<
+          typeof isCycle3eaOpenFigiAliasSourceTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("freezes every exact Cycle 3e-a transition through alias routing", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
       CYCLE_3E_A_SOURCE_TRANSITION,
@@ -6352,6 +6517,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3B_PUBLIC_PROMOTION_TRANSITION,
       20,
     );
+    expectExactTransition(
+      isCycle3eaOpenFigiAliasSourceCommitDiffSetAllowed,
+      CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION,
+      4,
+    );
+    expectExactTransition(
+      isCycle3eaOpenFigiAliasRoutingClosureCommitDiffSetAllowed,
+      CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION,
+      5,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -6387,6 +6562,10 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         (entry) => entry.path,
       ),
       ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION.map(
+        (entry) => entry.path,
+      ),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -6474,6 +6653,10 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         (entry) => entry.path,
       ),
       ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION.map(
+        (entry) => entry.path,
+      ),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);

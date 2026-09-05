@@ -135,7 +135,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 3e-a engineering chain through Cycle 3b promotion
+      - name: Classify exact Cycle 3e-a engineering chain through OpenFIGI alias routing
         id: cycle3e_source
         if: ${{ success() }}
         shell: bash
@@ -158,6 +158,8 @@ jobs:
           cycle3ea2_measurement_clock_closure="8c2166fa01f5e1f471887ccdeb9484b132a02bb0"
           cycle3ea2_routing_closure="0374becdf96c1e9891d80e73024c8be0440fd812"
           cycle3ea2_public_engineering_evidence_record="3fe17a21330b6a8ee438298628a832f274fc7216"
+          cycle3b_public_promotion="89dbab5f50c8c4ee0e4ede6b187c372e9e6b8473"
+          cycle3ea5_openfigi_alias_source="a1180532f6432d211831aeb420cb6d6d8326733f"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -389,6 +391,19 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3ea5_openfigi_alias_source=(
+            "M" "docs/CANONICAL_MODEL.md"
+            "M" "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md"
+            "M" "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.test.ts"
+            "M" "packages/personal-security-master/src/sec-openfigi-v1-source-preparation.ts"
+          )
+          expected_cycle3ea5_routing_closure=(
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
@@ -432,6 +447,12 @@ jobs:
           for ((index = 1; index < ${#expected_cycle3b_public_promotion[@]}; index += 2)); do
             protected+=("${expected_cycle3b_public_promotion[$index]}")
           done
+          for ((index = 1; index < ${#expected_cycle3ea5_openfigi_alias_source[@]}; index += 2)); do
+            protected+=("${expected_cycle3ea5_openfigi_alias_source[$index]}")
+          done
+          for ((index = 1; index < ${#expected_cycle3ea5_routing_closure[@]}; index += 2)); do
+            protected+=("${expected_cycle3ea5_routing_closure[$index]}")
+          done
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -465,7 +486,9 @@ jobs:
                  git cat-file -e "$cycle3ea1_public_engineering_evidence_record^{commit}" && \
                  git cat-file -e "$cycle3ea2_measurement_clock_closure^{commit}" && \
                  git cat-file -e "$cycle3ea2_routing_closure^{commit}" && \
-                 git cat-file -e "$cycle3ea2_public_engineering_evidence_record^{commit}"; then
+                 git cat-file -e "$cycle3ea2_public_engineering_evidence_record^{commit}" && \
+                 git cat-file -e "$cycle3b_public_promotion^{commit}" && \
+                 git cat-file -e "$cycle3ea5_openfigi_alias_source^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -481,6 +504,8 @@ jobs:
                 read -r -a cycle3ea2_measurement_clock_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea2_measurement_clock_closure")"
                 read -r -a cycle3ea2_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea2_routing_closure")"
                 read -r -a cycle3ea2_public_engineering_evidence_record_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea2_public_engineering_evidence_record")"
+                read -r -a cycle3b_public_promotion_topology <<< "$(git rev-list --parents -n 1 "$cycle3b_public_promotion")"
+                read -r -a cycle3ea5_openfigi_alias_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea5_openfigi_alias_source")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -510,6 +535,10 @@ jobs:
                 cycle3ea2_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea2_routing_closure")"
                 cycle3ea2_public_engineering_evidence_record_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ea2_public_engineering_evidence_record")"
                 cycle3ea2_public_engineering_evidence_record_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea2_public_engineering_evidence_record")"
+                cycle3b_public_promotion_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3b_public_promotion")"
+                cycle3b_public_promotion_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3b_public_promotion")"
+                cycle3ea5_openfigi_alias_source_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ea5_openfigi_alias_source")"
+                cycle3ea5_openfigi_alias_source_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea5_openfigi_alias_source")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
@@ -552,7 +581,13 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3ea2_routing_closure" "$cycle3ea2_public_engineering_evidence_record" --
                 )
                 mapfile -d '' -t cycle3b_public_promotion_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3ea2_public_engineering_evidence_record" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3ea2_public_engineering_evidence_record" "$cycle3b_public_promotion" --
+                )
+                mapfile -d '' -t cycle3ea5_openfigi_alias_source_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3b_public_promotion" "$cycle3ea5_openfigi_alias_source" --
+                )
+                mapfile -d '' -t cycle3ea5_routing_closure_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ea5_openfigi_alias_source" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -668,6 +703,26 @@ jobs:
                    [[ "${cycle3ea2_public_engineering_evidence_record_topology[1]}" == "$cycle3ea2_routing_closure" ]] && \
                    matches_exactly expected_cycle3ea2_public_engineering_evidence_record cycle3ea2_public_engineering_evidence_record_actual; then
                   cycle3ea2_public_engineering_evidence_record_history_exact=true
+                fi
+                cycle3b_public_promotion_history_exact=false
+                if [[ "$cycle3ea2_public_engineering_evidence_record_history_exact" == "true" ]] && \
+                   [[ "$cycle3b_public_promotion_successor_count" == "38" ]] && \
+                   [[ "$cycle3b_public_promotion_first_parent_count" == "38" ]] && \
+                   [[ "${#cycle3b_public_promotion_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3b_public_promotion_topology[0]}" == "$cycle3b_public_promotion" ]] && \
+                   [[ "${cycle3b_public_promotion_topology[1]}" == "$cycle3ea2_public_engineering_evidence_record" ]] && \
+                   matches_exactly expected_cycle3b_public_promotion cycle3b_public_promotion_actual; then
+                  cycle3b_public_promotion_history_exact=true
+                fi
+                cycle3ea5_openfigi_alias_source_history_exact=false
+                if [[ "$cycle3b_public_promotion_history_exact" == "true" ]] && \
+                   [[ "$cycle3ea5_openfigi_alias_source_successor_count" == "39" ]] && \
+                   [[ "$cycle3ea5_openfigi_alias_source_first_parent_count" == "39" ]] && \
+                   [[ "${#cycle3ea5_openfigi_alias_source_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ea5_openfigi_alias_source_topology[0]}" == "$cycle3ea5_openfigi_alias_source" ]] && \
+                   [[ "${cycle3ea5_openfigi_alias_source_topology[1]}" == "$cycle3b_public_promotion" ]] && \
+                   matches_exactly expected_cycle3ea5_openfigi_alias_source cycle3ea5_openfigi_alias_source_actual; then
+                  cycle3ea5_openfigi_alias_source_history_exact=true
                 fi
                 if [[ "$history_exact" == "true" ]] && \
                    [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -907,16 +962,34 @@ jobs:
                      [[ "${head_topology[0]}" == "$cycle3ea2_public_engineering_evidence_record" ]] && \
                      [[ "${head_topology[1]}" == "$cycle3ea2_routing_closure" ]]; then
                   exact=true
-                elif [[ "$cycle3ea2_public_engineering_evidence_record_history_exact" == "true" ]] && \
+                elif [[ "$cycle3b_public_promotion_history_exact" == "true" ]] && \
                      [[ "$head_revision" == "$GITHUB_SHA" ]] && \
-                     [[ "$head_revision" != "$cycle3ea2_public_engineering_evidence_record" ]] && \
+                     [[ "$head_revision" == "$cycle3b_public_promotion" ]] && \
                      [[ "$head_successor_count" == "38" ]] && \
                      [[ "$head_first_parent_count" == "38" ]] && \
                      [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3b_public_promotion" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ea2_public_engineering_evidence_record" ]]; then
+                   exact=true
+                elif [[ "$cycle3ea5_openfigi_alias_source_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" == "$cycle3ea5_openfigi_alias_source" ]] && \
+                     [[ "$head_successor_count" == "39" ]] && \
+                     [[ "$head_first_parent_count" == "39" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3ea5_openfigi_alias_source" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3b_public_promotion" ]]; then
+                   exact=true
+                elif [[ "$cycle3ea5_openfigi_alias_source_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$cycle3ea5_openfigi_alias_source" ]] && \
+                     [[ "$head_successor_count" == "40" ]] && \
+                     [[ "$head_first_parent_count" == "40" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
                      [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
-                     [[ "${head_topology[1]}" == "$cycle3ea2_public_engineering_evidence_record" ]] && \
-                     matches_exactly expected_cycle3b_public_promotion cycle3b_public_promotion_actual; then
-                  exact=true
+                     [[ "${head_topology[1]}" == "$cycle3ea5_openfigi_alias_source" ]] && \
+                     matches_exactly expected_cycle3ea5_routing_closure cycle3ea5_routing_closure_actual; then
+                   exact=true
                 fi
               fi
             fi
@@ -924,7 +997,7 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a engineering chain, pinned Cycle 3e-a2 evidence record, or one merge-free exact-inventory Cycle 3b public-promotion child; refusing inherited evidence routing." >&2
+            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a engineering chain, pinned Cycle 3b promotion, exact OpenFIGI alias source, or its one merge-free exact-inventory routing child; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
@@ -3566,7 +3639,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3e }}" == "true" ]]; then
-              echo "Cycle 3e-a has recorded public-engineering engine/API and offline Cycle 3e-a1 source-preparation chains; this route additionally pins the exact Cycle 3e-a2 package-owned measurement-clock correction and routing closure and admits only its exact merge-free public-engineering evidence record. Cycle 3e-a remains unpromoted: no real security-master source bytes, provider credential, breadth or latency result, private payload, or replacement Cycle 2o artifact was generated; prior Cycle 3c/3d promotion evidence remains preserved and canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
+              echo "Cycle 3e-a has recorded public-engineering engine/API and offline source-preparation chains; this route pins the exact Cycle 3e-a2 evidence record, exact Cycle 3b promotion, exact OpenFIGI alias source, and one merge-free exact-inventory routing closure. No real security-master source bytes, provider credential, breadth or latency result, private payload, or replacement Cycle 2o artifact was generated; prior Cycle 3c/3d promotion evidence remains preserved and canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
               echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, parser-timeout, and joint Cycle 3c/3d public-promotion stages, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
