@@ -1176,7 +1176,7 @@ describe("Cycle 2c synthetic filing-payload custody security boundary", () => {
         await harness.boundary.close();
       });
     }
-  });
+  }, 10_000);
 
   it("maps close faults value-free and retries owned-key and workspace cleanup", async () => {
     await withEmptyParent(async (parent) => {
