@@ -184,6 +184,10 @@ const CYCLE_3B_PUBLIC_PROMOTION_REVISION =
   "89dbab5f50c8c4ee0e4ede6b187c372e9e6b8473" as const;
 const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION =
   "a1180532f6432d211831aeb420cb6d6d8326733f" as const;
+const CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION =
+  "b688636bedeff13a1c0c1710135e99022f134b56" as const;
+const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION =
+  "7c2b486438e16e45348c4882ddaf5c69c6f7c906" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -3223,6 +3227,19 @@ const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION = Object.freeze([
 ]);
 const CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION =
   CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION;
+const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION =
+  Object.freeze([
+    {
+      path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+      status: "M",
+    },
+    {
+      path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+      status: "M",
+    },
+  ]);
+const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION =
+  CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION;
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3479,6 +3496,12 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION.map(
+    (entry) => entry.path,
+  ),
+  ...CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION.map(
+    (entry) => entry.path,
+  ),
+  ...CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION.map(
     (entry) => entry.path,
   ),
 ]);
@@ -6286,9 +6309,8 @@ export function isCycle3eaOpenFigiAliasSourceTopologyAllowed(
 }
 
 /**
- * @internal One dynamic merge-free routing-closure child of the exact
- * OpenFIGI alias source. Its exact five-file per-commit diff is checked
- * separately; no merge or later descendant is admitted here.
+ * @internal The exact merge-free routing-closure child of the exact OpenFIGI
+ * alias source.
  */
 export function isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
   successorCount: string,
@@ -6303,13 +6325,79 @@ export function isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
     successorCount === "40" &&
     firstParentCount === "40" &&
     COMMIT_SHA.test(revision) &&
-    revision !== CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION &&
-    parentLine === `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}` &&
+    revision === CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION &&
+    parentLine ===
+      `${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}` &&
     openFigiAliasSourceTopology[2] ===
       CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION &&
     openFigiAliasSourceTopology[3] ===
       `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}` &&
     isCycle3eaOpenFigiAliasSourceTopologyAllowed(...openFigiAliasSourceTopology)
+  );
+}
+
+/**
+ * @internal The exact merge-free Windows expiry/recovery latency stabilization
+ * child of the exact OpenFIGI alias routing closure.
+ */
+export function isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  openFigiAliasRoutingClosureTopology: readonly [
+    ...Parameters<typeof isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "41" &&
+    firstParentCount === "41" &&
+    COMMIT_SHA.test(revision) &&
+    revision ===
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION &&
+    parentLine ===
+      `${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION}` &&
+    openFigiAliasRoutingClosureTopology[2] ===
+      CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION &&
+    openFigiAliasRoutingClosureTopology[3] ===
+      `${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}` &&
+    isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
+      ...openFigiAliasRoutingClosureTopology,
+    )
+  );
+}
+
+/**
+ * @internal One dynamic merge-free routing-closure child of the exact Windows
+ * stabilization. Its exact five-file per-commit diff is checked separately;
+ * no merge or later descendant is admitted here.
+ */
+export function isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  windowsStabilizationTopology: readonly [
+    ...Parameters<
+      typeof isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed
+    >,
+  ],
+): boolean {
+  return (
+    successorCount === "42" &&
+    firstParentCount === "42" &&
+    COMMIT_SHA.test(revision) &&
+    revision !==
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION &&
+    parentLine ===
+      `${revision} ${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION}` &&
+    windowsStabilizationTopology[2] ===
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION &&
+    windowsStabilizationTopology[3] ===
+      `${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION}` &&
+    isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+      ...windowsStabilizationTopology,
+    )
   );
 }
 
@@ -7755,6 +7843,26 @@ export function isCycle3eaOpenFigiAliasRoutingClosureCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact Windows expiry/recovery latency stabilization transition. */
+export function isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION,
+  );
+}
+
+/** @internal Exact post-Windows-stabilization routing closure transition. */
+export function isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -8960,6 +9068,8 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A2_PUBLIC_ENGINEERING_EVIDENCE_RECORD_REVISION,
     CYCLE_3B_PUBLIC_PROMOTION_REVISION,
     CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
+    CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION,
+    CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -9430,6 +9540,31 @@ async function verifyCycle2zTransition(
       128,
     ),
   );
+  const cycle3eaOpenFigiAliasRoutingClosureParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION,
+      ],
+      128,
+    ),
+  );
+  const cycle3eaWindowsExpiryRecoveryLatencyStabilizationParentLine =
+    decodeGitParentLine(
+      await git(
+        repositoryPath,
+        [
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
+        ],
+        128,
+      ),
+    );
   const directSource = isCycle2zDirectChildAllowed(
     successorCount,
     firstParentCount,
@@ -9975,6 +10110,20 @@ async function verifyCycle2zTransition(
     cycle3eaOpenFigiAliasSourceParentLine,
     pinnedCycle3bPublicPromotionTopology,
   ] as const;
+  const pinnedCycle3eaOpenFigiAliasRoutingClosureTopology = [
+    "40",
+    "40",
+    CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION,
+    cycle3eaOpenFigiAliasRoutingClosureParentLine,
+    pinnedCycle3eaOpenFigiAliasSourceTopology,
+  ] as const;
+  const pinnedCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopology = [
+    "41",
+    "41",
+    CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
+    cycle3eaWindowsExpiryRecoveryLatencyStabilizationParentLine,
+    pinnedCycle3eaOpenFigiAliasRoutingClosureTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     successorCount,
     firstParentCount,
@@ -10090,7 +10239,7 @@ async function verifyCycle2zTransition(
       parentLine,
       pinnedCycle3bPublicPromotionTopology,
     );
-  const cycle3eaOpenFigiAliasRoutingClosure =
+  const exactCycle3eaOpenFigiAliasRoutingClosure =
     isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed(
       successorCount,
       firstParentCount,
@@ -10098,6 +10247,26 @@ async function verifyCycle2zTransition(
       parentLine,
       pinnedCycle3eaOpenFigiAliasSourceTopology,
     );
+  const cycle3eaWindowsExpiryRecoveryLatencyStabilization =
+    isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+      pinnedCycle3eaOpenFigiAliasRoutingClosureTopology,
+    );
+  const cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure =
+    isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed(
+      successorCount,
+      firstParentCount,
+      revision,
+      parentLine,
+      pinnedCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopology,
+    );
+  const cycle3eaOpenFigiAliasRoutingClosure =
+    exactCycle3eaOpenFigiAliasRoutingClosure ||
+    cycle3eaWindowsExpiryRecoveryLatencyStabilization ||
+    cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure;
   const cycle3bPublicPromotion =
     exactCycle3bPublicPromotion ||
     cycle3eaOpenFigiAliasSource ||
@@ -10792,9 +10961,42 @@ async function verifyCycle2zTransition(
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION,
-      revision,
+      exactCycle3eaOpenFigiAliasRoutingClosure
+        ? revision
+        : CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle3eaOpenFigiAliasRoutingClosureCommitDiffSetAllowed(entries))
+      invalidReview();
+  }
+  if (
+    cycle3eaWindowsExpiryRecoveryLatencyStabilization ||
+    cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure
+  ) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION,
+      cycle3eaWindowsExpiryRecoveryLatencyStabilization
+        ? revision
+        : CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
+    );
+    if (
+      !isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed(
+        entries,
+      )
+    )
+      invalidReview();
+  }
+  if (cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
+      revision,
+    );
+    if (
+      !isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed(
+        entries,
+      )
+    )
       invalidReview();
   }
 

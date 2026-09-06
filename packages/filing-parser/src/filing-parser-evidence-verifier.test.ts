@@ -170,6 +170,10 @@ import {
   isCycle3eaWindowsSnapshotMetadataStabilizationTopologyAllowed,
   isCycle3eaWorkflowExpressionStabilizationCommitDiffSetAllowed,
   isCycle3eaWorkflowExpressionStabilizationTopologyAllowed,
+  isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
+  isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
+  isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
+  isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed,
   isCycle2rBaselineMergeBaseAllowed,
   isCycle2rCommitDiffSetAllowed,
   isCycle2rDirectChildAllowed,
@@ -844,6 +848,10 @@ const CYCLE_3B_PUBLIC_PROMOTION_REVISION =
   "89dbab5f50c8c4ee0e4ede6b187c372e9e6b8473" as const;
 const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION =
   "a1180532f6432d211831aeb420cb6d6d8326733f" as const;
+const CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION =
+  "b688636bedeff13a1c0c1710135e99022f134b56" as const;
+const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION =
+  "7c2b486438e16e45348c4882ddaf5c69c6f7c906" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -1905,6 +1913,18 @@ const CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION = [
 ];
 const CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION =
   CYCLE_3E_A2_ROUTING_CLOSURE_TRANSITION;
+const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION = [
+  {
+    path: "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/payload-custody-security.test.ts",
+    status: "M",
+  },
+];
+const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION =
+  CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION;
 
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
   ...new Set(
@@ -4808,6 +4828,20 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     `${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`,
     cycle3bPublicPromotionTopology,
   ] as const;
+  const openFigiAliasRoutingClosureTopology = [
+    "40",
+    "40",
+    CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION,
+    `${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`,
+    openFigiAliasSourceTopology,
+  ] as const;
+  const windowsExpiryRecoveryLatencyStabilizationTopology = [
+    "41",
+    "41",
+    CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
+    `${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION}`,
+    openFigiAliasRoutingClosureTopology,
+  ] as const;
 
   it("selects every Cycle 3e and 3e-a1 path in the production Git pathspec", async () => {
     const repositoryPath = "repository";
@@ -4872,6 +4906,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION,
         ...CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION,
         ...CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION,
+        ...CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION,
+        ...CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION,
       ].map((entry) => entry.path),
     );
     expect(selectedPaths).toHaveLength(selectedPathSet.size);
@@ -4911,6 +4947,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       "docs/CYCLE_3E_A2_EXIT_MATRIX.md",
       "docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md",
       "docs/adr/0059-package-owned-security-master-measurement-clock.md",
+      "fixtures/synthetic/filing-payload-custody/v1/manifest.json",
     ])
       expect(triggerPaths.has(path), path).toBe(true);
   });
@@ -5677,8 +5714,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("allows exactly one dynamic merge-free OpenFIGI alias routing child", () => {
-    const revision = "d".repeat(40);
+  it("pins the exact merge-free OpenFIGI alias routing child", () => {
+    const revision = CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION;
     const valid = [
       "40",
       "40",
@@ -5692,7 +5729,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     for (const [index, replacement] of [
       [0, "39"],
       [1, "41"],
-      [2, CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION],
+      [2, "d".repeat(40)],
       [3, `${revision} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`],
     ] as const) {
       const changed: unknown[] = [...valid];
@@ -5734,6 +5771,113 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`,
         changedSource as unknown as Parameters<
           typeof isCycle3eaOpenFigiAliasSourceTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("pins the exact merge-free Windows expiry latency stabilization", () => {
+    const revision =
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION;
+    const valid = windowsExpiryRecoveryLatencyStabilizationTopology;
+    expect(
+      isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+        ...valid,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "40"],
+      [1, "42"],
+      [2, "d".repeat(40)],
+      [3, `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`],
+    ] as const) {
+      const changed: unknown[] = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed
+          >),
+        ),
+        `windows-expiry-latency-stabilization:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+        "41",
+        "41",
+        revision,
+        `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION} ${"e".repeat(40)}`,
+        openFigiAliasRoutingClosureTopology,
+      ),
+    ).toBe(false);
+    const changedRouting: unknown[] = [...openFigiAliasRoutingClosureTopology];
+    changedRouting[3] = `${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION} ${CYCLE_3B_PUBLIC_PROMOTION_REVISION}`;
+    expect(
+      isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed(
+        "41",
+        "41",
+        revision,
+        `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION}`,
+        changedRouting as unknown as Parameters<
+          typeof isCycle3eaOpenFigiAliasRoutingClosureTopologyAllowed
+        >,
+      ),
+    ).toBe(false);
+  });
+
+  it("allows only one merge-free post-stabilization routing child", () => {
+    const revision = "d".repeat(40);
+    const valid = [
+      "42",
+      "42",
+      revision,
+      `${revision} ${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION}`,
+      windowsExpiryRecoveryLatencyStabilizationTopology,
+    ] as const;
+    expect(
+      isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed(
+        ...valid,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "41"],
+      [1, "43"],
+      [2, CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION],
+      [3, `${revision} ${CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_REVISION}`],
+    ] as const) {
+      const changed: unknown[] = [...valid];
+      changed[index] = replacement;
+      expect(
+        isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed
+          >),
+        ),
+        `windows-expiry-latency-routing:${index}`,
+      ).toBe(false);
+    }
+    expect(
+      isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed(
+        "42",
+        "42",
+        revision,
+        `${revision} ${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION} ${"e".repeat(40)}`,
+        windowsExpiryRecoveryLatencyStabilizationTopology,
+      ),
+    ).toBe(false);
+    const changedStabilization: unknown[] = [
+      ...windowsExpiryRecoveryLatencyStabilizationTopology,
+    ];
+    changedStabilization[3] = `${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION} ${CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_REVISION}`;
+    expect(
+      isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed(
+        "42",
+        "42",
+        revision,
+        `${revision} ${CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION}`,
+        changedStabilization as unknown as Parameters<
+          typeof isCycle3eaWindowsExpiryRecoveryLatencyStabilizationTopologyAllowed
         >,
       ),
     ).toBe(false);
@@ -5820,6 +5964,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION,
       5,
     );
+    expectExactTransition(
+      isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION,
+      2,
+    );
+    expectExactTransition(
+      isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
+      CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION,
+      5,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -5857,6 +6011,12 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3B_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_A_OPENFIGI_ALIAS_SOURCE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_A_OPENFIGI_ALIAS_ROUTING_CLOSURE_TRANSITION.map(
+        (entry) => entry.path,
+      ),
+      ...CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_TRANSITION.map(
+        (entry) => entry.path,
+      ),
+      ...CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_TRANSITION.map(
         (entry) => entry.path,
       ),
     ]);
