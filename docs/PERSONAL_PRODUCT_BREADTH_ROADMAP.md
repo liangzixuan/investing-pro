@@ -735,6 +735,24 @@ No claim extends to every issuer, custom taxonomy, dimension, or filing type.
 Target: add price context without mislabeling delayed data or violating source
 terms.
 
+Current implementation status: Cycle 3g-a1 delivers the first useful vertical
+slice through the existing authenticated `/discover` workspace. One explicit
+owner action loads a Tiingo derived reference quote and a selected 1M, 3M, YTD,
+1Y, 5Y, or 10Y EOD window for one catalog-bound US listing. The response carries
+raw and adjusted OHLCV, cash dividends, split factors, provider attribution,
+currency, source/ingestion time, quote kind, and a coarse freshness state. The
+browser provides a price/volume chart, raw/adjusted switch, action markers, and
+an exact semantic table. Missing configuration, coverage, rejected credentials,
+rate exhaustion, provider failure, and stale data remain explicit; there is no
+synthetic fallback.
+
+The selected Tiingo Starter-compatible path is deliberately non-persistent:
+provider values exist only in active owner-session memory and cannot be replayed
+offline. Full 3g-a remains open until the declared 100-symbol/ten-year validation
+gate and independent corporate-action golden reconciliation pass. A durable
+offline price cache is applicable only if the owner later selects terms that
+permit retention; it is not required for the non-persistent Starter path.
+
 Promotable subcycles:
 
 - **3g-a:** entitlement-labelled quotes, daily price history, and corporate

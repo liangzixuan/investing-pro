@@ -21,6 +21,7 @@ import {
   VAULT_API_MODE,
 } from "./vault-composition-root";
 import { PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY } from "./personal-owner-session";
+import { PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY } from "./personal-market-data-provider";
 import {
   PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
   PERSONAL_OWNER_INTENT_HEADER_NAME,
@@ -35,6 +36,7 @@ import {
   PERSONAL_WORKSPACE_API_MODE,
 } from "./workspace-composition-root";
 import { PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH } from "./workspace-watchlist-routes";
+import { PERSONAL_MARKET_DATA_STATUS_PATH } from "./workspace-market-data-routes";
 
 interface WorkspaceFixture {
   readonly expectedSnapshotSha256: string;
@@ -56,6 +58,61 @@ afterEach(async () => {
 });
 
 describe("personal workspace composition root", () => {
+  it("captures an optional market-data token without requiring or exposing it", async () => {
+    const fixture = await createWorkspaceFixture();
+    const firstSecret = randomBytes(32).toString("hex");
+    const token = "private-tiingo-token-canary";
+    const sourceEnvironment = {
+      ...workspaceEnvironment(fixture, "initialize", firstSecret),
+      [PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY]: token,
+    };
+    const captured = capturePersonalWorkspaceApiEnvironment(sourceEnvironment);
+    expect(
+      sourceEnvironment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY],
+    ).toBeUndefined();
+    const configured = await createPersonalWorkspaceConfiguredApp(captured);
+    applications.push(configured);
+    expect(
+      captured[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY],
+    ).toBeUndefined();
+    const configuredCookie = await bootstrapTestPersonalOwnerSession(
+      configured,
+      firstSecret,
+    );
+    const configuredStatus = await configured.inject({
+      method: "GET",
+      url: PERSONAL_MARKET_DATA_STATUS_PATH,
+      headers: ownerHeaders(configuredCookie),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(configuredStatus.statusCode).toBe(200);
+    expect(configuredStatus.json()).toMatchObject({ status: "configured" });
+    expect(configuredStatus.payload).not.toContain(token);
+    await closeTracked(configured);
+
+    const secondSecret = randomBytes(32).toString("hex");
+    const unconfigured = await createPersonalWorkspaceConfiguredApp(
+      capturePersonalWorkspaceApiEnvironment(
+        workspaceEnvironment(fixture, "open", secondSecret),
+      ),
+    );
+    applications.push(unconfigured);
+    const unconfiguredCookie = await bootstrapTestPersonalOwnerSession(
+      unconfigured,
+      secondSecret,
+    );
+    const unconfiguredStatus = await unconfigured.inject({
+      method: "GET",
+      url: PERSONAL_MARKET_DATA_STATUS_PATH,
+      headers: ownerHeaders(unconfiguredCookie),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(unconfiguredStatus.statusCode).toBe(200);
+    expect(unconfiguredStatus.json()).toMatchObject({
+      status: "not_configured",
+    });
+  }, 30_000);
+
   it("serves search and a restart-persistent typed main watchlist through one owner session", async () => {
     const fixture = await createWorkspaceFixture();
     const firstSecret = randomBytes(32).toString("hex");

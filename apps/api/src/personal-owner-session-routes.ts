@@ -48,6 +48,7 @@ const FORBIDDEN_NEGOTIATION_HEADERS = new Set([
   "if-unmodified-since",
   "range",
 ]);
+const PERSONAL_JSON_BODY_LIMIT_BYTES = 4 * 1_024;
 
 type PersonalOwnerIntent = "bootstrap" | "logout" | "revoke" | "rotate";
 export type PersonalOwnerMutationIntent = "connected-source-policy-kill";
@@ -200,6 +201,29 @@ export function authorizePersonalMutationRouteRequest(
 }
 
 /**
+ * Authenticates a local owner-session JSON command that only reads external
+ * state. Unlike vault mutations it accepts no intent, precondition, or
+ * idempotency carrier and keeps the request body narrowly bounded.
+ */
+export function authorizePersonalJsonRouteRequest(
+  request: FastifyRequest,
+  authority: PersonalOwnerSessionAuthority,
+  listenOptions: DemoApiListenOptions,
+  expectedPath: string,
+): boolean {
+  if (!isPersonalOwnerSessionAuthority(authority)) return false;
+  const boundary = inspectPersonalRequest(
+    request,
+    listenOptions,
+    expectedPath,
+    "POST",
+    undefined,
+    "read-json",
+  );
+  return authorizeBoundary(authority, boundary);
+}
+
+/**
  * Route-specific onRequest guard for vault mutations. It authenticates before
  * Fastify parses a JSON body and admits only the exact body framing declared by
  * the route. Preconditions and idempotency are validated separately by the
@@ -285,7 +309,7 @@ function inspectPersonalRequest(
     | PersonalOwnerIntent
     | PersonalOwnerMutationIntent
     | PersonalVaultMutationIntent,
-  bodyPolicy: "none" | "vault-empty" | "vault-json" = "none",
+  bodyPolicy: "none" | "read-json" | "vault-empty" | "vault-json" = "none",
 ): PersonalRequestBoundary | undefined {
   if (
     request.method !== expectedMethod ||
@@ -310,14 +334,16 @@ function inspectPersonalRequest(
       (name) =>
         FORBIDDEN_NEGOTIATION_HEADERS.has(name) &&
         !(
-          bodyPolicy !== "none" &&
+          (bodyPolicy === "vault-empty" || bodyPolicy === "vault-json") &&
           (name === "if-match" || name === "if-none-match")
         ),
     ) ||
     rawNames.includes("transfer-encoding") ||
     (bodyPolicy === "none" && rawNames.includes("content-type")) ||
-    (bodyPolicy !== "none" &&
-      count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1)
+    ((bodyPolicy === "vault-empty" || bodyPolicy === "vault-json") &&
+      count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1) ||
+    (bodyPolicy === "read-json" &&
+      count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 0)
   ) {
     return undefined;
   }
@@ -334,16 +360,22 @@ function inspectPersonalRequest(
     (bodyPolicy === "vault-json" &&
       (contentLength.kind !== "value" ||
         !/^[1-9][0-9]{0,5}$/u.test(contentLength.value) ||
-        Number(contentLength.value) > 300 * 1_024))
+        Number(contentLength.value) > 300 * 1_024)) ||
+    (bodyPolicy === "read-json" &&
+      (contentLength.kind !== "value" ||
+        !/^[1-9][0-9]{0,4}$/u.test(contentLength.value) ||
+        Number(contentLength.value) > PERSONAL_JSON_BODY_LIMIT_BYTES))
   ) {
     return undefined;
   }
   const contentType = readSingleHeader(request, "content-type");
   if (
-    (bodyPolicy === "vault-json" &&
+    ((bodyPolicy === "vault-json" || bodyPolicy === "read-json") &&
       (contentType.kind !== "value" ||
         contentType.value.toLowerCase() !== "application/json")) ||
-    (bodyPolicy !== "vault-json" && contentType.kind !== "missing")
+    (bodyPolicy !== "vault-json" &&
+      bodyPolicy !== "read-json" &&
+      contentType.kind !== "missing")
   ) {
     return undefined;
   }

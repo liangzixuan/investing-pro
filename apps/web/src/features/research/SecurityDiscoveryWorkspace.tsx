@@ -1,6 +1,9 @@
 "use client";
 
 import type {
+  PersonalMarketDataRangeDto,
+  PersonalMarketDataStatusDto,
+  PersonalMarketOverviewDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
@@ -10,6 +13,8 @@ import { useCallback, useRef, useState } from "react";
 import {
   createEmptyPersonalWatchlist,
   fetchMainPersonalWatchlist,
+  fetchPersonalMarketDataStatus,
+  fetchPersonalMarketOverview,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
   normalizeWatchlistNote,
@@ -18,9 +23,15 @@ import {
   searchPersonalSecurities,
   type PersonalWatchlistMembership,
   type PersonalWatchlistPayload,
+  type PersonalWorkspaceApiErrorCode,
 } from "@/lib/personal-workspace-api";
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
+import {
+  PersonalMarketOverview,
+  type PersonalMarketSelection,
+} from "./PersonalMarketOverview";
+import type { PriceAdjustmentMode } from "./PriceHistoryChart";
 
 interface LoadedWorkspace {
   readonly snapshot: PersonalSecurityMasterSnapshotReceiptDto;
@@ -59,8 +70,25 @@ export function SecurityDiscoveryWorkspace() {
   const [reconciling, setReconciling] = useState(false);
   const [reconciliationPreview, setReconciliationPreview] =
     useState<ReconciliationPreview | null>(null);
+  const [marketDataStatus, setMarketDataStatus] =
+    useState<PersonalMarketDataStatusDto | null>(null);
+  const [marketSelection, setMarketSelection] =
+    useState<PersonalMarketSelection | null>(null);
+  const [marketOverview, setMarketOverview] =
+    useState<PersonalMarketOverviewDto | null>(null);
+  const [marketRange, setMarketRange] =
+    useState<PersonalMarketDataRangeDto>("1y");
+  const [marketAdjustmentMode, setMarketAdjustmentMode] =
+    useState<PriceAdjustmentMode>("adjusted");
+  const [marketRequestState, setMarketRequestState] = useState<
+    "idle" | "loading"
+  >("idle");
+  const [marketErrorCode, setMarketErrorCode] =
+    useState<PersonalWorkspaceApiErrorCode | null>(null);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
+  const marketEpoch = useRef(0);
+  const marketController = useRef<AbortController | null>(null);
 
   const handleOwnerSessionChange = useCallback(
     async (active: boolean, signal: AbortSignal) => {
@@ -77,6 +105,7 @@ export function SecurityDiscoveryWorkspace() {
       setNoteDrafts({});
       setReconciling(false);
       setReconciliationPreview(null);
+      clearMarketState();
       if (!active) {
         setWorkspaceMessage((current) =>
           current === SESSION_REVALIDATION_MESSAGE ? current : null,
@@ -84,10 +113,12 @@ export function SecurityDiscoveryWorkspace() {
         return false;
       }
       setWorkspaceMessage("Loading the local security universe and watchlist…");
-      const [statusResult, watchlistResult] = await Promise.allSettled([
-        fetchPersonalSecurityMasterStatus(signal),
-        fetchMainPersonalWatchlist(signal),
-      ]);
+      const [statusResult, watchlistResult, marketStatusResult] =
+        await Promise.allSettled([
+          fetchPersonalSecurityMasterStatus(signal),
+          fetchMainPersonalWatchlist(signal),
+          fetchPersonalMarketDataStatus(signal),
+        ]);
       if (signal.aborted || epoch !== workspaceEpoch.current) return false;
       if (statusResult.status === "rejected") {
         setWorkspaceMessage(
@@ -98,6 +129,13 @@ export function SecurityDiscoveryWorkspace() {
       if (
         watchlistResult.status === "rejected" &&
         isSessionUnavailable(watchlistResult.reason)
+      ) {
+        clearWorkspaceForSessionLoss();
+        return false;
+      }
+      if (
+        marketStatusResult.status === "rejected" &&
+        isSessionUnavailable(marketStatusResult.reason)
       ) {
         clearWorkspaceForSessionLoss();
         return false;
@@ -117,6 +155,11 @@ export function SecurityDiscoveryWorkspace() {
           watchlist,
           watchlistAvailable,
         });
+        setMarketDataStatus(
+          marketStatusResult.status === "fulfilled"
+            ? marketStatusResult.value
+            : null,
+        );
         setWorkspaceMessage(null);
         return true;
       } catch (error) {
@@ -146,6 +189,20 @@ export function SecurityDiscoveryWorkspace() {
     setNoteDrafts({});
     setReconciling(false);
     setReconciliationPreview(null);
+    clearMarketState();
+  }
+
+  function clearMarketState() {
+    marketController.current?.abort();
+    marketController.current = null;
+    marketEpoch.current += 1;
+    setMarketDataStatus(null);
+    setMarketSelection(null);
+    setMarketOverview(null);
+    setMarketRange("1y");
+    setMarketAdjustmentMode("adjusted");
+    setMarketRequestState("idle");
+    setMarketErrorCode(null);
   }
 
   async function runSearch() {
@@ -210,6 +267,109 @@ export function SecurityDiscoveryWorkspace() {
     } finally {
       if (epoch === workspaceEpoch.current && request === searchEpoch.current) {
         setSearchState("idle");
+      }
+    }
+  }
+
+  function selectMarketSecurity(
+    membership:
+      PersonalSecurityMasterSearchResultDto | PersonalWatchlistMembership,
+  ) {
+    marketController.current?.abort();
+    marketController.current = null;
+    marketEpoch.current += 1;
+    setMarketSelection(
+      Object.freeze({
+        exchangeMic: membership.exchangeMic,
+        issuerName: membership.issuerName,
+        listingId: membership.listingId,
+        securityName: membership.securityName,
+        symbol: membership.symbol,
+      }),
+    );
+    setMarketOverview(null);
+    setMarketRange("1y");
+    setMarketAdjustmentMode("adjusted");
+    setMarketRequestState("idle");
+    setMarketErrorCode(
+      marketDataStatus?.status === "not_configured" ? "not_configured" : null,
+    );
+    if (typeof document !== "undefined") {
+      queueMicrotask(() =>
+        document.getElementById("personal-market-overview")?.focus(),
+      );
+    }
+  }
+
+  function closeMarketView() {
+    marketController.current?.abort();
+    marketController.current = null;
+    marketEpoch.current += 1;
+    setMarketSelection(null);
+    setMarketOverview(null);
+    setMarketRange("1y");
+    setMarketAdjustmentMode("adjusted");
+    setMarketRequestState("idle");
+    setMarketErrorCode(null);
+  }
+
+  async function loadMarketData(range: PersonalMarketDataRangeDto) {
+    const selection = marketSelection;
+    if (selection === null || marketRequestState === "loading") return;
+    if (marketDataStatus?.status === "not_configured") {
+      setMarketErrorCode("not_configured");
+      return;
+    }
+    if (marketDataStatus === null) {
+      setMarketErrorCode("unavailable");
+      return;
+    }
+
+    marketController.current?.abort();
+    const controller = new AbortController();
+    marketController.current = controller;
+    const request = ++marketEpoch.current;
+    const epoch = workspaceEpoch.current;
+    setMarketRange(range);
+    setMarketOverview(null);
+    setMarketErrorCode(null);
+    setMarketRequestState("loading");
+    try {
+      const loaded = await fetchPersonalMarketOverview(
+        {
+          listingId: selection.listingId,
+          range,
+          symbol: selection.symbol,
+        },
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== marketEpoch.current
+      ) {
+        return;
+      }
+      setMarketOverview(loaded);
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== marketEpoch.current
+      ) {
+        return;
+      }
+      if (isSessionUnavailable(error)) {
+        clearWorkspaceForSessionLoss();
+        return;
+      }
+      setMarketErrorCode(
+        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable",
+      );
+    } finally {
+      if (epoch === workspaceEpoch.current && request === marketEpoch.current) {
+        marketController.current = null;
+        setMarketRequestState("idle");
       }
     }
   }
@@ -652,20 +812,29 @@ export function SecurityDiscoveryWorkspace() {
                     return (
                       <li key={result.listingId}>
                         <SecurityIdentity membership={result} />
-                        <button
-                          className="secondary-action compact-action"
-                          disabled={
-                            saved ||
-                            !workspace.watchlistAvailable ||
-                            watchlistState === "saving" ||
-                            reconciling ||
-                            snapshotChanged
-                          }
-                          onClick={() => addResult(result)}
-                          type="button"
-                        >
-                          {saved ? "In watchlist" : "Add"}
-                        </button>
+                        <div className="security-result-actions">
+                          <button
+                            className="secondary-action compact-action"
+                            onClick={() => selectMarketSecurity(result)}
+                            type="button"
+                          >
+                            View market
+                          </button>
+                          <button
+                            className="secondary-action compact-action"
+                            disabled={
+                              saved ||
+                              !workspace.watchlistAvailable ||
+                              watchlistState === "saving" ||
+                              reconciling ||
+                              snapshotChanged
+                            }
+                            onClick={() => addResult(result)}
+                            type="button"
+                          >
+                            {saved ? "In watchlist" : "Add"}
+                          </button>
+                        </div>
                       </li>
                     );
                   })}
@@ -680,6 +849,19 @@ export function SecurityDiscoveryWorkspace() {
                   </div>
                 )}
             </section>
+
+            <PersonalMarketOverview
+              adjustmentMode={marketAdjustmentMode}
+              errorCode={marketErrorCode}
+              onAdjustmentModeChange={setMarketAdjustmentMode}
+              onClear={closeMarketView}
+              onLoad={(range) => void loadMarketData(range)}
+              overview={marketOverview}
+              providerStatus={marketDataStatus}
+              range={marketRange}
+              requestState={marketRequestState}
+              selection={marketSelection}
+            />
 
             <section
               className="watchlist-panel"
@@ -797,6 +979,19 @@ export function SecurityDiscoveryWorkspace() {
                         </span>
                         <SecurityIdentity membership={membership} />
                         <div className="watchlist-actions">
+                          <button
+                            aria-label={`View market for ${membership.symbol}`}
+                            disabled={
+                              !workspace.watchlistAvailable ||
+                              snapshotChanged ||
+                              watchlistState === "saving" ||
+                              reconciling
+                            }
+                            onClick={() => selectMarketSecurity(membership)}
+                            type="button"
+                          >
+                            View market
+                          </button>
                           <button
                             aria-label={`Move ${membership.symbol} up`}
                             disabled={

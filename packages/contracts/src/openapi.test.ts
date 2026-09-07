@@ -14,6 +14,8 @@ import type {
   PersonalFilingReadinessDto,
   PersonalFilingSelectedFactDto,
   PersonalFilingSelectedFactsDto,
+  PersonalMarketDataStatusDto,
+  PersonalMarketOverviewDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
   PersonalSecurityMasterStatusDto,
@@ -115,7 +117,7 @@ describe("local API OpenAPI contract", () => {
   it("exposes only the exact local API routes", async () => {
     const source = await openApiSource();
     expect(source).toContain("openapi: 3.1.0");
-    expect(source).toContain("  version: 0.7.0");
+    expect(source).toContain("  version: 0.8.0");
     expect(source).toContain("  - url: http://127.0.0.1:3100");
     expect(source).not.toContain("0.0.0.0");
     expect(topLevelPaths(source)).toEqual([
@@ -133,6 +135,8 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/dossier",
       "/v1/personal-filing/security-master/status",
       "/v1/personal-filing/security-master/search",
+      "/v1/personal-filing/market-data/status",
+      "/v1/personal-filing/market-data/overview",
       "/v1/personal-filing/connected-source-policy/status",
       "/v1/personal-filing/connected-source-policy/kill",
       "/v1/theses/{thesisId}",
@@ -800,6 +804,178 @@ describe("local API OpenAPI contract", () => {
     );
   });
 
+  it("freezes the authenticated memory-only personal market-data contract", async () => {
+    const source = await openApiSource();
+    const statusRoute = pathSection(
+      source,
+      "/v1/personal-filing/market-data/status",
+    );
+    const overviewRoute = pathSection(
+      source,
+      "/v1/personal-filing/market-data/overview",
+    );
+    const normalizedOverview = overviewRoute.replace(/\s+/g, " ");
+
+    expect(
+      statusRoute.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim()),
+    ).toEqual(["get:"]);
+    expect(statuses(statusRoute)).toEqual(["200", "403"]);
+    expect(statusRoute).not.toContain("requestBody:");
+    expect(statusRoute).toContain("PersonalOwnerSession: []");
+    expect(statusRoute).toContain(
+      '$ref: "#/components/schemas/PersonalMarketDataStatus"',
+    );
+    expect(statusRoute.replace(/\s+/g, " ")).toContain(
+      "never exposes or fingerprints the token",
+    );
+
+    expect(
+      overviewRoute.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim()),
+    ).toEqual(["post:"]);
+    expect(statuses(overviewRoute)).toEqual([
+      "200",
+      "400",
+      "403",
+      "404",
+      "424",
+      "429",
+      "502",
+      "503",
+    ]);
+    expect(overviewRoute).not.toContain("in: query");
+    expect(overviewRoute).toContain("PersonalOwnerSession: []");
+    expect(overviewRoute).toContain(
+      '$ref: "#/components/schemas/PersonalMarketOverviewRequest"',
+    );
+    expect(overviewRoute).toContain(
+      '$ref: "#/components/schemas/PersonalMarketOverview"',
+    );
+    expect(normalizedOverview).toContain("fixed-host Tiingo IEX and EOD");
+    expect(normalizedOverview).toContain(
+      "only in active process/browser memory",
+    );
+    expect(
+      overviewRoute.match(/#\/components\/headers\/PrivateNoStore/g),
+    ).toHaveLength(8);
+    expect(
+      overviewRoute.match(/#\/components\/headers\/PragmaNoCache/g),
+    ).toHaveLength(8);
+
+    const status = schemaSection(
+      source,
+      "PersonalMarketDataStatus",
+      "PersonalMarketDataProvider",
+    );
+    expect(requiredKeys(status)).toEqual([
+      "profile",
+      "provider",
+      "schemaVersion",
+      "status",
+    ]);
+    expect(schemaKeys(status)).toEqual(requiredKeys(status));
+    expect(status).toContain("personal_single_user_local_market_data");
+    expect(status).toContain("not_configured");
+
+    const provider = schemaSection(
+      source,
+      "PersonalMarketDataProvider",
+      "PersonalMarketOverviewRequest",
+    );
+    expect(requiredKeys(provider)).toEqual([
+      "attribution",
+      "export",
+      "historyFeed",
+      "id",
+      "name",
+      "persistence",
+      "quoteFeed",
+      "redistribution",
+      "retention",
+    ]);
+    expect(schemaKeys(provider)).toEqual(requiredKeys(provider));
+    expect(provider).toContain("active_owner_session_memory_only");
+    expect(provider).toContain("tiingo_iex_derived_reference");
+    expect(provider).not.toContain("token:");
+
+    const request = schemaSection(
+      source,
+      "PersonalMarketOverviewRequest",
+      "PersonalMarketOverview",
+    );
+    expect(requiredKeys(request)).toEqual(["listingId", "symbol", "range"]);
+    expect(schemaKeys(request)).toEqual(requiredKeys(request));
+    expect(listValues(request, /^ {12}- ([a-z0-9]+)$/gm)).toContain("10y");
+
+    const overview = schemaSection(
+      source,
+      "PersonalMarketOverview",
+      "PersonalMarketDataIdentity",
+    );
+    expect(requiredKeys(overview)).toEqual([
+      "history",
+      "profile",
+      "provider",
+      "quote",
+      "schemaVersion",
+      "security",
+      "status",
+    ]);
+    expect(schemaKeys(overview)).toEqual(requiredKeys(overview));
+
+    const history = schemaSection(
+      source,
+      "PersonalMarketDataHistory",
+      "PersonalMarketDataDailyBar",
+    );
+    expect(requiredKeys(history)).toEqual([
+      "bars",
+      "endDate",
+      "range",
+      "startDate",
+    ]);
+    expect(schemaKeys(history)).toEqual(requiredKeys(history));
+    expect(history).toContain("maxItems: 4096");
+
+    const bar = schemaSection(
+      source,
+      "PersonalMarketDataDailyBar",
+      "PersonalMarketDataAdjustedOhlcv",
+    );
+    expect(requiredKeys(bar)).toEqual([
+      "adjusted",
+      "date",
+      "dividendCash",
+      "raw",
+      "splitFactor",
+    ]);
+    expect(schemaKeys(bar)).toEqual(requiredKeys(bar));
+
+    const adjusted = schemaSection(
+      source,
+      "PersonalMarketDataAdjustedOhlcv",
+      "PersonalMarketDataRawOhlcv",
+    );
+    const raw = schemaSection(
+      source,
+      "PersonalMarketDataRawOhlcv",
+      "InstrumentId",
+    );
+    expect(requiredKeys(adjusted)).toEqual([
+      "close",
+      "high",
+      "low",
+      "open",
+      "volume",
+    ]);
+    expect(schemaKeys(adjusted)).toEqual(requiredKeys(adjusted));
+    expect(adjusted).toContain(
+      'pattern: "^(?:0|[1-9][0-9]*)(?:\\\\.[0-9]+)?$"',
+    );
+    expect(requiredKeys(raw)).toEqual(requiredKeys(adjusted));
+    expect(schemaKeys(raw)).toEqual(requiredKeys(raw));
+    expect(raw).toContain('pattern: "^(?:0|[1-9][0-9]*)$"');
+  });
+
   it("freezes the exact authenticated connected source-policy administration contract", async () => {
     const source = await openApiSource();
     const statusRoute = pathSection(
@@ -961,7 +1137,7 @@ describe("local API OpenAPI contract", () => {
     const requestCountQuantitySchema = schemaSection(
       source,
       "ConnectedSourceRequestCountBudgetQuantity",
-      "InstrumentId",
+      "PersonalMarketDataStatus",
     );
     for (const exactQuantitySchema of [
       quantitySchema,
@@ -1348,6 +1524,74 @@ describe("local API OpenAPI contract", () => {
       snapshot: personalSecurityMasterSnapshot,
       totalMatches: 1,
     } satisfies PersonalSecurityMasterSearchResponseDto;
+    const personalMarketProvider = {
+      attribution: "Tiingo",
+      export: "prohibited",
+      historyFeed: "tiingo_eod_composite",
+      id: "tiingo",
+      name: "Tiingo",
+      persistence: "none",
+      quoteFeed: "tiingo_iex_derived_reference",
+      redistribution: "prohibited",
+      retention: "active_owner_session_memory_only",
+    } as const;
+    const personalMarketStatus = {
+      profile: "personal_single_user_local_market_data",
+      provider: personalMarketProvider,
+      schemaVersion: "1.0.0",
+      status: "configured",
+    } satisfies PersonalMarketDataStatusDto;
+    const personalMarketOverview = {
+      history: {
+        bars: [
+          {
+            adjusted: {
+              close: "101.25",
+              high: "102",
+              low: "99.5",
+              open: "100",
+              volume: "1234567.5",
+            },
+            date: "2026-09-04",
+            dividendCash: "0.25",
+            raw: {
+              close: "101.25",
+              high: "102",
+              low: "99.5",
+              open: "100",
+              volume: "1234567",
+            },
+            splitFactor: "1",
+          },
+        ],
+        endDate: "2026-09-07",
+        range: "1m",
+        startDate: "2026-08-07",
+      },
+      profile: "personal_single_user_local_market_data",
+      provider: personalMarketProvider,
+      quote: {
+        change: "1.25",
+        changePercent: "1.25",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2026-09-07T15:00:01.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100",
+        price: "101.25",
+        sourceTime: "2026-09-07T15:00:00.000Z",
+      },
+      schemaVersion: "1.0.0",
+      security: {
+        country: "US",
+        exchangeMic: "XNAS",
+        issuerName: "Zero Alpha Holdings",
+        listingId: "lst-00000",
+        securityName: "Zero Alpha Common Stock",
+        symbol: "ZERO",
+      },
+      status: "available",
+    } satisfies PersonalMarketOverviewDto;
     const connectedSourceBudgetQuantity = {
       limit: 100,
       used: 25,
@@ -1514,6 +1758,28 @@ describe("local API OpenAPI contract", () => {
       "symbol",
     ]);
     expect(personalSecurityMasterSearch).not.toHaveProperty("providerMappings");
+    expect(Object.keys(personalMarketStatus)).toEqual([
+      "profile",
+      "provider",
+      "schemaVersion",
+      "status",
+    ]);
+    expect(Object.keys(personalMarketOverview)).toEqual([
+      "history",
+      "profile",
+      "provider",
+      "quote",
+      "schemaVersion",
+      "security",
+      "status",
+    ]);
+    expect(Object.keys(personalMarketOverview.history.bars[0] ?? {})).toEqual([
+      "adjusted",
+      "date",
+      "dividendCash",
+      "raw",
+      "splitFactor",
+    ]);
     expect(Object.keys(connectedSourceBudgetQuantity)).toEqual([
       "limit",
       "used",

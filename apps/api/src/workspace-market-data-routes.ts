@@ -1,0 +1,261 @@
+import type {
+  PersonalMarketDataIdentityDto,
+  PersonalMarketDataRangeDto,
+  PersonalMarketOverviewDto,
+  ProblemDetailsDto,
+} from "@research-cockpit/contracts";
+import {
+  PERSONAL_SECURITY_MASTER_LIMITS,
+  searchPersonalSecurityMaster,
+  type PersonalSecurityMasterCatalog,
+} from "@research-cockpit/personal-security-master";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
+import type { DemoApiListenOptions } from "./listen-options";
+import type { PersonalOwnerSessionAuthority } from "./personal-owner-session";
+import {
+  authorizePersonalJsonRouteRequest,
+  authorizePersonalRouteRequest,
+  sendPersonalOwnerSessionProblem,
+} from "./personal-owner-session-routes";
+import {
+  PersonalMarketDataProviderError,
+  type PersonalMarketDataProvider,
+  type PersonalMarketDataProviderErrorCode,
+} from "./personal-market-data-provider";
+
+export const PERSONAL_MARKET_DATA_STATUS_PATH =
+  "/v1/personal-filing/market-data/status" as const;
+export const PERSONAL_MARKET_DATA_OVERVIEW_PATH =
+  "/v1/personal-filing/market-data/overview" as const;
+
+const RANGES = new Set<PersonalMarketDataRangeDto>([
+  "1m",
+  "3m",
+  "ytd",
+  "1y",
+  "5y",
+  "10y",
+]);
+const LISTING_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+const SYMBOL = /^[A-Z0-9][A-Z0-9.-]{0,31}$/u;
+
+interface OverviewRequest {
+  readonly listingId: string;
+  readonly range: PersonalMarketDataRangeDto;
+  readonly symbol: string;
+}
+
+export function registerPersonalWorkspaceMarketDataRoutes(
+  app: FastifyInstance,
+  catalog: PersonalSecurityMasterCatalog,
+  provider: PersonalMarketDataProvider,
+  ownerSession: PersonalOwnerSessionAuthority,
+  listenOptions: DemoApiListenOptions,
+): void {
+  app.get(
+    PERSONAL_MARKET_DATA_STATUS_PATH,
+    {
+      exposeHeadRoute: false,
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_MARKET_DATA_STATUS_PATH,
+          )
+        ) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+      },
+    },
+    (_request, reply) => {
+      return reply
+        .type("application/json; charset=utf-8")
+        .send(provider.getStatus());
+    },
+  );
+
+  app.post<{ Body: unknown }>(
+    PERSONAL_MARKET_DATA_OVERVIEW_PATH,
+    {
+      errorHandler: (_error, request, reply) => {
+        void sendMarketDataProblem(reply, request, 400);
+      },
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalJsonRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_MARKET_DATA_OVERVIEW_PATH,
+          )
+        ) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+      },
+    },
+    async (request, reply) => {
+      const body = parseOverviewRequest(request.body);
+      if (body === undefined) {
+        return sendMarketDataProblem(reply, request, 400);
+      }
+      const identity = resolveIdentity(catalog, body);
+      if (identity === undefined) {
+        return sendMarketDataProblem(reply, request, 400);
+      }
+
+      const abortController = new AbortController();
+      const abort = () => abortController.abort();
+      request.raw.once("aborted", abort);
+      reply.raw.once("close", abort);
+      try {
+        const overview = await provider.loadOverview(
+          identity,
+          body.range,
+          abortController.signal,
+        );
+        if (!matchesRequestedOverview(overview, identity, body.range)) {
+          return sendMarketDataProblem(reply, request, 502);
+        }
+        return reply.type("application/json; charset=utf-8").send(overview);
+      } catch (error) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          providerProblemStatus(error),
+        );
+      } finally {
+        request.raw.off("aborted", abort);
+        reply.raw.off("close", abort);
+      }
+    },
+  );
+}
+
+function parseOverviewRequest(value: unknown): OverviewRequest | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  if (
+    keys.length !== 3 ||
+    keys[0] !== "listingId" ||
+    keys[1] !== "range" ||
+    keys[2] !== "symbol" ||
+    typeof record.listingId !== "string" ||
+    !LISTING_ID.test(record.listingId) ||
+    typeof record.symbol !== "string" ||
+    !SYMBOL.test(record.symbol) ||
+    typeof record.range !== "string" ||
+    !RANGES.has(record.range as PersonalMarketDataRangeDto)
+  ) {
+    return undefined;
+  }
+  return {
+    listingId: record.listingId,
+    range: record.range as PersonalMarketDataRangeDto,
+    symbol: record.symbol,
+  };
+}
+
+function resolveIdentity(
+  catalog: PersonalSecurityMasterCatalog,
+  body: OverviewRequest,
+): PersonalMarketDataIdentityDto | undefined {
+  try {
+    const listing = searchPersonalSecurityMaster(catalog, {
+      query: body.symbol,
+      limit: PERSONAL_SECURITY_MASTER_LIMITS.searchResultCap,
+    }).results.find(
+      (candidate) =>
+        candidate.listingId === body.listingId &&
+        candidate.symbol === body.symbol,
+    );
+    return listing === undefined
+      ? undefined
+      : {
+          country: listing.country,
+          exchangeMic: listing.exchangeMic,
+          issuerName: listing.issuerName,
+          listingId: listing.listingId,
+          securityName: listing.securityName,
+          symbol: listing.symbol,
+        };
+  } catch {
+    return undefined;
+  }
+}
+
+function matchesRequestedOverview(
+  overview: PersonalMarketOverviewDto,
+  identity: PersonalMarketDataIdentityDto,
+  range: PersonalMarketDataRangeDto,
+): boolean {
+  if (overview === null || typeof overview !== "object") return false;
+  const history = Reflect.get(overview, "history") as unknown;
+  const security = Reflect.get(overview, "security") as unknown;
+  if (
+    history === null ||
+    typeof history !== "object" ||
+    security === null ||
+    typeof security !== "object"
+  ) {
+    return false;
+  }
+  return (
+    Reflect.get(history, "range") === range &&
+    Reflect.get(security, "country") === identity.country &&
+    Reflect.get(security, "exchangeMic") === identity.exchangeMic &&
+    Reflect.get(security, "issuerName") === identity.issuerName &&
+    Reflect.get(security, "listingId") === identity.listingId &&
+    Reflect.get(security, "securityName") === identity.securityName &&
+    Reflect.get(security, "symbol") === identity.symbol
+  );
+}
+
+function providerProblemStatus(error: unknown): 404 | 424 | 429 | 502 | 503 {
+  const code: PersonalMarketDataProviderErrorCode | undefined =
+    error instanceof PersonalMarketDataProviderError ? error.code : undefined;
+  switch (code) {
+    case "not_configured":
+      return 503;
+    case "credentials_invalid":
+      return 424;
+    case "rate_limited":
+      return 429;
+    case "not_covered":
+      return 404;
+    case "aborted":
+    case "invalid_response":
+    case "upstream_unavailable":
+    default:
+      return 502;
+  }
+}
+
+function sendMarketDataProblem(
+  reply: FastifyReply,
+  request: FastifyRequest,
+  status: 400 | 404 | 424 | 429 | 502 | 503,
+) {
+  const titles = {
+    400: "Invalid request",
+    404: "Market data not covered",
+    424: "Market data credentials rejected",
+    429: "Market data rate limited",
+    502: "Market data unavailable",
+    503: "Market data not configured",
+  } as const;
+  const problem: ProblemDetailsDto = {
+    type: `https://research-cockpit.local/problems/${String(status)}`,
+    title: titles[status],
+    status,
+    detail: "The personal market-data request was not accepted.",
+    instance: PERSONAL_MARKET_DATA_OVERVIEW_PATH,
+    traceId: request.id,
+  };
+  return reply.status(status).type("application/problem+json").send(problem);
+}

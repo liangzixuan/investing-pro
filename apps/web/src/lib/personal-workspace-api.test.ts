@@ -1,4 +1,6 @@
 import type {
+  PersonalMarketDataStatusDto,
+  PersonalMarketOverviewDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
@@ -7,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createEmptyPersonalWatchlist,
   fetchMainPersonalWatchlist,
+  fetchPersonalMarketDataStatus,
+  fetchPersonalMarketOverview,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
   normalizeWatchlistNote,
@@ -192,12 +196,142 @@ describe("personal workspace API client", () => {
     expect(normalizeWatchlistNote("invalid\u0000note")).toBeNull();
   });
 
+  it("loads closed provider status and posts one exact market request", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(marketStatus()))
+      .mockResolvedValueOnce(jsonResponse(marketOverview()));
+
+    await expect(
+      fetchPersonalMarketDataStatus(new AbortController().signal),
+    ).resolves.toMatchObject({ status: "configured" });
+    const overview = await fetchPersonalMarketOverview(
+      { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+      new AbortController().signal,
+    );
+
+    expect(overview.history.bars).toHaveLength(2);
+    expect(Object.isFrozen(overview.history.bars[0]?.adjusted)).toBe(true);
+    expect(fetchMock.mock.calls[0]).toEqual([
+      new URL("http://127.0.0.1:3100/v1/personal-filing/market-data/status"),
+      expect.objectContaining({
+        cache: "no-store",
+        credentials: "include",
+        method: "GET",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+      }),
+    ]);
+    expect(fetchMock.mock.calls[1]).toEqual([
+      new URL("http://127.0.0.1:3100/v1/personal-filing/market-data/overview"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          listingId: "lst-00001",
+          symbol: "ZERO",
+          range: "1y",
+        }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }),
+    ]);
+  });
+
+  it("rejects extra, mismatched, or noncanonical market response data", async () => {
+    const extra = marketOverview();
+    const mismatched = marketOverview();
+    const unordered = marketOverview();
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ ...marketStatus(), extra: true }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...extra,
+          quote: { ...extra.quote, providerPayload: "must not pass" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...mismatched,
+          security: { ...mismatched.security, listingId: "lst-other" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...unordered,
+          history: {
+            ...unordered.history,
+            bars: [...unordered.history.bars].reverse(),
+          },
+        }),
+      );
+
+    await expect(
+      fetchPersonalMarketDataStatus(new AbortController().signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    for (let index = 0; index < 3; index += 1) {
+      await expect(
+        fetchPersonalMarketOverview(
+          { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("accepts requested calendar boundaries around trading-session bars", async () => {
+    const response = marketOverview();
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        ...response,
+        history: {
+          ...response.history,
+          endDate: "2030-01-19",
+          startDate: "2030-01-12",
+        },
+      }),
+    );
+
+    await expect(
+      fetchPersonalMarketOverview(
+        { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      history: { endDate: "2030-01-19", startDate: "2030-01-12" },
+    });
+  });
+
+  it.each([
+    [403, "session_unavailable"],
+    [404, "not_covered"],
+    [424, "credentials_invalid"],
+    [429, "rate_limited"],
+    [502, "provider_unavailable"],
+    [503, "not_configured"],
+  ] as const)("maps market overview HTTP %s to %s", async (status, code) => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status }));
+
+    await expect(
+      fetchPersonalMarketOverview(
+        { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code });
+  });
+
   it("rejects invalid requests before issuing network traffic", async () => {
     await expect(
       searchPersonalSecurities("   ", new AbortController().signal),
     ).rejects.toBeInstanceOf(PersonalWorkspaceApiError);
     await expect(
       saveMainPersonalWatchlist(-1, watchlist(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(
+      fetchPersonalMarketOverview(
+        { listingId: "bad id", range: "1y", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
     ).rejects.toMatchObject({ code: "invalid_request" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -305,6 +439,88 @@ function searchResponse(
     snapshot: snapshot(),
     totalMatches: 1,
   };
+}
+
+function marketStatus(): PersonalMarketDataStatusDto {
+  return {
+    profile: "personal_single_user_local_market_data",
+    provider: marketProvider(),
+    schemaVersion: "1.0.0",
+    status: "configured",
+  };
+}
+
+function marketOverview(): PersonalMarketOverviewDto {
+  return {
+    history: {
+      bars: [
+        marketBar("2030-01-14", "100.00"),
+        marketBar("2030-01-15", "101.50"),
+      ],
+      endDate: "2030-01-15",
+      range: "1y",
+      startDate: "2030-01-14",
+    },
+    profile: "personal_single_user_local_market_data",
+    provider: marketProvider(),
+    quote: {
+      change: "1.50",
+      changePercent: "1.50",
+      currency: "USD",
+      freshness: "current",
+      ingestedAt: "2030-01-15T21:01:00.000Z",
+      kind: "derived_realtime_reference",
+      previousClose: "100.00",
+      price: "101.50",
+      sourceTime: "2030-01-15T21:00:00.000Z",
+    },
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId: "lst-00001",
+      securityName: "Zero Alpha Common Stock",
+      symbol: "ZERO",
+    },
+    status: "available",
+  };
+}
+
+function marketProvider() {
+  return {
+    attribution: "Tiingo" as const,
+    export: "prohibited" as const,
+    historyFeed: "tiingo_eod_composite" as const,
+    id: "tiingo" as const,
+    name: "Tiingo" as const,
+    persistence: "none" as const,
+    quoteFeed: "tiingo_iex_derived_reference" as const,
+    redistribution: "prohibited" as const,
+    retention: "active_owner_session_memory_only" as const,
+  };
+}
+
+function marketBar(date: string, close: string) {
+  return {
+    adjusted: {
+      close,
+      high: "102.00",
+      low: "99.00",
+      open: "100.00",
+      volume: "1200000",
+    },
+    date,
+    dividendCash: "0",
+    raw: {
+      close,
+      high: "102.00",
+      low: "99.00",
+      open: "100.00",
+      volume: "1200000",
+    },
+    splitFactor: "1",
+  } as const;
 }
 
 function watchlist(): PersonalWatchlistPayload {

@@ -232,6 +232,80 @@ export interface PersonalSecurityMasterSearchResponseDto {
   readonly totalMatches: number;
 }
 
+export type PersonalMarketDataRangeDto =
+  "1m" | "3m" | "ytd" | "1y" | "5y" | "10y";
+
+export interface PersonalMarketDataProviderDto {
+  readonly attribution: "Tiingo";
+  readonly export: "prohibited";
+  readonly historyFeed: "tiingo_eod_composite";
+  readonly id: "tiingo";
+  readonly name: "Tiingo";
+  readonly persistence: "none";
+  readonly quoteFeed: "tiingo_iex_derived_reference";
+  readonly redistribution: "prohibited";
+  readonly retention: "active_owner_session_memory_only";
+}
+
+export interface PersonalMarketDataStatusDto {
+  readonly profile: "personal_single_user_local_market_data";
+  readonly provider: PersonalMarketDataProviderDto;
+  readonly schemaVersion: "1.0.0";
+  readonly status: "configured" | "not_configured";
+}
+
+export interface PersonalMarketDataIdentityDto {
+  readonly country: "US";
+  readonly exchangeMic: string;
+  readonly issuerName: string;
+  readonly listingId: string;
+  readonly securityName: string;
+  readonly symbol: string;
+}
+
+export interface PersonalMarketDataQuoteDto {
+  readonly change: string | null;
+  readonly changePercent: string | null;
+  readonly currency: "USD";
+  readonly freshness: "current" | "older_than_36_hours";
+  readonly ingestedAt: string;
+  readonly kind: "derived_realtime_reference" | "end_of_day_close";
+  readonly previousClose: string | null;
+  readonly price: string;
+  readonly sourceTime: string;
+}
+
+export interface PersonalMarketDataOhlcvDto {
+  readonly close: string;
+  readonly high: string;
+  readonly low: string;
+  readonly open: string;
+  readonly volume: string;
+}
+
+export interface PersonalMarketDataDailyBarDto {
+  readonly adjusted: PersonalMarketDataOhlcvDto;
+  readonly date: string;
+  readonly dividendCash: string;
+  readonly raw: PersonalMarketDataOhlcvDto;
+  readonly splitFactor: string;
+}
+
+export interface PersonalMarketOverviewDto {
+  readonly history: Readonly<{
+    bars: readonly PersonalMarketDataDailyBarDto[];
+    endDate: string;
+    range: PersonalMarketDataRangeDto;
+    startDate: string;
+  }>;
+  readonly profile: "personal_single_user_local_market_data";
+  readonly provider: PersonalMarketDataProviderDto;
+  readonly quote: PersonalMarketDataQuoteDto;
+  readonly schemaVersion: "1.0.0";
+  readonly security: PersonalMarketDataIdentityDto;
+  readonly status: "available";
+}
+
 export interface PersonalFilingSelectedFactDto {
   readonly key:
     | "assets"

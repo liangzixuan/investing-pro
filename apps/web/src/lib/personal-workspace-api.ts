@@ -1,4 +1,7 @@
 import type {
+  PersonalMarketDataRangeDto,
+  PersonalMarketDataStatusDto,
+  PersonalMarketOverviewDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
@@ -16,6 +19,13 @@ const symbol = /^[A-Z0-9][A-Z0-9.-]{0,14}$/u;
 const digest = /^sha256:[0-9a-f]{64}$/u;
 const bareDigest = /^[0-9a-f]{64}$/u;
 const isoInstant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
+const isoDate = /^\d{4}-\d{2}-\d{2}$/u;
+const decimal = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/u;
+
+export const PERSONAL_MARKET_DATA_STATUS_PATH =
+  "/v1/personal-filing/market-data/status" as const;
+export const PERSONAL_MARKET_OVERVIEW_PATH =
+  "/v1/personal-filing/market-data/overview" as const;
 
 export const MAIN_PERSONAL_WATCHLIST_ID = "main" as const;
 export const MAIN_PERSONAL_WATCHLIST_NAME = "My Watchlist" as const;
@@ -34,8 +44,13 @@ const privateRequestOptions = Object.freeze({
 
 export type PersonalWorkspaceApiErrorCode =
   | "conflict"
+  | "credentials_invalid"
   | "invalid_request"
   | "invalid_response"
+  | "not_configured"
+  | "not_covered"
+  | "provider_unavailable"
+  | "rate_limited"
   | "session_unavailable"
   | "unavailable";
 
@@ -218,6 +233,68 @@ const mutationReceiptKeys = [
   "replayed",
   "version",
 ] as const;
+const marketProviderKeys = [
+  "attribution",
+  "export",
+  "historyFeed",
+  "id",
+  "name",
+  "persistence",
+  "quoteFeed",
+  "redistribution",
+  "retention",
+] as const;
+const marketStatusKeys = [
+  "profile",
+  "provider",
+  "schemaVersion",
+  "status",
+] as const;
+const marketOverviewKeys = [
+  "history",
+  "profile",
+  "provider",
+  "quote",
+  "schemaVersion",
+  "security",
+  "status",
+] as const;
+const marketIdentityKeys = [
+  "country",
+  "exchangeMic",
+  "issuerName",
+  "listingId",
+  "securityName",
+  "symbol",
+] as const;
+const marketQuoteKeys = [
+  "change",
+  "changePercent",
+  "currency",
+  "freshness",
+  "ingestedAt",
+  "kind",
+  "previousClose",
+  "price",
+  "sourceTime",
+] as const;
+const marketHistoryKeys = ["bars", "endDate", "range", "startDate"] as const;
+const marketBarKeys = [
+  "adjusted",
+  "date",
+  "dividendCash",
+  "raw",
+  "splitFactor",
+] as const;
+const marketOhlcvKeys = ["close", "high", "low", "open", "volume"] as const;
+const marketRanges = new Set<PersonalMarketDataRangeDto>([
+  "1m",
+  "3m",
+  "ytd",
+  "1y",
+  "5y",
+  "10y",
+]);
 
 export async function fetchPersonalSecurityMasterStatus(
   signal: AbortSignal,
@@ -233,6 +310,67 @@ export async function fetchPersonalSecurityMasterStatus(
     throw new PersonalWorkspaceApiError("invalid_response");
   }
   return value as unknown as PersonalSecurityMasterStatusDto;
+}
+
+export async function fetchPersonalMarketDataStatus(
+  signal: AbortSignal,
+): Promise<PersonalMarketDataStatusDto> {
+  const response = await request(PERSONAL_MARKET_DATA_STATUS_PATH, {
+    headers: { Accept: "application/json" },
+    method: "GET",
+    signal,
+  });
+  if (!response.ok) throw responseError(response.status);
+  const value: unknown = await response.json();
+  if (!isPersonalMarketDataStatus(value)) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return Object.freeze({
+    ...value,
+    provider: Object.freeze({ ...value.provider }),
+  });
+}
+
+export async function fetchPersonalMarketOverview(
+  input: Readonly<{
+    listingId: string;
+    range: PersonalMarketDataRangeDto;
+    symbol: string;
+  }>,
+  signal: AbortSignal,
+): Promise<PersonalMarketOverviewDto> {
+  if (
+    !isIdentifier(input.listingId) ||
+    typeof input.symbol !== "string" ||
+    !symbol.test(input.symbol) ||
+    !marketRanges.has(input.range)
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const response = await request(PERSONAL_MARKET_OVERVIEW_PATH, {
+    body: JSON.stringify({
+      listingId: input.listingId,
+      symbol: input.symbol,
+      range: input.range,
+    }),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal,
+  });
+  if (!response.ok) throw marketOverviewResponseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !isPersonalMarketOverview(value) ||
+    value.security.listingId !== input.listingId ||
+    value.security.symbol !== input.symbol ||
+    value.history.range !== input.range
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return copyPersonalMarketOverview(value);
 }
 
 export async function searchPersonalSecurities(
@@ -431,6 +569,22 @@ function responseError(status: number): PersonalWorkspaceApiError {
   return new PersonalWorkspaceApiError("unavailable");
 }
 
+function marketOverviewResponseError(
+  status: number,
+): PersonalWorkspaceApiError {
+  if (status === 403)
+    return new PersonalWorkspaceApiError("session_unavailable");
+  if (status === 404) return new PersonalWorkspaceApiError("not_covered");
+  if (status === 424)
+    return new PersonalWorkspaceApiError("credentials_invalid");
+  if (status === 429) return new PersonalWorkspaceApiError("rate_limited");
+  if (status === 502)
+    return new PersonalWorkspaceApiError("provider_unavailable");
+  if (status === 503) return new PersonalWorkspaceApiError("not_configured");
+  if (status === 400) return new PersonalWorkspaceApiError("invalid_request");
+  return new PersonalWorkspaceApiError("unavailable");
+}
+
 function mutationIdempotencyKey(): string {
   try {
     return `watchlist-${globalThis.crypto.randomUUID()}`;
@@ -455,6 +609,178 @@ function isSearchResponse(
     isNonnegativeInteger(value.totalMatches) &&
     value.totalMatches >= value.results.length
   );
+}
+
+function isPersonalMarketDataStatus(
+  value: unknown,
+): value is PersonalMarketDataStatusDto {
+  return (
+    hasExactKeys(value, marketStatusKeys) &&
+    value.profile === "personal_single_user_local_market_data" &&
+    isPersonalMarketDataProvider(value.provider) &&
+    value.schemaVersion === "1.0.0" &&
+    (value.status === "configured" || value.status === "not_configured")
+  );
+}
+
+function isPersonalMarketDataProvider(
+  value: unknown,
+): value is PersonalMarketDataStatusDto["provider"] {
+  return (
+    hasExactKeys(value, marketProviderKeys) &&
+    value.attribution === "Tiingo" &&
+    value.export === "prohibited" &&
+    value.historyFeed === "tiingo_eod_composite" &&
+    value.id === "tiingo" &&
+    value.name === "Tiingo" &&
+    value.persistence === "none" &&
+    value.quoteFeed === "tiingo_iex_derived_reference" &&
+    value.redistribution === "prohibited" &&
+    value.retention === "active_owner_session_memory_only"
+  );
+}
+
+function isPersonalMarketOverview(
+  value: unknown,
+): value is PersonalMarketOverviewDto {
+  return (
+    hasExactKeys(value, marketOverviewKeys) &&
+    value.profile === "personal_single_user_local_market_data" &&
+    isPersonalMarketDataProvider(value.provider) &&
+    isPersonalMarketQuote(value.quote) &&
+    value.schemaVersion === "1.0.0" &&
+    isPersonalMarketIdentity(value.security) &&
+    value.status === "available" &&
+    isPersonalMarketHistory(value.history)
+  );
+}
+
+function isPersonalMarketIdentity(
+  value: unknown,
+): value is PersonalMarketOverviewDto["security"] {
+  return (
+    hasExactKeys(value, marketIdentityKeys) &&
+    value.country === "US" &&
+    typeof value.exchangeMic === "string" &&
+    exchangeMic.test(value.exchangeMic) &&
+    isDisplayText(value.issuerName) &&
+    isIdentifier(value.listingId) &&
+    isDisplayText(value.securityName) &&
+    typeof value.symbol === "string" &&
+    symbol.test(value.symbol)
+  );
+}
+
+function isPersonalMarketQuote(
+  value: unknown,
+): value is PersonalMarketOverviewDto["quote"] {
+  if (!hasExactKeys(value, marketQuoteKeys)) return false;
+  const relatedValuesArePresent =
+    (value.change === null &&
+      value.changePercent === null &&
+      value.previousClose === null) ||
+    (isDecimal(value.change, true) &&
+      isDecimal(value.changePercent, true) &&
+      isDecimal(value.previousClose, false));
+  return (
+    relatedValuesArePresent &&
+    value.currency === "USD" &&
+    (value.freshness === "current" ||
+      value.freshness === "older_than_36_hours") &&
+    isInstant(value.ingestedAt) &&
+    (value.kind === "derived_realtime_reference" ||
+      value.kind === "end_of_day_close") &&
+    isDecimal(value.price, false) &&
+    isInstant(value.sourceTime)
+  );
+}
+
+function isPersonalMarketHistory(
+  value: unknown,
+): value is PersonalMarketOverviewDto["history"] {
+  if (
+    !hasExactKeys(value, marketHistoryKeys) ||
+    !Array.isArray(value.bars) ||
+    value.bars.length < 1 ||
+    value.bars.length > 4_096 ||
+    !isDate(value.startDate) ||
+    !isDate(value.endDate) ||
+    !marketRanges.has(value.range as PersonalMarketDataRangeDto)
+  ) {
+    return false;
+  }
+  if (value.startDate > value.endDate) return false;
+  let previousDate = "";
+  for (const bar of value.bars) {
+    if (
+      !isPersonalMarketBar(bar) ||
+      bar.date <= previousDate ||
+      bar.date < value.startDate ||
+      bar.date > value.endDate
+    ) {
+      return false;
+    }
+    previousDate = bar.date;
+  }
+  return true;
+}
+
+function isPersonalMarketBar(
+  value: unknown,
+): value is PersonalMarketOverviewDto["history"]["bars"][number] {
+  return (
+    hasExactKeys(value, marketBarKeys) &&
+    isPersonalMarketOhlcv(value.adjusted) &&
+    isDate(value.date) &&
+    isDecimal(value.dividendCash, false, true) &&
+    isPersonalMarketOhlcv(value.raw) &&
+    isDecimal(value.splitFactor, false)
+  );
+}
+
+function isPersonalMarketOhlcv(
+  value: unknown,
+): value is PersonalMarketOverviewDto["history"]["bars"][number]["raw"] {
+  if (!hasExactKeys(value, marketOhlcvKeys)) return false;
+  if (
+    !isDecimal(value.close, false) ||
+    !isDecimal(value.high, false) ||
+    !isDecimal(value.low, false) ||
+    !isDecimal(value.open, false) ||
+    !isDecimal(value.volume, false, true)
+  ) {
+    return false;
+  }
+  const close = Number(value.close);
+  const high = Number(value.high);
+  const low = Number(value.low);
+  const open = Number(value.open);
+  return (
+    high >= Math.max(open, close, low) && low <= Math.min(open, close, high)
+  );
+}
+
+function copyPersonalMarketOverview(
+  value: PersonalMarketOverviewDto,
+): PersonalMarketOverviewDto {
+  return Object.freeze({
+    ...value,
+    provider: Object.freeze({ ...value.provider }),
+    quote: Object.freeze({ ...value.quote }),
+    security: Object.freeze({ ...value.security }),
+    history: Object.freeze({
+      ...value.history,
+      bars: Object.freeze(
+        value.history.bars.map((bar) =>
+          Object.freeze({
+            ...bar,
+            adjusted: Object.freeze({ ...bar.adjusted }),
+            raw: Object.freeze({ ...bar.raw }),
+          }),
+        ),
+      ),
+    }),
+  });
 }
 
 function isSearchResult(
@@ -707,6 +1033,34 @@ function isIdentifier(value: unknown): value is string {
 
 function isDisplayText(value: unknown): value is string {
   return isBoundedDisplayText(value, 512);
+}
+
+function isDecimal(
+  value: unknown,
+  signed: boolean,
+  allowZero = false,
+): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length > 64 ||
+    !decimal.test(value) ||
+    (!signed && value.startsWith("-"))
+  ) {
+    return false;
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return false;
+  if (signed) return true;
+  return allowZero ? numeric >= 0 : numeric > 0;
+}
+
+function isDate(value: unknown): value is string {
+  if (typeof value !== "string" || !isoDate.test(value)) return false;
+  const parsed = Date.parse(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(parsed) &&
+    new Date(parsed).toISOString().slice(0, 10) === value
+  );
 }
 
 function isBoundedDisplayText(value: unknown, maximumCodePoints: number) {

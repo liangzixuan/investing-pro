@@ -8,10 +8,11 @@ const SOURCE_DIRECTORY = resolve(import.meta.dirname);
 const WORKSPACE_ENTRY = resolve(SOURCE_DIRECTORY, "workspace-server.ts");
 
 describe("personal workspace startup static graph", () => {
-  it("combines only the existing catalog, vault, owner-session, and loopback modules", async () => {
+  it("combines only the catalog, vault, owner-session, market-data, and loopback modules", async () => {
     const graph = await staticGraph(WORKSPACE_ENTRY);
     expect([...graph.files].sort()).toEqual([
       "listen-options.ts",
+      "personal-market-data-provider.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
       "personal-security-master-routes.ts",
@@ -22,6 +23,7 @@ describe("personal workspace startup static graph", () => {
       "vault-composition-root.ts",
       "workspace-app.ts",
       "workspace-composition-root.ts",
+      "workspace-market-data-routes.ts",
       "workspace-server.ts",
       "workspace-watchlist-routes.ts",
     ]);

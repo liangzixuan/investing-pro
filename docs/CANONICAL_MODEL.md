@@ -2538,6 +2538,48 @@ highest-priority visible boundary: authenticated browser search plus durable
 typed owner-local watchlists, with security and privacy treated as acceptance
 criteria rather than standalone milestones.
 
+## Cycle 3g-a1 personal on-demand market view model
+
+Cycle 3g-a1 composes the admitted security catalog, the owner session, and one
+owner-supplied Tiingo credential inside `personal_workspace`. Provider absence
+does not prevent startup: the authenticated status route reports only
+`configured` or `not_configured`, performs no provider request, and exposes no
+token or account fingerprint. The composition captures and removes its child-
+process environment copy. The provider keeps only token bytes, sends them in
+the fixed-host HTTPS `Authorization` header, never puts them in a URL, and wipes
+the owned byte carrier while aborting in-flight requests on close.
+
+The market overview is an explicit owner-triggered, authenticated read-only POST
+whose exact body is `listingId`, current `symbol`, and one of `1m`, `3m`, `ytd`,
+`1y`, `5y`, or `10y`. Before provider access, the server re-resolves the symbol
+in the startup catalog and requires the exact listing identity. The fixed Tiingo
+IEX request supplies the derived reference price when present; otherwise the
+latest returned EOD close is labelled as `end_of_day_close` rather than promoted
+to real-time. A fixed Tiingo EOD request supplies chronologically increasing
+daily raw and adjusted OHLCV, cash dividend, and split-factor fields. The
+response also carries USD, source time, ingestion time, provider attribution,
+and a coarse current/older-than-36-hours freshness label. For an EOD fallback,
+the source time is the returned trading-session date modeled at the US regular
+close (16:00 America/New_York), rather than Tiingo's midnight session-date
+encoding. The prior raw close is normalized into current-share units using the
+latest split factor before change and percent change are calculated.
+
+Each upstream response is capped at 1 MiB, history at 4,096 sessions, and the
+operation at ten seconds. Rejected credentials, rate exhaustion, missing
+coverage, invalid provider values, timeout, and outage are distinct value-free
+failures. No synthetic price substitutes for failure. The browser retains a
+successful result only in component memory and clears it on selection close or
+owner-session loss; the API has no market-data cache. The chart switches raw or
+adjusted close/volume locally and exposes dividend/split markers plus an exact
+semantic table.
+
+This slice does not establish the full Cycle 3g-a 100-symbol validation gate,
+independent corporate-action golden reconciliation, policy-permitted durable
+offline replay, intraday chart history, non-US currency coverage, provider SLA,
+or competitor parity. Under the selected Starter-compatible path, persistent
+storage and export remain prohibited; a later retention-capable subscription
+would require a separately admitted cache design.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

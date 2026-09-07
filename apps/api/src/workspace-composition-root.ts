@@ -8,6 +8,11 @@ import {
   PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY,
 } from "./personal-owner-session";
 import {
+  createTiingoPersonalMarketDataProvider,
+  type PersonalMarketDataProvider,
+  PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY,
+} from "./personal-market-data-provider";
+import {
   loadPersonalSecurityMasterCatalog,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH_ENVIRONMENT_KEY,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY,
@@ -48,6 +53,7 @@ const PERSONAL_WORKSPACE_PRIVATE_ENVIRONMENT_KEYS = [
   PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY,
   PERSONAL_VAULT_ROOT_ENVIRONMENT_KEY,
   PERSONAL_VAULT_STARTUP_ENVIRONMENT_KEY,
+  PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY,
   ...FORBIDDEN_PRIVATE_CONFIGURATION_KEYS,
 ] as const;
 
@@ -151,6 +157,8 @@ async function preparePersonalWorkspaceConfiguredApp(
     );
   }
   const bootstrapSecret = environment[PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY];
+  const marketDataToken =
+    environment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY];
   if (bootstrapSecret === undefined) {
     throw new PersonalWorkspaceApiCompositionError(
       "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED",
@@ -170,6 +178,7 @@ async function preparePersonalWorkspaceConfiguredApp(
   }
 
   let vault: LocalResearchVault | undefined;
+  let marketDataProvider: PersonalMarketDataProvider | undefined;
   try {
     const catalog = await loadPersonalSecurityMasterCatalog(
       snapshotPath,
@@ -180,13 +189,17 @@ async function preparePersonalWorkspaceConfiguredApp(
       vaultStartup === "initialize"
         ? await LocalResearchVault.initialize(startupOptions)
         : await LocalResearchVault.open(startupOptions);
+    marketDataProvider =
+      createTiingoPersonalMarketDataProvider(marketDataToken);
     return await buildPersonalWorkspaceApp(
       catalog,
       vault,
       ownerSession,
       resolveDemoApiListenOptions(environment),
+      marketDataProvider,
     );
   } catch (error) {
+    marketDataProvider?.close();
     vault?.close();
     ownerSession.close();
     if (error instanceof PersonalWorkspaceApiCompositionError) throw error;

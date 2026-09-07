@@ -28,6 +28,10 @@ import {
   type PersonalOwnerSessionAuthority,
 } from "./personal-owner-session";
 import {
+  createTiingoPersonalMarketDataProvider,
+  type PersonalMarketDataProvider,
+} from "./personal-market-data-provider";
+import {
   personalBrowserOrigin,
   PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME,
   PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
@@ -38,6 +42,7 @@ import {
   PERSONAL_SECURITY_MASTER_STATUS_PATH,
   registerPersonalSecurityMasterRoutes,
 } from "./personal-security-master-routes";
+import { registerPersonalWorkspaceMarketDataRoutes } from "./workspace-market-data-routes";
 import { registerPersonalWorkspaceWatchlistRoutes } from "./workspace-watchlist-routes";
 
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
@@ -51,6 +56,7 @@ export async function buildPersonalWorkspaceApp(
   vault: LocalResearchVault,
   ownerSession: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
+  marketDataProvider: PersonalMarketDataProvider = createTiingoPersonalMarketDataProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -108,8 +114,12 @@ export async function buildPersonalWorkspaceApp(
     try {
       vault.close();
     } finally {
-      ownerSession.close();
-      done();
+      try {
+        marketDataProvider.close();
+      } finally {
+        ownerSession.close();
+        done();
+      }
     }
   });
 
@@ -130,6 +140,13 @@ export async function buildPersonalWorkspaceApp(
     app,
     catalog,
     vault,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceMarketDataRoutes(
+    app,
+    catalog,
+    marketDataProvider,
     ownerSession,
     listenOptions,
   );

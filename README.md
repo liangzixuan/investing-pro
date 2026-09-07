@@ -14,20 +14,25 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycle 3e-b1 adds the first daily-use personal discovery workflow. In the
-explicit `personal_workspace` mode, the owner can authenticate, search the
-admitted local security universe by ticker or company name, and keep one typed
-`My Watchlist` in the encrypted local vault. The browser supports add, remove,
-reorder, and inline notes; saved state survives browser and API restarts. It
-also presents distinct loading, empty, error, conflict, stale-snapshot, and
-watchlist-read-only states. No browser storage, external request, or
-Investing.com crawling is used.
+Cycle 3g-a1 adds the first provider-backed market view to the daily-use
+discovery workflow. In the explicit `personal_workspace` mode, the owner can
+authenticate, search the admitted local security universe, keep one encrypted
+`My Watchlist`, and open a selected company without putting its symbol in the
+browser URL. With an owner-supplied Tiingo token, an explicit click loads a
+current derived reference price plus 1M, 3M, YTD, 1Y, 5Y, or 10Y of daily raw
+and adjusted OHLCV. The chart and exact table include cash-dividend and split
+markers, source and ingestion times, freshness, currency, and provider labels.
+There is no automatic provider request and no synthetic price fallback.
 
-This is a visible feature milestone, not a parity claim. Multi-list management,
-quotes and price history, financial-statement breadth, valuation/peer tools,
-screening, events/news, portfolio analytics, alerts, and exports remain later
-product work. Security and privacy are acceptance checks for those milestones,
-not separate roadmap drivers unless they block correct personal use.
+Tiingo Starter data is held only in the active owner session's memory and is
+not written to the vault, filesystem, browser storage, logs, exports, or Git.
+The UI distinguishes an unconfigured token, unsupported symbol, rejected
+credential, rate limit, upstream outage, stale quote, loading, and retry state.
+This is a visible feature milestone, not a full Cycle 3g-a or product-parity
+claim: the declared 100-symbol validation gate, policy-permitted offline price
+cache, independent corporate-action reconciliation, indicators, statement
+breadth, valuation/peer tools, screening, events/news, portfolio analytics,
+alerts, and exports remain later product work.
 
 ## Historical synthetic slice
 
@@ -1640,10 +1645,15 @@ default.
 
 ### Personal discovery workspace
 
-Cycle 3e-b1 is an explicit local-only startup. It requires an already admitted
+The personal workspace is an explicit local-only startup. It requires an already admitted
 owner-local security-master snapshot and its exact digest, plus a dedicated
 vault root. Use `initialize` only for a new absent vault root; use `open` on
-later starts. These values and the owner bootstrap secret must remain outside
+later starts. Market data is optional: create a personal Tiingo account, review
+its current [pricing](https://www.tiingo.com/about/pricing) and
+[terms](https://api.tiingo.com/tos/), then copy the token from Tiingo's account
+page if you want live price/history loading. Without a token, search and the
+watchlist still work and the market panel says it is not configured. These
+values, the provider token, and the owner bootstrap secret must remain outside
 Git and logs.
 
 In the API terminal, set the private values without printing them, generate a
@@ -1656,6 +1666,7 @@ $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH = "C:\absolute\owner-local\personal-
 $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 = "sha256:<64 lowercase hex characters>"
 $env:RESEARCH_COCKPIT_VAULT_ROOT = "C:\absolute\owner-local\research-cockpit-vault"
 $env:RESEARCH_COCKPIT_VAULT_STARTUP = "initialize" # change to "open" after first start
+$env:PERSONAL_MARKET_DATA_TIINGO_TOKEN = "<owner Tiingo token>" # optional
 
 try {
   $workspaceBootstrapBytes = New-Object byte[] 32
@@ -1676,6 +1687,7 @@ try {
 } finally {
   $workspaceBootstrapSecret = $null
   Remove-Item Env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET -ErrorAction SilentlyContinue
+  Remove-Item Env:PERSONAL_MARKET_DATA_TIINGO_TOKEN -ErrorAction SilentlyContinue
   Set-Clipboard -Value ([string]::Empty)
 }
 ```
@@ -1693,7 +1705,10 @@ pnpm --filter @research-cockpit/web exec next dev -p 3000 -H 127.0.0.1
 
 Open `http://127.0.0.1:3000/discover`, paste the fresh bootstrap value into the
 owner-session panel, and select **Start session**. The combined process gives
-search and watchlist requests one cookie authority; the older isolated
+search, watchlist, and explicit market-data requests one cookie authority. The
+API sends a configured Tiingo token only in the provider Authorization header,
+never in a URL. Returned Tiingo values remain transient in active session memory
+and are discarded when the market view or owner session ends. The older isolated
 security-master and generic-vault entrypoints remain available for their
 original bounded uses.
 

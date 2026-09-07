@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { rm } from "node:fs/promises";
 
+import Fastify from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp, buildPersonalReadinessApp } from "./app";
@@ -9,13 +10,17 @@ import {
   PERSONAL_OWNER_SESSION_COOKIE_NAME,
 } from "./personal-owner-session";
 import {
+  authorizePersonalJsonRouteRequest,
   PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME,
+  PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
   PERSONAL_OWNER_INTENT_HEADER_NAME,
   PERSONAL_OWNER_SESSION_BOOTSTRAP_PATH,
   PERSONAL_OWNER_SESSION_LOGOUT_PATH,
   PERSONAL_OWNER_SESSION_PATH,
   PERSONAL_OWNER_SESSION_REVOKE_PATH,
   PERSONAL_OWNER_SESSION_ROTATE_PATH,
+  registerPersonalOwnerSessionRoutes,
+  sendPersonalOwnerSessionProblem,
 } from "./personal-owner-session-routes";
 import { PERSONAL_FILING_READINESS_PATH } from "./personal-readiness-routes";
 import { createPublicPersonalQualityReadinessFixture } from "./test-personal-quality-readiness-builder";
@@ -348,6 +353,67 @@ describe("personal owner-session routes", () => {
     const expired = await readiness(app, cookie);
     expect(expired.statusCode).toBe(403);
     expect(expired.payload).not.toContain("quality_gate_ready");
+  });
+
+  it("authorizes only an exact bounded owner-session read-only JSON POST", async () => {
+    const path = "/v1/personal-filing/test/read-json";
+    const secret = randomBytes(32).toString("hex");
+    const authority = PersonalOwnerSessionAuthority.create(secret);
+    const app = Fastify({ bodyLimit: 300 * 1_024, trustProxy: false });
+    await registerPersonalOwnerSessionRoutes(app, authority, {
+      host: "127.0.0.1",
+      port: 3100,
+    });
+    app.post(
+      path,
+      {
+        onRequest: async (request, reply) => {
+          if (
+            !authorizePersonalJsonRouteRequest(
+              request,
+              authority,
+              { host: "127.0.0.1", port: 3100 },
+              path,
+            )
+          ) {
+            return sendPersonalOwnerSessionProblem(reply, request);
+          }
+        },
+      },
+      (_request, reply) => reply.status(204).send(),
+    );
+    apps.push(app);
+    const cookie = cookieFrom(await bootstrap(app, secret));
+    const request = (extraHeaders: Record<string, string> = {}) =>
+      app.inject({
+        method: "POST",
+        url: path,
+        headers: {
+          ...allowedHeaders(cookie),
+          "content-type": "application/json",
+          ...extraHeaders,
+        },
+        payload: { listingId: "lst-00000", range: "1m", symbol: "S00000" },
+        remoteAddress: "127.0.0.1",
+      });
+
+    expect((await request()).statusCode).toBe(204);
+    for (const headers of [
+      { [PERSONAL_OWNER_INTENT_HEADER_NAME]: "connected-source-policy-kill" },
+      { [PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME]: "must-not-be-present" },
+      { "if-match": '"v1"' },
+      { "if-none-match": "*" },
+      { forwarded: "for=127.0.0.1" },
+      { authorization: "Bearer private-canary" },
+      { "content-type": "application/json; charset=utf-8" },
+    ]) {
+      const rejected = await request(headers);
+      expect(rejected.statusCode).toBe(403);
+      expect(rejected.payload).not.toContain("private-canary");
+    }
+
+    authority.close();
+    expect((await request()).statusCode).toBe(403);
   });
 });
 

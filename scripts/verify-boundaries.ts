@@ -5176,8 +5176,11 @@ function hasExactApiBuildEntries(content: string): boolean {
 async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const found: string[] = [];
   const entry = "apps/api/src/workspace-server.ts";
+  const providerPath = "apps/api/src/personal-market-data-provider.ts";
+  const marketRoutesPath = "apps/api/src/workspace-market-data-routes.ts";
   const expectedFiles = [
     "apps/api/src/listen-options.ts",
+    providerPath,
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
     "apps/api/src/personal-security-master-routes.ts",
@@ -5188,6 +5191,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/vault-composition-root.ts",
     "apps/api/src/workspace-app.ts",
     "apps/api/src/workspace-composition-root.ts",
+    marketRoutesPath,
     "apps/api/src/workspace-server.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
   ].sort();
@@ -5208,6 +5212,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const visited = new Set<string>();
   const externalSpecifiers = new Set<string>();
   const processFiles = new Set<string>();
+  const runtimeSources = new Map<string, string>();
   while (pending.length > 0) {
     const path = pending.pop();
     if (path === undefined || visited.has(path)) continue;
@@ -5219,6 +5224,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       found.push(`${path}: personal workspace runtime source is missing`);
       continue;
     }
+    runtimeSources.set(path, source);
     if (/\bprocess\./u.test(source)) processFiles.add(path);
     for (const specifier of collectModuleSpecifiers(source)) {
       if (!specifier.startsWith(".")) {
@@ -5249,7 +5255,620 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       `${entry}: only the personal workspace server may read process state`,
     );
   }
+  const marketDataViolation =
+    personalMarketDataRuntimeBoundaryViolation(runtimeSources);
+  if (marketDataViolation !== null) found.push(marketDataViolation);
+  found.push(...(await personalMarketDataRepositoryBoundaryViolations()));
+
+  const mutate = (path: string, transform: (source: string) => string) => {
+    const changed = new Map(runtimeSources);
+    changed.set(path, transform(changed.get(path) ?? ""));
+    return changed;
+  };
+  const provider = runtimeSources.get(providerPath) ?? "";
+  const routes = runtimeSources.get(marketRoutesPath) ?? "";
+  const classifierRegressions = [
+    marketDataViolation !== null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(marketRoutesPath, (source) => `${source}\nvoid fetch("/");`),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(providerPath, (source) => `${source}\nconsole.log("unsafe");`),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(providerPath, (source) => `${source}\nvoid import("node:fs");`),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(providerPath, (source) => `${source}\nimport "node:https";`),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        providerPath,
+        (source) => `${source}\nnew URL("?api_key=unsafe", TIINGO_ORIGIN);`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(providerPath, (source) =>
+        source.replace("/iex/", "/unreviewed-quotes/"),
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(providerPath, (source) =>
+        source.replace("Authorization: authorization", "XToken: authorization"),
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(marketRoutesPath, (source) =>
+        source.replace(
+          "authorizePersonalJsonRouteRequest(",
+          "authorizePersonalRouteRequest(",
+        ),
+      ),
+    ) === null,
+    provider.length === 0,
+    routes.length === 0,
+  ];
+  const regressedClassifier = classifierRegressions.indexOf(true);
+  if (regressedClassifier !== -1) {
+    found.push(
+      `scripts/verify-boundaries.ts: Cycle 3g-a1 market-data boundary classifier ${String(regressedClassifier + 1)} regressed`,
+    );
+  }
   return found;
+}
+
+async function personalMarketDataRepositoryBoundaryViolations(): Promise<
+  string[]
+> {
+  const found: string[] = [];
+  const providerPath = "apps/api/src/personal-market-data-provider.ts";
+  const compositionPath = "apps/api/src/workspace-composition-root.ts";
+  const tokenEnvironmentLiteral = ["PERSONAL_MARKET_DATA", "TIINGO_TOKEN"].join(
+    "_",
+  );
+  const providerHost = ["api", "tiingo", "com"].join(".");
+  const executableFiles = [...externalCompositionFilesToInspect].sort();
+
+  for (const file of executableFiles) {
+    const path = relative(root, file).replaceAll("\\", "/");
+    const content = await readFile(file, "utf8");
+    if (personalMarketDataIsProductionApiSource(path)) {
+      const source = ts.createSourceFile(
+        path,
+        content,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX,
+      );
+      if (path !== providerPath && personalMarketDataUsesGlobalFetch(source)) {
+        found.push(
+          `${path}: only the reviewed Cycle 3g-a1 provider may use the API runtime fetch capability`,
+        );
+      }
+      if (path !== providerPath && content.includes(providerHost)) {
+        found.push(
+          `${path}: only the reviewed Cycle 3g-a1 provider may embed the Tiingo host`,
+        );
+      }
+    }
+    if (
+      path.startsWith("apps/web/") &&
+      personalMarketDataWebViolation(content)
+    ) {
+      found.push(
+        `${path}: the browser may call only the owner-local API and must contain no Tiingo endpoint, route family, token environment name, or provider-module import`,
+      );
+    }
+  }
+
+  for (const file of [...filesToInspect].sort()) {
+    const extension = extname(file).toLowerCase();
+    if (!textExtensions.has(extension)) continue;
+    const path = relative(root, file).replaceAll("\\", "/");
+    const content = await readFile(file, "utf8");
+    if (!content.includes(tokenEnvironmentLiteral)) continue;
+    const allowed =
+      path === providerPath ||
+      path === compositionPath ||
+      path === "README.md" ||
+      path.startsWith("docs/") ||
+      (personalMarketDataIsTestSource(path) && !path.startsWith("apps/web/"));
+    if (!allowed) {
+      found.push(
+        `${path}: the Tiingo token environment name may occur only in the provider, workspace composition, non-browser tests, and documentation`,
+      );
+    }
+  }
+  return found;
+}
+
+function personalMarketDataRuntimeBoundaryViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const providerPath = "apps/api/src/personal-market-data-provider.ts";
+  const routesPath = "apps/api/src/workspace-market-data-routes.ts";
+  const providerHost = ["api", "tiingo", "com"].join(".");
+  const provider = sources.get(providerPath);
+  const routes = sources.get(routesPath);
+  if (provider === undefined || routes === undefined) {
+    return "apps/api/src/workspace-server.ts: exact Cycle 3g-a1 provider and market-data route sources are required";
+  }
+
+  for (const [path, content] of sources) {
+    if (
+      hasRuntimeDynamicImport(content) ||
+      hasForbiddenDynamicCodeCapability(content) ||
+      hasUnresolvedRuntimeModuleLoad(content) ||
+      hasIndirectRuntimeModuleLoad(content)
+    ) {
+      return `${path}: personal workspace market data must not dynamically load modules or code`;
+    }
+    const modules = collectModuleSpecifiers(content);
+    if (modules.some(personalMarketDataIsNetworkModule)) {
+      return `${path}: personal workspace market data must not import socket, DNS, TLS, or HTTP modules`;
+    }
+    const source = ts.createSourceFile(
+      path,
+      content,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    if (findIdentifiers(source, new Set(["console"])).length > 0) {
+      return `${path}: personal workspace market data must not use console logging`;
+    }
+    if (path !== providerPath && personalMarketDataUsesGlobalFetch(source)) {
+      return `${path}: only the reviewed provider may use the API runtime fetch capability`;
+    }
+    if (
+      (path === providerPath || path === routesPath) &&
+      findIdentifiers(source, new Set(["process"])).length > 0
+    ) {
+      return `${path}: provider and market-data routes must not read process state`;
+    }
+    if (path !== providerPath && content.includes(providerHost)) {
+      return `${path}: only the reviewed provider may embed the Tiingo host`;
+    }
+    if (personalMarketDataHasCredentialQueryParameter(content)) {
+      return `${path}: credentials must never enter a URL or query parameter`;
+    }
+  }
+
+  const providerViolation = personalMarketDataProviderViolation(provider);
+  if (providerViolation !== null)
+    return `${providerPath}: ${providerViolation}`;
+  const routesViolation = personalMarketDataRoutesViolation(routes);
+  return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
+}
+
+function personalMarketDataProviderViolation(content: string): string | null {
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(["@research-cockpit/contracts"])
+  ) {
+    return "provider imports must remain type-only contracts with no SDK or network module";
+  }
+  const tokenEnvironmentLiteral = ["PERSONAL_MARKET_DATA", "TIINGO_TOKEN"].join(
+    "_",
+  );
+  const providerHost = ["api", "tiingo", "com"].join(".");
+  const providerEndpoint = `https://${providerHost}`;
+  const source = ts.createSourceFile(
+    "personal-market-data-provider.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    personalMarketDataStaticStringCount(source, providerEndpoint) !== 1 ||
+    personalMarketDataStaticStringCount(source, tokenEnvironmentLiteral) !== 1
+  ) {
+    return "provider must retain one exact fixed Tiingo HTTPS origin and one exact token environment literal";
+  }
+  let originDeclaration = false;
+  let tokenDeclaration = false;
+  let authorizationPropertyCount = 0;
+  let authorizationTemplateCount = 0;
+  let transportCallCount = 0;
+  const requestJsonInputs: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "TIINGO_ORIGIN" &&
+      staticStringValue(
+        node.initializer === undefined
+          ? undefined
+          : unwrapBoundaryExpression(node.initializer),
+      ) === providerEndpoint &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0
+    ) {
+      originDeclaration = true;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY" &&
+      staticStringValue(
+        node.initializer === undefined
+          ? undefined
+          : unwrapBoundaryExpression(node.initializer),
+      ) === tokenEnvironmentLiteral &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0
+    ) {
+      tokenDeclaration = true;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "authorization" &&
+      node.initializer !== undefined &&
+      ts.isTemplateExpression(node.initializer) &&
+      node.initializer.head.text === "Token " &&
+      node.initializer.templateSpans.length === 1
+    ) {
+      authorizationTemplateCount += 1;
+    }
+    if (
+      ts.isPropertyAssignment(node) &&
+      propertyNameText(node.name) === "Authorization" &&
+      ts.isIdentifier(node.initializer) &&
+      node.initializer.text === "authorization"
+    ) {
+      authorizationPropertyCount += 1;
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression)
+    ) {
+      const receiver = unwrapBoundaryExpression(node.expression.expression);
+      if (
+        receiver.kind === ts.SyntaxKind.ThisKeyword &&
+        node.expression.name.text === "#fetch"
+      ) {
+        const firstArgument = node.arguments[0];
+        const target =
+          firstArgument === undefined
+            ? undefined
+            : unwrapBoundaryExpression(firstArgument);
+        if (
+          node.arguments.length >= 2 &&
+          target !== undefined &&
+          ts.isPropertyAccessExpression(target) &&
+          ts.isIdentifier(target.expression) &&
+          target.expression.text === "url" &&
+          target.name.text === "href"
+        ) {
+          transportCallCount += 1;
+        }
+      }
+      if (
+        receiver.kind === ts.SyntaxKind.ThisKeyword &&
+        node.expression.name.text === "#requestJson"
+      ) {
+        const target = node.arguments[0];
+        requestJsonInputs.push(
+          target !== undefined && ts.isIdentifier(target)
+            ? target.text
+            : "<other>",
+        );
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (!originDeclaration || !tokenDeclaration) {
+    return "fixed origin and exported token environment key must remain const declarations";
+  }
+  if (
+    authorizationTemplateCount !== 1 ||
+    authorizationPropertyCount !== 1 ||
+    transportCallCount !== 1
+  ) {
+    return "Tiingo credentials must remain one Token authorization value used only by the Authorization header on the bounded transport";
+  }
+  if (
+    JSON.stringify(requestJsonInputs) !==
+    JSON.stringify(["quoteUrl", "historyUrl"])
+  ) {
+    return "provider transport may receive only the fixed quote and history URL values";
+  }
+  return personalMarketDataProviderUrlViolation(source);
+}
+
+function personalMarketDataProviderUrlViolation(
+  source: ts.SourceFile,
+): string | null {
+  const shapes: string[] = [];
+  const querySetters: string[] = [];
+  let invalidUrl = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "URL"
+    ) {
+      const argumentsList = node.arguments;
+      const path = argumentsList?.[0];
+      const base = argumentsList?.[1];
+      if (
+        argumentsList?.length !== 2 ||
+        path === undefined ||
+        base === undefined ||
+        !ts.isIdentifier(base) ||
+        base.text !== "TIINGO_ORIGIN" ||
+        !ts.isTemplateExpression(path) ||
+        path.templateSpans.length !== 1
+      ) {
+        invalidUrl = true;
+      } else {
+        const span = path.templateSpans[0]!;
+        const expression = unwrapBoundaryExpression(span.expression);
+        if (
+          !ts.isCallExpression(expression) ||
+          !ts.isIdentifier(expression.expression) ||
+          expression.expression.text !== "encodeURIComponent" ||
+          expression.arguments.length !== 1 ||
+          expression.arguments[0] === undefined ||
+          !ts.isIdentifier(expression.arguments[0]) ||
+          expression.arguments[0].text !== "providerSymbol"
+        ) {
+          invalidUrl = true;
+        } else if (path.head.text === "/iex/" && span.literal.text === "") {
+          shapes.push("quote");
+        } else if (
+          path.head.text === "/tiingo/daily/" &&
+          span.literal.text === "/prices"
+        ) {
+          shapes.push("history");
+        } else {
+          invalidUrl = true;
+        }
+      }
+    }
+    if (ts.isCallExpression(node)) {
+      const setter = namedBoundaryPropertyAccess(
+        node.expression,
+        new Set(["append", "set"]),
+      );
+      if (setter !== null) {
+        const receiver = unwrapBoundaryExpression(setter.expression);
+        const searchParams =
+          (ts.isPropertyAccessExpression(receiver) ||
+            ts.isElementAccessExpression(receiver)) &&
+          namedBoundaryPropertyAccess(receiver, new Set(["searchParams"]));
+        if (searchParams !== null && searchParams !== false) {
+          const key = staticStringValue(node.arguments[0]) ?? "<dynamic>";
+          const value = node.arguments[1];
+          const setterName = ts.isPropertyAccessExpression(setter)
+            ? setter.name.text
+            : (staticStringValue(setter.argumentExpression) ?? "<dynamic>");
+          querySetters.push(
+            `${setterName}:${key}:${value !== undefined && ts.isIdentifier(value) ? value.text : "<other>"}`,
+          );
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return !invalidUrl &&
+    JSON.stringify(shapes.sort()) === JSON.stringify(["history", "quote"]) &&
+    JSON.stringify(querySetters) ===
+      JSON.stringify(["set:startDate:startDate", "set:endDate:endDate"])
+    ? null
+    : "provider URLs must remain exactly fixed-host /iex/<ticker> and /tiingo/daily/<ticker>/prices with startDate/endDate only";
+}
+
+function personalMarketDataRoutesViolation(content: string): string | null {
+  const expectedModules = [
+    "@research-cockpit/contracts",
+    personalSecurityMasterModule,
+    "fastify",
+    "./listen-options",
+    "./personal-owner-session",
+    "./personal-owner-session-routes",
+    "./personal-market-data-provider",
+  ];
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(expectedModules)
+  ) {
+    return "market-data routes must retain the exact owner-session, catalog, provider, contracts, and Fastify imports";
+  }
+  const requiredAnchors = [
+    '"/v1/personal-filing/market-data/status"',
+    '"/v1/personal-filing/market-data/overview"',
+    "exposeHeadRoute: false",
+    "authorizePersonalRouteRequest(",
+    "provider.getStatus()",
+    "provider.loadOverview(",
+    "resolveIdentity(catalog, body)",
+  ];
+  if (requiredAnchors.some((anchor) => !content.includes(anchor))) {
+    return "market-data status, overview, catalog binding, and provider-call anchors regressed";
+  }
+  const source = ts.createSourceFile(
+    "workspace-market-data-routes.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const postCalls: ts.CallExpression[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "app" &&
+      node.expression.name.text === "post"
+    ) {
+      postCalls.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (postCalls.length !== 1) {
+    return "exactly one owner-authenticated market-data JSON command route is required";
+  }
+  const options = postCalls[0]?.arguments[1];
+  if (options === undefined || !ts.isObjectLiteralExpression(options)) {
+    return "market-data JSON authorization must remain a route-level onRequest hook";
+  }
+  const onRequest = options.properties.find(
+    (property) =>
+      (ts.isPropertyAssignment(property) || ts.isMethodDeclaration(property)) &&
+      boundaryPropertyName(property.name) === "onRequest",
+  );
+  if (onRequest === undefined) {
+    return "market-data JSON authorization must remain a route-level onRequest hook";
+  }
+  const guardText = onRequest.getText(source);
+  return guardText.includes("authorizePersonalJsonRouteRequest(") &&
+    !/\brequest\s*\.\s*body\b/u.test(guardText)
+    ? null
+    : "market-data overview must use owner JSON authorization before body parsing or access";
+}
+
+function personalMarketDataHasCredentialQueryParameter(
+  content: string,
+): boolean {
+  if (/[?&](?:api[_-]?(?:key|token)|authorization|token)\s*=/iu.test(content)) {
+    return true;
+  }
+  const source = ts.createSourceFile(
+    "market-data-query.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const credentialKeys = new Set([
+    "api-key",
+    "api-token",
+    "api_key",
+    "api_token",
+    "apikey",
+    "apitoken",
+    "authorization",
+    "token",
+  ]);
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)) {
+      const setter = namedBoundaryPropertyAccess(
+        node.expression,
+        new Set(["append", "set"]),
+      );
+      if (
+        setter !== null &&
+        credentialKeys.has(
+          (staticStringValue(node.arguments[0]) ?? "").toLowerCase(),
+        )
+      ) {
+        found = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
+function personalMarketDataUsesGlobalFetch(source: ts.SourceFile): boolean {
+  let found = false;
+  const globalNames = new Set(["global", "globalThis", "self", "window"]);
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isIdentifier(node) &&
+      node.text === "fetch" &&
+      !isBoundaryIdentifierDeclarationOrPropertyName(node)
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node)) &&
+      namedBoundaryPropertyAccess(node, new Set(["fetch"])) !== null &&
+      ts.isIdentifier(unwrapBoundaryExpression(node.expression)) &&
+      globalNames.has(unwrapBoundaryExpression(node.expression).getText())
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isObjectBindingPattern(node.name) &&
+      node.initializer !== undefined &&
+      ts.isIdentifier(unwrapBoundaryExpression(node.initializer)) &&
+      globalNames.has(unwrapBoundaryExpression(node.initializer).getText()) &&
+      node.name.elements.some(
+        (element) =>
+          (element.propertyName ?? element.name).getText(source) === "fetch",
+      )
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
+function personalMarketDataStaticStringCount(
+  source: ts.SourceFile,
+  value: string,
+): number {
+  let count = 0;
+  const visit = (node: ts.Node): void => {
+    if (ts.isStringLiteralLike(node) && node.text === value) count += 1;
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return count;
+}
+
+function personalMarketDataWebViolation(content: string): boolean {
+  const providerHost = ["api", "tiingo", "com"].join(".");
+  const tokenEnvironmentLiteral = ["PERSONAL_MARKET_DATA", "TIINGO_TOKEN"].join(
+    "_",
+  );
+  return (
+    content.includes(providerHost) ||
+    content.includes(tokenEnvironmentLiteral) ||
+    /["'`]\/(?:iex|tiingo\/daily)\//iu.test(content) ||
+    collectModuleSpecifiers(content).some(
+      (specifier) =>
+        specifier.includes("personal-market-data-provider") ||
+        /(?:^|[/@-])tiingo(?:[/@-]|$)/iu.test(specifier),
+    )
+  );
+}
+
+function personalMarketDataIsNetworkModule(specifier: string): boolean {
+  return /^(?:node:)?(?:dgram|dns(?:\/promises)?|http|http2|https|net|tls|undici)$/u.test(
+    specifier,
+  );
+}
+
+function personalMarketDataIsTestSource(path: string): boolean {
+  return (
+    /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/iu.test(path) ||
+    /(?:^|\/)test-[^/]+\.[cm]?[jt]sx?$/iu.test(path)
+  );
+}
+
+function personalMarketDataIsProductionApiSource(path: string): boolean {
+  return (
+    path.startsWith("apps/api/src/") &&
+    executableSourceExtensions.has(extname(path).toLowerCase()) &&
+    !personalMarketDataIsTestSource(path)
+  );
 }
 
 async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
@@ -5489,6 +6108,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
+      "apps/api/src/workspace-market-data-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
       "apps/api/src/personal-security-master-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
@@ -5527,6 +6150,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         "searchPersonalSecurityMaster",
         "type PersonalSecurityMasterCatalog",
         "type PersonalSecurityMasterSearchResult",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-market-data-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
       ],
     ],
   ]);
@@ -10502,6 +11133,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
       ],
     ],
     [
+      "apps/api/src/workspace-market-data-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
       "apps/api/src/personal-vault-routes.ts",
       [
         "LOCAL_RESEARCH_RECORD_KINDS",
@@ -11023,11 +11658,13 @@ function localResearchVaultAuthBeforeParseViolation(
   const requiredOwnerBoundaryAnchors = [
     'body: "json" | "none"',
     'body === "json" ? "vault-json" : "vault-empty"',
-    'bodyPolicy: "none" | "vault-empty" | "vault-json" = "none"',
+    'bodyPolicy: "none" | "read-json" | "vault-empty" | "vault-json" = "none"',
     "request.raw.rawHeaders",
     'rawNames.includes("transfer-encoding")',
     "count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1",
     'bodyPolicy === "vault-json"',
+    'bodyPolicy === "read-json"',
+    "Number(contentLength.value) > PERSONAL_JSON_BODY_LIMIT_BYTES",
     "Number(contentLength.value) > 300 * 1_024",
     'contentType.value.toLowerCase() !== "application/json"',
   ];
@@ -11364,11 +12001,13 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
   const ownerBoundaryFixture = `
     body: "json" | "none"
     body === "json" ? "vault-json" : "vault-empty"
-    bodyPolicy: "none" | "vault-empty" | "vault-json" = "none"
+    bodyPolicy: "none" | "read-json" | "vault-empty" | "vault-json" = "none"
     request.raw.rawHeaders
     rawNames.includes("transfer-encoding")
     count(rawNames, PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME) !== 1
     bodyPolicy === "vault-json"
+    bodyPolicy === "read-json"
+    Number(contentLength.value) > PERSONAL_JSON_BODY_LIMIT_BYTES
     Number(contentLength.value) > 300 * 1_024
     contentType.value.toLowerCase() !== "application/json"
   `;

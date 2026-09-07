@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Research Cockpit Local API
-  version: 0.7.0
+  version: 0.8.0
   description: >-
     Evidence-first loopback API. Research data and the two research-state PUT
     operations remain synthetic-only. An explicit personal-readiness mode may
@@ -14,8 +14,11 @@ info:
     no data-request operation. A distinct personal security-master mode may
     expose one startup-admitted owner-local snapshot receipt and bounded
     symbol/name search; it remains offline and does not activate a provider,
-    vault, or filing release. X-Demo-Persona values are public selectors, not
-    secrets, credentials, or owner authentication.
+    vault, or filing release. Personal workspace mode may additionally use an
+    owner-supplied Tiingo token for an explicit, authenticated market overview
+    request; returned market data is never persisted by the application.
+    X-Demo-Persona values are public selectors, not secrets, credentials, or
+    owner authentication.
 servers:
   - url: http://127.0.0.1:3100
 paths:
@@ -465,6 +468,149 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: The query grammar, request boundary, or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/market-data/status:
+    get:
+      operationId: getPersonalMarketDataStatus
+      summary: Read whether the owner-supplied personal market feed is configured.
+      description: >-
+        Authenticated, body-free status for the personal Tiingo adapter. The
+        response never exposes or fingerprints the token and performs no
+        provider request. It accepts no path or query parameters; HEAD is not
+        exposed.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "200":
+          description: The value-free provider configuration status is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalMarketDataStatus"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/market-data/overview:
+    post:
+      operationId: loadPersonalMarketOverview
+      summary: Load a current quote and bounded daily price history for one listing.
+      description: >-
+        Authenticated, read-only owner action. The body names one startup-admitted
+        listing and a bounded history range; the server resolves that identity
+        before making fixed-host Tiingo IEX and EOD requests. The provider token
+        is sent only in the Authorization header. Raw and adjusted OHLCV,
+        dividends, and split factors exist only in active process/browser memory
+        and are not persisted, exported, redistributed, or replaced with
+        synthetic values.
+      security:
+        - PersonalOwnerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonalMarketOverviewRequest"
+      responses:
+        "200":
+          description: The provider-backed quote and bounded history are available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalMarketOverview"
+        "400":
+          description: The accepted request body is invalid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: The admitted listing or provider coverage is unavailable.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "424":
+          description: The owner-supplied provider credential was rejected.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: The personal provider request limit was reached.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "502":
+          description: Tiingo was unavailable or returned an invalid response.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "503":
+          description: No owner-supplied Tiingo token is configured.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -2160,6 +2306,339 @@ components:
           type: integer
           minimum: 0
           maximum: 10000
+    PersonalMarketDataStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - profile
+        - provider
+        - schemaVersion
+        - status
+      properties:
+        profile:
+          const: personal_single_user_local_market_data
+        provider:
+          $ref: "#/components/schemas/PersonalMarketDataProvider"
+        schemaVersion:
+          const: "1.0.0"
+        status:
+          type: string
+          enum:
+            - configured
+            - not_configured
+    PersonalMarketDataProvider:
+      type: object
+      description: >-
+        Fixed provider and personal-use handling labels. No token, account,
+        quota counter, request identifier, or provider response is exposed.
+      additionalProperties: false
+      required:
+        - attribution
+        - export
+        - historyFeed
+        - id
+        - name
+        - persistence
+        - quoteFeed
+        - redistribution
+        - retention
+      properties:
+        attribution:
+          const: Tiingo
+        export:
+          const: prohibited
+        historyFeed:
+          const: tiingo_eod_composite
+        id:
+          const: tiingo
+        name:
+          const: Tiingo
+        persistence:
+          const: none
+        quoteFeed:
+          const: tiingo_iex_derived_reference
+        redistribution:
+          const: prohibited
+        retention:
+          const: active_owner_session_memory_only
+    PersonalMarketOverviewRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - listingId
+        - symbol
+        - range
+      properties:
+        listingId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+        range:
+          type: string
+          enum:
+            - 1m
+            - 3m
+            - ytd
+            - 1y
+            - 5y
+            - 10y
+    PersonalMarketOverview:
+      type: object
+      additionalProperties: false
+      required:
+        - history
+        - profile
+        - provider
+        - quote
+        - schemaVersion
+        - security
+        - status
+      properties:
+        history:
+          $ref: "#/components/schemas/PersonalMarketDataHistory"
+        profile:
+          const: personal_single_user_local_market_data
+        provider:
+          $ref: "#/components/schemas/PersonalMarketDataProvider"
+        quote:
+          $ref: "#/components/schemas/PersonalMarketDataQuote"
+        schemaVersion:
+          const: "1.0.0"
+        security:
+          $ref: "#/components/schemas/PersonalMarketDataIdentity"
+        status:
+          const: available
+    PersonalMarketDataIdentity:
+      type: object
+      additionalProperties: false
+      required:
+        - country
+        - exchangeMic
+        - issuerName
+        - listingId
+        - securityName
+        - symbol
+      properties:
+        country:
+          const: US
+        exchangeMic:
+          type: string
+          minLength: 4
+          maxLength: 4
+          pattern: "^[A-Z0-9]{4}$"
+        issuerName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        listingId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        securityName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+    PersonalMarketDataQuote:
+      type: object
+      additionalProperties: false
+      required:
+        - change
+        - changePercent
+        - currency
+        - freshness
+        - ingestedAt
+        - kind
+        - previousClose
+        - price
+        - sourceTime
+      properties:
+        change:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+          pattern: "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        changePercent:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+          pattern: "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        currency:
+          const: USD
+        freshness:
+          type: string
+          enum:
+            - current
+            - older_than_36_hours
+        ingestedAt:
+          type: string
+          format: date-time
+        kind:
+          type: string
+          enum:
+            - derived_realtime_reference
+            - end_of_day_close
+        previousClose:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        price:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        sourceTime:
+          type: string
+          format: date-time
+          description: >-
+            Provider observation time for a derived quote. An end-of-day
+            fallback uses the returned trading-session date modeled at the US
+            regular-session close (16:00 America/New_York).
+    PersonalMarketDataHistory:
+      type: object
+      additionalProperties: false
+      required:
+        - bars
+        - endDate
+        - range
+        - startDate
+      properties:
+        bars:
+          type: array
+          minItems: 1
+          maxItems: 4096
+          items:
+            $ref: "#/components/schemas/PersonalMarketDataDailyBar"
+        endDate:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        range:
+          type: string
+          enum:
+            - 1m
+            - 3m
+            - ytd
+            - 1y
+            - 5y
+            - 10y
+        startDate:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    PersonalMarketDataDailyBar:
+      type: object
+      additionalProperties: false
+      required:
+        - adjusted
+        - date
+        - dividendCash
+        - raw
+        - splitFactor
+      properties:
+        adjusted:
+          $ref: "#/components/schemas/PersonalMarketDataAdjustedOhlcv"
+        date:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        dividendCash:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        raw:
+          $ref: "#/components/schemas/PersonalMarketDataRawOhlcv"
+        splitFactor:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    PersonalMarketDataAdjustedOhlcv:
+      type: object
+      additionalProperties: false
+      required:
+        - close
+        - high
+        - low
+        - open
+        - volume
+      properties:
+        close:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        high:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        low:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        open:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        volume:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    PersonalMarketDataRawOhlcv:
+      type: object
+      additionalProperties: false
+      required:
+        - close
+        - high
+        - low
+        - open
+        - volume
+      properties:
+        close:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        high:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        low:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        open:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        volume:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: "^(?:0|[1-9][0-9]*)$"
     InstrumentId:
       type: string
       minLength: 3

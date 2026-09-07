@@ -2470,10 +2470,15 @@ permitted coarse outcome and does not establish feature parity.
 Cycle 3e-b1 now implements authenticated browser search over the admitted
 universe plus one durable typed owner-local `My Watchlist`, including
 add/remove/reorder, inline notes, restart persistence, and explicit degraded
-states. Cycle 3g-a is now the highest-priority visible boundary: current quote
-and price-history composition with a useful chart. Security and privacy remain
-acceptance criteria rather than standalone milestones unless they block
-correctness, private data, or credentials.
+states. Cycle 3g-a1 adds an on-demand, owner-token Tiingo market view for a
+catalog-bound listing: a labelled current derived reference price, six bounded
+daily-history ranges through ten years, raw and adjusted OHLCV, dividend/split
+markers, a price/volume chart, and an exact table. Starter-compatible data is
+not persisted and has no synthetic fallback. Full Cycle 3g-a remains open for
+the declared 100-symbol validation and independent corporate-action golden
+reconciliation. Security and privacy remain acceptance criteria rather than
+standalone milestones unless they block correctness, private data, or
+credentials.
 
 The delivery waves are:
 
