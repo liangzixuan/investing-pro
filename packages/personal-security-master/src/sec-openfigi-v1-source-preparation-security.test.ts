@@ -368,6 +368,7 @@ function buildFixture(count = 1): SecOpenFigiV1SourcePreparationInput {
       figi: figi("1", index),
       marketSector: "Equity",
       name: `Synthetic Security ${index + 1}`,
+      providerQueryMic: "XNAS",
       securityType2: "Common Stock",
       shareClassFigi: figi("2", index),
       ticker: symbol,

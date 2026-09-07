@@ -38,6 +38,9 @@ describe("sec_openfigi_v1 source preparation", () => {
     expect(SEC_OPENFIGI_V1_SOURCE_PREPARATION_CHECKS).toContain(
       "existing_personal_security_master_admission_is_mandatory",
     );
+    expect(SEC_OPENFIGI_V1_SOURCE_PREPARATION_CHECKS).toContain(
+      "exact_operating_and_provider_query_mic_family_binding",
+    );
     expect(SEC_OPENFIGI_V1_SOURCE_PREPARATION_NOT_PROVEN).toContain(
       "network_acquisition_credentials_or_fair_access_behavior",
     );
@@ -150,6 +153,57 @@ describe("sec_openfigi_v1 source preparation", () => {
     );
   });
 
+  it("accepts only the acquired operating/query MIC carrier family", () => {
+    for (const providerQueryMic of ["XNAS", "XNCM", "XNGS", "XNMS"]) {
+      const documents = buildDocuments(1);
+      documentRecords(
+        documents.aggregatedOpenFigiMappings,
+      )[0]!.providerQueryMic = providerQueryMic;
+
+      const prepared = prepareSecOpenFigiV1Source(assembleFixture(documents));
+
+      expect(prepared.status).toBe("prepared");
+      expect(prepared.receipt.admittedRecords).toBe(1);
+    }
+
+    for (const providerQueryMic of ["XNYS", "XTSE"]) {
+      const documents = buildDocuments(1);
+      documentRecords(
+        documents.aggregatedOpenFigiMappings,
+      )[0]!.providerQueryMic = providerQueryMic;
+
+      expect(() =>
+        prepareSecOpenFigiV1Source(assembleFixture(documents)),
+      ).toThrowError(
+        expect.objectContaining({ code: "SEC_OPENFIGI_V1_ARTIFACT_INVALID" }),
+      );
+    }
+
+    const nyseDocuments = buildDocuments(1);
+    documentRecords(nyseDocuments.secCandidates)[0]!.exchangeName = "NYSE";
+    const nyseMapping = documentRecords(
+      nyseDocuments.aggregatedOpenFigiMappings,
+    )[0]!;
+    nyseMapping.exchangeMic = "XNYS";
+    nyseMapping.providerQueryMic = "XNYS";
+    const nyseMic = documentRecords(nyseDocuments.isoMicRegistry)[0]!;
+    nyseMic.mic = "XNYS";
+    nyseMic.operatingMic = "XNYS";
+    nyseMic.secExchangeName = "NYSE";
+    expect(
+      prepareSecOpenFigiV1Source(assembleFixture(nyseDocuments)).status,
+    ).toBe("prepared");
+
+    const missingCarrier = buildDocuments(1);
+    delete documentRecords(missingCarrier.aggregatedOpenFigiMappings)[0]!
+      .providerQueryMic;
+    expect(() =>
+      prepareSecOpenFigiV1Source(assembleFixture(missingCarrier)),
+    ).toThrowError(
+      expect.objectContaining({ code: "SEC_OPENFIGI_V1_ARTIFACT_INVALID" }),
+    );
+  });
+
   it("rejects share-class FIGI equality and quarantines provider identity reuse across rows", () => {
     for (const equalTo of ["compositeFigi", "figi"] as const) {
       const documents = buildDocuments(1);
@@ -199,7 +253,6 @@ describe("sec_openfigi_v1 source preparation", () => {
         : "Common Stock";
     covers[4]!.observedAt = "2025-12-31T23:59:59.999Z";
     candidates[5]!.exchangeName = "Toronto Stock Exchange";
-    mappings[5]!.exchangeMic = "XTSE";
     mics.push({
       countryCode: "CA",
       mic: "XTSE",
@@ -426,6 +479,7 @@ function buildDocuments(count: number): SourceDocuments {
       figi: figi("1", index),
       marketSector: "Equity",
       name: `Synthetic Security ${index + 1}`,
+      providerQueryMic: "XNAS",
       securityType2:
         classification === "common_stock"
           ? "Common Stock"

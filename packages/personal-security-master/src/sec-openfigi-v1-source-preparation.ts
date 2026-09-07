@@ -40,6 +40,7 @@ export const SEC_OPENFIGI_V1_SOURCE_PREPARATION_CHECKS = Object.freeze([
   "deterministic_value_free_record_quarantine",
   "independently_minted_role_typed_opaque_internal_identifiers",
   "active_us_operating_iso_mic_reconciliation",
+  "exact_operating_and_provider_query_mic_family_binding",
   "one_unambiguous_listed_openfigi_mapping_per_admitted_candidate",
   "issuer_filed_cover_and_openfigi_common_stock_or_adr_agreement",
   "openfigi_identifiers_remain_typed_provider_mappings",
@@ -215,6 +216,7 @@ interface OpenFigiMapping {
   readonly figi: string;
   readonly marketSector: "Equity";
   readonly name: string;
+  readonly providerQueryMic: string;
   readonly securityType2: "Common Stock" | "Depositary Receipt";
   readonly shareClassFigi: string;
   readonly ticker: string;
@@ -299,6 +301,10 @@ const FIGI = /^BBG[A-Z0-9]{9}$/u;
 const SAFE_ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 const DISALLOWED_CHARACTER = /[\p{Cc}\p{Cf}\p{Cs}]/u;
+const OPENFIGI_PROVIDER_QUERY_MICS_BY_OPERATING = Object.freeze({
+  XNAS: Object.freeze(["XNAS", "XNCM", "XNGS", "XNMS"]),
+  XNYS: Object.freeze(["XNYS"]),
+} as const);
 const OPAQUE_ID =
   /^oid-(issuer|security|share-class|listing|mapping)-[0-9a-f]{32}$/u;
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
@@ -857,6 +863,7 @@ function validateAggregatedOpenFigiMappings(
       "figi",
       "marketSector",
       "name",
+      "providerQueryMic",
       "securityType2",
       "shareClassFigi",
       "ticker",
@@ -868,6 +875,7 @@ function validateAggregatedOpenFigiMappings(
       !isFigi(record.figi) ||
       record.marketSector !== "Equity" ||
       !isName(record.name) ||
+      !isAllowedProviderQueryMic(record.exchangeMic, record.providerQueryMic) ||
       (record.securityType2 !== "Common Stock" &&
         record.securityType2 !== "Depositary Receipt") ||
       !isFigi(record.shareClassFigi) ||
@@ -885,6 +893,7 @@ function validateAggregatedOpenFigiMappings(
         figi: record.figi,
         marketSector: "Equity",
         name: record.name,
+        providerQueryMic: record.providerQueryMic as string,
         securityType2: record.securityType2,
         shareClassFigi: record.shareClassFigi,
         ticker: record.ticker,
@@ -893,6 +902,25 @@ function validateAggregatedOpenFigiMappings(
     );
   }
   return Object.freeze(result);
+}
+
+function isAllowedProviderQueryMic(
+  operatingMic: unknown,
+  providerQueryMic: unknown,
+): boolean {
+  if (
+    typeof operatingMic !== "string" ||
+    typeof providerQueryMic !== "string" ||
+    !isMic(operatingMic) ||
+    !isMic(providerQueryMic)
+  ) {
+    return false;
+  }
+  const family =
+    OPENFIGI_PROVIDER_QUERY_MICS_BY_OPERATING[
+      operatingMic as keyof typeof OPENFIGI_PROVIDER_QUERY_MICS_BY_OPERATING
+    ];
+  return family !== undefined && family.includes(providerQueryMic);
 }
 
 function validateIsoMicRegistry(value: unknown): readonly IsoMicEntry[] {
