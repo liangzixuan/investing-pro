@@ -2,9 +2,11 @@
 
 Status: **Recorded public engineering Pass only for exact merge-free source
 revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
-`0374becdf96c1e9891d80e73024c8be0440fd812`. No real source, snapshot,
-breadth, declared-hardware latency result, owner authorization, Cycle 3e-a
-acceptance/promotion, or parity is recorded.**
+`0374becdf96c1e9891d80e73024c8be0440fd812`. This historical correction
+contains no private result. Cycle 3e-a was later accepted and promoted only for
+exact source revision `5b547c88f213cfbc10450c460528a97ee395a834` and the
+declared personal scope, with private evidence limited publicly to the
+permitted coarse outcome in its exit matrix.**
 
 ## Context
 
@@ -152,14 +154,12 @@ This recorded public engineering correction does not establish:
    product feature;
 7. remote, multi-user, enterprise, commercial, redistribution, or production
    safety;
-8. Cycle 3e-a acceptance or promotion; or
+8. Cycle 3e-a acceptance or promotion by this correction alone; or
 9. competitor feature parity.
 
-Synthetic timing remains engineering-only even after this correction. The real
-Cycle 3e-a exit still requires the separately owner-approved exact source,
-admission and breadth result, plus a fresh measurement on declared owner
-hardware using the exact recorded package-owned-clock implementation and exact loaded
-real universe.
+Synthetic timing remains engineering-only even after this correction. The
+later exact Cycle 3e-a gate is recorded separately as a permitted coarse Pass
+for the declared personal scope; its private evidence is not restated here.
 
 ## References
 

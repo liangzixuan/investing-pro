@@ -136,11 +136,11 @@ Local-temporary test vaults and keys are not actual personal activation
 evidence.
 
 Cycle 3e-a owner-local security-master snapshot admission and symbol/name search
-has a recorded public engineering Pass only for its exact engine/API chain. It
-is not accepted or promoted. This Cycle 3d promotion and the Cycle 3e-a recorded
-public engineering result authorize
-no source download or network adapter, and no real-universe breadth claim may
-be made until a later exact owner-approved, rights-compatible snapshot is
+is accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited publicly to its permitted coarse outcome. This
+Cycle 3d promotion and the Cycle 3e-a promotion authorize
+no source download or network adapter beyond their exact recorded boundaries.
 separately admitted and measured.
 
 ## References

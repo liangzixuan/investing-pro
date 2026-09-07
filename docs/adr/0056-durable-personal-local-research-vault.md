@@ -324,11 +324,11 @@ Any later operation on an actual personal vault must be explicitly and
 separately authorized and may publish only a coarse nonsecret outcome.
 
 Cycle 3e-a owner-local security-master snapshot admission and symbol/name search
-has a recorded public engineering Pass only for its exact engine/API chain. It
-is not accepted or promoted. This promoted Cycle 3d source and the Cycle 3e-a
-recorded public engineering result
-authorize no data download or network adapter, and no real-universe breadth
-claim exists without a later exact owner-approved, rights-compatible source
+is accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited publicly to its permitted coarse outcome. This
+promoted Cycle 3d source and the Cycle 3e-a promotion authorize no data download
+or network adapter beyond their exact recorded boundaries.
 snapshot and declared-hardware measurement.
 
 ## References

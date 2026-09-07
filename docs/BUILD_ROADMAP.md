@@ -1986,20 +1986,21 @@ Cycle 3d is accepted and promoted only for its exact corrected
 public/local-temporary chain rooted at
 `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
-backup, restore, or private activation has occurred. Cycle 3e-a has a recorded
-public engineering Pass for its exact chain from
-`5186103977b906d3c035599b3b2b00793926fca3` through
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`, but its real snapshot, real-
-universe breadth, and real-hardware latency result remain pending, so it is not
-accepted or promoted. Cycle 3e-a1 has a recorded public engineering Pass only
+backup, restore, or private activation has occurred. Cycle 3e-a is accepted and
+promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited to the permitted coarse outcome in its exit
+matrix. Cycle 3e-a1 has a recorded public engineering Pass only
 for exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and
 routing closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source
 or private operation is recorded. Cycle 3e-a2 has a recorded public engineering
 Pass only for exact source revision
 `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
-breadth, latency, or private operation. Cycle 3e-b and Cycles 3f through 3q
-remain planned.** No parity claim is made.
+breadth, latency, or private operation in that historical subcycle record.
+Cycle 3e-b1 is the current highest-priority visible product milestone; later
+Cycle 3e-b work and Cycles 3f through 3q remain planned.** No parity claim is
+made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
@@ -2008,13 +2009,13 @@ is closed by Cycle 3a only for its exact source. Cycle 3b authenticated personal
 dossier composition is closed only for its exact promoted source. Cycle 3c's provider-neutral,
 no-transport public control plane and Cycle 3d's corrected
 public/local-temporary vault boundary are promoted only for their exact source
-chains. Cycle 3e-a now records owner-local security-master snapshot admission
-and deterministic search as a verified public engineering boundary, but
-synthetic scale cannot establish its declared real-catalog result. Cycle 3e-a1
+chains. Cycle 3e-a is accepted for one exact personal security-master snapshot
+admission and measurement result represented only by the permitted coarse
+outcome. Cycle 3e-a1
 separately records only an offline deterministic handoff from six exact
-canonical source-preparation roles into that admission boundary. Any later
-real latency evidence must also use the recorded Cycle 3e-a2 package-owned
-monotonic clock and explicitly bound timed region. Any later
+canonical source-preparation roles into that admission boundary. The accepted
+private gate used the recorded Cycle 3e-a2 package-owned monotonic clock and
+explicitly bound timed region. Any later
 networked source must still enter through the
 separately declared, explicitly enabled
 `personal_single_user_local_connected` profile with source-specific terms,
@@ -2320,21 +2321,20 @@ alert, tenant, remote service, or production boundary. The local gate at
 terminal routing closure passed 1,906 tests with 9 intentional skips, and CI,
 cross-engine, parser isolation, and payload-custody workflows passed there at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`. Cycle 3e-a owner-local
-security-master snapshot admission and search now has a recorded public
-engineering Pass. It cannot claim real breadth without a later exact owner-
-approved, rights-compatible source snapshot.
+security-master snapshot admission and search is accepted only for exact source
+revision `5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal
+scope. Private evidence is limited to the permitted coarse outcome.
 
 ### Cycle 3e-a — owner-local security-master snapshot and search
 
-Status: **Recorded public engineering Pass for the exact merge-free chain from
-`5186103977b906d3c035599b3b2b00793926fca3` through
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`. No real catalog, source download,
-provider credential, network operation, or private activation exists, and
-Cycle 3e-a is not accepted or promoted.** See
+Status: **Accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope.
+Private evidence is limited to the permitted coarse outcome in the Cycle 3e-a
+exit matrix.** See
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
-The prepared package admits one exact canonical snapshot with explicit
+The promoted package admits one exact canonical snapshot with explicit
 provenance, source-policy compatibility, source exclusion counts, stable
 issuer/security/share-class/listing/mapping identities, exact U.S./operating-
 MIC declarations, observation-only ticker chronology, and duplicate active
@@ -2368,14 +2368,11 @@ queries at result limit 25, with the ordered raw query set bound by canonical-
 JSON-plus-LF SHA-256 in the receipt. The recorded Cycle 3e-a2 public engineering
 correction removes the optional caller clock, requires exactly two arguments,
 captures the `node:perf_hooks` monotonic clock inside the package, and binds
-exact `clock` and `timedRegion` literals into the receipt. Promotion still
-requires one exact owner-
-approved real snapshot with at least 3,000 eligible active U.S.-listed common
-stocks/ADRs,
-exact policy binding and explicit exclusions, plus local symbol/name search p95
-below 200 ms on declared owner hardware with that exact loaded universe and
-measurement plan. These are personal source and quality gates, not enterprise
-requirements.
+exact `clock` and `timedRegion` literals into the receipt. The separately
+authorized private gate passed under that exact plan. Its source bytes, rows,
+exact count, exact latency, hardware detail, paths, digests, approvals, and
+ledgers remain outside repository-visible evidence. These are personal source
+and quality gates, not enterprise requirements.
 
 #### Cycle 3e-a1 — offline `sec_openfigi_v1` source preparation
 
@@ -2416,14 +2413,12 @@ capability. Public fixed failures and `exclusionReasonCounts` disclose no source
 values, rejected rows, paths, or credentials. Public hostile and at-least-
 3,000-row scale tests remain synthetic.
 
-The later private operation requires exact owner review of source versions,
-digests, retrieval metadata, terms, attribution, retention/deletion/export
-controls, policy compatibility, and all six canonical artifacts plus fresh
-single-use authorization. It must keep all private artifacts, source bytes,
+Cycle 3e-a1's public source and synthetic evidence did not themselves authorize
+or promote a private result. The separately authorized gate is represented only
+by the permitted coarse outcome. All private artifacts, source bytes,
 credentials, paths, row-level mappings, rejected rows, generated snapshot,
-measurement inputs, and runner/retry/cleanup material out of Git and public
-logs. Neither Cycle 3e-a1 source nor synthetic evidence accepts or promotes
-Cycle 3e-a.
+measurement inputs, and runner/retry/cleanup material remain outside Git and
+public logs.
 
 #### Cycle 3e-a2 — package-owned security-master measurement clock
 
@@ -2467,11 +2462,15 @@ tests and `personalSecurityMasterMeasurementBoundaryViolation` statically guard
 the clock capture, exact arity, timed region, receipt fields, and absence of an
 alternate caller timing seam.
 
-This is a repository-controlled integrity correction, so no real source
-operation was needed to verify it. Its recorded public source and synthetic
-timing establish no real catalog, breadth, declared-hardware latency, below-200-
-ms result, owner authorization, Cycle 3e-a acceptance/promotion, or feature
-parity. A later owner-only operation still requires fresh exact authorization.
+This historical repository-controlled correction required no private source
+operation. Its public source and synthetic timing establish no private
+sub-result. The later owner-authorized gate is represented only by the
+permitted coarse outcome and does not establish feature parity.
+
+Cycle 3e-b1 is now the highest-priority visible boundary: authenticated browser
+search over the admitted universe plus durable typed owner-local watchlists.
+Security and privacy remain acceptance criteria rather than standalone
+milestones unless they block correctness, private data, or credentials.
 
 The delivery waves are:
 

@@ -170,11 +170,11 @@ public/local-temporary chain rooted at
 `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`, with no actual personal vault, key,
 backup, restore, or private activation. Cycle 3e-a owner-local security-master
-snapshot admission and search has a recorded public engineering Pass only for
-its exact engine/API chain. It is not accepted or promoted and has no real
-breadth claim until a later
-exact owner-approved, rights-compatible source snapshot is admitted and
-measured. Enterprise and shared-service controls remain Out of scope for the
+snapshot admission and search is accepted and promoted only for exact source
+revision `5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal
+scope, with private evidence limited publicly to its permitted coarse outcome.
+That later promotion does not broaden this selected-fact release. Enterprise
+and shared-service controls remain Out of scope for the
 personal profile.
 
 ## References

@@ -1,16 +1,10 @@
 # ADR 0057: owner-local security-master snapshot and search
 
-Status: **Recorded public engineering Pass for the exact merge-free chain from
-`5186103977b906d3c035599b3b2b00793926fca3` through
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`. No real security-master snapshot,
-provider credential, download, network request, or private activation has
-occurred. The separate Cycle 3e-a1 offline preparation boundary is recorded only
-for exact source `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
-`5e27bed1a11956bb207f523739083131aea254f0`. Cycle 3e-a2 records a public
-engineering Pass only for exact source
-`8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
-`0374becdf96c1e9891d80e73024c8be0440fd812`. Cycle 3e-a is not accepted or
-promoted.**
+Status: **Accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope.
+Private evidence is limited to the permitted coarse owner-approved outcome
+below. The earlier public engine, offline-preparation, and measurement-
+integrity records remain limited to their exact historical source chains.**
 
 ## Context
 
@@ -303,20 +297,18 @@ boundary.
 
 ## Exact nonclaims
 
-This prepared Cycle 3e-a slice does not establish:
+The historical public engineering slices alone do not establish:
 
-1. an actual owner-local security-master snapshot or private activation;
+1. a private field or private execution sub-result;
 2. a provider credential, API key, network request, adapter, refresh, or
    scheduler;
 3. source authenticity, provider attestation, entitlement validity, legal
    advice, or compliance in fact;
-4. at least 3,000 real eligible active U.S.-listed common stocks/ADRs;
+4. complete U.S. or global coverage;
 5. complete U.S. or global coverage, current mappings, or correct external
    classification;
 6. complete or exchange-effective ticker/corporate-action history;
-7. p95 below 200 ms on declared owner hardware with the exact real loaded
-   universe and fixed 100-iteration, 32-distinct-query, limit-25 digest-bound
-   plan;
+7. a public exact count, latency, hardware detail, or measurement digest;
 8. a browser company-search workflow, watchlists, persistence, refresh,
    prices, statements, charts, screening, or portfolio integration;
 9. protection against a hostile same-user process, administrator, filesystem,
@@ -368,26 +360,30 @@ independent review. Its attempt-1 CI run `33823588896` passed jobs
 `100871342729`, parser-isolation run `33823588916`/job `100871341920`, and
 cross-engine run `33823588901`/job `100871342184` also passed. No routing-tip
 normalization run was triggered or required because the exact five-path routing
-transition did not match that workflow's path filters. This record establishes
-no real measurement, breadth, Cycle 3e-a acceptance/promotion, or parity. See
+transition did not match that workflow's path filters. This historical record
+establishes no private sub-result or parity. See
 [ADR 0059](./0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](../CYCLE_3E_A2_EXIT_MATRIX.md).
 
-Cycle 3e-a itself remains **not accepted or promoted** until a later exact
-owner-approved `owner_local_source` snapshot:
+The separately authorized private gate passed for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834`. Repository-visible evidence is
+limited to this statement: **Coarse owner-approved private security-master
+snapshot admission and search-measurement outcome: Pass for the exact personal
+scope.** No private sub-result or operation detail is public evidence.
 
-- is bound to exact source bytes/versions and a reviewed compatible policy;
-- contains at least 3,000 eligible active U.S.-listed common stocks and ADRs
-  after explicit ineligible, unsupported, stale, and quarantined exclusions;
-- passes all identity, listing, mapping, and duplicate MIC-symbol checks; and
-- measures local search p95 below 200 ms on declared owner hardware with that
-  exact loaded universe under the fixed 100-iteration, 32-distinct-query,
-  limit-25 digest-bound plan.
+Source bytes, provider credentials, local paths, row-level mappings, rejected
+rows, exact counts, exact latency, hardware details, generated snapshot,
+digests, approval, and ledger material remain outside Git, logs, fixtures, and
+public CI. Cycle 3e-a is accepted and promoted only for the exact source above
+and the declared personal scope. It does not provide a browser workflow,
+automated refresh, complete exchange-effective ticker history, or competitor
+parity.
 
-That later private operation must keep source bytes, provider credentials,
-local paths, rejected rows, and any restricted metadata out of Git, logs,
-fixtures, and public CI. Public evidence may record only an allowed coarse,
-nonsecret result. No enterprise approval is a prerequisite for this personal
+Cycle 3e-b1 is the next highest-priority product boundary: authenticated
+browser search over the admitted universe plus durable typed owner-local
+watchlists. Security and privacy remain acceptance criteria rather than
+standalone milestones unless they block correctness, private data, or
+credentials. No enterprise approval is a prerequisite for this personal
 profile.
 
 ## References

@@ -84,17 +84,16 @@ composition promoted only for exact source revision
 the permitted coarse outcome recorded in the Cycle 3b exit matrix; Cycle 3c provider-neutral source-policy control
 plane and Cycle 3d public/local-temporary research vault promoted only for
 their exact recorded chains; Cycle 3e-a owner-local security-master admission
-and search has a **recorded public engineering Pass** for its exact chain from
-`5186103977b906d3c035599b3b2b00793926fca3` through
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`, with real snapshot, real breadth,
-and real-hardware latency still pending and no acceptance or promotion; and
+and search is accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited to the permitted coarse outcome; and
 Cycle 3e-a1 has a recorded public engineering Pass only for exact source
 revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
 `5e27bed1a11956bb207f523739083131aea254f0`, with no real source or private
 operation; and Cycle 3e-a2 has a recorded public engineering Pass only for exact
 source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
-`0374becdf96c1e9891d80e73024c8be0440fd812`, with no real source, breadth,
-latency, acceptance, or promotion.
+`0374becdf96c1e9891d80e73024c8be0440fd812`, with no private source, breadth,
+latency, acceptance, or promotion in that historical subcycle record.
 The running application remains synthetic by default. Cycle 2q/2r/2s add
 disconnected manifest, local-file verification, custody-recording, and
 selected-live-root deletion boundaries; Cycle 2u adds a disconnected pure
@@ -2220,25 +2219,29 @@ verified the pinned corrected Cycle 3d chain. Exact promoted design, evidence,
 and nonclaims are in
 [ADR 0056](./adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./CYCLE_3D_EXIT_MATRIX.md). Cycle 3e-a owner-local
-security-master snapshot admission and symbol/name search now has a recorded
-public engineering Pass. No real breadth claim is available without a later
-exact owner-approved, rights-compatible source snapshot and declared-hardware
-measurement.
+security-master snapshot admission and symbol/name search is accepted only for
+exact source revision `5b547c88f213cfbc10450c460528a97ee395a834` and the
+declared personal scope. The private gate is represented only by the permitted
+coarse outcome.
 
 ## Cycle 3e-a owner-local security-master model
 
-Cycle 3e-a has a **recorded public engineering Pass** for exact merge-free
-source revision `5186103977b906d3c035599b3b2b00793926fca3` and its exact
-stabilization chain through `fda5148a4251a36861196029bbc6df6b7d1a84d0`. At
+Cycle 3e-a is **accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope**.
+Its earlier public engineering source revision
+`5186103977b906d3c035599b3b2b00793926fca3` and exact stabilization chain through
+`fda5148a4251a36861196029bbc6df6b7d1a84d0` remain historical. At
 that terminal tip, the full local gate passed 2,024 tests with 9 intentional
 skips. CI run `33691407884` passed Ubuntu job `100450725750` and Windows job
 `100450725932`; parser acceptance run `33691407866`, custody acceptance run
 `33691407885`, and cross-engine acceptance run `33691407952` also passed.
 
-That record covers public synthetic engineering only. No real security-master
-snapshot, provider credential, source download, network adapter, browser
-client, or private activation is recorded. Cycle 3e-a is not accepted or
-promoted.
+That historical record covers public synthetic engineering only. The later
+private gate is represented exclusively by: **Coarse owner-approved private
+security-master snapshot admission and search-measurement outcome: Pass for the
+exact personal scope.** No private source bytes, paths, rows, mappings, exact
+counts, exact latency, hardware detail, credentials, digests, approvals, or
+ledgers are repository-visible. Browser search and watchlists remain separate.
 
 The zero-production-dependency package
 `@research-cockpit/personal-security-master` defines schema `1.0.0`, profile
@@ -2464,23 +2467,19 @@ boundary are in
 [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and the
 [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
 
-A later private invocation requires exact owner review and fresh single-use
-authorization bound to the six canonical artifacts, source versions/digests,
-retrieval and policy evidence, exact implementation revision, output plan, and
-fixed measurement plan. Source bytes, credentials, paths, row-level mappings,
-rejected rows, restricted metadata, generated snapshot, and approval/runner/
-retry/cleanup material remain outside Git and public logs. The public preparer
-and its recorded public engineering evidence do not accept or promote Cycle
-3e-a.
+The public preparer and its recorded public engineering evidence did not
+themselves authorize a private result. The separately authorized gate is
+represented only by the permitted coarse outcome. Source bytes, credentials,
+paths, row-level mappings, rejected rows, restricted metadata, generated
+snapshot, and approval/runner/retry/cleanup material remain outside Git and
+public logs.
 
-Synthetic scale can verify the model but cannot close product breadth. The
-remaining exit requires a later exact owner-approved source/policy binding,
-at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit
-exclusions, no duplicate active MIC-symbol, and search p95 below 200 ms on
-declared hardware with that exact loaded real universe and fixed measurement
-plan. Enterprise approvals, tenant controls, commercial use, and production
+Synthetic scale verifies the model but does not establish a private result.
+The later exact owner-approved source/policy, breadth, identity, exclusion, and
+measurement gates passed and are represented only by the permitted coarse
+outcome. Enterprise approvals, tenant controls, commercial use, and production
 operations remain out of scope for this personal profile. Exact recorded engine
-design and pending real-product gates are in
+design and private-evidence limits are in
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
@@ -2531,12 +2530,13 @@ Exact design and evidence limits are in
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
 
-This recorded correction used no private material. It establishes no real
-source, snapshot, breadth, owner authorization, real-hardware latency, or below-
-200-ms result and cannot accept or promote Cycle 3e-a or establish competitor
-parity. A later exact owner-only measurement may become exit evidence only when
-freshly authorized and bound to the admitted real snapshot, declared hardware,
-and exact recorded package-owned-clock implementation.
+This historical correction used no private material and establishes no private
+sub-result. The later exact owner-authorized gate used the recorded package-
+owned-clock implementation and is represented only by the permitted coarse
+outcome. Neither record establishes competitor parity. Cycle 3e-b1 is the next
+highest-priority visible boundary: authenticated browser search plus durable
+typed owner-local watchlists, with security and privacy treated as acceptance
+criteria rather than standalone milestones.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

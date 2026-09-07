@@ -4,10 +4,13 @@ Status: **Recorded public engineering Pass only for exact merge-free source
 revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and routing closure
 `5e27bed1a11956bb207f523739083131aea254f0`. No real source artifact, provider
 credential, network request, generated real snapshot, owner authorization, or
-private activation is recorded. Cycle 3e-a2 records a public engineering Pass
+private activation is recorded in this historical ADR. Cycle 3e-a2 records a public engineering Pass
 only for exact source `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing
-closure `0374becdf96c1e9891d80e73024c8be0440fd812`. Cycle 3e-a remains not
-accepted or promoted.**
+closure `0374becdf96c1e9891d80e73024c8be0440fd812`. Cycle 3e-a was later accepted
+and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited publicly to the permitted coarse outcome in its
+exit matrix.**
 
 ## Context
 
@@ -231,9 +234,9 @@ custody run `33806494300`, normalization run `33806494295`, cross-engine run
 `33806494318`, and parser-isolation run `33806494364` also passed.
 
 That record establishes only the public offline source-preparation engineering
-boundary. Cycle 3e-a remains not accepted or promoted until the separate owner-
-only real source preparation, exact snapshot admission, at-least-3,000 breadth
-gate, and fixed declared-hardware p95 measurement all pass.
+boundary. It did not itself accept or promote Cycle 3e-a. The later exact
+Cycle 3e-a gate is recorded separately, with only its permitted coarse outcome
+public.
 
 Cycle 3e-a2 has a recorded public engineering Pass only for exact merge-free
 source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
@@ -255,8 +258,9 @@ and `100871342201`; custody run `33823588891`/job `100871342729`, parser-
 isolation run `33823588916`/job `100871341920`, and cross-engine run
 `33823588901`/job `100871342184` also passed. No routing-tip normalization run
 was triggered or required by the exact five-path routing transition. The
-correction authorizes no real operation, establishes no real breadth or
-latency, and cannot accept or promote Cycle 3e-a or establish parity.
+correction alone authorized no real operation, established no real breadth or
+latency, and could not accept or promote Cycle 3e-a or establish parity. The
+later exact personal-scope promotion does not broaden this historical record.
 
 ## References
 

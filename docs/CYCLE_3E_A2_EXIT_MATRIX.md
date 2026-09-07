@@ -15,12 +15,11 @@ tests with 9 intentional skips and all required source workflows; the routing
 closure passed 2,060 local tests with 9 intentional skips, clean independent
 review, and all required routing workflows on attempt 1.**
 
-Real-source and measurement status: **No real snapshot, private operation,
-owner authorization, real-universe breadth result, or declared-hardware latency
-result is recorded.**
-
-Acceptance/promotion status: **Recorded Cycle 3e-a2 public engineering Pass
-only. Cycle 3e-a remains not accepted or promoted.**
+Later Cycle 3e-a status: **Accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope.
+Private evidence is represented publicly only by the permitted coarse outcome
+in the Cycle 3e-a exit matrix.** This Cycle 3e-a2 record remains an engineering-
+only historical slice and contains no private sub-result.
 
 ## Gate matrix
 
@@ -119,11 +118,11 @@ mutable receipt binding, ineffective static/mutation guard, focused test
 failure, repository-gate failure, review blocker, topology mismatch, or terminal
 workflow failure.
 
-This recorded public engineering slice proves no real source acquisition,
+This historical public engineering slice alone proves no real source acquisition,
 rights, authenticity, completeness, private run, owner authorization, real
 3,000-security breadth, real latency, below-200-ms result, browser or watchlist
 feature, production safety, Cycle 3e-a acceptance/promotion, or competitor
-parity.
+parity. The later exact Cycle 3e-a promotion is recorded separately.
 
 ## References
 

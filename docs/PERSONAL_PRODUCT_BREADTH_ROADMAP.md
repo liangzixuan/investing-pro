@@ -11,20 +11,20 @@ provider-neutral, no-transport public source revision
 Cycle 3d is promoted only for its exact corrected public/local-temporary chain
 rooted at `520fb9f860600c699b9a5a6fee940bc3e1cb185c` and ending at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`; no actual personal vault, key,
-backup, restore, or private activation has occurred. Cycle 3e-a has a recorded
-public engineering Pass for its exact chain from
-`5186103977b906d3c035599b3b2b00793926fca3` through
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`, but its real snapshot, real-
-universe breadth, and real-hardware latency result remain pending, so it is not
-accepted or promoted. Cycle 3e-a1 has a recorded public engineering Pass only
+backup, restore, or private activation has occurred. Cycle 3e-a is accepted and
+promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited to the permitted coarse outcome recorded in its
+exit matrix. Cycle 3e-a1 has a recorded public engineering Pass only
 for exact source revision `0cf87021648e05c191eebbeb95aee6742c4c0f09` and
 routing closure `5e27bed1a11956bb207f523739083131aea254f0`; no real source
 or private operation is recorded. Cycle 3e-a2 has a recorded public engineering
 Pass only for exact source revision
 `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
-breadth, latency, or private operation. Cycle 3e-b and Cycles 3f through 3q
-remain planned.** This does not alter
+breadth, latency, or private operation in that historical subcycle record.
+Cycle 3e-b1 is the current highest-priority visible product milestone; later
+Cycle 3e-b work and Cycles 3f through 3q remain planned.** This does not alter
 the exact historical Cycle 2z personal result or
 make a feature-parity claim.
 
@@ -165,8 +165,8 @@ Later subcycles may widen a universe only with the same checks.
 | Personal dossier composition            | Promoted fixed-snapshot composition only for its exact source       | Cycle 3b        |
 | Connected source governance             | Provider-neutral public control plane promoted; no source activated | Cycle 3c        |
 | Durable personal state                  | Public/local-temporary SQLite vault promoted; no actual vault       | Cycle 3d        |
-| Security universe and local search      | Prepared exact-snapshot/search engine; no admitted real universe    | Cycle 3e-a      |
-| Owner-local watchlists                  | Generic vault record kind; no typed end-user workflow               | Cycle 3e-b      |
+| Security universe and local search      | Exact personal snapshot admitted and measured; API only             | Cycle 3e-a      |
+| Browser discovery and local watchlists  | Search API plus generic vault kind; no typed browser workflow        | Cycle 3e-b      |
 | Automated filings and amendments        | Manually prepared exact filing corpus                               | Cycle 3f        |
 | Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart                | Cycle 3g        |
 | Transparent technical indicators        | No end-user price/volume indicator workspace                        | Cycle 3g-b      |
@@ -486,20 +486,18 @@ result.
 
 Target: move from one symbol to a useful local U.S. common-stock universe.
 
-The roadmap splits this milestone into ordered boundaries. Cycle 3e-a has a
-recorded engine/API engineering Pass but remains unpromoted. Cycle 3e-a1
-records the separately reviewable offline source handoff. Cycle 3e-a2 records
-the repository-owned measurement-integrity correction that must be used before
-any later private latency result can count. Cycle 3e-b builds on the
-stable identities only after the real Cycle 3e-a exit is met.
+The roadmap splits this milestone into ordered boundaries. Cycle 3e-a is
+accepted and promoted only for its exact personal source. Cycle 3e-a1 records
+the separately reviewable historical offline source handoff, and Cycle 3e-a2
+records the historical repository-owned measurement-integrity correction.
+Cycle 3e-b1 is now the highest-priority visible product boundary.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
 
-Status: **Recorded public engineering Pass for the exact merge-free chain from
-`5186103977b906d3c035599b3b2b00793926fca3` through
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`. No real catalog, provider
-credential, download, network adapter, or private activation exists, and this
-cycle is not accepted or promoted.** See
+Status: **Accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope.
+Private evidence is limited to the permitted coarse outcome recorded in the
+Cycle 3e-a exit matrix.** See
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md) and
 the [Cycle 3e-a exit matrix](./CYCLE_3E_A_EXIT_MATRIX.md).
 
@@ -513,9 +511,9 @@ Exit objectives:
 
 Cycle 3e-a admits only an exact owner-local snapshot with explicit provenance,
 digest, source-policy compatibility, and rights-compatible local use. Synthetic
-scale cases may verify the implementation but cannot establish a real-universe
-breadth result. No network adapter or real snapshot is authorized by the Cycle
-3c or Cycle 3d public promotions.
+scale cases verify the implementation but cannot establish a private result.
+The separately authorized private gate is represented only by the permitted
+coarse outcome.
 
 The prepared engine enforces canonical bounded bytes, closed records, stable
 issuer/security/share-class/listing/provider-mapping identities with canonical
@@ -542,10 +540,11 @@ The chosen future free/personal, U.S.-listed-only source profile is
   never as internal identity; and
 - one pinned ISO 10383 MIC snapshot supplies exchange identity.
 
-The exact inputs, versions, retrieval metadata, digests, applicable terms, and
-source-policy record still require owner review before a real snapshot is
-admitted. Ambiguous reconciliation or disagreement between issuer-filed cover
-classification and the OpenFIGI mapping is quarantined. This profile defines
+The private gate reviewed and bound exact inputs, versions, retrieval metadata,
+digests, applicable terms, and source-policy material. Those details remain
+outside repository-visible evidence. Ambiguous reconciliation or disagreement
+between issuer-filed cover classification and the OpenFIGI mapping is
+quarantined. This profile defines
 ticker and provider mapping ambiguity to include more than one external ID for
 the same provider, mapping kind, and internal target. Source artifact URLs must
 be canonical query/fragment-free HTTPS locations with no URI-authority
@@ -566,10 +565,9 @@ synthetic or owner-local basis. A synthetic result is explicitly engineering-
 only. The recorded Cycle 3e-a2 public engineering correction removes the caller-
 supplied clock, requires exactly `(catalog, input)`, privately captures the
 monotonic `node:perf_hooks` clock, and binds exact clock and timed-region
-literals in the receipt. The real exit still
-requires p95 below 200 ms on declared owner hardware
-with the exact loaded real universe and that exact plan. Neither 3,000
-synthetic rows nor a synthetic timing result can close that gate.
+literals in the receipt. The later private gate passed under that exact plan;
+its exact count, latency, hardware detail, snapshot, digests, and rows remain
+outside repository-visible evidence.
 
 #### Cycle 3e-a1 — offline `sec_openfigi_v1` source preparation
 
@@ -661,16 +659,41 @@ operation, and public source plus synthetic timing cannot prove real breadth,
 real latency, a below-200-ms result, Cycle 3e-a acceptance/promotion, or feature
 parity.
 
-#### Cycle 3e-b — owner-local watchlists
+#### Cycle 3e-b — browser discovery and owner-local watchlists
+
+Status: **Planned. Cycle 3e-b1 is the current highest-priority visible product
+milestone.**
+
+Target: let the owner find a security in the admitted personal universe from
+the browser and save it in a durable typed local watchlist.
+
+Cycle 3e-b is split so the usable vertical slice lands before secondary
+hardening:
+
+- **3e-b1:** authenticated browser search over the admitted snapshot; one typed
+  durable primary `My Watchlist`; add, remove, and reorder; inline notes;
+  reload/restart persistence; and explicit loading, empty, error, conflict, and
+  stale-snapshot states; and
+- **3e-b2:** multi-list create/rename/delete, the same security across lists,
+  tags, import/export, and the aggregate stress case.
 
 Exit objectives:
 
-- owner-local watchlist CRUD, tags, ordering, notes, import, export, and a
-  10,000-membership aggregate stress case across all lists, allowing the same
-  security to appear in multiple lists, without a plan-imposed quota.
+- complete the 3e-b1 visible workflow before treating secondary hardening as a
+  release blocker;
+- 3e-b1 ships one primary typed watchlist with inline notes and the complete
+  visible state model; and
+- 3e-b2 adds multi-list CRUD, cross-list membership, tags, import, export, and a 10,000-membership aggregate
+  stress case across all lists without a plan-imposed quota.
 
 Each objective is admitted only for the exact loaded security-master snapshot;
 it is not a claim of complete U.S. or global coverage.
+
+Security and privacy remain acceptance criteria for every slice, not standalone
+milestones unless they block correctness, private data, or credentials. Remote,
+multi-user, tenant, shared-list, collaboration, cloud-sync, commercial,
+redistribution, high-availability, and production-operation requirements are
+outside this personal-only profile.
 
 ### Cycle 3f — automated SEC filing refresh and amendment discovery
 

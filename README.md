@@ -1238,15 +1238,13 @@ restore, or private activation. At terminal routing closure
 [ADR 0056](./docs/adr/0056-durable-personal-local-research-vault.md) and the
 [Cycle 3d exit matrix](./docs/CYCLE_3D_EXIT_MATRIX.md).
 
-Cycle 3e-a now has a **recorded public engineering Pass for its exact
-merge-free source/stabilization chain; it is not accepted or promoted**. The
-chain begins at `5186103977b906d3c035599b3b2b00793926fca3` and terminates at
-`fda5148a4251a36861196029bbc6df6b7d1a84d0`. At that tip, the full local gate
-passed 2,024 tests with 9 intentional skips. CI run `33691407884` succeeded for
-Ubuntu job `100450725750` and Windows job `100450725932`; parser acceptance run
-`33691407866`, custody acceptance run `33691407885`, and cross-engine
-acceptance run `33691407952` also succeeded. This evidence records only the
-public synthetic engine/API boundary.
+Cycle 3e-a is now **accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope**.
+Private evidence is limited to the permitted coarse owner-approved outcome in
+the Cycle 3e-a exit matrix. The earlier public engineering chain begins at
+`5186103977b906d3c035599b3b2b00793926fca3` and terminates at
+`fda5148a4251a36861196029bbc6df6b7d1a84d0`; its recorded local and CI evidence
+remains historical and unchanged.
 
 The zero-production-dependency
 `@research-cockpit/personal-security-master` package prepares strict canonical
@@ -1269,12 +1267,12 @@ listen; no request can select the snapshot, source, policy, or ranking. See
 [ADR 0057](./docs/adr/0057-owner-local-security-master-snapshot-and-search.md)
 and the [Cycle 3e-a exit matrix](./docs/CYCLE_3E_A_EXIT_MATRIX.md).
 
-No real snapshot, provider credential, download, network adapter, browser
-search client, or private activation is included. Synthetic 3,000-record scale
-and timing verify only the implementation. Cycle 3e-a still requires a later
-exact owner-approved, rights-compatible real snapshot with at least 3,000
-eligible active U.S.-listed common stocks/ADRs and measured local search p95
-below 200 ms on declared owner hardware under that exact measurement plan.
+The separately authorized private snapshot admission and measurement passed for
+the exact personal scope. Repository-visible evidence contains no private
+source bytes, paths, rows, mappings, exact counts, exact latency, hardware
+details, credentials, digests, approvals, or ledgers. Browser search,
+watchlists, automated refresh, and a continuously connected provider remain
+separate product work.
 
 The selected future free/personal source profile is `sec_openfigi_v1`: pinned
 SEC current-company ticker/exchange data, SEC submissions and issuer-filed
@@ -1308,15 +1306,11 @@ remain synthetic, including any 3,000-record case. See
 [ADR 0058](./docs/adr/0058-offline-sec-openfigi-v1-source-preparation.md) and
 the [Cycle 3e-a1 exit matrix](./docs/CYCLE_3E_A1_EXIT_MATRIX.md).
 
-Cycle 3e-a1 performs no fetch and contains no real source bytes, provider key,
-owner authorization, generated real snapshot, or private result. The later
-owner-only operation must bind and review the exact six artifacts, applicable
-terms and source-policy record, implementation revision, output, and fixed
-measurement plan under fresh single-use authorization. Cycle 3e-a remains not
-accepted or promoted until that real snapshot contains at least 3,000 eligible
-active U.S.-listed common stocks/ADRs and measures below 200 ms p95 on declared
-owner hardware under the exact plan. The recorded Cycle 3e-a1 public result
-does not authorize or constitute that real operation.
+Cycle 3e-a1 itself performed no fetch and contains no private source bytes,
+provider key, generated snapshot, or private sub-result. Its historical public
+result did not authorize the later operation. That separately authorized gate
+is represented only by the permitted coarse outcome in the Cycle 3e-a exit
+matrix.
 
 Cycle 3e-a2 now has a **recorded public engineering Pass only** for exact
 merge-free source revision `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and its
@@ -1350,12 +1344,15 @@ bindings, and absence of another timing seam. See
 [ADR 0059](./docs/adr/0059-package-owned-security-master-measurement-clock.md)
 and the [Cycle 3e-a2 exit matrix](./docs/CYCLE_3E_A2_EXIT_MATRIX.md).
 
-This recorded public engineering correction uses no real data or private
-operation. It establishes no real breadth or latency result and cannot accept
-or promote Cycle 3e-a or establish competitor parity. Any later owner-only
-latency evidence must use the exact recorded package-owned-clock implementation on
-the exact admitted real snapshot and declared hardware under fresh exact
-authorization.
+This recorded public engineering correction itself used no private data or
+operation. The separately authorized private gate used the exact recorded
+package-owned-clock implementation and is represented only by the permitted
+coarse outcome. Neither record establishes competitor parity.
+
+Cycle 3e-b1 is now the highest-priority visible milestone: authenticated
+browser search over the admitted universe plus durable typed owner-local
+watchlists. Security and privacy remain acceptance criteria, not standalone
+milestones unless they block correctness, private data, or credentials.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an

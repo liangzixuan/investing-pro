@@ -1,10 +1,10 @@
 # Cycle 3e-a exit matrix
 
-Scope: prepare exact owner-local security-master snapshot admission,
-deterministic in-memory symbol/name search, and one owner-session-authenticated
-read-only API mode without adding a source download, provider credential,
-network adapter, real catalog, browser client, watchlist workflow, or
-enterprise/shared-service scope. The decision is recorded in
+Scope: admit and measure one exact owner-local security-master snapshot,
+provide deterministic in-memory symbol/name search, and retain one
+owner-session-authenticated read-only API mode without adding a browser client,
+watchlist workflow, continuously connected provider, or enterprise/shared-
+service scope. The decision is recorded in
 [ADR 0057](./adr/0057-owner-local-security-master-snapshot-and-search.md).
 
 Implementation status: **Recorded public engineering Pass for the exact
@@ -27,55 +27,58 @@ engineering Pass only for exact source revision
 `0374becdf96c1e9891d80e73024c8be0440fd812`. No real measurement or private
 operation is recorded.**
 
-Real-snapshot authorization and admission status: **Pending exact owner review;
-no real snapshot or private activation has occurred.**
+Real-snapshot authorization and admission status: **Pass for the exact source
+revision and personal scope, with private evidence limited to the permitted
+coarse outcome below.**
 
-Acceptance/promotion status: **Not accepted or promoted.**
+Acceptance/promotion status: **Accepted and promoted only for exact source
+revision `5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal
+scope.**
 
 ## Gate matrix
 
-| Gate                             | Required result                                                                                                                                                                                                                                                                                        | Current status                                            |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| Synthetic default                | Existing synthetic API/web behavior remains the default                                                                                                                                                                                                                                                | Recorded engineering Pass                                 |
-| Prior-mode isolation             | Earlier personal, connected, and vault modes retain their exact contracts and reject security-master-only configuration                                                                                                                                                                                | Recorded engineering Pass                                 |
-| Exact mode                       | Only `personal_single_user_local_security_master` selects the dedicated non-splitting server                                                                                                                                                                                                           | Recorded engineering Pass                                 |
-| Startup closure                  | Owner bootstrap, one canonical fixed-name absolute snapshot path, and one exact digest are captured and deleted before listen                                                                                                                                                                          | Recorded engineering Pass                                 |
-| Stable file                      | One bounded regular single-link file is opened read-only/no-follow where available, read completely, and verified against pre/open/post identity and size                                                                                                                                              | Recorded engineering Pass                                 |
-| Intrinsic owned bytes            | Admission accepts an intrinsic ordinary `Uint8Array`/`ArrayBuffer` snapshot, copies without caller constructors/hooks, and wipes composition-owned bytes                                                                                                                                               | Recorded engineering Pass                                 |
-| Canonical document               | Strict UTF-8, one-LF canonical JSON, closed schemas, and byte/record/depth/node/string/array limits fail closed as one unit                                                                                                                                                                            | Recorded engineering Pass                                 |
-| Snapshot identity                | Schema/profile, catalog identity/version, generation/as-of time, provenance, source coverage, policy compatibility, and digest form one exact receipt                                                                                                                                                  | Recorded engineering Pass                                 |
-| Source-policy binding            | Same-source policy identity/version/document digest, validity chronology with expiry equality rejected, non-revocation, `fetch_snapshot`, and owner-local attribution/display/search/cache/retention/deletion/export controls are explicit                                                             | Prepared; actual exact policy/snapshot pending            |
-| Provenance artifact URIs         | Every source URI is canonical query/fragment-free HTTPS with no URI-authority credential; owner review must confirm that no credential appears elsewhere in the locator                                                                                                                                | Prepared; real artifact review pending                    |
-| Source coverage                  | Source equals admitted plus ineligible, unsupported, stale, and quarantined; admitted equals record length and total catalog securities, so coverage cannot hide rejected rows                                                                                                                         | Prepared; real counts pending                             |
-| Content-kind honesty             | Synthetic input remains labeled engineering-only and cannot become a real-universe breadth result                                                                                                                                                                                                      | Recorded engineering Pass                                 |
-| Stable internal identity         | Distinct issuer, security, share-class, listing, and mapping IDs support canonical 1:N issuer→security→share-class ancestry and cannot be replaced by ticker, CIK, FIGI, or provider identity                                                                                                          | Prepared; real snapshot pending                           |
-| Security eligibility             | Only explicit active eligible `common_stock` or `adr` records with exact issuer/share-class ancestry enter search                                                                                                                                                                                      | Prepared; real classification pending                     |
-| U.S. listing declaration         | Every listing declares `country: "US"` and operating MIC shape without treating either declaration as authentication of the upstream ISO/exchange mapping                                                                                                                                              | Prepared; real source reconciliation pending              |
-| Listing chronology               | Parent links, active/current state, ordered nonoverlapping ticker intervals, terminal open interval, and `sec_filing_observed`/`prospective_snapshot_observed` time basis are coherent                                                                                                                 | Prepared; complete exchange-effective history not claimed |
-| Active MIC-symbol uniqueness     | No two active listings share the same exchange MIC and current symbol                                                                                                                                                                                                                                  | Prepared; real snapshot pending                           |
-| Provider mappings                | Top-level exact `issuer`/`security`/`share_class`/`composite`/`listing` mappings target the right entity, every share class and listing has required structural mapping coverage, provider/kind/target triples are unambiguous, and external completeness is not inferred                              | Prepared; real mapping pending                            |
-| Deterministic search             | Fixed normalization and issuer/security/share-class name search, seven-level ranking, exact symbol/MIC/name/share-class/security/listing tie breaks, active-listing filter, input-order invariance, and defensive results pass                                                                         | Recorded engineering Pass                                 |
-| Bounded query                    | At most 128 raw and 512 normalized code points and 25 results; admitted names share the same nonempty bounds; controls, format/surrogate characters, empty normalized values, and invalid limits fail closed                                                                                           | Recorded engineering Pass                                 |
-| Exact search URL                 | A 2,048-code-unit envelope admits the worst-case canonical encoding of 128 Unicode scalars; exactly one NFC `q` comes first and optional canonical `limit=1..25` second/default 10; repeats, unknowns, alternate encodings, whitespace, fragments, bodies, and forbidden authority headers fail closed | Recorded engineering Pass                                 |
-| Parameter-free status            | Snapshot status accepts no query or body and cannot select source, policy, snapshot, path, or catalog state                                                                                                                                                                                            | Recorded engineering Pass                                 |
-| Authenticated read API           | Exact status and search routes require the Cycle 3a owner session and literal-loopback Host/Origin/CORS/cookie boundary before catalog access                                                                                                                                                          | Recorded engineering Pass                                 |
-| Confidential response            | Bounded private/no-store status/search receipts omit local path, raw policy, rejected rows, credentials, and internal errors                                                                                                                                                                           | Recorded engineering Pass                                 |
-| Static runtime isolation         | Runtime graph excludes source transport, DNS/provider clients, credentials, vault, filing corpus, demo state, scheduler, child process, and dynamic code                                                                                                                                               | Recorded engineering Pass                                 |
-| Synthetic scale                  | At least 3,000 synthetic records exercise admission/search without being counted as real breadth                                                                                                                                                                                                       | Recorded engineering evidence only                        |
-| Real catalog breadth             | One exact admitted snapshot contains at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit exclusions                                                                                                                                                                           | Pending exact owner-approved real snapshot                |
-| Real search latency              | Nearest-rank p95 is below 200 ms on declared owner hardware and exact loaded real universe under the fixed 100-iteration, 32-distinct-query, limit-25 plan whose ordered raw query set is digest-bound                                                                                                 | Pending exact real-snapshot measurement                   |
-| Package-owned measurement clock  | `measurePersonalSecurityMasterSearchP95(catalog,input)` has exactly two public/runtime arguments, rejects a hostile third callback without invocation, and uses only the private module-captured `node:perf_hooks` monotonic clock                                                                     | Cycle 3e-a2 recorded public engineering Pass only         |
-| Measurement receipt integrity    | Plan and receipt bind `clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and `timedRegion: "normalize_request_and_search_in_memory_catalog"` with receipt types derived from the plan; each sample spans request normalization through in-memory search                              | Cycle 3e-a2 recorded public engineering Pass only         |
-| Measurement static guard         | `personalSecurityMasterMeasurementBoundaryViolation` and mutation coverage pin exact arity, clock capture/use, timed region, receipt bindings, and absence of an alternate timing seam                                                                                                                 | Cycle 3e-a2 recorded public engineering Pass only         |
-| Offline source preparation       | Cycle 3e-a1 consumes six exact canonical `sec_openfigi_v1` artifacts and emits one admission-verified snapshot through an identity-bound one-shot handoff                                                                                                                                              | Recorded public engineering Pass only; no real operation  |
-| Ticker-history limitation        | Filing-observed plus prospective diffs are labeled honestly; complete exchange-effective history requires a separately licensed corporate-actions source                                                                                                                                               | Explicit free/personal-profile limitation                 |
-| No network or credential         | No SEC/OpenFIGI fetch, key, provider adapter, refresh, scheduler, or real source payload exists in this slice                                                                                                                                                                                          | Explicit nonclaim                                         |
-| No browser/watchlist integration | No browser search client, watchlist CRUD/import/export, vault write, dossier selection, or downstream product integration is included                                                                                                                                                                  | Explicit nonclaim                                         |
-| Personal-only scope              | Remote, multi-user, tenant, shared-service, commercial, redistribution, organizational, and production controls remain outside this profile                                                                                                                                                            | Out of scope                                              |
-| Preserved evidence               | Cycle 2z and Cycles 3a-3d contracts, approvals, source bindings, and evidence remain unchanged                                                                                                                                                                                                         | Recorded engineering Pass                                 |
-| Public verification              | Focused hostile/scale/API tests, full local verification, independent review, and terminal routing-tip Windows/Linux CI pass                                                                                                                                                                           | Engine `fda5148`; preparation `5e27bed`; clock `0374bec`  |
-| Promotion topology               | Exact merge-free source and routing revisions plus exact changed-path transitions are frozen and verified                                                                                                                                                                                              | Engine `fda5148`; preparation `5e27bed`; clock `0374bec`  |
-| Private breadth evidence         | A separately authorized owner-local run records only a rights-safe coarse result without placing source bytes, paths, credentials, rejected rows, or restricted metadata in public evidence                                                                                                            | Pending; no private operation has been authorized         |
+| Gate                             | Required result                                                                                                                                                                                                                                                                                        | Current status                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Synthetic default                | Existing synthetic API/web behavior remains the default                                                                                                                                                                                                                                                | Recorded engineering Pass                                |
+| Prior-mode isolation             | Earlier personal, connected, and vault modes retain their exact contracts and reject security-master-only configuration                                                                                                                                                                                | Recorded engineering Pass                                |
+| Exact mode                       | Only `personal_single_user_local_security_master` selects the dedicated non-splitting server                                                                                                                                                                                                           | Recorded engineering Pass                                |
+| Startup closure                  | Owner bootstrap, one canonical fixed-name absolute snapshot path, and one exact digest are captured and deleted before listen                                                                                                                                                                          | Recorded engineering Pass                                |
+| Stable file                      | One bounded regular single-link file is opened read-only/no-follow where available, read completely, and verified against pre/open/post identity and size                                                                                                                                              | Recorded engineering Pass                                |
+| Intrinsic owned bytes            | Admission accepts an intrinsic ordinary `Uint8Array`/`ArrayBuffer` snapshot, copies without caller constructors/hooks, and wipes composition-owned bytes                                                                                                                                               | Recorded engineering Pass                                |
+| Canonical document               | Strict UTF-8, one-LF canonical JSON, closed schemas, and byte/record/depth/node/string/array limits fail closed as one unit                                                                                                                                                                            | Recorded engineering Pass                                |
+| Snapshot identity                | Schema/profile, catalog identity/version, generation/as-of time, provenance, source coverage, policy compatibility, and digest form one exact receipt                                                                                                                                                  | Recorded engineering Pass                                |
+| Source-policy binding            | Same-source policy identity/version/document digest, validity chronology with expiry equality rejected, non-revocation, `fetch_snapshot`, and owner-local attribution/display/search/cache/retention/deletion/export controls are explicit                                                             | See permitted coarse outcome                             |
+| Provenance artifact URIs         | Every source URI is canonical query/fragment-free HTTPS with no URI-authority credential; owner review must confirm that no credential appears elsewhere in the locator                                                                                                                                | See permitted coarse outcome                             |
+| Source coverage                  | Source equals admitted plus ineligible, unsupported, stale, and quarantined; admitted equals record length and total catalog securities, so coverage cannot hide rejected rows                                                                                                                         | See permitted coarse outcome                             |
+| Content-kind honesty             | Synthetic input remains labeled engineering-only and cannot become a real-universe breadth result                                                                                                                                                                                                      | Recorded engineering Pass                                |
+| Stable internal identity         | Distinct issuer, security, share-class, listing, and mapping IDs support canonical 1:N issuer→security→share-class ancestry and cannot be replaced by ticker, CIK, FIGI, or provider identity                                                                                                          | See permitted coarse outcome                             |
+| Security eligibility             | Only explicit active eligible `common_stock` or `adr` records with exact issuer/share-class ancestry enter search                                                                                                                                                                                      | See permitted coarse outcome                             |
+| U.S. listing declaration         | Every listing declares `country: "US"` and operating MIC shape without treating either declaration as authentication of the upstream ISO/exchange mapping                                                                                                                                              | See permitted coarse outcome                             |
+| Listing chronology               | Parent links, active/current state, ordered nonoverlapping ticker intervals, terminal open interval, and `sec_filing_observed`/`prospective_snapshot_observed` time basis are coherent                                                                                                                 | Pass; complete exchange-effective history not claimed    |
+| Active MIC-symbol uniqueness     | No two active listings share the same exchange MIC and current symbol                                                                                                                                                                                                                                  | See permitted coarse outcome                             |
+| Provider mappings                | Top-level exact `issuer`/`security`/`share_class`/`composite`/`listing` mappings target the right entity, every share class and listing has required structural mapping coverage, provider/kind/target triples are unambiguous, and external completeness is not inferred                              | See permitted coarse outcome                             |
+| Deterministic search             | Fixed normalization and issuer/security/share-class name search, seven-level ranking, exact symbol/MIC/name/share-class/security/listing tie breaks, active-listing filter, input-order invariance, and defensive results pass                                                                         | Recorded engineering Pass                                |
+| Bounded query                    | At most 128 raw and 512 normalized code points and 25 results; admitted names share the same nonempty bounds; controls, format/surrogate characters, empty normalized values, and invalid limits fail closed                                                                                           | Recorded engineering Pass                                |
+| Exact search URL                 | A 2,048-code-unit envelope admits the worst-case canonical encoding of 128 Unicode scalars; exactly one NFC `q` comes first and optional canonical `limit=1..25` second/default 10; repeats, unknowns, alternate encodings, whitespace, fragments, bodies, and forbidden authority headers fail closed | Recorded engineering Pass                                |
+| Parameter-free status            | Snapshot status accepts no query or body and cannot select source, policy, snapshot, path, or catalog state                                                                                                                                                                                            | Recorded engineering Pass                                |
+| Authenticated read API           | Exact status and search routes require the Cycle 3a owner session and literal-loopback Host/Origin/CORS/cookie boundary before catalog access                                                                                                                                                          | Recorded engineering Pass                                |
+| Confidential response            | Bounded private/no-store status/search receipts omit local path, raw policy, rejected rows, credentials, and internal errors                                                                                                                                                                           | Recorded engineering Pass                                |
+| Static runtime isolation         | Runtime graph excludes source transport, DNS/provider clients, credentials, vault, filing corpus, demo state, scheduler, child process, and dynamic code                                                                                                                                               | Recorded engineering Pass                                |
+| Synthetic scale                  | At least 3,000 synthetic records exercise admission/search without being counted as real breadth                                                                                                                                                                                                       | Recorded engineering evidence only                       |
+| Real catalog breadth             | One exact admitted snapshot contains at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit exclusions                                                                                                                                                                           | See permitted coarse outcome                             |
+| Real search latency              | Nearest-rank p95 is below 200 ms on declared owner hardware and exact loaded real universe under the fixed 100-iteration, 32-distinct-query, limit-25 plan whose ordered raw query set is digest-bound                                                                                                 | See permitted coarse outcome                             |
+| Package-owned measurement clock  | `measurePersonalSecurityMasterSearchP95(catalog,input)` has exactly two public/runtime arguments, rejects a hostile third callback without invocation, and uses only the private module-captured `node:perf_hooks` monotonic clock                                                                     | Cycle 3e-a2 recorded public engineering Pass only        |
+| Measurement receipt integrity    | Plan and receipt bind `clock: "module_captured_node_perf_hooks_performance_now_monotonic"` and `timedRegion: "normalize_request_and_search_in_memory_catalog"` with receipt types derived from the plan; each sample spans request normalization through in-memory search                              | Cycle 3e-a2 recorded public engineering Pass only        |
+| Measurement static guard         | `personalSecurityMasterMeasurementBoundaryViolation` and mutation coverage pin exact arity, clock capture/use, timed region, receipt bindings, and absence of an alternate timing seam                                                                                                                 | Cycle 3e-a2 recorded public engineering Pass only        |
+| Offline source preparation       | Cycle 3e-a1 consumes six exact canonical `sec_openfigi_v1` artifacts and emits one admission-verified snapshot through an identity-bound one-shot handoff                                                                                                                                              | Public design Pass; private gate is coarse-only          |
+| Ticker-history limitation        | Filing-observed plus prospective diffs are labeled honestly; complete exchange-effective history requires a separately licensed corporate-actions source                                                                                                                                               | Explicit free/personal-profile limitation                |
+| Offline admitted runtime         | Admission, measurement, and local search perform no network request and expose no provider credential; automated refresh and a continuously connected provider remain absent                                                                                                                           | Pass for the admitted local runtime                      |
+| No browser/watchlist integration | No browser search client, watchlist CRUD/import/export, vault write, dossier selection, or downstream product integration is included                                                                                                                                                                  | Explicit nonclaim                                        |
+| Personal-only scope              | Remote, multi-user, tenant, shared-service, commercial, redistribution, organizational, and production controls remain outside this profile                                                                                                                                                            | Out of scope                                             |
+| Preserved evidence               | Cycle 2z and Cycles 3a-3d contracts, approvals, source bindings, and evidence remain unchanged                                                                                                                                                                                                         | Recorded engineering Pass                                |
+| Public verification              | Focused hostile/scale/API tests, full local verification, independent review, and terminal routing-tip Windows/Linux CI pass                                                                                                                                                                           | Engine `fda5148`; preparation `5e27bed`; clock `0374bec` |
+| Promotion topology               | Exact merge-free source and routing revisions plus exact changed-path transitions are frozen and verified                                                                                                                                                                                              | Engine `fda5148`; preparation `5e27bed`; clock `0374bec` |
+| Private breadth evidence         | A separately authorized owner-local run records only a rights-safe coarse result without placing source bytes, paths, credentials, rejected rows, or restricted metadata in public evidence                                                                                                            | See permitted coarse outcome                             |
 
 ## Recorded public engineering evidence
 
@@ -91,11 +94,11 @@ following exact-commit GitHub Actions evidence succeeded:
 - custody acceptance run `33691407885`; and
 - cross-engine acceptance run `33691407952`.
 
-This records only the public synthetic engine/API boundary. It does not admit
-a real source, authorize a private run, satisfy real breadth or latency, or
-accept/promote Cycle 3e-a.
+This records only the historical public synthetic engine/API boundary. The
+later private gate is represented exclusively by the permitted coarse outcome
+below and does not alter that historical public evidence.
 
-## Prepared package boundary
+## Promoted package boundary
 
 The zero-production-dependency package is
 `@research-cockpit/personal-security-master`. Its exact schema and profile are
@@ -125,7 +128,7 @@ ADRs with active listings. The catalog receipt includes explicit issuer,
 share-class, coverage, and content-kind counts so a large synthetic catalog
 cannot satisfy the real-universe gate.
 
-## Prepared API boundary
+## Promoted API boundary
 
 Exact startup mode is
 `RESEARCH_COCKPIT_MODE=personal_single_user_local_security_master`, with
@@ -166,11 +169,9 @@ OpenFIGI mappings, ISO MIC registry, and opaque internal identity assignments.
 See [ADR 0058](./adr/0058-offline-sec-openfigi-v1-source-preparation.md) and the
 [Cycle 3e-a1 exit matrix](./CYCLE_3E_A1_EXIT_MATRIX.md).
 
-The owner must still review and bind the exact source versions, bytes,
-retrieval metadata, policy documents, attribution, retention/deletion/export
-controls, identity assignments, and classification/reconciliation result
-before any real admission. Public preparation source and synthetic artifacts
-do not perform or authorize that operation.
+The public preparation source and synthetic artifacts did not perform or
+authorize the later private operation. That separately authorized gate is
+represented only by the permitted coarse outcome below.
 
 ## Cycle 3e-a2 measurement-integrity boundary
 
@@ -208,8 +209,9 @@ an alternate caller timer. See
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
 
-The recorded correction uses no real source and establishes no real breadth,
-latency, owner authorization, Cycle 3e-a acceptance/promotion, or parity.
+The recorded correction itself used no real source and establishes no private
+sub-result. The later owner-authorized result is represented only by the
+permitted coarse outcome below; neither record establishes competitor parity.
 
 Ticker history under this free profile contains only
 `sec_filing_observed` and `prospective_snapshot_observed` intervals, with
@@ -219,25 +221,39 @@ effective changes and upstream MIC authenticity require separately admitted
 evidence; complete corporate-action history needs a rights-compatible licensed
 source and is not claimed here.
 
-## Exit and highest-priority blocker
+## Confidentiality and private gate
+
+Public source and synthetic fixtures prove the bounded design, not a private
+field or execution detail. Repository-visible evidence must contain no private
+source bytes, path, row, mapping, rejected value, exact count, exact latency,
+digest, credential, approval, ledger, hardware detail, or generated snapshot.
+
+Repository-visible evidence for the Cycle 3e-a private gate is limited to this
+statement: **Coarse owner-approved private security-master snapshot admission
+and search-measurement outcome: Pass for the exact personal scope.** No private
+sub-result or operation detail is public evidence.
+
+## Exit and next boundary
 
 The engine/API public engineering boundary is recorded through `fda5148`, the
 separate Cycle 3e-a1 offline preparation boundary through `5e27bed`, and the
 Cycle 3e-a2 package-owned measurement-integrity correction through `0374bec`.
-All passed their exact source transitions, focused tests, full repository gates,
-independent review, routing transitions, and terminal CI. Cycle 3e-a nonetheless
-remains unpromoted until an exact real source snapshot is owner-approved,
-prepared, admitted, and measured.
+All passed their exact historical source transitions, focused tests, repository
+gates, independent review, routing transitions, and terminal CI. The later
+private gate passed for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834`; public evidence is limited to the
+coarse statement above. Cycle 3e-a is accepted and promoted only for that exact
+source and the declared personal scope.
 
-The highest-priority remaining private product blocker is the exact real
-snapshot and its declared-hardware measurement: at least 3,000 eligible active U.S.-listed
-common stocks/ADRs, explicit exclusions, exact policy compatibility, no
-duplicate active MIC-symbol, and search p95 below 200 ms under the exact fixed
-measurement plan. Synthetic volume and
-synthetic timing cannot substitute for this result.
+The highest-priority remaining product boundary is Cycle 3e-b1: make the
+admitted universe visibly useful through authenticated browser search and
+durable typed owner-local watchlists. Security and privacy remain acceptance
+criteria rather than standalone milestones unless they block correctness,
+private data, or credentials.
 
-Enterprise approval is not required for the personal profile. The owner still
-must follow the exact source terms and authorize the real local operation.
+Enterprise approval is not required for this personal profile. Tenant, shared-
+service, collaboration, commercial redistribution, high-availability, and
+production-operation requirements remain out of scope.
 
 ## References
 

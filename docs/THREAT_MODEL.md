@@ -1,4 +1,4 @@
-# Sprint 0 through recorded public Cycle 3e-a2 threat model
+# Sprint 0 through promoted personal Cycle 3e-a threat model
 
 ## Current trust boundaries
 
@@ -33,14 +33,14 @@ Cycle 3c separately has a promoted provider-neutral, no-transport public result
 with no private activation or provider operation. Cycle 3d separately has a
 promoted public/local-temporary result for one durable owner-local vault, but no
 actual personal vault, key, backup, restore, private activation, or browser
-vault client. Cycle 3e-a separately has a recorded public engineering Pass for
-one exact owner-local security-master snapshot and authenticated local search,
-but no real catalog, source download, provider credential, network adapter, or
-private activation. Cycle 3e-a1 has a recorded public engineering Pass only for
+vault client. Cycle 3e-a is accepted and promoted only for exact source
+revision `5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal
+scope, with private evidence limited to the permitted coarse outcome. Cycle
+3e-a1 has a recorded public engineering Pass only for
 its separate offline six-artifact source handoff, with no acquisition or private
 operation. Cycle 3e-a2 has a recorded public engineering Pass only for its exact
-package-owned measurement-integrity chain, with no real source, breadth,
-latency, or private operation. Cycle 3e-a is not accepted or promoted.
+package-owned measurement-integrity chain, with no private source, breadth,
+latency, or operation in that historical subcycle record.
 Cycle 2q accepts declaration and manifest metadata; the Cycle 2r verifier can
 read a caller-selected local payload root during an explicit invocation; Cycle
 2s can write aggregate audit records and unlink manifest-selected live payload
@@ -2454,17 +2454,20 @@ nonclaims are in
 
 ## Cycle 3e-a owner-local security-master threat boundary
 
-Cycle 3e-a has a **recorded public engineering Pass** for exact source revision
-`5186103977b906d3c035599b3b2b00793926fca3` and the exact merge-free
-stabilization chain through `fda5148a4251a36861196029bbc6df6b7d1a84d0`.
+Cycle 3e-a is **accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope**.
+Its earlier public engineering source revision
+`5186103977b906d3c035599b3b2b00793926fca3` and exact merge-free stabilization
+chain through `fda5148a4251a36861196029bbc6df6b7d1a84d0` remain historical.
 The full local gate at that tip passed 2,024 tests with 9 intentional skips. CI
 run `33691407884` passed Ubuntu job `100450725750` and Windows job
 `100450725932`; parser acceptance run `33691407866`, custody acceptance run
 `33691407885`, and cross-engine acceptance run `33691407952` also passed.
 
-This records public synthetic engineering only. It has no real catalog,
-provider credential, source download, network operation, or private activation.
-Cycle 3e-a is not accepted or promoted.
+That record covers public synthetic engineering only. The later private gate is
+represented exclusively by: **Coarse owner-approved private security-master
+snapshot admission and search-measurement outcome: Pass for the exact personal
+scope.** No private sub-result or operation detail is repository-visible.
 
 Assets at risk are the startup-fixed snapshot path and file identity; canonical
 snapshot bytes and exact digest; catalog/provenance/policy identity and
@@ -2566,13 +2569,12 @@ wrong, incomplete, stale, or malicious despite internal consistency. A hostile
 same-user process, administrator, filesystem, memory inspector, swap, or crash
 dump remains outside the boundary.
 
-Synthetic 3,000-record scale and timing prove only engineering behavior. The
-real exit requires an exact owner-approved rights-compatible snapshot with at
-least 3,000 eligible active U.S.-listed common stocks/ADRs, explicit exclusion
-counts, and nearest-rank search p95 below 200 ms on declared owner hardware
-with that exact universe and fixed measurement plan. The selected future
-`sec_openfigi_v1` inputs have not been acquired or admitted. Its SEC-filing-
-observed plus prospective ticker
+Synthetic scale and timing prove only engineering behavior. The separately
+authorized private source/policy, breadth, identity, exclusion, and measurement
+gates passed for the exact personal scope; repository-visible evidence omits
+source bytes, paths, rows, mappings, exact counts, exact latency, hardware
+details, credentials, digests, approvals, and ledgers. The `sec_openfigi_v1`
+SEC-filing-observed plus prospective ticker
 history is not complete exchange-effective corporate-action history.
 
 No browser search client, watchlist workflow, mutation, persistence, refresh,
@@ -2728,12 +2730,10 @@ without preserving the public engineering Pass if a later change breaks exact
 topology, focused or static tests, mutation coverage, full local verification,
 independent review, or terminal Windows/Linux CI and acceptance evidence.
 
-This correction requires no real source bytes and proves no real universe,
-owner authorization, real-hardware latency, below-200-ms result, production
-safety, Cycle 3e-a acceptance/promotion, or feature parity. A later owner-only
-latency result may count only when a fresh exact authorization binds the run to
-this exact recorded package-owned-clock implementation, the exact admitted real
-snapshot, declared hardware, and fixed plan. See
+This historical correction required no private source bytes and proves no
+private sub-result, production safety, or feature parity. The later owner-
+authorized gate used this exact recorded package-owned-clock implementation and
+is represented only by the permitted coarse outcome. See
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
 
@@ -2788,13 +2788,16 @@ snapshot, declared hardware, and fixed plan. See
    provider-neutral, no-transport chain and is not privately activated. Cycle
    3d's public/local-temporary vault boundary is promoted only for its exact
    corrected chain and has no actual vault or private activation. Cycle 3e-a
-   now has a recorded owner-local security-master admission/search public
-   engineering Pass, and Cycle 3e-a1 records its separate offline source
-   handoff as a public engineering Pass only. Cycle 3e-a2 records only its exact
+   is accepted and promoted only for exact source revision
+   `5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+   with private evidence limited to the permitted coarse outcome. Cycle 3e-a1
+   records its separate historical offline source handoff as a public
+   engineering Pass only, and Cycle 3e-a2 records only its exact historical
    package-owned measurement correction as a public engineering Pass. Cycle
-   3e-a remains unpromoted with no real breadth claim until a
-   later exact owner-approved, rights-compatible source is prepared, admitted,
-   and measured.
+   3e-b1 is the next highest-priority visible browser-search and durable-
+   watchlist boundary; security and privacy are acceptance criteria rather than
+   standalone milestones unless they block correctness, private data, or
+   credentials.
    Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.

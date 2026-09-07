@@ -19,11 +19,11 @@ engineering Pass only for exact source revision
 `0374becdf96c1e9891d80e73024c8be0440fd812`; no real measurement or private
 operation is recorded.**
 
-Real-source authorization and operation status: **Pending separate exact owner
-review and fresh authorization; no private operation has occurred.**
-
-Acceptance/promotion status: **Recorded public engineering Pass only; Cycle
-3e-a remains not accepted or promoted.**
+Later Cycle 3e-a status: **Accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope.
+Private evidence is represented publicly only by the permitted coarse outcome
+in the Cycle 3e-a exit matrix.** This Cycle 3e-a1 record remains an engineering-
+only historical slice and contains no private sub-result.
 
 ## Gate matrix
 
@@ -50,9 +50,9 @@ Acceptance/promotion status: **Recorded public engineering Pass only; Cycle
 | Public synthetic evidence    | Positive six-role coverage; representative role/digest/schema/canonical/resource-bound rejection; hostile-carrier, caller-isolation, replay, first-attempt consumption, quarantine, and at-least-3,000 synthetic tests exercise mechanics without a real-data claim | Recorded engineering evidence only       |
 | Exact source topology        | Cycle 3e-a1 source and routing revisions, changed-path transitions, and merge-free ancestry are frozen                                                                                                                                                              | Pass: `0cf8702` -> `5e27bed`             |
 | Terminal public verification | Focused tests, full local verification, independent review, and exact-tip Windows/Linux CI pass                                                                                                                                                                     | Pass at `5e27bed`                        |
-| Owner source review          | Exact inputs, versions, digests, retrieval metadata, terms, attribution, cache/retention/deletion/export/redistribution controls, and policy record are approved                                                                                                    | Pending owner-only operation             |
-| Real snapshot breadth        | Exact admitted snapshot contains at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit exclusions                                                                                                                                            | Pending owner-only operation             |
-| Real search latency          | Fixed 100-iteration, 32-distinct-query, limit-25 measurement is below 200 ms p95 on declared owner hardware and exact snapshot                                                                                                                                      | Pending owner-only operation             |
+| Owner source review          | Exact inputs, versions, digests, retrieval metadata, terms, attribution, cache/retention/deletion/export/redistribution controls, and policy record are approved                                                                                                    | See permitted Cycle 3e-a coarse outcome  |
+| Real snapshot breadth        | Exact admitted snapshot contains at least 3,000 eligible active U.S.-listed common stocks/ADRs after explicit exclusions                                                                                                                                            | See permitted Cycle 3e-a coarse outcome  |
+| Real search latency          | Fixed 100-iteration, 32-distinct-query, limit-25 measurement is below 200 ms p95 on declared owner hardware and exact snapshot                                                                                                                                      | See permitted Cycle 3e-a coarse outcome  |
 | Trusted measurement boundary | The later measurement uses the exact recorded two-argument Cycle 3e-a2 API, package-owned `node:perf_hooks` monotonic clock, bound clock/timed-region receipt, and static no-injection guard                                                                        | Cycle 3e-a2 public engineering Pass only |
 | Public evidence minimization | Only an expressly allowed coarse nonsecret result may become public; private artifacts and operation details remain outside Git and logs                                                                                                                            | Required for later operation             |
 | No promotion by preparation  | Public preparation source, synthetic scale, or a prepared snapshot cannot alone accept or promote Cycle 3e-a                                                                                                                                                        | Explicit nonclaim                        |
@@ -73,8 +73,9 @@ GitHub Actions evidence succeeded:
 - parser-isolation run `33806494364`.
 
 This records only the public offline source-preparation engineering boundary.
-It does not authenticate or admit real source material, authorize a private
-operation, establish real breadth or latency, or accept or promote Cycle 3e-a.
+It did not itself authenticate or admit real source material, authorize a
+private operation, establish real breadth or latency, or accept or promote
+Cycle 3e-a. The later exact Cycle 3e-a promotion is recorded separately.
 
 ## Exact protocol
 
@@ -106,14 +107,14 @@ OpenFIGI, or ISO material, key, request, response, local path, policy document,
 identity assignment, real snapshot, or owner authorization. The preparer does
 not acquire or refresh a source.
 
-A later owner-only operation must privately bind the six exact artifacts,
+The later owner-only operation had to privately bind the six exact artifacts,
 their acquisition and policy evidence, the exact implementation revision, the
 generated snapshot, and the fixed measurement plan under fresh single-use
 authorization. Private bytes, credentials, paths, rejected rows, restricted
 metadata, full approvals, and runner/retry/cleanup material cannot enter Git,
 public CI, fixtures, or retained logs.
 
-That later authorization must also bind the exact recorded Cycle 3e-a2 measurement
+That later authorization also had to bind the exact recorded Cycle 3e-a2 measurement
 implementation. Its public API takes exactly `(catalog, input)`, rejects a
 third callback without invoking it, uses the private module-captured
 `node:perf_hooks` monotonic clock, and binds exact `clock` and `timedRegion`
@@ -147,7 +148,7 @@ breadth and latency gates.
 
 ## Exact nonclaims
 
-This slice proves no real source acquisition, authenticity, rights, currency,
+This historical slice alone proves no real source acquisition, authenticity, rights, currency,
 completeness, classification accuracy, mapping accuracy, identity randomness,
 exchange-effective history, real 3,000-security breadth, real latency, browser
 workflow, watchlist, persistence, market data, enterprise safety, production

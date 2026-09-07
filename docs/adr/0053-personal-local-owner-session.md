@@ -247,10 +247,10 @@ public/local-temporary chain rooted at
 `3edb5464a3414313a980ffd9fecce5ca5257084a`, with no actual personal vault, key,
 backup, restore, or private activation. It does not make this owner session
 durable. Cycle 3e-a owner-local security-master snapshot admission and search is
-now recorded as a public engineering Pass only for its exact engine/API chain.
-It is not accepted or promoted
-and has no real breadth claim until a later exact owner-approved,
-rights-compatible source snapshot is admitted and measured.
+accepted and promoted only for exact source revision
+`5b547c88f213cfbc10450c460528a97ee395a834` and the declared personal scope,
+with private evidence limited publicly to its permitted coarse outcome. That
+later promotion does not make this owner session durable.
 
 ## References
 
