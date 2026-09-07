@@ -6,6 +6,7 @@ import { basename, isAbsolute, normalize, resolve, sep } from "node:path";
 import {
   admitPersonalSecurityMasterSnapshot,
   PERSONAL_SECURITY_MASTER_LIMITS,
+  type PersonalSecurityMasterCatalog,
 } from "@research-cockpit/personal-security-master";
 
 import { resolveDemoApiListenOptions } from "./listen-options";
@@ -118,6 +119,43 @@ export function createSecurityMasterConfiguredApp(
     );
   } finally {
     disposeCapturedSecurityMasterApiEnvironment(environment);
+  }
+}
+
+/**
+ * Load the exact startup-bound catalog without creating an app or owner
+ * session. The combined personal workspace reuses this boundary so the
+ * isolated security-master entrypoint and its static import graph stay intact.
+ */
+export async function loadPersonalSecurityMasterCatalog(
+  snapshotPath: string,
+  expectedSha256: string,
+): Promise<PersonalSecurityMasterCatalog> {
+  if (!isValidSnapshotPath(snapshotPath) || !HASH.test(expectedSha256)) {
+    throw new SecurityMasterApiCompositionError(
+      "SECURITY_MASTER_CONFIGURATION_REQUIRED",
+    );
+  }
+
+  let snapshot: Uint8Array | undefined;
+  let unavailableStage: SecurityMasterApiUnavailableStage = "snapshot_read";
+  try {
+    snapshot = await readStableSnapshot(snapshotPath);
+    unavailableStage = "snapshot_admission";
+    const catalog = admitPersonalSecurityMasterSnapshot({
+      expectedSha256: expectedSha256 as `sha256:${string}`,
+      snapshot,
+    });
+    snapshot.fill(0);
+    snapshot = undefined;
+    return catalog;
+  } catch {
+    throw new SecurityMasterApiCompositionError(
+      "SECURITY_MASTER_UNAVAILABLE",
+      unavailableStage,
+    );
+  } finally {
+    snapshot?.fill(0);
   }
 }
 

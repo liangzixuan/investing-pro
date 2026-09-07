@@ -23,7 +23,8 @@ Pass only for exact source revision
 `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
 breadth, latency, or private operation in that historical subcycle record.
-Cycle 3e-b1 is the current highest-priority visible product milestone; later
+Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
+Cycle 3g-a is now the highest-priority visible product milestone, while later
 Cycle 3e-b work and Cycles 3f through 3q remain planned.** This does not alter
 the exact historical Cycle 2z personal result or
 make a feature-parity claim.
@@ -166,7 +167,7 @@ Later subcycles may widen a universe only with the same checks.
 | Connected source governance             | Provider-neutral public control plane promoted; no source activated | Cycle 3c        |
 | Durable personal state                  | Public/local-temporary SQLite vault promoted; no actual vault       | Cycle 3d        |
 | Security universe and local search      | Exact personal snapshot admitted and measured; API only             | Cycle 3e-a      |
-| Browser discovery and local watchlists  | Search API plus generic vault kind; no typed browser workflow        | Cycle 3e-b      |
+| Browser discovery and local watchlists  | One typed durable primary list in an authenticated browser workflow | Cycle 3e-b1     |
 | Automated filings and amendments        | Manually prepared exact filing corpus                               | Cycle 3f        |
 | Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart                | Cycle 3g        |
 | Transparent technical indicators        | No end-user price/volume indicator workspace                        | Cycle 3g-b      |
@@ -490,7 +491,9 @@ The roadmap splits this milestone into ordered boundaries. Cycle 3e-a is
 accepted and promoted only for its exact personal source. Cycle 3e-a1 records
 the separately reviewable historical offline source handoff, and Cycle 3e-a2
 records the historical repository-owned measurement-integrity correction.
-Cycle 3e-b1 is now the highest-priority visible product boundary.
+Cycle 3e-b1 now supplies the first visible product boundary. Cycle 3g-a is the
+next highest-priority visible gap: current quote and price history composed into
+a useful chart.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
 
@@ -661,8 +664,9 @@ parity.
 
 #### Cycle 3e-b — browser discovery and owner-local watchlists
 
-Status: **Planned. Cycle 3e-b1 is the current highest-priority visible product
-milestone.**
+Status: **Cycle 3e-b1 is implemented and locally verified for the explicit
+personal-workspace composition. Actual owner-private workspace startup remains
+an explicit local operation; Cycle 3e-b2 is planned.**
 
 Target: let the owner find a security in the admitted personal universe from
 the browser and save it in a durable typed local watchlist.
@@ -694,6 +698,16 @@ milestones unless they block correctness, private data, or credentials. Remote,
 multi-user, tenant, shared-list, collaboration, cloud-sync, commercial,
 redistribution, high-availability, and production-operation requirements are
 outside this personal-only profile.
+
+Cycle 3e-b1 composes one owner session, the admitted security-master status and
+search routes, and a dedicated typed `main` watchlist route in one non-splitting
+local API process. The `/discover` browser screen loads private data only after
+owner authentication. It supports add/remove/reorder and notes, persists via the
+encrypted SQLite vault rather than browser storage, tolerates unrelated legacy
+watchlists, and leaves search available in a clearly read-only state when the
+primary watchlist cannot be loaded. Public verification uses synthetic data; no
+private row, path, digest, count, latency, credential, or activation is recorded
+here.
 
 ### Cycle 3f — automated SEC filing refresh and amendment discovery
 

@@ -165,6 +165,7 @@ jobs:
           cycle3ea5_windows_expiry_recovery_latency_stabilization="7c2b486438e16e45348c4882ddaf5c69c6f7c906"
           cycle3ea5_windows_expiry_recovery_latency_routing_closure="4f5547bcdf86b0f4268af904f38e68574acdd668"
           cycle3ea8_provider_query_mic_source="5b547c88f213cfbc10450c460528a97ee395a834"
+          cycle3ea_public_promotion="8df2f84c680281bf35d401d17fb98c4946292f14"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -450,6 +451,41 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3eb1_feature=(
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" "README.md"
+            "M" "apps/api/package.json"
+            "M" "apps/api/src/api-mode.test.ts"
+            "M" "apps/api/src/api-mode.ts"
+            "M" "apps/api/src/composition-root.test.ts"
+            "M" "apps/api/src/composition-root.ts"
+            "M" "apps/api/src/security-master-composition-root.ts"
+            "A" "apps/api/src/workspace-app.ts"
+            "A" "apps/api/src/workspace-composition-root.test.ts"
+            "A" "apps/api/src/workspace-composition-root.ts"
+            "A" "apps/api/src/workspace-server.ts"
+            "A" "apps/api/src/workspace-static-graph.test.ts"
+            "A" "apps/api/src/workspace-watchlist-routes.ts"
+            "M" "apps/api/tsup.config.ts"
+            "M" "apps/web/app/globals.css"
+            "A" "apps/web/app/discover/page.tsx"
+            "M" "apps/web/app/page.tsx"
+            "M" "apps/web/app/research/[symbol]/page.tsx"
+            "A" "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx"
+            "A" "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx"
+            "M" "apps/web/src/lib/web-mode.test.ts"
+            "M" "apps/web/src/lib/web-mode.ts"
+            "A" "apps/web/src/lib/personal-workspace-api.test.ts"
+            "A" "apps/web/src/lib/personal-workspace-api.ts"
+            "M" "apps/web/src/research-page-mode.test.tsx"
+            "M" "docs/BUILD_ROADMAP.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M" "scripts/verify-boundaries.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
@@ -508,6 +544,9 @@ jobs:
           for ((index = 1; index < ${#expected_cycle3ea_public_promotion[@]}; index += 2)); do
             protected+=("${expected_cycle3ea_public_promotion[$index]}")
           done
+          for ((index = 1; index < ${#expected_cycle3eb1_feature[@]}; index += 2)); do
+            protected+=("${expected_cycle3eb1_feature[$index]}")
+          done
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -547,7 +586,8 @@ jobs:
                  git cat-file -e "$cycle3ea5_openfigi_alias_routing_closure^{commit}" && \
                  git cat-file -e "$cycle3ea5_windows_expiry_recovery_latency_stabilization^{commit}" && \
                  git cat-file -e "$cycle3ea5_windows_expiry_recovery_latency_routing_closure^{commit}" && \
-                 git cat-file -e "$cycle3ea8_provider_query_mic_source^{commit}"; then
+                 git cat-file -e "$cycle3ea8_provider_query_mic_source^{commit}" && \
+                 git cat-file -e "$cycle3ea_public_promotion^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -569,6 +609,7 @@ jobs:
                 read -r -a cycle3ea5_windows_expiry_recovery_latency_stabilization_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea5_windows_expiry_recovery_latency_stabilization")"
                 read -r -a cycle3ea5_windows_expiry_recovery_latency_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea5_windows_expiry_recovery_latency_routing_closure")"
                 read -r -a cycle3ea8_provider_query_mic_source_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea8_provider_query_mic_source")"
+                read -r -a cycle3ea_public_promotion_topology <<< "$(git rev-list --parents -n 1 "$cycle3ea_public_promotion")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -610,6 +651,8 @@ jobs:
                 cycle3ea5_windows_expiry_recovery_latency_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea5_windows_expiry_recovery_latency_routing_closure")"
                 cycle3ea8_provider_query_mic_source_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ea8_provider_query_mic_source")"
                 cycle3ea8_provider_query_mic_source_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea8_provider_query_mic_source")"
+                cycle3ea_public_promotion_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ea_public_promotion")"
+                cycle3ea_public_promotion_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ea_public_promotion")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
@@ -670,7 +713,10 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3ea5_windows_expiry_recovery_latency_routing_closure" "$cycle3ea8_provider_query_mic_source" --
                 )
                 mapfile -d '' -t cycle3ea_public_promotion_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3ea8_provider_query_mic_source" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3ea8_provider_query_mic_source" "$cycle3ea_public_promotion" --
+                )
+                mapfile -d '' -t cycle3eb1_feature_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ea_public_promotion" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -846,6 +892,16 @@ jobs:
                    [[ "${cycle3ea8_provider_query_mic_source_topology[1]}" == "$cycle3ea5_windows_expiry_recovery_latency_routing_closure" ]] && \
                    matches_exactly expected_cycle3ea8_provider_query_mic_source cycle3ea8_provider_query_mic_source_actual; then
                   cycle3ea8_provider_query_mic_source_history_exact=true
+                fi
+                cycle3ea_public_promotion_history_exact=false
+                if [[ "$cycle3ea8_provider_query_mic_source_history_exact" == "true" ]] && \
+                   [[ "$cycle3ea_public_promotion_successor_count" == "44" ]] && \
+                   [[ "$cycle3ea_public_promotion_first_parent_count" == "44" ]] && \
+                   [[ "${#cycle3ea_public_promotion_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ea_public_promotion_topology[0]}" == "$cycle3ea_public_promotion" ]] && \
+                   [[ "${cycle3ea_public_promotion_topology[1]}" == "$cycle3ea8_provider_query_mic_source" ]] && \
+                   matches_exactly expected_cycle3ea_public_promotion cycle3ea_public_promotion_actual; then
+                  cycle3ea_public_promotion_history_exact=true
                 fi
                 if [[ "$history_exact" == "true" ]] && \
                    [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -1143,13 +1199,23 @@ jobs:
                    exact=true
                 elif [[ "$cycle3ea8_provider_query_mic_source_history_exact" == "true" ]] && \
                      [[ "$head_revision" == "$GITHUB_SHA" ]] && \
-                     [[ "$head_revision" != "$cycle3ea8_provider_query_mic_source" ]] && \
+                     [[ "$head_revision" == "$cycle3ea_public_promotion" ]] && \
                      [[ "$head_successor_count" == "44" ]] && \
                      [[ "$head_first_parent_count" == "44" ]] && \
                      [[ "${#head_topology[@]}" == "2" ]] && \
-                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3ea_public_promotion" ]] && \
                      [[ "${head_topology[1]}" == "$cycle3ea8_provider_query_mic_source" ]] && \
                      matches_exactly expected_cycle3ea_public_promotion cycle3ea_public_promotion_actual; then
+                   exact=true
+                elif [[ "$cycle3ea_public_promotion_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$cycle3ea_public_promotion" ]] && \
+                     [[ "$head_successor_count" == "45" ]] && \
+                     [[ "$head_first_parent_count" == "45" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ea_public_promotion" ]] && \
+                     matches_exactly expected_cycle3eb1_feature cycle3eb1_feature_actual; then
                    exact=true
                 fi
               fi
@@ -1158,7 +1224,7 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a engineering chain, pinned Cycle 3b promotion, exact OpenFIGI alias and Windows recovery-latency corrections, exact provider-query-MIC source, or one direct coarse public-promotion child; refusing inherited evidence routing." >&2
+            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, exact coarse public promotion, or its one merge-free exact-inventory Cycle 3e-b1 feature child; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
@@ -3800,7 +3866,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3e }}" == "true" ]]; then
-              echo "Cycle 3e-a routing recognizes the exact public engineering chain through its provider-query-MIC source and one direct public-promotion child. At that promotion child, the only permitted public private-evidence statement is: coarse owner-approved private security-master snapshot admission and search-measurement outcome: Pass for the exact personal scope. No private counts, latency, digests, paths, rows, mappings, source bytes, credentials, payloads, or replacement Cycle 2o artifact are published."
+              echo "Cycle 3e routing recognizes the exact Cycle 3e-a coarse public promotion and one merge-free exact-inventory Cycle 3e-b1 feature child. The only permitted public private-evidence statement remains: coarse owner-approved private security-master snapshot admission and search-measurement outcome: Pass for the exact personal scope. No private counts, latency, digests, paths, rows, mappings, source bytes, credentials, payloads, or replacement Cycle 2o artifact are published."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
               echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, parser-timeout, and joint Cycle 3c/3d public-promotion stages, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then

@@ -5,3 +5,7 @@ export function isPersonalWebMode(value: string | undefined): boolean {
 export function isPersonalDossierWebMode(value: string | undefined): boolean {
   return value === "personal_dossier";
 }
+
+export function isPersonalWorkspaceWebMode(value: string | undefined): boolean {
+  return value === "personal_workspace";
+}

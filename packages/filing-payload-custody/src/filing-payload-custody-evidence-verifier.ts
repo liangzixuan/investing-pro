@@ -174,6 +174,8 @@ const CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_REVISION =
   "4f5547bcdf86b0f4268af904f38e68574acdd668" as const;
 const CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION =
   "5b547c88f213cfbc10450c460528a97ee395a834" as const;
+const CYCLE_3E_A_PUBLIC_PROMOTION_REVISION =
+  "8df2f84c680281bf35d401d17fb98c4946292f14" as const;
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
 const CYCLE_2P_CORPUS_ADMISSION_BLOB =
@@ -3325,6 +3327,62 @@ const CYCLE_3E_A_PUBLIC_PROMOTION_TRANSITION = Object.freeze([
     status: "M",
   },
 ]);
+const CYCLE_3E_B1_FEATURE_TRANSITION = Object.freeze([
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  { path: "README.md", status: "M" },
+  { path: "apps/api/package.json", status: "M" },
+  { path: "apps/api/src/api-mode.test.ts", status: "M" },
+  { path: "apps/api/src/api-mode.ts", status: "M" },
+  { path: "apps/api/src/composition-root.test.ts", status: "M" },
+  { path: "apps/api/src/composition-root.ts", status: "M" },
+  { path: "apps/api/src/security-master-composition-root.ts", status: "M" },
+  { path: "apps/api/src/workspace-app.ts", status: "A" },
+  { path: "apps/api/src/workspace-composition-root.test.ts", status: "A" },
+  { path: "apps/api/src/workspace-composition-root.ts", status: "A" },
+  { path: "apps/api/src/workspace-server.ts", status: "A" },
+  { path: "apps/api/src/workspace-static-graph.test.ts", status: "A" },
+  { path: "apps/api/src/workspace-watchlist-routes.ts", status: "A" },
+  { path: "apps/api/tsup.config.ts", status: "M" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  { path: "apps/web/app/discover/page.tsx", status: "A" },
+  { path: "apps/web/app/page.tsx", status: "M" },
+  { path: "apps/web/app/research/[symbol]/page.tsx", status: "M" },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "A",
+  },
+  { path: "apps/web/src/lib/web-mode.test.ts", status: "M" },
+  { path: "apps/web/src/lib/web-mode.ts", status: "M" },
+  { path: "apps/web/src/lib/personal-workspace-api.test.ts", status: "A" },
+  { path: "apps/web/src/lib/personal-workspace-api.ts", status: "A" },
+  { path: "apps/web/src/research-page-mode.test.tsx", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -3596,6 +3654,7 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
   ),
   ...CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3E_A_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3E_B1_FEATURE_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2O_PRE_BASELINE_ADMISSION_VALIDITY_PATHS = Object.freeze([
   "packages/filing-parser/src/corpus-admission-security.test.ts",
@@ -6316,7 +6375,7 @@ export function isCycle3eaProviderQueryMicSourceTopologyAllowed(
   );
 }
 
-/** @internal One dynamic merge-free public-promotion child of the exact source. */
+/** @internal The exact merge-free public-promotion child of the exact source. */
 export function isCycle3eaPublicPromotionTopologyAllowed(
   successorCount: string,
   firstParentCount: string,
@@ -6330,12 +6389,33 @@ export function isCycle3eaPublicPromotionTopologyAllowed(
     successorCount === "44" &&
     firstParentCount === "44" &&
     COMMIT.test(revision) &&
-    revision !== CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION &&
+    revision === CYCLE_3E_A_PUBLIC_PROMOTION_REVISION &&
     parentLine ===
-      `${revision} ${CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION}` &&
+      `${CYCLE_3E_A_PUBLIC_PROMOTION_REVISION} ${CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION}` &&
     providerSourceTopology[2] ===
       CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION &&
     isCycle3eaProviderQueryMicSourceTopologyAllowed(...providerSourceTopology)
+  );
+}
+
+/** @internal One merge-free Cycle 3e-b1 feature child of the exact promotion. */
+export function isCycle3eb1FeatureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  promotionTopology: readonly [
+    ...Parameters<typeof isCycle3eaPublicPromotionTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "45" &&
+    firstParentCount === "45" &&
+    COMMIT.test(revision) &&
+    revision !== CYCLE_3E_A_PUBLIC_PROMOTION_REVISION &&
+    parentLine === `${revision} ${CYCLE_3E_A_PUBLIC_PROMOTION_REVISION}` &&
+    promotionTopology[2] === CYCLE_3E_A_PUBLIC_PROMOTION_REVISION &&
+    isCycle3eaPublicPromotionTopologyAllowed(...promotionTopology)
   );
 }
 
@@ -7692,6 +7772,13 @@ export function isCycle3eaPublicPromotionCommitDiffSetAllowed(
   return exactCycle2pDiffSet(entries, CYCLE_3E_A_PUBLIC_PROMOTION_TRANSITION);
 }
 
+/** @internal Exact Cycle 3e-b1 visible feature transition. */
+export function isCycle3eb1FeatureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactCycle2pDiffSet(entries, CYCLE_3E_B1_FEATURE_TRANSITION);
+}
+
 /** @internal Exact Cycle 2x personal quality-measurement transition seam. */
 export function isCycle2xCommitDiffSetAllowed(
   entries: readonly {
@@ -8949,6 +9036,7 @@ async function verifyCycle2zTransition(
     CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_STABILIZATION_REVISION,
     CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_REVISION,
     CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION,
+    CYCLE_3E_A_PUBLIC_PROMOTION_REVISION,
     CYCLE_2X_ROUTING_CLOSURE_REVISION,
   ])
     await git(
@@ -9480,6 +9568,18 @@ async function verifyCycle2zTransition(
         "--parents",
         "--max-count=1",
         CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION,
+      ],
+      128,
+    ),
+  ).join(" ");
+  const cycle3eaPublicPromotionParentLine = decodeGitRevisionParentsLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3E_A_PUBLIC_PROMOTION_REVISION,
       ],
       128,
     ),
@@ -10044,6 +10144,13 @@ async function verifyCycle2zTransition(
     cycle3eaProviderQueryMicSourceParentLine,
     pinnedCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopology,
   ] as const;
+  const pinnedCycle3eaPublicPromotionTopology = [
+    "44",
+    "44",
+    CYCLE_3E_A_PUBLIC_PROMOTION_REVISION,
+    cycle3eaPublicPromotionParentLine,
+    pinnedCycle3eaProviderQueryMicSourceTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     String(successorCount),
     String(firstParentCount),
@@ -10198,12 +10305,20 @@ async function verifyCycle2zTransition(
     parentLine,
     pinnedCycle3eaProviderQueryMicSourceTopology,
   );
+  const cycle3eb1Feature = isCycle3eb1FeatureTopologyAllowed(
+    String(successorCount),
+    String(firstParentCount),
+    revision,
+    parentLine,
+    pinnedCycle3eaPublicPromotionTopology,
+  );
   const cycle3eaOpenFigiAliasRoutingClosure =
     exactCycle3eaOpenFigiAliasRoutingClosure ||
     cycle3eaWindowsExpiryRecoveryLatencyStabilization ||
     cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure ||
     cycle3eaProviderQueryMicSource ||
-    cycle3eaPublicPromotion;
+    cycle3eaPublicPromotion ||
+    cycle3eb1Feature;
   const cycle3eRouting =
     cycle3eaSource ||
     cycle3eaRoutingClosure ||
@@ -10937,7 +11052,8 @@ async function verifyCycle2zTransition(
     cycle3eaWindowsExpiryRecoveryLatencyStabilization ||
     cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure ||
     cycle3eaProviderQueryMicSource ||
-    cycle3eaPublicPromotion
+    cycle3eaPublicPromotion ||
+    cycle3eb1Feature
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10956,7 +11072,8 @@ async function verifyCycle2zTransition(
   if (
     cycle3eaWindowsExpiryRecoveryLatencyRoutingClosure ||
     cycle3eaProviderQueryMicSource ||
-    cycle3eaPublicPromotion
+    cycle3eaPublicPromotion ||
+    cycle3eb1Feature
   ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
@@ -10972,7 +11089,11 @@ async function verifyCycle2zTransition(
     )
       invalid();
   }
-  if (cycle3eaProviderQueryMicSource || cycle3eaPublicPromotion) {
+  if (
+    cycle3eaProviderQueryMicSource ||
+    cycle3eaPublicPromotion ||
+    cycle3eb1Feature
+  ) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_WINDOWS_EXPIRY_RECOVERY_LATENCY_ROUTING_CLOSURE_REVISION,
@@ -10983,13 +11104,21 @@ async function verifyCycle2zTransition(
     if (!isCycle3eaProviderQueryMicSourceCommitDiffSetAllowed(entries))
       invalid();
   }
-  if (cycle3eaPublicPromotion) {
+  if (cycle3eaPublicPromotion || cycle3eb1Feature) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3E_A_PROVIDER_QUERY_MIC_SOURCE_REVISION,
-      revision,
+      cycle3eaPublicPromotion ? revision : CYCLE_3E_A_PUBLIC_PROMOTION_REVISION,
     );
     if (!isCycle3eaPublicPromotionCommitDiffSetAllowed(entries)) invalid();
+  }
+  if (cycle3eb1Feature) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3E_A_PUBLIC_PROMOTION_REVISION,
+      revision,
+    );
+    if (!isCycle3eb1FeatureCommitDiffSetAllowed(entries)) invalid();
   }
 
   await verifyCycle2xTransition(

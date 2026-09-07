@@ -18,6 +18,9 @@ describe("API mode", () => {
       "personal_dossier",
     );
     expect(
+      resolveApiMode({ RESEARCH_COCKPIT_MODE: "personal_workspace" }),
+    ).toBe("personal_workspace");
+    expect(
       resolveApiMode({
         RESEARCH_COCKPIT_MODE: "personal_single_user_local_connected",
       }),
@@ -39,6 +42,7 @@ describe("API mode", () => {
       "PERSONAL_SINGLE_USER_LOCAL_CONNECTED",
       "PERSONAL_SINGLE_USER_LOCAL_SECURITY_MASTER",
       "PERSONAL_SINGLE_USER_LOCAL_VAULT",
+      "PERSONAL_WORKSPACE",
       "PERSONAL_READINESS",
       "production",
     ]) {

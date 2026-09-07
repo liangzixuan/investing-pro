@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { isPersonalDossierWebMode } from "@/lib/web-mode";
+import {
+  isPersonalDossierWebMode,
+  isPersonalWorkspaceWebMode,
+} from "@/lib/web-mode";
 
 export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   if (isPersonalDossierWebMode(process.env.RESEARCH_COCKPIT_WEB_MODE)) {
     redirect("/personal");
+  }
+  if (isPersonalWorkspaceWebMode(process.env.RESEARCH_COCKPIT_WEB_MODE)) {
+    redirect("/discover");
   }
 
   return (

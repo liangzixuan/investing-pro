@@ -1998,9 +1998,9 @@ Pass only for exact source revision
 `8c2166fa01f5e1f471887ccdeb9484b132a02bb0` and routing closure
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
 breadth, latency, or private operation in that historical subcycle record.
-Cycle 3e-b1 is the current highest-priority visible product milestone; later
-Cycle 3e-b work and Cycles 3f through 3q remain planned.** No parity claim is
-made.
+Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
+Cycle 3g-a is now the highest-priority visible product milestone. Later Cycle
+3e-b work and Cycles 3f through 3q remain planned.** No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
@@ -2467,10 +2467,13 @@ operation. Its public source and synthetic timing establish no private
 sub-result. The later owner-authorized gate is represented only by the
 permitted coarse outcome and does not establish feature parity.
 
-Cycle 3e-b1 is now the highest-priority visible boundary: authenticated browser
-search over the admitted universe plus durable typed owner-local watchlists.
-Security and privacy remain acceptance criteria rather than standalone
-milestones unless they block correctness, private data, or credentials.
+Cycle 3e-b1 now implements authenticated browser search over the admitted
+universe plus one durable typed owner-local `My Watchlist`, including
+add/remove/reorder, inline notes, restart persistence, and explicit degraded
+states. Cycle 3g-a is now the highest-priority visible boundary: current quote
+and price-history composition with a useful chart. Security and privacy remain
+acceptance criteria rather than standalone milestones unless they block
+correctness, private data, or credentials.
 
 The delivery waves are:
 

@@ -2,10 +2,12 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const components = vi.hoisted(() => ({
+  Discovery: () => null,
   Personal: () => null,
   Synthetic: () => null,
 }));
 const moduleLoads = vi.hoisted(() => ({
+  discovery: 0,
   personal: 0,
   researchCore: 0,
   synthetic: 0,
@@ -23,6 +25,10 @@ vi.mock("@/features/research/PersonalResearchWorkspace", () => {
   moduleLoads.personal += 1;
   return { PersonalResearchWorkspace: components.Personal };
 });
+vi.mock("@/features/research/SecurityDiscoveryWorkspace", () => {
+  moduleLoads.discovery += 1;
+  return { SecurityDiscoveryWorkspace: components.Discovery };
+});
 vi.mock("@/features/research/ResearchWorkspace", () => {
   moduleLoads.synthetic += 1;
   return { ResearchWorkspace: components.Synthetic };
@@ -37,12 +43,15 @@ vi.mock("@/lib/web-mode", () => ({
     value === "personal_dossier",
   isPersonalWebMode: (value: string | undefined) =>
     value === "personal_single_user_local",
+  isPersonalWorkspaceWebMode: (value: string | undefined) =>
+    value === "personal_workspace",
 }));
 
 afterEach(() => vi.unstubAllEnvs());
 beforeEach(() => {
   vi.resetModules();
   moduleLoads.personal = 0;
+  moduleLoads.discovery = 0;
   moduleLoads.researchCore = 0;
   moduleLoads.synthetic = 0;
   navigation.notFound.mockClear();
@@ -58,6 +67,7 @@ describe("research page data-mode isolation", () => {
 
     expect(navigation.redirect).toHaveBeenCalledExactlyOnceWith("/personal");
     expect(moduleLoads).toEqual({
+      discovery: 0,
       personal: 0,
       researchCore: 0,
       synthetic: 0,
@@ -77,6 +87,7 @@ describe("research page data-mode isolation", () => {
 
     expect(navigation.redirect).toHaveBeenCalledExactlyOnceWith("/personal");
     expect(moduleLoads).toEqual({
+      discovery: 0,
       personal: 0,
       researchCore: 0,
       synthetic: 0,
@@ -95,10 +106,70 @@ describe("research page data-mode isolation", () => {
     expect(rendered.props).toEqual({});
     expect(navigation.notFound).not.toHaveBeenCalled();
     expect(moduleLoads).toEqual({
+      discovery: 0,
       personal: 1,
       researchCore: 0,
       synthetic: 0,
     });
+  });
+
+  it("redirects the root to discovery in personal workspace mode", async () => {
+    vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
+    const { default: HomePage } = await import("../app/page");
+
+    expect(() => HomePage()).toThrow("NEXT_REDIRECT:/discover");
+    expect(navigation.redirect).toHaveBeenCalledExactlyOnceWith("/discover");
+    expect(moduleLoads).toEqual({
+      discovery: 0,
+      personal: 0,
+      researchCore: 0,
+      synthetic: 0,
+    });
+  });
+
+  it("redirects symbol routes to discovery before loading synthetic code", async () => {
+    vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
+    const ResearchPage = await loadResearchPage();
+
+    await expect(
+      ResearchPage({
+        params: Promise.resolve({ symbol: "SYN1" }),
+        searchParams: Promise.resolve({ knownAt: "PRIVATE_QUERY_CANARY" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:/discover");
+
+    expect(navigation.redirect).toHaveBeenCalledExactlyOnceWith("/discover");
+    expect(moduleLoads).toEqual({
+      discovery: 0,
+      personal: 0,
+      researchCore: 0,
+      synthetic: 0,
+    });
+  });
+
+  it("loads discovery only on its explicit workspace route", async () => {
+    vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
+    const { default: DiscoveryPage } = await import("../app/discover/page");
+
+    const rendered = DiscoveryPage();
+
+    expect(rendered.type).toBe(components.Discovery);
+    expect(navigation.notFound).not.toHaveBeenCalled();
+    expect(moduleLoads).toEqual({
+      discovery: 1,
+      personal: 0,
+      researchCore: 0,
+      synthetic: 0,
+    });
+  });
+
+  it("does not expose discovery outside personal workspace mode", async () => {
+    vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "");
+    const { default: DiscoveryPage } = await import("../app/discover/page");
+
+    expect(() => DiscoveryPage()).toThrow("NEXT_NOT_FOUND");
+    expect(navigation.notFound).toHaveBeenCalledOnce();
+    expect(moduleLoads.discovery).toBe(0);
   });
 
   it("does not expose the isolated personal route outside dossier mode", async () => {

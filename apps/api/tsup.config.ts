@@ -13,6 +13,7 @@ export default defineConfig({
     "src/connected-server.ts",
     "src/security-master-server.ts",
     "src/vault-server.ts",
+    "src/workspace-server.ts",
   ],
   outDir: "dist/src",
   format: ["esm"],

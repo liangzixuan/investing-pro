@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { isPersonalDossierWebMode, isPersonalWebMode } from "./web-mode";
+import {
+  isPersonalDossierWebMode,
+  isPersonalWebMode,
+  isPersonalWorkspaceWebMode,
+} from "./web-mode";
 
 describe("personal web mode", () => {
   it.each([
@@ -22,5 +26,17 @@ describe("personal dossier web mode", () => {
     ["personal_dossier", true],
   ] as const)("maps %s to %s", (value, expected) => {
     expect(isPersonalDossierWebMode(value)).toBe(expected);
+  });
+});
+
+describe("personal workspace web mode", () => {
+  it.each([
+    [undefined, false],
+    ["", false],
+    ["personal_dossier", false],
+    ["personal_workspace_extra", false],
+    ["personal_workspace", true],
+  ] as const)("maps %s to %s", (value, expected) => {
+    expect(isPersonalWorkspaceWebMode(value)).toBe(expected);
   });
 });

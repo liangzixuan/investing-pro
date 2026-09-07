@@ -64,7 +64,8 @@ export class LocalApiCompositionError extends Error {
     | "SECURITY_MASTER_CONFIGURATION_REQUIRES_SECURITY_MASTER_ENTRYPOINT"
     | "SECURITY_MASTER_MODE_REQUIRES_SECURITY_MASTER_ENTRYPOINT"
     | "VAULT_CONFIGURATION_REQUIRES_VAULT_ENTRYPOINT"
-    | "VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT";
+    | "VAULT_MODE_REQUIRES_VAULT_ENTRYPOINT"
+    | "WORKSPACE_MODE_REQUIRES_WORKSPACE_ENTRYPOINT";
 
   constructor(code: LocalApiCompositionError["code"]) {
     super("The requested local API composition is unavailable.");
@@ -197,6 +198,11 @@ function prepareConfiguredApp(
   if (mode === "personal_single_user_local_security_master") {
     throw new LocalApiCompositionError(
       "SECURITY_MASTER_MODE_REQUIRES_SECURITY_MASTER_ENTRYPOINT",
+    );
+  }
+  if (mode === "personal_workspace") {
+    throw new LocalApiCompositionError(
+      "WORKSPACE_MODE_REQUIRES_WORKSPACE_ENTRYPOINT",
     );
   }
   if (hasConnectedConfiguration) {

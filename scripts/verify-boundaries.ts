@@ -2160,6 +2160,7 @@ const workspacePackageNames =
 violations.push(
   ...(await personalFilingCorpusBoundaryViolations()),
   ...(await personalSecurityMasterBoundaryViolations()),
+  ...(await personalWorkspaceApiBoundaryViolations()),
   ...(await connectedSourcePolicyBoundaryViolations()),
   ...(await localResearchVaultBoundaryViolations()),
   ...(await filingParserCrossEngineExecutionBoundaryViolations()),
@@ -5167,9 +5168,88 @@ function doubleQuotedShellArray(
 }
 
 function hasExactApiBuildEntries(content: string): boolean {
-  return /\bentry:\s*\[\s*"src\/server\.ts",\s*"src\/connected-server\.ts",\s*"src\/security-master-server\.ts",\s*"src\/vault-server\.ts",?\s*\]/u.test(
+  return /\bentry:\s*\[\s*"src\/server\.ts",\s*"src\/connected-server\.ts",\s*"src\/security-master-server\.ts",\s*"src\/vault-server\.ts",\s*"src\/workspace-server\.ts",?\s*\]/u.test(
     content,
   );
+}
+
+async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
+  const found: string[] = [];
+  const entry = "apps/api/src/workspace-server.ts";
+  const expectedFiles = [
+    "apps/api/src/listen-options.ts",
+    "apps/api/src/personal-owner-session-routes.ts",
+    "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-security-master-routes.ts",
+    "apps/api/src/personal-vault-routes.ts",
+    "apps/api/src/security-master-app.ts",
+    "apps/api/src/security-master-composition-root.ts",
+    "apps/api/src/vault-app.ts",
+    "apps/api/src/vault-composition-root.ts",
+    "apps/api/src/workspace-app.ts",
+    "apps/api/src/workspace-composition-root.ts",
+    "apps/api/src/workspace-server.ts",
+    "apps/api/src/workspace-watchlist-routes.ts",
+  ].sort();
+  const expectedExternalSpecifiers = [
+    "@fastify/cors",
+    "@fastify/helmet",
+    "@research-cockpit/contracts",
+    localResearchVaultModule,
+    personalSecurityMasterModule,
+    "fastify",
+    "node:crypto",
+    "node:fs",
+    "node:fs/promises",
+    "node:path",
+    "node:perf_hooks",
+  ].sort();
+  const pending = [entry];
+  const visited = new Set<string>();
+  const externalSpecifiers = new Set<string>();
+  const processFiles = new Set<string>();
+  while (pending.length > 0) {
+    const path = pending.pop();
+    if (path === undefined || visited.has(path)) continue;
+    visited.add(path);
+    let source: string;
+    try {
+      source = await readFile(resolvePath(root, path), "utf8");
+    } catch {
+      found.push(`${path}: personal workspace runtime source is missing`);
+      continue;
+    }
+    if (/\bprocess\./u.test(source)) processFiles.add(path);
+    for (const specifier of collectModuleSpecifiers(source)) {
+      if (!specifier.startsWith(".")) {
+        externalSpecifiers.add(specifier);
+        continue;
+      }
+      let target = posixNormalize(`${posixDirname(path)}/${specifier}`);
+      target = target.replace(/\.(?:c|m)?js$/u, ".ts");
+      if (!/\.[cm]?[jt]sx?$/u.test(target)) target += ".ts";
+      pending.push(target);
+    }
+  }
+  if (JSON.stringify([...visited].sort()) !== JSON.stringify(expectedFiles)) {
+    found.push(
+      `${entry}: personal workspace runtime graph must remain the exact reviewed composition`,
+    );
+  }
+  if (
+    JSON.stringify([...externalSpecifiers].sort()) !==
+    JSON.stringify(expectedExternalSpecifiers)
+  ) {
+    found.push(
+      `${entry}: personal workspace external imports must remain the exact reviewed allowlist`,
+    );
+  }
+  if (JSON.stringify([...processFiles].sort()) !== JSON.stringify([entry])) {
+    found.push(
+      `${entry}: only the personal workspace server may read process state`,
+    );
+  }
+  return found;
 }
 
 async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
@@ -5429,6 +5509,24 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       [
         "admitPersonalSecurityMasterSnapshot",
         "PERSONAL_SECURITY_MASTER_LIMITS",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-app.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_PROFILE",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-watchlist-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+        "type PersonalSecurityMasterSearchResult",
       ],
     ],
   ]);
@@ -10419,6 +10517,15 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     ["apps/api/src/vault-composition-root.ts", ["LocalResearchVault"]],
+    [
+      "apps/api/src/workspace-app.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    ["apps/api/src/workspace-composition-root.ts", ["LocalResearchVault"]],
+    [
+      "apps/api/src/workspace-watchlist-routes.ts",
+      ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
+    ],
   ]);
 }
 
@@ -11250,7 +11357,7 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
     import "node:path";
     import "tsup";
     import "./src/build-source-identity";
-    entry: ["src/server.ts", "src/connected-server.ts", "src/security-master-server.ts", "src/vault-server.ts"];
+    entry: ["src/server.ts", "src/connected-server.ts", "src/security-master-server.ts", "src/vault-server.ts", "src/workspace-server.ts"];
     splitting: false;
   `;
 

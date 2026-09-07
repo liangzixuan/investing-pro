@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 
-import { isPersonalDossierWebMode, isPersonalWebMode } from "@/lib/web-mode";
+import {
+  isPersonalDossierWebMode,
+  isPersonalWebMode,
+  isPersonalWorkspaceWebMode,
+} from "@/lib/web-mode";
 
 interface ResearchPageProps {
   params: Promise<{ symbol: string }>;
@@ -14,6 +18,9 @@ export default async function ResearchPage({
   const configuredMode = process.env.RESEARCH_COCKPIT_WEB_MODE;
   if (isPersonalDossierWebMode(configuredMode)) {
     redirect("/personal");
+  }
+  if (isPersonalWorkspaceWebMode(configuredMode)) {
+    redirect("/discover");
   }
 
   const [{ symbol }, query, { DEFAULT_KNOWN_AT }, { ResearchWorkspace }] =

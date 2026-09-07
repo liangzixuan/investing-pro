@@ -260,6 +260,17 @@ describe("local API composition root", () => {
       "private-security-master-canary",
     );
   });
+
+  it("refuses workspace mode at the ordinary entrypoint", async () => {
+    const workspaceMode = await createConfiguredApp({
+      RESEARCH_COCKPIT_MODE: "personal_workspace",
+      RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET: freshSecret(),
+    }).catch((error: unknown) => error);
+
+    expect(workspaceMode).toMatchObject({
+      code: "WORKSPACE_MODE_REQUIRES_WORKSPACE_ENTRYPOINT",
+    });
+  });
 });
 
 function freshSecret(): string {

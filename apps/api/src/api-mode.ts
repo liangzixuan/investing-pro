@@ -3,6 +3,7 @@ export type ApiMode =
   | "personal_readiness"
   | "personal_fact_release"
   | "personal_dossier"
+  | "personal_workspace"
   | "personal_single_user_local_connected"
   | "personal_single_user_local_security_master"
   | "personal_single_user_local_vault";
@@ -25,6 +26,7 @@ export function resolveApiMode(environment: ApiModeEnvironment): ApiMode {
     value !== "personal_readiness" &&
     value !== "personal_fact_release" &&
     value !== "personal_dossier" &&
+    value !== "personal_workspace" &&
     value !== "personal_single_user_local_connected" &&
     value !== "personal_single_user_local_security_master" &&
     value !== "personal_single_user_local_vault"

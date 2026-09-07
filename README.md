@@ -12,7 +12,24 @@ production-readiness gates are therefore **Out of scope for this profile**,
 not Pass and not current Blockers. Historical enterprise Cycle 2b/2p work is
 preserved and becomes applicable only if that scope widens.
 
-## Current slice
+## Current personal milestone
+
+Cycle 3e-b1 adds the first daily-use personal discovery workflow. In the
+explicit `personal_workspace` mode, the owner can authenticate, search the
+admitted local security universe by ticker or company name, and keep one typed
+`My Watchlist` in the encrypted local vault. The browser supports add, remove,
+reorder, and inline notes; saved state survives browser and API restarts. It
+also presents distinct loading, empty, error, conflict, stale-snapshot, and
+watchlist-read-only states. No browser storage, external request, or
+Investing.com crawling is used.
+
+This is a visible feature milestone, not a parity claim. Multi-list management,
+quotes and price history, financial-statement breadth, valuation/peer tools,
+screening, events/news, portfolio analytics, alerts, and exports remain later
+product work. Security and privacy are acceptance checks for those milestones,
+not separate roadmap drivers unless they block correct personal use.
+
+## Historical synthetic slice
 
 Sprint 0 is a zero-infrastructure demo that proves:
 
@@ -1349,10 +1366,12 @@ operation. The separately authorized private gate used the exact recorded
 package-owned-clock implementation and is represented only by the permitted
 coarse outcome. Neither record establishes competitor parity.
 
-Cycle 3e-b1 is now the highest-priority visible milestone: authenticated
-browser search over the admitted universe plus durable typed owner-local
-watchlists. Security and privacy remain acceptance criteria, not standalone
-milestones unless they block correctness, private data, or credentials.
+Cycle 3e-b1 now implements authenticated browser search over the admitted
+universe plus one durable typed owner-local `My Watchlist`. The next
+highest-priority visible gap is Cycle 3g-a: current quote and price-history
+composition with a useful chart. Security and privacy remain acceptance
+criteria, not standalone milestones unless they block correctness, private
+data, or credentials.
 
 Cycle 1b-a moves history, timeline, and evidence membership into
 instrument-scoped snapshots and freezes a separate operation-scoped port for an
@@ -1618,6 +1637,65 @@ For the default synthetic demo, open
 `http://localhost:3000/research/SYN1`. The API listens on
 `http://127.0.0.1:3100`. Do not set either personal-mode variable for this
 default.
+
+### Personal discovery workspace
+
+Cycle 3e-b1 is an explicit local-only startup. It requires an already admitted
+owner-local security-master snapshot and its exact digest, plus a dedicated
+vault root. Use `initialize` only for a new absent vault root; use `open` on
+later starts. These values and the owner bootstrap secret must remain outside
+Git and logs.
+
+In the API terminal, set the private values without printing them, generate a
+fresh owner bootstrap secret using the CSPRNG procedure below, and start the
+combined entrypoint:
+
+```powershell
+$env:RESEARCH_COCKPIT_MODE = "personal_workspace"
+$env:PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH = "C:\absolute\owner-local\personal-security-master-v1.json"
+$env:PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 = "sha256:<64 lowercase hex characters>"
+$env:RESEARCH_COCKPIT_VAULT_ROOT = "C:\absolute\owner-local\research-cockpit-vault"
+$env:RESEARCH_COCKPIT_VAULT_STARTUP = "initialize" # change to "open" after first start
+
+try {
+  $workspaceBootstrapBytes = New-Object byte[] 32
+  $workspaceBootstrapRng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try {
+    $workspaceBootstrapRng.GetBytes($workspaceBootstrapBytes)
+    $workspaceBootstrapSecret = -join ($workspaceBootstrapBytes | ForEach-Object { $_.ToString("x2") })
+  } finally {
+    $workspaceBootstrapRng.Dispose()
+    [Array]::Clear($workspaceBootstrapBytes, 0, $workspaceBootstrapBytes.Length)
+    $workspaceBootstrapBytes = $null
+  }
+
+  $env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET = $workspaceBootstrapSecret
+  Set-Clipboard -Value $workspaceBootstrapSecret
+  $workspaceBootstrapSecret = $null
+  pnpm --filter @research-cockpit/api dev:workspace
+} finally {
+  $workspaceBootstrapSecret = $null
+  Remove-Item Env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET -ErrorAction SilentlyContinue
+  Set-Clipboard -Value ([string]::Empty)
+}
+```
+
+This block is complete for `personal_workspace`; do not copy the different
+`personal_readiness` variables from the historical personal-mode example below.
+
+In the web terminal:
+
+```powershell
+$env:RESEARCH_COCKPIT_WEB_MODE = "personal_workspace"
+$env:NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:3100"
+pnpm --filter @research-cockpit/web exec next dev -p 3000 -H 127.0.0.1
+```
+
+Open `http://127.0.0.1:3000/discover`, paste the fresh bootstrap value into the
+owner-session panel, and select **Start session**. The combined process gives
+search and watchlist requests one cookie authority; the older isolated
+security-master and generic-vault entrypoints remain available for their
+original bounded uses.
 
 Personal mode is a separate explicit startup. The runnable example below covers
 the promoted Cycle 3a readiness-only mode; it does not start a Cycle 3b dossier
