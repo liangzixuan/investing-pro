@@ -148,6 +148,10 @@ import {
   isCycle3eb1FeatureTopologyAllowed,
   isCycle3eb1RoutingClosureCommitDiffSetAllowed,
   isCycle3eb1RoutingClosureTopologyAllowed,
+  isCycle3ga1FeatureCommitDiffSetAllowed,
+  isCycle3ga1FeatureTopologyAllowed,
+  isCycle3ga1RoutingClosureCommitDiffSetAllowed,
+  isCycle3ga1RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -836,6 +840,10 @@ const CYCLE_3E_A_PUBLIC_PROMOTION_REVISION =
   "8df2f84c680281bf35d401d17fb98c4946292f14" as const;
 const CYCLE_3E_B1_FEATURE_REVISION =
   "33b12345461aa93e05d2a98bca76276c8740d289" as const;
+const CYCLE_3E_B1_ROUTING_CLOSURE_REVISION =
+  "398680bb3a609f273f4a8fe21705ce63981d8946" as const;
+const CYCLE_3G_A1_FEATURE_REVISION =
+  "e53670fa44b2fcf54c5dfc7ad04b886d9bf30a26" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -2280,6 +2288,89 @@ const CYCLE_3E_B1_FEATURE_TRANSITION = [
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ];
 const CYCLE_3E_B1_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3G_A1_FEATURE_TRANSITION = [
+  { path: "README.md", status: "M" },
+  {
+    path: "apps/api/src/personal-market-data-provider.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/personal-market-data-provider.ts", status: "A" },
+  {
+    path: "apps/api/src/personal-owner-session-routes.test.ts",
+    status: "M",
+  },
+  { path: "apps/api/src/personal-owner-session-routes.ts", status: "M" },
+  { path: "apps/api/src/workspace-app.ts", status: "M" },
+  {
+    path: "apps/api/src/workspace-composition-root.test.ts",
+    status: "M",
+  },
+  { path: "apps/api/src/workspace-composition-root.ts", status: "M" },
+  { path: "apps/api/src/workspace-market-data-routes.test.ts", status: "A" },
+  { path: "apps/api/src/workspace-market-data-routes.ts", status: "A" },
+  { path: "apps/api/src/workspace-static-graph.test.ts", status: "M" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalMarketOverview.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalMarketOverview.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PriceHistoryChart.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PriceHistoryChart.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/personal-workspace-api.test.ts", status: "M" },
+  { path: "apps/web/src/lib/personal-workspace-api.ts", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION = [
   { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -6784,7 +6875,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("pins the provider source, promotion, feature, and one routing closure", () => {
+  it("pins the provider, promotion, and visible-feature routing chain", () => {
     expect(
       isCycle3eaProviderQueryMicSourceTopologyAllowed(
         ...providerQueryMicSourceTopology,
@@ -6865,7 +6956,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ).toBe(false);
     }
 
-    const closureRevision = "e".repeat(40);
+    const closureRevision = CYCLE_3E_B1_ROUTING_CLOSURE_REVISION;
     const closure = [
       "46",
       "46",
@@ -6878,6 +6969,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       [0, "45"],
       [1, "47"],
       [2, CYCLE_3E_B1_FEATURE_REVISION],
+      [2, "e".repeat(40)],
       [2, "not-a-commit"],
       [3, `${closureRevision} ${CYCLE_3E_A_PUBLIC_PROMOTION_REVISION}`],
     ] as const) {
@@ -6901,6 +6993,94 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         `${closureRevision} ${CYCLE_3E_B1_FEATURE_REVISION}`,
         changedFeature as unknown as Parameters<
           typeof isCycle3eb1RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const marketFeature = [
+      "47",
+      "47",
+      CYCLE_3G_A1_FEATURE_REVISION,
+      `${CYCLE_3G_A1_FEATURE_REVISION} ${CYCLE_3E_B1_ROUTING_CLOSURE_REVISION}`,
+      closure,
+    ] as const;
+    expect(isCycle3ga1FeatureTopologyAllowed(...marketFeature)).toBe(true);
+    for (const [index, replacement] of [
+      [0, "46"],
+      [1, "48"],
+      [2, "f".repeat(40)],
+      [3, `${CYCLE_3G_A1_FEATURE_REVISION} ${CYCLE_3E_B1_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3G_A1_FEATURE_REVISION} ${CYCLE_3E_B1_ROUTING_CLOSURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...marketFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ga1FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ga1FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const changedClosure: unknown[] = [...closure];
+    changedClosure[2] = "e".repeat(40);
+    expect(
+      isCycle3ga1FeatureTopologyAllowed(
+        "47",
+        "47",
+        CYCLE_3G_A1_FEATURE_REVISION,
+        `${CYCLE_3G_A1_FEATURE_REVISION} ${CYCLE_3E_B1_ROUTING_CLOSURE_REVISION}`,
+        changedClosure as unknown as Parameters<
+          typeof isCycle3ga1FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const marketClosureRevision = "c".repeat(40);
+    const marketClosure = [
+      "48",
+      "48",
+      marketClosureRevision,
+      `${marketClosureRevision} ${CYCLE_3G_A1_FEATURE_REVISION}`,
+      marketFeature,
+    ] as const;
+    expect(isCycle3ga1RoutingClosureTopologyAllowed(...marketClosure)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "47"],
+      [1, "49"],
+      [2, CYCLE_3G_A1_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [3, `${marketClosureRevision} ${CYCLE_3E_B1_ROUTING_CLOSURE_REVISION}`],
+      [
+        3,
+        `${marketClosureRevision} ${CYCLE_3G_A1_FEATURE_REVISION} ${"d".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...marketClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ga1RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ga1RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const changedMarketFeature: unknown[] = [...marketFeature];
+    changedMarketFeature[2] = "d".repeat(40);
+    expect(
+      isCycle3ga1RoutingClosureTopologyAllowed(
+        "48",
+        "48",
+        marketClosureRevision,
+        `${marketClosureRevision} ${CYCLE_3G_A1_FEATURE_REVISION}`,
+        changedMarketFeature as unknown as Parameters<
+          typeof isCycle3ga1RoutingClosureTopologyAllowed
         >[4],
       ),
     ).toBe(false);
@@ -7017,6 +7197,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3E_B1_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ga1FeatureCommitDiffSetAllowed,
+      CYCLE_3G_A1_FEATURE_TRANSITION,
+      27,
+    );
+    expectExactTransition(
+      isCycle3ga1RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -7068,6 +7258,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3E_A_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_B1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_B1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3G_A1_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -7171,6 +7363,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3E_A_PUBLIC_PROMOTION_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_B1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3E_B1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3G_A1_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
