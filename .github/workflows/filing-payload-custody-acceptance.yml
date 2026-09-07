@@ -227,6 +227,59 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Classify exact Cycle 3e-b1 non-evidence routing closure
+        id: cycle3eb1_route
+        shell: bash
+        run: |
+          exact=false
+          cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
+          promotion="8df2f84c680281bf35d401d17fb98c4946292f14"
+          feature="33b12345461aa93e05d2a98bca76276c8740d289"
+          expected=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
+          matches_exactly() {
+            if [[ "${#actual[@]}" != "${#expected[@]}" ]]; then
+              return 1
+            fi
+            for index in "${!expected[@]}"; do
+              if [[ "${actual[$index]}" != "${expected[$index]}" ]]; then
+                return 1
+              fi
+            done
+          }
+          if git cat-file -e "$cycle2z_baseline^{commit}" && \
+             git cat-file -e "$promotion^{commit}" && \
+             git cat-file -e "$feature^{commit}"; then
+            read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
+            read -r -a feature_topology <<< "$(git rev-list --parents -n 1 "$feature")"
+            mapfile -d '' -t actual < <(
+              git diff --name-status --no-renames -z "$feature" HEAD --
+            )
+            if [[ "$(git merge-base "$cycle2z_baseline" HEAD)" == "$cycle2z_baseline" ]] && \
+               [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "45" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "45" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "46" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "46" ]] && \
+               [[ "${#feature_topology[@]}" == "2" ]] && \
+               [[ "${feature_topology[0]}" == "$feature" ]] && \
+               [[ "${feature_topology[1]}" == "$promotion" ]] && \
+               [[ "${#head_topology[@]}" == "2" ]] && \
+               [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+               [[ "${head_topology[1]}" == "$feature" ]] && \
+               matches_exactly; then
+              exact=true
+            fi
+          fi
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
+
       - name: Install pinned pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -253,9 +306,11 @@ jobs:
         env:
           CI: "true"
           FILING_PAYLOAD_CUSTODY_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
+        if: ${{ steps.cycle3eb1_route.outputs.exact != 'true' }}
         run: pnpm filing-payload-custody:acceptance
 
       - name: Verify canonical evidence against the exact commit
+        if: ${{ steps.cycle3eb1_route.outputs.exact != 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
@@ -271,7 +326,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID"
 
       - name: Upload filing payload custody evidence
-        if: ${{ success() }}
+        if: ${{ success() && steps.cycle3eb1_route.outputs.exact != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-payload-custody-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}
