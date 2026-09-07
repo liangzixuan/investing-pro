@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@research-cockpit/contracts": "workspace:*",
+    "@research-cockpit/personal-market-analytics": "workspace:*",
     "@research-cockpit/research-core": "workspace:*",
     "echarts": "6.1.0",
     "next": "16.3.1",

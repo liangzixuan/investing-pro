@@ -6,6 +6,7 @@ import type {
 
 import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api";
 
+import { PersonalMarketAnalytics } from "./PersonalMarketAnalytics";
 import {
   PriceHistoryChart,
   type PriceAdjustmentMode,
@@ -201,6 +202,13 @@ export function PersonalMarketOverview({
                 bars={overview.history.bars}
                 mode={adjustmentMode}
                 symbol={overview.security.symbol}
+              />
+              <PersonalMarketAnalytics
+                asOfDate={
+                  overview.history.bars.at(-1)?.date ?? overview.history.endDate
+                }
+                bars={overview.history.bars}
+                mode={adjustmentMode}
               />
               <p className="market-attribution">
                 Data attribution: {overview.provider.attribution}. Export and

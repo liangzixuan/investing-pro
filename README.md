@@ -14,25 +14,37 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycle 3g-a1 adds the first provider-backed market view to the daily-use
-discovery workflow. In the explicit `personal_workspace` mode, the owner can
+Cycles 3g-a1 and 3g-b1 add a provider-backed market view and transparent
+trend/risk analytics to the daily-use discovery workflow. In the explicit
+`personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
 `My Watchlist`, and open a selected company without putting its symbol in the
 browser URL. With an owner-supplied Tiingo token, an explicit click loads a
 current derived reference price plus 1M, 3M, YTD, 1Y, 5Y, or 10Y of daily raw
 and adjusted OHLCV. The chart and exact table include cash-dividend and split
 markers, source and ingestion times, freshness, currency, and provider labels.
-There is no automatic provider request and no synthetic price fallback.
+The same in-memory response now produces selected-window return, trailing
+20-session annualized volatility, maximum drawdown, trailing up-to-252-session
+close-range position, and 20/50/200-session simple-moving-average trend
+classifications. Changing raw/adjusted mode recalculates the analytics locally
+without another provider request. There is no automatic provider request,
+synthetic price fallback, or buy/sell rating.
 
-Tiingo Starter data is held only in the active owner session's memory and is
-not written to the vault, filesystem, browser storage, logs, exports, or Git.
+Tiingo Starter data and the displayed analytics are held only in the active
+owner session's memory and are not written to the vault, filesystem, browser
+storage, logs, exports, or Git.
 The UI distinguishes an unconfigured token, unsupported symbol, rejected
 credential, rate limit, upstream outage, stale quote, loading, and retry state.
-This is a visible feature milestone, not a full Cycle 3g-a or product-parity
-claim: the declared 100-symbol validation gate, policy-permitted offline price
-cache, independent corporate-action reconciliation, indicators, statement
-breadth, valuation/peer tools, screening, events/news, portfolio analytics,
-alerts, and exports remain later product work.
+Every analytic carries its formula/version, parameters, input window, sample
+count, rounding rule, and observed-sessions/no-gap-fill policy; insufficient
+history remains explicit. The currently reviewed
+[Tiingo terms](https://api.tiingo.com/tos/) permit non-reconstructable aggregate
+derivation, so no derived price or moving-average series is retained or exposed.
+This is a visible feature milestone, not full Cycle 3g or product parity: the
+declared 100-symbol validation gate, independent corporate-action reconciliation,
+benchmark relative strength, broader indicators, statement breadth,
+valuation/peer tools, screening, events/news, portfolio analytics, alerts, and
+exports remain later product work.
 
 ## Historical synthetic slice
 

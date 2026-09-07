@@ -2580,6 +2580,36 @@ or competitor parity. Under the selected Starter-compatible path, persistent
 storage and export remain prohibited; a later retention-capable subscription
 would require a separately admitted cache design.
 
+## Cycle 3g-b1 transient market-analytics model
+
+Cycle 3g-b1 is a pure browser-side transformation of the one Cycle 3g-a1
+response already present in component memory. It performs no fetch, does not
+write to browser storage or the owner vault, and is discarded with the market
+view or owner session. The owner-selected raw or adjusted close series is the
+only numerical input. Input dates must be unique, strictly increasing valid UTC
+calendar dates at or before the declared as-of date, and every selected close
+must be a finite positive decimal accepted by the market-data response
+contract.
+
+The fixed first formula set reports selected-window percentage return;
+trailing-20-session sample standard deviation of log returns annualized by the
+square root of 252; maximum close-to-prior-peak drawdown magnitude with its
+peak/trough dates; the latest close's position between the lowest and highest
+observed closes in the trailing, up-to-252-session window; and whether the
+latest close is above, below, or at its trailing 20-, 50-, and 200-session
+arithmetic mean. The aggregate response never includes a moving-average or
+derived-price series. Each metric binds a formula ID/version, parameters,
+deterministic rounding, required and observed samples, and either an available
+result or an explicit warm-up/zero-range state. The response-level input window
+records its first/last date, session count, mode, as-of date, and
+`observed_sessions_only_no_gap_filling` policy.
+
+This slice supplies descriptive research context only: it emits no buy/sell
+label, forecast, confidence score, or hidden proprietary signal. It does not
+establish the full Cycle 3g-a provider-universe/corporate-action gates, a
+benchmark or relative-strength result, intraday analytics, persistent derived
+research, or competitor parity.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

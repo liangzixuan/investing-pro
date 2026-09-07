@@ -14,6 +14,10 @@ import {
   QuoteSummary,
   type PersonalMarketOverviewProps,
 } from "./PersonalMarketOverview";
+import {
+  PersonalMarketAnalytics,
+  type PersonalMarketAnalyticsProps,
+} from "./PersonalMarketAnalytics";
 
 describe("PersonalMarketOverview", () => {
   it("shows provider readiness without requesting data before selection", () => {
@@ -74,6 +78,34 @@ describe("PersonalMarketOverview", () => {
     expect(raw.props["aria-pressed"]).toBe(false);
     raw.props.onClick();
     expect(props.onAdjustmentModeChange).toHaveBeenCalledWith("raw");
+    expect(props.onLoad).toHaveBeenCalledTimes(1);
+
+    const analytics = requireElement(
+      rendered,
+      PersonalMarketAnalytics,
+    ) as unknown as React.ReactElement<PersonalMarketAnalyticsProps>;
+    expect(analytics.props.asOfDate).toBe("2030-01-15");
+    expect(analytics.props.bars).toBe(props.overview?.history.bars);
+    expect(analytics.props.mode).toBe("adjusted");
+  });
+
+  it("uses the last observed session as the analytics as-of date", () => {
+    const loaded = overview();
+    const rendered = PersonalMarketOverview(
+      defaultProps({
+        overview: {
+          ...loaded,
+          history: { ...loaded.history, endDate: "2030-01-20" },
+        },
+        selection: selection(),
+      }),
+    );
+
+    const analytics = requireElement(
+      rendered,
+      PersonalMarketAnalytics,
+    ) as unknown as React.ReactElement<PersonalMarketAnalyticsProps>;
+    expect(analytics.props.asOfDate).toBe("2030-01-15");
   });
 
   it.each([
@@ -219,6 +251,14 @@ function requireButton(value: unknown, text: string) {
     disabled?: boolean;
     onClick: () => void;
   }>;
+}
+
+function requireElement(value: unknown, type: React.ElementType) {
+  const element = findAllElements(value, type)[0];
+  if (element === undefined) {
+    throw new Error(`Expected element ${String(type)}.`);
+  }
+  return element;
 }
 
 function findAllElements(

@@ -735,8 +735,8 @@ No claim extends to every issuer, custom taxonomy, dimension, or filing type.
 Target: add price context without mislabeling delayed data or violating source
 terms.
 
-Current implementation status: Cycle 3g-a1 delivers the first useful vertical
-slice through the existing authenticated `/discover` workspace. One explicit
+Current implementation status: Cycle 3g-a1 delivers the first useful data
+vertical slice through the existing authenticated `/discover` workspace. One explicit
 owner action loads a Tiingo derived reference quote and a selected 1M, 3M, YTD,
 1Y, 5Y, or 10Y EOD window for one catalog-bound US listing. The response carries
 raw and adjusted OHLCV, cash dividends, split factors, provider attribution,
@@ -746,12 +746,27 @@ an exact semantic table. Missing configuration, coverage, rejected credentials,
 rate exhaustion, provider failure, and stale data remain explicit; there is no
 synthetic fallback.
 
+Cycle 3g-b1 adds the first transparent analytical slice over that already
+loaded response. It reports selected-window return, trailing 20-session
+annualized log-return volatility, maximum drawdown with peak/trough dates,
+trailing up-to-252-session close-range position, and 20/50/200-session
+simple-moving-average trend classifications. Results recalculate when
+raw/adjusted mode changes and
+make formula identity/version, parameters, observed input dates and sessions,
+rounding, warm-up, and the no-gap-fill policy inspectable. Insufficient history
+and a zero range remain explicit. The calculation is pure and in-memory, makes
+no additional provider request, emits no derived price series, and gives no
+buy/sell rating.
+
 The selected Tiingo Starter-compatible path is deliberately non-persistent:
 provider values exist only in active owner-session memory and cannot be replayed
 offline. Full 3g-a remains open until the declared 100-symbol/ten-year validation
 gate and independent corporate-action golden reconciliation pass. A durable
 offline price cache is applicable only if the owner later selects terms that
 permit retention; it is not required for the non-persistent Starter path.
+Full 3g-b remains open for a separately admitted benchmark series and relative
+strength, plus any additional research indicators that satisfy the provider's
+non-reconstructable aggregate-derivation boundary.
 
 Promotable subcycles:
 

@@ -2474,11 +2474,17 @@ states. Cycle 3g-a1 adds an on-demand, owner-token Tiingo market view for a
 catalog-bound listing: a labelled current derived reference price, six bounded
 daily-history ranges through ten years, raw and adjusted OHLCV, dividend/split
 markers, a price/volume chart, and an exact table. Starter-compatible data is
-not persisted and has no synthetic fallback. Full Cycle 3g-a remains open for
-the declared 100-symbol validation and independent corporate-action golden
-reconciliation. Security and privacy remain acceptance criteria rather than
-standalone milestones unless they block correctness, private data, or
-credentials.
+not persisted and has no synthetic fallback. Cycle 3g-b1 derives transparent
+in-memory return, volatility, drawdown, trailing-range position, and
+20/50/200-session trend classifications from the selected raw or adjusted
+series without another request or a reconstructable derived series. Every
+result exposes its formula/version, parameters, input window, sample count,
+rounding, warm-up, and observed-session policy. Full Cycle 3g-a remains open
+for the declared 100-symbol validation and independent corporate-action golden
+reconciliation; full 3g-b remains open for benchmark relative strength and
+broader admitted indicators. Security and privacy remain acceptance criteria
+rather than standalone milestones unless they block correctness, private data,
+or credentials.
 
 The delivery waves are:
 

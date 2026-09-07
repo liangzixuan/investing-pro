@@ -83,6 +83,9 @@ importers:
       '@research-cockpit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@research-cockpit/personal-market-analytics':
+        specifier: workspace:*
+        version: link:../../packages/personal-market-analytics
       '@research-cockpit/research-core':
         specifier: workspace:*
         version: link:../../modules/research-core
@@ -206,6 +209,12 @@ importers:
   packages/local-research-vault: {}
 
   packages/personal-filing-corpus: {}
+
+  packages/personal-market-analytics:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
 
   packages/personal-security-master: {}
 

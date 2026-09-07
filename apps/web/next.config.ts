@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
     ]),
   transpilePackages: [
     "@research-cockpit/contracts",
+    "@research-cockpit/personal-market-analytics",
     "@research-cockpit/research-core",
   ],
 };
