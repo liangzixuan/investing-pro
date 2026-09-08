@@ -1999,8 +1999,10 @@ Pass only for exact source revision
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
 breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
-Cycle 3g-a is now the highest-priority visible product milestone. Later Cycle
-3e-b work and Cycles 3f through 3q remain planned.** No parity claim is made.
+Cycles 3g-a1 and 3g-b1 add on-demand market data and transparent analytics, and
+Cycle 3h-a1 is the current high-priority annual-statement slice. Later Cycle
+3e-b work, full 3g/3h breadth, and Cycles 3f and 3i through 3q remain planned.**
+No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
 completed `personal_single_user_local` offline boundary and exact Cycle 2z
@@ -2485,6 +2487,22 @@ reconciliation; full 3g-b remains open for benchmark relative strength and
 broader admitted indicators. Security and privacy remain acceptance criteria
 rather than standalone milestones unless they block correctness, private data,
 or credentials.
+
+Cycle 3h-a1 adds the next visible breadth slice to the same authenticated
+`/discover` workflow. A separate explicit action requests up to ten annual
+periods for the exact selected listing from Tiingo's fundamentals statements
+feed. The UI presents a fixed 30-field income/balance/cash-flow registry,
+explicit missing years and cells, eight exact-decimal financial metrics, and
+three latest-year growth comparisons with inspectable formulas and inputs;
+growth over a zero or negative prior-year base stays explicitly not meaningful. The
+response is labelled as provider-most-recent corrected history, stays only in
+active owner-session memory, and is cleared with the view or session. No request
+runs automatically. On a fundamentals 403, one fixed credential-test request
+distinguishes absent fundamentals access from an invalid credential.
+
+This slice does not claim full Cycle 3h-a: quarterly/TTM views, point-in-time
+restatement lineage, the full 30-core-metric set, 500-security coverage, 90%
+knownness, and 20-issuer independent validation remain open.
 
 The delivery waves are:
 

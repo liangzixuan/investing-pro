@@ -306,6 +306,97 @@ export interface PersonalMarketOverviewDto {
   readonly status: "available";
 }
 
+export type PersonalAnnualFinancialReportedFieldKeyDto =
+  | "accounts_receivable"
+  | "assets"
+  | "capital_expenditures"
+  | "cash"
+  | "cost_of_revenue"
+  | "current_assets"
+  | "current_liabilities"
+  | "debt"
+  | "depreciation_and_amortization"
+  | "ebitda"
+  | "financing_cash_flow"
+  | "free_cash_flow"
+  | "gross_profit"
+  | "income_tax_expense"
+  | "intangibles"
+  | "inventory"
+  | "investing_cash_flow"
+  | "liabilities"
+  | "net_income"
+  | "operating_cash_flow"
+  | "operating_expenses"
+  | "operating_income"
+  | "pretax_income"
+  | "property_plant_equipment_net"
+  | "research_and_development"
+  | "revenue"
+  | "selling_general_and_administrative"
+  | "share_based_compensation"
+  | "shareholders_equity"
+  | "interest_expense";
+
+export type PersonalAnnualFinancialReportedCellDto =
+  | Readonly<{
+      status: "known";
+      value: string;
+    }>
+  | Readonly<{
+      reason: "not_supplied_by_provider";
+      status: "unknown";
+      value: null;
+    }>;
+
+export type PersonalAnnualFinancialReportedValuesDto = Readonly<
+  Record<
+    PersonalAnnualFinancialReportedFieldKeyDto,
+    PersonalAnnualFinancialReportedCellDto
+  >
+>;
+
+export interface PersonalAnnualFinancialYearDto {
+  readonly fiscalYear: number;
+  readonly periodEnd: string;
+  readonly reported: PersonalAnnualFinancialReportedValuesDto;
+}
+
+export interface PersonalAnnualFinancialsProviderDto {
+  readonly attribution: "Tiingo";
+  readonly export: "prohibited";
+  readonly id: "tiingo";
+  readonly name: "Tiingo";
+  readonly persistence: "none";
+  readonly redistribution: "prohibited";
+  readonly retention: "active_owner_session_memory_only";
+  readonly revisionBasis: "provider_most_recent";
+  readonly statementFeed: "tiingo_fundamentals_statements";
+  readonly valueCurrency: "USD";
+}
+
+export interface PersonalAnnualFinancialsCoverageDto {
+  readonly earliestFiscalYear: number;
+  readonly knownReportedCells: number;
+  readonly latestFiscalYear: number;
+  readonly missingFiscalYears: readonly number[];
+  readonly requestedAnnualYears: 10;
+  readonly returnedAnnualYears: number;
+  readonly status: "complete" | "partial";
+  readonly unknownReportedCells: number;
+}
+
+export interface PersonalAnnualFinancialsDto {
+  readonly asOf: string;
+  readonly coverage: PersonalAnnualFinancialsCoverageDto;
+  readonly profile: "personal_single_user_local_fundamentals";
+  readonly provider: PersonalAnnualFinancialsProviderDto;
+  readonly schemaVersion: "1.0.0";
+  readonly security: PersonalMarketDataIdentityDto;
+  readonly status: "available";
+  readonly years: readonly PersonalAnnualFinancialYearDto[];
+}
+
 export interface PersonalFilingSelectedFactDto {
   readonly key:
     | "assets"

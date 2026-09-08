@@ -1,4 +1,9 @@
 import type {
+  PersonalAnnualFinancialReportedFieldKeyDto,
+  PersonalAnnualFinancialReportedValuesDto,
+  PersonalAnnualFinancialYearDto,
+  PersonalAnnualFinancialsDto,
+  PersonalAnnualFinancialsProviderDto,
   PersonalMarketDataDailyBarDto,
   PersonalMarketDataIdentityDto,
   PersonalMarketDataProviderDto,
@@ -14,6 +19,7 @@ export const PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY =
 export type PersonalMarketDataProviderErrorCode =
   | "not_configured"
   | "credentials_invalid"
+  | "not_entitled"
   | "rate_limited"
   | "not_covered"
   | "upstream_unavailable"
@@ -23,6 +29,10 @@ export type PersonalMarketDataProviderErrorCode =
 export interface PersonalMarketDataProvider {
   close(): void;
   getStatus(): PersonalMarketDataStatusDto;
+  loadAnnualFinancials(
+    identity: PersonalMarketDataIdentityDto,
+    signal?: AbortSignal,
+  ): Promise<PersonalAnnualFinancialsDto>;
   loadOverview(
     identity: PersonalMarketDataIdentityDto,
     range: PersonalMarketDataRangeDto,
@@ -40,6 +50,8 @@ const ERROR_MESSAGE = "Personal market data is unavailable.";
 const TIINGO_ORIGIN = "https://api.tiingo.com";
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const MAX_EOD_BARS = 4_096;
+const MAX_FINANCIAL_RECORDS = 64;
+const MAX_STATEMENT_ITEMS = 128;
 const REQUEST_TIMEOUT_MILLISECONDS = 10_000;
 const FRESHNESS_WINDOW_MILLISECONDS = 36 * 60 * 60 * 1_000;
 const MAX_FUTURE_CLOCK_SKEW_MILLISECONDS = 5 * 60 * 1_000;
@@ -49,6 +61,8 @@ const EXCHANGE_MIC = /^[A-Z0-9]{4}$/u;
 const PLAIN_TEXT = /^[^\p{Cc}\p{Cf}\p{Cs}]+$/u;
 const PROVIDER_ISO_INSTANT =
   /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d)$/u;
+const PROVIDER_DATE = /^\d{4}-\d{2}-\d{2}$/u;
+const JSON_NUMBER = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u;
 
 const TIINGO_PROVIDER = Object.freeze({
   attribution: "Tiingo",
@@ -61,6 +75,69 @@ const TIINGO_PROVIDER = Object.freeze({
   redistribution: "prohibited",
   retention: "active_owner_session_memory_only",
 }) satisfies PersonalMarketDataProviderDto;
+
+const TIINGO_FINANCIALS_PROVIDER = Object.freeze({
+  attribution: "Tiingo",
+  export: "prohibited",
+  id: "tiingo",
+  name: "Tiingo",
+  persistence: "none",
+  redistribution: "prohibited",
+  retention: "active_owner_session_memory_only",
+  revisionBasis: "provider_most_recent",
+  statementFeed: "tiingo_fundamentals_statements",
+  valueCurrency: "USD",
+}) satisfies PersonalAnnualFinancialsProviderDto;
+
+type StatementSection = "incomeStatement" | "balanceSheet" | "cashFlow";
+
+const REPORTED_FIELD_REGISTRY = Object.freeze([
+  fieldRegistration("incomeStatement", "revenue", "revenue"),
+  fieldRegistration("incomeStatement", "costRev", "cost_of_revenue"),
+  fieldRegistration("incomeStatement", "grossProfit", "gross_profit"),
+  fieldRegistration("incomeStatement", "rnd", "research_and_development"),
+  fieldRegistration(
+    "incomeStatement",
+    "sga",
+    "selling_general_and_administrative",
+  ),
+  fieldRegistration("incomeStatement", "opex", "operating_expenses"),
+  fieldRegistration("incomeStatement", "opinc", "operating_income"),
+  fieldRegistration("incomeStatement", "intexp", "interest_expense"),
+  fieldRegistration("incomeStatement", "ebt", "pretax_income"),
+  fieldRegistration("incomeStatement", "taxExp", "income_tax_expense"),
+  fieldRegistration("incomeStatement", "netinc", "net_income"),
+  fieldRegistration("incomeStatement", "ebitda", "ebitda"),
+  fieldRegistration("balanceSheet", "cashAndEq", "cash"),
+  fieldRegistration("balanceSheet", "acctRec", "accounts_receivable"),
+  fieldRegistration("balanceSheet", "inventory", "inventory"),
+  fieldRegistration("balanceSheet", "assetsCurrent", "current_assets"),
+  fieldRegistration("balanceSheet", "ppeq", "property_plant_equipment_net"),
+  fieldRegistration("balanceSheet", "intangibles", "intangibles"),
+  fieldRegistration("balanceSheet", "totalAssets", "assets"),
+  fieldRegistration(
+    "balanceSheet",
+    "liabilitiesCurrent",
+    "current_liabilities",
+  ),
+  fieldRegistration("balanceSheet", "debt", "debt"),
+  fieldRegistration("balanceSheet", "totalLiabilities", "liabilities"),
+  fieldRegistration("balanceSheet", "equity", "shareholders_equity"),
+  fieldRegistration("cashFlow", "depamor", "depreciation_and_amortization"),
+  fieldRegistration("cashFlow", "sbcomp", "share_based_compensation"),
+  fieldRegistration("cashFlow", "ncfo", "operating_cash_flow"),
+  fieldRegistration("cashFlow", "capex", "capital_expenditures"),
+  fieldRegistration("cashFlow", "freeCashFlow", "free_cash_flow"),
+  fieldRegistration("cashFlow", "ncfi", "investing_cash_flow"),
+  fieldRegistration("cashFlow", "ncff", "financing_cash_flow"),
+] as const);
+
+const REGISTRATION_BY_SOURCE_CODE = new Map(
+  REPORTED_FIELD_REGISTRY.map((registration) => [
+    registration.sourceCode,
+    registration,
+  ]),
+);
 
 interface NormalizedBar {
   readonly dto: PersonalMarketDataDailyBarDto;
@@ -143,6 +220,100 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
           ? "configured"
           : "not_configured",
     });
+  }
+
+  public async loadAnnualFinancials(
+    identity: PersonalMarketDataIdentityDto,
+    signal?: AbortSignal,
+  ): Promise<PersonalAnnualFinancialsDto> {
+    if (this.#closed || this.#tokenBytes === undefined) {
+      fail(this.#invalidCredential ? "credentials_invalid" : "not_configured");
+    }
+    if (this.#invalidCredential) fail("credentials_invalid");
+    if (signal?.aborted === true) fail("aborted");
+
+    const security = normalizeIdentity(identity);
+    const providerSymbol = security.symbol.replaceAll(".", "-");
+    if (!PROVIDER_SYMBOL.test(providerSymbol)) fail("not_covered");
+    const asOfDate = this.#readClock();
+    const asOf = asOfDate.toISOString();
+    const startDate = `${String(asOfDate.getUTCFullYear() - 11).padStart(4, "0")}-01-01`;
+    const endDate = formatUtcDate(asOfDate);
+    const fundamentalsUrl = tiingoAnnualFinancialsUrl(
+      providerSymbol,
+      startDate,
+      endDate,
+    );
+    const context = this.#startRequest(signal);
+
+    try {
+      const authorization = `Token ${new TextDecoder().decode(
+        this.#tokenBytes,
+      )}`;
+      const value = await this.#requestLosslessJson(
+        fundamentalsUrl,
+        authorization,
+        context,
+      );
+      if (this.#closed || context.externalSignal?.aborted === true) {
+        fail("aborted");
+      }
+      const years = normalizeAnnualFinancials(value, startDate, endDate);
+      const latest = years[0];
+      const earliest = years.at(-1);
+      if (latest === undefined || earliest === undefined) fail("not_covered");
+      if (latest.fiscalYear < asOfDate.getUTCFullYear() - 2) {
+        fail("invalid_response");
+      }
+      const returnedYears = new Set(years.map(({ fiscalYear }) => fiscalYear));
+      const missingFiscalYears: number[] = [];
+      for (let offset = 0; offset < 10; offset += 1) {
+        const fiscalYear = latest.fiscalYear - offset;
+        if (!returnedYears.has(fiscalYear)) missingFiscalYears.push(fiscalYear);
+      }
+      let knownReportedCells = 0;
+      for (const year of years) {
+        for (const cell of Object.values(year.reported)) {
+          if (cell.status === "known") knownReportedCells += 1;
+        }
+      }
+      const unknownReportedCells =
+        years.length * REPORTED_FIELD_REGISTRY.length - knownReportedCells;
+      return Object.freeze({
+        asOf,
+        coverage: Object.freeze({
+          earliestFiscalYear: earliest.fiscalYear,
+          knownReportedCells,
+          latestFiscalYear: latest.fiscalYear,
+          missingFiscalYears: Object.freeze(missingFiscalYears),
+          requestedAnnualYears: 10,
+          returnedAnnualYears: years.length,
+          status:
+            missingFiscalYears.length === 0 && unknownReportedCells === 0
+              ? "complete"
+              : "partial",
+          unknownReportedCells,
+        }),
+        profile: "personal_single_user_local_fundamentals",
+        provider: TIINGO_FINANCIALS_PROVIDER,
+        schemaVersion: "1.0.0",
+        security,
+        status: "available",
+        years,
+      });
+    } catch (error) {
+      if (
+        this.#closed ||
+        context.externalSignal?.aborted === true ||
+        (context.controller.signal.aborted && !context.timedOut())
+      ) {
+        fail("aborted");
+      }
+      if (error instanceof PersonalMarketDataProviderError) throw error;
+      fail("upstream_unavailable");
+    } finally {
+      this.#finishRequest(context.controller);
+    }
   }
 
   public async loadOverview(
@@ -277,6 +448,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
         headers: {
           Accept: "application/json",
           Authorization: authorization,
+          "Content-Type": "application/json",
         },
         method: "GET",
         redirect: "error",
@@ -303,6 +475,77 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
     if (!response.ok) fail(httpErrorCode(response.status));
     try {
       return await readBoundedJson(response);
+    } catch (error) {
+      if (
+        this.#closed ||
+        context.externalSignal?.aborted === true ||
+        (context.controller.signal.aborted && !context.timedOut())
+      ) {
+        fail("aborted");
+      }
+      if (error instanceof PersonalMarketDataProviderError) throw error;
+      fail("invalid_response");
+    }
+  }
+
+  async #requestLosslessJson(
+    url: URL,
+    authorization: string,
+    context: RequestContext,
+  ): Promise<unknown> {
+    let response: Response;
+    try {
+      response = await this.#fetch(url.href, {
+        cache: "no-store",
+        credentials: "omit",
+        headers: {
+          Accept: "application/json",
+          Authorization: authorization,
+        },
+        method: "GET",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal: context.controller.signal,
+      });
+    } catch {
+      if (
+        this.#closed ||
+        context.externalSignal?.aborted === true ||
+        (context.controller.signal.aborted && !context.timedOut())
+      ) {
+        fail("aborted");
+      }
+      fail("upstream_unavailable");
+    }
+    if (
+      response === undefined ||
+      typeof response.status !== "number" ||
+      typeof response.ok !== "boolean"
+    ) {
+      fail("invalid_response");
+    }
+    if (!response.ok) {
+      if (response.status === 403) {
+        const credentialTestUrl = tiingoCredentialTestUrl();
+        const credentialTest = await this.#requestJson(
+          credentialTestUrl,
+          authorization,
+          context,
+        );
+        if (!isCredentialTestMessage(credentialTest)) {
+          fail("upstream_unavailable");
+        }
+        if (credentialTest.message !== "You successfully sent a request") {
+          fail("credentials_invalid");
+        }
+        fail("not_entitled");
+      }
+      fail(httpErrorCode(response.status));
+    }
+    try {
+      const text = await readBoundedResponseText(response);
+      validateLosslessFinancialNumberTypes(JSON.parse(text));
+      return JSON.parse(quoteJsonNumberTokens(text));
     } catch (error) {
       if (
         this.#closed ||
@@ -389,6 +632,12 @@ function tiingoQuoteUrl(providerSymbol: string): URL {
   return url;
 }
 
+function tiingoCredentialTestUrl(): URL {
+  const url = new URL("/api/test/", TIINGO_ORIGIN);
+  assertAllowedUrl(url, "/api/test/", false);
+  return url;
+}
+
 function tiingoHistoryUrl(
   providerSymbol: string,
   startDate: string,
@@ -405,6 +654,36 @@ function tiingoHistoryUrl(
     url.searchParams.size !== 2 ||
     url.searchParams.get("startDate") !== startDate ||
     url.searchParams.get("endDate") !== endDate
+  ) {
+    fail("not_covered");
+  }
+  return url;
+}
+
+function tiingoAnnualFinancialsUrl(
+  providerSymbol: string,
+  startDate: string,
+  endDate: string,
+): URL {
+  const url = new URL(
+    `/tiingo/fundamentals/${encodeURIComponent(providerSymbol)}/statements`,
+    TIINGO_ORIGIN,
+  );
+  url.searchParams.set("startDate", startDate);
+  url.searchParams.set("endDate", endDate);
+  url.searchParams.set("asReported", "false");
+  url.searchParams.set("format", "json");
+  assertAllowedUrl(
+    url,
+    `/tiingo/fundamentals/${providerSymbol}/statements`,
+    true,
+  );
+  if (
+    url.searchParams.size !== 4 ||
+    url.searchParams.get("startDate") !== startDate ||
+    url.searchParams.get("endDate") !== endDate ||
+    url.searchParams.get("asReported") !== "false" ||
+    url.searchParams.get("format") !== "json"
   ) {
     fail("not_covered");
   }
@@ -479,6 +758,15 @@ function formatUtcDate(value: Date): string {
 }
 
 async function readBoundedJson(response: Response): Promise<unknown> {
+  const text = await readBoundedResponseText(response);
+  try {
+    return JSON.parse(text);
+  } catch {
+    fail("invalid_response");
+  }
+}
+
+async function readBoundedResponseText(response: Response): Promise<string> {
   const declaredLength = response.headers.get("content-length");
   if (declaredLength !== null) {
     if (!/^(?:0|[1-9][0-9]*)$/u.test(declaredLength)) {
@@ -526,10 +814,252 @@ async function readBoundedJson(response: Response): Promise<unknown> {
     offset += chunk.byteLength;
   }
   try {
-    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     fail("invalid_response");
   }
+}
+
+function quoteJsonNumberTokens(value: string): string {
+  let result = "";
+  let index = 0;
+  while (index < value.length) {
+    const character = value[index];
+    if (character === '"') {
+      const start = index;
+      index += 1;
+      let escaped = false;
+      while (index < value.length) {
+        const stringCharacter = value[index];
+        index += 1;
+        if (escaped) escaped = false;
+        else if (stringCharacter === "\\") escaped = true;
+        else if (stringCharacter === '"') break;
+      }
+      result += value.slice(start, index);
+      continue;
+    }
+    if (
+      character === "-" ||
+      (character !== undefined && /\d/u.test(character))
+    ) {
+      const match = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u.exec(
+        value.slice(index),
+      );
+      if (match !== null) {
+        result += `"${match[0]}"`;
+        index += match[0].length;
+        continue;
+      }
+    }
+    result += character ?? "";
+    index += 1;
+  }
+  return result;
+}
+
+function validateLosslessFinancialNumberTypes(value: unknown): void {
+  if (!Array.isArray(value)) return;
+  for (const candidate of value) {
+    if (!isRecord(candidate)) continue;
+    if (
+      typeof candidate.year !== "number" ||
+      !Number.isFinite(candidate.year) ||
+      typeof candidate.quarter !== "number" ||
+      !Number.isFinite(candidate.quarter)
+    ) {
+      fail("invalid_response");
+    }
+    if (!isRecord(candidate.statementData)) continue;
+    for (const section of [
+      "incomeStatement",
+      "balanceSheet",
+      "cashFlow",
+      "overview",
+    ] as const) {
+      const items = candidate.statementData[section];
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        if (!isRecord(item)) continue;
+        if (typeof item.dataCode !== "string") fail("invalid_response");
+        if (
+          item.value !== null &&
+          (typeof item.value !== "number" || !Number.isFinite(item.value))
+        ) {
+          fail("invalid_response");
+        }
+      }
+    }
+  }
+}
+
+function normalizeAnnualFinancials(
+  value: unknown,
+  startDate: string,
+  endDate: string,
+): readonly PersonalAnnualFinancialYearDto[] {
+  if (!Array.isArray(value) || value.length > MAX_FINANCIAL_RECORDS) {
+    fail("invalid_response");
+  }
+  const annualByYear = new Map<number, PersonalAnnualFinancialYearDto>();
+  for (const candidate of value) {
+    const normalized = normalizeAnnualFinancialRecord(
+      candidate,
+      startDate,
+      endDate,
+    );
+    if (normalized === undefined) continue;
+    if (annualByYear.has(normalized.fiscalYear)) fail("invalid_response");
+    annualByYear.set(normalized.fiscalYear, normalized);
+  }
+  if (annualByYear.size === 0) fail("not_covered");
+  const sorted = [...annualByYear.values()].sort(
+    (left, right) => right.fiscalYear - left.fiscalYear,
+  );
+  const first = sorted[0];
+  if (first === undefined) fail("not_covered");
+  if (first.fiscalYear < 1909) fail("invalid_response");
+  const earliestRequestedFiscalYear = first.fiscalYear - 9;
+  return Object.freeze(
+    sorted.filter(
+      ({ fiscalYear }) => fiscalYear >= earliestRequestedFiscalYear,
+    ),
+  );
+}
+
+function normalizeAnnualFinancialRecord(
+  value: unknown,
+  startDate: string,
+  endDate: string,
+): PersonalAnnualFinancialYearDto | undefined {
+  if (!isRecord(value)) fail("invalid_response");
+  const periodEnd = normalizeProviderPeriodEnd(value.date);
+  if (periodEnd < startDate || periodEnd > endDate) {
+    fail("invalid_response");
+  }
+  const fiscalYear = boundedIntegerString(value.year, 1900, 9999);
+  const quarter = boundedIntegerString(value.quarter, 0, 4);
+  const periodEndYear = Number(periodEnd.slice(0, 4));
+  if (periodEndYear < fiscalYear || periodEndYear > fiscalYear + 1) {
+    fail("invalid_response");
+  }
+  if (!isRecord(value.statementData)) fail("invalid_response");
+  const sections = [
+    "incomeStatement",
+    "balanceSheet",
+    "cashFlow",
+    "overview",
+  ] as const;
+  const values = new Map<PersonalAnnualFinancialReportedFieldKeyDto, string>();
+  const seenSourceCodes = new Set<string>();
+  for (const section of sections) {
+    const items = value.statementData[section];
+    if (!Array.isArray(items) || items.length > MAX_STATEMENT_ITEMS) {
+      fail("invalid_response");
+    }
+    for (const item of items) {
+      if (!isRecord(item) || !validPlainText(item.dataCode, 1, 128)) {
+        fail("invalid_response");
+      }
+      const dataCode = item.dataCode;
+      if (item.value !== null && !isCanonicalizableSourceNumber(item.value)) {
+        fail("invalid_response");
+      }
+      const registration = REGISTRATION_BY_SOURCE_CODE.get(dataCode);
+      if (registration === undefined) continue;
+      if (registration.section !== section || seenSourceCodes.has(dataCode)) {
+        fail("invalid_response");
+      }
+      seenSourceCodes.add(dataCode);
+      if (item.value !== null) {
+        values.set(registration.fieldKey, canonicalizeSourceNumber(item.value));
+      }
+    }
+  }
+  if (quarter !== 0) return undefined;
+  const reported = Object.fromEntries(
+    REPORTED_FIELD_REGISTRY.map(({ fieldKey }) => [
+      fieldKey,
+      values.has(fieldKey)
+        ? Object.freeze({
+            status: "known",
+            value: values.get(fieldKey) as string,
+          })
+        : Object.freeze({
+            reason: "not_supplied_by_provider",
+            status: "unknown",
+            value: null,
+          }),
+    ]),
+  ) as PersonalAnnualFinancialReportedValuesDto;
+  return Object.freeze({
+    fiscalYear,
+    periodEnd,
+    reported: Object.freeze(reported),
+  });
+}
+
+function fieldRegistration(
+  section: StatementSection,
+  sourceCode: string,
+  fieldKey: PersonalAnnualFinancialReportedFieldKeyDto,
+) {
+  return Object.freeze({ fieldKey, section, sourceCode });
+}
+
+function boundedIntegerString(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+): number {
+  if (typeof value !== "string" || !/^(?:0|[1-9]\d*)$/u.test(value)) {
+    fail("invalid_response");
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    fail("invalid_response");
+  }
+  return parsed;
+}
+
+function normalizeProviderPeriodEnd(value: unknown): string {
+  if (typeof value !== "string") fail("invalid_response");
+  if (PROVIDER_DATE.test(value)) {
+    if (!hasValidCalendarDatePrefix(value)) fail("invalid_response");
+    return value;
+  }
+  return normalizeProviderUtcInstant(value).slice(0, 10);
+}
+
+function isCanonicalizableSourceNumber(value: unknown): value is string {
+  return (
+    typeof value === "string" && value.length <= 128 && JSON_NUMBER.test(value)
+  );
+}
+
+function canonicalizeSourceNumber(value: string): string {
+  if (!isCanonicalizableSourceNumber(value)) fail("invalid_response");
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/u.exec(value);
+  if (match === null) fail("invalid_response");
+  const sign = match[1] ?? "";
+  const integerDigits = match[2] ?? "";
+  const fractionDigits = match[3] ?? "";
+  const exponentText = match[4];
+  const exponent = exponentText === undefined ? 0 : Number(exponentText);
+  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 512) {
+    fail("invalid_response");
+  }
+  const digits = `${integerDigits}${fractionDigits}`;
+  const point = integerDigits.length + exponent;
+  const expanded =
+    point <= 0
+      ? `0.${"0".repeat(-point)}${digits}`
+      : point >= digits.length
+        ? `${digits}${"0".repeat(point - digits.length)}`
+        : `${digits.slice(0, point)}.${digits.slice(point)}`;
+  const canonical = canonicalizeDecimal(`${sign}${expanded}`);
+  if (canonical.length > 64) fail("invalid_response");
+  return canonical;
 }
 
 function normalizeHistory(
@@ -865,10 +1395,25 @@ function canonicalizeDecimal(value: string): string {
 }
 
 function httpErrorCode(status: number): PersonalMarketDataProviderErrorCode {
-  if (status === 401 || status === 403) return "credentials_invalid";
+  if (status === 401) return "credentials_invalid";
+  if (status === 403) return "credentials_invalid";
   if (status === 404) return "not_covered";
   if (status === 429) return "rate_limited";
   return "upstream_unavailable";
+}
+
+function isCredentialTestMessage(value: unknown): value is Readonly<{
+  message:
+    | "'AUTHORIZATION header' was not set"
+    | "Auth Token was not correct"
+    | "You successfully sent a request";
+}> {
+  if (!isRecord(value) || Object.keys(value).length !== 1) return false;
+  return (
+    value.message === "'AUTHORIZATION header' was not set" ||
+    value.message === "Auth Token was not correct" ||
+    value.message === "You successfully sent a request"
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

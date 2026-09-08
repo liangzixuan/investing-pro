@@ -1,4 +1,6 @@
 import type {
+  PersonalAnnualFinancialReportedFieldKeyDto,
+  PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
@@ -16,6 +18,7 @@ import {
   type SavedPersonalWatchlist,
 } from "@/lib/personal-workspace-api";
 
+import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 
 const hookHarness = vi.hoisted(() => {
@@ -59,6 +62,13 @@ const hookHarness = vi.hoisted(() => {
 const apiMocks = vi.hoisted(() => ({
   fetchMainPersonalWatchlist:
     vi.fn<(signal: AbortSignal) => Promise<PersonalWatchlistRecord | null>>(),
+  fetchPersonalAnnualFinancials:
+    vi.fn<
+      (
+        input: Readonly<{ listingId: string; symbol: string }>,
+        signal: AbortSignal,
+      ) => Promise<PersonalAnnualFinancialsDto>
+    >(),
   fetchPersonalMarketDataStatus:
     vi.fn<(signal: AbortSignal) => Promise<PersonalMarketDataStatusDto>>(),
   fetchPersonalMarketOverview: vi.fn<
@@ -94,6 +104,7 @@ const apiMocks = vi.hoisted(() => ({
     >(),
 }));
 const componentMocks = vi.hoisted(() => ({
+  AnnualFinancials: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
 }));
@@ -138,6 +149,9 @@ vi.mock("@/lib/personal-workspace-api", () => ({
 vi.mock("./OwnerSessionPanel", () => ({
   OwnerSessionPanel: componentMocks.OwnerSession,
 }));
+vi.mock("./PersonalAnnualFinancials", () => ({
+  PersonalAnnualFinancials: componentMocks.AnnualFinancials,
+}));
 vi.mock("./PersonalMarketOverview", () => ({
   PersonalMarketOverview: componentMocks.MarketOverview,
 }));
@@ -151,6 +165,7 @@ beforeEach(() => {
     snapshot: snapshot(),
   });
   apiMocks.fetchMainPersonalWatchlist.mockResolvedValue(null);
+  apiMocks.fetchPersonalAnnualFinancials.mockResolvedValue(annualFinancials());
   apiMocks.fetchPersonalMarketDataStatus.mockResolvedValue(marketStatus());
   apiMocks.fetchPersonalMarketOverview.mockResolvedValue(marketOverview());
   apiMocks.searchPersonalSecurities.mockResolvedValue({
@@ -344,6 +359,135 @@ describe("SecurityDiscoveryWorkspace", () => {
       status: "available",
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
+  });
+
+  it("loads annual financials only after the user explicitly requests them", async () => {
+    await activateWorkspace();
+    let rendered = renderWorkspace();
+
+    expect(requireAnnualFinancials(rendered).props.selection).toBeNull();
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+
+    rendered = await searchAndSelectMarket("ZERO");
+    let annual = requireAnnualFinancials(rendered);
+    expect(annual.props.selection).toMatchObject({
+      listingId: "lst-zero",
+      symbol: "ZERO",
+    });
+    expect(annual.props.financials).toBeNull();
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+
+    annual.props.onLoad();
+    rendered = renderWorkspace();
+    expect(requireAnnualFinancials(rendered).props.requestState).toBe(
+      "loading",
+    );
+    await flushPromises();
+    rendered = renderWorkspace();
+    annual = requireAnnualFinancials(rendered);
+
+    expect(
+      apiMocks.fetchPersonalAnnualFinancials,
+    ).toHaveBeenCalledExactlyOnceWith(
+      { listingId: "lst-zero", symbol: "ZERO" },
+      expect.any(AbortSignal),
+    );
+    expect(annual.props.requestState).toBe("idle");
+    expect(annual.props.financials).toMatchObject({
+      coverage: { returnedAnnualYears: 1 },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+  });
+
+  it("keeps a fundamentals entitlement failure distinct from session loss", async () => {
+    apiMocks.fetchPersonalAnnualFinancials.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("not_entitled"),
+    );
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+
+    requireAnnualFinancials(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    expect(requireAnnualFinancials(rendered).props.errorCode).toBe(
+      "not_entitled",
+    );
+    expect(textContent(rendered)).toContain("Find a company");
+    expect(findOwnerSession(rendered)).toBeDefined();
+  });
+
+  it("ignores an older annual-financials response after another security is selected", async () => {
+    const first = deferred<PersonalAnnualFinancialsDto>();
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "PAIR",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("TWO", "lst-two"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(first.promise);
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("PAIR");
+
+    requireAnnualFinancials(rendered).props.onLoad();
+    rendered = renderWorkspace();
+    const firstSignal =
+      apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]?.[1];
+    const viewButtons = findAllElements(rendered, "button").filter(
+      (button) => textContent(button) === "View market",
+    ) as React.ReactElement<{ onClick: () => void }>[];
+    viewButtons[1]?.props.onClick();
+    expect(firstSignal?.aborted).toBe(true);
+
+    first.resolve(annualFinancials("lst-zero", "ZERO"));
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    const annual = requireAnnualFinancials(rendered);
+    expect(annual.props.selection).toMatchObject({
+      listingId: "lst-two",
+      symbol: "TWO",
+    });
+    expect(annual.props.financials).toBeNull();
+    expect(annual.props.requestState).toBe("idle");
+  });
+
+  it("clears a pending annual-financials response when the owner session ends", async () => {
+    const pending = deferred<PersonalAnnualFinancialsDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(pending.promise);
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+
+    requireAnnualFinancials(rendered).props.onLoad();
+    rendered = renderWorkspace();
+    const pendingSignal =
+      apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]?.[1];
+    const sessionChange = requireOwnerSession(rendered).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    expect(pendingSignal?.aborted).toBe(true);
+    pending.resolve(annualFinancials());
+    await sessionChange;
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    expect(textContent(rendered)).toContain("Security discovery locked");
+    expect(findAnnualFinancials(rendered)).toBeUndefined();
+
+    await expect(
+      requireOwnerSession(rendered).props.onSessionChange(
+        true,
+        new AbortController().signal,
+      ),
+    ).resolves.toBe(true);
+    rendered = renderWorkspace();
+    expect(requireAnnualFinancials(rendered).props.financials).toBeNull();
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledOnce();
   });
 
   it("clears a selected market graph synchronously when its request loses the session", async () => {
@@ -765,6 +909,19 @@ function findMarketOverview(value: unknown) {
   );
 }
 
+function findAnnualFinancials(value: unknown) {
+  return findElement<PersonalAnnualFinancialsProps>(
+    value,
+    componentMocks.AnnualFinancials,
+  );
+}
+
+function requireAnnualFinancials(value: unknown) {
+  const annual = findAnnualFinancials(value);
+  if (annual === undefined) throw new Error("Expected annual financials.");
+  return annual;
+}
+
 function requireMarketOverview(value: unknown) {
   const market = findMarketOverview(value);
   if (market === undefined) throw new Error("Expected market overview.");
@@ -775,6 +932,30 @@ function requireOwnerSession(value: unknown) {
   const owner = findOwnerSession(value);
   if (owner === undefined) throw new Error("Expected owner-session panel.");
   return owner;
+}
+
+async function searchAndSelectMarket(query: string, resultIndex = 0) {
+  let rendered = renderWorkspace();
+  requireElementByProps<{
+    onChange: (event: { target: { value: string } }) => void;
+  }>(rendered, { id: "security-query" }).props.onChange({
+    target: { value: query },
+  });
+  rendered = renderWorkspace();
+  requireElementByProps<{
+    onSubmit: (event: { preventDefault: () => void }) => void;
+  }>(rendered, { className: "security-search-form" }).props.onSubmit({
+    preventDefault: vi.fn(),
+  });
+  await flushPromises();
+  rendered = renderWorkspace();
+  const viewButtons = findAllElements(rendered, "button").filter(
+    (button) => textContent(button) === "View market",
+  ) as React.ReactElement<{ onClick: () => void }>[];
+  const selected = viewButtons[resultIndex];
+  if (selected === undefined) throw new Error("Expected market selection.");
+  selected.props.onClick();
+  return renderWorkspace();
 }
 
 function requireButton(value: unknown, text: string) {
@@ -1003,6 +1184,95 @@ function marketOverview(): PersonalMarketOverviewDto {
       symbol: "ZERO",
     },
     status: "available",
+  };
+}
+
+const annualFinancialReportedFieldKeys = [
+  "revenue",
+  "cost_of_revenue",
+  "gross_profit",
+  "research_and_development",
+  "selling_general_and_administrative",
+  "operating_expenses",
+  "operating_income",
+  "interest_expense",
+  "pretax_income",
+  "income_tax_expense",
+  "net_income",
+  "ebitda",
+  "cash",
+  "accounts_receivable",
+  "inventory",
+  "current_assets",
+  "property_plant_equipment_net",
+  "intangibles",
+  "assets",
+  "current_liabilities",
+  "debt",
+  "liabilities",
+  "shareholders_equity",
+  "depreciation_and_amortization",
+  "share_based_compensation",
+  "operating_cash_flow",
+  "capital_expenditures",
+  "free_cash_flow",
+  "investing_cash_flow",
+  "financing_cash_flow",
+] as const satisfies readonly PersonalAnnualFinancialReportedFieldKeyDto[];
+
+function annualFinancials(
+  listingId = "lst-zero",
+  symbol = "ZERO",
+): PersonalAnnualFinancialsDto {
+  return {
+    asOf: "2030-01-15T21:01:00.000Z",
+    coverage: {
+      earliestFiscalYear: 2029,
+      knownReportedCells: 30,
+      latestFiscalYear: 2029,
+      missingFiscalYears: [
+        2028, 2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020,
+      ],
+      requestedAnnualYears: 10,
+      returnedAnnualYears: 1,
+      status: "partial",
+      unknownReportedCells: 0,
+    },
+    profile: "personal_single_user_local_fundamentals",
+    provider: {
+      attribution: "Tiingo",
+      export: "prohibited",
+      id: "tiingo",
+      name: "Tiingo",
+      persistence: "none",
+      redistribution: "prohibited",
+      retention: "active_owner_session_memory_only",
+      revisionBasis: "provider_most_recent",
+      statementFeed: "tiingo_fundamentals_statements",
+      valueCurrency: "USD",
+    },
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId,
+      securityName: `${symbol} Common Stock`,
+      symbol,
+    },
+    status: "available",
+    years: [
+      {
+        fiscalYear: 2029,
+        periodEnd: "2030-01-15",
+        reported: Object.fromEntries(
+          annualFinancialReportedFieldKeys.map((key, index) => [
+            key,
+            { status: "known", value: String((index + 1) * 100) },
+          ]),
+        ) as PersonalAnnualFinancialsDto["years"][number]["reported"],
+      },
+    ],
   };
 }
 

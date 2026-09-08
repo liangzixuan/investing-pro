@@ -1,4 +1,5 @@
 import type {
+  PersonalAnnualFinancialsDto,
   PersonalMarketDataIdentityDto,
   PersonalMarketDataRangeDto,
   PersonalMarketOverviewDto,
@@ -28,6 +29,8 @@ export const PERSONAL_MARKET_DATA_STATUS_PATH =
   "/v1/personal-filing/market-data/status" as const;
 export const PERSONAL_MARKET_DATA_OVERVIEW_PATH =
   "/v1/personal-filing/market-data/overview" as const;
+export const PERSONAL_ANNUAL_FINANCIALS_PATH =
+  "/v1/personal-filing/market-data/annual-financials" as const;
 
 const RANGES = new Set<PersonalMarketDataRangeDto>([
   "1m",
@@ -43,6 +46,11 @@ const SYMBOL = /^[A-Z0-9][A-Z0-9.-]{0,31}$/u;
 interface OverviewRequest {
   readonly listingId: string;
   readonly range: PersonalMarketDataRangeDto;
+  readonly symbol: string;
+}
+
+interface AnnualFinancialsRequest {
+  readonly listingId: string;
   readonly symbol: string;
 }
 
@@ -132,6 +140,82 @@ export function registerPersonalWorkspaceMarketDataRoutes(
       }
     },
   );
+
+  app.post<{ Body: unknown }>(
+    PERSONAL_ANNUAL_FINANCIALS_PATH,
+    {
+      errorHandler: (_error, request, reply) => {
+        void sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_ANNUAL_FINANCIALS_PATH,
+        );
+      },
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalJsonRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_ANNUAL_FINANCIALS_PATH,
+          )
+        ) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+      },
+    },
+    async (request, reply) => {
+      const body = parseAnnualFinancialsRequest(request.body);
+      if (body === undefined) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_ANNUAL_FINANCIALS_PATH,
+        );
+      }
+      const identity = resolveIdentity(catalog, body);
+      if (identity === undefined) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_ANNUAL_FINANCIALS_PATH,
+        );
+      }
+
+      const abortController = new AbortController();
+      const abort = () => abortController.abort();
+      request.raw.once("aborted", abort);
+      reply.raw.once("close", abort);
+      try {
+        const financials = await provider.loadAnnualFinancials(
+          identity,
+          abortController.signal,
+        );
+        if (!matchesRequestedAnnualFinancials(financials, identity)) {
+          return sendMarketDataProblem(
+            reply,
+            request,
+            502,
+            PERSONAL_ANNUAL_FINANCIALS_PATH,
+          );
+        }
+        return reply.type("application/json; charset=utf-8").send(financials);
+      } catch (error) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          providerProblemStatus(error),
+          PERSONAL_ANNUAL_FINANCIALS_PATH,
+        );
+      } finally {
+        request.raw.off("aborted", abort);
+        reply.raw.off("close", abort);
+      }
+    },
+  );
 }
 
 function parseOverviewRequest(value: unknown): OverviewRequest | undefined {
@@ -161,9 +245,31 @@ function parseOverviewRequest(value: unknown): OverviewRequest | undefined {
   };
 }
 
+function parseAnnualFinancialsRequest(
+  value: unknown,
+): AnnualFinancialsRequest | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  if (
+    keys.length !== 2 ||
+    keys[0] !== "listingId" ||
+    keys[1] !== "symbol" ||
+    typeof record.listingId !== "string" ||
+    !LISTING_ID.test(record.listingId) ||
+    typeof record.symbol !== "string" ||
+    !SYMBOL.test(record.symbol)
+  ) {
+    return undefined;
+  }
+  return { listingId: record.listingId, symbol: record.symbol };
+}
+
 function resolveIdentity(
   catalog: PersonalSecurityMasterCatalog,
-  body: OverviewRequest,
+  body: AnnualFinancialsRequest | OverviewRequest,
 ): PersonalMarketDataIdentityDto | undefined {
   try {
     const listing = searchPersonalSecurityMaster(catalog, {
@@ -187,6 +293,23 @@ function resolveIdentity(
   } catch {
     return undefined;
   }
+}
+
+function matchesRequestedAnnualFinancials(
+  financials: PersonalAnnualFinancialsDto,
+  identity: PersonalMarketDataIdentityDto,
+): boolean {
+  if (financials === null || typeof financials !== "object") return false;
+  const security = Reflect.get(financials, "security") as unknown;
+  if (security === null || typeof security !== "object") return false;
+  return (
+    Reflect.get(security, "country") === identity.country &&
+    Reflect.get(security, "exchangeMic") === identity.exchangeMic &&
+    Reflect.get(security, "issuerName") === identity.issuerName &&
+    Reflect.get(security, "listingId") === identity.listingId &&
+    Reflect.get(security, "securityName") === identity.securityName &&
+    Reflect.get(security, "symbol") === identity.symbol
+  );
 }
 
 function matchesRequestedOverview(
@@ -216,7 +339,9 @@ function matchesRequestedOverview(
   );
 }
 
-function providerProblemStatus(error: unknown): 404 | 424 | 429 | 502 | 503 {
+function providerProblemStatus(
+  error: unknown,
+): 402 | 404 | 424 | 429 | 502 | 503 {
   const code: PersonalMarketDataProviderErrorCode | undefined =
     error instanceof PersonalMarketDataProviderError ? error.code : undefined;
   switch (code) {
@@ -224,6 +349,8 @@ function providerProblemStatus(error: unknown): 404 | 424 | 429 | 502 | 503 {
       return 503;
     case "credentials_invalid":
       return 424;
+    case "not_entitled":
+      return 402;
     case "rate_limited":
       return 429;
     case "not_covered":
@@ -239,10 +366,14 @@ function providerProblemStatus(error: unknown): 404 | 424 | 429 | 502 | 503 {
 function sendMarketDataProblem(
   reply: FastifyReply,
   request: FastifyRequest,
-  status: 400 | 404 | 424 | 429 | 502 | 503,
+  status: 400 | 402 | 404 | 424 | 429 | 502 | 503,
+  instance:
+    | typeof PERSONAL_ANNUAL_FINANCIALS_PATH
+    | typeof PERSONAL_MARKET_DATA_OVERVIEW_PATH = PERSONAL_MARKET_DATA_OVERVIEW_PATH,
 ) {
   const titles = {
     400: "Invalid request",
+    402: "Annual financials not included",
     404: "Market data not covered",
     424: "Market data credentials rejected",
     429: "Market data rate limited",
@@ -254,7 +385,7 @@ function sendMarketDataProblem(
     title: titles[status],
     status,
     detail: "The personal market-data request was not accepted.",
-    instance: PERSONAL_MARKET_DATA_OVERVIEW_PATH,
+    instance,
     traceId: request.id,
   };
   return reply.status(status).type("application/problem+json").send(problem);

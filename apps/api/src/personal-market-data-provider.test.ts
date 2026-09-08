@@ -598,6 +598,395 @@ describe("Tiingo personal market-data provider", () => {
       vi.useRealTimers();
     }
   });
+
+  describe("annual financial statements", () => {
+    it("uses one fixed fundamentals request and preserves exact numeric lexemes", async () => {
+      const calls: FetchCall[] = [];
+      const raw = `[{"date":"2025-12-31","year":2025,"quarter":0,"statementData":{"incomeStatement":[{"dataCode":"revenue","value":9007199254740993},{"dataCode":"netinc","value":1.2300e+5}],"balanceSheet":[{"dataCode":"cashAndEq","value":-2.500e-3}],"cashFlow":[],"overview":[{"dataCode":"marketCap","value":9999999999999999}]}}]`;
+      const consoleSpies = [
+        vi.spyOn(console, "debug").mockImplementation(() => undefined),
+        vi.spyOn(console, "error").mockImplementation(() => undefined),
+        vi.spyOn(console, "info").mockImplementation(() => undefined),
+        vi.spyOn(console, "log").mockImplementation(() => undefined),
+        vi.spyOn(console, "warn").mockImplementation(() => undefined),
+      ];
+      try {
+        const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+          fetch: (input, init) => {
+            calls.push(Object.freeze({ init, url: requestUrl(input) }));
+            return Promise.resolve(new Response(raw));
+          },
+          now: () => NOW,
+        });
+
+        const result = await provider.loadAnnualFinancials(IDENTITY);
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe(
+          "https://api.tiingo.com/tiingo/fundamentals/BRK-B/statements?startDate=2015-01-01&endDate=2026-09-07&asReported=false&format=json",
+        );
+        const headers = new Headers(calls[0]?.init?.headers);
+        expect(headers.get("authorization")).toBe(`Token ${TOKEN}`);
+        expect(headers.get("accept")).toBe("application/json");
+        expect(calls[0]?.url).not.toContain(TOKEN);
+        expect(calls[0]?.init).toMatchObject({
+          cache: "no-store",
+          credentials: "omit",
+          method: "GET",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+        });
+        expect(result.years[0]).toMatchObject({
+          fiscalYear: 2025,
+          periodEnd: "2025-12-31",
+          reported: {
+            cash: { status: "known", value: "-0.0025" },
+            net_income: { status: "known", value: "123000" },
+            revenue: { status: "known", value: "9007199254740993" },
+          },
+        });
+        expect(result.provider).toEqual({
+          attribution: "Tiingo",
+          export: "prohibited",
+          id: "tiingo",
+          name: "Tiingo",
+          persistence: "none",
+          redistribution: "prohibited",
+          retention: "active_owner_session_memory_only",
+          revisionBasis: "provider_most_recent",
+          statementFeed: "tiingo_fundamentals_statements",
+          valueCurrency: "USD",
+        });
+        expect(result.asOf).toBe(NOW.toISOString());
+        expect(result.security.symbol).toBe("BRK.B");
+        expect(Object.keys(result.years[0]?.reported ?? {})).toHaveLength(30);
+        expect(Object.isFrozen(result)).toBe(true);
+        expect(Object.isFrozen(result.years[0]?.reported)).toBe(true);
+        expect(JSON.stringify(result)).not.toContain(TOKEN);
+        expect(consoleSpies.every((spy) => spy.mock.calls.length === 0)).toBe(
+          true,
+        );
+      } finally {
+        for (const spy of consoleSpies) spy.mockRestore();
+      }
+    });
+
+    it("validates every record, filters annuals, sorts and caps at ten years", async () => {
+      const records = [
+        annualRecord(2022, 2),
+        ...Array.from({ length: 11 }, (_, index) =>
+          annualRecord(2015 + index, 0, {
+            incomeStatement: [{ dataCode: "revenue", value: 1_000 + index }],
+          }),
+        ).reverse(),
+      ];
+      const provider = annualProvider(records);
+
+      const result = await provider.loadAnnualFinancials(IDENTITY);
+
+      expect(result.years.map(({ fiscalYear }) => fiscalYear)).toEqual([
+        2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016,
+      ]);
+      expect(result.coverage).toEqual({
+        earliestFiscalYear: 2016,
+        knownReportedCells: 10,
+        latestFiscalYear: 2025,
+        missingFiscalYears: [],
+        requestedAnnualYears: 10,
+        returnedAnnualYears: 10,
+        status: "partial",
+        unknownReportedCells: 290,
+      });
+    });
+
+    it("makes absent cells and fiscal-year gaps explicit", async () => {
+      const provider = annualProvider([
+        annualRecord(2015, 0, {
+          incomeStatement: [{ dataCode: "netinc", value: 7 }],
+        }),
+        annualRecord(2023, 0, {
+          cashFlow: [{ dataCode: "ncfo", value: 42 }],
+        }),
+        annualRecord(2025, 0, {
+          incomeStatement: [{ dataCode: "revenue", value: 100 }],
+        }),
+      ]);
+
+      const result = await provider.loadAnnualFinancials(IDENTITY);
+
+      expect(result.years.map(({ fiscalYear }) => fiscalYear)).toEqual([
+        2025, 2023,
+      ]);
+      expect(result.years[0]?.reported.debt).toEqual({
+        reason: "not_supplied_by_provider",
+        status: "unknown",
+        value: null,
+      });
+      expect(result.coverage).toEqual({
+        earliestFiscalYear: 2023,
+        knownReportedCells: 2,
+        latestFiscalYear: 2025,
+        missingFiscalYears: [2024, 2022, 2021, 2020, 2019, 2018, 2017, 2016],
+        requestedAnnualYears: 10,
+        returnedAnnualYears: 2,
+        status: "partial",
+        unknownReportedCells: 58,
+      });
+    });
+
+    it("rejects a numeric value that cannot fit the canonical response contract", async () => {
+      const provider = annualProvider([
+        annualRecord(2025, 0, {
+          incomeStatement: [{ dataCode: "revenue", value: 1e100 }],
+        }),
+      ]);
+
+      await expect(
+        provider.loadAnnualFinancials(IDENTITY),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    });
+
+    it("rejects a stale latest fiscal year before reporting an unqueried year missing", async () => {
+      const provider = annualProvider([annualRecord(2023)]);
+
+      await expect(
+        provider.loadAnnualFinancials(IDENTITY),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    });
+
+    it("rejects malformed JSON with an unquoted numeric object key", async () => {
+      const raw = `[{
+        "date":"2025-12-31",
+        "year":2025,
+        "quarter":0,
+        "statementData":{
+          "incomeStatement":[],
+          "balanceSheet":[],
+          "cashFlow":[],
+          "overview":[]
+        },
+        1:999
+      }]`;
+      const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+        fetch: () => Promise.resolve(new Response(raw)),
+        now: () => NOW,
+      });
+
+      await expect(
+        provider.loadAnnualFinancials(IDENTITY),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    });
+
+    it.each([
+      [{ ...annualRecord(2025), year: "2025" }, "quoted year"],
+      [{ ...annualRecord(2025), quarter: "0" }, "quoted quarter"],
+      [
+        annualRecord(2025, 0, {
+          incomeStatement: [{ dataCode: "revenue", value: "100" }],
+        }),
+        "quoted value",
+      ],
+      [
+        annualRecord(2025, 0, {
+          incomeStatement: [{ dataCode: 123, value: 100 }],
+        }),
+        "numeric data code",
+      ],
+      [{ ...annualRecord(2025), year: 9999 }, "implausible fiscal year"],
+    ] as const)(
+      "rejects source number type or year mismatch: %s (%s)",
+      async (record, reason) => {
+        expect(reason).not.toBe("");
+        await expect(
+          annualProvider([record]).loadAnnualFinancials(IDENTITY),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      },
+    );
+
+    it("keeps the provider period end distinct from the fiscal-year label", async () => {
+      const provider = annualProvider([
+        {
+          ...annualRecord(2025, 0, {
+            incomeStatement: [{ dataCode: "revenue", value: 100 }],
+          }),
+          date: "2026-02-20T20:00:00Z",
+        },
+      ]);
+
+      const result = await provider.loadAnnualFinancials(IDENTITY);
+
+      expect(result.years[0]).toMatchObject({
+        fiscalYear: 2025,
+        periodEnd: "2026-02-20",
+      });
+    });
+
+    it.each([
+      [
+        annualRecord(2025, 0, {
+          incomeStatement: [
+            { dataCode: "revenue", value: 1 },
+            { dataCode: "revenue", value: 2 },
+          ],
+        }),
+        "duplicate known code",
+      ],
+      [
+        annualRecord(2025, 0, {
+          cashFlow: [{ dataCode: "revenue", value: 1 }],
+        }),
+        "known code in wrong section",
+      ],
+      [without(annualRecord(2025), "statementData"), "missing statement data"],
+      [
+        annualRecord(2025, 0, {
+          overview: [{ dataCode: "bad\u0000code", value: 1 }],
+        }),
+        "invalid data code",
+      ],
+      [
+        annualRecord(2025, 0, {
+          incomeStatement: [{ dataCode: "revenue", value: "not-a-number" }],
+        }),
+        "malformed value",
+      ],
+    ] as const)("rejects %s (%s)", async (record, reason) => {
+      expect(reason).not.toBe("");
+      const provider = annualProvider([record]);
+      await expect(
+        provider.loadAnnualFinancials(IDENTITY),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    });
+
+    it("validates and ignores a bounded future provider data code", async () => {
+      const provider = annualProvider([
+        annualRecord(2025, 0, {
+          overview: [{ dataCode: "future_metric", value: 123 }],
+        }),
+      ]);
+
+      const result = await provider.loadAnnualFinancials(IDENTITY);
+
+      expect(result.years).toHaveLength(1);
+      expect(result.coverage.knownReportedCells).toBe(0);
+      expect(result.coverage.unknownReportedCells).toBe(30);
+      expect(JSON.stringify(result)).not.toContain("future_metric");
+    });
+
+    it("rejects duplicate annual years and statement shape limits", async () => {
+      for (const records of [
+        [annualRecord(2025), annualRecord(2025)],
+        Array.from({ length: 65 }, () => annualRecord(2025, 1)),
+        [
+          annualRecord(2025, 0, {
+            overview: Array.from({ length: 129 }, (_, index) => ({
+              dataCode: `unknown${index}`,
+              value: index,
+            })),
+          }),
+        ],
+      ]) {
+        await expect(
+          annualProvider(records).loadAnnualFinancials(IDENTITY),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    });
+
+    it.each([
+      [401, "credentials_invalid"],
+      [404, "not_covered"],
+      [429, "rate_limited"],
+      [500, "upstream_unavailable"],
+    ] as const)("maps fundamentals HTTP %i to %s", async (status, code) => {
+      const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+        fetch: () => Promise.resolve(new Response("{}", { status })),
+        now: () => NOW,
+      });
+      await expect(
+        provider.loadAnnualFinancials(IDENTITY),
+      ).rejects.toMatchObject({
+        code,
+        message: "Personal market data is unavailable.",
+      });
+    });
+
+    it.each([
+      [
+        "valid credential without fundamentals access",
+        () => jsonResponse({ message: "You successfully sent a request" }),
+        "not_entitled",
+      ],
+      [
+        "rejected credential",
+        () => jsonResponse({ message: "Auth Token was not correct" }),
+        "credentials_invalid",
+      ],
+      [
+        "invalid credential-test response",
+        () => jsonResponse({ message: "unexpected" }),
+        "upstream_unavailable",
+      ],
+    ] as const)(
+      "probes a fundamentals 403 with a %s",
+      async (_name, probe, code) => {
+        const calls: FetchCall[] = [];
+        const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+          fetch: (input, init) => {
+            const url = requestUrl(input);
+            calls.push(Object.freeze({ init, url }));
+            return Promise.resolve(
+              url === "https://api.tiingo.com/api/test/"
+                ? probe()
+                : new Response("{}", { status: 403 }),
+            );
+          },
+          now: () => NOW,
+        });
+
+        await expect(
+          provider.loadAnnualFinancials(IDENTITY),
+        ).rejects.toMatchObject({ code });
+        expect(calls.map(({ url }) => url)).toEqual([
+          "https://api.tiingo.com/tiingo/fundamentals/BRK-B/statements?startDate=2015-01-01&endDate=2026-09-07&asReported=false&format=json",
+          "https://api.tiingo.com/api/test/",
+        ]);
+        expect(
+          calls.every(
+            ({ init }) =>
+              new Headers(init?.headers).get("authorization") ===
+              `Token ${TOKEN}`,
+          ),
+        ).toBe(true);
+        expect(new Headers(calls[1]?.init?.headers).get("content-type")).toBe(
+          "application/json",
+        );
+      },
+    );
+
+    it("honors caller abort and close with one fundamentals request", async () => {
+      for (const operation of ["caller", "close"] as const) {
+        let requestSignal: AbortSignal | undefined;
+        const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+          fetch: (_input, init) =>
+            new Promise<Response>((_resolve, reject) => {
+              requestSignal = init?.signal ?? undefined;
+              requestSignal?.addEventListener(
+                "abort",
+                () => reject(new DOMException("aborted", "AbortError")),
+                { once: true },
+              );
+            }),
+          now: () => NOW,
+        });
+        const caller = new AbortController();
+        const pending = provider.loadAnnualFinancials(IDENTITY, caller.signal);
+        if (operation === "caller") caller.abort();
+        else provider.close();
+        await expect(pending).rejects.toMatchObject({ code: "aborted" });
+        expect(requestSignal?.aborted).toBe(true);
+      }
+    });
+  });
 });
 
 function mockTiingoFetch(
@@ -618,6 +1007,39 @@ function mockTiingoFetch(
       return Promise.resolve(jsonResponse(history));
     }
     return Promise.resolve(new Response("{}", { status: 404 }));
+  };
+}
+
+function annualProvider(records: readonly unknown[]) {
+  return createTiingoPersonalMarketDataProvider(TOKEN, {
+    fetch: () => Promise.resolve(jsonResponse(records)),
+    now: () => NOW,
+  });
+}
+
+function annualRecord(
+  year: number,
+  quarter = 0,
+  sectionOverrides: Readonly<
+    Partial<
+      Record<
+        "balanceSheet" | "cashFlow" | "incomeStatement" | "overview",
+        readonly unknown[]
+      >
+    >
+  > = {},
+): Record<string, unknown> {
+  return {
+    date: `${year}-06-30`,
+    quarter,
+    statementData: {
+      balanceSheet: [],
+      cashFlow: [],
+      incomeStatement: [],
+      overview: [],
+      ...sectionOverrides,
+    },
+    year,
   };
 }
 

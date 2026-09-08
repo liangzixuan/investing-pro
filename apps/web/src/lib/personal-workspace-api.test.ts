@@ -1,4 +1,6 @@
 import type {
+  PersonalAnnualFinancialReportedFieldKeyDto,
+  PersonalAnnualFinancialsDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalSecurityMasterSearchResponseDto,
@@ -9,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createEmptyPersonalWatchlist,
   fetchMainPersonalWatchlist,
+  fetchPersonalAnnualFinancials,
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
   fetchPersonalSecurityMasterStatus,
@@ -238,6 +241,124 @@ describe("personal workspace API client", () => {
     ]);
   });
 
+  it("posts one exact annual-financials request and returns a deeply frozen response", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(annualFinancials()));
+
+    const result = await fetchPersonalAnnualFinancials(
+      { listingId: "lst-00001", symbol: "ZERO" },
+      new AbortController().signal,
+    );
+
+    expect(result).toMatchObject({
+      coverage: { knownReportedCells: 30, returnedAnnualYears: 1 },
+      security: { listingId: "lst-00001", symbol: "ZERO" },
+      status: "available",
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.coverage)).toBe(true);
+    expect(Object.isFrozen(result.coverage.missingFiscalYears)).toBe(true);
+    expect(Object.isFrozen(result.years)).toBe(true);
+    expect(Object.isFrozen(result.years[0]?.reported)).toBe(true);
+    expect(Object.isFrozen(result.years[0]?.reported.revenue)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      new URL(
+        "http://127.0.0.1:3100/v1/personal-filing/market-data/annual-financials",
+      ),
+      expect.objectContaining({
+        body: JSON.stringify({ listingId: "lst-00001", symbol: "ZERO" }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+      }),
+    );
+  });
+
+  it("strictly rejects malformed or identity-mismatched annual financials", async () => {
+    const extraRootKey = annualFinancials();
+    const noncanonicalDecimal = annualFinancials();
+    const identityMismatch = annualFinancials("lst-other", "ZERO");
+    const invalidPeriodEnd = annualFinancials();
+    const excessiveMissingYears = annualFinancials();
+    const oversizedName = annualFinancials();
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ ...extraRootKey, providerPayload: "must not pass" }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...noncanonicalDecimal,
+          years: [
+            {
+              ...noncanonicalDecimal.years[0],
+              reported: {
+                ...noncanonicalDecimal.years[0]?.reported,
+                revenue: { status: "known", value: "100.0" },
+              },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(identityMismatch))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...invalidPeriodEnd,
+          years: [
+            {
+              ...invalidPeriodEnd.years[0],
+              periodEnd: "2030-01-15T21:00:00.000Z",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...excessiveMissingYears,
+          coverage: {
+            ...excessiveMissingYears.coverage,
+            missingFiscalYears: [
+              ...excessiveMissingYears.coverage.missingFiscalYears,
+              2019,
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...oversizedName,
+          security: {
+            ...oversizedName.security,
+            issuerName: "x".repeat(257),
+          },
+        }),
+      );
+
+    for (let index = 0; index < 6; index += 1) {
+      await expect(
+        fetchPersonalAnnualFinancials(
+          { listingId: "lst-00001", symbol: "ZERO" },
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("maps annual-financials HTTP 402 to a distinct entitlement error", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 402 }));
+
+    await expect(
+      fetchPersonalAnnualFinancials(
+        { listingId: "lst-00001", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "not_entitled" });
+  });
+
   it("rejects extra, mismatched, or noncanonical market response data", async () => {
     const extra = marketOverview();
     const mismatched = marketOverview();
@@ -333,9 +454,105 @@ describe("personal workspace API client", () => {
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(
+      fetchPersonalAnnualFinancials(
+        { listingId: "bad id", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+const annualFinancialReportedFieldKeys = [
+  "revenue",
+  "cost_of_revenue",
+  "gross_profit",
+  "research_and_development",
+  "selling_general_and_administrative",
+  "operating_expenses",
+  "operating_income",
+  "interest_expense",
+  "pretax_income",
+  "income_tax_expense",
+  "net_income",
+  "ebitda",
+  "cash",
+  "accounts_receivable",
+  "inventory",
+  "current_assets",
+  "property_plant_equipment_net",
+  "intangibles",
+  "assets",
+  "current_liabilities",
+  "debt",
+  "liabilities",
+  "shareholders_equity",
+  "depreciation_and_amortization",
+  "share_based_compensation",
+  "operating_cash_flow",
+  "capital_expenditures",
+  "free_cash_flow",
+  "investing_cash_flow",
+  "financing_cash_flow",
+] as const satisfies readonly PersonalAnnualFinancialReportedFieldKeyDto[];
+
+function annualFinancials(
+  listingId = "lst-00001",
+  symbol = "ZERO",
+): PersonalAnnualFinancialsDto {
+  const reported = Object.fromEntries(
+    annualFinancialReportedFieldKeys.map((key, index) => [
+      key,
+      { status: "known", value: String((index + 1) * 100) },
+    ]),
+  ) as PersonalAnnualFinancialsDto["years"][number]["reported"];
+  return {
+    asOf: "2030-01-15T21:01:00.000Z",
+    coverage: {
+      earliestFiscalYear: 2029,
+      knownReportedCells: 30,
+      latestFiscalYear: 2029,
+      missingFiscalYears: [
+        2028, 2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020,
+      ],
+      requestedAnnualYears: 10,
+      returnedAnnualYears: 1,
+      status: "partial",
+      unknownReportedCells: 0,
+    },
+    profile: "personal_single_user_local_fundamentals",
+    provider: {
+      attribution: "Tiingo",
+      export: "prohibited",
+      id: "tiingo",
+      name: "Tiingo",
+      persistence: "none",
+      redistribution: "prohibited",
+      retention: "active_owner_session_memory_only",
+      revisionBasis: "provider_most_recent",
+      statementFeed: "tiingo_fundamentals_statements",
+      valueCurrency: "USD",
+    },
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId,
+      securityName: "Zero Alpha Common Stock",
+      symbol,
+    },
+    status: "available",
+    years: [
+      {
+        fiscalYear: 2029,
+        periodEnd: "2030-01-15",
+        reported,
+      },
+    ],
+  };
+}
 
 function snapshot(): PersonalSecurityMasterSnapshotReceiptDto {
   return {

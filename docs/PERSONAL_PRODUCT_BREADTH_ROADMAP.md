@@ -24,8 +24,10 @@ Pass only for exact source revision
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
 breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
-Cycle 3g-a is now the highest-priority visible product milestone, while later
-Cycle 3e-b work and Cycles 3f through 3q remain planned.** This does not alter
+Cycles 3g-a1 and 3g-b1 deliver the first market-data and transparent-analytics
+slices; Cycle 3h-a1 is the current high-priority statement-depth slice. Later
+Cycle 3e-b work, full 3g/3h breadth, and Cycles 3f and 3i through 3q remain
+planned.** This does not alter
 the exact historical Cycle 2z personal result or
 make a feature-parity claim.
 
@@ -169,9 +171,9 @@ Later subcycles may widen a universe only with the same checks.
 | Security universe and local search      | Exact personal snapshot admitted and measured; API only             | Cycle 3e-a      |
 | Browser discovery and local watchlists  | One typed durable primary list in an authenticated browser workflow | Cycle 3e-b1     |
 | Automated filings and amendments        | Manually prepared exact filing corpus                               | Cycle 3f        |
-| Quotes, price history, actions, charts  | Synthetic reference price and one fundamentals chart                | Cycle 3g        |
-| Transparent technical indicators        | No end-user price/volume indicator workspace                        | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier metrics and a bounded private selected-fact set         | Cycle 3h        |
+| Quotes, price history, actions, charts  | On-demand Tiingo quote, six history ranges, actions, chart, table   | Cycle 3g        |
+| Transparent technical indicators        | Five metrics plus three SMA trend classifications on loaded history | Cycle 3g-b      |
+| Statements and metric depth             | Ten dossier facts plus 3h-a1 annual statements and core analytics   | Cycle 3h        |
 | Multi-model valuation                   | One exit-multiple model                                             | Cycle 3i        |
 | Peers, health, quality, and risk scores | No end-user comparison or scorecards                                | Cycle 3j        |
 | Screener and saved views                | No universe query                                                   | Cycle 3k        |
@@ -491,9 +493,9 @@ The roadmap splits this milestone into ordered boundaries. Cycle 3e-a is
 accepted and promoted only for its exact personal source. Cycle 3e-a1 records
 the separately reviewable historical offline source handoff, and Cycle 3e-a2
 records the historical repository-owned measurement-integrity correction.
-Cycle 3e-b1 now supplies the first visible product boundary. Cycle 3g-a is the
-next highest-priority visible gap: current quote and price history composed into
-a useful chart.
+Cycle 3e-b1 supplies the first visible product boundary. Cycles 3g-a1 and 3g-b1
+then add current quote/price history, charting, and transparent analytics; Cycle
+3h-a1 follows with the first multi-year annual-statement slice.
 
 #### Cycle 3e-a — owner-local security-master snapshot and search
 
@@ -796,13 +798,34 @@ Exit criteria:
 
 ### Cycle 3h — financial statements and metric registry
 
-Target: expand the dossier from a ten-metric slice to inspectable statement and
+Target: expand the dossier from a ten-fact slice to inspectable statement and
 fundamental depth.
+
+Current implementation status: Cycle 3h-a1 adds a separately triggered Tiingo
+fundamentals request for the exact catalog-bound listing already selected in
+`/discover`. It displays up to ten annual periods across a fixed 30-field income
+statement, balance-sheet, and cash-flow registry. Missing years and individual
+provider omissions remain blank and explicit. Eight exact-decimal metrics and
+three latest-year growth comparisons are calculated locally with inspectable
+formulas and input references; a zero or negative prior-year base remains
+explicitly not meaningful. The browser labels the response as Tiingo's
+most-recent corrected history, distinguishes missing fundamentals access from a
+rejected credential with a fixed credential-test request after a 403, performs
+no automatic request, and discards the response with the view or owner session.
+
+This is an independently useful statement-depth slice, not full 3h-a. It does
+not establish quarterly or TTM views, point-in-time/restatement history, the
+planned 30-core-metric registry, 500-security coverage, 90% knownness, or the
+20-issuer independent validation gate. Tiingo currently documents the full
+fundamentals feed as an add-on and a three-year Dow 30 evaluation; the exact
+owner entitlement therefore remains visible rather than assumed.
 
 Promotable subcycles:
 
+- **3h-a1:** provider-backed annual statement tables and a first transparent
+  core-analytics set for one selected listing;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
-  initial screenable universe; and
+  initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived
   metrics, admitting each only when it supports a named research job and has
   applicability and validation evidence.
@@ -1080,7 +1103,11 @@ The dependency graph is:
 - 3e-b depends on 3e-a and 3d;
 - 3f depends on 3c through 3e-a and may proceed alongside 3b;
 - 3g depends on 3c through 3e-a and may proceed alongside 3f;
-- 3h-a depends on 3f; market-derived extensions also depend on 3g;
+- 3h-a1 depends on the admitted catalog/owner-source controls and 3g-a1's
+  provider composition; it can deliver normalized provider statements without
+  waiting for automated filing ingestion;
+- full citation-rich and point-in-time 3h-a lineage depends on 3f, while
+  market-derived extensions also depend on 3g;
 - 3i depends on the applicable 3g and 3h subcycles;
 - 3j depends on 3g and 3h;
 - 3k depends on 3e-a, 3h, and the applicable 3j inputs;

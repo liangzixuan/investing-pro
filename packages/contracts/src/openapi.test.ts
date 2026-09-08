@@ -8,6 +8,7 @@ import type {
   ConnectedSourceBudgetQuantityDto,
   ConnectedSourceBudgetStatusDto,
   ConnectedSourcePolicyStatusDto,
+  PersonalAnnualFinancialsDto,
   PersonalFilingDossierDto,
   PersonalFilingDossierEvidenceDto,
   PersonalFilingDossierFactDto,
@@ -89,6 +90,38 @@ const PERSONAL_FILING_FACT_KEYS = [
   "operating_income",
   "revenue",
 ] as const;
+const PERSONAL_ANNUAL_FINANCIAL_REPORTED_KEYS = [
+  "accounts_receivable",
+  "assets",
+  "capital_expenditures",
+  "cash",
+  "cost_of_revenue",
+  "current_assets",
+  "current_liabilities",
+  "debt",
+  "depreciation_and_amortization",
+  "ebitda",
+  "financing_cash_flow",
+  "free_cash_flow",
+  "gross_profit",
+  "income_tax_expense",
+  "intangibles",
+  "inventory",
+  "investing_cash_flow",
+  "liabilities",
+  "net_income",
+  "operating_cash_flow",
+  "operating_expenses",
+  "operating_income",
+  "pretax_income",
+  "property_plant_equipment_net",
+  "research_and_development",
+  "revenue",
+  "selling_general_and_administrative",
+  "share_based_compensation",
+  "shareholders_equity",
+  "interest_expense",
+] as const;
 const CONNECTED_SOURCE_POLICY_STATUSES = [
   "disabled",
   "ready",
@@ -137,6 +170,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/security-master/search",
       "/v1/personal-filing/market-data/status",
       "/v1/personal-filing/market-data/overview",
+      "/v1/personal-filing/market-data/annual-financials",
       "/v1/personal-filing/connected-source-policy/status",
       "/v1/personal-filing/connected-source-policy/kill",
       "/v1/theses/{thesisId}",
@@ -958,7 +992,7 @@ describe("local API OpenAPI contract", () => {
     const raw = schemaSection(
       source,
       "PersonalMarketDataRawOhlcv",
-      "InstrumentId",
+      "PersonalAnnualFinancialsRequest",
     );
     expect(requiredKeys(adjusted)).toEqual([
       "close",
@@ -974,6 +1008,197 @@ describe("local API OpenAPI contract", () => {
     expect(requiredKeys(raw)).toEqual(requiredKeys(adjusted));
     expect(schemaKeys(raw)).toEqual(requiredKeys(raw));
     expect(raw).toContain('pattern: "^(?:0|[1-9][0-9]*)$"');
+  });
+
+  it("freezes the exact personal annual-financials contract", async () => {
+    const source = await openApiSource();
+    const route = pathSection(
+      source,
+      "/v1/personal-filing/market-data/annual-financials",
+    );
+    const normalizedRoute = route.replace(/\s+/g, " ");
+
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "post:",
+    ]);
+    expect(statuses(route)).toEqual([
+      "200",
+      "400",
+      "402",
+      "403",
+      "404",
+      "424",
+      "429",
+      "502",
+      "503",
+    ]);
+    expect(route).not.toContain("in: query");
+    expect(route).toContain("PersonalOwnerSession: []");
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalAnnualFinancialsRequest"',
+    );
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalAnnualFinancials"',
+    );
+    expect(normalizedRoute).toContain("one to ten annual periods");
+    expect(normalizedRoute).toContain("descending fiscal-year order");
+    expect(normalizedRoute).toContain("unknown rather than synthesized");
+    expect(normalizedRoute).toContain("only in active process/browser memory");
+    expect(normalizedRoute).toContain("not entitled to the fundamentals feed");
+    expect(route.match(/#\/components\/headers\/PrivateNoStore/g)).toHaveLength(
+      9,
+    );
+    expect(route.match(/#\/components\/headers\/PragmaNoCache/g)).toHaveLength(
+      9,
+    );
+
+    const request = schemaSection(
+      source,
+      "PersonalAnnualFinancialsRequest",
+      "PersonalAnnualFinancials",
+    );
+    expect(requiredKeys(request)).toEqual(["listingId", "symbol"]);
+    expect(schemaKeys(request)).toEqual(requiredKeys(request));
+    expect(request).toContain("additionalProperties: false");
+
+    const response = schemaSection(
+      source,
+      "PersonalAnnualFinancials",
+      "PersonalAnnualFinancialsProvider",
+    );
+    expect(requiredKeys(response)).toEqual([
+      "asOf",
+      "coverage",
+      "profile",
+      "provider",
+      "schemaVersion",
+      "security",
+      "status",
+      "years",
+    ]);
+    expect(schemaKeys(response)).toEqual(requiredKeys(response));
+    expect(response).toContain("additionalProperties: false");
+    expect(response).toContain("personal_single_user_local_fundamentals");
+    expect(response).toContain('const: "1.0.0"');
+    expect(response).toContain("const: available");
+    expect(response).toContain("minItems: 1");
+    expect(response).toContain("maxItems: 10");
+    expect(response.replace(/\s+/g, " ")).toContain(
+      "ordered by fiscalYear descending",
+    );
+
+    const provider = schemaSection(
+      source,
+      "PersonalAnnualFinancialsProvider",
+      "PersonalAnnualFinancialsCoverage",
+    );
+    expect(requiredKeys(provider)).toEqual([
+      "attribution",
+      "export",
+      "id",
+      "name",
+      "persistence",
+      "redistribution",
+      "retention",
+      "revisionBasis",
+      "statementFeed",
+      "valueCurrency",
+    ]);
+    expect(schemaKeys(provider)).toEqual(requiredKeys(provider));
+    expect(provider).toContain("additionalProperties: false");
+    expect(provider).toContain("const: Tiingo");
+    expect(provider).toContain("const: active_owner_session_memory_only");
+    expect(provider).toContain("const: provider_most_recent");
+    expect(provider).toContain("const: tiingo_fundamentals_statements");
+    expect(provider).toContain("const: USD");
+    expect(provider).not.toContain("token:");
+
+    const coverage = schemaSection(
+      source,
+      "PersonalAnnualFinancialsCoverage",
+      "PersonalAnnualFinancialYear",
+    );
+    expect(requiredKeys(coverage)).toEqual([
+      "earliestFiscalYear",
+      "knownReportedCells",
+      "latestFiscalYear",
+      "missingFiscalYears",
+      "requestedAnnualYears",
+      "returnedAnnualYears",
+      "status",
+      "unknownReportedCells",
+    ]);
+    expect(schemaKeys(coverage)).toEqual(requiredKeys(coverage));
+    expect(coverage).toContain("additionalProperties: false");
+    expect(coverage).toContain("const: 10");
+    expect(coverage).toContain("maxItems: 9");
+    expect(coverage).toContain("uniqueItems: true");
+    expect(listValues(coverage, /^ {12}- (complete|partial)$/gm)).toEqual([
+      "complete",
+      "partial",
+    ]);
+
+    const year = schemaSection(
+      source,
+      "PersonalAnnualFinancialYear",
+      "PersonalAnnualFinancialReportedValues",
+    );
+    expect(requiredKeys(year)).toEqual(["fiscalYear", "periodEnd", "reported"]);
+    expect(schemaKeys(year)).toEqual(requiredKeys(year));
+    expect(year).toContain("additionalProperties: false");
+    expect(year).toContain("format: date");
+    expect(year).not.toContain("format: date-time");
+
+    const reported = schemaSection(
+      source,
+      "PersonalAnnualFinancialReportedValues",
+      "PersonalAnnualFinancialReportedCell",
+    );
+    const reportedRequired = listValues(
+      boundedSection(reported, "      required:", "      properties:"),
+      /^ {8}- ([a-z][a-z_]*)$/gm,
+    );
+    const reportedProperties = listValues(
+      reported.slice(reported.indexOf("      properties:")),
+      /^ {8}([a-z][a-z_]*):$/gm,
+    );
+    expect(reported).toContain("additionalProperties: false");
+    expect(reportedRequired).toEqual(PERSONAL_ANNUAL_FINANCIAL_REPORTED_KEYS);
+    expect(reportedProperties).toEqual(reportedRequired);
+    expect(
+      reported.match(
+        /#\/components\/schemas\/PersonalAnnualFinancialReportedCell/g,
+      ),
+    ).toHaveLength(30);
+
+    const cell = schemaSection(
+      source,
+      "PersonalAnnualFinancialReportedCell",
+      "InstrumentId",
+    );
+    expect(cell.match(/^ {8}- type: object$/gm)).toHaveLength(2);
+    expect(cell.match(/additionalProperties: false/g)).toHaveLength(2);
+    expect(listValues(cell, /^ {12}- ([a-z]+)$/gm)).toEqual([
+      "status",
+      "value",
+      "reason",
+      "status",
+      "value",
+    ]);
+    expect(listValues(cell, /^ {12}([a-z]+):$/gm)).toEqual([
+      "status",
+      "value",
+      "reason",
+      "status",
+      "value",
+    ]);
+    expect(cell).toContain("const: known");
+    expect(cell).toContain("const: unknown");
+    expect(cell).toContain("const: not_supplied_by_provider");
+    expect(cell).toContain(
+      'pattern: "^(?:0|-?[1-9][0-9]*|-?(?:0|[1-9][0-9]*)\\\\.[0-9]*[1-9])$"',
+    );
+    expect(cell).toContain('type: "null"');
   });
 
   it("freezes the exact authenticated connected source-policy administration contract", async () => {
@@ -1592,6 +1817,82 @@ describe("local API OpenAPI contract", () => {
       },
       status: "available",
     } satisfies PersonalMarketOverviewDto;
+    const knownAnnualFinancialCell = {
+      status: "known",
+      value: "120000000",
+    } as const;
+    const unknownAnnualFinancialCell = {
+      reason: "not_supplied_by_provider",
+      status: "unknown",
+      value: null,
+    } as const;
+    const personalAnnualFinancials = {
+      asOf: "2026-09-07T15:00:01.000Z",
+      coverage: {
+        earliestFiscalYear: 2025,
+        knownReportedCells: 29,
+        latestFiscalYear: 2025,
+        missingFiscalYears: [],
+        requestedAnnualYears: 10,
+        returnedAnnualYears: 1,
+        status: "partial",
+        unknownReportedCells: 1,
+      },
+      profile: "personal_single_user_local_fundamentals",
+      provider: {
+        attribution: "Tiingo",
+        export: "prohibited",
+        id: "tiingo",
+        name: "Tiingo",
+        persistence: "none",
+        redistribution: "prohibited",
+        retention: "active_owner_session_memory_only",
+        revisionBasis: "provider_most_recent",
+        statementFeed: "tiingo_fundamentals_statements",
+        valueCurrency: "USD",
+      },
+      schemaVersion: "1.0.0",
+      security: personalMarketOverview.security,
+      status: "available",
+      years: [
+        {
+          fiscalYear: 2025,
+          periodEnd: "2026-02-20",
+          reported: {
+            accounts_receivable: knownAnnualFinancialCell,
+            assets: knownAnnualFinancialCell,
+            capital_expenditures: knownAnnualFinancialCell,
+            cash: knownAnnualFinancialCell,
+            cost_of_revenue: knownAnnualFinancialCell,
+            current_assets: knownAnnualFinancialCell,
+            current_liabilities: knownAnnualFinancialCell,
+            debt: knownAnnualFinancialCell,
+            depreciation_and_amortization: knownAnnualFinancialCell,
+            ebitda: knownAnnualFinancialCell,
+            financing_cash_flow: knownAnnualFinancialCell,
+            free_cash_flow: knownAnnualFinancialCell,
+            gross_profit: knownAnnualFinancialCell,
+            income_tax_expense: knownAnnualFinancialCell,
+            intangibles: knownAnnualFinancialCell,
+            inventory: knownAnnualFinancialCell,
+            investing_cash_flow: knownAnnualFinancialCell,
+            liabilities: knownAnnualFinancialCell,
+            net_income: knownAnnualFinancialCell,
+            operating_cash_flow: knownAnnualFinancialCell,
+            operating_expenses: knownAnnualFinancialCell,
+            operating_income: knownAnnualFinancialCell,
+            pretax_income: knownAnnualFinancialCell,
+            property_plant_equipment_net: knownAnnualFinancialCell,
+            research_and_development: knownAnnualFinancialCell,
+            revenue: knownAnnualFinancialCell,
+            selling_general_and_administrative: knownAnnualFinancialCell,
+            share_based_compensation: knownAnnualFinancialCell,
+            shareholders_equity: knownAnnualFinancialCell,
+            interest_expense: unknownAnnualFinancialCell,
+          },
+        },
+      ],
+    } satisfies PersonalAnnualFinancialsDto;
     const connectedSourceBudgetQuantity = {
       limit: 100,
       used: 25,
@@ -1780,6 +2081,19 @@ describe("local API OpenAPI contract", () => {
       "raw",
       "splitFactor",
     ]);
+    expect(Object.keys(personalAnnualFinancials)).toEqual([
+      "asOf",
+      "coverage",
+      "profile",
+      "provider",
+      "schemaVersion",
+      "security",
+      "status",
+      "years",
+    ]);
+    expect(
+      Object.keys(personalAnnualFinancials.years[0]?.reported ?? {}),
+    ).toEqual(PERSONAL_ANNUAL_FINANCIAL_REPORTED_KEYS);
     expect(Object.keys(connectedSourceBudgetQuantity)).toEqual([
       "limit",
       "used",

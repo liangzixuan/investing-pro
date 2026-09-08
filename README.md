@@ -14,8 +14,9 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1 and 3g-b1 add a provider-backed market view and transparent
-trend/risk analytics to the daily-use discovery workflow. In the explicit
+Cycles 3g-a1, 3g-b1, and 3h-a1 add a provider-backed market view, transparent
+trend/risk analytics, and multi-year annual financials to the daily-use
+discovery workflow. In the explicit
 `personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
 `My Watchlist`, and open a selected company without putting its symbol in the
@@ -30,21 +31,34 @@ classifications. Changing raw/adjusted mode recalculates the analytics locally
 without another provider request. There is no automatic provider request,
 synthetic price fallback, or buy/sell rating.
 
-Tiingo Starter data and the displayed analytics are held only in the active
+For an exact selected listing, a separate explicit action now loads up to ten
+annual income-statement, balance-sheet, and cash-flow periods. It presents a
+fixed 30-field reported-data registry, explicit missing years and values, eight
+formula-inspectable financial metrics, and revenue, net-income, and free-cash-
+flow year-over-year growth. Tiingo's most-recent corrected view is labelled as
+such; it is not represented as point-in-time history. Fundamentals entitlement
+is separate from price access and gets its own visible state.
+
+Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory and are not written to the vault, filesystem, browser
 storage, logs, exports, or Git.
 The UI distinguishes an unconfigured token, unsupported symbol, rejected
-credential, rate limit, upstream outage, stale quote, loading, and retry state.
-Every analytic carries its formula/version, parameters, input window, sample
-count, rounding rule, and observed-sessions/no-gap-fill policy; insufficient
+credential, fundamentals entitlement, rate limit, upstream outage, stale quote,
+loading, and retry state.
+Every market analytic carries its formula/version, parameters, input window,
+sample count, rounding rule, and observed-sessions/no-gap-fill policy. Financial
+analytics carry a formula/version, fiscal period, unit, and exact input
+references; their formula set publishes one shared rounding rule and treats
+growth over a zero or negative prior-year base as not meaningful. Insufficient
 history remains explicit. The currently reviewed
 [Tiingo terms](https://api.tiingo.com/tos/) permit non-reconstructable aggregate
 derivation, so no derived price or moving-average series is retained or exposed.
 This is a visible feature milestone, not full Cycle 3g or product parity: the
 declared 100-symbol validation gate, independent corporate-action reconciliation,
-benchmark relative strength, broader indicators, statement breadth,
-valuation/peer tools, screening, events/news, portfolio analytics, alerts, and
-exports remain later product work.
+benchmark relative strength, broader indicators, full statement breadth,
+quarterly/TTM financials, the full 30-core-metric and 500-security validation
+gate, valuation/peer tools, screening, events/news, portfolio analytics, alerts,
+and exports remain later product work.
 
 ## Historical synthetic slice
 
@@ -1383,10 +1397,11 @@ operation. The separately authorized private gate used the exact recorded
 package-owned-clock implementation and is represented only by the permitted
 coarse outcome. Neither record establishes competitor parity.
 
-Cycle 3e-b1 now implements authenticated browser search over the admitted
-universe plus one durable typed owner-local `My Watchlist`. The next
-highest-priority visible gap is Cycle 3g-a: current quote and price-history
-composition with a useful chart. Security and privacy remain acceptance
+Cycle 3e-b1 implements authenticated browser search over the admitted universe
+plus one durable typed owner-local `My Watchlist`. Cycles 3g-a1 and 3g-b1 add
+on-demand price history, charting, and transparent trend/risk analytics. Cycle
+3h-a1 now closes the next large visible slice with on-demand multi-year annual
+statements and core financial analytics. Security and privacy remain acceptance
 criteria, not standalone milestones unless they block correctness, private
 data, or credentials.
 
@@ -1664,7 +1679,11 @@ later starts. Market data is optional: create a personal Tiingo account, review
 its current [pricing](https://www.tiingo.com/about/pricing) and
 [terms](https://api.tiingo.com/tos/), then copy the token from Tiingo's account
 page if you want live price/history loading. Without a token, search and the
-watchlist still work and the market panel says it is not configured. These
+watchlist still work and the market panel says it is not configured. Tiingo
+fundamentals are a separate add-on; its documentation currently describes a
+three-year Dow 30 evaluation, so price access may work while another listing's
+annual-financial request reports `not entitled` only after the fixed Tiingo
+credential test confirms the token itself remains valid. These
 values, the provider token, and the owner bootstrap secret must remain outside
 Git and logs.
 
@@ -1717,10 +1736,13 @@ pnpm --filter @research-cockpit/web exec next dev -p 3000 -H 127.0.0.1
 
 Open `http://127.0.0.1:3000/discover`, paste the fresh bootstrap value into the
 owner-session panel, and select **Start session**. The combined process gives
-search, watchlist, and explicit market-data requests one cookie authority. The
+search, watchlist, and explicit market-data or annual-financial requests one
+cookie authority. The
 API sends a configured Tiingo token only in the provider Authorization header,
 never in a URL. Returned Tiingo values remain transient in active session memory
-and are discarded when the market view or owner session ends. The older isolated
+and are discarded when the market view or owner session ends. Use **Load annual
+financials** after selecting a listing to request the separate fundamentals
+feed; no fundamentals request runs automatically. The older isolated
 security-master and generic-vault entrypoints remain available for their
 original bounded uses.
 

@@ -2794,10 +2794,10 @@ is represented only by the permitted coarse outcome. See
    records its separate historical offline source handoff as a public
    engineering Pass only, and Cycle 3e-a2 records only its exact historical
    package-owned measurement correction as a public engineering Pass. Cycle
-   3e-b1 is the next highest-priority visible browser-search and durable-
-   watchlist boundary; security and privacy are acceptance criteria rather than
-   standalone milestones unless they block correctness, private data, or
-   credentials.
+   3e-b1 supplies the browser-search and durable-watchlist boundary; 3g-a1,
+   3g-b1, and 3h-a1 then add visible market, analytics, and annual-financial
+   slices. Security and privacy are acceptance criteria rather than standalone
+   milestones unless they block correctness, private data, or credentials.
    Organizational
    rights/steward approval and authority keys are separate enterprise-profile
    gates, not personal-profile prerequisites.

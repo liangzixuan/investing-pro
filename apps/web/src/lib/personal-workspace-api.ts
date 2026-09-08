@@ -1,4 +1,6 @@
 import type {
+  PersonalAnnualFinancialReportedFieldKeyDto,
+  PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
@@ -26,6 +28,8 @@ export const PERSONAL_MARKET_DATA_STATUS_PATH =
   "/v1/personal-filing/market-data/status" as const;
 export const PERSONAL_MARKET_OVERVIEW_PATH =
   "/v1/personal-filing/market-data/overview" as const;
+export const PERSONAL_ANNUAL_FINANCIALS_PATH =
+  "/v1/personal-filing/market-data/annual-financials" as const;
 
 export const MAIN_PERSONAL_WATCHLIST_ID = "main" as const;
 export const MAIN_PERSONAL_WATCHLIST_NAME = "My Watchlist" as const;
@@ -47,6 +51,7 @@ export type PersonalWorkspaceApiErrorCode =
   | "credentials_invalid"
   | "invalid_request"
   | "invalid_response"
+  | "not_entitled"
   | "not_configured"
   | "not_covered"
   | "provider_unavailable"
@@ -295,6 +300,77 @@ const marketRanges = new Set<PersonalMarketDataRangeDto>([
   "5y",
   "10y",
 ]);
+const annualFinancialsKeys = [
+  "asOf",
+  "coverage",
+  "profile",
+  "provider",
+  "schemaVersion",
+  "security",
+  "status",
+  "years",
+] as const;
+const annualFinancialsProviderKeys = [
+  "attribution",
+  "export",
+  "id",
+  "name",
+  "persistence",
+  "redistribution",
+  "retention",
+  "revisionBasis",
+  "statementFeed",
+  "valueCurrency",
+] as const;
+const annualFinancialsCoverageKeys = [
+  "earliestFiscalYear",
+  "knownReportedCells",
+  "latestFiscalYear",
+  "missingFiscalYears",
+  "requestedAnnualYears",
+  "returnedAnnualYears",
+  "status",
+  "unknownReportedCells",
+] as const;
+const annualFinancialYearKeys = [
+  "fiscalYear",
+  "periodEnd",
+  "reported",
+] as const;
+const annualFinancialReportedFieldKeys = [
+  "revenue",
+  "cost_of_revenue",
+  "gross_profit",
+  "research_and_development",
+  "selling_general_and_administrative",
+  "operating_expenses",
+  "operating_income",
+  "interest_expense",
+  "pretax_income",
+  "income_tax_expense",
+  "net_income",
+  "ebitda",
+  "cash",
+  "accounts_receivable",
+  "inventory",
+  "current_assets",
+  "property_plant_equipment_net",
+  "intangibles",
+  "assets",
+  "current_liabilities",
+  "debt",
+  "liabilities",
+  "shareholders_equity",
+  "depreciation_and_amortization",
+  "share_based_compensation",
+  "operating_cash_flow",
+  "capital_expenditures",
+  "free_cash_flow",
+  "investing_cash_flow",
+  "financing_cash_flow",
+] as const satisfies readonly PersonalAnnualFinancialReportedFieldKeyDto[];
+const annualFinancialKnownCellKeys = ["status", "value"] as const;
+const annualFinancialUnknownCellKeys = ["reason", "status", "value"] as const;
 
 export async function fetchPersonalSecurityMasterStatus(
   signal: AbortSignal,
@@ -371,6 +447,41 @@ export async function fetchPersonalMarketOverview(
     throw new PersonalWorkspaceApiError("invalid_response");
   }
   return copyPersonalMarketOverview(value);
+}
+
+export async function fetchPersonalAnnualFinancials(
+  input: Readonly<{ listingId: string; symbol: string }>,
+  signal: AbortSignal,
+): Promise<PersonalAnnualFinancialsDto> {
+  if (
+    !isIdentifier(input.listingId) ||
+    typeof input.symbol !== "string" ||
+    !symbol.test(input.symbol)
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const response = await request(PERSONAL_ANNUAL_FINANCIALS_PATH, {
+    body: JSON.stringify({
+      listingId: input.listingId,
+      symbol: input.symbol,
+    }),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal,
+  });
+  if (!response.ok) throw annualFinancialsResponseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !isPersonalAnnualFinancials(value) ||
+    value.security.listingId !== input.listingId ||
+    value.security.symbol !== input.symbol
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return copyPersonalAnnualFinancials(value);
 }
 
 export async function searchPersonalSecurities(
@@ -585,6 +696,13 @@ function marketOverviewResponseError(
   return new PersonalWorkspaceApiError("unavailable");
 }
 
+function annualFinancialsResponseError(
+  status: number,
+): PersonalWorkspaceApiError {
+  if (status === 402) return new PersonalWorkspaceApiError("not_entitled");
+  return marketOverviewResponseError(status);
+}
+
 function mutationIdempotencyKey(): string {
   try {
     return `watchlist-${globalThis.crypto.randomUUID()}`;
@@ -655,6 +773,158 @@ function isPersonalMarketOverview(
   );
 }
 
+function isPersonalAnnualFinancials(
+  value: unknown,
+): value is PersonalAnnualFinancialsDto {
+  if (
+    !hasExactKeys(value, annualFinancialsKeys) ||
+    !isInstant(value.asOf) ||
+    !isAnnualFinancialsCoverage(value.coverage) ||
+    value.profile !== "personal_single_user_local_fundamentals" ||
+    !isAnnualFinancialsProvider(value.provider) ||
+    value.schemaVersion !== "1.0.0" ||
+    !isPersonalMarketIdentity(value.security) ||
+    value.status !== "available"
+  ) {
+    return false;
+  }
+  const years = value.years;
+  if (
+    !Array.isArray(years) ||
+    years.length < 1 ||
+    years.length > 10 ||
+    !years.every(isAnnualFinancialYear)
+  ) {
+    return false;
+  }
+  let priorYear = Number.POSITIVE_INFINITY;
+  let known = 0;
+  let unknown = 0;
+  for (const year of years) {
+    if (year.fiscalYear >= priorYear) {
+      return false;
+    }
+    priorYear = year.fiscalYear;
+    for (const key of annualFinancialReportedFieldKeys) {
+      if (year.reported[key].status === "known") known += 1;
+      else unknown += 1;
+    }
+  }
+  const latest = years[0]?.fiscalYear;
+  const earliest = years.at(-1)?.fiscalYear;
+  if (latest === undefined || earliest === undefined) return false;
+  const requestedAnnualYears = value.coverage.requestedAnnualYears;
+  if (
+    years.some(
+      ({ fiscalYear }) => fiscalYear < latest - requestedAnnualYears + 1,
+    )
+  ) {
+    return false;
+  }
+  const presentYears = new Set(years.map(({ fiscalYear }) => fiscalYear));
+  const expectedMissing = Array.from(
+    { length: value.coverage.requestedAnnualYears },
+    (_, offset) => latest - offset,
+  ).filter((fiscalYear) => !presentYears.has(fiscalYear));
+  return (
+    value.coverage.returnedAnnualYears === years.length &&
+    value.coverage.latestFiscalYear === latest &&
+    value.coverage.earliestFiscalYear === earliest &&
+    value.coverage.knownReportedCells === known &&
+    value.coverage.unknownReportedCells === unknown &&
+    JSON.stringify(value.coverage.missingFiscalYears) ===
+      JSON.stringify(expectedMissing) &&
+    value.coverage.status ===
+      (expectedMissing.length === 0 && unknown === 0 ? "complete" : "partial")
+  );
+}
+
+function isAnnualFinancialsProvider(
+  value: unknown,
+): value is PersonalAnnualFinancialsDto["provider"] {
+  return (
+    hasExactKeys(value, annualFinancialsProviderKeys) &&
+    value.attribution === "Tiingo" &&
+    value.export === "prohibited" &&
+    value.id === "tiingo" &&
+    value.name === "Tiingo" &&
+    value.persistence === "none" &&
+    value.redistribution === "prohibited" &&
+    value.retention === "active_owner_session_memory_only" &&
+    value.revisionBasis === "provider_most_recent" &&
+    value.statementFeed === "tiingo_fundamentals_statements" &&
+    value.valueCurrency === "USD"
+  );
+}
+
+function isAnnualFinancialsCoverage(
+  value: unknown,
+): value is PersonalAnnualFinancialsDto["coverage"] {
+  return (
+    hasExactKeys(value, annualFinancialsCoverageKeys) &&
+    isPositiveInteger(value.earliestFiscalYear) &&
+    isNonnegativeInteger(value.knownReportedCells) &&
+    isPositiveInteger(value.latestFiscalYear) &&
+    Array.isArray(value.missingFiscalYears) &&
+    value.missingFiscalYears.length <= 9 &&
+    value.missingFiscalYears.every(
+      (fiscalYear) =>
+        isPositiveInteger(fiscalYear) &&
+        fiscalYear >= 1900 &&
+        fiscalYear <= 9999,
+    ) &&
+    new Set(value.missingFiscalYears).size ===
+      value.missingFiscalYears.length &&
+    value.requestedAnnualYears === 10 &&
+    isPositiveInteger(value.returnedAnnualYears) &&
+    value.returnedAnnualYears <= 10 &&
+    (value.status === "complete" || value.status === "partial") &&
+    isNonnegativeInteger(value.unknownReportedCells)
+  );
+}
+
+function isAnnualFinancialYear(
+  value: unknown,
+): value is PersonalAnnualFinancialsDto["years"][number] {
+  if (
+    !hasExactKeys(value, annualFinancialYearKeys) ||
+    !isPositiveInteger(value.fiscalYear) ||
+    value.fiscalYear < 1900 ||
+    value.fiscalYear > 9999 ||
+    !isDate(value.periodEnd)
+  ) {
+    return false;
+  }
+  const reported = value.reported;
+  if (!hasExactKeys(reported, annualFinancialReportedFieldKeys)) return false;
+  return annualFinancialReportedFieldKeys.every((key) =>
+    isAnnualFinancialReportedCell(reported[key]),
+  );
+}
+
+function isAnnualFinancialReportedCell(
+  value: unknown,
+): value is PersonalAnnualFinancialsDto["years"][number]["reported"][PersonalAnnualFinancialReportedFieldKeyDto] {
+  if (hasExactKeys(value, annualFinancialKnownCellKeys)) {
+    return value.status === "known" && isCanonicalFinancialDecimal(value.value);
+  }
+  return (
+    hasExactKeys(value, annualFinancialUnknownCellKeys) &&
+    value.reason === "not_supplied_by_provider" &&
+    value.status === "unknown" &&
+    value.value === null
+  );
+}
+
+function isCanonicalFinancialDecimal(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= 64 &&
+    value !== "-0" &&
+    /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$/u.test(value)
+  );
+}
+
 function isPersonalMarketIdentity(
   value: unknown,
 ): value is PersonalMarketOverviewDto["security"] {
@@ -663,9 +933,9 @@ function isPersonalMarketIdentity(
     value.country === "US" &&
     typeof value.exchangeMic === "string" &&
     exchangeMic.test(value.exchangeMic) &&
-    isDisplayText(value.issuerName) &&
+    isBoundedDisplayText(value.issuerName, 256) &&
     isIdentifier(value.listingId) &&
-    isDisplayText(value.securityName) &&
+    isBoundedDisplayText(value.securityName, 256) &&
     typeof value.symbol === "string" &&
     symbol.test(value.symbol)
   );
@@ -780,6 +1050,35 @@ function copyPersonalMarketOverview(
         ),
       ),
     }),
+  });
+}
+
+function copyPersonalAnnualFinancials(
+  value: PersonalAnnualFinancialsDto,
+): PersonalAnnualFinancialsDto {
+  return Object.freeze({
+    ...value,
+    coverage: Object.freeze({
+      ...value.coverage,
+      missingFiscalYears: Object.freeze([...value.coverage.missingFiscalYears]),
+    }),
+    provider: Object.freeze({ ...value.provider }),
+    security: Object.freeze({ ...value.security }),
+    years: Object.freeze(
+      value.years.map((year) =>
+        Object.freeze({
+          ...year,
+          reported: Object.freeze(
+            Object.fromEntries(
+              annualFinancialReportedFieldKeys.map((key) => [
+                key,
+                Object.freeze({ ...year.reported[key] }),
+              ]),
+            ),
+          ) as PersonalAnnualFinancialsDto["years"][number]["reported"],
+        }),
+      ),
+    ),
   });
 }
 

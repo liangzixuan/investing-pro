@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
@@ -12,6 +13,7 @@ import { useCallback, useRef, useState } from "react";
 
 import {
   createEmptyPersonalWatchlist,
+  fetchPersonalAnnualFinancials,
   fetchMainPersonalWatchlist,
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
+import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import {
   PersonalMarketOverview,
   type PersonalMarketSelection,
@@ -85,10 +88,18 @@ export function SecurityDiscoveryWorkspace() {
   >("idle");
   const [marketErrorCode, setMarketErrorCode] =
     useState<PersonalWorkspaceApiErrorCode | null>(null);
+  const [annualFinancials, setAnnualFinancials] =
+    useState<PersonalAnnualFinancialsDto | null>(null);
+  const [annualFinancialsRequestState, setAnnualFinancialsRequestState] =
+    useState<"idle" | "loading">("idle");
+  const [annualFinancialsErrorCode, setAnnualFinancialsErrorCode] =
+    useState<PersonalWorkspaceApiErrorCode | null>(null);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
   const marketEpoch = useRef(0);
   const marketController = useRef<AbortController | null>(null);
+  const annualFinancialsEpoch = useRef(0);
+  const annualFinancialsController = useRef<AbortController | null>(null);
 
   const handleOwnerSessionChange = useCallback(
     async (active: boolean, signal: AbortSignal) => {
@@ -203,6 +214,12 @@ export function SecurityDiscoveryWorkspace() {
     setMarketAdjustmentMode("adjusted");
     setMarketRequestState("idle");
     setMarketErrorCode(null);
+    annualFinancialsController.current?.abort();
+    annualFinancialsController.current = null;
+    annualFinancialsEpoch.current += 1;
+    setAnnualFinancials(null);
+    setAnnualFinancialsRequestState("idle");
+    setAnnualFinancialsErrorCode(null);
   }
 
   async function runSearch() {
@@ -294,6 +311,12 @@ export function SecurityDiscoveryWorkspace() {
     setMarketErrorCode(
       marketDataStatus?.status === "not_configured" ? "not_configured" : null,
     );
+    annualFinancialsController.current?.abort();
+    annualFinancialsController.current = null;
+    annualFinancialsEpoch.current += 1;
+    setAnnualFinancials(null);
+    setAnnualFinancialsRequestState("idle");
+    setAnnualFinancialsErrorCode(null);
     if (typeof document !== "undefined") {
       queueMicrotask(() =>
         document.getElementById("personal-market-overview")?.focus(),
@@ -311,6 +334,12 @@ export function SecurityDiscoveryWorkspace() {
     setMarketAdjustmentMode("adjusted");
     setMarketRequestState("idle");
     setMarketErrorCode(null);
+    annualFinancialsController.current?.abort();
+    annualFinancialsController.current = null;
+    annualFinancialsEpoch.current += 1;
+    setAnnualFinancials(null);
+    setAnnualFinancialsRequestState("idle");
+    setAnnualFinancialsErrorCode(null);
   }
 
   async function loadMarketData(range: PersonalMarketDataRangeDto) {
@@ -370,6 +399,70 @@ export function SecurityDiscoveryWorkspace() {
       if (epoch === workspaceEpoch.current && request === marketEpoch.current) {
         marketController.current = null;
         setMarketRequestState("idle");
+      }
+    }
+  }
+
+  async function loadAnnualFinancials() {
+    const selection = marketSelection;
+    if (selection === null || annualFinancialsRequestState === "loading") {
+      return;
+    }
+    if (marketDataStatus?.status === "not_configured") {
+      setAnnualFinancialsErrorCode("not_configured");
+      return;
+    }
+    if (marketDataStatus === null) {
+      setAnnualFinancialsErrorCode("unavailable");
+      return;
+    }
+
+    annualFinancialsController.current?.abort();
+    const controller = new AbortController();
+    annualFinancialsController.current = controller;
+    const request = ++annualFinancialsEpoch.current;
+    const epoch = workspaceEpoch.current;
+    setAnnualFinancials(null);
+    setAnnualFinancialsErrorCode(null);
+    setAnnualFinancialsRequestState("loading");
+    try {
+      const loaded = await fetchPersonalAnnualFinancials(
+        {
+          listingId: selection.listingId,
+          symbol: selection.symbol,
+        },
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== annualFinancialsEpoch.current
+      ) {
+        return;
+      }
+      setAnnualFinancials(loaded);
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== annualFinancialsEpoch.current
+      ) {
+        return;
+      }
+      if (isSessionUnavailable(error)) {
+        clearWorkspaceForSessionLoss();
+        return;
+      }
+      setAnnualFinancialsErrorCode(
+        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable",
+      );
+    } finally {
+      if (
+        epoch === workspaceEpoch.current &&
+        request === annualFinancialsEpoch.current
+      ) {
+        annualFinancialsController.current = null;
+        setAnnualFinancialsRequestState("idle");
       }
     }
   }
@@ -860,6 +953,15 @@ export function SecurityDiscoveryWorkspace() {
               providerStatus={marketDataStatus}
               range={marketRange}
               requestState={marketRequestState}
+              selection={marketSelection}
+            />
+
+            <PersonalAnnualFinancials
+              errorCode={annualFinancialsErrorCode}
+              financials={annualFinancials}
+              onLoad={() => void loadAnnualFinancials()}
+              providerStatus={marketDataStatus}
+              requestState={annualFinancialsRequestState}
               selection={marketSelection}
             />
 

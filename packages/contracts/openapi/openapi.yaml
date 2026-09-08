@@ -15,8 +15,9 @@ info:
     expose one startup-admitted owner-local snapshot receipt and bounded
     symbol/name search; it remains offline and does not activate a provider,
     vault, or filing release. Personal workspace mode may additionally use an
-    owner-supplied Tiingo token for an explicit, authenticated market overview
-    request; returned market data is never persisted by the application.
+    owner-supplied Tiingo token for explicit, authenticated market-overview and
+    annual-financials requests; returned market data is never persisted by the
+    application.
     X-Demo-Persona values are public selectors, not secrets, credentials, or
     owner authentication.
 servers:
@@ -566,7 +567,129 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
-          description: The admitted listing or provider coverage is unavailable.
+          description: Provider market-data coverage is unavailable for the admitted listing.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "424":
+          description: The owner-supplied provider credential was rejected.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: The personal provider request limit was reached.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "502":
+          description: Tiingo was unavailable or returned an invalid response.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "503":
+          description: No owner-supplied Tiingo token is configured.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/market-data/annual-financials:
+    post:
+      operationId: loadPersonalAnnualFinancials
+      summary: Load up to ten annual financial-statement periods for one listing.
+      description: >-
+        Authenticated, read-only owner action. The exact body names one
+        startup-admitted listing; the server resolves that identity before
+        making a fixed-host Tiingo fundamentals request. The response contains
+        one to ten annual periods in descending fiscal-year order. Every one of
+        the thirty reported fields is explicit in every period: a provider
+        value is a canonical decimal string and an unavailable provider value
+        is marked unknown rather than synthesized. Provider data exists only
+        in active process/browser memory and is not persisted, exported, or
+        redistributed.
+      security:
+        - PersonalOwnerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonalAnnualFinancialsRequest"
+      responses:
+        "200":
+          description: The provider-backed annual financials are available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalAnnualFinancials"
+        "400":
+          description: The accepted request body is invalid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "402":
+          description: The configured provider account is not entitled to the fundamentals feed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Provider fundamentals coverage is unavailable for the admitted listing.
           headers:
             Cache-Control:
               $ref: "#/components/headers/PrivateNoStore"
@@ -2639,6 +2762,288 @@ components:
           minLength: 1
           maxLength: 32
           pattern: "^(?:0|[1-9][0-9]*)$"
+    PersonalAnnualFinancialsRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - listingId
+        - symbol
+      properties:
+        listingId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+    PersonalAnnualFinancials:
+      type: object
+      additionalProperties: false
+      required:
+        - asOf
+        - coverage
+        - profile
+        - provider
+        - schemaVersion
+        - security
+        - status
+        - years
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        coverage:
+          $ref: "#/components/schemas/PersonalAnnualFinancialsCoverage"
+        profile:
+          const: personal_single_user_local_fundamentals
+        provider:
+          $ref: "#/components/schemas/PersonalAnnualFinancialsProvider"
+        schemaVersion:
+          const: "1.0.0"
+        security:
+          $ref: "#/components/schemas/PersonalMarketDataIdentity"
+        status:
+          const: available
+        years:
+          type: array
+          description: >-
+            One to ten annual periods, ordered by fiscalYear descending. Each
+            fiscal year appears at most once; periodEnd is the provider's
+            period date. Values use the provider's most-recent revision.
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/PersonalAnnualFinancialYear"
+    PersonalAnnualFinancialsProvider:
+      type: object
+      additionalProperties: false
+      required:
+        - attribution
+        - export
+        - id
+        - name
+        - persistence
+        - redistribution
+        - retention
+        - revisionBasis
+        - statementFeed
+        - valueCurrency
+      properties:
+        attribution:
+          const: Tiingo
+        export:
+          const: prohibited
+        id:
+          const: tiingo
+        name:
+          const: Tiingo
+        persistence:
+          const: none
+        redistribution:
+          const: prohibited
+        retention:
+          const: active_owner_session_memory_only
+        revisionBasis:
+          const: provider_most_recent
+        statementFeed:
+          const: tiingo_fundamentals_statements
+        valueCurrency:
+          const: USD
+    PersonalAnnualFinancialsCoverage:
+      type: object
+      additionalProperties: false
+      required:
+        - earliestFiscalYear
+        - knownReportedCells
+        - latestFiscalYear
+        - missingFiscalYears
+        - requestedAnnualYears
+        - returnedAnnualYears
+        - status
+        - unknownReportedCells
+      properties:
+        earliestFiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+        knownReportedCells:
+          type: integer
+          minimum: 0
+          maximum: 300
+        latestFiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+        missingFiscalYears:
+          type: array
+          description: >-
+            Fiscal years absent between the latest returned year and the
+            ten-year requested window, in descending order.
+          maxItems: 9
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1900
+            maximum: 9999
+        requestedAnnualYears:
+          const: 10
+        returnedAnnualYears:
+          type: integer
+          minimum: 1
+          maximum: 10
+        status:
+          type: string
+          enum:
+            - complete
+            - partial
+        unknownReportedCells:
+          type: integer
+          minimum: 0
+          maximum: 300
+    PersonalAnnualFinancialYear:
+      type: object
+      additionalProperties: false
+      required:
+        - fiscalYear
+        - periodEnd
+        - reported
+      properties:
+        fiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+        periodEnd:
+          type: string
+          format: date
+          description: Provider period date for the fiscal year; not a release date.
+        reported:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedValues"
+    PersonalAnnualFinancialReportedValues:
+      type: object
+      additionalProperties: false
+      required:
+        - accounts_receivable
+        - assets
+        - capital_expenditures
+        - cash
+        - cost_of_revenue
+        - current_assets
+        - current_liabilities
+        - debt
+        - depreciation_and_amortization
+        - ebitda
+        - financing_cash_flow
+        - free_cash_flow
+        - gross_profit
+        - income_tax_expense
+        - intangibles
+        - inventory
+        - investing_cash_flow
+        - liabilities
+        - net_income
+        - operating_cash_flow
+        - operating_expenses
+        - operating_income
+        - pretax_income
+        - property_plant_equipment_net
+        - research_and_development
+        - revenue
+        - selling_general_and_administrative
+        - share_based_compensation
+        - shareholders_equity
+        - interest_expense
+      properties:
+        accounts_receivable:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        assets:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        capital_expenditures:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        cash:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        cost_of_revenue:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        current_assets:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        current_liabilities:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        debt:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        depreciation_and_amortization:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        ebitda:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        financing_cash_flow:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        free_cash_flow:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        gross_profit:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        income_tax_expense:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        intangibles:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        inventory:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        investing_cash_flow:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        liabilities:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        net_income:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        operating_cash_flow:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        operating_expenses:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        operating_income:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        pretax_income:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        property_plant_equipment_net:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        research_and_development:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        revenue:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        selling_general_and_administrative:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        share_based_compensation:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        shareholders_equity:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+        interest_expense:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedCell"
+    PersonalAnnualFinancialReportedCell:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - status
+            - value
+          properties:
+            status:
+              const: known
+            value:
+              type: string
+              minLength: 1
+              maxLength: 64
+              pattern: "^(?:0|-?[1-9][0-9]*|-?(?:0|[1-9][0-9]*)\\.[0-9]*[1-9])$"
+        - type: object
+          additionalProperties: false
+          required:
+            - reason
+            - status
+            - value
+          properties:
+            reason:
+              const: not_supplied_by_provider
+            status:
+              const: unknown
+            value:
+              type: "null"
     InstrumentId:
       type: string
       minLength: 3

@@ -5545,13 +5545,12 @@ function personalMarketDataProviderViolation(content: string): string | null {
       }
       if (
         receiver.kind === ts.SyntaxKind.ThisKeyword &&
-        node.expression.name.text === "#requestJson"
+        (node.expression.name.text === "#requestJson" ||
+          node.expression.name.text === "#requestLosslessJson")
       ) {
         const target = node.arguments[0];
         requestJsonInputs.push(
-          target !== undefined && ts.isIdentifier(target)
-            ? target.text
-            : "<other>",
+          `${node.expression.name.text}:${target !== undefined && ts.isIdentifier(target) ? target.text : "<other>"}`,
         );
       }
     }
@@ -5562,17 +5561,22 @@ function personalMarketDataProviderViolation(content: string): string | null {
     return "fixed origin and exported token environment key must remain const declarations";
   }
   if (
-    authorizationTemplateCount !== 1 ||
-    authorizationPropertyCount !== 1 ||
-    transportCallCount !== 1
+    authorizationTemplateCount !== 2 ||
+    authorizationPropertyCount !== 2 ||
+    transportCallCount !== 2
   ) {
     return "Tiingo credentials must remain one Token authorization value used only by the Authorization header on the bounded transport";
   }
   if (
     JSON.stringify(requestJsonInputs) !==
-    JSON.stringify(["quoteUrl", "historyUrl"])
+    JSON.stringify([
+      "#requestLosslessJson:fundamentalsUrl",
+      "#requestJson:quoteUrl",
+      "#requestJson:historyUrl",
+      "#requestJson:credentialTestUrl",
+    ])
   ) {
-    return "provider transport may receive only the fixed quote and history URL values";
+    return "provider transports may receive only the fixed fundamentals, quote, history, and credential-test URL values";
   }
   return personalMarketDataProviderUrlViolation(source);
 }
@@ -5597,7 +5601,12 @@ function personalMarketDataProviderUrlViolation(
         path === undefined ||
         base === undefined ||
         !ts.isIdentifier(base) ||
-        base.text !== "TIINGO_ORIGIN" ||
+        base.text !== "TIINGO_ORIGIN"
+      ) {
+        invalidUrl = true;
+      } else if (ts.isStringLiteral(path) && path.text === "/api/test/") {
+        shapes.push("credential-test");
+      } else if (
         !ts.isTemplateExpression(path) ||
         path.templateSpans.length !== 1
       ) {
@@ -5622,6 +5631,11 @@ function personalMarketDataProviderUrlViolation(
           span.literal.text === "/prices"
         ) {
           shapes.push("history");
+        } else if (
+          path.head.text === "/tiingo/fundamentals/" &&
+          span.literal.text === "/statements"
+        ) {
+          shapes.push("fundamentals");
         } else {
           invalidUrl = true;
         }
@@ -5644,9 +5658,11 @@ function personalMarketDataProviderUrlViolation(
           const setterName = ts.isPropertyAccessExpression(setter)
             ? setter.name.text
             : (staticStringValue(setter.argumentExpression) ?? "<dynamic>");
-          querySetters.push(
-            `${setterName}:${key}:${value !== undefined && ts.isIdentifier(value) ? value.text : "<other>"}`,
-          );
+          const valueLabel =
+            value !== undefined && ts.isIdentifier(value)
+              ? value.text
+              : JSON.stringify(staticStringValue(value) ?? "<other>");
+          querySetters.push(`${setterName}:${key}:${valueLabel}`);
         }
       }
     }
@@ -5654,11 +5670,19 @@ function personalMarketDataProviderUrlViolation(
   };
   visit(source);
   return !invalidUrl &&
-    JSON.stringify(shapes.sort()) === JSON.stringify(["history", "quote"]) &&
+    JSON.stringify(shapes.sort()) ===
+      JSON.stringify(["credential-test", "fundamentals", "history", "quote"]) &&
     JSON.stringify(querySetters) ===
-      JSON.stringify(["set:startDate:startDate", "set:endDate:endDate"])
+      JSON.stringify([
+        "set:startDate:startDate",
+        "set:endDate:endDate",
+        "set:startDate:startDate",
+        "set:endDate:endDate",
+        'set:asReported:"false"',
+        'set:format:"json"',
+      ])
     ? null
-    : "provider URLs must remain exactly fixed-host /iex/<ticker> and /tiingo/daily/<ticker>/prices with startDate/endDate only";
+    : "provider URLs must remain exactly fixed-host credential-test, fundamentals, quote, and history routes with the reviewed query shapes";
 }
 
 function personalMarketDataRoutesViolation(content: string): string | null {
@@ -5680,14 +5704,16 @@ function personalMarketDataRoutesViolation(content: string): string | null {
   const requiredAnchors = [
     '"/v1/personal-filing/market-data/status"',
     '"/v1/personal-filing/market-data/overview"',
+    '"/v1/personal-filing/market-data/annual-financials"',
     "exposeHeadRoute: false",
     "authorizePersonalRouteRequest(",
     "provider.getStatus()",
     "provider.loadOverview(",
+    "provider.loadAnnualFinancials(",
     "resolveIdentity(catalog, body)",
   ];
   if (requiredAnchors.some((anchor) => !content.includes(anchor))) {
-    return "market-data status, overview, catalog binding, and provider-call anchors regressed";
+    return "market-data status, overview, annual-financials, catalog binding, and provider-call anchors regressed";
   }
   const source = ts.createSourceFile(
     "workspace-market-data-routes.ts",
@@ -5710,26 +5736,46 @@ function personalMarketDataRoutesViolation(content: string): string | null {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  if (postCalls.length !== 1) {
-    return "exactly one owner-authenticated market-data JSON command route is required";
+  if (postCalls.length !== 2) {
+    return "exactly two owner-authenticated market-data JSON command routes are required";
   }
-  const options = postCalls[0]?.arguments[1];
-  if (options === undefined || !ts.isObjectLiteralExpression(options)) {
-    return "market-data JSON authorization must remain a route-level onRequest hook";
+  const expectedRouteIdentifiers = new Set([
+    "PERSONAL_ANNUAL_FINANCIALS_PATH",
+    "PERSONAL_MARKET_DATA_OVERVIEW_PATH",
+  ]);
+  for (const postCall of postCalls) {
+    const path = postCall.arguments[0];
+    if (
+      path === undefined ||
+      !ts.isIdentifier(path) ||
+      !expectedRouteIdentifiers.delete(path.text)
+    ) {
+      return "market-data JSON command routes must remain the exact reviewed paths";
+    }
+    const options = postCall.arguments[1];
+    if (options === undefined || !ts.isObjectLiteralExpression(options)) {
+      return "market-data JSON authorization must remain a route-level onRequest hook";
+    }
+    const onRequest = options.properties.find(
+      (property) =>
+        (ts.isPropertyAssignment(property) ||
+          ts.isMethodDeclaration(property)) &&
+        boundaryPropertyName(property.name) === "onRequest",
+    );
+    if (onRequest === undefined) {
+      return "market-data JSON authorization must remain a route-level onRequest hook";
+    }
+    const guardText = onRequest.getText(source);
+    if (
+      !guardText.includes("authorizePersonalJsonRouteRequest(") ||
+      /\brequest\s*\.\s*body\b/u.test(guardText)
+    ) {
+      return "market-data commands must use owner JSON authorization before body parsing or access";
+    }
   }
-  const onRequest = options.properties.find(
-    (property) =>
-      (ts.isPropertyAssignment(property) || ts.isMethodDeclaration(property)) &&
-      boundaryPropertyName(property.name) === "onRequest",
-  );
-  if (onRequest === undefined) {
-    return "market-data JSON authorization must remain a route-level onRequest hook";
-  }
-  const guardText = onRequest.getText(source);
-  return guardText.includes("authorizePersonalJsonRouteRequest(") &&
-    !/\brequest\s*\.\s*body\b/u.test(guardText)
+  return expectedRouteIdentifiers.size === 0
     ? null
-    : "market-data overview must use owner JSON authorization before body parsing or access";
+    : "market-data JSON command routes must remain the exact reviewed paths";
 }
 
 function personalMarketDataHasCredentialQueryParameter(

@@ -2610,6 +2610,43 @@ establish the full Cycle 3g-a provider-universe/corporate-action gates, a
 benchmark or relative-strength result, intraday analytics, persistent derived
 research, or competitor parity.
 
+## Cycle 3h-a1 provider-backed annual financials model
+
+Cycle 3h-a1 extends the authenticated `personal_workspace` composition with one
+separate, explicit annual-financials command for the exact catalog-bound listing
+selected in `/discover`. It performs one fixed-host Tiingo fundamentals
+statements request using the already captured owner credential. If that request
+returns 403, one fixed Tiingo credential-test request distinguishes a still-valid
+token without fundamentals access (`not_entitled`) from a rejected token
+(`credentials_invalid`). No fundamentals request occurs during startup,
+authentication, search, selection, watchlist loading, or price-history loading.
+
+For the fixed `asReported=false` request, the importer treats Tiingo's `date` as
+the fiscal period-end date independently from the reported fiscal `year`, keeps
+only `quarter = 0`, selects at most ten distinct fiscal years in descending
+order, and maps a fixed 30-field registry across the income statement, balance
+sheet, and cash flow. Every absent year and field is explicit; no value is
+shifted, zero-filled, or synthesized. JSON numeric lexemes are captured before
+native number coercion, canonicalized as exact decimal strings, and returned as
+USD under the provider's documented conversion model. Unknown future provider
+fields receive bounded text/value validation and are ignored rather than
+changing the public registry.
+
+The browser derives eight exact-decimal metrics and revenue, net-income, and
+free-cash-flow year-over-year growth from named reported inputs. Each metric
+exposes a versioned formula, unit, fiscal year, input references, and an explicit
+unavailable reason; the formula set and UI publish one shared half-up/two-decimal
+rounding policy. Growth requires two consecutive fiscal years and a positive
+prior-year base. The response is labelled `provider_most_recent` because `asReported=false`
+can revise prior periods from later reports; it is not a point-in-time backtest
+view. Provider values and derived results remain only in active component memory
+and are cleared on listing change, view close, or owner-session loss.
+
+This slice does not establish quarterly/TTM statements, as-reported revision
+history, filing citations, the full 30-core-metric Cycle 3h-a registry, or the
+planned 500-security and 20-issuer validation gates. It is not a full Cycle 3h
+or competitor-parity result.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
