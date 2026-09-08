@@ -173,6 +173,10 @@ import {
   isCycle3gb1FeatureTopologyAllowed,
   isCycle3gb1RoutingClosureCommitDiffSetAllowed,
   isCycle3gb1RoutingClosureTopologyAllowed,
+  isCycle3ha1FeatureCommitDiffSetAllowed,
+  isCycle3ha1FeatureTopologyAllowed,
+  isCycle3ha1RoutingClosureCommitDiffSetAllowed,
+  isCycle3ha1RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -884,6 +888,10 @@ const CYCLE_3G_A1_ROUTING_CLOSURE_REVISION =
   "7b2cf20e595ebc6d78fc358ab626fa242df0575a" as const;
 const CYCLE_3G_B1_FEATURE_REVISION =
   "bf4e780b6e055352ca7d31ad00fffc50923910ab" as const;
+const CYCLE_3G_B1_ROUTING_CLOSURE_REVISION =
+  "b5d4dca64e37afd9692e1e3361258efbdf61e88f" as const;
+const CYCLE_3H_A1_FEATURE_REVISION =
+  "fabc8546bdfd7d2e79623eb518d3c0d75eecbaf1" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -2259,6 +2267,99 @@ const CYCLE_3G_B1_FEATURE_TRANSITION = [
   { path: "pnpm-lock.yaml", status: "M" },
 ];
 const CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3H_A1_FEATURE_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "apps/api/src/personal-market-data-provider.test.ts", status: "M" },
+  { path: "apps/api/src/personal-market-data-provider.ts", status: "M" },
+  { path: "apps/api/src/workspace-market-data-routes.test.ts", status: "M" },
+  { path: "apps/api/src/workspace-market-data-routes.ts", status: "M" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  { path: "apps/web/next.config.ts", status: "M" },
+  { path: "apps/web/package.json", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalAnnualFinancials.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalAnnualFinancials.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/personal-workspace-api.test.ts", status: "M" },
+  { path: "apps/web/src/lib/personal-workspace-api.ts", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+  { path: "packages/personal-financial-analytics/package.json", status: "A" },
+  {
+    path: "packages/personal-financial-analytics/src/index.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-analytics-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-analytics.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-analytics.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/reported-field-registry.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/reported-field-registry.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/tsconfig.json",
+    status: "A",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION = [
   { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -5297,6 +5398,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         ...CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION,
         ...CYCLE_3G_B1_FEATURE_TRANSITION,
         ...CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION,
+        ...CYCLE_3H_A1_FEATURE_TRANSITION,
+        ...CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION,
       ].map((entry) => entry.path),
     );
     expect(selectedPaths).toHaveLength(selectedPathSet.size);
@@ -6267,7 +6370,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
-  it("pins the provider source through the Cycle 3g-b1 routing closure", () => {
+  it("pins the provider source through the Cycle 3h-a1 routing closure", () => {
     expect(
       isCycle3eaProviderQueryMicSourceTopologyAllowed(
         ...providerQueryMicSourceTopology,
@@ -6496,7 +6599,7 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ),
     ).toBe(false);
 
-    const analyticsClosureRevision = "c".repeat(40);
+    const analyticsClosureRevision = CYCLE_3G_B1_ROUTING_CLOSURE_REVISION;
     const analyticsClosure = [
       "50",
       "50",
@@ -6537,6 +6640,95 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         `${analyticsClosureRevision} ${CYCLE_3G_B1_FEATURE_REVISION}`,
         changedAnalyticsFeature as unknown as Parameters<
           typeof isCycle3gb1RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const annualFeatureRevision = CYCLE_3H_A1_FEATURE_REVISION;
+    const annualFeature = [
+      "51",
+      "51",
+      annualFeatureRevision,
+      `${annualFeatureRevision} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION}`,
+      analyticsClosure,
+    ] as const;
+    expect(isCycle3ha1FeatureTopologyAllowed(...annualFeature)).toBe(true);
+    for (const [index, replacement] of [
+      [0, "50"],
+      [1, "52"],
+      [2, "d".repeat(40)],
+      [3, `${annualFeatureRevision} ${CYCLE_3G_A1_ROUTING_CLOSURE_REVISION}`],
+      [
+        3,
+        `${annualFeatureRevision} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION} ${"e".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...annualFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha1FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha1FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedAnalyticsClosure: unknown[] = [...analyticsClosure];
+    tamperedAnalyticsClosure[4] = changedAnalyticsFeature;
+    expect(
+      isCycle3ha1FeatureTopologyAllowed(
+        "51",
+        "51",
+        annualFeatureRevision,
+        `${annualFeatureRevision} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION}`,
+        tamperedAnalyticsClosure as unknown as Parameters<
+          typeof isCycle3ha1FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const annualClosureRevision = "c".repeat(40);
+    const annualClosure = [
+      "52",
+      "52",
+      annualClosureRevision,
+      `${annualClosureRevision} ${CYCLE_3H_A1_FEATURE_REVISION}`,
+      annualFeature,
+    ] as const;
+    expect(isCycle3ha1RoutingClosureTopologyAllowed(...annualClosure)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "51"],
+      [1, "53"],
+      [2, CYCLE_3H_A1_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [3, `${annualClosureRevision} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION}`],
+      [
+        3,
+        `${annualClosureRevision} ${CYCLE_3H_A1_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...annualClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha1RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha1RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedAnnualFeature: unknown[] = [...annualFeature];
+    tamperedAnnualFeature[4] = tamperedAnalyticsClosure;
+    expect(
+      isCycle3ha1RoutingClosureTopologyAllowed(
+        "52",
+        "52",
+        annualClosureRevision,
+        `${annualClosureRevision} ${CYCLE_3H_A1_FEATURE_REVISION}`,
+        tamperedAnnualFeature as unknown as Parameters<
+          typeof isCycle3ha1RoutingClosureTopologyAllowed
         >[4],
       ),
     ).toBe(false);
@@ -6673,6 +6865,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ha1FeatureCommitDiffSetAllowed,
+      CYCLE_3H_A1_FEATURE_TRANSITION,
+      31,
+    );
+    expectExactTransition(
+      isCycle3ha1RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -6728,6 +6930,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3G_B1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A1_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -9853,22 +10057,40 @@ describe("offline filing parser evidence review", () => {
     }
   });
 
-  it("emits one value-free canonical success line", () => {
-    expect(
-      filingParserEvidenceReviewStdout({
-        evidenceSha256: HASH,
-        recordedChecksPassed: [] as never,
-        recordedNotProven: [] as never,
-        repository: "example/research-cockpit",
-        revision: "b".repeat(40),
-        runAttempt: 1,
-        runId: "123",
-        sourceHashCount: 26,
-        verdict: "offline_consistent",
-      }),
-    ).toBe(
+  it("emits one canonical success line without private financial or provider detail", () => {
+    const excludedCanaries = [
+      "FINANCIAL_VALUE_CANARY",
+      "PROVIDER_VALUE_CANARY",
+      "ANALYTICS_INPUT_CANARY",
+      "ANALYTICS_VALUE_CANARY",
+      "ANALYTICS_OUTPUT_CANARY",
+      "ANALYTICS_SERIES_CANARY",
+      "CREDENTIAL_CANARY",
+      "PRIVATE_EVIDENCE_CANARY",
+    ] as const;
+    const stdout = filingParserEvidenceReviewStdout({
+      evidenceSha256: HASH,
+      recordedChecksPassed: [excludedCanaries[0]] as never,
+      recordedNotProven: [excludedCanaries[7]] as never,
+      repository: "example/research-cockpit",
+      revision: "b".repeat(40),
+      runAttempt: 1,
+      runId: "123",
+      sourceHashCount: 26,
+      verdict: "offline_consistent",
+      financialValues: excludedCanaries[0],
+      providerValues: excludedCanaries[1],
+      analyticsInputs: excludedCanaries[2],
+      analyticsValues: excludedCanaries[3],
+      analyticsOutputs: excludedCanaries[4],
+      analyticsSeries: excludedCanaries[5],
+      credentials: excludedCanaries[6],
+      privateEvidence: excludedCanaries[7],
+    } as never);
+    expect(stdout).toBe(
       `{"evidenceSha256":"${HASH}","repository":"example/research-cockpit","revision":"${"b".repeat(40)}","runAttempt":1,"runId":"123","sourceHashCount":26,"verdict":"offline_consistent"}\n`,
     );
+    for (const canary of excludedCanaries) expect(stdout).not.toContain(canary);
   });
 
   it("takes one exact own-data snapshot of every independent review anchor", () => {

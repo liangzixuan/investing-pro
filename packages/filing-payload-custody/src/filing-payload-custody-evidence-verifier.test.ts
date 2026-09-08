@@ -156,6 +156,10 @@ import {
   isCycle3gb1FeatureTopologyAllowed,
   isCycle3gb1RoutingClosureCommitDiffSetAllowed,
   isCycle3gb1RoutingClosureTopologyAllowed,
+  isCycle3ha1FeatureCommitDiffSetAllowed,
+  isCycle3ha1FeatureTopologyAllowed,
+  isCycle3ha1RoutingClosureCommitDiffSetAllowed,
+  isCycle3ha1RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -852,6 +856,10 @@ const CYCLE_3G_A1_ROUTING_CLOSURE_REVISION =
   "7b2cf20e595ebc6d78fc358ab626fa242df0575a" as const;
 const CYCLE_3G_B1_FEATURE_REVISION =
   "bf4e780b6e055352ca7d31ad00fffc50923910ab" as const;
+const CYCLE_3G_B1_ROUTING_CLOSURE_REVISION =
+  "b5d4dca64e37afd9692e1e3361258efbdf61e88f" as const;
+const CYCLE_3H_A1_FEATURE_REVISION =
+  "fabc8546bdfd7d2e79623eb518d3c0d75eecbaf1" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -2447,6 +2455,68 @@ const CYCLE_3G_B1_FEATURE_TRANSITION = [
   { path: "pnpm-lock.yaml", status: "M" },
 ];
 const CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION =
+  CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION;
+const CYCLE_3H_A1_FEATURE_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "apps/api/src/personal-market-data-provider.test.ts", status: "M" },
+  { path: "apps/api/src/personal-market-data-provider.ts", status: "M" },
+  { path: "apps/api/src/workspace-market-data-routes.test.ts", status: "M" },
+  { path: "apps/api/src/workspace-market-data-routes.ts", status: "M" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  { path: "apps/web/next.config.ts", status: "M" },
+  { path: "apps/web/package.json", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalAnnualFinancials.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalAnnualFinancials.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/personal-workspace-api.test.ts", status: "M" },
+  { path: "apps/web/src/lib/personal-workspace-api.ts", status: "M" },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+  { path: "packages/personal-financial-analytics/package.json", status: "A" },
+  { path: "packages/personal-financial-analytics/src/index.ts", status: "A" },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-analytics-security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-analytics.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-analytics.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/reported-field-registry.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/reported-field-registry.ts",
+    status: "A",
+  },
+  { path: "packages/personal-financial-analytics/tsconfig.json", status: "A" },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION =
   CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION;
 
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
@@ -7260,6 +7330,143 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
     ).toBe(false);
   });
 
+  it("pins the exact Cycle 3h-a1 feature and merge-free routing child", () => {
+    const cycle3eb1Feature = [
+      "45",
+      "45",
+      CYCLE_3E_B1_FEATURE_REVISION,
+      `${CYCLE_3E_B1_FEATURE_REVISION} ${CYCLE_3E_A_PUBLIC_PROMOTION_REVISION}`,
+      cycle3eaPublicPromotionTopology,
+    ] as const;
+    const cycle3eb1Closure = [
+      "46",
+      "46",
+      CYCLE_3E_B1_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3E_B1_ROUTING_CLOSURE_REVISION} ${CYCLE_3E_B1_FEATURE_REVISION}`,
+      cycle3eb1Feature,
+    ] as const;
+    const cycle3ga1Feature = [
+      "47",
+      "47",
+      CYCLE_3G_A1_FEATURE_REVISION,
+      `${CYCLE_3G_A1_FEATURE_REVISION} ${CYCLE_3E_B1_ROUTING_CLOSURE_REVISION}`,
+      cycle3eb1Closure,
+    ] as const;
+    const cycle3ga1Closure = [
+      "48",
+      "48",
+      CYCLE_3G_A1_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3G_A1_ROUTING_CLOSURE_REVISION} ${CYCLE_3G_A1_FEATURE_REVISION}`,
+      cycle3ga1Feature,
+    ] as const;
+    const cycle3gb1Feature = [
+      "49",
+      "49",
+      CYCLE_3G_B1_FEATURE_REVISION,
+      `${CYCLE_3G_B1_FEATURE_REVISION} ${CYCLE_3G_A1_ROUTING_CLOSURE_REVISION}`,
+      cycle3ga1Closure,
+    ] as const;
+    const cycle3gb1Closure = [
+      "50",
+      "50",
+      CYCLE_3G_B1_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION} ${CYCLE_3G_B1_FEATURE_REVISION}`,
+      cycle3gb1Feature,
+    ] as const;
+    expect(isCycle3gb1RoutingClosureTopologyAllowed(...cycle3gb1Closure)).toBe(
+      true,
+    );
+
+    const feature = [
+      "51",
+      "51",
+      CYCLE_3H_A1_FEATURE_REVISION,
+      `${CYCLE_3H_A1_FEATURE_REVISION} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION}`,
+      cycle3gb1Closure,
+    ] as const;
+    expect(isCycle3ha1FeatureTopologyAllowed(...feature)).toBe(true);
+    for (const [index, replacement] of [
+      [0, "50"],
+      [1, "52"],
+      [2, "f".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3H_A1_FEATURE_REVISION} ${CYCLE_3G_B1_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3H_A1_FEATURE_REVISION} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION} ${"e".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...feature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha1FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha1FeatureTopologyAllowed
+          >),
+        ),
+        `cycle3ha1-feature:${index}:${replacement}`,
+      ).toBe(false);
+    }
+    const changedClosure: unknown[] = [...cycle3gb1Closure];
+    changedClosure[2] = "d".repeat(40);
+    expect(
+      isCycle3ha1FeatureTopologyAllowed(
+        "51",
+        "51",
+        CYCLE_3H_A1_FEATURE_REVISION,
+        `${CYCLE_3H_A1_FEATURE_REVISION} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION}`,
+        changedClosure as unknown as Parameters<
+          typeof isCycle3ha1FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const routingRevision = "a".repeat(40);
+    const routing = [
+      "52",
+      "52",
+      routingRevision,
+      `${routingRevision} ${CYCLE_3H_A1_FEATURE_REVISION}`,
+      feature,
+    ] as const;
+    expect(isCycle3ha1RoutingClosureTopologyAllowed(...routing)).toBe(true);
+    for (const [index, replacement] of [
+      [0, "51"],
+      [1, "53"],
+      [2, CYCLE_3H_A1_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [3, `${routingRevision} ${CYCLE_3G_B1_ROUTING_CLOSURE_REVISION}`],
+      [
+        3,
+        `${routingRevision} ${CYCLE_3H_A1_FEATURE_REVISION} ${"d".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...routing];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha1RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha1RoutingClosureTopologyAllowed
+          >),
+        ),
+        `cycle3ha1-routing:${index}:${replacement}`,
+      ).toBe(false);
+    }
+    const changedFeature: unknown[] = [...feature];
+    changedFeature[2] = "c".repeat(40);
+    expect(
+      isCycle3ha1RoutingClosureTopologyAllowed(
+        "52",
+        "52",
+        routingRevision,
+        `${routingRevision} ${CYCLE_3H_A1_FEATURE_REVISION}`,
+        changedFeature as unknown as Parameters<
+          typeof isCycle3ha1RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+  });
+
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
     expectExactTransition(
       isCycle3eaSourceCommitDiffSetAllowed,
@@ -7391,6 +7598,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ha1FeatureCommitDiffSetAllowed,
+      CYCLE_3H_A1_FEATURE_TRANSITION,
+      31,
+    );
+    expectExactTransition(
+      isCycle3ha1RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -7446,6 +7663,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3G_B1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A1_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -7553,6 +7772,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3G_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3G_B1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3G_B1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A1_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
