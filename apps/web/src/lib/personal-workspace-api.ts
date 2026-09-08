@@ -5,6 +5,7 @@ import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
@@ -33,6 +34,8 @@ export const PERSONAL_ANNUAL_FINANCIALS_PATH =
   "/v1/personal-filing/market-data/annual-financials" as const;
 export const PERSONAL_QUARTERLY_FINANCIALS_PATH =
   "/v1/personal-filing/market-data/quarterly-financials" as const;
+export const PERSONAL_VALUATION_HISTORY_PATH =
+  "/v1/personal-filing/market-data/valuation-history" as const;
 
 export const MAIN_PERSONAL_WATCHLIST_ID = "main" as const;
 export const MAIN_PERSONAL_WATCHLIST_NAME = "My Watchlist" as const;
@@ -403,6 +406,61 @@ const quarterlyFinancialPeriodKeys = [
   "statementDate",
 ] as const;
 const fiscalQuarterCoordinateKeys = ["fiscalQuarter", "fiscalYear"] as const;
+const valuationHistoryKeys = [
+  "asOf",
+  "coverage",
+  "history",
+  "profile",
+  "provider",
+  "schemaVersion",
+  "security",
+  "status",
+] as const;
+const valuationCoverageKeys = [
+  "knownCells",
+  "observationCount",
+  "status",
+  "unknownCells",
+] as const;
+const valuationHistorySeriesKeys = [
+  "endDate",
+  "latestPoint",
+  "points",
+  "range",
+  "startDate",
+] as const;
+const valuationHistoryPointKeys = [
+  "date",
+  "enterpriseValue",
+  "marketCapitalization",
+  "priceToBook",
+  "priceToEarnings",
+  "trailingPeg1Y",
+] as const;
+const valuationProviderKeys = [
+  "attribution",
+  "export",
+  "id",
+  "name",
+  "persistence",
+  "redistribution",
+  "retention",
+  "revisionBasis",
+  "valuationFeed",
+  "valueCurrency",
+] as const;
+const valuationKnownCellKeys = ["status", "unit", "value"] as const;
+const valuationUnknownCellKeys = ["reason", "status", "unit", "value"] as const;
+const valuationPointCellKeys = [
+  "enterpriseValue",
+  "marketCapitalization",
+  "priceToBook",
+  "priceToEarnings",
+  "trailingPeg1Y",
+] as const satisfies readonly (keyof Omit<
+  PersonalValuationHistoryDto["history"]["points"][number],
+  "date"
+>)[];
 
 export async function fetchPersonalSecurityMasterStatus(
   signal: AbortSignal,
@@ -549,6 +607,48 @@ export async function fetchPersonalQuarterlyFinancials(
     throw new PersonalWorkspaceApiError("invalid_response");
   }
   return copyPersonalQuarterlyFinancials(value);
+}
+
+export async function fetchPersonalValuationHistory(
+  input: Readonly<{
+    listingId: string;
+    range: PersonalMarketDataRangeDto;
+    symbol: string;
+  }>,
+  signal: AbortSignal,
+): Promise<PersonalValuationHistoryDto> {
+  if (
+    !isIdentifier(input.listingId) ||
+    typeof input.symbol !== "string" ||
+    !symbol.test(input.symbol) ||
+    !marketRanges.has(input.range)
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const response = await request(PERSONAL_VALUATION_HISTORY_PATH, {
+    body: JSON.stringify({
+      listingId: input.listingId,
+      range: input.range,
+      symbol: input.symbol,
+    }),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal,
+  });
+  if (!response.ok) throw annualFinancialsResponseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !isPersonalValuationHistory(value) ||
+    value.security.listingId !== input.listingId ||
+    value.security.symbol !== input.symbol ||
+    value.history.range !== input.range
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return copyPersonalValuationHistory(value);
 }
 
 export async function searchPersonalSecurities(
@@ -987,6 +1087,216 @@ function isPersonalQuarterlyFinancials(
   );
 }
 
+function isPersonalValuationHistory(
+  value: unknown,
+): value is PersonalValuationHistoryDto {
+  if (
+    !hasExactKeys(value, valuationHistoryKeys) ||
+    !isInstant(value.asOf) ||
+    !isValuationCoverage(value.coverage) ||
+    value.profile !== "personal_single_user_local_valuation" ||
+    !isValuationProvider(value.provider) ||
+    value.schemaVersion !== "1.0.0" ||
+    !isPersonalMarketIdentity(value.security) ||
+    value.status !== "available" ||
+    !isValuationHistorySeries(value.history)
+  ) {
+    return false;
+  }
+  let knownCells = 0;
+  for (const point of value.history.points) {
+    for (const key of valuationPointCellKeys) {
+      if (point[key].status === "known") knownCells += 1;
+    }
+  }
+  const totalCells =
+    value.history.points.length * valuationPointCellKeys.length;
+  const unknownCells = totalCells - knownCells;
+  const expectedWindow = valuationRangeDates(value.history.range, value.asOf);
+  return (
+    value.history.startDate === expectedWindow.startDate &&
+    value.history.endDate === expectedWindow.endDate &&
+    value.coverage.observationCount === value.history.points.length &&
+    value.coverage.knownCells === knownCells &&
+    value.coverage.unknownCells === unknownCells &&
+    value.coverage.status === (unknownCells === 0 ? "complete" : "partial")
+  );
+}
+
+function valuationRangeDates(
+  range: PersonalMarketDataRangeDto,
+  asOf: string,
+): Readonly<{ endDate: string; startDate: string }> {
+  const instant = new Date(asOf);
+  const endDate = instant.toISOString().slice(0, 10);
+  let start: Date;
+  switch (range) {
+    case "1m":
+      start = subtractValuationCalendar(instant, 0, 1);
+      break;
+    case "3m":
+      start = subtractValuationCalendar(instant, 0, 3);
+      break;
+    case "ytd":
+      start = new Date(Date.UTC(instant.getUTCFullYear(), 0, 1));
+      break;
+    case "1y":
+      start = subtractValuationCalendar(instant, 1, 0);
+      break;
+    case "5y":
+      start = subtractValuationCalendar(instant, 5, 0);
+      break;
+    case "10y":
+      start = subtractValuationCalendar(instant, 10, 0);
+      break;
+  }
+  return { endDate, startDate: start.toISOString().slice(0, 10) };
+}
+
+function subtractValuationCalendar(
+  date: Date,
+  years: number,
+  months: number,
+): Date {
+  const sourceMonth = date.getUTCMonth();
+  const targetMonthOrdinal = sourceMonth - months;
+  const targetYear =
+    date.getUTCFullYear() - years + Math.floor(targetMonthOrdinal / 12);
+  const targetMonth = ((targetMonthOrdinal % 12) + 12) % 12;
+  const targetDay = Math.min(
+    date.getUTCDate(),
+    new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate(),
+  );
+  return new Date(Date.UTC(targetYear, targetMonth, targetDay));
+}
+
+function isValuationProvider(
+  value: unknown,
+): value is PersonalValuationHistoryDto["provider"] {
+  return (
+    hasExactKeys(value, valuationProviderKeys) &&
+    value.attribution === "Tiingo" &&
+    value.export === "prohibited" &&
+    value.id === "tiingo" &&
+    value.name === "Tiingo" &&
+    value.persistence === "none" &&
+    value.redistribution === "prohibited" &&
+    value.retention === "active_owner_session_memory_only" &&
+    value.revisionBasis === "provider_most_recent" &&
+    value.valuationFeed === "tiingo_fundamentals_daily" &&
+    value.valueCurrency === "USD"
+  );
+}
+
+function isValuationCoverage(
+  value: unknown,
+): value is PersonalValuationHistoryDto["coverage"] {
+  return (
+    hasExactKeys(value, valuationCoverageKeys) &&
+    isNonnegativeInteger(value.knownCells) &&
+    isPositiveInteger(value.observationCount) &&
+    value.observationCount <= 4_096 &&
+    (value.status === "complete" || value.status === "partial") &&
+    isNonnegativeInteger(value.unknownCells)
+  );
+}
+
+function isValuationHistorySeries(
+  value: unknown,
+): value is PersonalValuationHistoryDto["history"] {
+  if (!hasExactKeys(value, valuationHistorySeriesKeys)) return false;
+  const latestPoint: unknown = value.latestPoint;
+  const points: readonly unknown[] = Array.isArray(value.points)
+    ? value.points
+    : [];
+  if (
+    !isDate(value.startDate) ||
+    !isDate(value.endDate) ||
+    value.startDate > value.endDate ||
+    !marketRanges.has(value.range as PersonalMarketDataRangeDto) ||
+    !Array.isArray(value.points) ||
+    points.length < 1 ||
+    points.length > 4_096 ||
+    !isValuationHistoryPoint(latestPoint)
+  ) {
+    return false;
+  }
+
+  let previousDate = "";
+  for (const point of points) {
+    if (
+      !isValuationHistoryPoint(point) ||
+      point.date <= previousDate ||
+      point.date < value.startDate ||
+      point.date > value.endDate
+    ) {
+      return false;
+    }
+    previousDate = point.date;
+  }
+  const latest: unknown = points.at(-1);
+  return (
+    isValuationHistoryPoint(latest) &&
+    sameValuationHistoryPoint(latestPoint, latest)
+  );
+}
+
+function isValuationHistoryPoint(
+  value: unknown,
+): value is PersonalValuationHistoryDto["history"]["points"][number] {
+  return (
+    hasExactKeys(value, valuationHistoryPointKeys) &&
+    isDate(value.date) &&
+    isValuationCell(value.enterpriseValue, "USD") &&
+    isValuationCell(value.marketCapitalization, "USD") &&
+    isValuationCell(value.priceToBook, "ratio") &&
+    isValuationCell(value.priceToEarnings, "ratio") &&
+    isValuationCell(value.trailingPeg1Y, "ratio")
+  );
+}
+
+function isValuationCell(value: unknown, unit: "USD" | "ratio"): boolean {
+  if (hasExactKeys(value, valuationKnownCellKeys)) {
+    return (
+      value.status === "known" &&
+      value.unit === unit &&
+      isCanonicalFinancialDecimal(value.value)
+    );
+  }
+  return (
+    hasExactKeys(value, valuationUnknownCellKeys) &&
+    value.reason === "not_supplied_by_provider" &&
+    value.status === "unknown" &&
+    value.unit === unit &&
+    value.value === null
+  );
+}
+
+function sameValuationHistoryPoint(
+  left: PersonalValuationHistoryDto["history"]["points"][number],
+  right: PersonalValuationHistoryDto["history"]["points"][number],
+): boolean {
+  return (
+    left.date === right.date &&
+    valuationPointCellKeys.every((key) =>
+      sameValuationCell(left[key], right[key]),
+    )
+  );
+}
+
+function sameValuationCell(
+  left: PersonalValuationHistoryDto["history"]["points"][number][(typeof valuationPointCellKeys)[number]],
+  right: PersonalValuationHistoryDto["history"]["points"][number][(typeof valuationPointCellKeys)[number]],
+): boolean {
+  return (
+    left.status === right.status &&
+    left.unit === right.unit &&
+    left.value === right.value &&
+    (left.status === "known" ||
+      (right.status === "unknown" && left.reason === right.reason))
+  );
+}
+
 function isAnnualFinancialsProvider(
   value: unknown,
 ): value is PersonalAnnualFinancialsDto["provider"] {
@@ -1342,6 +1652,34 @@ function copyPersonalQuarterlyFinancials(
         }),
       ),
     ),
+    security: Object.freeze({ ...value.security }),
+  });
+}
+
+function copyPersonalValuationHistory(
+  value: PersonalValuationHistoryDto,
+): PersonalValuationHistoryDto {
+  const copyPoint = (
+    point: PersonalValuationHistoryDto["history"]["points"][number],
+  ) =>
+    Object.freeze({
+      ...point,
+      enterpriseValue: Object.freeze({ ...point.enterpriseValue }),
+      marketCapitalization: Object.freeze({ ...point.marketCapitalization }),
+      priceToBook: Object.freeze({ ...point.priceToBook }),
+      priceToEarnings: Object.freeze({ ...point.priceToEarnings }),
+      trailingPeg1Y: Object.freeze({ ...point.trailingPeg1Y }),
+    });
+  const points = Object.freeze(value.history.points.map(copyPoint));
+  return Object.freeze({
+    ...value,
+    coverage: Object.freeze({ ...value.coverage }),
+    history: Object.freeze({
+      ...value.history,
+      latestPoint: points[points.length - 1]!,
+      points,
+    }),
+    provider: Object.freeze({ ...value.provider }),
     security: Object.freeze({ ...value.security }),
   });
 }

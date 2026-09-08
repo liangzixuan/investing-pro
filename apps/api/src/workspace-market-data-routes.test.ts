@@ -8,6 +8,7 @@ import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
 } from "@research-cockpit/contracts";
 import {
   LOCAL_RESEARCH_VAULT_PROFILE,
@@ -33,6 +34,7 @@ import {
   PERSONAL_MARKET_DATA_OVERVIEW_PATH,
   PERSONAL_MARKET_DATA_STATUS_PATH,
   PERSONAL_QUARTERLY_FINANCIALS_PATH,
+  PERSONAL_VALUATION_HISTORY_PATH,
   registerPersonalWorkspaceMarketDataRoutes,
 } from "./workspace-market-data-routes";
 import { buildPersonalWorkspaceApp } from "./workspace-app";
@@ -453,6 +455,137 @@ describe("personal workspace market-data routes", () => {
     expect(mismatched.payload).not.toContain("fabricated");
   });
 
+  it("authenticates, strictly parses, and loads valuation history", async () => {
+    const fixture = await marketApp();
+    const unauthorized = await fixture.app.inject({
+      method: "POST",
+      url: PERSONAL_VALUATION_HISTORY_PATH,
+      headers: {
+        ...ownerHeaders(),
+        "content-type": "application/json",
+      },
+      payload: "{ malformed private-valuation-canary",
+      remoteAddress: "127.0.0.1",
+    });
+    expect(unauthorized.statusCode).toBe(403);
+    expect(unauthorized.payload).not.toContain("private-valuation-canary");
+    expect(fixture.loadValuationHistory).not.toHaveBeenCalled();
+
+    for (const body of [
+      { listingId: "lst-fabricated", range: "1m", symbol: "S00000" },
+      { listingId: "lst-00000", range: "max", symbol: "S00000" },
+      { listingId: "lst-00000", symbol: "S00000" },
+      { listingId: "lst-00000", range: "1m", symbol: "s00000" },
+      {
+        listingId: "lst-00000",
+        range: "1m",
+        symbol: "S00000",
+        issuerName: "fabricated",
+      },
+      [],
+    ]) {
+      const invalid = await requestValuationHistory(
+        fixture.app,
+        fixture.cookie,
+        body,
+      );
+      expect(invalid.statusCode).toBe(400);
+      expect(invalid.json()).toMatchObject({
+        instance: PERSONAL_VALUATION_HISTORY_PATH,
+        status: 400,
+      });
+    }
+
+    const queryCarrier = await fixture.app.inject({
+      method: "POST",
+      url: `${PERSONAL_VALUATION_HISTORY_PATH}?range=1m`,
+      headers: {
+        ...ownerHeaders(fixture.cookie),
+        "content-type": "application/json",
+      },
+      payload: { listingId: "lst-00000", range: "1m", symbol: "S00000" },
+      remoteAddress: "127.0.0.1",
+    });
+    expect(queryCarrier.statusCode).toBe(403);
+
+    const response = await requestValuationHistory(
+      fixture.app,
+      fixture.cookie,
+      { listingId: "lst-00000", range: "5y", symbol: "S00000" },
+    );
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.headers.pragma).toBe("no-cache");
+    expect(response.json()).toEqual(valuationHistory(IDENTITY, "5y"));
+    expect(fixture.loadValuationHistory).toHaveBeenCalledOnce();
+    expect(fixture.loadValuationHistory.mock.calls[0]?.[0]).toEqual(IDENTITY);
+    expect(fixture.loadValuationHistory.mock.calls[0]?.[1]).toBe("5y");
+    expect(fixture.loadValuationHistory.mock.calls[0]?.[2]).toBeInstanceOf(
+      AbortSignal,
+    );
+  });
+
+  it("maps valuation provider failures and rejects mismatched responses", async () => {
+    const fixture = await marketApp();
+    for (const [code, status] of [
+      ["not_configured", 503],
+      ["credentials_invalid", 424],
+      ["not_entitled", 402],
+      ["rate_limited", 429],
+      ["not_covered", 404],
+      ["upstream_unavailable", 502],
+      ["invalid_response", 502],
+      ["aborted", 502],
+    ] as const) {
+      fixture.loadValuationHistory.mockRejectedValueOnce(
+        new PersonalMarketDataProviderError(code),
+      );
+      const response = await requestValuationHistory(
+        fixture.app,
+        fixture.cookie,
+        { listingId: "lst-00000", range: "1y", symbol: "S00000" },
+      );
+      expect(response.statusCode).toBe(status);
+      expect(response.json()).toMatchObject({
+        instance: PERSONAL_VALUATION_HISTORY_PATH,
+        status,
+      });
+      expect(response.payload).not.toContain(code);
+    }
+
+    fixture.loadValuationHistory.mockResolvedValueOnce(
+      valuationHistory({ ...IDENTITY, listingId: "fabricated" }, "1y"),
+    );
+    const mismatchedIdentity = await requestValuationHistory(
+      fixture.app,
+      fixture.cookie,
+      { listingId: "lst-00000", range: "1y", symbol: "S00000" },
+    );
+    expect(mismatchedIdentity.statusCode).toBe(502);
+
+    fixture.loadValuationHistory.mockResolvedValueOnce(
+      valuationHistory(IDENTITY, "3m"),
+    );
+    const mismatchedRange = await requestValuationHistory(
+      fixture.app,
+      fixture.cookie,
+      { listingId: "lst-00000", range: "1y", symbol: "S00000" },
+    );
+    expect(mismatchedRange.statusCode).toBe(502);
+
+    const wrongWindow = valuationHistory(IDENTITY, "1y");
+    fixture.loadValuationHistory.mockResolvedValueOnce({
+      ...wrongWindow,
+      history: { ...wrongWindow.history, startDate: "2026-08-07" },
+    });
+    const mismatchedWindow = await requestValuationHistory(
+      fixture.app,
+      fixture.cookie,
+      { listingId: "lst-00000", range: "1y", symbol: "S00000" },
+    );
+    expect(mismatchedWindow.statusCode).toBe(502);
+  });
+
   it("rejects fabricated, cross-listing, and non-exact request identities", async () => {
     const fixture = await marketApp();
     for (const body of [
@@ -571,6 +704,10 @@ describe("personal workspace market-data routes", () => {
         void signal;
         return Promise.resolve(quarterlyFinancials(identity));
       },
+      loadValuationHistory: (identity, range, signal) => {
+        void signal;
+        return Promise.resolve(valuationHistory(identity, range));
+      },
       status: () => STATUS,
     };
     const app = Fastify({ bodyLimit: 300 * 1_024, trustProxy: false });
@@ -650,6 +787,10 @@ describe("personal workspace market-data routes", () => {
       loadQuarterlyFinancials: (identity, signal) => {
         void signal;
         return Promise.resolve(quarterlyFinancials(identity));
+      },
+      loadValuationHistory: (identity, range, signal) => {
+        void signal;
+        return Promise.resolve(valuationHistory(identity, range));
       },
       status: () => STATUS,
     };
@@ -746,6 +887,10 @@ describe("personal workspace market-data routes", () => {
         void signal;
         return Promise.resolve(quarterlyFinancials(identity));
       },
+      loadValuationHistory: (identity, range, signal) => {
+        void signal;
+        return Promise.resolve(valuationHistory(identity, range));
+      },
       status: () => STATUS,
     };
     const app = Fastify({ bodyLimit: 300 * 1_024, trustProxy: false });
@@ -839,6 +984,7 @@ async function marketApp() {
     loadAnnualFinancials,
     loadOverview,
     loadQuarterlyFinancials,
+    loadValuationHistory,
     provider,
   } = fakeProvider();
   const vault = {
@@ -862,6 +1008,7 @@ async function marketApp() {
     loadAnnualFinancials,
     loadOverview,
     loadQuarterlyFinancials,
+    loadValuationHistory,
   };
 }
 
@@ -888,18 +1035,30 @@ function fakeProvider(close = vi.fn()) {
       return Promise.resolve(quarterlyFinancials(identity));
     },
   );
+  const loadValuationHistory = vi.fn(
+    (
+      identity: PersonalMarketDataIdentityDto,
+      range: "1m" | "3m" | "ytd" | "1y" | "5y" | "10y",
+      signal?: AbortSignal,
+    ) => {
+      void signal;
+      return Promise.resolve(valuationHistory(identity, range));
+    },
+  );
   const provider: PersonalMarketDataProvider = {
     close,
     getStatus: () => STATUS,
     loadAnnualFinancials,
     loadOverview,
     loadQuarterlyFinancials,
+    loadValuationHistory,
     status: () => STATUS,
   };
   return {
     loadAnnualFinancials,
     loadOverview,
     loadQuarterlyFinancials,
+    loadValuationHistory,
     provider,
   };
 }
@@ -929,6 +1088,23 @@ function requestQuarterlyFinancials(
   return app.inject({
     method: "POST",
     url: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+    headers: {
+      ...ownerHeaders(cookie),
+      "content-type": "application/json",
+    },
+    payload,
+    remoteAddress: "127.0.0.1",
+  });
+}
+
+function requestValuationHistory(
+  app: FastifyInstance,
+  cookie: string,
+  payload: Record<string, unknown> | unknown[],
+) {
+  return app.inject({
+    method: "POST",
+    url: PERSONAL_VALUATION_HISTORY_PATH,
     headers: {
       ...ownerHeaders(cookie),
       "content-type": "application/json",
@@ -1069,6 +1245,69 @@ function annualReportedValues(): PersonalAnnualFinancialReportedValuesDto {
     selling_general_and_administrative: unknown,
     share_based_compensation: unknown,
     shareholders_equity: unknown,
+  };
+}
+
+function valuationHistory(
+  identity: PersonalMarketDataIdentityDto,
+  range: "1m" | "3m" | "ytd" | "1y" | "5y" | "10y",
+): PersonalValuationHistoryDto {
+  const startDate = {
+    "1m": "2026-08-07",
+    "3m": "2026-06-07",
+    ytd: "2026-01-01",
+    "1y": "2025-09-07",
+    "5y": "2021-09-07",
+    "10y": "2016-09-07",
+  }[range];
+  const latestPoint = {
+    date: "2026-09-04",
+    enterpriseValue: { status: "known", unit: "USD", value: "1200000" },
+    marketCapitalization: {
+      status: "known",
+      unit: "USD",
+      value: "1000000",
+    },
+    priceToBook: { status: "known", unit: "ratio", value: "2.5" },
+    priceToEarnings: { status: "known", unit: "ratio", value: "18.5" },
+    trailingPeg1Y: {
+      reason: "not_supplied_by_provider",
+      status: "unknown",
+      unit: "ratio",
+      value: null,
+    },
+  } as const;
+  return {
+    asOf: "2026-09-07T15:00:00.000Z",
+    coverage: {
+      knownCells: 4,
+      observationCount: 1,
+      status: "partial",
+      unknownCells: 1,
+    },
+    history: {
+      endDate: "2026-09-07",
+      latestPoint,
+      points: [latestPoint],
+      range,
+      startDate,
+    },
+    profile: "personal_single_user_local_valuation",
+    provider: {
+      attribution: "Tiingo",
+      export: "prohibited",
+      id: "tiingo",
+      name: "Tiingo",
+      persistence: "none",
+      redistribution: "prohibited",
+      retention: "active_owner_session_memory_only",
+      revisionBasis: "provider_most_recent",
+      valuationFeed: "tiingo_fundamentals_daily",
+      valueCurrency: "USD",
+    },
+    schemaVersion: "1.0.0",
+    security: identity,
+    status: "available",
   };
 }
 

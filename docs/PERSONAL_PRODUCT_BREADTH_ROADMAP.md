@@ -175,7 +175,7 @@ Later subcycles may widen a universe only with the same checks.
 | Quotes, price history, actions, charts  | On-demand Tiingo quote, six history ranges, actions, chart, table   | Cycle 3g        |
 | Transparent technical indicators        | Five metrics plus three SMA trend classifications on loaded history | Cycle 3g-b      |
 | Statements and metric depth             | Ten dossier facts plus 3h-a1 annual statements and core analytics   | Cycle 3h        |
-| Multi-model valuation                   | One exit-multiple model                                             | Cycle 3i        |
+| Valuation models and history            | One exit-multiple model plus provider daily valuation history       | Cycle 3i        |
 | Peers, health, quality, and risk scores | No end-user comparison or scorecards                                | Cycle 3j        |
 | Screener and saved views                | No universe query                                                   | Cycle 3k        |
 | Earnings, dividends, news, calendars    | No daily event workflow                                             | Cycle 3l        |
@@ -815,7 +815,12 @@ slots and `statementDate` labelled as the provider statement/release date. The
 browser labels both responses as Tiingo's most-recent corrected history,
 distinguishes missing fundamentals access from a rejected credential with a
 fixed credential-test request after a 403, performs no automatic request, and
-discards each response with the view or owner session.
+discards each response with the view or owner session. Cycle 3h-a3 adds an
+independently triggered Tiingo fundamentals-daily view over the same six date
+ranges as price history. It exposes market capitalization, enterprise value,
+provider P/E, P/B, and trailing PEG 1Y with exact USD or unitless-ratio labels
+and explicit unknown cells. The current provider-most-recent revision basis is
+visible and is not presented as point-in-time or as-reported history.
 
 These are independently useful statement-depth slices, not full 3h-a. They do
 not establish verified TTM aggregation, point-in-time/restatement history, the
@@ -832,6 +837,8 @@ Promotable subcycles:
   core-analytics set for one selected listing;
 - **3h-a2:** provider-backed 16-quarter statement tables with exact fiscal
   coordinates, missingness, and fail-closed TTM gating;
+- **3h-a3:** provider-backed daily history for five valuation fields, with
+  fixed units, explicit missingness, and active-session-only custody;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
   initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived

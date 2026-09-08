@@ -443,6 +443,80 @@ export interface PersonalQuarterlyFinancialsDto {
   readonly status: "available";
 }
 
+export type PersonalValuationMoneyCellDto =
+  | Readonly<{
+      status: "known";
+      unit: "USD";
+      value: string;
+    }>
+  | Readonly<{
+      reason: "not_supplied_by_provider";
+      status: "unknown";
+      unit: "USD";
+      value: null;
+    }>;
+
+export type PersonalValuationRatioCellDto =
+  | Readonly<{
+      status: "known";
+      unit: "ratio";
+      value: string;
+    }>
+  | Readonly<{
+      reason: "not_supplied_by_provider";
+      status: "unknown";
+      unit: "ratio";
+      value: null;
+    }>;
+
+export interface PersonalValuationHistoryPointDto {
+  readonly date: string;
+  readonly enterpriseValue: PersonalValuationMoneyCellDto;
+  readonly marketCapitalization: PersonalValuationMoneyCellDto;
+  readonly priceToBook: PersonalValuationRatioCellDto;
+  readonly priceToEarnings: PersonalValuationRatioCellDto;
+  readonly trailingPeg1Y: PersonalValuationRatioCellDto;
+}
+
+export interface PersonalValuationHistorySeriesDto {
+  readonly endDate: string;
+  readonly latestPoint: PersonalValuationHistoryPointDto;
+  readonly points: readonly PersonalValuationHistoryPointDto[];
+  readonly range: PersonalMarketDataRangeDto;
+  readonly startDate: string;
+}
+
+export interface PersonalValuationHistoryCoverageDto {
+  readonly knownCells: number;
+  readonly observationCount: number;
+  readonly status: "complete" | "partial";
+  readonly unknownCells: number;
+}
+
+export interface PersonalValuationHistoryProviderDto {
+  readonly attribution: "Tiingo";
+  readonly export: "prohibited";
+  readonly id: "tiingo";
+  readonly name: "Tiingo";
+  readonly persistence: "none";
+  readonly redistribution: "prohibited";
+  readonly retention: "active_owner_session_memory_only";
+  readonly revisionBasis: "provider_most_recent";
+  readonly valuationFeed: "tiingo_fundamentals_daily";
+  readonly valueCurrency: "USD";
+}
+
+export interface PersonalValuationHistoryDto {
+  readonly asOf: string;
+  readonly coverage: PersonalValuationHistoryCoverageDto;
+  readonly history: PersonalValuationHistorySeriesDto;
+  readonly profile: "personal_single_user_local_valuation";
+  readonly provider: PersonalValuationHistoryProviderDto;
+  readonly schemaVersion: "1.0.0";
+  readonly security: PersonalMarketDataIdentityDto;
+  readonly status: "available";
+}
+
 export interface PersonalFilingSelectedFactDto {
   readonly key:
     | "assets"

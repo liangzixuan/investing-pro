@@ -866,6 +866,129 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/market-data/valuation-history:
+    post:
+      operationId: loadPersonalValuationHistory
+      summary: Load bounded daily provider valuation history for one listing.
+      description: >-
+        Authenticated, read-only owner action. The exact body names one
+        startup-admitted listing and a bounded range; the server resolves that
+        identity before making one fixed-host Tiingo fundamentals daily
+        request with inclusive start and end dates, the provider's explicit
+        most-recent dimension, and a fixed five-column metric allowlist. Points
+        are oldest-first with unique dates. Every
+        metric cell is either a canonical provider decimal with its unit or is
+        marked unknown rather than synthesized. Provider data exists only in
+        active process/browser memory and is not persisted, exported, or
+        redistributed.
+      security:
+        - PersonalOwnerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonalValuationHistoryRequest"
+      responses:
+        "200":
+          description: The provider-backed daily valuation history is available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalValuationHistory"
+        "400":
+          description: The accepted request body is invalid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "402":
+          description: The configured provider account is not entitled to the fundamentals feed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Provider valuation coverage is unavailable for the admitted listing.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "424":
+          description: The owner-supplied provider credential was rejected.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: The personal provider request limit was reached.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "502":
+          description: Tiingo was unavailable or returned an invalid response.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "503":
+          description: No owner-supplied Tiingo token is configured.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /v1/personal-filing/connected-source-policy/status:
     get:
       operationId: getConnectedSourcePolicyStatus
@@ -3322,6 +3445,252 @@ components:
             the fiscal period end.
         reported:
           $ref: "#/components/schemas/PersonalAnnualFinancialReportedValues"
+    PersonalValuationHistoryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - listingId
+        - range
+        - symbol
+      properties:
+        listingId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        range:
+          type: string
+          enum:
+            - 1m
+            - 3m
+            - ytd
+            - 1y
+            - 5y
+            - 10y
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+    PersonalValuationHistory:
+      type: object
+      additionalProperties: false
+      required:
+        - asOf
+        - coverage
+        - history
+        - profile
+        - provider
+        - schemaVersion
+        - security
+        - status
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        coverage:
+          $ref: "#/components/schemas/PersonalValuationHistoryCoverage"
+        history:
+          $ref: "#/components/schemas/PersonalValuationHistorySeries"
+        profile:
+          const: personal_single_user_local_valuation
+        provider:
+          $ref: "#/components/schemas/PersonalValuationHistoryProvider"
+        schemaVersion:
+          const: "1.0.0"
+        security:
+          $ref: "#/components/schemas/PersonalMarketDataIdentity"
+        status:
+          const: available
+    PersonalValuationHistoryProvider:
+      type: object
+      additionalProperties: false
+      required:
+        - attribution
+        - export
+        - id
+        - name
+        - persistence
+        - redistribution
+        - retention
+        - revisionBasis
+        - valuationFeed
+        - valueCurrency
+      properties:
+        attribution:
+          const: Tiingo
+        export:
+          const: prohibited
+        id:
+          const: tiingo
+        name:
+          const: Tiingo
+        persistence:
+          const: none
+        redistribution:
+          const: prohibited
+        retention:
+          const: active_owner_session_memory_only
+        revisionBasis:
+          const: provider_most_recent
+        valuationFeed:
+          const: tiingo_fundamentals_daily
+        valueCurrency:
+          const: USD
+    PersonalValuationHistoryCoverage:
+      type: object
+      additionalProperties: false
+      required:
+        - knownCells
+        - observationCount
+        - status
+        - unknownCells
+      properties:
+        knownCells:
+          type: integer
+          minimum: 0
+          maximum: 20480
+        observationCount:
+          type: integer
+          minimum: 1
+          maximum: 4096
+        status:
+          type: string
+          enum:
+            - complete
+            - partial
+        unknownCells:
+          type: integer
+          minimum: 0
+          maximum: 20480
+    PersonalValuationHistorySeries:
+      type: object
+      additionalProperties: false
+      required:
+        - endDate
+        - latestPoint
+        - points
+        - range
+        - startDate
+      properties:
+        endDate:
+          type: string
+          format: date
+        latestPoint:
+          $ref: "#/components/schemas/PersonalValuationHistoryPoint"
+        points:
+          type: array
+          description: >-
+            One to 4096 daily observations in strictly increasing date order.
+            Dates are unique and latestPoint exactly equals the final item.
+          minItems: 1
+          maxItems: 4096
+          items:
+            $ref: "#/components/schemas/PersonalValuationHistoryPoint"
+        range:
+          type: string
+          enum:
+            - 1m
+            - 3m
+            - ytd
+            - 1y
+            - 5y
+            - 10y
+        startDate:
+          type: string
+          format: date
+    PersonalValuationHistoryPoint:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - enterpriseValue
+        - marketCapitalization
+        - priceToBook
+        - priceToEarnings
+        - trailingPeg1Y
+      properties:
+        date:
+          type: string
+          format: date
+        enterpriseValue:
+          $ref: "#/components/schemas/PersonalValuationMoneyCell"
+        marketCapitalization:
+          $ref: "#/components/schemas/PersonalValuationMoneyCell"
+        priceToBook:
+          $ref: "#/components/schemas/PersonalValuationRatioCell"
+        priceToEarnings:
+          $ref: "#/components/schemas/PersonalValuationRatioCell"
+        trailingPeg1Y:
+          $ref: "#/components/schemas/PersonalValuationRatioCell"
+    PersonalValuationMoneyCell:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - status
+            - unit
+            - value
+          properties:
+            status:
+              const: known
+            unit:
+              const: USD
+            value:
+              type: string
+              minLength: 1
+              maxLength: 64
+              pattern: "^(?:0|-?[1-9][0-9]*|-?(?:0|[1-9][0-9]*)\\.[0-9]*[1-9])$"
+        - type: object
+          additionalProperties: false
+          required:
+            - reason
+            - status
+            - unit
+            - value
+          properties:
+            reason:
+              const: not_supplied_by_provider
+            status:
+              const: unknown
+            unit:
+              const: USD
+            value:
+              type: "null"
+    PersonalValuationRatioCell:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - status
+            - unit
+            - value
+          properties:
+            status:
+              const: known
+            unit:
+              const: ratio
+            value:
+              type: string
+              minLength: 1
+              maxLength: 64
+              pattern: "^(?:0|-?[1-9][0-9]*|-?(?:0|[1-9][0-9]*)\\.[0-9]*[1-9])$"
+        - type: object
+          additionalProperties: false
+          required:
+            - reason
+            - status
+            - unit
+            - value
+          properties:
+            reason:
+              const: not_supplied_by_provider
+            status:
+              const: unknown
+            unit:
+              const: ratio
+            value:
+              type: "null"
     InstrumentId:
       type: string
       minLength: 3

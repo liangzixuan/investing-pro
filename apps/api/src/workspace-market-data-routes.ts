@@ -4,6 +4,7 @@ import type {
   PersonalMarketDataRangeDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
   ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
@@ -34,6 +35,8 @@ export const PERSONAL_ANNUAL_FINANCIALS_PATH =
   "/v1/personal-filing/market-data/annual-financials" as const;
 export const PERSONAL_QUARTERLY_FINANCIALS_PATH =
   "/v1/personal-filing/market-data/quarterly-financials" as const;
+export const PERSONAL_VALUATION_HISTORY_PATH =
+  "/v1/personal-filing/market-data/valuation-history" as const;
 
 const RANGES = new Set<PersonalMarketDataRangeDto>([
   "1m",
@@ -61,6 +64,8 @@ interface QuarterlyFinancialsRequest {
   readonly listingId: string;
   readonly symbol: string;
 }
+
+type ValuationHistoryRequest = OverviewRequest;
 
 export function registerPersonalWorkspaceMarketDataRoutes(
   app: FastifyInstance,
@@ -300,6 +305,85 @@ export function registerPersonalWorkspaceMarketDataRoutes(
       }
     },
   );
+
+  app.post<{ Body: unknown }>(
+    PERSONAL_VALUATION_HISTORY_PATH,
+    {
+      errorHandler: (_error, request, reply) => {
+        void sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_VALUATION_HISTORY_PATH,
+        );
+      },
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalJsonRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_VALUATION_HISTORY_PATH,
+          )
+        ) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+      },
+    },
+    async (request, reply) => {
+      const body = parseValuationHistoryRequest(request.body);
+      if (body === undefined) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_VALUATION_HISTORY_PATH,
+        );
+      }
+      const identity = resolveIdentity(catalog, body);
+      if (identity === undefined) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_VALUATION_HISTORY_PATH,
+        );
+      }
+
+      const abortController = new AbortController();
+      const abort = () => abortController.abort();
+      request.raw.once("aborted", abort);
+      reply.raw.once("close", abort);
+      try {
+        const valuation = await provider.loadValuationHistory(
+          identity,
+          body.range,
+          abortController.signal,
+        );
+        if (
+          !matchesRequestedValuationHistory(valuation, identity, body.range)
+        ) {
+          return sendMarketDataProblem(
+            reply,
+            request,
+            502,
+            PERSONAL_VALUATION_HISTORY_PATH,
+          );
+        }
+        return reply.type("application/json; charset=utf-8").send(valuation);
+      } catch (error) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          providerProblemStatus(error),
+          PERSONAL_VALUATION_HISTORY_PATH,
+        );
+      } finally {
+        request.raw.off("aborted", abort);
+        reply.raw.off("close", abort);
+      }
+    },
+  );
 }
 
 function parseOverviewRequest(value: unknown): OverviewRequest | undefined {
@@ -355,6 +439,12 @@ function parseQuarterlyFinancialsRequest(
   value: unknown,
 ): QuarterlyFinancialsRequest | undefined {
   return parseAnnualFinancialsRequest(value);
+}
+
+function parseValuationHistoryRequest(
+  value: unknown,
+): ValuationHistoryRequest | undefined {
+  return parseOverviewRequest(value);
 }
 
 function resolveIdentity(
@@ -419,6 +509,89 @@ function matchesRequestedQuarterlyFinancials(
   );
 }
 
+function matchesRequestedValuationHistory(
+  valuation: PersonalValuationHistoryDto,
+  identity: PersonalMarketDataIdentityDto,
+  range: PersonalMarketDataRangeDto,
+): boolean {
+  if (valuation === null || typeof valuation !== "object") return false;
+  const asOf = Reflect.get(valuation, "asOf") as unknown;
+  const history = Reflect.get(valuation, "history") as unknown;
+  const security = Reflect.get(valuation, "security") as unknown;
+  if (
+    typeof asOf !== "string" ||
+    history === null ||
+    typeof history !== "object" ||
+    security === null ||
+    typeof security !== "object"
+  ) {
+    return false;
+  }
+  const expectedWindow = valuationRangeDates(range, asOf);
+  if (expectedWindow === undefined) return false;
+  return (
+    Reflect.get(history, "range") === range &&
+    Reflect.get(history, "startDate") === expectedWindow.startDate &&
+    Reflect.get(history, "endDate") === expectedWindow.endDate &&
+    Reflect.get(security, "country") === identity.country &&
+    Reflect.get(security, "exchangeMic") === identity.exchangeMic &&
+    Reflect.get(security, "issuerName") === identity.issuerName &&
+    Reflect.get(security, "listingId") === identity.listingId &&
+    Reflect.get(security, "securityName") === identity.securityName &&
+    Reflect.get(security, "symbol") === identity.symbol
+  );
+}
+
+function valuationRangeDates(
+  range: PersonalMarketDataRangeDto,
+  asOf: string,
+): Readonly<{ endDate: string; startDate: string }> | undefined {
+  const milliseconds = Date.parse(asOf);
+  if (!Number.isFinite(milliseconds)) return undefined;
+  const instant = new Date(milliseconds);
+  if (instant.toISOString() !== asOf) return undefined;
+  const endDate = instant.toISOString().slice(0, 10);
+  let start: Date;
+  switch (range) {
+    case "1m":
+      start = subtractValuationCalendar(instant, 0, 1);
+      break;
+    case "3m":
+      start = subtractValuationCalendar(instant, 0, 3);
+      break;
+    case "ytd":
+      start = new Date(Date.UTC(instant.getUTCFullYear(), 0, 1));
+      break;
+    case "1y":
+      start = subtractValuationCalendar(instant, 1, 0);
+      break;
+    case "5y":
+      start = subtractValuationCalendar(instant, 5, 0);
+      break;
+    case "10y":
+      start = subtractValuationCalendar(instant, 10, 0);
+      break;
+  }
+  return { endDate, startDate: start.toISOString().slice(0, 10) };
+}
+
+function subtractValuationCalendar(
+  date: Date,
+  years: number,
+  months: number,
+): Date {
+  const sourceMonth = date.getUTCMonth();
+  const targetMonthOrdinal = sourceMonth - months;
+  const targetYear =
+    date.getUTCFullYear() - years + Math.floor(targetMonthOrdinal / 12);
+  const targetMonth = ((targetMonthOrdinal % 12) + 12) % 12;
+  const targetDay = Math.min(
+    date.getUTCDate(),
+    new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate(),
+  );
+  return new Date(Date.UTC(targetYear, targetMonth, targetDay));
+}
+
 function matchesRequestedOverview(
   overview: PersonalMarketOverviewDto,
   identity: PersonalMarketDataIdentityDto,
@@ -477,6 +650,7 @@ function sendMarketDataProblem(
   instance:
     | typeof PERSONAL_ANNUAL_FINANCIALS_PATH
     | typeof PERSONAL_QUARTERLY_FINANCIALS_PATH
+    | typeof PERSONAL_VALUATION_HISTORY_PATH
     | typeof PERSONAL_MARKET_DATA_OVERVIEW_PATH = PERSONAL_MARKET_DATA_OVERVIEW_PATH,
 ) {
   const titles = {
@@ -491,8 +665,12 @@ function sendMarketDataProblem(
   const problem: ProblemDetailsDto = {
     type: `https://research-cockpit.local/problems/${String(status)}`,
     title:
-      status === 402 && instance === PERSONAL_QUARTERLY_FINANCIALS_PATH
-        ? "Quarterly financials not included"
+      status === 402
+        ? instance === PERSONAL_QUARTERLY_FINANCIALS_PATH
+          ? "Quarterly financials not included"
+          : instance === PERSONAL_VALUATION_HISTORY_PATH
+            ? "Valuation history not included"
+            : titles[status]
         : titles[status],
     status,
     detail: "The personal market-data request was not accepted.",

@@ -2512,9 +2512,20 @@ calculated because the admitted provider documentation does not establish
 whether every quarterly income/cash-flow value is standalone or cumulative.
 No annual value, zero, or shifted quarter is substituted.
 
+Cycle 3h-a3 adds a third explicit request for Tiingo's daily fundamentals feed
+over the selected 1M, 3M, YTD, 1Y, 5Y, or 10Y range. The response exposes only
+five reviewed provider fields: market capitalization and enterprise value in
+USD, plus P/E, P/B, and trailing PEG 1Y as unitless ratios. Daily observations
+and each missing cell remain explicit, lossless decimal strings are preserved,
+and the result stays only in active owner-session memory. It is labelled
+`provider_most_recent`: it is current provider history, not a point-in-time or
+as-reported valuation record. Nothing is fetched automatically, exported,
+persisted, or crawled from Investing.com.
+
 These slices do not claim full Cycle 3h-a: verified TTM views, point-in-time
 restatement lineage, the full 30-core-metric set, 500-security coverage, 90%
-knownness, and 20-issuer independent validation remain open.
+knownness, and 20-issuer independent validation remain open. Cycle 3h-a3 also
+does not establish an independent fair-value model or full Cycle 3i.
 
 The delivery waves are:
 

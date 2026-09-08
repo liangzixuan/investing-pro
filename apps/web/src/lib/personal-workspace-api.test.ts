@@ -4,6 +4,7 @@ import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
@@ -16,6 +17,7 @@ import {
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
   fetchPersonalQuarterlyFinancials,
+  fetchPersonalValuationHistory,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
   normalizeWatchlistNote,
@@ -324,6 +326,130 @@ describe("personal workspace API client", () => {
     );
   });
 
+  it("posts one exact valuation-history request and returns a deeply frozen response", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(valuationHistory()));
+
+    const result = await fetchPersonalValuationHistory(
+      { listingId: "lst-00001", range: "5y", symbol: "ZERO" },
+      new AbortController().signal,
+    );
+
+    expect(result).toMatchObject({
+      coverage: { knownCells: 10, observationCount: 2, unknownCells: 0 },
+      history: { range: "5y" },
+      security: { listingId: "lst-00001", symbol: "ZERO" },
+      status: "available",
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.coverage)).toBe(true);
+    expect(Object.isFrozen(result.history)).toBe(true);
+    expect(Object.isFrozen(result.history.points)).toBe(true);
+    expect(Object.isFrozen(result.history.points[0])).toBe(true);
+    expect(Object.isFrozen(result.history.points[0]?.priceToEarnings)).toBe(
+      true,
+    );
+    expect(result.history.latestPoint).toBe(result.history.points.at(-1));
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      new URL(
+        "http://127.0.0.1:3100/v1/personal-filing/market-data/valuation-history",
+      ),
+      expect.objectContaining({
+        body: JSON.stringify({
+          listingId: "lst-00001",
+          range: "5y",
+          symbol: "ZERO",
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+      }),
+    );
+  });
+
+  it("strictly rejects malformed valuation history chronology, coverage, cells, and identity", async () => {
+    const unordered = valuationHistory();
+    const wrongLatest = valuationHistory();
+    const wrongCoverage = valuationHistory();
+    const wrongUnit = valuationHistory();
+    const wrongWindow = valuationHistory();
+    const identityMismatch = valuationHistory("lst-other", "ZERO");
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...unordered,
+          history: {
+            ...unordered.history,
+            points: [...unordered.history.points].reverse(),
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...wrongLatest,
+          history: {
+            ...wrongLatest.history,
+            latestPoint: wrongLatest.history.points[0],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...wrongCoverage,
+          coverage: { ...wrongCoverage.coverage, knownCells: 9 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...wrongUnit,
+          history: {
+            ...wrongUnit.history,
+            latestPoint: {
+              ...wrongUnit.history.latestPoint,
+              priceToBook: {
+                ...wrongUnit.history.latestPoint.priceToBook,
+                unit: "USD",
+              },
+            },
+            points: [
+              wrongUnit.history.points[0],
+              {
+                ...wrongUnit.history.points[1],
+                priceToBook: {
+                  ...wrongUnit.history.points[1]?.priceToBook,
+                  unit: "USD",
+                },
+              },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...wrongWindow,
+          history: {
+            ...wrongWindow.history,
+            startDate: "2029-02-01",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(identityMismatch));
+
+    for (let index = 0; index < 6; index += 1) {
+      await expect(
+        fetchPersonalValuationHistory(
+          { listingId: "lst-00001", range: "5y", symbol: "ZERO" },
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
   it("strictly rejects malformed quarterly chronology and coverage", async () => {
     const unordered = quarterlyFinancials();
     const wrongMissing = quarterlyFinancials();
@@ -552,6 +678,12 @@ describe("personal workspace API client", () => {
     await expect(
       fetchPersonalQuarterlyFinancials(
         { listingId: "bad id", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(
+      fetchPersonalValuationHistory(
+        { listingId: "lst-00001", range: "overnight" as "1y", symbol: "ZERO" },
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ code: "invalid_request" });
@@ -866,6 +998,74 @@ function marketOverview(): PersonalMarketOverviewDto {
     },
     status: "available",
   };
+}
+
+function valuationHistory(
+  listingId = "lst-00001",
+  symbol = "ZERO",
+): PersonalValuationHistoryDto {
+  const points = [
+    valuationPoint("2029-01-15", "23.5"),
+    valuationPoint("2030-01-15", "24.125"),
+  ] as const;
+  return {
+    asOf: "2030-01-15T22:00:00.000Z",
+    coverage: {
+      knownCells: 10,
+      observationCount: 2,
+      status: "complete",
+      unknownCells: 0,
+    },
+    history: {
+      endDate: "2030-01-15",
+      latestPoint: points[1],
+      points,
+      range: "5y",
+      startDate: "2025-01-15",
+    },
+    profile: "personal_single_user_local_valuation",
+    provider: {
+      attribution: "Tiingo",
+      export: "prohibited",
+      id: "tiingo",
+      name: "Tiingo",
+      persistence: "none",
+      redistribution: "prohibited",
+      retention: "active_owner_session_memory_only",
+      revisionBasis: "provider_most_recent",
+      valuationFeed: "tiingo_fundamentals_daily",
+      valueCurrency: "USD",
+    },
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId,
+      securityName: "Zero Alpha Common Stock",
+      symbol,
+    },
+    status: "available",
+  };
+}
+
+function valuationPoint(date: string, pe: string) {
+  return {
+    date,
+    enterpriseValue: {
+      status: "known",
+      unit: "USD",
+      value: "130000000000.5",
+    },
+    marketCapitalization: {
+      status: "known",
+      unit: "USD",
+      value: "125000000000.25",
+    },
+    priceToBook: { status: "known", unit: "ratio", value: "6.25" },
+    priceToEarnings: { status: "known", unit: "ratio", value: pe },
+    trailingPeg1Y: { status: "known", unit: "ratio", value: "1.75" },
+  } as const;
 }
 
 function marketProvider() {

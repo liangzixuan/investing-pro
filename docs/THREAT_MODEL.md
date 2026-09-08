@@ -2764,6 +2764,38 @@ This boundary does not establish point-in-time revisions, filing citations,
 TTM or quarterly-derived analytics, broad provider coverage, full Cycle 3h, or
 competitor parity.
 
+## Cycle 3h-a3 valuation-history threat boundary
+
+Cycle 3h-a3 adds one owner-authenticated, explicit Tiingo fundamentals-daily
+request for the already admitted listing and one of the six bounded market-data
+ranges. Assets at risk are the owner token, listing identity, provider values,
+daily-date and unit integrity, and the honesty of the history's revision label.
+Primary threats are an automatic or attacker-selected request; credential
+disclosure; listing or range substitution; unbounded range expansion;
+duplicate, reordered, or out-of-range observations; native-number precision
+loss; provider-schema growth changing the five admitted cells; missing values
+silently becoming zero; USD and ratio confusion; provider ratios being
+misrepresented as local calculations; current provider history being labelled
+point-in-time or as-reported; and private values leaking through storage, logs,
+exports, errors, or public evidence.
+
+Controls are the existing fixed-host, header-only credential transport;
+owner-session and exact-JSON request guard before body access; startup-catalog
+identity resolution; the closed 1M/3M/YTD/1Y/5Y/10Y range set; bounded response
+size, observation count, and time; lossless numeric lexeme capture; a closed
+five-field registry; unique ordered dates inside the requested range; explicit
+unknown cells; fixed USD and unitless-ratio labels; exact coverage accounting;
+strict browser revalidation; no-store responses; and active-session-only
+custody. The `provider_most_recent` label is mandatory and must not be promoted
+to a point-in-time, as-reported, restatement-aware, or independently calculated
+valuation claim. Startup and unrelated owner actions make no valuation request.
+No Investing.com page is crawled, and values are not persisted, exported,
+redistributed, or placed in public evidence.
+
+This boundary does not establish intrinsic or fair value, DCF/reverse DCF,
+peer comparison, forecast, rating, point-in-time history, verified TTM, full
+Cycle 3h/3i, or competitor parity.
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.

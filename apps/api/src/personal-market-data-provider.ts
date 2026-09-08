@@ -13,6 +13,11 @@ import type {
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialQuarterDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
+  PersonalValuationHistoryPointDto,
+  PersonalValuationHistoryProviderDto,
+  PersonalValuationMoneyCellDto,
+  PersonalValuationRatioCellDto,
 } from "@research-cockpit/contracts";
 
 export const PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY =
@@ -44,6 +49,11 @@ export interface PersonalMarketDataProvider {
     identity: PersonalMarketDataIdentityDto,
     signal?: AbortSignal,
   ): Promise<PersonalQuarterlyFinancialsDto>;
+  loadValuationHistory(
+    identity: PersonalMarketDataIdentityDto,
+    range: PersonalMarketDataRangeDto,
+    signal?: AbortSignal,
+  ): Promise<PersonalValuationHistoryDto>;
   status(): PersonalMarketDataStatusDto;
 }
 
@@ -56,6 +66,7 @@ const ERROR_MESSAGE = "Personal market data is unavailable.";
 const TIINGO_ORIGIN = "https://api.tiingo.com";
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const MAX_EOD_BARS = 4_096;
+const MAX_VALUATION_OBSERVATIONS = 4_096;
 const MAX_FINANCIAL_RECORDS = 64;
 const MAX_STATEMENT_ITEMS = 128;
 const REQUEST_TIMEOUT_MILLISECONDS = 10_000;
@@ -69,6 +80,16 @@ const PROVIDER_ISO_INSTANT =
   /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d)$/u;
 const PROVIDER_DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const JSON_NUMBER = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u;
+const TIINGO_VALUATION_COLUMNS =
+  "marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y" as const;
+const TIINGO_VALUATION_RESPONSE_KEYS = new Set([
+  "date",
+  "enterpriseVal",
+  "marketCap",
+  "pbRatio",
+  "peRatio",
+  "trailingPEG1Y",
+]);
 
 const TIINGO_PROVIDER = Object.freeze({
   attribution: "Tiingo",
@@ -94,6 +115,19 @@ const TIINGO_FINANCIALS_PROVIDER = Object.freeze({
   statementFeed: "tiingo_fundamentals_statements",
   valueCurrency: "USD",
 }) satisfies PersonalAnnualFinancialsProviderDto;
+
+const TIINGO_VALUATION_PROVIDER = Object.freeze({
+  attribution: "Tiingo",
+  export: "prohibited",
+  id: "tiingo",
+  name: "Tiingo",
+  persistence: "none",
+  redistribution: "prohibited",
+  retention: "active_owner_session_memory_only",
+  revisionBasis: "provider_most_recent",
+  valuationFeed: "tiingo_fundamentals_daily",
+  valueCurrency: "USD",
+}) satisfies PersonalValuationHistoryProviderDto;
 
 type StatementSection = "incomeStatement" | "balanceSheet" | "cashFlow";
 
@@ -260,6 +294,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
         fundamentalsUrl,
         authorization,
         context,
+        validateLosslessFinancialNumberTypes,
       );
       if (this.#closed || context.externalSignal?.aborted === true) {
         fail("aborted");
@@ -357,6 +392,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
         fundamentalsUrl,
         authorization,
         context,
+        validateLosslessFinancialNumberTypes,
       );
       if (this.#closed || context.externalSignal?.aborted === true) {
         fail("aborted");
@@ -426,6 +462,99 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
         profile: "personal_single_user_local_fundamentals",
         provider: TIINGO_FINANCIALS_PROVIDER,
         quarters,
+        schemaVersion: "1.0.0",
+        security,
+        status: "available",
+      });
+    } catch (error) {
+      if (
+        this.#closed ||
+        context.externalSignal?.aborted === true ||
+        (context.controller.signal.aborted && !context.timedOut())
+      ) {
+        fail("aborted");
+      }
+      if (error instanceof PersonalMarketDataProviderError) throw error;
+      fail("upstream_unavailable");
+    } finally {
+      this.#finishRequest(context.controller);
+    }
+  }
+
+  public async loadValuationHistory(
+    identity: PersonalMarketDataIdentityDto,
+    range: PersonalMarketDataRangeDto,
+    signal?: AbortSignal,
+  ): Promise<PersonalValuationHistoryDto> {
+    if (this.#closed || this.#tokenBytes === undefined) {
+      fail(this.#invalidCredential ? "credentials_invalid" : "not_configured");
+    }
+    if (this.#invalidCredential) fail("credentials_invalid");
+    if (signal?.aborted === true) fail("aborted");
+
+    const security = normalizeIdentity(identity);
+    const providerSymbol = security.symbol.replaceAll(".", "-");
+    if (!PROVIDER_SYMBOL.test(providerSymbol)) fail("not_covered");
+    const asOfDate = this.#readClock();
+    const asOf = asOfDate.toISOString();
+    const dates = rangeDates(range, asOfDate);
+    const valuationUrl = tiingoValuationHistoryUrl(
+      providerSymbol,
+      dates.startDate,
+      dates.endDate,
+    );
+    const context = this.#startRequest(signal);
+
+    try {
+      const authorization = `Token ${new TextDecoder().decode(
+        this.#tokenBytes,
+      )}`;
+      const value = await this.#requestLosslessJson(
+        valuationUrl,
+        authorization,
+        context,
+        validateLosslessValuationNumberTypes,
+      );
+      if (this.#closed || context.externalSignal?.aborted === true) {
+        fail("aborted");
+      }
+      const points = normalizeValuationHistory(
+        value,
+        dates.startDate,
+        dates.endDate,
+      );
+      const latestPoint = points.at(-1);
+      if (latestPoint === undefined) fail("not_covered");
+      let knownCells = 0;
+      for (const point of points) {
+        for (const cell of [
+          point.enterpriseValue,
+          point.marketCapitalization,
+          point.priceToBook,
+          point.priceToEarnings,
+          point.trailingPeg1Y,
+        ]) {
+          if (cell.status === "known") knownCells += 1;
+        }
+      }
+      const unknownCells = points.length * 5 - knownCells;
+      return Object.freeze({
+        asOf,
+        coverage: Object.freeze({
+          knownCells,
+          observationCount: points.length,
+          status: unknownCells === 0 ? "complete" : "partial",
+          unknownCells,
+        }),
+        history: Object.freeze({
+          endDate: dates.endDate,
+          latestPoint,
+          points,
+          range,
+          startDate: dates.startDate,
+        }),
+        profile: "personal_single_user_local_valuation",
+        provider: TIINGO_VALUATION_PROVIDER,
         schemaVersion: "1.0.0",
         security,
         status: "available",
@@ -621,6 +750,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
     url: URL,
     authorization: string,
     context: RequestContext,
+    validateNumberTypes: (value: unknown) => void,
   ): Promise<unknown> {
     let response: Response;
     try {
@@ -673,7 +803,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
     }
     try {
       const text = await readBoundedResponseText(response);
-      validateLosslessFinancialNumberTypes(JSON.parse(text));
+      validateNumberTypes(JSON.parse(text));
       return JSON.parse(quoteJsonNumberTokens(text));
     } catch (error) {
       if (
@@ -812,6 +942,36 @@ function tiingoAnnualFinancialsUrl(
     url.searchParams.get("startDate") !== startDate ||
     url.searchParams.get("endDate") !== endDate ||
     url.searchParams.get("asReported") !== "false" ||
+    url.searchParams.get("format") !== "json"
+  ) {
+    fail("not_covered");
+  }
+  return url;
+}
+
+function tiingoValuationHistoryUrl(
+  providerSymbol: string,
+  startDate: string,
+  endDate: string,
+): URL {
+  const url = new URL(
+    `/tiingo/fundamentals/${encodeURIComponent(providerSymbol)}/daily`,
+    TIINGO_ORIGIN,
+  );
+  url.searchParams.set("startDate", startDate);
+  url.searchParams.set("endDate", endDate);
+  url.searchParams.set("asReported", "false");
+  url.searchParams.set("sort", "date");
+  url.searchParams.set("columns", TIINGO_VALUATION_COLUMNS);
+  url.searchParams.set("format", "json");
+  assertAllowedUrl(url, `/tiingo/fundamentals/${providerSymbol}/daily`, true);
+  if (
+    url.searchParams.size !== 6 ||
+    url.searchParams.get("startDate") !== startDate ||
+    url.searchParams.get("endDate") !== endDate ||
+    url.searchParams.get("asReported") !== "false" ||
+    url.searchParams.get("sort") !== "date" ||
+    url.searchParams.get("columns") !== TIINGO_VALUATION_COLUMNS ||
     url.searchParams.get("format") !== "json"
   ) {
     fail("not_covered");
@@ -1017,6 +1177,32 @@ function validateLosslessFinancialNumberTypes(value: unknown): void {
         ) {
           fail("invalid_response");
         }
+      }
+    }
+  }
+}
+
+function validateLosslessValuationNumberTypes(value: unknown): void {
+  if (!Array.isArray(value)) return;
+  for (const candidate of value) {
+    if (!isRecord(candidate)) continue;
+    for (const key of Object.keys(candidate)) {
+      if (!TIINGO_VALUATION_RESPONSE_KEYS.has(key)) fail("invalid_response");
+    }
+    for (const key of [
+      "enterpriseVal",
+      "marketCap",
+      "pbRatio",
+      "peRatio",
+      "trailingPEG1Y",
+    ] as const) {
+      const cell = candidate[key];
+      if (
+        cell !== undefined &&
+        cell !== null &&
+        (typeof cell !== "number" || !Number.isFinite(cell))
+      ) {
+        fail("invalid_response");
       }
     }
   }
@@ -1313,6 +1499,82 @@ function canonicalizeSourceNumber(value: string): string {
   const canonical = canonicalizeDecimal(`${sign}${expanded}`);
   if (canonical.length > 64) fail("invalid_response");
   return canonical;
+}
+
+function normalizeValuationHistory(
+  value: unknown,
+  startDate: string,
+  endDate: string,
+): readonly PersonalValuationHistoryPointDto[] {
+  if (!Array.isArray(value)) fail("invalid_response");
+  if (value.length === 0) fail("not_covered");
+  if (value.length > MAX_VALUATION_OBSERVATIONS) fail("invalid_response");
+  const points: PersonalValuationHistoryPointDto[] = [];
+  let previousDate: string | undefined;
+  for (const candidate of value) {
+    if (!isRecord(candidate)) fail("invalid_response");
+    for (const key of Object.keys(candidate)) {
+      if (!TIINGO_VALUATION_RESPONSE_KEYS.has(key)) fail("invalid_response");
+    }
+    const date = normalizeProviderStatementDate(candidate.date);
+    if (
+      date < startDate ||
+      date > endDate ||
+      (previousDate !== undefined && date <= previousDate)
+    ) {
+      fail("invalid_response");
+    }
+    previousDate = date;
+    points.push(
+      Object.freeze({
+        date,
+        enterpriseValue: normalizeValuationMoneyCell(candidate.enterpriseVal),
+        marketCapitalization: normalizeValuationMoneyCell(candidate.marketCap),
+        priceToBook: normalizeValuationRatioCell(candidate.pbRatio),
+        priceToEarnings: normalizeValuationRatioCell(candidate.peRatio),
+        trailingPeg1Y: normalizeValuationRatioCell(candidate.trailingPEG1Y),
+      }),
+    );
+  }
+  return Object.freeze(points);
+}
+
+function normalizeValuationMoneyCell(
+  value: unknown,
+): PersonalValuationMoneyCellDto {
+  if (value === undefined || value === null) {
+    return Object.freeze({
+      reason: "not_supplied_by_provider",
+      status: "unknown",
+      unit: "USD",
+      value: null,
+    });
+  }
+  if (!isCanonicalizableSourceNumber(value)) fail("invalid_response");
+  return Object.freeze({
+    status: "known",
+    unit: "USD",
+    value: canonicalizeSourceNumber(value),
+  });
+}
+
+function normalizeValuationRatioCell(
+  value: unknown,
+): PersonalValuationRatioCellDto {
+  if (value === undefined || value === null) {
+    return Object.freeze({
+      reason: "not_supplied_by_provider",
+      status: "unknown",
+      unit: "ratio",
+      value: null,
+    });
+  }
+  if (!isCanonicalizableSourceNumber(value)) fail("invalid_response");
+  return Object.freeze({
+    status: "known",
+    unit: "ratio",
+    value: canonicalizeSourceNumber(value),
+  });
 }
 
 function normalizeHistory(

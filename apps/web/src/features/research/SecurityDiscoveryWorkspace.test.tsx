@@ -5,6 +5,7 @@ import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
@@ -22,6 +23,7 @@ import {
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
+import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
 
 const hookHarness = vi.hoisted(() => {
   const states: unknown[] = [];
@@ -90,6 +92,16 @@ const apiMocks = vi.hoisted(() => ({
         signal: AbortSignal,
       ) => Promise<PersonalQuarterlyFinancialsDto>
     >(),
+  fetchPersonalValuationHistory: vi.fn<
+    (
+      input: Readonly<{
+        listingId: string;
+        range: PersonalMarketDataRangeDto;
+        symbol: string;
+      }>,
+      signal: AbortSignal,
+    ) => Promise<PersonalValuationHistoryDto>
+  >(),
   fetchPersonalSecurityMasterStatus: vi.fn<
     (signal: AbortSignal) => Promise<{
       snapshot: PersonalSecurityMasterSnapshotReceiptDto;
@@ -117,6 +129,7 @@ const componentMocks = vi.hoisted(() => ({
   MarketOverview: () => null,
   OwnerSession: () => null,
   QuarterlyFinancials: () => null,
+  ValuationHistory: () => null,
 }));
 
 vi.mock("react", async (importOriginal) => ({
@@ -168,6 +181,9 @@ vi.mock("./PersonalMarketOverview", () => ({
 vi.mock("./PersonalQuarterlyFinancials", () => ({
   PersonalQuarterlyFinancials: componentMocks.QuarterlyFinancials,
 }));
+vi.mock("./PersonalValuationHistory", () => ({
+  PersonalValuationHistory: componentMocks.ValuationHistory,
+}));
 
 import { SecurityDiscoveryWorkspace } from "./SecurityDiscoveryWorkspace";
 
@@ -184,6 +200,7 @@ beforeEach(() => {
   apiMocks.fetchPersonalQuarterlyFinancials.mockResolvedValue(
     quarterlyFinancials(),
   );
+  apiMocks.fetchPersonalValuationHistory.mockResolvedValue(valuationHistory());
   apiMocks.searchPersonalSecurities.mockResolvedValue({
     limitApplied: 15,
     normalizedQuery: "ZERO",
@@ -451,6 +468,92 @@ describe("SecurityDiscoveryWorkspace", () => {
       coverage: { returnedQuarterlyPeriods: 1 },
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
+  });
+
+  it("loads valuation history for the selected listing and range only after an explicit request", async () => {
+    await activateWorkspace();
+    let rendered = renderWorkspace();
+
+    expect(requireValuationHistory(rendered).props.selection).toBeNull();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+
+    rendered = await searchAndSelectMarket("ZERO");
+    let valuation = requireValuationHistory(rendered);
+    expect(valuation.props.selection).toMatchObject({
+      listingId: "lst-zero",
+      symbol: "ZERO",
+    });
+    expect(valuation.props.history).toBeNull();
+    expect(valuation.props.range).toBe("1y");
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+
+    valuation.props.onLoad();
+    rendered = renderWorkspace();
+    expect(requireValuationHistory(rendered).props.requestState).toBe(
+      "loading",
+    );
+    await flushPromises();
+    rendered = renderWorkspace();
+    valuation = requireValuationHistory(rendered);
+
+    expect(
+      apiMocks.fetchPersonalValuationHistory,
+    ).toHaveBeenCalledExactlyOnceWith(
+      { listingId: "lst-zero", range: "1y", symbol: "ZERO" },
+      expect.any(AbortSignal),
+    );
+    expect(valuation.props.requestState).toBe("idle");
+    expect(valuation.props.history).toMatchObject({
+      coverage: { observationCount: 2 },
+      history: { range: "1y" },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+  });
+
+  it("aborts and clears valuation history when the selected market range changes", async () => {
+    const pending = deferred<PersonalValuationHistoryDto>();
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(pending.promise);
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+
+    requireValuationHistory(rendered).props.onLoad();
+    rendered = renderWorkspace();
+    const pendingSignal =
+      apiMocks.fetchPersonalValuationHistory.mock.calls[0]?.[1];
+    requireMarketOverview(rendered).props.onLoad("5y");
+    expect(pendingSignal?.aborted).toBe(true);
+    pending.resolve(valuationHistory());
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    const valuation = requireValuationHistory(rendered);
+    expect(valuation.props.range).toBe("5y");
+    expect(valuation.props.history).toBeNull();
+    expect(valuation.props.requestState).toBe("idle");
+  });
+
+  it("aborts and clears a pending valuation response when the owner session ends", async () => {
+    const pending = deferred<PersonalValuationHistoryDto>();
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(pending.promise);
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+
+    requireValuationHistory(rendered).props.onLoad();
+    rendered = renderWorkspace();
+    const pendingSignal =
+      apiMocks.fetchPersonalValuationHistory.mock.calls[0]?.[1];
+    const sessionChange = requireOwnerSession(rendered).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    expect(pendingSignal?.aborted).toBe(true);
+    pending.resolve(valuationHistory());
+    await sessionChange;
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    expect(textContent(rendered)).toContain("Security discovery locked");
+    expect(findValuationHistory(rendered)).toBeUndefined();
   });
 
   it("keeps a fundamentals entitlement failure distinct from session loss", async () => {
@@ -1054,6 +1157,13 @@ function findQuarterlyFinancials(value: unknown) {
   );
 }
 
+function findValuationHistory(value: unknown) {
+  return findElement<PersonalValuationHistoryProps>(
+    value,
+    componentMocks.ValuationHistory,
+  );
+}
+
 function requireAnnualFinancials(value: unknown) {
   const annual = findAnnualFinancials(value);
   if (annual === undefined) throw new Error("Expected annual financials.");
@@ -1065,6 +1175,12 @@ function requireQuarterlyFinancials(value: unknown) {
   if (quarterly === undefined)
     throw new Error("Expected quarterly financials.");
   return quarterly;
+}
+
+function requireValuationHistory(value: unknown) {
+  const valuation = findValuationHistory(value);
+  if (valuation === undefined) throw new Error("Expected valuation history.");
+  return valuation;
 }
 
 function requireMarketOverview(value: unknown) {
@@ -1482,6 +1598,74 @@ function quarterlyFinancials(
     },
     status: "available",
   };
+}
+
+function valuationHistory(
+  listingId = "lst-zero",
+  symbol = "ZERO",
+): PersonalValuationHistoryDto {
+  const points = [
+    valuationPoint("2029-01-15", "23.5"),
+    valuationPoint("2030-01-15", "24.125"),
+  ] as const;
+  return {
+    asOf: "2030-01-15T22:00:00.000Z",
+    coverage: {
+      knownCells: 10,
+      observationCount: 2,
+      status: "complete",
+      unknownCells: 0,
+    },
+    history: {
+      endDate: "2030-01-15",
+      latestPoint: points[1],
+      points,
+      range: "1y",
+      startDate: "2029-01-15",
+    },
+    profile: "personal_single_user_local_valuation",
+    provider: {
+      attribution: "Tiingo",
+      export: "prohibited",
+      id: "tiingo",
+      name: "Tiingo",
+      persistence: "none",
+      redistribution: "prohibited",
+      retention: "active_owner_session_memory_only",
+      revisionBasis: "provider_most_recent",
+      valuationFeed: "tiingo_fundamentals_daily",
+      valueCurrency: "USD",
+    },
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId,
+      securityName: `${symbol} Common Stock`,
+      symbol,
+    },
+    status: "available",
+  };
+}
+
+function valuationPoint(date: string, pe: string) {
+  return {
+    date,
+    enterpriseValue: {
+      status: "known",
+      unit: "USD",
+      value: "130000000000.5",
+    },
+    marketCapitalization: {
+      status: "known",
+      unit: "USD",
+      value: "125000000000.25",
+    },
+    priceToBook: { status: "known", unit: "ratio", value: "6.25" },
+    priceToEarnings: { status: "known", unit: "ratio", value: pe },
+    trailingPeg1Y: { status: "known", unit: "ratio", value: "1.75" },
+  } as const;
 }
 
 function marketProvider() {

@@ -6,6 +6,7 @@ import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
+  PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
@@ -19,6 +20,7 @@ import {
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
   fetchPersonalQuarterlyFinancials,
+  fetchPersonalValuationHistory,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
   normalizeWatchlistNote,
@@ -33,11 +35,13 @@ import {
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
+import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
   PersonalMarketOverview,
   type PersonalMarketSelection,
 } from "./PersonalMarketOverview";
 import type { PriceAdjustmentMode } from "./PriceHistoryChart";
+import type { ValuationHistoryMetric } from "./ValuationHistoryChart";
 
 interface LoadedWorkspace {
   readonly snapshot: PersonalSecurityMasterSnapshotReceiptDto;
@@ -103,6 +107,14 @@ export function SecurityDiscoveryWorkspace() {
     useState<"idle" | "loading">("idle");
   const [quarterlyFinancialsErrorCode, setQuarterlyFinancialsErrorCode] =
     useState<PersonalWorkspaceApiErrorCode | null>(null);
+  const [valuationHistory, setValuationHistory] =
+    useState<PersonalValuationHistoryDto | null>(null);
+  const [valuationHistoryMetric, setValuationHistoryMetric] =
+    useState<ValuationHistoryMetric>("priceToEarnings");
+  const [valuationHistoryRequestState, setValuationHistoryRequestState] =
+    useState<"idle" | "loading">("idle");
+  const [valuationHistoryErrorCode, setValuationHistoryErrorCode] =
+    useState<PersonalWorkspaceApiErrorCode | null>(null);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
   const marketEpoch = useRef(0);
@@ -111,6 +123,8 @@ export function SecurityDiscoveryWorkspace() {
   const annualFinancialsController = useRef<AbortController | null>(null);
   const quarterlyFinancialsEpoch = useRef(0);
   const quarterlyFinancialsController = useRef<AbortController | null>(null);
+  const valuationHistoryEpoch = useRef(0);
+  const valuationHistoryController = useRef<AbortController | null>(null);
 
   const handleOwnerSessionChange = useCallback(
     async (active: boolean, signal: AbortSignal) => {
@@ -237,6 +251,7 @@ export function SecurityDiscoveryWorkspace() {
     setQuarterlyFinancials(null);
     setQuarterlyFinancialsRequestState("idle");
     setQuarterlyFinancialsErrorCode(null);
+    clearValuationHistoryState();
   }
 
   async function runSearch() {
@@ -340,6 +355,7 @@ export function SecurityDiscoveryWorkspace() {
     setQuarterlyFinancials(null);
     setQuarterlyFinancialsRequestState("idle");
     setQuarterlyFinancialsErrorCode(null);
+    clearValuationHistoryState();
     if (typeof document !== "undefined") {
       queueMicrotask(() =>
         document.getElementById("personal-market-overview")?.focus(),
@@ -369,6 +385,17 @@ export function SecurityDiscoveryWorkspace() {
     setQuarterlyFinancials(null);
     setQuarterlyFinancialsRequestState("idle");
     setQuarterlyFinancialsErrorCode(null);
+    clearValuationHistoryState();
+  }
+
+  function clearValuationHistoryState(resetMetric = true) {
+    valuationHistoryController.current?.abort();
+    valuationHistoryController.current = null;
+    valuationHistoryEpoch.current += 1;
+    setValuationHistory(null);
+    if (resetMetric) setValuationHistoryMetric("priceToEarnings");
+    setValuationHistoryRequestState("idle");
+    setValuationHistoryErrorCode(null);
   }
 
   async function loadMarketData(range: PersonalMarketDataRangeDto) {
@@ -384,6 +411,7 @@ export function SecurityDiscoveryWorkspace() {
     }
 
     marketController.current?.abort();
+    if (range !== marketRange) clearValuationHistoryState(false);
     const controller = new AbortController();
     marketController.current = controller;
     const request = ++marketEpoch.current;
@@ -556,6 +584,72 @@ export function SecurityDiscoveryWorkspace() {
       ) {
         quarterlyFinancialsController.current = null;
         setQuarterlyFinancialsRequestState("idle");
+      }
+    }
+  }
+
+  async function loadValuationHistory() {
+    const selection = marketSelection;
+    if (selection === null || valuationHistoryRequestState === "loading") {
+      return;
+    }
+    if (marketDataStatus?.status === "not_configured") {
+      setValuationHistoryErrorCode("not_configured");
+      return;
+    }
+    if (marketDataStatus === null) {
+      setValuationHistoryErrorCode("unavailable");
+      return;
+    }
+
+    valuationHistoryController.current?.abort();
+    const controller = new AbortController();
+    valuationHistoryController.current = controller;
+    const request = ++valuationHistoryEpoch.current;
+    const epoch = workspaceEpoch.current;
+    const range = marketRange;
+    setValuationHistory(null);
+    setValuationHistoryErrorCode(null);
+    setValuationHistoryRequestState("loading");
+    try {
+      const loaded = await fetchPersonalValuationHistory(
+        {
+          listingId: selection.listingId,
+          range,
+          symbol: selection.symbol,
+        },
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== valuationHistoryEpoch.current
+      ) {
+        return;
+      }
+      setValuationHistory(loaded);
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== valuationHistoryEpoch.current
+      ) {
+        return;
+      }
+      if (isSessionUnavailable(error)) {
+        clearWorkspaceForSessionLoss();
+        return;
+      }
+      setValuationHistoryErrorCode(
+        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable",
+      );
+    } finally {
+      if (
+        epoch === workspaceEpoch.current &&
+        request === valuationHistoryEpoch.current
+      ) {
+        valuationHistoryController.current = null;
+        setValuationHistoryRequestState("idle");
       }
     }
   }
@@ -1046,6 +1140,18 @@ export function SecurityDiscoveryWorkspace() {
               providerStatus={marketDataStatus}
               range={marketRange}
               requestState={marketRequestState}
+              selection={marketSelection}
+            />
+
+            <PersonalValuationHistory
+              errorCode={valuationHistoryErrorCode}
+              history={valuationHistory}
+              metric={valuationHistoryMetric}
+              onLoad={() => void loadValuationHistory()}
+              onMetricChange={setValuationHistoryMetric}
+              providerStatus={marketDataStatus}
+              range={marketRange}
+              requestState={valuationHistoryRequestState}
               selection={marketSelection}
             />
 

@@ -173,6 +173,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/market-data/overview",
       "/v1/personal-filing/market-data/annual-financials",
       "/v1/personal-filing/market-data/quarterly-financials",
+      "/v1/personal-filing/market-data/valuation-history",
       "/v1/personal-filing/connected-source-policy/status",
       "/v1/personal-filing/connected-source-policy/kill",
       "/v1/theses/{thesisId}",
@@ -1340,7 +1341,7 @@ describe("local API OpenAPI contract", () => {
     const quarter = schemaSection(
       source,
       "PersonalQuarterlyFinancialQuarter",
-      "InstrumentId",
+      "PersonalValuationHistoryRequest",
     );
     expect(requiredKeys(quarter)).toEqual([
       "fiscalYear",
@@ -1359,6 +1360,205 @@ describe("local API OpenAPI contract", () => {
       '$ref: "#/components/schemas/PersonalAnnualFinancialReportedValues"',
     );
     expect(quarter).not.toContain("PersonalQuarterlyFinancialReportedValues");
+  });
+
+  it("freezes the exact personal valuation-history contract", async () => {
+    const source = await openApiSource();
+    const route = pathSection(
+      source,
+      "/v1/personal-filing/market-data/valuation-history",
+    );
+    const normalizedRoute = route.replace(/\s+/g, " ");
+
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "post:",
+    ]);
+    expect(statuses(route)).toEqual([
+      "200",
+      "400",
+      "402",
+      "403",
+      "404",
+      "424",
+      "429",
+      "502",
+      "503",
+    ]);
+    expect(route).not.toContain("in: query");
+    expect(route).toContain("PersonalOwnerSession: []");
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalValuationHistoryRequest"',
+    );
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalValuationHistory"',
+    );
+    expect(normalizedRoute).toContain("inclusive start and end dates");
+    expect(normalizedRoute).toContain("fixed five-column metric allowlist");
+    expect(normalizedRoute).toContain("oldest-first with unique dates");
+    expect(normalizedRoute).toContain("unknown rather than synthesized");
+    expect(normalizedRoute).toContain("only in active process/browser memory");
+    expect(route.match(/#\/components\/headers\/PrivateNoStore/g)).toHaveLength(
+      9,
+    );
+    expect(route.match(/#\/components\/headers\/PragmaNoCache/g)).toHaveLength(
+      9,
+    );
+
+    const request = schemaSection(
+      source,
+      "PersonalValuationHistoryRequest",
+      "PersonalValuationHistory",
+    );
+    expect(requiredKeys(request)).toEqual(["listingId", "range", "symbol"]);
+    expect(schemaKeys(request)).toEqual(requiredKeys(request));
+    expect(request).toContain("additionalProperties: false");
+    expect(listValues(request, /^ {12}- (1m|3m|ytd|1y|5y|10y)$/gm)).toEqual([
+      "1m",
+      "3m",
+      "ytd",
+      "1y",
+      "5y",
+      "10y",
+    ]);
+
+    const response = schemaSection(
+      source,
+      "PersonalValuationHistory",
+      "PersonalValuationHistoryProvider",
+    );
+    expect(requiredKeys(response)).toEqual([
+      "asOf",
+      "coverage",
+      "history",
+      "profile",
+      "provider",
+      "schemaVersion",
+      "security",
+      "status",
+    ]);
+    expect(schemaKeys(response)).toEqual(requiredKeys(response));
+    expect(response).toContain("additionalProperties: false");
+    expect(response).toContain("personal_single_user_local_valuation");
+    expect(response).toContain('const: "1.0.0"');
+    expect(response).toContain("const: available");
+    expect(response).toContain(
+      '$ref: "#/components/schemas/PersonalMarketDataIdentity"',
+    );
+
+    const provider = schemaSection(
+      source,
+      "PersonalValuationHistoryProvider",
+      "PersonalValuationHistoryCoverage",
+    );
+    expect(requiredKeys(provider)).toEqual([
+      "attribution",
+      "export",
+      "id",
+      "name",
+      "persistence",
+      "redistribution",
+      "retention",
+      "revisionBasis",
+      "valuationFeed",
+      "valueCurrency",
+    ]);
+    expect(schemaKeys(provider)).toEqual(requiredKeys(provider));
+    expect(provider).toContain("additionalProperties: false");
+    expect(provider).toContain("const: tiingo_fundamentals_daily");
+    expect(provider).toContain("const: provider_most_recent");
+    expect(provider).toContain("const: active_owner_session_memory_only");
+    expect(provider).toContain("const: USD");
+    expect(provider).not.toContain("token:");
+
+    const coverage = schemaSection(
+      source,
+      "PersonalValuationHistoryCoverage",
+      "PersonalValuationHistorySeries",
+    );
+    expect(requiredKeys(coverage)).toEqual([
+      "knownCells",
+      "observationCount",
+      "status",
+      "unknownCells",
+    ]);
+    expect(schemaKeys(coverage)).toEqual(requiredKeys(coverage));
+    expect(coverage).toContain("additionalProperties: false");
+    expect(coverage.match(/maximum: 20480/g)).toHaveLength(2);
+    expect(coverage).toContain("maximum: 4096");
+    expect(listValues(coverage, /^ {12}- (complete|partial)$/gm)).toEqual([
+      "complete",
+      "partial",
+    ]);
+
+    const history = schemaSection(
+      source,
+      "PersonalValuationHistorySeries",
+      "PersonalValuationHistoryPoint",
+    );
+    expect(requiredKeys(history)).toEqual([
+      "endDate",
+      "latestPoint",
+      "points",
+      "range",
+      "startDate",
+    ]);
+    expect(schemaKeys(history)).toEqual(requiredKeys(history));
+    expect(history).toContain("additionalProperties: false");
+    expect(history).toContain("minItems: 1");
+    expect(history).toContain("maxItems: 4096");
+    expect(history.replace(/\s+/g, " ")).toContain(
+      "strictly increasing date order",
+    );
+    expect(history.replace(/\s+/g, " ")).toContain(
+      "latestPoint exactly equals the final item",
+    );
+    expect(history.match(/format: date/g)).toHaveLength(2);
+
+    const point = schemaSection(
+      source,
+      "PersonalValuationHistoryPoint",
+      "PersonalValuationMoneyCell",
+    );
+    expect(requiredKeys(point)).toEqual([
+      "date",
+      "enterpriseValue",
+      "marketCapitalization",
+      "priceToBook",
+      "priceToEarnings",
+      "trailingPeg1Y",
+    ]);
+    expect(schemaKeys(point)).toEqual(requiredKeys(point));
+    expect(point).toContain("additionalProperties: false");
+    expect(
+      point.match(/#\/components\/schemas\/PersonalValuationMoneyCell/g),
+    ).toHaveLength(2);
+    expect(
+      point.match(/#\/components\/schemas\/PersonalValuationRatioCell/g),
+    ).toHaveLength(3);
+
+    const moneyCell = schemaSection(
+      source,
+      "PersonalValuationMoneyCell",
+      "PersonalValuationRatioCell",
+    );
+    const ratioCell = schemaSection(
+      source,
+      "PersonalValuationRatioCell",
+      "InstrumentId",
+    );
+    for (const cell of [moneyCell, ratioCell]) {
+      expect(cell.match(/^ {8}- type: object$/gm)).toHaveLength(2);
+      expect(cell.match(/additionalProperties: false/g)).toHaveLength(2);
+      expect(cell).toContain("const: known");
+      expect(cell).toContain("const: unknown");
+      expect(cell).toContain("const: not_supplied_by_provider");
+      expect(cell).toContain('type: "null"');
+      expect(cell).toContain(
+        'pattern: "^(?:0|-?[1-9][0-9]*|-?(?:0|[1-9][0-9]*)\\\\.[0-9]*[1-9])$"',
+      );
+    }
+    expect(moneyCell.match(/const: USD/g)).toHaveLength(2);
+    expect(ratioCell.match(/const: ratio/g)).toHaveLength(2);
   });
 
   it("freezes the exact authenticated connected source-policy administration contract", async () => {

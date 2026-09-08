@@ -14,7 +14,7 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1, 3g-b1, 3h-a1, and 3h-a2 add a provider-backed market view,
+Cycles 3g-a1, 3g-b1, 3h-a1, 3h-a2, and 3h-a3 add a provider-backed market view,
 transparent trend/risk analytics, and multi-period financials to the daily-use
 discovery workflow. In the explicit
 `personal_workspace` mode, the owner can
@@ -47,6 +47,14 @@ their exact slots and missing cells stay blank. TTM remains visibly unavailable
 until the source's quarter-flow aggregation basis is verified; the application
 does not guess by summing potentially cumulative values.
 
+A third explicit fundamentals action loads daily valuation history over the
+same 1M, 3M, YTD, 1Y, 5Y, or 10Y range selected for the price view. It shows
+Tiingo-supplied market capitalization and enterprise value in USD plus provider
+P/E, P/B, and trailing PEG 1Y as unitless ratios. Every unavailable provider
+cell stays explicitly unknown. This is Tiingo's current most-recent history,
+not a point-in-time or as-reported valuation record, and it is not an
+independently calculated fair value.
+
 Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory and are not written to the vault, filesystem, browser
 storage, logs, exports, or Git.
@@ -65,8 +73,8 @@ This is a visible feature milestone, not full Cycle 3g or product parity: the
 declared 100-symbol validation gate, independent corporate-action reconciliation,
 benchmark relative strength, broader indicators, verified TTM financials,
 point-in-time statements, the full 30-core-metric and 500-security validation
-gate, valuation/peer tools, screening, events/news, portfolio analytics, alerts,
-and exports remain later product work.
+gate, transparent valuation models and peer tools, screening, events/news,
+portfolio analytics, alerts, and exports remain later product work.
 
 ## Historical synthetic slice
 
@@ -1690,7 +1698,7 @@ page if you want live price/history loading. Without a token, search and the
 watchlist still work and the market panel says it is not configured. Tiingo
 fundamentals are a separate add-on; its documentation currently describes a
 three-year Dow 30 evaluation, so price access may work while another listing's
-annual-financial request reports `not entitled` only after the fixed Tiingo
+fundamentals request reports `not entitled` only after the fixed Tiingo
 credential test confirms the token itself remains valid. These
 values, the provider token, and the owner bootstrap secret must remain outside
 Git and logs.
@@ -1749,9 +1757,9 @@ cookie authority. The
 API sends a configured Tiingo token only in the provider Authorization header,
 never in a URL. Returned Tiingo values remain transient in active session memory
 and are discarded when the market view or owner session ends. Use **Load annual
-financials** or **Load quarterly financials** after selecting a listing to
-request the separate fundamentals feed; no fundamentals request runs
-automatically. The older isolated
+financials**, **Load quarterly financials**, or **Load valuation history** after
+selecting a listing to request the separate fundamentals feeds; no fundamentals
+request runs automatically. The older isolated
 security-master and generic-vault entrypoints remain available for their
 original bounded uses.
 

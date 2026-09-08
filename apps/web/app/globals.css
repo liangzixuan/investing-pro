@@ -1100,6 +1100,121 @@ h4,
   margin-top: 20px;
 }
 
+.valuation-history-result {
+  margin-top: 18px;
+}
+
+.valuation-card-grid {
+  display: grid;
+  margin-top: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.valuation-metric-card {
+  display: flex;
+  min-width: 0;
+  min-height: 122px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fbfcf9;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.valuation-metric-card > span {
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.valuation-metric-card > strong {
+  color: var(--navy);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: clamp(1rem, 2vw, 1.36rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.valuation-metric-card > small {
+  color: var(--ink-soft);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.valuation-history-controls {
+  display: grid;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  align-items: center;
+  grid-template-columns: auto minmax(190px, 260px) minmax(0, 1fr);
+  gap: 10px 14px;
+}
+
+.valuation-history-controls label {
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.valuation-history-controls select {
+  min-height: 38px;
+  padding: 7px 32px 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.valuation-history-controls > span {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.valuation-history-chart {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.valuation-chart-canvas {
+  width: 100%;
+  height: 360px;
+}
+
+.valuation-data-table th,
+.valuation-data-table td {
+  white-space: nowrap;
+}
+
+.valuation-methodology {
+  display: flex;
+  margin-top: 16px;
+  padding: 13px 15px;
+  border: 1px solid #bfd2ca;
+  border-radius: var(--radius-sm);
+  background: #f3f8f5;
+  color: var(--ink-soft);
+  flex-direction: column;
+  font-size: 0.74rem;
+  gap: 4px;
+}
+
+.valuation-methodology strong {
+  color: var(--navy);
+}
+
 .financials-coverage-strip {
   display: grid;
   overflow: hidden;
@@ -3037,7 +3152,8 @@ thead th {
   }
 
   .financials-coverage-strip,
-  .financial-metric-grid {
+  .financial-metric-grid,
+  .valuation-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3273,7 +3389,9 @@ thead th {
 
   .financials-coverage-strip,
   .financial-metric-grid,
-  .financial-growth-grid {
+  .financial-growth-grid,
+  .valuation-card-grid,
+  .valuation-history-controls {
     grid-template-columns: 1fr;
   }
 

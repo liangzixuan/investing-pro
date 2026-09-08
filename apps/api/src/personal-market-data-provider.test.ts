@@ -1210,6 +1210,265 @@ describe("Tiingo personal market-data provider", () => {
   });
 });
 
+describe("Tiingo personal valuation-history provider", () => {
+  it("uses the exact daily-fundamentals request and parses decimals losslessly", async () => {
+    const calls: FetchCall[] = [];
+    const provider = valuationProvider(
+      `[
+        {
+          "date":"2026-08-07T00:00:00.000Z",
+          "marketCap":12345678901234567890.1200,
+          "enterpriseVal":1.5e10,
+          "peRatio":18.5000,
+          "pbRatio":null,
+          "trailingPEG1Y":2.2500
+        },
+        {
+          "date":"2026-09-04",
+          "marketCap":12500000000000000000,
+          "enterpriseVal":16000000000,
+          "peRatio":19,
+          "pbRatio":3.125,
+          "trailingPEG1Y":null
+        }
+      ]`,
+      calls,
+    );
+
+    const result = await provider.loadValuationHistory(IDENTITY, "1m");
+
+    expect(calls).toHaveLength(1);
+    const call = calls[0];
+    const url = new URL(call?.url ?? "about:blank");
+    expect(url.origin).toBe("https://api.tiingo.com");
+    expect(url.pathname).toBe("/tiingo/fundamentals/BRK-B/daily");
+    expect([...url.searchParams.entries()]).toEqual([
+      ["startDate", "2026-08-07"],
+      ["endDate", "2026-09-07"],
+      ["asReported", "false"],
+      ["sort", "date"],
+      ["columns", "marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y"],
+      ["format", "json"],
+    ]);
+    const headers = new Headers(call?.init?.headers);
+    expect(headers.get("authorization")).toBe(`Token ${TOKEN}`);
+    expect(headers.get("accept")).toBe("application/json");
+    expect(call?.url).not.toContain(TOKEN);
+    expect(call?.init).toMatchObject({
+      cache: "no-store",
+      credentials: "omit",
+      method: "GET",
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+    });
+    expect(result).toEqual({
+      asOf: NOW.toISOString(),
+      coverage: {
+        knownCells: 8,
+        observationCount: 2,
+        status: "partial",
+        unknownCells: 2,
+      },
+      history: {
+        endDate: "2026-09-07",
+        latestPoint: {
+          date: "2026-09-04",
+          enterpriseValue: {
+            status: "known",
+            unit: "USD",
+            value: "16000000000",
+          },
+          marketCapitalization: {
+            status: "known",
+            unit: "USD",
+            value: "12500000000000000000",
+          },
+          priceToBook: { status: "known", unit: "ratio", value: "3.125" },
+          priceToEarnings: { status: "known", unit: "ratio", value: "19" },
+          trailingPeg1Y: {
+            reason: "not_supplied_by_provider",
+            status: "unknown",
+            unit: "ratio",
+            value: null,
+          },
+        },
+        points: [
+          {
+            date: "2026-08-07",
+            enterpriseValue: {
+              status: "known",
+              unit: "USD",
+              value: "15000000000",
+            },
+            marketCapitalization: {
+              status: "known",
+              unit: "USD",
+              value: "12345678901234567890.12",
+            },
+            priceToBook: {
+              reason: "not_supplied_by_provider",
+              status: "unknown",
+              unit: "ratio",
+              value: null,
+            },
+            priceToEarnings: {
+              status: "known",
+              unit: "ratio",
+              value: "18.5",
+            },
+            trailingPeg1Y: {
+              status: "known",
+              unit: "ratio",
+              value: "2.25",
+            },
+          },
+          expect.any(Object),
+        ],
+        range: "1m",
+        startDate: "2026-08-07",
+      },
+      profile: "personal_single_user_local_valuation",
+      provider: {
+        attribution: "Tiingo",
+        export: "prohibited",
+        id: "tiingo",
+        name: "Tiingo",
+        persistence: "none",
+        redistribution: "prohibited",
+        retention: "active_owner_session_memory_only",
+        revisionBasis: "provider_most_recent",
+        valuationFeed: "tiingo_fundamentals_daily",
+        valueCurrency: "USD",
+      },
+      schemaVersion: "1.0.0",
+      security: IDENTITY,
+      status: "available",
+    });
+    expect(result.history.latestPoint).toBe(result.history.points.at(-1));
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.history.points)).toBe(true);
+  });
+
+  it("marks missing and null provider cells unknown without inventing values", async () => {
+    const provider = valuationProvider(
+      '[{"date":"2026-09-04","marketCap":null,"peRatio":12}]',
+    );
+    const result = await provider.loadValuationHistory(IDENTITY, "1m");
+
+    expect(result.coverage).toEqual({
+      knownCells: 1,
+      observationCount: 1,
+      status: "partial",
+      unknownCells: 4,
+    });
+    expect(result.history.latestPoint.marketCapitalization).toEqual({
+      reason: "not_supplied_by_provider",
+      status: "unknown",
+      unit: "USD",
+      value: null,
+    });
+    expect(result.history.latestPoint.enterpriseValue).toEqual({
+      reason: "not_supplied_by_provider",
+      status: "unknown",
+      unit: "USD",
+      value: null,
+    });
+  });
+
+  it("rejects duplicate, unordered, out-of-range, and invalid dates", async () => {
+    for (const body of [
+      '[{"date":"2026-09-04"},{"date":"2026-09-04"}]',
+      '[{"date":"2026-09-05"},{"date":"2026-09-04"}]',
+      '[{"date":"2026-08-06"}]',
+      '[{"date":"2026-09-08"}]',
+      '[{"date":"2026-02-30"}]',
+    ]) {
+      await expect(
+        valuationProvider(body).loadValuationHistory(IDENTITY, "1m"),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("rejects invalid value types, non-finite numbers, and unexpected fields", async () => {
+    for (const body of [
+      '[{"date":"2026-09-04","marketCap":"12"}]',
+      '[{"date":"2026-09-04","enterpriseVal":{}}]',
+      '[{"date":"2026-09-04","peRatio":true}]',
+      '[{"date":"2026-09-04","pbRatio":1e999}]',
+      '[{"date":"2026-09-04","trailingPEG1Y":[]}]',
+      '[{"date":"2026-09-04","ticker":"BRK-B"}]',
+    ]) {
+      await expect(
+        valuationProvider(body).loadValuationHistory(IDENTITY, "1m"),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("rejects empty and oversized observation sets with distinct coverage semantics", async () => {
+    await expect(
+      valuationProvider("[]").loadValuationHistory(IDENTITY, "10y"),
+    ).rejects.toMatchObject({ code: "not_covered" });
+
+    const oversized = JSON.stringify(
+      Array.from({ length: 4_097 }, () => ({ date: "2026-09-04" })),
+    );
+    await expect(
+      valuationProvider(oversized).loadValuationHistory(IDENTITY, "10y"),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("distinguishes a valid credential without fundamentals entitlement", async () => {
+    const calls: FetchCall[] = [];
+    const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+      fetch: (input, init) => {
+        const url = requestUrl(input);
+        calls.push({ init, url });
+        return Promise.resolve(
+          url.endsWith("/api/test/")
+            ? jsonResponse({ message: "You successfully sent a request" })
+            : new Response("forbidden", { status: 403 }),
+        );
+      },
+      now: () => NOW,
+    });
+
+    await expect(
+      provider.loadValuationHistory(IDENTITY, "1m"),
+    ).rejects.toMatchObject({ code: "not_entitled" });
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.url).toBe("https://api.tiingo.com/api/test/");
+  });
+
+  it("honors caller abort and provider close during valuation requests", async () => {
+    for (const action of ["caller", "close"] as const) {
+      let requestSignal: AbortSignal | undefined;
+      const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+        fetch: (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            requestSignal = init?.signal ?? undefined;
+            requestSignal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+        now: () => NOW,
+      });
+      const caller = new AbortController();
+      const pending = provider.loadValuationHistory(
+        IDENTITY,
+        "1m",
+        caller.signal,
+      );
+      if (action === "caller") caller.abort();
+      else provider.close();
+
+      await expect(pending).rejects.toMatchObject({ code: "aborted" });
+      expect(requestSignal?.aborted).toBe(true);
+    }
+  });
+});
+
 function mockTiingoFetch(
   quote: unknown,
   history: unknown,
@@ -1229,6 +1488,21 @@ function mockTiingoFetch(
     }
     return Promise.resolve(new Response("{}", { status: 404 }));
   };
+}
+
+function valuationProvider(body: string, calls: FetchCall[] = []) {
+  return createTiingoPersonalMarketDataProvider(TOKEN, {
+    fetch: (input, init) => {
+      calls.push({ init, url: requestUrl(input) });
+      return Promise.resolve(
+        new Response(body, {
+          headers: { "content-type": "application/json; charset=utf-8" },
+          status: 200,
+        }),
+      );
+    },
+    now: () => NOW,
+  });
 }
 
 function annualProvider(records: readonly unknown[]) {

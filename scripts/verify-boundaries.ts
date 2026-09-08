@@ -5323,6 +5323,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const found: string[] = [];
   const providerPath = "apps/api/src/personal-market-data-provider.ts";
   const compositionPath = "apps/api/src/workspace-composition-root.ts";
+  const contractsPath = "packages/contracts/src/index.ts";
   const tokenEnvironmentLiteral = ["PERSONAL_MARKET_DATA", "TIINGO_TOKEN"].join(
     "_",
   );
@@ -5379,7 +5380,201 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       );
     }
   }
+
+  const contracts = await readFile(resolvePath(root, contractsPath), "utf8");
+  const contractViolation =
+    personalValuationHistoryContractViolation(contracts);
+  if (contractViolation !== null) {
+    found.push(`${contractsPath}: ${contractViolation}`);
+  }
+
+  const valuationWebAnchors = new Map<string, readonly string[]>([
+    [
+      "apps/web/src/lib/personal-workspace-api.ts",
+      [
+        '"/v1/personal-filing/market-data/valuation-history"',
+        "export async function fetchPersonalValuationHistory(",
+        "): Promise<PersonalValuationHistoryDto>",
+        "function isPersonalValuationHistory(",
+        'value.revisionBasis === "provider_most_recent"',
+        'value.valuationFeed === "tiingo_fundamentals_daily"',
+        "return copyPersonalValuationHistory(value);",
+      ],
+    ],
+    [
+      "apps/web/src/features/research/PersonalValuationHistory.tsx",
+      [
+        "export function PersonalValuationHistory(",
+        "readonly history: PersonalValuationHistoryDto | null",
+        "<ValuationHistoryChart",
+        '"Load valuation history"',
+        "current provider&apos;s most-recent daily valuation history",
+      ],
+    ],
+    [
+      "apps/web/src/features/research/ValuationHistoryChart.tsx",
+      [
+        "export type ValuationHistoryMetric =",
+        "export const VALUATION_HISTORY_METRICS = Object.freeze({",
+        'label: "Market capitalization"',
+        'label: "Enterprise value"',
+        'label: "P/E (provider)"',
+        'label: "P/B (provider)"',
+        'label: "Trailing PEG 1Y"',
+        'unit: "USD"',
+        'unit: "ratio"',
+      ],
+    ],
+    [
+      "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      [
+        "useState<PersonalValuationHistoryDto | null>(null)",
+        "async function loadValuationHistory()",
+        "const loaded = await fetchPersonalValuationHistory(",
+        "function clearValuationHistoryState(",
+        "<PersonalValuationHistory",
+      ],
+    ],
+  ]);
+  for (const [path, anchors] of valuationWebAnchors) {
+    const content = await readFile(resolvePath(root, path), "utf8");
+    if (anchors.some((anchor) => !content.includes(anchor))) {
+      found.push(
+        `${path}: valuation-history client validation, explicit UI, metric registry, and active-session state anchors must remain present`,
+      );
+    }
+  }
   return found;
+}
+
+function personalValuationHistoryContractViolation(
+  content: string,
+): string | null {
+  const source = ts.createSourceFile(
+    "packages/contracts/src/index.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const normalizedType = (node: ts.TypeNode): string =>
+    node.getText(source).replace(/\s+/gu, "").replace(/^\|/u, "");
+  const isExported = (
+    node: ts.Node & { readonly modifiers?: ts.NodeArray<ts.ModifierLike> },
+  ): boolean =>
+    node.modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+    ) === true;
+  const exactTypeAlias = (name: string, expected: string): boolean => {
+    const declarations = source.statements.filter(
+      (statement): statement is ts.TypeAliasDeclaration =>
+        ts.isTypeAliasDeclaration(statement) && statement.name.text === name,
+    );
+    return (
+      declarations.length === 1 &&
+      isExported(declarations[0]!) &&
+      normalizedType(declarations[0]!.type) === expected
+    );
+  };
+  const exactInterface = (
+    name: string,
+    expected: readonly (readonly [string, string])[],
+  ): boolean => {
+    const declarations = source.statements.filter(
+      (statement): statement is ts.InterfaceDeclaration =>
+        ts.isInterfaceDeclaration(statement) && statement.name.text === name,
+    );
+    const declaration = declarations[0];
+    if (
+      declarations.length !== 1 ||
+      declaration === undefined ||
+      !isExported(declaration) ||
+      declaration.typeParameters !== undefined ||
+      declaration.heritageClauses !== undefined ||
+      declaration.members.length !== expected.length
+    ) {
+      return false;
+    }
+    const actual: [string, string][] = [];
+    for (const member of declaration.members) {
+      if (!ts.isPropertySignature(member)) return false;
+      const propertyName = propertyNameText(member.name);
+      if (
+        propertyName === null ||
+        member.questionToken !== undefined ||
+        member.type === undefined ||
+        member.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.ReadonlyKeyword,
+        ) !== true
+      ) {
+        return false;
+      }
+      actual.push([propertyName, normalizedType(member.type)]);
+    }
+    const byName = (
+      left: readonly [string, string],
+      right: readonly [string, string],
+    ) => left[0].localeCompare(right[0]);
+    return (
+      JSON.stringify(actual.sort(byName)) ===
+      JSON.stringify([...expected].sort(byName))
+    );
+  };
+
+  const moneyCell =
+    'Readonly<{status:"known";unit:"USD";value:string;}>|Readonly<{reason:"not_supplied_by_provider";status:"unknown";unit:"USD";value:null;}>';
+  const ratioCell =
+    'Readonly<{status:"known";unit:"ratio";value:string;}>|Readonly<{reason:"not_supplied_by_provider";status:"unknown";unit:"ratio";value:null;}>';
+  const valid =
+    exactTypeAlias("PersonalValuationMoneyCellDto", moneyCell) &&
+    exactTypeAlias("PersonalValuationRatioCellDto", ratioCell) &&
+    exactInterface("PersonalValuationHistoryPointDto", [
+      ["date", "string"],
+      ["enterpriseValue", "PersonalValuationMoneyCellDto"],
+      ["marketCapitalization", "PersonalValuationMoneyCellDto"],
+      ["priceToBook", "PersonalValuationRatioCellDto"],
+      ["priceToEarnings", "PersonalValuationRatioCellDto"],
+      ["trailingPeg1Y", "PersonalValuationRatioCellDto"],
+    ]) &&
+    exactInterface("PersonalValuationHistorySeriesDto", [
+      ["endDate", "string"],
+      ["latestPoint", "PersonalValuationHistoryPointDto"],
+      ["points", "readonlyPersonalValuationHistoryPointDto[]"],
+      ["range", "PersonalMarketDataRangeDto"],
+      ["startDate", "string"],
+    ]) &&
+    exactInterface("PersonalValuationHistoryCoverageDto", [
+      ["knownCells", "number"],
+      ["observationCount", "number"],
+      ["status", '"complete"|"partial"'],
+      ["unknownCells", "number"],
+    ]) &&
+    exactInterface("PersonalValuationHistoryProviderDto", [
+      ["attribution", '"Tiingo"'],
+      ["export", '"prohibited"'],
+      ["id", '"tiingo"'],
+      ["name", '"Tiingo"'],
+      ["persistence", '"none"'],
+      ["redistribution", '"prohibited"'],
+      ["retention", '"active_owner_session_memory_only"'],
+      ["revisionBasis", '"provider_most_recent"'],
+      ["valuationFeed", '"tiingo_fundamentals_daily"'],
+      ["valueCurrency", '"USD"'],
+    ]) &&
+    exactInterface("PersonalValuationHistoryDto", [
+      ["asOf", "string"],
+      ["coverage", "PersonalValuationHistoryCoverageDto"],
+      ["history", "PersonalValuationHistorySeriesDto"],
+      ["profile", '"personal_single_user_local_valuation"'],
+      ["provider", "PersonalValuationHistoryProviderDto"],
+      ["schemaVersion", '"1.0.0"'],
+      ["security", "PersonalMarketDataIdentityDto"],
+      ["status", '"available"'],
+    ]);
+
+  return valid
+    ? null
+    : "valuation-history contract must retain the exact five cells, units, missingness, coverage, provider revision, history, and top-level DTO schema";
 }
 
 function personalMarketDataRuntimeBoundaryViolation(
@@ -5453,6 +5648,8 @@ function personalMarketDataProviderViolation(content: string): string | null {
   );
   const providerHost = ["api", "tiingo", "com"].join(".");
   const providerEndpoint = `https://${providerHost}`;
+  const valuationColumns =
+    "marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y";
   const source = ts.createSourceFile(
     "personal-market-data-provider.ts",
     content,
@@ -5462,12 +5659,16 @@ function personalMarketDataProviderViolation(content: string): string | null {
   );
   if (
     personalMarketDataStaticStringCount(source, providerEndpoint) !== 1 ||
-    personalMarketDataStaticStringCount(source, tokenEnvironmentLiteral) !== 1
+    personalMarketDataStaticStringCount(source, tokenEnvironmentLiteral) !==
+      1 ||
+    personalMarketDataStaticStringCount(source, valuationColumns) !== 1
   ) {
-    return "provider must retain one exact fixed Tiingo HTTPS origin and one exact token environment literal";
+    return "provider must retain one exact fixed Tiingo HTTPS origin, token environment literal, and valuation column projection";
   }
   let originDeclaration = false;
   let tokenDeclaration = false;
+  let valuationColumnsDeclaration = false;
+  let valuationObservationCapDeclaration = false;
   let authorizationPropertyCount = 0;
   let authorizationTemplateCount = 0;
   let transportCallCount = 0;
@@ -5498,6 +5699,34 @@ function personalMarketDataProviderViolation(content: string): string | null {
       (node.parent.flags & ts.NodeFlags.Const) !== 0
     ) {
       tokenDeclaration = true;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "TIINGO_VALUATION_COLUMNS" &&
+      staticStringValue(
+        node.initializer === undefined
+          ? undefined
+          : unwrapBoundaryExpression(node.initializer),
+      ) === valuationColumns &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0
+    ) {
+      valuationColumnsDeclaration = true;
+    }
+    const valuationObservationInitializer =
+      ts.isVariableDeclaration(node) && node.initializer !== undefined
+        ? unwrapBoundaryExpression(node.initializer)
+        : undefined;
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "MAX_VALUATION_OBSERVATIONS" &&
+      valuationObservationInitializer !== undefined &&
+      ts.isNumericLiteral(valuationObservationInitializer) &&
+      Number(valuationObservationInitializer.text) === 4_096 &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0
+    ) {
+      valuationObservationCapDeclaration = true;
     }
     if (
       ts.isVariableDeclaration(node) &&
@@ -5557,11 +5786,17 @@ function personalMarketDataProviderViolation(content: string): string | null {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  if (!originDeclaration || !tokenDeclaration) {
-    return "fixed origin and exported token environment key must remain const declarations";
+  if (
+    !originDeclaration ||
+    !tokenDeclaration ||
+    !valuationColumnsDeclaration ||
+    !valuationObservationCapDeclaration ||
+    !content.includes("value.length > MAX_VALUATION_OBSERVATIONS")
+  ) {
+    return "fixed origin, exported token environment key, valuation projection, and 4,096-observation cap must remain const-bound and enforced";
   }
   if (
-    authorizationTemplateCount !== 3 ||
+    authorizationTemplateCount !== 4 ||
     authorizationPropertyCount !== 2 ||
     transportCallCount !== 2
   ) {
@@ -5572,12 +5807,13 @@ function personalMarketDataProviderViolation(content: string): string | null {
     JSON.stringify([
       "#requestLosslessJson:fundamentalsUrl",
       "#requestLosslessJson:fundamentalsUrl",
+      "#requestLosslessJson:valuationUrl",
       "#requestJson:quoteUrl",
       "#requestJson:historyUrl",
       "#requestJson:credentialTestUrl",
     ])
   ) {
-    return "provider transports may receive only the fixed fundamentals, quote, history, and credential-test URL values";
+    return "provider transports may receive only the fixed statements, valuation, quote, history, and credential-test URL values";
   }
   return personalMarketDataProviderUrlViolation(source);
 }
@@ -5637,6 +5873,11 @@ function personalMarketDataProviderUrlViolation(
           span.literal.text === "/statements"
         ) {
           shapes.push("fundamentals");
+        } else if (
+          path.head.text === "/tiingo/fundamentals/" &&
+          span.literal.text === "/daily"
+        ) {
+          shapes.push("valuation");
         } else {
           invalidUrl = true;
         }
@@ -5672,7 +5913,13 @@ function personalMarketDataProviderUrlViolation(
   visit(source);
   return !invalidUrl &&
     JSON.stringify(shapes.sort()) ===
-      JSON.stringify(["credential-test", "fundamentals", "history", "quote"]) &&
+      JSON.stringify([
+        "credential-test",
+        "fundamentals",
+        "history",
+        "quote",
+        "valuation",
+      ]) &&
     JSON.stringify(querySetters) ===
       JSON.stringify([
         "set:startDate:startDate",
@@ -5681,9 +5928,15 @@ function personalMarketDataProviderUrlViolation(
         "set:endDate:endDate",
         'set:asReported:"false"',
         'set:format:"json"',
+        "set:startDate:startDate",
+        "set:endDate:endDate",
+        'set:asReported:"false"',
+        'set:sort:"date"',
+        "set:columns:TIINGO_VALUATION_COLUMNS",
+        'set:format:"json"',
       ])
     ? null
-    : "provider URLs must remain exactly fixed-host credential-test, fundamentals, quote, and history routes with the reviewed query shapes";
+    : "provider URLs must remain exactly fixed-host credential-test, statements, valuation, quote, and history routes with the reviewed query shapes";
 }
 
 function personalMarketDataRoutesViolation(content: string): string | null {
@@ -5707,16 +5960,18 @@ function personalMarketDataRoutesViolation(content: string): string | null {
     '"/v1/personal-filing/market-data/overview"',
     '"/v1/personal-filing/market-data/annual-financials"',
     '"/v1/personal-filing/market-data/quarterly-financials"',
+    '"/v1/personal-filing/market-data/valuation-history"',
     "exposeHeadRoute: false",
     "authorizePersonalRouteRequest(",
     "provider.getStatus()",
     "provider.loadOverview(",
     "provider.loadAnnualFinancials(",
     "provider.loadQuarterlyFinancials(",
+    "provider.loadValuationHistory(",
     "resolveIdentity(catalog, body)",
   ];
   if (requiredAnchors.some((anchor) => !content.includes(anchor))) {
-    return "market-data status, overview, annual-financials, quarterly-financials, catalog binding, and provider-call anchors regressed";
+    return "market-data status, overview, annual-financials, quarterly-financials, valuation-history, catalog binding, and provider-call anchors regressed";
   }
   const source = ts.createSourceFile(
     "workspace-market-data-routes.ts",
@@ -5739,13 +5994,14 @@ function personalMarketDataRoutesViolation(content: string): string | null {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  if (postCalls.length !== 3) {
-    return "exactly three owner-authenticated market-data JSON command routes are required";
+  if (postCalls.length !== 4) {
+    return "exactly four owner-authenticated market-data JSON command routes are required";
   }
   const expectedRouteIdentifiers = new Set([
     "PERSONAL_ANNUAL_FINANCIALS_PATH",
     "PERSONAL_MARKET_DATA_OVERVIEW_PATH",
     "PERSONAL_QUARTERLY_FINANCIALS_PATH",
+    "PERSONAL_VALUATION_HISTORY_PATH",
   ]);
   for (const postCall of postCalls) {
     const path = postCall.arguments[0];
@@ -5891,7 +6147,7 @@ function personalMarketDataWebViolation(content: string): boolean {
   return (
     content.includes(providerHost) ||
     content.includes(tokenEnvironmentLiteral) ||
-    /["'`]\/(?:iex|tiingo\/daily)\//iu.test(content) ||
+    /["'`]\/(?:iex|tiingo\/(?:daily|fundamentals))\//iu.test(content) ||
     collectModuleSpecifiers(content).some(
       (specifier) =>
         specifier.includes("personal-market-data-provider") ||

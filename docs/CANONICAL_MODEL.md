@@ -2684,6 +2684,46 @@ point-in-time revisions, filing citations, the full 30-core-metric registry,
 500-security coverage, 90% knownness, 20-issuer validation, full Cycle 3h, or
 competitor parity.
 
+## Cycle 3h-a3 provider-backed valuation-history model
+
+Cycle 3h-a3 adds one explicit, owner-authenticated command at
+`/v1/personal-filing/market-data/valuation-history` for the exact
+catalog-bound listing selected in `/discover`. The route resolves that listing
+against the admitted startup security master and invokes only
+`loadValuationHistory` after the owner requests it. Startup, authentication,
+search, selection, watchlist loading, price history, and either statement view
+do not implicitly trigger this request.
+
+`PersonalValuationHistoryDto` binds the selected listing and the existing 1M,
+3M, YTD, 1Y, 5Y, or 10Y range to daily observations from the fixed Tiingo
+fundamentals-daily feed. Each point has one date and exactly five cells: market
+capitalization and enterprise value in USD, plus provider P/E, P/B, and trailing
+PEG 1Y as unitless ratios. Provider numeric lexemes remain exact decimal
+strings. A field the provider does not supply is an explicit
+`not_supplied_by_provider` unknown with its expected unit; it is never replaced
+with zero, interpolated, or derived from another row. Coverage records the
+observation count and exact known/unknown cell totals.
+
+The provider record declares `valuationFeed: "tiingo_fundamentals_daily"` and
+`revisionBasis: "provider_most_recent"`. The latter means the current provider
+view of historical dates, not point-in-time, as-reported, or restatement-aware
+history. The monetary fields are provider values rather than an independently
+constructed market-capitalization or enterprise-value formula, and the ratios
+are provider ratios rather than local valuation conclusions.
+
+Strict browser validation re-derives identity, range, date order, cell units,
+latest-point consistency, and coverage accounting before rendering. The result
+uses no-store transport, remains only in active owner-session/component memory,
+and is cleared on listing change, market-view close, or owner-session loss. No
+Investing.com page is crawled and no provider response is persisted, exported,
+redistributed, or placed in public evidence.
+
+This slice does not establish point-in-time fair-value history, DCF or reverse
+DCF, an intrinsic-value estimate, peer comparison, forecast, rating, or full
+Cycle 3i. It also does not change the Cycle 3h-a2 verified-TTM gap: TTM remains
+unavailable until the quarterly flow-value basis is authoritatively established
+and reconciled.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and
