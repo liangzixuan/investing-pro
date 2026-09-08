@@ -83,14 +83,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Classify exact Cycle 3h-a2 non-evidence routing closure
-        id: cycle3ha2_route
+      - name: Classify exact Cycle 3h-a3 non-evidence routing closure
+        id: cycle3ha3_route
         shell: bash
         run: |
           exact=false
           cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
-          prior_closure="5e28f271092b05a7627a699d1e7136dfe551034c"
-          feature="0a280ccb3ca87264c38a4cc03459f58fe6852575"
+          prior_closure="e02b2004ca020735e2c38fc4a87ce150c2e9d7eb"
+          feature="4ff2de0f12b73388591c5f54cae946d27408362d"
           expected=(
             "M" ".github/workflows/filing-parser-acceptance.yml"
             "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
@@ -120,10 +120,10 @@ jobs:
             )
             if [[ "$(git merge-base "$cycle2z_baseline" HEAD)" == "$cycle2z_baseline" ]] && \
                [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] && \
-               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "53" ]] && \
-               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "53" ]] && \
-               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "54" ]] && \
-               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "54" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "55" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "55" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "56" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "56" ]] && \
                [[ "${#feature_topology[@]}" == "2" ]] && \
                [[ "${feature_topology[0]}" == "$feature" ]] && \
                [[ "${feature_topology[1]}" == "$prior_closure" ]] && \
@@ -167,11 +167,11 @@ jobs:
         env:
           CI: "true"
           FILING_PARSER_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-isolation-v1.json
-        if: ${{ steps.cycle3ha2_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ha3_route.outputs.exact != 'true' }}
         run: pnpm filing-parser:acceptance
 
       - name: Verify canonical evidence against the exact commit
-        if: ${{ steps.cycle3ha2_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ha3_route.outputs.exact != 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-isolation-v1.json
@@ -187,7 +187,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID"
 
       - name: Upload filing parser isolation evidence
-        if: ${{ success() && steps.cycle3ha2_route.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle3ha3_route.outputs.exact != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-parser-isolation-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}
