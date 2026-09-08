@@ -136,7 +136,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 3e-a chain through Cycle 3h-a3
+      - name: Classify exact Cycle 3e-a chain through Cycle 3i-a1
         id: cycle3e_source
         if: ${{ success() }}
         shell: bash
@@ -177,6 +177,8 @@ jobs:
           cycle3ha2_feature="0a280ccb3ca87264c38a4cc03459f58fe6852575"
           cycle3ha2_routing_closure="e02b2004ca020735e2c38fc4a87ce150c2e9d7eb"
           cycle3ha3_feature="4ff2de0f12b73388591c5f54cae946d27408362d"
+          cycle3ha3_routing_closure="fe015df1002b3ce7c31a6186cac8824f2692a4c2"
+          cycle3ia1_feature="eb582309f73abd8a3ab7faa9852ab59d685cbde0"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -684,6 +686,34 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3ia1_feature=(
+            "M" "README.md"
+            "M" "apps/api/src/personal-market-data-provider.test.ts"
+            "M" "apps/api/src/personal-market-data-provider.ts"
+            "M" "apps/web/app/globals.css"
+            "A" "apps/web/src/features/research/PersonalHistoricalMultipleValuation.test.tsx"
+            "A" "apps/web/src/features/research/PersonalHistoricalMultipleValuation.tsx"
+            "M" "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx"
+            "M" "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx"
+            "M" "docs/BUILD_ROADMAP.md"
+            "M" "docs/CANONICAL_MODEL.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "M" "docs/THREAT_MODEL.md"
+            "M" "packages/personal-market-analytics/src/index.ts"
+            "A" "packages/personal-market-analytics/src/personal-historical-multiple-valuation.security.test.ts"
+            "A" "packages/personal-market-analytics/src/personal-historical-multiple-valuation.test.ts"
+            "A" "packages/personal-market-analytics/src/personal-historical-multiple-valuation.ts"
+            "M" "scripts/verify-boundaries.ts"
+          )
+          expected_cycle3ia1_routing_closure=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
@@ -778,6 +808,12 @@ jobs:
           for ((index = 1; index < ${#expected_cycle3ha3_routing_closure[@]}; index += 2)); do
             protected+=("${expected_cycle3ha3_routing_closure[$index]}")
           done
+          for ((index = 1; index < ${#expected_cycle3ia1_feature[@]}; index += 2)); do
+            protected+=("${expected_cycle3ia1_feature[$index]}")
+          done
+          for ((index = 1; index < ${#expected_cycle3ia1_routing_closure[@]}; index += 2)); do
+            protected+=("${expected_cycle3ia1_routing_closure[$index]}")
+          done
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -829,7 +865,9 @@ jobs:
                  git cat-file -e "$cycle3ha1_routing_closure^{commit}" && \
                  git cat-file -e "$cycle3ha2_feature^{commit}" && \
                  git cat-file -e "$cycle3ha2_routing_closure^{commit}" && \
-                 git cat-file -e "$cycle3ha3_feature^{commit}"; then
+                 git cat-file -e "$cycle3ha3_feature^{commit}" && \
+                 git cat-file -e "$cycle3ha3_routing_closure^{commit}" && \
+                 git cat-file -e "$cycle3ia1_feature^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -863,6 +901,8 @@ jobs:
                 read -r -a cycle3ha2_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha2_feature")"
                 read -r -a cycle3ha2_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha2_routing_closure")"
                 read -r -a cycle3ha3_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha3_feature")"
+                read -r -a cycle3ha3_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha3_routing_closure")"
+                read -r -a cycle3ia1_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ia1_feature")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -928,6 +968,10 @@ jobs:
                 cycle3ha2_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha2_routing_closure")"
                 cycle3ha3_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ha3_feature")"
                 cycle3ha3_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha3_feature")"
+                cycle3ha3_routing_closure_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ha3_routing_closure")"
+                cycle3ha3_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha3_routing_closure")"
+                cycle3ia1_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ia1_feature")"
+                cycle3ia1_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ia1_feature")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
@@ -1024,7 +1068,13 @@ jobs:
                   git diff --name-status --no-renames -z "$cycle3ha2_routing_closure" "$cycle3ha3_feature" --
                 )
                 mapfile -d '' -t cycle3ha3_routing_closure_actual < <(
-                  git diff --name-status --no-renames -z "$cycle3ha3_feature" HEAD --
+                  git diff --name-status --no-renames -z "$cycle3ha3_feature" "$cycle3ha3_routing_closure" --
+                )
+                mapfile -d '' -t cycle3ia1_feature_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ha3_routing_closure" "$cycle3ia1_feature" --
+                )
+                mapfile -d '' -t cycle3ia1_routing_closure_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ia1_feature" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -1320,6 +1370,26 @@ jobs:
                    [[ "${cycle3ha3_feature_topology[1]}" == "$cycle3ha2_routing_closure" ]] && \
                    matches_exactly expected_cycle3ha3_feature cycle3ha3_feature_actual; then
                   cycle3ha3_feature_history_exact=true
+                fi
+                cycle3ha3_routing_closure_history_exact=false
+                if [[ "$cycle3ha3_feature_history_exact" == "true" ]] && \
+                   [[ "$cycle3ha3_routing_closure_successor_count" == "56" ]] && \
+                   [[ "$cycle3ha3_routing_closure_first_parent_count" == "56" ]] && \
+                   [[ "${#cycle3ha3_routing_closure_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ha3_routing_closure_topology[0]}" == "$cycle3ha3_routing_closure" ]] && \
+                   [[ "${cycle3ha3_routing_closure_topology[1]}" == "$cycle3ha3_feature" ]] && \
+                   matches_exactly expected_cycle3ha3_routing_closure cycle3ha3_routing_closure_actual; then
+                  cycle3ha3_routing_closure_history_exact=true
+                fi
+                cycle3ia1_feature_history_exact=false
+                if [[ "$cycle3ha3_routing_closure_history_exact" == "true" ]] && \
+                   [[ "$cycle3ia1_feature_successor_count" == "57" ]] && \
+                   [[ "$cycle3ia1_feature_first_parent_count" == "57" ]] && \
+                   [[ "${#cycle3ia1_feature_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ia1_feature_topology[0]}" == "$cycle3ia1_feature" ]] && \
+                   [[ "${cycle3ia1_feature_topology[1]}" == "$cycle3ha3_routing_closure" ]] && \
+                   matches_exactly expected_cycle3ia1_feature cycle3ia1_feature_actual; then
+                  cycle3ia1_feature_history_exact=true
                 fi
                 if [[ "$history_exact" == "true" ]] && \
                    [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -1737,13 +1807,33 @@ jobs:
                    exact=true
                 elif [[ "$cycle3ha3_feature_history_exact" == "true" ]] && \
                      [[ "$head_revision" == "$GITHUB_SHA" ]] && \
-                     [[ "$head_revision" != "$cycle3ha3_feature" ]] && \
+                     [[ "$head_revision" == "$cycle3ha3_routing_closure" ]] && \
                      [[ "$head_successor_count" == "56" ]] && \
                      [[ "$head_first_parent_count" == "56" ]] && \
                      [[ "${#head_topology[@]}" == "2" ]] && \
-                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3ha3_routing_closure" ]] && \
                      [[ "${head_topology[1]}" == "$cycle3ha3_feature" ]] && \
                      matches_exactly expected_cycle3ha3_routing_closure cycle3ha3_routing_closure_actual; then
+                   exact=true
+                elif [[ "$cycle3ha3_routing_closure_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" == "$cycle3ia1_feature" ]] && \
+                     [[ "$head_successor_count" == "57" ]] && \
+                     [[ "$head_first_parent_count" == "57" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3ia1_feature" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ha3_routing_closure" ]] && \
+                     matches_exactly expected_cycle3ia1_feature cycle3ia1_feature_actual; then
+                   exact=true
+                elif [[ "$cycle3ia1_feature_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$cycle3ia1_feature" ]] && \
+                     [[ "$head_successor_count" == "58" ]] && \
+                     [[ "$head_first_parent_count" == "58" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ia1_feature" ]] && \
+                     matches_exactly expected_cycle3ia1_routing_closure cycle3ia1_routing_closure_actual; then
                    exact=true
                 fi
               fi
@@ -1752,7 +1842,7 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, or Cycle 3h-a3 feature and routing closure; refusing inherited evidence routing." >&2
+            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, or Cycle 3i-a1 feature and routing closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
@@ -4394,7 +4484,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3e }}" == "true" ]]; then
-              echo "Cycle 3 routing recognizes the exact merge-free, exact-inventory lineage through the Cycle 3e-a coarse public promotion, Cycle 3e-b1 discovery workspace, Cycle 3g-a1 memory-only personal market-data workspace, Cycle 3g-b1 transient aggregate trend-and-risk analytics, Cycle 3h-a1 owner-invoked memory-only annual financial-history workspace, Cycle 3h-a2 owner-invoked memory-only quarterly financial-history workspace with TTM withheld pending a verified aggregation basis, and Cycle 3h-a3 owner-invoked memory-only valuation-history workspace. The only permitted public private-evidence statement remains: coarse owner-approved private security-master snapshot admission and search-measurement outcome: Pass for the exact personal scope. No private evidence artifacts, private counts, latency, digests, paths, rows, mappings, source bytes, credentials, financial reported fields or values, quarterly values, TTM inputs or outputs, provider responses, provider values, valuation values, valuation series, analytics inputs, analytics values, analytics outputs, analytics series, market-data values, payloads, or replacement Cycle 2o artifact are published."
+              echo "Cycle 3 routing recognizes the exact merge-free, exact-inventory lineage through the Cycle 3e-a coarse public promotion, Cycle 3e-b1 discovery workspace, Cycle 3g-a1 memory-only personal market-data workspace, Cycle 3g-b1 transient aggregate trend-and-risk analytics, Cycle 3h-a1 owner-invoked memory-only annual financial-history workspace, Cycle 3h-a2 owner-invoked memory-only quarterly financial-history workspace with TTM withheld pending a verified aggregation basis, Cycle 3h-a3 owner-invoked memory-only valuation-history workspace, and Cycle 3i-a1 browser-local historical P/E/P/B implied-price scenarios from owner-invoked loaded inputs. No third-party page is crawled. The only permitted public private-evidence statement remains: coarse owner-approved private security-master snapshot admission and search-measurement outcome: Pass for the exact personal scope. No private evidence artifacts, private counts, latency, digests, paths, rows, mappings, source bytes, credentials, financial reported fields or values, quarterly values, TTM inputs or outputs, provider responses, provider values, valuation values, valuation series, valuation inputs, valuation results, valuation scenarios, analytics inputs, analytics values, analytics outputs, analytics series, market-data values, payloads, or replacement Cycle 2o artifact are published."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
               echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, parser-timeout, and joint Cycle 3c/3d public-promotion stages, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
