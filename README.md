@@ -55,6 +55,20 @@ cell stays explicitly unknown. This is Tiingo's current most-recent history,
 not a point-in-time or as-reported valuation record, and it is not an
 independently calculated fair value.
 
+Once price and valuation history are both loaded, the browser can calculate
+historical P/E and P/B valuation bands without another request. For each
+applicable ratio it uses the latest exact date shared with the raw closing-price
+series, ranks at least 60 known positive observations, and shows lower-quartile,
+median, and upper-quartile multiples with their implied prices. The exact
+formula, reference date and price, reference-date multiple and percentile, sample
+window, independently loaded source windows, valuation-response timestamp, and
+excluded unknown or nonpositive observations stay visible. Each implied-price
+scenario holds the reference-date earnings or book-value-per-share basis
+constant and changes only the multiple. These
+are transparent historical-multiple scenarios from provider-most-recent data,
+not intrinsic fair value, a price target, a point-in-time backtest, or a
+buy/sell signal.
+
 Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory and are not written to the vault, filesystem, browser
 storage, logs, exports, or Git.
@@ -73,8 +87,9 @@ This is a visible feature milestone, not full Cycle 3g or product parity: the
 declared 100-symbol validation gate, independent corporate-action reconciliation,
 benchmark relative strength, broader indicators, verified TTM financials,
 point-in-time statements, the full 30-core-metric and 500-security validation
-gate, transparent valuation models and peer tools, screening, events/news,
-portfolio analytics, alerts, and exports remain later product work.
+gate, DCF/reverse-DCF and broader valuation models, fair-value history, peer
+tools, screening, events/news, portfolio analytics, alerts, and exports remain
+later product work.
 
 ## Historical synthetic slice
 

@@ -1247,7 +1247,7 @@ describe("Tiingo personal valuation-history provider", () => {
       ["endDate", "2026-09-07"],
       ["asReported", "false"],
       ["sort", "date"],
-      ["columns", "marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y"],
+      ["columns", "date,marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y"],
       ["format", "json"],
     ]);
     const headers = new Headers(call?.init?.headers);

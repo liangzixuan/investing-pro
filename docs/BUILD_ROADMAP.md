@@ -2522,10 +2522,28 @@ and the result stays only in active owner-session memory. It is labelled
 as-reported valuation record. Nothing is fetched automatically, exported,
 persisted, or crawled from Investing.com.
 
+Cycle 3i-a1 adds the first visible transparent-valuation slice without a new
+route or provider request. After both price and valuation history are loaded
+for the exact selected listing and range, a browser-local decimal model joins
+the latest shared daily date and uses that day's raw close and positive
+provider P/E or P/B. At least 60 known positive observations are required.
+Deterministic lower-quartile, median, and upper-quartile multiples produce
+inspectable implied-price scenarios, while the UI exposes the current
+percentile, reference date and price, sample range, known/unknown/nonpositive
+counts, both independently loaded source windows, the valuation-response
+timestamp, formula/version, and rounding. The implied-price scenarios hold the
+reference-date earnings or book-value-per-share basis constant and change only
+the multiple. Missing prerequisites, identity or range
+mismatches, no shared date, unusable reference values, and insufficient history
+remain explicit unavailable states. The results are provider-most-recent
+historical context, not intrinsic fair value, a target, recommendation, or
+point-in-time backtest, and they remain only in active browser memory.
+
 These slices do not claim full Cycle 3h-a: verified TTM views, point-in-time
 restatement lineage, the full 30-core-metric set, 500-security coverage, 90%
-knownness, and 20-issuer independent validation remain open. Cycle 3h-a3 also
-does not establish an independent fair-value model or full Cycle 3i.
+knownness, and 20-issuer independent validation remain open. Cycle 3i-a1 does
+not establish DCF/reverse DCF, forecasts, sensitivity tables, composites,
+point-in-time fair-value history, or full Cycle 3i.
 
 The delivery waves are:
 

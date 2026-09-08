@@ -2724,6 +2724,41 @@ Cycle 3i. It also does not change the Cycle 3h-a2 verified-TTM gap: TTM remains
 unavailable until the quarterly flow-value basis is authoritatively established
 and reconciled.
 
+## Cycle 3i-a1 personal historical-multiple valuation model
+
+Cycle 3i-a1 derives one P/E model and one P/B model entirely in the browser
+from the already validated `PersonalMarketOverviewDto` and
+`PersonalValuationHistoryDto`. It performs no network request and stores no
+result. Before calculation, the exact six-field listing identity and selected
+range must agree. The reference observation is the latest date shared by the
+raw daily closing-price series and valuation history; adjusted price is never
+used. The selected reference multiple and raw close must both be known and
+positive.
+
+For each ratio, unknown, zero, and negative historical observations are
+excluded and counted. At least 60 positive observations are required. The
+model uses deterministic R-7 P25, P50, and P75 quantiles and calculates each
+scenario as `reference raw close × target multiple ÷ reference multiple`.
+Reference multiple percentile uses a weak empirical cumulative distribution. Decimal
+arithmetic, round-half-up output, decimal strings, schema and formula versions,
+sample bounds/counts, exclusion counts, exact reference values, and typed
+unavailable reasons are part of the result contract. The result is deeply
+immutable and retains no caller-owned arrays.
+
+The presentation separately exposes the price-history request window and
+latest raw bar plus the valuation-history request window and response `asOf`.
+The two inputs may have been loaded independently, so an exact shared date—not
+a “current” label or nearest-date substitution—anchors the result. The implied
+price is a rerating scenario: it holds that reference date's earnings or
+book-value-per-share basis constant and changes only the multiple.
+
+This is historical multiple context over the provider's current most-recent
+corrected series. It is not an intrinsic-value estimate, price target,
+recommendation, point-in-time backtest, or reconstruction of a proprietary
+vendor method. DCF, reverse DCF, forecast assumptions, sensitivity tables,
+composites, peer-implied values, and fair-value history remain later Cycle 3i
+work.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

@@ -81,7 +81,7 @@ const PROVIDER_ISO_INSTANT =
 const PROVIDER_DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const JSON_NUMBER = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u;
 const TIINGO_VALUATION_COLUMNS =
-  "marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y" as const;
+  "date,marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y" as const;
 const TIINGO_VALUATION_RESPONSE_KEYS = new Set([
   "date",
   "enterpriseVal",

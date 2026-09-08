@@ -10,6 +10,7 @@ import type {
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
+import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
@@ -34,6 +35,7 @@ import {
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
+import { PersonalHistoricalMultipleValuation } from "./PersonalHistoricalMultipleValuation";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
@@ -111,6 +113,8 @@ export function SecurityDiscoveryWorkspace() {
     useState<PersonalValuationHistoryDto | null>(null);
   const [valuationHistoryMetric, setValuationHistoryMetric] =
     useState<ValuationHistoryMetric>("priceToEarnings");
+  const [historicalMultipleMetric, setHistoricalMultipleMetric] =
+    useState<PersonalHistoricalMultipleValuationMetric>("priceToEarnings");
   const [valuationHistoryRequestState, setValuationHistoryRequestState] =
     useState<"idle" | "loading">("idle");
   const [valuationHistoryErrorCode, setValuationHistoryErrorCode] =
@@ -393,7 +397,10 @@ export function SecurityDiscoveryWorkspace() {
     valuationHistoryController.current = null;
     valuationHistoryEpoch.current += 1;
     setValuationHistory(null);
-    if (resetMetric) setValuationHistoryMetric("priceToEarnings");
+    if (resetMetric) {
+      setValuationHistoryMetric("priceToEarnings");
+      setHistoricalMultipleMetric("priceToEarnings");
+    }
     setValuationHistoryRequestState("idle");
     setValuationHistoryErrorCode(null);
   }
@@ -1153,6 +1160,14 @@ export function SecurityDiscoveryWorkspace() {
               range={marketRange}
               requestState={valuationHistoryRequestState}
               selection={marketSelection}
+            />
+
+            <PersonalHistoricalMultipleValuation
+              marketOverview={marketOverview}
+              metric={historicalMultipleMetric}
+              onMetricChange={setHistoricalMultipleMetric}
+              selection={marketSelection}
+              valuationHistory={valuationHistory}
             />
 
             <PersonalAnnualFinancials

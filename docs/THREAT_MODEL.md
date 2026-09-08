@@ -2796,6 +2796,35 @@ This boundary does not establish intrinsic or fair value, DCF/reverse DCF,
 peer comparison, forecast, rating, point-in-time history, verified TTM, full
 Cycle 3h/3i, or competitor parity.
 
+## Cycle 3i-a1 historical-multiple valuation threat boundary
+
+Cycle 3i-a1 adds a browser-local derivation over two already authenticated and
+strictly validated responses. Assets at risk are listing/range binding, raw
+reference-price integrity, ratio/date alignment, decimal precision, honest
+sample coverage, and the meaning presented to the owner. Primary threats are
+cross-listing or cross-range composition; mixing adjusted price with provider
+multiples; nearest-date or stale-quote substitution; unknown, zero, or negative
+ratios silently entering the sample; non-deterministic quantiles; native-number
+precision loss; insufficient history producing a confident-looking value;
+caller mutation changing a result; and historical scenarios being presented as
+intrinsic fair value, a price target, recommendation, or point-in-time test.
+
+Controls are exact identity/range checks, an exact latest-common-date join,
+raw-close-only input, positive reference gates, explicit unknown/nonpositive
+exclusion accounting, a minimum 60-observation gate, deterministic R-7
+quartiles and weak empirical percentile, exact decimal arithmetic with fixed
+rounding, bounded and strictly ordered inputs, typed unavailable states, deep
+freezing without retaining source arrays, visible formula/version/reference
+metadata, separately visible source windows and valuation-response timestamp,
+an explicit constant earnings/book-value-per-share rerating assumption, and
+mandatory provider-most-recent/non-recommendation labels. No new
+request, credential access, persistence, export, logging, or Investing.com
+crawl is introduced.
+
+This boundary does not establish intrinsic valuation, forecasts, DCF/reverse
+DCF, peer comparison, sensitivity analysis, composite weighting, point-in-time
+fair-value history, full Cycle 3i, or competitor parity.
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.

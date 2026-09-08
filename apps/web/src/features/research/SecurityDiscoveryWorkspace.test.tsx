@@ -21,6 +21,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
+import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
@@ -126,6 +127,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 const componentMocks = vi.hoisted(() => ({
   AnnualFinancials: () => null,
+  HistoricalMultipleValuation: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
   QuarterlyFinancials: () => null,
@@ -174,6 +176,10 @@ vi.mock("./OwnerSessionPanel", () => ({
 }));
 vi.mock("./PersonalAnnualFinancials", () => ({
   PersonalAnnualFinancials: componentMocks.AnnualFinancials,
+}));
+vi.mock("./PersonalHistoricalMultipleValuation", () => ({
+  PersonalHistoricalMultipleValuation:
+    componentMocks.HistoricalMultipleValuation,
 }));
 vi.mock("./PersonalMarketOverview", () => ({
   PersonalMarketOverview: componentMocks.MarketOverview,
@@ -508,6 +514,50 @@ describe("SecurityDiscoveryWorkspace", () => {
       history: { range: "1y" },
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
+  });
+
+  it("composes historical-multiple scenarios only from the explicitly loaded selected inputs", async () => {
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    let valuation = requireHistoricalMultipleValuation(rendered);
+
+    expect(valuation.props).toMatchObject({
+      marketOverview: null,
+      metric: "priceToEarnings",
+      selection: { listingId: "lst-zero", symbol: "ZERO" },
+      valuationHistory: null,
+    });
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+
+    requireMarketOverview(rendered).props.onLoad("1y");
+    await flushPromises();
+    rendered = renderWorkspace();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    valuation = requireHistoricalMultipleValuation(rendered);
+
+    expect(valuation.props.marketOverview).toMatchObject({
+      history: { range: "1y" },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+    expect(valuation.props.valuationHistory).toMatchObject({
+      history: { range: "1y" },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+
+    valuation.props.onMetricChange("priceToBook");
+    rendered = renderWorkspace();
+    expect(requireHistoricalMultipleValuation(rendered).props.metric).toBe(
+      "priceToBook",
+    );
+
+    requireMarketOverview(rendered).props.onLoad("5y");
+    rendered = renderWorkspace();
+    valuation = requireHistoricalMultipleValuation(rendered);
+    expect(valuation.props.marketOverview).toBeNull();
+    expect(valuation.props.valuationHistory).toBeNull();
   });
 
   it("aborts and clears valuation history when the selected market range changes", async () => {
@@ -1150,6 +1200,13 @@ function findAnnualFinancials(value: unknown) {
   );
 }
 
+function findHistoricalMultipleValuation(value: unknown) {
+  return findElement<PersonalHistoricalMultipleValuationProps>(
+    value,
+    componentMocks.HistoricalMultipleValuation,
+  );
+}
+
 function findQuarterlyFinancials(value: unknown) {
   return findElement<PersonalQuarterlyFinancialsProps>(
     value,
@@ -1175,6 +1232,13 @@ function requireQuarterlyFinancials(value: unknown) {
   if (quarterly === undefined)
     throw new Error("Expected quarterly financials.");
   return quarterly;
+}
+
+function requireHistoricalMultipleValuation(value: unknown) {
+  const valuation = findHistoricalMultipleValuation(value);
+  if (valuation === undefined)
+    throw new Error("Expected historical-multiple valuation.");
+  return valuation;
 }
 
 function requireValuationHistory(value: unknown) {

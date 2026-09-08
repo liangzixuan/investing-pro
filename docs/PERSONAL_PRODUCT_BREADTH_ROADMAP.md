@@ -869,6 +869,9 @@ inspectable multi-model valuation workspace.
 
 Promotable subcycles:
 
+- **3i-a1:** browser-local historical P/E and P/B bands for one selected
+  listing, using an exact-date raw-close join, visible applicability and
+  exclusion accounting, deterministic quartiles, and no new provider request;
 - **3i-a:** FCFF DCF, reverse DCF, and historical-multiple models with
   applicability gates, scenarios, and independent golden cases;
 - **3i-b:** expansion to at least eight transparent families and at least 12
@@ -890,6 +893,15 @@ Breadth objectives:
 
 The models are original transparent analogues. They are not a reproduction of
 any vendor's Fair Value formulas or ratings.
+
+Cycle 3i-a1 is the first bounded slice. It admits a ratio only when the current
+same-date provider multiple and raw close are positive and there are at least
+60 positive observations in the selected window. It exposes P25, P50, and P75
+multiple scenarios, implied prices, the current empirical percentile, exact
+sample and exclusion counts, and formula/version metadata. It uses the
+provider's most-recent corrected history, so it is historical context rather
+than point-in-time fair-value history. FCFF DCF, reverse DCF, forecasts,
+sensitivity tables, composites, and the remaining Cycle 3i-a breadth stay open.
 
 ### Cycle 3j — peers, financial quality, and risk scorecards
 

@@ -5390,6 +5390,19 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
 
   const valuationWebAnchors = new Map<string, readonly string[]>([
     [
+      "packages/personal-market-analytics/src/personal-historical-multiple-valuation.ts",
+      [
+        "PERSONAL_HISTORICAL_MULTIPLE_VALUATION_MINIMUM_OBSERVATIONS",
+        "PERSONAL_HISTORICAL_MULTIPLE_VALUATION_MAXIMUM_OBSERVATIONS",
+        'formulaId: "historical_positive_multiple_quantile_r7"',
+        'priceBasis: "latest_common_date_raw_end_of_day_close"',
+        '"same_date_raw_close_times_target_multiple_divided_by_current_multiple"',
+        "export function calculatePersonalHistoricalMultipleValuation(",
+        "input.market.range !== input.valuation.range",
+        "latestCommonObservation(",
+      ],
+    ],
+    [
       "apps/web/src/lib/personal-workspace-api.ts",
       [
         '"/v1/personal-filing/market-data/valuation-history"',
@@ -5426,13 +5439,30 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "apps/web/src/features/research/PersonalHistoricalMultipleValuation.tsx",
+      [
+        "export function PersonalHistoricalMultipleValuation(",
+        "readonly marketOverview: PersonalMarketOverviewDto | null",
+        "readonly valuationHistory: PersonalValuationHistoryDto | null",
+        "calculatePersonalHistoricalMultipleValuation({",
+        "Historical multiple valuation",
+        "provider-most-recent valuation history",
+        "not intrinsic fair value",
+        'aria-label="Loaded valuation input provenance"',
+        "reference-date earnings or book-value-per-share",
+        "nothing, and provides no export",
+      ],
+    ],
+    [
       "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
       [
         "useState<PersonalValuationHistoryDto | null>(null)",
+        "useState<PersonalHistoricalMultipleValuationMetric>(",
         "async function loadValuationHistory()",
         "const loaded = await fetchPersonalValuationHistory(",
         "function clearValuationHistoryState(",
         "<PersonalValuationHistory",
+        "<PersonalHistoricalMultipleValuation",
       ],
     ],
   ]);
@@ -5440,7 +5470,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     const content = await readFile(resolvePath(root, path), "utf8");
     if (anchors.some((anchor) => !content.includes(anchor))) {
       found.push(
-        `${path}: valuation-history client validation, explicit UI, metric registry, and active-session state anchors must remain present`,
+        `${path}: valuation-history and historical-multiple validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
       );
     }
   }
@@ -5649,7 +5679,7 @@ function personalMarketDataProviderViolation(content: string): string | null {
   const providerHost = ["api", "tiingo", "com"].join(".");
   const providerEndpoint = `https://${providerHost}`;
   const valuationColumns =
-    "marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y";
+    "date,marketCap,enterpriseVal,peRatio,pbRatio,trailingPEG1Y";
   const source = ts.createSourceFile(
     "personal-market-data-provider.ts",
     content,
