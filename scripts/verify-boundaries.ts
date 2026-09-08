@@ -5561,7 +5561,7 @@ function personalMarketDataProviderViolation(content: string): string | null {
     return "fixed origin and exported token environment key must remain const declarations";
   }
   if (
-    authorizationTemplateCount !== 2 ||
+    authorizationTemplateCount !== 3 ||
     authorizationPropertyCount !== 2 ||
     transportCallCount !== 2
   ) {
@@ -5570,6 +5570,7 @@ function personalMarketDataProviderViolation(content: string): string | null {
   if (
     JSON.stringify(requestJsonInputs) !==
     JSON.stringify([
+      "#requestLosslessJson:fundamentalsUrl",
       "#requestLosslessJson:fundamentalsUrl",
       "#requestJson:quoteUrl",
       "#requestJson:historyUrl",
@@ -5705,15 +5706,17 @@ function personalMarketDataRoutesViolation(content: string): string | null {
     '"/v1/personal-filing/market-data/status"',
     '"/v1/personal-filing/market-data/overview"',
     '"/v1/personal-filing/market-data/annual-financials"',
+    '"/v1/personal-filing/market-data/quarterly-financials"',
     "exposeHeadRoute: false",
     "authorizePersonalRouteRequest(",
     "provider.getStatus()",
     "provider.loadOverview(",
     "provider.loadAnnualFinancials(",
+    "provider.loadQuarterlyFinancials(",
     "resolveIdentity(catalog, body)",
   ];
   if (requiredAnchors.some((anchor) => !content.includes(anchor))) {
-    return "market-data status, overview, annual-financials, catalog binding, and provider-call anchors regressed";
+    return "market-data status, overview, annual-financials, quarterly-financials, catalog binding, and provider-call anchors regressed";
   }
   const source = ts.createSourceFile(
     "workspace-market-data-routes.ts",
@@ -5736,12 +5739,13 @@ function personalMarketDataRoutesViolation(content: string): string | null {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  if (postCalls.length !== 2) {
-    return "exactly two owner-authenticated market-data JSON command routes are required";
+  if (postCalls.length !== 3) {
+    return "exactly three owner-authenticated market-data JSON command routes are required";
   }
   const expectedRouteIdentifiers = new Set([
     "PERSONAL_ANNUAL_FINANCIALS_PATH",
     "PERSONAL_MARKET_DATA_OVERVIEW_PATH",
+    "PERSONAL_QUARTERLY_FINANCIALS_PATH",
   ]);
   for (const postCall of postCalls) {
     const path = postCall.arguments[0];

@@ -7,6 +7,7 @@ import type {
   PersonalMarketDataIdentityDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
 } from "@research-cockpit/contracts";
 import {
   LOCAL_RESEARCH_VAULT_PROFILE,
@@ -31,6 +32,7 @@ import {
   PERSONAL_ANNUAL_FINANCIALS_PATH,
   PERSONAL_MARKET_DATA_OVERVIEW_PATH,
   PERSONAL_MARKET_DATA_STATUS_PATH,
+  PERSONAL_QUARTERLY_FINANCIALS_PATH,
   registerPersonalWorkspaceMarketDataRoutes,
 } from "./workspace-market-data-routes";
 import { buildPersonalWorkspaceApp } from "./workspace-app";
@@ -313,6 +315,144 @@ describe("personal workspace market-data routes", () => {
     expect(response.payload).not.toContain("Fabricated issuer");
   });
 
+  it("authenticates and strictly parses quarterly-financial requests", async () => {
+    const fixture = await marketApp();
+    const unauthorized = await fixture.app.inject({
+      method: "POST",
+      url: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+      headers: {
+        ...ownerHeaders(),
+        "content-type": "application/json",
+      },
+      payload: "{ malformed private-quarterly-canary",
+      remoteAddress: "127.0.0.1",
+    });
+    expect(unauthorized.statusCode).toBe(403);
+    expect(unauthorized.payload).not.toContain("private-quarterly-canary");
+    expect(fixture.loadQuarterlyFinancials).not.toHaveBeenCalled();
+
+    const malformed = await fixture.app.inject({
+      method: "POST",
+      url: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+      headers: {
+        ...ownerHeaders(fixture.cookie),
+        "content-type": "application/json",
+      },
+      payload: "{ malformed authenticated-quarterly-canary",
+      remoteAddress: "127.0.0.1",
+    });
+    expect(malformed.statusCode).toBe(400);
+    expect(malformed.json()).toMatchObject({
+      instance: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+      status: 400,
+    });
+    expect(malformed.payload).not.toContain("authenticated-quarterly-canary");
+    expect(fixture.loadQuarterlyFinancials).not.toHaveBeenCalled();
+
+    for (const body of [
+      { listingId: "lst-fabricated", symbol: "S00000" },
+      { listingId: "lst-00001", symbol: "S00000" },
+      { listingId: "lst-00000", symbol: "S00001" },
+      { listingId: "lst-00000", symbol: "s00000" },
+      { listingId: "lst-00000", symbol: "S00000", range: "1y" },
+      { listingId: "lst-00000" },
+      [],
+    ]) {
+      const response = await requestQuarterlyFinancials(
+        fixture.app,
+        fixture.cookie,
+        body,
+      );
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        instance: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+        status: 400,
+      });
+    }
+
+    const queryCarrier = await fixture.app.inject({
+      method: "POST",
+      url: `${PERSONAL_QUARTERLY_FINANCIALS_PATH}?symbol=S00000`,
+      headers: {
+        ...ownerHeaders(fixture.cookie),
+        "content-type": "application/json",
+      },
+      payload: { listingId: "lst-00000", symbol: "S00000" },
+      remoteAddress: "127.0.0.1",
+    });
+    expect(queryCarrier.statusCode).toBe(403);
+    expect(fixture.loadQuarterlyFinancials).not.toHaveBeenCalled();
+  });
+
+  it("loads quarterly financials for the exact admitted listing", async () => {
+    const fixture = await marketApp();
+    const response = await requestQuarterlyFinancials(
+      fixture.app,
+      fixture.cookie,
+      { listingId: "lst-00000", symbol: "S00000" },
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.headers.pragma).toBe("no-cache");
+    expect(response.json()).toEqual(quarterlyFinancials(IDENTITY));
+    expect(fixture.loadQuarterlyFinancials).toHaveBeenCalledOnce();
+    expect(fixture.loadQuarterlyFinancials.mock.calls[0]?.[0]).toEqual(
+      IDENTITY,
+    );
+    expect(fixture.loadQuarterlyFinancials.mock.calls[0]?.[1]).toBeInstanceOf(
+      AbortSignal,
+    );
+    expect(fixture.loadQuarterlyFinancials.mock.calls[0]?.[1]?.aborted).toBe(
+      false,
+    );
+  });
+
+  it("maps quarterly provider failures and rejects a mismatched identity", async () => {
+    const fixture = await marketApp();
+    const cases = [
+      ["not_configured", 503],
+      ["credentials_invalid", 424],
+      ["not_entitled", 402],
+      ["rate_limited", 429],
+      ["not_covered", 404],
+      ["upstream_unavailable", 502],
+      ["invalid_response", 502],
+      ["aborted", 502],
+    ] as const;
+    for (const [code, status] of cases) {
+      fixture.loadQuarterlyFinancials.mockRejectedValueOnce(
+        new PersonalMarketDataProviderError(code),
+      );
+      const unavailable = await requestQuarterlyFinancials(
+        fixture.app,
+        fixture.cookie,
+        { listingId: "lst-00000", symbol: "S00000" },
+      );
+      expect(unavailable.statusCode).toBe(status);
+      expect(unavailable.json()).toMatchObject({
+        instance: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+        status,
+      });
+      expect(unavailable.payload).not.toContain(code);
+    }
+
+    fixture.loadQuarterlyFinancials.mockResolvedValueOnce(
+      quarterlyFinancials({ ...IDENTITY, listingId: "fabricated" }),
+    );
+    const mismatched = await requestQuarterlyFinancials(
+      fixture.app,
+      fixture.cookie,
+      { listingId: "lst-00000", symbol: "S00000" },
+    );
+    expect(mismatched.statusCode).toBe(502);
+    expect(mismatched.json()).toMatchObject({
+      instance: PERSONAL_QUARTERLY_FINANCIALS_PATH,
+      status: 502,
+    });
+    expect(mismatched.payload).not.toContain("fabricated");
+  });
+
   it("rejects fabricated, cross-listing, and non-exact request identities", async () => {
     const fixture = await marketApp();
     for (const body of [
@@ -427,6 +567,10 @@ describe("personal workspace market-data routes", () => {
         void signal;
         return Promise.resolve(overview(identity, range));
       },
+      loadQuarterlyFinancials: (identity, signal) => {
+        void signal;
+        return Promise.resolve(quarterlyFinancials(identity));
+      },
       status: () => STATUS,
     };
     const app = Fastify({ bodyLimit: 300 * 1_024, trustProxy: false });
@@ -503,6 +647,10 @@ describe("personal workspace market-data routes", () => {
         return Promise.resolve(annualFinancials(identity));
       },
       loadOverview,
+      loadQuarterlyFinancials: (identity, signal) => {
+        void signal;
+        return Promise.resolve(quarterlyFinancials(identity));
+      },
       status: () => STATUS,
     };
     const app = Fastify({ bodyLimit: 300 * 1_024, trustProxy: false });
@@ -594,6 +742,10 @@ describe("personal workspace market-data routes", () => {
         void signal;
         return Promise.resolve(overview(identity, range));
       },
+      loadQuarterlyFinancials: (identity, signal) => {
+        void signal;
+        return Promise.resolve(quarterlyFinancials(identity));
+      },
       status: () => STATUS,
     };
     const app = Fastify({ bodyLimit: 300 * 1_024, trustProxy: false });
@@ -683,7 +835,12 @@ async function marketApp() {
   });
   const secret = randomBytes(32).toString("hex");
   const authority = PersonalOwnerSessionAuthority.create(secret);
-  const { loadAnnualFinancials, loadOverview, provider } = fakeProvider();
+  const {
+    loadAnnualFinancials,
+    loadOverview,
+    loadQuarterlyFinancials,
+    provider,
+  } = fakeProvider();
   const vault = {
     close: vi.fn(),
     profile: LOCAL_RESEARCH_VAULT_PROFILE,
@@ -704,6 +861,7 @@ async function marketApp() {
     cookie,
     loadAnnualFinancials,
     loadOverview,
+    loadQuarterlyFinancials,
   };
 }
 
@@ -724,14 +882,26 @@ function fakeProvider(close = vi.fn()) {
       return Promise.resolve(overview(identity, range));
     },
   );
+  const loadQuarterlyFinancials = vi.fn(
+    (identity: PersonalMarketDataIdentityDto, signal?: AbortSignal) => {
+      void signal;
+      return Promise.resolve(quarterlyFinancials(identity));
+    },
+  );
   const provider: PersonalMarketDataProvider = {
     close,
     getStatus: () => STATUS,
     loadAnnualFinancials,
     loadOverview,
+    loadQuarterlyFinancials,
     status: () => STATUS,
   };
-  return { loadAnnualFinancials, loadOverview, provider };
+  return {
+    loadAnnualFinancials,
+    loadOverview,
+    loadQuarterlyFinancials,
+    provider,
+  };
 }
 
 function requestAnnualFinancials(
@@ -742,6 +912,23 @@ function requestAnnualFinancials(
   return app.inject({
     method: "POST",
     url: PERSONAL_ANNUAL_FINANCIALS_PATH,
+    headers: {
+      ...ownerHeaders(cookie),
+      "content-type": "application/json",
+    },
+    payload,
+    remoteAddress: "127.0.0.1",
+  });
+}
+
+function requestQuarterlyFinancials(
+  app: FastifyInstance,
+  cookie: string,
+  payload: Record<string, unknown> | unknown[],
+) {
+  return app.inject({
+    method: "POST",
+    url: PERSONAL_QUARTERLY_FINANCIALS_PATH,
     headers: {
       ...ownerHeaders(cookie),
       "content-type": "application/json",
@@ -796,16 +983,52 @@ function annualFinancials(
     },
     profile: "personal_single_user_local_fundamentals",
     provider: FINANCIALS_PROVIDER,
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     security: identity,
     status: "available",
     years: [
       {
         fiscalYear: 2025,
-        periodEnd: "2026-02-20",
+        statementDate: "2026-02-20",
         reported: annualReportedValues(),
       },
     ],
+  };
+}
+
+function quarterlyFinancials(
+  identity: PersonalMarketDataIdentityDto,
+): PersonalQuarterlyFinancialsDto {
+  return {
+    asOf: "2026-09-07T15:00:00.000Z",
+    coverage: {
+      earliestFiscalQuarter: 2,
+      earliestFiscalYear: 2026,
+      knownReportedCells: 1,
+      latestFiscalQuarter: 2,
+      latestFiscalYear: 2026,
+      missingFiscalQuarters: [
+        { fiscalQuarter: 1, fiscalYear: 2026 },
+        { fiscalQuarter: 4, fiscalYear: 2025 },
+      ],
+      requestedQuarterlyPeriods: 16,
+      returnedQuarterlyPeriods: 1,
+      status: "partial",
+      unknownReportedCells: 29,
+    },
+    profile: "personal_single_user_local_fundamentals",
+    provider: FINANCIALS_PROVIDER,
+    quarters: [
+      {
+        fiscalQuarter: 2,
+        fiscalYear: 2026,
+        reported: annualReportedValues(),
+        statementDate: "2026-08-14",
+      },
+    ],
+    schemaVersion: "1.0.0",
+    security: identity,
+    status: "available",
   };
 }
 

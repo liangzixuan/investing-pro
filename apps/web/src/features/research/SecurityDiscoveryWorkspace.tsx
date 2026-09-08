@@ -5,6 +5,7 @@ import type {
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
@@ -17,6 +18,7 @@ import {
   fetchMainPersonalWatchlist,
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
+  fetchPersonalQuarterlyFinancials,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
   normalizeWatchlistNote,
@@ -30,6 +32,7 @@ import {
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
+import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import {
   PersonalMarketOverview,
   type PersonalMarketSelection,
@@ -94,12 +97,20 @@ export function SecurityDiscoveryWorkspace() {
     useState<"idle" | "loading">("idle");
   const [annualFinancialsErrorCode, setAnnualFinancialsErrorCode] =
     useState<PersonalWorkspaceApiErrorCode | null>(null);
+  const [quarterlyFinancials, setQuarterlyFinancials] =
+    useState<PersonalQuarterlyFinancialsDto | null>(null);
+  const [quarterlyFinancialsRequestState, setQuarterlyFinancialsRequestState] =
+    useState<"idle" | "loading">("idle");
+  const [quarterlyFinancialsErrorCode, setQuarterlyFinancialsErrorCode] =
+    useState<PersonalWorkspaceApiErrorCode | null>(null);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
   const marketEpoch = useRef(0);
   const marketController = useRef<AbortController | null>(null);
   const annualFinancialsEpoch = useRef(0);
   const annualFinancialsController = useRef<AbortController | null>(null);
+  const quarterlyFinancialsEpoch = useRef(0);
+  const quarterlyFinancialsController = useRef<AbortController | null>(null);
 
   const handleOwnerSessionChange = useCallback(
     async (active: boolean, signal: AbortSignal) => {
@@ -220,6 +231,12 @@ export function SecurityDiscoveryWorkspace() {
     setAnnualFinancials(null);
     setAnnualFinancialsRequestState("idle");
     setAnnualFinancialsErrorCode(null);
+    quarterlyFinancialsController.current?.abort();
+    quarterlyFinancialsController.current = null;
+    quarterlyFinancialsEpoch.current += 1;
+    setQuarterlyFinancials(null);
+    setQuarterlyFinancialsRequestState("idle");
+    setQuarterlyFinancialsErrorCode(null);
   }
 
   async function runSearch() {
@@ -317,6 +334,12 @@ export function SecurityDiscoveryWorkspace() {
     setAnnualFinancials(null);
     setAnnualFinancialsRequestState("idle");
     setAnnualFinancialsErrorCode(null);
+    quarterlyFinancialsController.current?.abort();
+    quarterlyFinancialsController.current = null;
+    quarterlyFinancialsEpoch.current += 1;
+    setQuarterlyFinancials(null);
+    setQuarterlyFinancialsRequestState("idle");
+    setQuarterlyFinancialsErrorCode(null);
     if (typeof document !== "undefined") {
       queueMicrotask(() =>
         document.getElementById("personal-market-overview")?.focus(),
@@ -340,6 +363,12 @@ export function SecurityDiscoveryWorkspace() {
     setAnnualFinancials(null);
     setAnnualFinancialsRequestState("idle");
     setAnnualFinancialsErrorCode(null);
+    quarterlyFinancialsController.current?.abort();
+    quarterlyFinancialsController.current = null;
+    quarterlyFinancialsEpoch.current += 1;
+    setQuarterlyFinancials(null);
+    setQuarterlyFinancialsRequestState("idle");
+    setQuarterlyFinancialsErrorCode(null);
   }
 
   async function loadMarketData(range: PersonalMarketDataRangeDto) {
@@ -463,6 +492,70 @@ export function SecurityDiscoveryWorkspace() {
       ) {
         annualFinancialsController.current = null;
         setAnnualFinancialsRequestState("idle");
+      }
+    }
+  }
+
+  async function loadQuarterlyFinancials() {
+    const selection = marketSelection;
+    if (selection === null || quarterlyFinancialsRequestState === "loading") {
+      return;
+    }
+    if (marketDataStatus?.status === "not_configured") {
+      setQuarterlyFinancialsErrorCode("not_configured");
+      return;
+    }
+    if (marketDataStatus === null) {
+      setQuarterlyFinancialsErrorCode("unavailable");
+      return;
+    }
+
+    quarterlyFinancialsController.current?.abort();
+    const controller = new AbortController();
+    quarterlyFinancialsController.current = controller;
+    const request = ++quarterlyFinancialsEpoch.current;
+    const epoch = workspaceEpoch.current;
+    setQuarterlyFinancials(null);
+    setQuarterlyFinancialsErrorCode(null);
+    setQuarterlyFinancialsRequestState("loading");
+    try {
+      const loaded = await fetchPersonalQuarterlyFinancials(
+        {
+          listingId: selection.listingId,
+          symbol: selection.symbol,
+        },
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== quarterlyFinancialsEpoch.current
+      ) {
+        return;
+      }
+      setQuarterlyFinancials(loaded);
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        epoch !== workspaceEpoch.current ||
+        request !== quarterlyFinancialsEpoch.current
+      ) {
+        return;
+      }
+      if (isSessionUnavailable(error)) {
+        clearWorkspaceForSessionLoss();
+        return;
+      }
+      setQuarterlyFinancialsErrorCode(
+        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable",
+      );
+    } finally {
+      if (
+        epoch === workspaceEpoch.current &&
+        request === quarterlyFinancialsEpoch.current
+      ) {
+        quarterlyFinancialsController.current = null;
+        setQuarterlyFinancialsRequestState("idle");
       }
     }
   }
@@ -962,6 +1055,15 @@ export function SecurityDiscoveryWorkspace() {
               onLoad={() => void loadAnnualFinancials()}
               providerStatus={marketDataStatus}
               requestState={annualFinancialsRequestState}
+              selection={marketSelection}
+            />
+
+            <PersonalQuarterlyFinancials
+              errorCode={quarterlyFinancialsErrorCode}
+              financials={quarterlyFinancials}
+              onLoad={() => void loadQuarterlyFinancials()}
+              providerStatus={marketDataStatus}
+              requestState={quarterlyFinancialsRequestState}
               selection={marketSelection}
             />
 

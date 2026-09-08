@@ -17,6 +17,7 @@ import type {
   PersonalFilingSelectedFactsDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
   PersonalSecurityMasterStatusDto,
@@ -171,6 +172,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/market-data/status",
       "/v1/personal-filing/market-data/overview",
       "/v1/personal-filing/market-data/annual-financials",
+      "/v1/personal-filing/market-data/quarterly-financials",
       "/v1/personal-filing/connected-source-policy/status",
       "/v1/personal-filing/connected-source-policy/kill",
       "/v1/theses/{thesisId}",
@@ -1079,7 +1081,7 @@ describe("local API OpenAPI contract", () => {
     expect(schemaKeys(response)).toEqual(requiredKeys(response));
     expect(response).toContain("additionalProperties: false");
     expect(response).toContain("personal_single_user_local_fundamentals");
-    expect(response).toContain('const: "1.0.0"');
+    expect(response).toContain('const: "1.1.0"');
     expect(response).toContain("const: available");
     expect(response).toContain("minItems: 1");
     expect(response).toContain("maxItems: 10");
@@ -1143,7 +1145,11 @@ describe("local API OpenAPI contract", () => {
       "PersonalAnnualFinancialYear",
       "PersonalAnnualFinancialReportedValues",
     );
-    expect(requiredKeys(year)).toEqual(["fiscalYear", "periodEnd", "reported"]);
+    expect(requiredKeys(year)).toEqual([
+      "fiscalYear",
+      "reported",
+      "statementDate",
+    ]);
     expect(schemaKeys(year)).toEqual(requiredKeys(year));
     expect(year).toContain("additionalProperties: false");
     expect(year).toContain("format: date");
@@ -1174,7 +1180,7 @@ describe("local API OpenAPI contract", () => {
     const cell = schemaSection(
       source,
       "PersonalAnnualFinancialReportedCell",
-      "InstrumentId",
+      "PersonalQuarterlyFinancialsRequest",
     );
     expect(cell.match(/^ {8}- type: object$/gm)).toHaveLength(2);
     expect(cell.match(/additionalProperties: false/g)).toHaveLength(2);
@@ -1199,6 +1205,160 @@ describe("local API OpenAPI contract", () => {
       'pattern: "^(?:0|-?[1-9][0-9]*|-?(?:0|[1-9][0-9]*)\\\\.[0-9]*[1-9])$"',
     );
     expect(cell).toContain('type: "null"');
+  });
+
+  it("freezes the exact personal quarterly-financials contract", async () => {
+    const source = await openApiSource();
+    const route = pathSection(
+      source,
+      "/v1/personal-filing/market-data/quarterly-financials",
+    );
+    const normalizedRoute = route.replace(/\s+/g, " ");
+
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "post:",
+    ]);
+    expect(statuses(route)).toEqual([
+      "200",
+      "400",
+      "402",
+      "403",
+      "404",
+      "424",
+      "429",
+      "502",
+      "503",
+    ]);
+    expect(route).not.toContain("in: query");
+    expect(route).toContain("PersonalOwnerSession: []");
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalQuarterlyFinancialsRequest"',
+    );
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalQuarterlyFinancials"',
+    );
+    expect(normalizedRoute).toContain("one to sixteen quarterly periods");
+    expect(normalizedRoute).toContain("newest-first fiscal-quarter order");
+    expect(normalizedRoute).toContain(
+      "provider's statement release date, not the fiscal period end",
+    );
+    expect(normalizedRoute).toContain("unknown rather than synthesized");
+    expect(normalizedRoute).toContain("only in active process/browser memory");
+    expect(normalizedRoute).toContain("not entitled to the fundamentals feed");
+    expect(route.match(/#\/components\/headers\/PrivateNoStore/g)).toHaveLength(
+      9,
+    );
+    expect(route.match(/#\/components\/headers\/PragmaNoCache/g)).toHaveLength(
+      9,
+    );
+
+    const request = schemaSection(
+      source,
+      "PersonalQuarterlyFinancialsRequest",
+      "PersonalQuarterlyFinancials",
+    );
+    expect(requiredKeys(request)).toEqual(["listingId", "symbol"]);
+    expect(schemaKeys(request)).toEqual(requiredKeys(request));
+    expect(request).toContain("additionalProperties: false");
+
+    const response = schemaSection(
+      source,
+      "PersonalQuarterlyFinancials",
+      "PersonalQuarterlyFinancialsCoverage",
+    );
+    expect(requiredKeys(response)).toEqual([
+      "asOf",
+      "coverage",
+      "profile",
+      "provider",
+      "quarters",
+      "schemaVersion",
+      "security",
+      "status",
+    ]);
+    expect(schemaKeys(response)).toEqual(requiredKeys(response));
+    expect(response).toContain("additionalProperties: false");
+    expect(response).toContain("personal_single_user_local_fundamentals");
+    expect(response).toContain(
+      '$ref: "#/components/schemas/PersonalAnnualFinancialsProvider"',
+    );
+    expect(response).toContain('const: "1.0.0"');
+    expect(response).toContain("const: available");
+    expect(response).toContain("minItems: 1");
+    expect(response).toContain("maxItems: 16");
+    expect(response.replace(/\s+/g, " ")).toContain(
+      "newest-first fiscal-quarter order",
+    );
+
+    const coverage = schemaSection(
+      source,
+      "PersonalQuarterlyFinancialsCoverage",
+      "PersonalFiscalQuarter",
+    );
+    expect(requiredKeys(coverage)).toEqual([
+      "earliestFiscalQuarter",
+      "earliestFiscalYear",
+      "knownReportedCells",
+      "latestFiscalQuarter",
+      "latestFiscalYear",
+      "missingFiscalQuarters",
+      "requestedQuarterlyPeriods",
+      "returnedQuarterlyPeriods",
+      "status",
+      "unknownReportedCells",
+    ]);
+    expect(schemaKeys(coverage)).toEqual(requiredKeys(coverage));
+    expect(coverage).toContain("additionalProperties: false");
+    expect(coverage).toContain("const: 16");
+    expect(coverage).toContain("maxItems: 15");
+    expect(coverage).toContain("uniqueItems: true");
+    expect(coverage).toContain("maximum: 480");
+    expect(coverage).toContain(
+      '$ref: "#/components/schemas/PersonalFiscalQuarter"',
+    );
+    expect(listValues(coverage, /^ {12}- (complete|partial)$/gm)).toEqual([
+      "complete",
+      "partial",
+    ]);
+
+    const fiscalQuarter = schemaSection(
+      source,
+      "PersonalFiscalQuarter",
+      "PersonalQuarterlyFinancialQuarter",
+    );
+    expect(requiredKeys(fiscalQuarter)).toEqual([
+      "fiscalQuarter",
+      "fiscalYear",
+    ]);
+    expect(schemaKeys(fiscalQuarter)).toEqual(requiredKeys(fiscalQuarter));
+    expect(fiscalQuarter).toContain("additionalProperties: false");
+    expect(fiscalQuarter).toContain("minimum: 1");
+    expect(fiscalQuarter).toContain("maximum: 4");
+    expect(fiscalQuarter).toContain("minimum: 1900");
+    expect(fiscalQuarter).toContain("maximum: 9999");
+
+    const quarter = schemaSection(
+      source,
+      "PersonalQuarterlyFinancialQuarter",
+      "InstrumentId",
+    );
+    expect(requiredKeys(quarter)).toEqual([
+      "fiscalYear",
+      "fiscalQuarter",
+      "statementDate",
+      "reported",
+    ]);
+    expect(schemaKeys(quarter)).toEqual(requiredKeys(quarter));
+    expect(quarter).toContain("additionalProperties: false");
+    expect(quarter).toContain("format: date");
+    expect(quarter).not.toContain("format: date-time");
+    expect(quarter.replace(/\s+/g, " ")).toContain(
+      "Provider statement date (release date) for the fiscal quarter; not the fiscal period end",
+    );
+    expect(quarter).toContain(
+      '$ref: "#/components/schemas/PersonalAnnualFinancialReportedValues"',
+    );
+    expect(quarter).not.toContain("PersonalQuarterlyFinancialReportedValues");
   });
 
   it("freezes the exact authenticated connected source-policy administration contract", async () => {
@@ -1851,13 +2011,12 @@ describe("local API OpenAPI contract", () => {
         statementFeed: "tiingo_fundamentals_statements",
         valueCurrency: "USD",
       },
-      schemaVersion: "1.0.0",
+      schemaVersion: "1.1.0",
       security: personalMarketOverview.security,
       status: "available",
       years: [
         {
           fiscalYear: 2025,
-          periodEnd: "2026-02-20",
           reported: {
             accounts_receivable: knownAnnualFinancialCell,
             assets: knownAnnualFinancialCell,
@@ -1890,9 +2049,43 @@ describe("local API OpenAPI contract", () => {
             shareholders_equity: knownAnnualFinancialCell,
             interest_expense: unknownAnnualFinancialCell,
           },
+          statementDate: "2026-02-20",
         },
       ],
     } satisfies PersonalAnnualFinancialsDto;
+    const personalQuarterlyFinancials = {
+      asOf: "2026-09-07T15:00:01.000Z",
+      coverage: {
+        earliestFiscalQuarter: 3,
+        earliestFiscalYear: 2025,
+        knownReportedCells: 29,
+        latestFiscalQuarter: 3,
+        latestFiscalYear: 2025,
+        missingFiscalQuarters: [
+          {
+            fiscalQuarter: 2,
+            fiscalYear: 2025,
+          },
+        ],
+        requestedQuarterlyPeriods: 16,
+        returnedQuarterlyPeriods: 1,
+        status: "partial",
+        unknownReportedCells: 1,
+      },
+      profile: "personal_single_user_local_fundamentals",
+      provider: personalAnnualFinancials.provider,
+      quarters: [
+        {
+          fiscalYear: 2025,
+          fiscalQuarter: 3,
+          statementDate: "2025-11-06",
+          reported: personalAnnualFinancials.years[0]!.reported,
+        },
+      ],
+      schemaVersion: "1.0.0",
+      security: personalMarketOverview.security,
+      status: "available",
+    } satisfies PersonalQuarterlyFinancialsDto;
     const connectedSourceBudgetQuantity = {
       limit: 100,
       used: 25,
@@ -2093,6 +2286,37 @@ describe("local API OpenAPI contract", () => {
     ]);
     expect(
       Object.keys(personalAnnualFinancials.years[0]?.reported ?? {}),
+    ).toEqual(PERSONAL_ANNUAL_FINANCIAL_REPORTED_KEYS);
+    expect(Object.keys(personalQuarterlyFinancials)).toEqual([
+      "asOf",
+      "coverage",
+      "profile",
+      "provider",
+      "quarters",
+      "schemaVersion",
+      "security",
+      "status",
+    ]);
+    expect(Object.keys(personalQuarterlyFinancials.coverage)).toEqual([
+      "earliestFiscalQuarter",
+      "earliestFiscalYear",
+      "knownReportedCells",
+      "latestFiscalQuarter",
+      "latestFiscalYear",
+      "missingFiscalQuarters",
+      "requestedQuarterlyPeriods",
+      "returnedQuarterlyPeriods",
+      "status",
+      "unknownReportedCells",
+    ]);
+    expect(Object.keys(personalQuarterlyFinancials.quarters[0] ?? {})).toEqual([
+      "fiscalYear",
+      "fiscalQuarter",
+      "statementDate",
+      "reported",
+    ]);
+    expect(
+      Object.keys(personalQuarterlyFinancials.quarters[0]?.reported ?? {}),
     ).toEqual(PERSONAL_ANNUAL_FINANCIAL_REPORTED_KEYS);
     expect(Object.keys(connectedSourceBudgetQuantity)).toEqual([
       "limit",

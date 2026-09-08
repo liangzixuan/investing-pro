@@ -1999,8 +1999,9 @@ Pass only for exact source revision
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
 breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
-Cycles 3g-a1 and 3g-b1 add on-demand market data and transparent analytics, and
-Cycle 3h-a1 is the current high-priority annual-statement slice. Later Cycle
+Cycles 3g-a1 and 3g-b1 add on-demand market data and transparent analytics,
+Cycle 3h-a1 adds annual statements, and Cycle 3h-a2 adds the bounded quarterly
+statement slice. Later Cycle
 3e-b work, full 3g/3h breadth, and Cycles 3f and 3i through 3q remain planned.**
 No parity claim is made.
 
@@ -2500,7 +2501,18 @@ active owner-session memory, and is cleared with the view or session. No request
 runs automatically. On a fundamentals 403, one fixed credential-test request
 distinguishes absent fundamentals access from an invalid credential.
 
-This slice does not claim full Cycle 3h-a: quarterly/TTM views, point-in-time
+Cycle 3h-a2 adds a separate explicit request for up to sixteen fiscal quarters
+for that same exact selected listing. It preserves the fixed 30-field registry,
+lossless decimal handling, provider-most-recent label, entitlement states, and
+active-session-only custody. Fiscal identity uses the provider's fiscal year
+and quarter; the provider `date` is exposed as `statementDate` and not called a
+fiscal period end. Missing coordinates remain in their exact newest-first
+16-quarter window and missing cells remain unknown. TTM is deliberately not
+calculated because the admitted provider documentation does not establish
+whether every quarterly income/cash-flow value is standalone or cumulative.
+No annual value, zero, or shifted quarter is substituted.
+
+These slices do not claim full Cycle 3h-a: verified TTM views, point-in-time
 restatement lineage, the full 30-core-metric set, 500-security coverage, 90%
 knownness, and 20-issuer independent validation remain open.
 

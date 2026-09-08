@@ -2621,16 +2621,17 @@ token without fundamentals access (`not_entitled`) from a rejected token
 (`credentials_invalid`). No fundamentals request occurs during startup,
 authentication, search, selection, watchlist loading, or price-history loading.
 
-For the fixed `asReported=false` request, the importer treats Tiingo's `date` as
-the fiscal period-end date independently from the reported fiscal `year`, keeps
-only `quarter = 0`, selects at most ten distinct fiscal years in descending
-order, and maps a fixed 30-field registry across the income statement, balance
-sheet, and cash flow. Every absent year and field is explicit; no value is
-shifted, zero-filled, or synthesized. JSON numeric lexemes are captured before
-native number coercion, canonicalized as exact decimal strings, and returned as
-USD under the provider's documented conversion model. Unknown future provider
-fields receive bounded text/value validation and are ignored rather than
-changing the public registry.
+For the fixed `asReported=false` request, the importer uses the reported fiscal
+`year` as annual-period identity, keeps only `quarter = 0`, and exposes Tiingo's
+`date` as `statementDate`, the date the statement data was released publicly,
+not as a fiscal period end. It selects at most ten distinct fiscal years in
+descending order and maps a fixed 30-field registry across the income statement,
+balance sheet, and cash flow. Every absent year and field is explicit; no value
+is shifted, zero-filled, or synthesized. JSON numeric lexemes are captured
+before native number coercion, canonicalized as exact decimal strings, and
+returned as USD under the provider's documented conversion model. Unknown
+future provider fields receive bounded text/value validation and are ignored
+rather than changing the public registry.
 
 The browser derives eight exact-decimal metrics and revenue, net-income, and
 free-cash-flow year-over-year growth from named reported inputs. Each metric
@@ -2646,6 +2647,42 @@ This slice does not establish quarterly/TTM statements, as-reported revision
 history, filing citations, the full 30-core-metric Cycle 3h-a registry, or the
 planned 500-security and 20-issuer validation gates. It is not a full Cycle 3h
 or competitor-parity result.
+
+## Cycle 3h-a2 provider-backed quarterly financials model
+
+Cycle 3h-a2 adds a second explicit, authenticated command for the exact
+catalog-bound listing selected in `/discover`. It performs one bounded Tiingo
+fundamentals-statements request only after the owner clicks **Load quarterly
+financials**. Startup, authentication, search, selection, watchlist loading,
+price history, and annual loading do not implicitly trigger it.
+
+The importer keeps only provider records whose fiscal quarter is 1 through 4,
+rejects duplicate fiscal-year/fiscal-quarter coordinates, independently sorts
+them newest first, and returns at most the latest sixteen coordinates. Every
+quarter contains the same closed 30-field reported registry and exact decimal
+or explicit provider-omission cell used by the annual view. Coverage binds the
+latest and earliest returned coordinates, the fixed 16-quarter window, every
+missing coordinate in that window, and exact known/unknown cell counts. A
+missing quarter is not replaced, shifted, zero-filled, or reconstructed from an
+annual record.
+
+The provider `date` is exposed as `statementDate`, following the documented
+statement/release-date meaning; fiscal identity and ordering use only the
+separate fiscal year and fiscal quarter. The result remains
+`provider_most_recent`, in active owner-session memory, and is cleared on
+listing change, market-view close, or owner-session loss. Strict browser
+validation re-derives order, the requested coordinate window, missingness, and
+cell counts before rendering.
+
+Cycle 3h-a2 does not calculate TTM. The provider documentation identifies
+quarterly records but does not establish whether every duration value is a
+standalone quarter or cumulative year-to-date amount. Until that basis is
+authoritatively bound and reconciled, summing four rows would be an unsupported
+derivation. The UI exposes this unavailable state rather than synthesizing a
+total. This slice also does not establish quarterly ratios/growth,
+point-in-time revisions, filing citations, the full 30-core-metric registry,
+500-security coverage, 90% knownness, 20-issuer validation, full Cycle 3h, or
+competitor parity.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

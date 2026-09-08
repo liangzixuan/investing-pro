@@ -1149,6 +1149,23 @@ h4,
   font-size: 0.74rem;
 }
 
+.financials-ttm-gate {
+  display: flex;
+  margin-top: 12px;
+  padding: 13px 15px;
+  border: 1px solid #bfd2ca;
+  border-radius: var(--radius-sm);
+  background: #f3f8f5;
+  color: var(--ink-soft);
+  flex-direction: column;
+  font-size: 0.74rem;
+  gap: 4px;
+}
+
+.financials-ttm-gate strong {
+  color: var(--navy);
+}
+
 .financial-statement-stack {
   display: flex;
   margin-top: 16px;

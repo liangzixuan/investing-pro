@@ -16,11 +16,11 @@ describe("personal financial analytics safety boundaries", () => {
     ],
     ["invalid year", bad({ periods: [period(1899)] }), "invalid_fiscal_year"],
     [
-      "invalid period-end date",
+      "invalid statement date",
       bad({
-        periods: [{ ...period(2025), periodEnd: "2026-02-30" }],
+        periods: [{ ...period(2025), statementDate: "2026-02-30" }],
       }),
-      "invalid_period_end",
+      "invalid_statement_date",
     ],
     [
       "duplicate year",
@@ -141,7 +141,7 @@ function period(fiscalYear: number) {
       },
     ],
     fiscalYear,
-    periodEnd: `${fiscalYear + 1}-02-15`,
+    statementDate: `${fiscalYear + 1}-02-15`,
   };
 }
 function bad(

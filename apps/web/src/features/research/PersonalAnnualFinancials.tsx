@@ -79,7 +79,7 @@ export function PersonalAnnualFinancials({
                 : [];
             }),
             fiscalYear: year.fiscalYear,
-            periodEnd: year.periodEnd,
+            statementDate: year.statementDate,
           })),
         });
 
@@ -251,7 +251,7 @@ function FinancialsResult({
                             <small>
                               {year === undefined
                                 ? "Not returned"
-                                : `Period ended ${formatPeriodDate(year.periodEnd)}`}
+                                : `Statement date ${formatPeriodDate(year.statementDate)}`}
                             </small>
                           </th>
                         );

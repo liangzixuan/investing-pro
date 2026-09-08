@@ -11,6 +11,8 @@ import type {
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialQuarterDto,
+  PersonalQuarterlyFinancialsDto,
 } from "@research-cockpit/contracts";
 
 export const PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY =
@@ -38,6 +40,10 @@ export interface PersonalMarketDataProvider {
     range: PersonalMarketDataRangeDto,
     signal?: AbortSignal,
   ): Promise<PersonalMarketOverviewDto>;
+  loadQuarterlyFinancials(
+    identity: PersonalMarketDataIdentityDto,
+    signal?: AbortSignal,
+  ): Promise<PersonalQuarterlyFinancialsDto>;
   status(): PersonalMarketDataStatusDto;
 }
 
@@ -262,7 +268,10 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
       const latest = years[0];
       const earliest = years.at(-1);
       if (latest === undefined || earliest === undefined) fail("not_covered");
-      if (latest.fiscalYear < asOfDate.getUTCFullYear() - 2) {
+      if (
+        latest.fiscalYear < asOfDate.getUTCFullYear() - 2 ||
+        latest.fiscalYear > asOfDate.getUTCFullYear() + 1
+      ) {
         fail("invalid_response");
       }
       const returnedYears = new Set(years.map(({ fiscalYear }) => fiscalYear));
@@ -296,10 +305,130 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
         }),
         profile: "personal_single_user_local_fundamentals",
         provider: TIINGO_FINANCIALS_PROVIDER,
-        schemaVersion: "1.0.0",
+        schemaVersion: "1.1.0",
         security,
         status: "available",
         years,
+      });
+    } catch (error) {
+      if (
+        this.#closed ||
+        context.externalSignal?.aborted === true ||
+        (context.controller.signal.aborted && !context.timedOut())
+      ) {
+        fail("aborted");
+      }
+      if (error instanceof PersonalMarketDataProviderError) throw error;
+      fail("upstream_unavailable");
+    } finally {
+      this.#finishRequest(context.controller);
+    }
+  }
+
+  public async loadQuarterlyFinancials(
+    identity: PersonalMarketDataIdentityDto,
+    signal?: AbortSignal,
+  ): Promise<PersonalQuarterlyFinancialsDto> {
+    if (this.#closed || this.#tokenBytes === undefined) {
+      fail(this.#invalidCredential ? "credentials_invalid" : "not_configured");
+    }
+    if (this.#invalidCredential) fail("credentials_invalid");
+    if (signal?.aborted === true) fail("aborted");
+
+    const security = normalizeIdentity(identity);
+    const providerSymbol = security.symbol.replaceAll(".", "-");
+    if (!PROVIDER_SYMBOL.test(providerSymbol)) fail("not_covered");
+    const asOfDate = this.#readClock();
+    const asOf = asOfDate.toISOString();
+    const startDate = `${String(asOfDate.getUTCFullYear() - 11).padStart(4, "0")}-01-01`;
+    const endDate = formatUtcDate(asOfDate);
+    const fundamentalsUrl = tiingoAnnualFinancialsUrl(
+      providerSymbol,
+      startDate,
+      endDate,
+    );
+    const context = this.#startRequest(signal);
+
+    try {
+      const authorization = `Token ${new TextDecoder().decode(
+        this.#tokenBytes,
+      )}`;
+      const value = await this.#requestLosslessJson(
+        fundamentalsUrl,
+        authorization,
+        context,
+      );
+      if (this.#closed || context.externalSignal?.aborted === true) {
+        fail("aborted");
+      }
+      const quarters = normalizeQuarterlyFinancials(value, startDate, endDate);
+      const latest = quarters[0];
+      const earliest = quarters.at(-1);
+      if (latest === undefined || earliest === undefined) fail("not_covered");
+      if (
+        latest.fiscalYear < asOfDate.getUTCFullYear() - 2 ||
+        latest.fiscalYear > asOfDate.getUTCFullYear() + 1
+      ) {
+        fail("invalid_response");
+      }
+      const returnedCoordinates = new Set(
+        quarters.map(({ fiscalQuarter, fiscalYear }) =>
+          fiscalQuarterCoordinate(fiscalYear, fiscalQuarter),
+        ),
+      );
+      const missingFiscalQuarters: Array<
+        Readonly<{ fiscalQuarter: 1 | 2 | 3 | 4; fiscalYear: number }>
+      > = [];
+      let fiscalYear = latest.fiscalYear;
+      let fiscalQuarter = latest.fiscalQuarter;
+      for (let offset = 0; offset < 16; offset += 1) {
+        if (
+          !returnedCoordinates.has(
+            fiscalQuarterCoordinate(fiscalYear, fiscalQuarter),
+          )
+        ) {
+          missingFiscalQuarters.push(
+            Object.freeze({ fiscalQuarter, fiscalYear }),
+          );
+        }
+        if (fiscalQuarter === 1) {
+          fiscalYear -= 1;
+          fiscalQuarter = 4;
+        } else {
+          fiscalQuarter = (fiscalQuarter - 1) as 1 | 2 | 3 | 4;
+        }
+      }
+      let knownReportedCells = 0;
+      for (const quarter of quarters) {
+        for (const cell of Object.values(quarter.reported)) {
+          if (cell.status === "known") knownReportedCells += 1;
+        }
+      }
+      const unknownReportedCells =
+        quarters.length * REPORTED_FIELD_REGISTRY.length - knownReportedCells;
+      return Object.freeze({
+        asOf,
+        coverage: Object.freeze({
+          earliestFiscalQuarter: earliest.fiscalQuarter,
+          earliestFiscalYear: earliest.fiscalYear,
+          knownReportedCells,
+          latestFiscalQuarter: latest.fiscalQuarter,
+          latestFiscalYear: latest.fiscalYear,
+          missingFiscalQuarters: Object.freeze(missingFiscalQuarters),
+          requestedQuarterlyPeriods: 16,
+          returnedQuarterlyPeriods: quarters.length,
+          status:
+            missingFiscalQuarters.length === 0 && unknownReportedCells === 0
+              ? "complete"
+              : "partial",
+          unknownReportedCells,
+        }),
+        profile: "personal_single_user_local_fundamentals",
+        provider: TIINGO_FINANCIALS_PROVIDER,
+        quarters,
+        schemaVersion: "1.0.0",
+        security,
+        status: "available",
       });
     } catch (error) {
       if (
@@ -927,22 +1056,146 @@ function normalizeAnnualFinancials(
   );
 }
 
+function normalizeQuarterlyFinancials(
+  value: unknown,
+  startDate: string,
+  endDate: string,
+): readonly PersonalQuarterlyFinancialQuarterDto[] {
+  if (!Array.isArray(value) || value.length > MAX_FINANCIAL_RECORDS) {
+    fail("invalid_response");
+  }
+  const quarterlyByCoordinate = new Map<
+    string,
+    PersonalQuarterlyFinancialQuarterDto
+  >();
+  for (const candidate of value) {
+    const normalized = normalizeQuarterlyFinancialRecord(
+      candidate,
+      startDate,
+      endDate,
+    );
+    if (normalized === undefined) continue;
+    const coordinate = fiscalQuarterCoordinate(
+      normalized.fiscalYear,
+      normalized.fiscalQuarter,
+    );
+    if (quarterlyByCoordinate.has(coordinate)) fail("invalid_response");
+    quarterlyByCoordinate.set(coordinate, normalized);
+  }
+  if (quarterlyByCoordinate.size === 0) fail("not_covered");
+  const sorted = [...quarterlyByCoordinate.values()].sort(
+    (left, right) =>
+      right.fiscalYear - left.fiscalYear ||
+      right.fiscalQuarter - left.fiscalQuarter,
+  );
+  const latest = sorted[0];
+  if (latest === undefined) fail("not_covered");
+  const earliestIncludedOrdinal =
+    fiscalQuarterOrdinal(latest.fiscalYear, latest.fiscalQuarter) - 15;
+  return Object.freeze(
+    sorted.filter(
+      ({ fiscalQuarter, fiscalYear }) =>
+        fiscalQuarterOrdinal(fiscalYear, fiscalQuarter) >=
+        earliestIncludedOrdinal,
+    ),
+  );
+}
+
+function normalizeQuarterlyFinancialRecord(
+  value: unknown,
+  startDate: string,
+  endDate: string,
+): PersonalQuarterlyFinancialQuarterDto | undefined {
+  if (!isRecord(value)) fail("invalid_response");
+  const statementDate = normalizeProviderStatementDate(value.date);
+  if (statementDate < startDate || statementDate > endDate) {
+    fail("invalid_response");
+  }
+  const fiscalYear = boundedIntegerString(value.year, 1900, 9999);
+  const quarter = boundedIntegerString(value.quarter, 0, 4);
+  if (!isRecord(value.statementData)) fail("invalid_response");
+  const sections = [
+    "incomeStatement",
+    "balanceSheet",
+    "cashFlow",
+    "overview",
+  ] as const;
+  const values = new Map<PersonalAnnualFinancialReportedFieldKeyDto, string>();
+  const seenSourceCodes = new Set<string>();
+  for (const section of sections) {
+    const items = value.statementData[section];
+    if (!Array.isArray(items) || items.length > MAX_STATEMENT_ITEMS) {
+      fail("invalid_response");
+    }
+    for (const item of items) {
+      if (!isRecord(item) || !validPlainText(item.dataCode, 1, 128)) {
+        fail("invalid_response");
+      }
+      const dataCode = item.dataCode;
+      if (item.value !== null && !isCanonicalizableSourceNumber(item.value)) {
+        fail("invalid_response");
+      }
+      const registration = REGISTRATION_BY_SOURCE_CODE.get(dataCode);
+      if (registration === undefined) continue;
+      if (registration.section !== section || seenSourceCodes.has(dataCode)) {
+        fail("invalid_response");
+      }
+      seenSourceCodes.add(dataCode);
+      if (item.value !== null) {
+        values.set(registration.fieldKey, canonicalizeSourceNumber(item.value));
+      }
+    }
+  }
+  if (quarter === 0) return undefined;
+  const reported = Object.fromEntries(
+    REPORTED_FIELD_REGISTRY.map(({ fieldKey }) => [
+      fieldKey,
+      values.has(fieldKey)
+        ? Object.freeze({
+            status: "known",
+            value: values.get(fieldKey) as string,
+          })
+        : Object.freeze({
+            reason: "not_supplied_by_provider",
+            status: "unknown",
+            value: null,
+          }),
+    ]),
+  ) as PersonalAnnualFinancialReportedValuesDto;
+  return Object.freeze({
+    fiscalQuarter: quarter as 1 | 2 | 3 | 4,
+    fiscalYear,
+    reported: Object.freeze(reported),
+    statementDate,
+  });
+}
+
+function fiscalQuarterCoordinate(
+  fiscalYear: number,
+  fiscalQuarter: 1 | 2 | 3 | 4,
+): string {
+  return `${String(fiscalYear)}-Q${String(fiscalQuarter)}`;
+}
+
+function fiscalQuarterOrdinal(
+  fiscalYear: number,
+  fiscalQuarter: 1 | 2 | 3 | 4,
+): number {
+  return fiscalYear * 4 + fiscalQuarter - 1;
+}
+
 function normalizeAnnualFinancialRecord(
   value: unknown,
   startDate: string,
   endDate: string,
 ): PersonalAnnualFinancialYearDto | undefined {
   if (!isRecord(value)) fail("invalid_response");
-  const periodEnd = normalizeProviderPeriodEnd(value.date);
-  if (periodEnd < startDate || periodEnd > endDate) {
+  const statementDate = normalizeProviderStatementDate(value.date);
+  if (statementDate < startDate || statementDate > endDate) {
     fail("invalid_response");
   }
   const fiscalYear = boundedIntegerString(value.year, 1900, 9999);
   const quarter = boundedIntegerString(value.quarter, 0, 4);
-  const periodEndYear = Number(periodEnd.slice(0, 4));
-  if (periodEndYear < fiscalYear || periodEndYear > fiscalYear + 1) {
-    fail("invalid_response");
-  }
   if (!isRecord(value.statementData)) fail("invalid_response");
   const sections = [
     "incomeStatement",
@@ -994,8 +1247,8 @@ function normalizeAnnualFinancialRecord(
   ) as PersonalAnnualFinancialReportedValuesDto;
   return Object.freeze({
     fiscalYear,
-    periodEnd,
     reported: Object.freeze(reported),
+    statementDate,
   });
 }
 
@@ -1022,7 +1275,7 @@ function boundedIntegerString(
   return parsed;
 }
 
-function normalizeProviderPeriodEnd(value: unknown): string {
+function normalizeProviderStatementDate(value: unknown): string {
   if (typeof value !== "string") fail("invalid_response");
   if (PROVIDER_DATE.test(value)) {
     if (!hasValidCalendarDatePrefix(value)) fail("invalid_response");

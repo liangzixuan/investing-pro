@@ -1,6 +1,6 @@
 import Decimal from "decimal.js";
 
-export const PERSONAL_FINANCIAL_ANALYTICS_SCHEMA_VERSION = "1.0.0" as const;
+export const PERSONAL_FINANCIAL_ANALYTICS_SCHEMA_VERSION = "1.1.0" as const;
 export const PERSONAL_FINANCIAL_ANALYTICS_FORMULA_SET_VERSION =
   "1.0.0" as const;
 export const PERSONAL_FINANCIAL_ANALYTICS_MAX_ANNUAL_PERIODS = 10 as const;
@@ -45,7 +45,7 @@ export const PERSONAL_FINANCIAL_ANALYTICS_QUARANTINE_REASONS = Object.freeze([
   "invalid_as_of",
   "too_many_periods",
   "invalid_fiscal_year",
-  "invalid_period_end",
+  "invalid_statement_date",
   "duplicate_fiscal_year",
   "periods_not_strictly_descending",
 ] as const);
@@ -112,7 +112,7 @@ export interface PersonalFinancialAnalyticsFactInput {
 export interface PersonalFinancialAnalyticsAnnualPeriodInput {
   readonly facts: readonly PersonalFinancialAnalyticsFactInput[];
   readonly fiscalYear: number;
-  readonly periodEnd: string;
+  readonly statementDate: string;
 }
 export interface PersonalFinancialAnalyticsInput {
   readonly asOf: string;
@@ -179,7 +179,7 @@ export interface PersonalFinancialAnalyticsStatements {
 export interface PersonalFinancialAnalyticsPeriodResult {
   readonly fiscalYear: number;
   readonly metrics: PersonalFinancialAnalyticsPeriodMetrics;
-  readonly periodEnd: string;
+  readonly statementDate: string;
   readonly statements: PersonalFinancialAnalyticsStatements;
 }
 
@@ -276,7 +276,7 @@ export function buildPersonalFinancialAnalytics(
   const periods = resolvedPeriods.map(({ input: period, resolutions }) => ({
     fiscalYear: period.fiscalYear,
     metrics: buildPeriodMetrics(period.fiscalYear, resolutions),
-    periodEnd: period.periodEnd,
+    statementDate: period.statementDate,
     statements: buildStatements(resolutions),
   }));
   return freezeDeep({
@@ -305,8 +305,8 @@ function validateEnvelope(
       period.fiscalYear > 9999
     )
       issues.push({ index, reason: "invalid_fiscal_year" });
-    if (!isIsoDate(period.periodEnd))
-      issues.push({ index, reason: "invalid_period_end" });
+    if (!isIsoDate(period.statementDate))
+      issues.push({ index, reason: "invalid_statement_date" });
     if (seenYears.has(period.fiscalYear))
       issues.push({ index, reason: "duplicate_fiscal_year" });
     seenYears.add(period.fiscalYear);

@@ -14,8 +14,8 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1, 3g-b1, and 3h-a1 add a provider-backed market view, transparent
-trend/risk analytics, and multi-year annual financials to the daily-use
+Cycles 3g-a1, 3g-b1, 3h-a1, and 3h-a2 add a provider-backed market view,
+transparent trend/risk analytics, and multi-period financials to the daily-use
 discovery workflow. In the explicit
 `personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
@@ -39,6 +39,14 @@ flow year-over-year growth. Tiingo's most-recent corrected view is labelled as
 such; it is not represented as point-in-time history. Fundamentals entitlement
 is separate from price access and gets its own visible state.
 
+A second explicit action loads up to sixteen fiscal quarters over the same
+fixed 30-field registry. Quarterly identity comes from the provider's fiscal
+year and quarter, while `statementDate` is labelled as a statement/release date
+rather than silently presented as a fiscal period end. Missing quarters occupy
+their exact slots and missing cells stay blank. TTM remains visibly unavailable
+until the source's quarter-flow aggregation basis is verified; the application
+does not guess by summing potentially cumulative values.
+
 Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory and are not written to the vault, filesystem, browser
 storage, logs, exports, or Git.
@@ -55,8 +63,8 @@ history remains explicit. The currently reviewed
 derivation, so no derived price or moving-average series is retained or exposed.
 This is a visible feature milestone, not full Cycle 3g or product parity: the
 declared 100-symbol validation gate, independent corporate-action reconciliation,
-benchmark relative strength, broader indicators, full statement breadth,
-quarterly/TTM financials, the full 30-core-metric and 500-security validation
+benchmark relative strength, broader indicators, verified TTM financials,
+point-in-time statements, the full 30-core-metric and 500-security validation
 gate, valuation/peer tools, screening, events/news, portfolio analytics, alerts,
 and exports remain later product work.
 
@@ -1736,13 +1744,14 @@ pnpm --filter @research-cockpit/web exec next dev -p 3000 -H 127.0.0.1
 
 Open `http://127.0.0.1:3000/discover`, paste the fresh bootstrap value into the
 owner-session panel, and select **Start session**. The combined process gives
-search, watchlist, and explicit market-data or annual-financial requests one
+search, watchlist, and explicit market-data or financial-statement requests one
 cookie authority. The
 API sends a configured Tiingo token only in the provider Authorization header,
 never in a URL. Returned Tiingo values remain transient in active session memory
 and are discarded when the market view or owner session ends. Use **Load annual
-financials** after selecting a listing to request the separate fundamentals
-feed; no fundamentals request runs automatically. The older isolated
+financials** or **Load quarterly financials** after selecting a listing to
+request the separate fundamentals feed; no fundamentals request runs
+automatically. The older isolated
 security-master and generic-vault entrypoints remain available for their
 original bounded uses.
 

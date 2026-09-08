@@ -4,6 +4,7 @@ import type {
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
@@ -30,6 +31,8 @@ export const PERSONAL_MARKET_OVERVIEW_PATH =
   "/v1/personal-filing/market-data/overview" as const;
 export const PERSONAL_ANNUAL_FINANCIALS_PATH =
   "/v1/personal-filing/market-data/annual-financials" as const;
+export const PERSONAL_QUARTERLY_FINANCIALS_PATH =
+  "/v1/personal-filing/market-data/quarterly-financials" as const;
 
 export const MAIN_PERSONAL_WATCHLIST_ID = "main" as const;
 export const MAIN_PERSONAL_WATCHLIST_NAME = "My Watchlist" as const;
@@ -334,8 +337,8 @@ const annualFinancialsCoverageKeys = [
 ] as const;
 const annualFinancialYearKeys = [
   "fiscalYear",
-  "periodEnd",
   "reported",
+  "statementDate",
 ] as const;
 const annualFinancialReportedFieldKeys = [
   "revenue",
@@ -371,6 +374,35 @@ const annualFinancialReportedFieldKeys = [
 ] as const satisfies readonly PersonalAnnualFinancialReportedFieldKeyDto[];
 const annualFinancialKnownCellKeys = ["status", "value"] as const;
 const annualFinancialUnknownCellKeys = ["reason", "status", "value"] as const;
+const quarterlyFinancialsKeys = [
+  "asOf",
+  "coverage",
+  "profile",
+  "provider",
+  "quarters",
+  "schemaVersion",
+  "security",
+  "status",
+] as const;
+const quarterlyFinancialsCoverageKeys = [
+  "earliestFiscalQuarter",
+  "earliestFiscalYear",
+  "knownReportedCells",
+  "latestFiscalQuarter",
+  "latestFiscalYear",
+  "missingFiscalQuarters",
+  "requestedQuarterlyPeriods",
+  "returnedQuarterlyPeriods",
+  "status",
+  "unknownReportedCells",
+] as const;
+const quarterlyFinancialPeriodKeys = [
+  "fiscalQuarter",
+  "fiscalYear",
+  "reported",
+  "statementDate",
+] as const;
+const fiscalQuarterCoordinateKeys = ["fiscalQuarter", "fiscalYear"] as const;
 
 export async function fetchPersonalSecurityMasterStatus(
   signal: AbortSignal,
@@ -482,6 +514,41 @@ export async function fetchPersonalAnnualFinancials(
     throw new PersonalWorkspaceApiError("invalid_response");
   }
   return copyPersonalAnnualFinancials(value);
+}
+
+export async function fetchPersonalQuarterlyFinancials(
+  input: Readonly<{ listingId: string; symbol: string }>,
+  signal: AbortSignal,
+): Promise<PersonalQuarterlyFinancialsDto> {
+  if (
+    !isIdentifier(input.listingId) ||
+    typeof input.symbol !== "string" ||
+    !symbol.test(input.symbol)
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const response = await request(PERSONAL_QUARTERLY_FINANCIALS_PATH, {
+    body: JSON.stringify({
+      listingId: input.listingId,
+      symbol: input.symbol,
+    }),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal,
+  });
+  if (!response.ok) throw annualFinancialsResponseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !isPersonalQuarterlyFinancials(value) ||
+    value.security.listingId !== input.listingId ||
+    value.security.symbol !== input.symbol
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return copyPersonalQuarterlyFinancials(value);
 }
 
 export async function searchPersonalSecurities(
@@ -782,7 +849,7 @@ function isPersonalAnnualFinancials(
     !isAnnualFinancialsCoverage(value.coverage) ||
     value.profile !== "personal_single_user_local_fundamentals" ||
     !isAnnualFinancialsProvider(value.provider) ||
-    value.schemaVersion !== "1.0.0" ||
+    value.schemaVersion !== "1.1.0" ||
     !isPersonalMarketIdentity(value.security) ||
     value.status !== "available"
   ) {
@@ -839,6 +906,87 @@ function isPersonalAnnualFinancials(
   );
 }
 
+function isPersonalQuarterlyFinancials(
+  value: unknown,
+): value is PersonalQuarterlyFinancialsDto {
+  if (
+    !hasExactKeys(value, quarterlyFinancialsKeys) ||
+    !isInstant(value.asOf) ||
+    !isQuarterlyFinancialsCoverage(value.coverage) ||
+    value.profile !== "personal_single_user_local_fundamentals" ||
+    !isAnnualFinancialsProvider(value.provider) ||
+    value.schemaVersion !== "1.0.0" ||
+    !isPersonalMarketIdentity(value.security) ||
+    value.status !== "available" ||
+    !Array.isArray(value.quarters) ||
+    value.quarters.length < 1 ||
+    value.quarters.length > 16 ||
+    !value.quarters.every(isQuarterlyFinancialPeriod)
+  ) {
+    return false;
+  }
+
+  let priorOrdinal = Number.POSITIVE_INFINITY;
+  let known = 0;
+  let unknown = 0;
+  for (const quarter of value.quarters) {
+    const ordinal = fiscalQuarterOrdinal(
+      quarter.fiscalYear,
+      quarter.fiscalQuarter,
+    );
+    if (ordinal >= priorOrdinal) return false;
+    priorOrdinal = ordinal;
+    for (const key of annualFinancialReportedFieldKeys) {
+      if (quarter.reported[key].status === "known") known += 1;
+      else unknown += 1;
+    }
+  }
+
+  const latest = value.quarters[0];
+  const earliest = value.quarters.at(-1);
+  if (latest === undefined || earliest === undefined) return false;
+  const expectedCoordinates = Array.from(
+    { length: value.coverage.requestedQuarterlyPeriods },
+    (_, offset) => fiscalQuarterAtOffset(latest, offset),
+  );
+  const present = new Set(
+    value.quarters.map(({ fiscalQuarter, fiscalYear }) =>
+      fiscalQuarterKey(fiscalYear, fiscalQuarter),
+    ),
+  );
+  const expectedMissing = expectedCoordinates.filter(
+    ({ fiscalQuarter, fiscalYear }) =>
+      !present.has(fiscalQuarterKey(fiscalYear, fiscalQuarter)),
+  );
+  const oldestRequested = expectedCoordinates.at(-1);
+  if (
+    oldestRequested === undefined ||
+    value.quarters.some(
+      ({ fiscalQuarter, fiscalYear }) =>
+        fiscalQuarterOrdinal(fiscalYear, fiscalQuarter) <
+        fiscalQuarterOrdinal(
+          oldestRequested.fiscalYear,
+          oldestRequested.fiscalQuarter,
+        ),
+    )
+  ) {
+    return false;
+  }
+  return (
+    value.coverage.returnedQuarterlyPeriods === value.quarters.length &&
+    value.coverage.latestFiscalYear === latest.fiscalYear &&
+    value.coverage.latestFiscalQuarter === latest.fiscalQuarter &&
+    value.coverage.earliestFiscalYear === earliest.fiscalYear &&
+    value.coverage.earliestFiscalQuarter === earliest.fiscalQuarter &&
+    value.coverage.knownReportedCells === known &&
+    value.coverage.unknownReportedCells === unknown &&
+    JSON.stringify(value.coverage.missingFiscalQuarters) ===
+      JSON.stringify(expectedMissing) &&
+    value.coverage.status ===
+      (expectedMissing.length === 0 && unknown === 0 ? "complete" : "partial")
+  );
+}
+
 function isAnnualFinancialsProvider(
   value: unknown,
 ): value is PersonalAnnualFinancialsDto["provider"] {
@@ -883,6 +1031,32 @@ function isAnnualFinancialsCoverage(
   );
 }
 
+function isQuarterlyFinancialsCoverage(
+  value: unknown,
+): value is PersonalQuarterlyFinancialsDto["coverage"] {
+  return (
+    hasExactKeys(value, quarterlyFinancialsCoverageKeys) &&
+    isFiscalQuarter(value.earliestFiscalQuarter) &&
+    isBoundedFiscalYear(value.earliestFiscalYear) &&
+    isNonnegativeInteger(value.knownReportedCells) &&
+    isFiscalQuarter(value.latestFiscalQuarter) &&
+    isBoundedFiscalYear(value.latestFiscalYear) &&
+    Array.isArray(value.missingFiscalQuarters) &&
+    value.missingFiscalQuarters.length <= 15 &&
+    value.missingFiscalQuarters.every(isFiscalQuarterCoordinate) &&
+    new Set(
+      value.missingFiscalQuarters.map(({ fiscalQuarter, fiscalYear }) =>
+        fiscalQuarterKey(fiscalYear, fiscalQuarter),
+      ),
+    ).size === value.missingFiscalQuarters.length &&
+    value.requestedQuarterlyPeriods === 16 &&
+    isPositiveInteger(value.returnedQuarterlyPeriods) &&
+    value.returnedQuarterlyPeriods <= 16 &&
+    (value.status === "complete" || value.status === "partial") &&
+    isNonnegativeInteger(value.unknownReportedCells)
+  );
+}
+
 function isAnnualFinancialYear(
   value: unknown,
 ): value is PersonalAnnualFinancialsDto["years"][number] {
@@ -891,7 +1065,7 @@ function isAnnualFinancialYear(
     !isPositiveInteger(value.fiscalYear) ||
     value.fiscalYear < 1900 ||
     value.fiscalYear > 9999 ||
-    !isDate(value.periodEnd)
+    !isDate(value.statementDate)
   ) {
     return false;
   }
@@ -900,6 +1074,63 @@ function isAnnualFinancialYear(
   return annualFinancialReportedFieldKeys.every((key) =>
     isAnnualFinancialReportedCell(reported[key]),
   );
+}
+
+function isQuarterlyFinancialPeriod(
+  value: unknown,
+): value is PersonalQuarterlyFinancialsDto["quarters"][number] {
+  if (
+    !hasExactKeys(value, quarterlyFinancialPeriodKeys) ||
+    !isFiscalQuarter(value.fiscalQuarter) ||
+    !isBoundedFiscalYear(value.fiscalYear) ||
+    !isDate(value.statementDate)
+  ) {
+    return false;
+  }
+  const reported = value.reported;
+  if (!hasExactKeys(reported, annualFinancialReportedFieldKeys)) return false;
+  return annualFinancialReportedFieldKeys.every((key) =>
+    isAnnualFinancialReportedCell(reported[key]),
+  );
+}
+
+function isFiscalQuarterCoordinate(
+  value: unknown,
+): value is PersonalQuarterlyFinancialsDto["coverage"]["missingFiscalQuarters"][number] {
+  return (
+    hasExactKeys(value, fiscalQuarterCoordinateKeys) &&
+    isFiscalQuarter(value.fiscalQuarter) &&
+    isBoundedFiscalYear(value.fiscalYear)
+  );
+}
+
+function isFiscalQuarter(value: unknown): value is 1 | 2 | 3 | 4 {
+  return value === 1 || value === 2 || value === 3 || value === 4;
+}
+
+function isBoundedFiscalYear(value: unknown): value is number {
+  return isPositiveInteger(value) && value >= 1900 && value <= 9999;
+}
+
+function fiscalQuarterOrdinal(fiscalYear: number, fiscalQuarter: number) {
+  return fiscalYear * 4 + fiscalQuarter - 1;
+}
+
+function fiscalQuarterKey(fiscalYear: number, fiscalQuarter: number) {
+  return `${String(fiscalYear)}-Q${String(fiscalQuarter)}`;
+}
+
+function fiscalQuarterAtOffset(
+  latest: Readonly<{ fiscalQuarter: number; fiscalYear: number }>,
+  offset: number,
+): Readonly<{ fiscalQuarter: 1 | 2 | 3 | 4; fiscalYear: number }> {
+  const ordinal =
+    fiscalQuarterOrdinal(latest.fiscalYear, latest.fiscalQuarter) - offset;
+  const fiscalYear = Math.floor(ordinal / 4);
+  return {
+    fiscalQuarter: ((ordinal % 4) + 1) as 1 | 2 | 3 | 4,
+    fiscalYear,
+  };
 }
 
 function isAnnualFinancialReportedCell(
@@ -1079,6 +1310,39 @@ function copyPersonalAnnualFinancials(
         }),
       ),
     ),
+  });
+}
+
+function copyPersonalQuarterlyFinancials(
+  value: PersonalQuarterlyFinancialsDto,
+): PersonalQuarterlyFinancialsDto {
+  return Object.freeze({
+    ...value,
+    coverage: Object.freeze({
+      ...value.coverage,
+      missingFiscalQuarters: Object.freeze(
+        value.coverage.missingFiscalQuarters.map((coordinate) =>
+          Object.freeze({ ...coordinate }),
+        ),
+      ),
+    }),
+    provider: Object.freeze({ ...value.provider }),
+    quarters: Object.freeze(
+      value.quarters.map((quarter) =>
+        Object.freeze({
+          ...quarter,
+          reported: Object.freeze(
+            Object.fromEntries(
+              annualFinancialReportedFieldKeys.map((key) => [
+                key,
+                Object.freeze({ ...quarter.reported[key] }),
+              ]),
+            ),
+          ) as PersonalQuarterlyFinancialsDto["quarters"][number]["reported"],
+        }),
+      ),
+    ),
+    security: Object.freeze({ ...value.security }),
   });
 }
 

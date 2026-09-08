@@ -3,6 +3,7 @@ import type {
   PersonalMarketDataIdentityDto,
   PersonalMarketDataRangeDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
   ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
@@ -31,6 +32,8 @@ export const PERSONAL_MARKET_DATA_OVERVIEW_PATH =
   "/v1/personal-filing/market-data/overview" as const;
 export const PERSONAL_ANNUAL_FINANCIALS_PATH =
   "/v1/personal-filing/market-data/annual-financials" as const;
+export const PERSONAL_QUARTERLY_FINANCIALS_PATH =
+  "/v1/personal-filing/market-data/quarterly-financials" as const;
 
 const RANGES = new Set<PersonalMarketDataRangeDto>([
   "1m",
@@ -50,6 +53,11 @@ interface OverviewRequest {
 }
 
 interface AnnualFinancialsRequest {
+  readonly listingId: string;
+  readonly symbol: string;
+}
+
+interface QuarterlyFinancialsRequest {
   readonly listingId: string;
   readonly symbol: string;
 }
@@ -216,6 +224,82 @@ export function registerPersonalWorkspaceMarketDataRoutes(
       }
     },
   );
+
+  app.post<{ Body: unknown }>(
+    PERSONAL_QUARTERLY_FINANCIALS_PATH,
+    {
+      errorHandler: (_error, request, reply) => {
+        void sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_QUARTERLY_FINANCIALS_PATH,
+        );
+      },
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalJsonRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_QUARTERLY_FINANCIALS_PATH,
+          )
+        ) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+      },
+    },
+    async (request, reply) => {
+      const body = parseQuarterlyFinancialsRequest(request.body);
+      if (body === undefined) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_QUARTERLY_FINANCIALS_PATH,
+        );
+      }
+      const identity = resolveIdentity(catalog, body);
+      if (identity === undefined) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          400,
+          PERSONAL_QUARTERLY_FINANCIALS_PATH,
+        );
+      }
+
+      const abortController = new AbortController();
+      const abort = () => abortController.abort();
+      request.raw.once("aborted", abort);
+      reply.raw.once("close", abort);
+      try {
+        const financials = await provider.loadQuarterlyFinancials(
+          identity,
+          abortController.signal,
+        );
+        if (!matchesRequestedQuarterlyFinancials(financials, identity)) {
+          return sendMarketDataProblem(
+            reply,
+            request,
+            502,
+            PERSONAL_QUARTERLY_FINANCIALS_PATH,
+          );
+        }
+        return reply.type("application/json; charset=utf-8").send(financials);
+      } catch (error) {
+        return sendMarketDataProblem(
+          reply,
+          request,
+          providerProblemStatus(error),
+          PERSONAL_QUARTERLY_FINANCIALS_PATH,
+        );
+      } finally {
+        request.raw.off("aborted", abort);
+        reply.raw.off("close", abort);
+      }
+    },
+  );
 }
 
 function parseOverviewRequest(value: unknown): OverviewRequest | undefined {
@@ -267,9 +351,15 @@ function parseAnnualFinancialsRequest(
   return { listingId: record.listingId, symbol: record.symbol };
 }
 
+function parseQuarterlyFinancialsRequest(
+  value: unknown,
+): QuarterlyFinancialsRequest | undefined {
+  return parseAnnualFinancialsRequest(value);
+}
+
 function resolveIdentity(
   catalog: PersonalSecurityMasterCatalog,
-  body: AnnualFinancialsRequest | OverviewRequest,
+  body: AnnualFinancialsRequest | OverviewRequest | QuarterlyFinancialsRequest,
 ): PersonalMarketDataIdentityDto | undefined {
   try {
     const listing = searchPersonalSecurityMaster(catalog, {
@@ -297,6 +387,23 @@ function resolveIdentity(
 
 function matchesRequestedAnnualFinancials(
   financials: PersonalAnnualFinancialsDto,
+  identity: PersonalMarketDataIdentityDto,
+): boolean {
+  if (financials === null || typeof financials !== "object") return false;
+  const security = Reflect.get(financials, "security") as unknown;
+  if (security === null || typeof security !== "object") return false;
+  return (
+    Reflect.get(security, "country") === identity.country &&
+    Reflect.get(security, "exchangeMic") === identity.exchangeMic &&
+    Reflect.get(security, "issuerName") === identity.issuerName &&
+    Reflect.get(security, "listingId") === identity.listingId &&
+    Reflect.get(security, "securityName") === identity.securityName &&
+    Reflect.get(security, "symbol") === identity.symbol
+  );
+}
+
+function matchesRequestedQuarterlyFinancials(
+  financials: PersonalQuarterlyFinancialsDto,
   identity: PersonalMarketDataIdentityDto,
 ): boolean {
   if (financials === null || typeof financials !== "object") return false;
@@ -369,6 +476,7 @@ function sendMarketDataProblem(
   status: 400 | 402 | 404 | 424 | 429 | 502 | 503,
   instance:
     | typeof PERSONAL_ANNUAL_FINANCIALS_PATH
+    | typeof PERSONAL_QUARTERLY_FINANCIALS_PATH
     | typeof PERSONAL_MARKET_DATA_OVERVIEW_PATH = PERSONAL_MARKET_DATA_OVERVIEW_PATH,
 ) {
   const titles = {
@@ -382,7 +490,10 @@ function sendMarketDataProblem(
   } as const;
   const problem: ProblemDetailsDto = {
     type: `https://research-cockpit.local/problems/${String(status)}`,
-    title: titles[status],
+    title:
+      status === 402 && instance === PERSONAL_QUARTERLY_FINANCIALS_PATH
+        ? "Quarterly financials not included"
+        : titles[status],
     status,
     detail: "The personal market-data request was not accepted.",
     instance,

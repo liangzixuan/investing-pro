@@ -35,7 +35,7 @@ describe("PersonalAnnualFinancials", () => {
     expect(text).toContain("Reported values known 300 / 300");
     expect(text).not.toContain("Missing annual years");
     expect(text).toContain("Income statement · USD · newest to oldest");
-    expect(text).toContain("FY 2029 Period ended Feb 15, 2030");
+    expect(text).toContain("FY 2029 Statement date Feb 15, 2030");
     expect(text).toContain("Annual statements loaded for ZERO");
     expect(text).toContain("Refresh annual financials");
     expect(markup).toContain(
@@ -227,7 +227,7 @@ function financials(
     },
     profile: "personal_single_user_local_fundamentals",
     provider: financialsProvider(),
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     security: {
       country: "US",
       exchangeMic: "XNAS",
@@ -263,8 +263,8 @@ function financialYear(
   ) as PersonalAnnualFinancialReportedValuesDto;
   return {
     fiscalYear,
-    periodEnd: `${String(fiscalYear + 1)}-02-15`,
     reported,
+    statementDate: `${String(fiscalYear + 1)}-02-15`,
   };
 }
 

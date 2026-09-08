@@ -358,8 +358,8 @@ export type PersonalAnnualFinancialReportedValuesDto = Readonly<
 
 export interface PersonalAnnualFinancialYearDto {
   readonly fiscalYear: number;
-  readonly periodEnd: string;
   readonly reported: PersonalAnnualFinancialReportedValuesDto;
+  readonly statementDate: string;
 }
 
 export interface PersonalAnnualFinancialsProviderDto {
@@ -391,10 +391,56 @@ export interface PersonalAnnualFinancialsDto {
   readonly coverage: PersonalAnnualFinancialsCoverageDto;
   readonly profile: "personal_single_user_local_fundamentals";
   readonly provider: PersonalAnnualFinancialsProviderDto;
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "1.1.0";
   readonly security: PersonalMarketDataIdentityDto;
   readonly status: "available";
   readonly years: readonly PersonalAnnualFinancialYearDto[];
+}
+
+export type PersonalQuarterlyFinancialReportedFieldKeyDto =
+  PersonalAnnualFinancialReportedFieldKeyDto;
+
+export type PersonalQuarterlyFinancialReportedCellDto =
+  PersonalAnnualFinancialReportedCellDto;
+
+export type PersonalQuarterlyFinancialReportedValuesDto =
+  PersonalAnnualFinancialReportedValuesDto;
+
+export type PersonalQuarterlyFinancialsProviderDto =
+  PersonalAnnualFinancialsProviderDto;
+
+export interface PersonalFiscalQuarterDto {
+  readonly fiscalQuarter: 1 | 2 | 3 | 4;
+  readonly fiscalYear: number;
+}
+
+export interface PersonalQuarterlyFinancialQuarterDto extends PersonalFiscalQuarterDto {
+  readonly reported: PersonalQuarterlyFinancialReportedValuesDto;
+  readonly statementDate: string;
+}
+
+export interface PersonalQuarterlyFinancialsCoverageDto {
+  readonly earliestFiscalQuarter: 1 | 2 | 3 | 4;
+  readonly earliestFiscalYear: number;
+  readonly knownReportedCells: number;
+  readonly latestFiscalQuarter: 1 | 2 | 3 | 4;
+  readonly latestFiscalYear: number;
+  readonly missingFiscalQuarters: readonly PersonalFiscalQuarterDto[];
+  readonly requestedQuarterlyPeriods: 16;
+  readonly returnedQuarterlyPeriods: number;
+  readonly status: "complete" | "partial";
+  readonly unknownReportedCells: number;
+}
+
+export interface PersonalQuarterlyFinancialsDto {
+  readonly asOf: string;
+  readonly coverage: PersonalQuarterlyFinancialsCoverageDto;
+  readonly profile: "personal_single_user_local_fundamentals";
+  readonly provider: PersonalQuarterlyFinancialsProviderDto;
+  readonly quarters: readonly PersonalQuarterlyFinancialQuarterDto[];
+  readonly schemaVersion: "1.0.0";
+  readonly security: PersonalMarketDataIdentityDto;
+  readonly status: "available";
 }
 
 export interface PersonalFilingSelectedFactDto {

@@ -15,9 +15,9 @@ info:
     expose one startup-admitted owner-local snapshot receipt and bounded
     symbol/name search; it remains offline and does not activate a provider,
     vault, or filing release. Personal workspace mode may additionally use an
-    owner-supplied Tiingo token for explicit, authenticated market-overview and
-    annual-financials requests; returned market data is never persisted by the
-    application.
+    owner-supplied Tiingo token for explicit, authenticated market-overview,
+    annual-financials, and quarterly-financials requests; returned market data
+    is never persisted by the application.
     X-Demo-Persona values are public selectors, not secrets, credentials, or
     owner authentication.
 servers:
@@ -655,6 +655,129 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonalAnnualFinancials"
+        "400":
+          description: The accepted request body is invalid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "402":
+          description: The configured provider account is not entitled to the fundamentals feed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: The request boundary or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Provider fundamentals coverage is unavailable for the admitted listing.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "424":
+          description: The owner-supplied provider credential was rejected.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: The personal provider request limit was reached.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "502":
+          description: Tiingo was unavailable or returned an invalid response.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "503":
+          description: No owner-supplied Tiingo token is configured.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/market-data/quarterly-financials:
+    post:
+      operationId: loadPersonalQuarterlyFinancials
+      summary: Load up to sixteen quarterly financial-statement periods for one listing.
+      description: >-
+        Authenticated, read-only owner action. The exact body names one
+        startup-admitted listing; the server resolves that identity before
+        making a fixed-host Tiingo fundamentals request. The response contains
+        one to sixteen quarterly periods in newest-first fiscal-quarter order.
+        statementDate is the provider's statement release date, not the fiscal
+        period end. Every one of the thirty reported fields is explicit in
+        every period: a provider value is a canonical decimal string and an
+        unavailable provider value is marked unknown rather than synthesized.
+        Provider data exists only in active process/browser memory and is not
+        persisted, exported, or redistributed.
+      security:
+        - PersonalOwnerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonalQuarterlyFinancialsRequest"
+      responses:
+        "200":
+          description: The provider-backed quarterly financials are available.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalQuarterlyFinancials"
         "400":
           description: The accepted request body is invalid.
           headers:
@@ -2802,7 +2925,7 @@ components:
         provider:
           $ref: "#/components/schemas/PersonalAnnualFinancialsProvider"
         schemaVersion:
-          const: "1.0.0"
+          const: "1.1.0"
         security:
           $ref: "#/components/schemas/PersonalMarketDataIdentity"
         status:
@@ -2811,8 +2934,9 @@ components:
           type: array
           description: >-
             One to ten annual periods, ordered by fiscalYear descending. Each
-            fiscal year appears at most once; periodEnd is the provider's
-            period date. Values use the provider's most-recent revision.
+            fiscal year appears at most once; statementDate is the provider's
+            statement release date, not a fiscal period end. Values use the
+            provider's most-recent revision.
           minItems: 1
           maxItems: 10
           items:
@@ -2908,19 +3032,19 @@ components:
       additionalProperties: false
       required:
         - fiscalYear
-        - periodEnd
         - reported
+        - statementDate
       properties:
         fiscalYear:
           type: integer
           minimum: 1900
           maximum: 9999
-        periodEnd:
-          type: string
-          format: date
-          description: Provider period date for the fiscal year; not a release date.
         reported:
           $ref: "#/components/schemas/PersonalAnnualFinancialReportedValues"
+        statementDate:
+          type: string
+          format: date
+          description: Provider statement release date; not a fiscal period end.
     PersonalAnnualFinancialReportedValues:
       type: object
       additionalProperties: false
@@ -3044,6 +3168,160 @@ components:
               const: unknown
             value:
               type: "null"
+    PersonalQuarterlyFinancialsRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - listingId
+        - symbol
+      properties:
+        listingId:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+    PersonalQuarterlyFinancials:
+      type: object
+      additionalProperties: false
+      required:
+        - asOf
+        - coverage
+        - profile
+        - provider
+        - quarters
+        - schemaVersion
+        - security
+        - status
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        coverage:
+          $ref: "#/components/schemas/PersonalQuarterlyFinancialsCoverage"
+        profile:
+          const: personal_single_user_local_fundamentals
+        provider:
+          $ref: "#/components/schemas/PersonalAnnualFinancialsProvider"
+        quarters:
+          type: array
+          description: >-
+            One to sixteen quarterly periods in newest-first fiscal-quarter
+            order. Each fiscal-year/fiscal-quarter pair appears at most once.
+            Values use the provider's most-recent revision.
+          minItems: 1
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/PersonalQuarterlyFinancialQuarter"
+        schemaVersion:
+          const: "1.0.0"
+        security:
+          $ref: "#/components/schemas/PersonalMarketDataIdentity"
+        status:
+          const: available
+    PersonalQuarterlyFinancialsCoverage:
+      type: object
+      additionalProperties: false
+      required:
+        - earliestFiscalQuarter
+        - earliestFiscalYear
+        - knownReportedCells
+        - latestFiscalQuarter
+        - latestFiscalYear
+        - missingFiscalQuarters
+        - requestedQuarterlyPeriods
+        - returnedQuarterlyPeriods
+        - status
+        - unknownReportedCells
+      properties:
+        earliestFiscalQuarter:
+          type: integer
+          minimum: 1
+          maximum: 4
+        earliestFiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+        knownReportedCells:
+          type: integer
+          minimum: 0
+          maximum: 480
+        latestFiscalQuarter:
+          type: integer
+          minimum: 1
+          maximum: 4
+        latestFiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+        missingFiscalQuarters:
+          type: array
+          description: >-
+            Fiscal quarters absent between the latest returned quarter and the
+            sixteen-quarter requested window, in newest-first order.
+          maxItems: 15
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/PersonalFiscalQuarter"
+        requestedQuarterlyPeriods:
+          const: 16
+        returnedQuarterlyPeriods:
+          type: integer
+          minimum: 1
+          maximum: 16
+        status:
+          type: string
+          enum:
+            - complete
+            - partial
+        unknownReportedCells:
+          type: integer
+          minimum: 0
+          maximum: 480
+    PersonalFiscalQuarter:
+      type: object
+      additionalProperties: false
+      required:
+        - fiscalQuarter
+        - fiscalYear
+      properties:
+        fiscalQuarter:
+          type: integer
+          minimum: 1
+          maximum: 4
+        fiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+    PersonalQuarterlyFinancialQuarter:
+      type: object
+      additionalProperties: false
+      required:
+        - fiscalYear
+        - fiscalQuarter
+        - statementDate
+        - reported
+      properties:
+        fiscalYear:
+          type: integer
+          minimum: 1900
+          maximum: 9999
+        fiscalQuarter:
+          type: integer
+          minimum: 1
+          maximum: 4
+        statementDate:
+          type: string
+          format: date
+          description: >-
+            Provider statement date (release date) for the fiscal quarter; not
+            the fiscal period end.
+        reported:
+          $ref: "#/components/schemas/PersonalAnnualFinancialReportedValues"
     InstrumentId:
       type: string
       minLength: 3

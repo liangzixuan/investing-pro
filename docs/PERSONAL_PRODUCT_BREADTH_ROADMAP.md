@@ -25,7 +25,8 @@ Pass only for exact source revision
 breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
 Cycles 3g-a1 and 3g-b1 deliver the first market-data and transparent-analytics
-slices; Cycle 3h-a1 is the current high-priority statement-depth slice. Later
+slices; Cycles 3h-a1 and 3h-a2 are the current annual/quarterly statement-depth
+slices. Later
 Cycle 3e-b work, full 3g/3h breadth, and Cycles 3f and 3i through 3q remain
 planned.** This does not alter
 the exact historical Cycle 2z personal result or
@@ -808,15 +809,20 @@ statement, balance-sheet, and cash-flow registry. Missing years and individual
 provider omissions remain blank and explicit. Eight exact-decimal metrics and
 three latest-year growth comparisons are calculated locally with inspectable
 formulas and input references; a zero or negative prior-year base remains
-explicitly not meaningful. The browser labels the response as Tiingo's
-most-recent corrected history, distinguishes missing fundamentals access from a
-rejected credential with a fixed credential-test request after a 403, performs
-no automatic request, and discards the response with the view or owner session.
+explicitly not meaningful. Cycle 3h-a2 adds another explicit action over the
+same registry for up to sixteen fiscal quarters, with exact missing-quarter
+slots and `statementDate` labelled as the provider statement/release date. The
+browser labels both responses as Tiingo's most-recent corrected history,
+distinguishes missing fundamentals access from a rejected credential with a
+fixed credential-test request after a 403, performs no automatic request, and
+discards each response with the view or owner session.
 
-This is an independently useful statement-depth slice, not full 3h-a. It does
-not establish quarterly or TTM views, point-in-time/restatement history, the
+These are independently useful statement-depth slices, not full 3h-a. They do
+not establish verified TTM aggregation, point-in-time/restatement history, the
 planned 30-core-metric registry, 500-security coverage, 90% knownness, or the
-20-issuer independent validation gate. Tiingo currently documents the full
+20-issuer independent validation gate. TTM remains visibly unavailable because
+the admitted source documentation does not establish whether quarterly flow
+values are standalone or cumulative. Tiingo currently documents the full
 fundamentals feed as an add-on and a three-year Dow 30 evaluation; the exact
 owner entitlement therefore remains visible rather than assumed.
 
@@ -824,6 +830,8 @@ Promotable subcycles:
 
 - **3h-a1:** provider-backed annual statement tables and a first transparent
   core-analytics set for one selected listing;
+- **3h-a2:** provider-backed 16-quarter statement tables with exact fiscal
+  coordinates, missingness, and fail-closed TTM gating;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
   initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived

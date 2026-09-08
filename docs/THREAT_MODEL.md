@@ -2737,6 +2737,33 @@ is represented only by the permitted coarse outcome. See
 [ADR 0059](./adr/0059-package-owned-security-master-measurement-clock.md) and the
 [Cycle 3e-a2 exit matrix](./CYCLE_3E_A2_EXIT_MATRIX.md).
 
+## Cycle 3h-a2 quarterly-financials threat boundary
+
+Cycle 3h-a2 adds one owner-authenticated, explicit quarterly-fundamentals
+request for the already admitted listing. Assets at risk are the owner token,
+listing identity, provider values, fiscal-coordinate integrity, and the honesty
+of any period label or future aggregation. Primary threats are an automatic or
+attacker-selected provider request; credential disclosure; response/listing
+substitution; duplicate, reordered, shifted, or zero-filled quarters;
+native-number precision loss; provider-schema growth changing the admitted
+field set; a release date mislabeled as a fiscal period end; cumulative
+year-to-date values silently summed as standalone quarters; and private values
+leaking through storage, logs, exports, errors, or public evidence.
+
+Controls are the existing fixed-host header-only credential transport,
+owner-session and exact JSON request guard, startup-catalog identity resolution,
+bounded response size/time, lossless numeric lexeme capture, closed 30-field
+registry, unique fiscal-year/fiscal-quarter coordinates, independently derived
+newest-first 16-quarter window, explicit missing cells/coordinates, strict
+browser revalidation, no-store responses, and active-session-only custody.
+`statementDate` retains the provider statement/release-date meaning. TTM is
+explicitly unavailable until the quarter-flow aggregation basis is verified;
+no annual record, zero, or inferred quarter repairs a gap.
+
+This boundary does not establish point-in-time revisions, filing citations,
+TTM or quarterly-derived analytics, broad provider coverage, full Cycle 3h, or
+competitor parity.
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -2795,8 +2822,8 @@ is represented only by the permitted coarse outcome. See
    engineering Pass only, and Cycle 3e-a2 records only its exact historical
    package-owned measurement correction as a public engineering Pass. Cycle
    3e-b1 supplies the browser-search and durable-watchlist boundary; 3g-a1,
-   3g-b1, and 3h-a1 then add visible market, analytics, and annual-financial
-   slices. Security and privacy are acceptance criteria rather than standalone
+   3g-b1, 3h-a1, and 3h-a2 then add visible market, analytics, annual-financial,
+   and quarterly-financial slices. Security and privacy are acceptance criteria rather than standalone
    milestones unless they block correctness, private data, or credentials.
    Organizational
    rights/steward approval and authority keys are separate enterprise-profile

@@ -638,7 +638,7 @@ describe("Tiingo personal market-data provider", () => {
         });
         expect(result.years[0]).toMatchObject({
           fiscalYear: 2025,
-          periodEnd: "2025-12-31",
+          statementDate: "2025-12-31",
           reported: {
             cash: { status: "known", value: "-0.0025" },
             net_income: { status: "known", value: "123000" },
@@ -803,7 +803,7 @@ describe("Tiingo personal market-data provider", () => {
       },
     );
 
-    it("keeps the provider period end distinct from the fiscal-year label", async () => {
+    it("keeps the provider statement date distinct from the fiscal-year label", async () => {
       const provider = annualProvider([
         {
           ...annualRecord(2025, 0, {
@@ -811,13 +811,18 @@ describe("Tiingo personal market-data provider", () => {
           }),
           date: "2026-02-20T20:00:00Z",
         },
+        { ...annualRecord(2018), date: "2026-03-01" },
       ]);
 
       const result = await provider.loadAnnualFinancials(IDENTITY);
 
       expect(result.years[0]).toMatchObject({
         fiscalYear: 2025,
-        periodEnd: "2026-02-20",
+        statementDate: "2026-02-20",
+      });
+      expect(result.years[1]).toMatchObject({
+        fiscalYear: 2018,
+        statementDate: "2026-03-01",
       });
     });
 
@@ -987,6 +992,222 @@ describe("Tiingo personal market-data provider", () => {
       }
     });
   });
+
+  describe("quarterly financial statements", () => {
+    it("uses one fixed request, preserves decimals, and keeps statement date semantics", async () => {
+      const calls: FetchCall[] = [];
+      const raw = `[{
+        "date":"2026-08-14",
+        "year":2026,
+        "quarter":2,
+        "statementData":{
+          "incomeStatement":[{"dataCode":"revenue","value":9007199254740993},{"dataCode":"netinc","value":1.2300e+5}],
+          "balanceSheet":[{"dataCode":"cashAndEq","value":-2.500e-3}],
+          "cashFlow":[],
+          "overview":[]
+        }
+      }]`;
+      const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+        fetch: (input, init) => {
+          calls.push(Object.freeze({ init, url: requestUrl(input) }));
+          return Promise.resolve(new Response(raw));
+        },
+        now: () => NOW,
+      });
+
+      const result = await provider.loadQuarterlyFinancials(IDENTITY);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.url).toBe(
+        "https://api.tiingo.com/tiingo/fundamentals/BRK-B/statements?startDate=2015-01-01&endDate=2026-09-07&asReported=false&format=json",
+      );
+      expect(calls[0]?.init).toMatchObject({
+        cache: "no-store",
+        credentials: "omit",
+        method: "GET",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+      });
+      expect(new Headers(calls[0]?.init?.headers).get("authorization")).toBe(
+        `Token ${TOKEN}`,
+      );
+      expect(result.quarters[0]).toMatchObject({
+        fiscalQuarter: 2,
+        fiscalYear: 2026,
+        statementDate: "2026-08-14",
+        reported: {
+          cash: { status: "known", value: "-0.0025" },
+          net_income: { status: "known", value: "123000" },
+          revenue: { status: "known", value: "9007199254740993" },
+        },
+      });
+      expect(Object.keys(result.quarters[0]?.reported ?? {})).toHaveLength(30);
+      expect(Object.isFrozen(result)).toBe(true);
+      expect(Object.isFrozen(result.quarters)).toBe(true);
+      expect(JSON.stringify(result)).not.toContain(TOKEN);
+    });
+
+    it("does not infer fiscal identity from the provider statement date", async () => {
+      const result = await annualProvider([
+        annualRecord(2026, 2),
+        { ...annualRecord(2023, 4), date: "2026-02-20" },
+      ]).loadQuarterlyFinancials(IDENTITY);
+
+      expect(result.quarters[1]).toMatchObject({
+        fiscalQuarter: 4,
+        fiscalYear: 2023,
+        statementDate: "2026-02-20",
+      });
+    });
+
+    it("sorts and caps quarterly coordinates at the latest sixteen", async () => {
+      const records = [
+        annualRecord(2025),
+        ...quarterCoordinates(2026, 2, 17).map(
+          ({ fiscalQuarter, fiscalYear }) =>
+            annualRecord(fiscalYear, fiscalQuarter, {
+              incomeStatement: [{ dataCode: "revenue", value: 100 }],
+            }),
+        ),
+      ].reverse();
+      const result =
+        await annualProvider(records).loadQuarterlyFinancials(IDENTITY);
+
+      expect(
+        result.quarters.map(
+          ({ fiscalQuarter, fiscalYear }) =>
+            `${String(fiscalYear)}Q${String(fiscalQuarter)}`,
+        ),
+      ).toEqual([
+        "2026Q2",
+        "2026Q1",
+        "2025Q4",
+        "2025Q3",
+        "2025Q2",
+        "2025Q1",
+        "2024Q4",
+        "2024Q3",
+        "2024Q2",
+        "2024Q1",
+        "2023Q4",
+        "2023Q3",
+        "2023Q2",
+        "2023Q1",
+        "2022Q4",
+        "2022Q3",
+      ]);
+      expect(result.coverage).toEqual({
+        earliestFiscalQuarter: 3,
+        earliestFiscalYear: 2022,
+        knownReportedCells: 16,
+        latestFiscalQuarter: 2,
+        latestFiscalYear: 2026,
+        missingFiscalQuarters: [],
+        requestedQuarterlyPeriods: 16,
+        returnedQuarterlyPeriods: 16,
+        status: "partial",
+        unknownReportedCells: 464,
+      });
+    });
+
+    it("excludes older records instead of stretching a gapped sixteen-quarter window", async () => {
+      const records = quarterCoordinates(2026, 2, 17)
+        .filter(
+          ({ fiscalQuarter, fiscalYear }) =>
+            !(fiscalYear === 2025 && fiscalQuarter === 4),
+        )
+        .map(({ fiscalQuarter, fiscalYear }) =>
+          annualRecord(fiscalYear, fiscalQuarter, {
+            incomeStatement: [{ dataCode: "revenue", value: 100 }],
+          }),
+        );
+
+      const result =
+        await annualProvider(records).loadQuarterlyFinancials(IDENTITY);
+
+      expect(result.quarters).toHaveLength(15);
+      expect(result.quarters).not.toContainEqual(
+        expect.objectContaining({ fiscalQuarter: 2, fiscalYear: 2022 }),
+      );
+      expect(result.coverage.missingFiscalQuarters).toEqual([
+        { fiscalQuarter: 4, fiscalYear: 2025 },
+      ]);
+      expect(result.coverage).toMatchObject({
+        earliestFiscalQuarter: 3,
+        earliestFiscalYear: 2022,
+        returnedQuarterlyPeriods: 15,
+      });
+    });
+
+    it("reports the exact missing-coordinate window and absent cells", async () => {
+      const result = await annualProvider([
+        annualRecord(2025, 4, {
+          cashFlow: [{ dataCode: "ncfo", value: 42 }],
+        }),
+        annualRecord(2026, 2, {
+          incomeStatement: [{ dataCode: "revenue", value: 100 }],
+        }),
+      ]).loadQuarterlyFinancials(IDENTITY);
+
+      expect(result.coverage.missingFiscalQuarters.slice(0, 3)).toEqual([
+        { fiscalQuarter: 1, fiscalYear: 2026 },
+        { fiscalQuarter: 3, fiscalYear: 2025 },
+        { fiscalQuarter: 2, fiscalYear: 2025 },
+      ]);
+      expect(result.coverage.missingFiscalQuarters).toHaveLength(14);
+      expect(result.coverage).toMatchObject({
+        earliestFiscalQuarter: 4,
+        earliestFiscalYear: 2025,
+        knownReportedCells: 2,
+        latestFiscalQuarter: 2,
+        latestFiscalYear: 2026,
+        requestedQuarterlyPeriods: 16,
+        returnedQuarterlyPeriods: 2,
+        status: "partial",
+        unknownReportedCells: 58,
+      });
+      expect(result.quarters[0]?.reported.debt).toEqual({
+        reason: "not_supplied_by_provider",
+        status: "unknown",
+        value: null,
+      });
+    });
+
+    it("rejects duplicate coordinates, stale coverage, and out-of-range statement dates", async () => {
+      for (const records of [
+        [annualRecord(2026, 2), annualRecord(2026, 2)],
+        [annualRecord(2023, 4)],
+        [{ ...annualRecord(2028, 2), date: "2026-08-14" }],
+        [{ ...annualRecord(2026, 2), date: "2014-12-31" }],
+      ]) {
+        await expect(
+          annualProvider(records).loadQuarterlyFinancials(IDENTITY),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    });
+
+    it("honors caller abort for the quarterly request", async () => {
+      let requestSignal: AbortSignal | undefined;
+      const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+        fetch: (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            requestSignal = init?.signal ?? undefined;
+            requestSignal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+        now: () => NOW,
+      });
+      const caller = new AbortController();
+      const pending = provider.loadQuarterlyFinancials(IDENTITY, caller.signal);
+      caller.abort();
+
+      await expect(pending).rejects.toMatchObject({ code: "aborted" });
+      expect(requestSignal?.aborted).toBe(true);
+    });
+  });
 });
 
 function mockTiingoFetch(
@@ -1041,6 +1262,32 @@ function annualRecord(
     },
     year,
   };
+}
+
+function quarterCoordinates(
+  latestFiscalYear: number,
+  latestFiscalQuarter: 1 | 2 | 3 | 4,
+  count: number,
+): readonly Readonly<{
+  fiscalQuarter: 1 | 2 | 3 | 4;
+  fiscalYear: number;
+}>[] {
+  const coordinates: Array<{
+    fiscalQuarter: 1 | 2 | 3 | 4;
+    fiscalYear: number;
+  }> = [];
+  let fiscalYear = latestFiscalYear;
+  let fiscalQuarter = latestFiscalQuarter;
+  for (let index = 0; index < count; index += 1) {
+    coordinates.push({ fiscalQuarter, fiscalYear });
+    if (fiscalQuarter === 1) {
+      fiscalYear -= 1;
+      fiscalQuarter = 4;
+    } else {
+      fiscalQuarter = (fiscalQuarter - 1) as 1 | 2 | 3 | 4;
+    }
+  }
+  return coordinates;
 }
 
 function requestUrl(input: string | URL | Request): string {

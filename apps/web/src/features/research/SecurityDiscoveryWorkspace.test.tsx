@@ -4,6 +4,7 @@ import type {
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterSnapshotReceiptDto,
@@ -20,6 +21,7 @@ import {
 
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
+import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
 
 const hookHarness = vi.hoisted(() => {
   const states: unknown[] = [];
@@ -81,6 +83,13 @@ const apiMocks = vi.hoisted(() => ({
       signal: AbortSignal,
     ) => Promise<PersonalMarketOverviewDto>
   >(),
+  fetchPersonalQuarterlyFinancials:
+    vi.fn<
+      (
+        input: Readonly<{ listingId: string; symbol: string }>,
+        signal: AbortSignal,
+      ) => Promise<PersonalQuarterlyFinancialsDto>
+    >(),
   fetchPersonalSecurityMasterStatus: vi.fn<
     (signal: AbortSignal) => Promise<{
       snapshot: PersonalSecurityMasterSnapshotReceiptDto;
@@ -107,6 +116,7 @@ const componentMocks = vi.hoisted(() => ({
   AnnualFinancials: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
+  QuarterlyFinancials: () => null,
 }));
 
 vi.mock("react", async (importOriginal) => ({
@@ -155,6 +165,9 @@ vi.mock("./PersonalAnnualFinancials", () => ({
 vi.mock("./PersonalMarketOverview", () => ({
   PersonalMarketOverview: componentMocks.MarketOverview,
 }));
+vi.mock("./PersonalQuarterlyFinancials", () => ({
+  PersonalQuarterlyFinancials: componentMocks.QuarterlyFinancials,
+}));
 
 import { SecurityDiscoveryWorkspace } from "./SecurityDiscoveryWorkspace";
 
@@ -168,6 +181,9 @@ beforeEach(() => {
   apiMocks.fetchPersonalAnnualFinancials.mockResolvedValue(annualFinancials());
   apiMocks.fetchPersonalMarketDataStatus.mockResolvedValue(marketStatus());
   apiMocks.fetchPersonalMarketOverview.mockResolvedValue(marketOverview());
+  apiMocks.fetchPersonalQuarterlyFinancials.mockResolvedValue(
+    quarterlyFinancials(),
+  );
   apiMocks.searchPersonalSecurities.mockResolvedValue({
     limitApplied: 15,
     normalizedQuery: "ZERO",
@@ -399,6 +415,44 @@ describe("SecurityDiscoveryWorkspace", () => {
     });
   });
 
+  it("loads quarterly financials only after the user explicitly requests them", async () => {
+    await activateWorkspace();
+    let rendered = renderWorkspace();
+
+    expect(requireQuarterlyFinancials(rendered).props.selection).toBeNull();
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).not.toHaveBeenCalled();
+
+    rendered = await searchAndSelectMarket("ZERO");
+    let quarterly = requireQuarterlyFinancials(rendered);
+    expect(quarterly.props.selection).toMatchObject({
+      listingId: "lst-zero",
+      symbol: "ZERO",
+    });
+    expect(quarterly.props.financials).toBeNull();
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).not.toHaveBeenCalled();
+
+    quarterly.props.onLoad();
+    rendered = renderWorkspace();
+    expect(requireQuarterlyFinancials(rendered).props.requestState).toBe(
+      "loading",
+    );
+    await flushPromises();
+    rendered = renderWorkspace();
+    quarterly = requireQuarterlyFinancials(rendered);
+
+    expect(
+      apiMocks.fetchPersonalQuarterlyFinancials,
+    ).toHaveBeenCalledExactlyOnceWith(
+      { listingId: "lst-zero", symbol: "ZERO" },
+      expect.any(AbortSignal),
+    );
+    expect(quarterly.props.requestState).toBe("idle");
+    expect(quarterly.props.financials).toMatchObject({
+      coverage: { returnedQuarterlyPeriods: 1 },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+  });
+
   it("keeps a fundamentals entitlement failure distinct from session loss", async () => {
     apiMocks.fetchPersonalAnnualFinancials.mockRejectedValueOnce(
       new PersonalWorkspaceApiError("not_entitled"),
@@ -488,6 +542,83 @@ describe("SecurityDiscoveryWorkspace", () => {
     rendered = renderWorkspace();
     expect(requireAnnualFinancials(rendered).props.financials).toBeNull();
     expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledOnce();
+  });
+
+  it("ignores an older quarterly-financials response after another security is selected", async () => {
+    const first = deferred<PersonalQuarterlyFinancialsDto>();
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "PAIR",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("TWO", "lst-two"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    apiMocks.fetchPersonalQuarterlyFinancials.mockReturnValueOnce(
+      first.promise,
+    );
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("PAIR");
+
+    requireQuarterlyFinancials(rendered).props.onLoad();
+    rendered = renderWorkspace();
+    const firstSignal =
+      apiMocks.fetchPersonalQuarterlyFinancials.mock.calls[0]?.[1];
+    const viewButtons = findAllElements(rendered, "button").filter(
+      (button) => textContent(button) === "View market",
+    ) as React.ReactElement<{ onClick: () => void }>[];
+    viewButtons[1]?.props.onClick();
+    expect(firstSignal?.aborted).toBe(true);
+
+    first.resolve(quarterlyFinancials("lst-zero", "ZERO"));
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    const quarterly = requireQuarterlyFinancials(rendered);
+    expect(quarterly.props.selection).toMatchObject({
+      listingId: "lst-two",
+      symbol: "TWO",
+    });
+    expect(quarterly.props.financials).toBeNull();
+    expect(quarterly.props.requestState).toBe("idle");
+  });
+
+  it("clears a pending quarterly-financials response when the owner session ends", async () => {
+    const pending = deferred<PersonalQuarterlyFinancialsDto>();
+    apiMocks.fetchPersonalQuarterlyFinancials.mockReturnValueOnce(
+      pending.promise,
+    );
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+
+    requireQuarterlyFinancials(rendered).props.onLoad();
+    rendered = renderWorkspace();
+    const pendingSignal =
+      apiMocks.fetchPersonalQuarterlyFinancials.mock.calls[0]?.[1];
+    const sessionChange = requireOwnerSession(rendered).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    expect(pendingSignal?.aborted).toBe(true);
+    pending.resolve(quarterlyFinancials());
+    await sessionChange;
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    expect(textContent(rendered)).toContain("Security discovery locked");
+    expect(findQuarterlyFinancials(rendered)).toBeUndefined();
+
+    await expect(
+      requireOwnerSession(rendered).props.onSessionChange(
+        true,
+        new AbortController().signal,
+      ),
+    ).resolves.toBe(true);
+    rendered = renderWorkspace();
+    expect(requireQuarterlyFinancials(rendered).props.financials).toBeNull();
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).toHaveBeenCalledOnce();
   });
 
   it("clears a selected market graph synchronously when its request loses the session", async () => {
@@ -916,10 +1047,24 @@ function findAnnualFinancials(value: unknown) {
   );
 }
 
+function findQuarterlyFinancials(value: unknown) {
+  return findElement<PersonalQuarterlyFinancialsProps>(
+    value,
+    componentMocks.QuarterlyFinancials,
+  );
+}
+
 function requireAnnualFinancials(value: unknown) {
   const annual = findAnnualFinancials(value);
   if (annual === undefined) throw new Error("Expected annual financials.");
   return annual;
+}
+
+function requireQuarterlyFinancials(value: unknown) {
+  const quarterly = findQuarterlyFinancials(value);
+  if (quarterly === undefined)
+    throw new Error("Expected quarterly financials.");
+  return quarterly;
 }
 
 function requireMarketOverview(value: unknown) {
@@ -1251,7 +1396,7 @@ function annualFinancials(
       statementFeed: "tiingo_fundamentals_statements",
       valueCurrency: "USD",
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     security: {
       country: "US",
       exchangeMic: "XNAS",
@@ -1264,15 +1409,78 @@ function annualFinancials(
     years: [
       {
         fiscalYear: 2029,
-        periodEnd: "2030-01-15",
         reported: Object.fromEntries(
           annualFinancialReportedFieldKeys.map((key, index) => [
             key,
             { status: "known", value: String((index + 1) * 100) },
           ]),
         ) as PersonalAnnualFinancialsDto["years"][number]["reported"],
+        statementDate: "2030-01-15",
       },
     ],
+  };
+}
+
+function quarterlyFinancials(
+  listingId = "lst-zero",
+  symbol = "ZERO",
+): PersonalQuarterlyFinancialsDto {
+  const reported = Object.fromEntries(
+    annualFinancialReportedFieldKeys.map((key, index) => [
+      key,
+      { status: "known", value: String((index + 1) * 10) },
+    ]),
+  ) as PersonalQuarterlyFinancialsDto["quarters"][number]["reported"];
+  return {
+    asOf: "2030-01-15T21:01:00.000Z",
+    coverage: {
+      earliestFiscalQuarter: 4,
+      earliestFiscalYear: 2029,
+      knownReportedCells: 30,
+      latestFiscalQuarter: 4,
+      latestFiscalYear: 2029,
+      missingFiscalQuarters: [
+        { fiscalQuarter: 3, fiscalYear: 2029 },
+        { fiscalQuarter: 2, fiscalYear: 2029 },
+        { fiscalQuarter: 1, fiscalYear: 2029 },
+        { fiscalQuarter: 4, fiscalYear: 2028 },
+        { fiscalQuarter: 3, fiscalYear: 2028 },
+        { fiscalQuarter: 2, fiscalYear: 2028 },
+        { fiscalQuarter: 1, fiscalYear: 2028 },
+        { fiscalQuarter: 4, fiscalYear: 2027 },
+        { fiscalQuarter: 3, fiscalYear: 2027 },
+        { fiscalQuarter: 2, fiscalYear: 2027 },
+        { fiscalQuarter: 1, fiscalYear: 2027 },
+        { fiscalQuarter: 4, fiscalYear: 2026 },
+        { fiscalQuarter: 3, fiscalYear: 2026 },
+        { fiscalQuarter: 2, fiscalYear: 2026 },
+        { fiscalQuarter: 1, fiscalYear: 2026 },
+      ],
+      requestedQuarterlyPeriods: 16,
+      returnedQuarterlyPeriods: 1,
+      status: "partial",
+      unknownReportedCells: 0,
+    },
+    profile: "personal_single_user_local_fundamentals",
+    provider: annualFinancials(listingId, symbol).provider,
+    quarters: [
+      {
+        fiscalQuarter: 4,
+        fiscalYear: 2029,
+        reported,
+        statementDate: "2030-01-15",
+      },
+    ],
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId,
+      securityName: `${symbol} Common Stock`,
+      symbol,
+    },
+    status: "available",
   };
 }
 

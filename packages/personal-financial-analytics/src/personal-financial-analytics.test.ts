@@ -354,7 +354,7 @@ function annual(
       fact(fiscalYear, key as PersonalFinancialAnalyticsFactKey, value),
     ),
     fiscalYear,
-    periodEnd: `${fiscalYear + 1}-02-15`,
+    statementDate: `${fiscalYear + 1}-02-15`,
   };
 }
 function fact(

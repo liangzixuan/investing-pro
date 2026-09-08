@@ -3,6 +3,7 @@ import type {
   PersonalAnnualFinancialsDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalQuarterlyFinancialsDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
@@ -14,6 +15,7 @@ import {
   fetchPersonalAnnualFinancials,
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
+  fetchPersonalQuarterlyFinancials,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
   normalizeWatchlistNote,
@@ -279,11 +281,98 @@ describe("personal workspace API client", () => {
     );
   });
 
+  it("posts one exact quarterly-financials request and returns a deeply frozen response", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(quarterlyFinancials()));
+
+    const result = await fetchPersonalQuarterlyFinancials(
+      { listingId: "lst-00001", symbol: "ZERO" },
+      new AbortController().signal,
+    );
+
+    expect(result).toMatchObject({
+      coverage: { knownReportedCells: 60, returnedQuarterlyPeriods: 2 },
+      quarters: [
+        { fiscalQuarter: 4, fiscalYear: 2029 },
+        { fiscalQuarter: 3, fiscalYear: 2029 },
+      ],
+      security: { listingId: "lst-00001", symbol: "ZERO" },
+      status: "available",
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.coverage.missingFiscalQuarters)).toBe(true);
+    expect(Object.isFrozen(result.coverage.missingFiscalQuarters[0])).toBe(
+      true,
+    );
+    expect(Object.isFrozen(result.quarters)).toBe(true);
+    expect(Object.isFrozen(result.quarters[0]?.reported.revenue)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      new URL(
+        "http://127.0.0.1:3100/v1/personal-filing/market-data/quarterly-financials",
+      ),
+      expect.objectContaining({
+        body: JSON.stringify({ listingId: "lst-00001", symbol: "ZERO" }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+      }),
+    );
+  });
+
+  it("strictly rejects malformed quarterly chronology and coverage", async () => {
+    const unordered = quarterlyFinancials();
+    const wrongMissing = quarterlyFinancials();
+    const invalidStatementDate = quarterlyFinancials();
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...unordered,
+          quarters: [...unordered.quarters].reverse(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...wrongMissing,
+          coverage: {
+            ...wrongMissing.coverage,
+            missingFiscalQuarters:
+              wrongMissing.coverage.missingFiscalQuarters.slice(1),
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...invalidStatementDate,
+          quarters: [
+            {
+              ...invalidStatementDate.quarters[0],
+              statementDate: "2030-01-15T21:00:00.000Z",
+            },
+            invalidStatementDate.quarters[1],
+          ],
+        }),
+      );
+
+    for (let index = 0; index < 3; index += 1) {
+      await expect(
+        fetchPersonalQuarterlyFinancials(
+          { listingId: "lst-00001", symbol: "ZERO" },
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
   it("strictly rejects malformed or identity-mismatched annual financials", async () => {
     const extraRootKey = annualFinancials();
     const noncanonicalDecimal = annualFinancials();
     const identityMismatch = annualFinancials("lst-other", "ZERO");
-    const invalidPeriodEnd = annualFinancials();
+    const invalidStatementDate = annualFinancials();
     const excessiveMissingYears = annualFinancials();
     const oversizedName = annualFinancials();
     fetchMock
@@ -307,11 +396,11 @@ describe("personal workspace API client", () => {
       .mockResolvedValueOnce(jsonResponse(identityMismatch))
       .mockResolvedValueOnce(
         jsonResponse({
-          ...invalidPeriodEnd,
+          ...invalidStatementDate,
           years: [
             {
-              ...invalidPeriodEnd.years[0],
-              periodEnd: "2030-01-15T21:00:00.000Z",
+              ...invalidStatementDate.years[0],
+              statementDate: "2030-01-15T21:00:00.000Z",
             },
           ],
         }),
@@ -460,6 +549,12 @@ describe("personal workspace API client", () => {
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(
+      fetchPersonalQuarterlyFinancials(
+        { listingId: "bad id", symbol: "ZERO" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -534,7 +629,7 @@ function annualFinancials(
       statementFeed: "tiingo_fundamentals_statements",
       valueCurrency: "USD",
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.1.0",
     security: {
       country: "US",
       exchangeMic: "XNAS",
@@ -547,10 +642,79 @@ function annualFinancials(
     years: [
       {
         fiscalYear: 2029,
-        periodEnd: "2030-01-15",
         reported,
+        statementDate: "2030-01-15",
       },
     ],
+  };
+}
+
+function quarterlyFinancials(
+  listingId = "lst-00001",
+  symbol = "ZERO",
+): PersonalQuarterlyFinancialsDto {
+  const reported = Object.fromEntries(
+    annualFinancialReportedFieldKeys.map((key, index) => [
+      key,
+      { status: "known", value: String((index + 1) * 10) },
+    ]),
+  ) as PersonalQuarterlyFinancialsDto["quarters"][number]["reported"];
+  const missingFiscalQuarters = [
+    { fiscalQuarter: 2, fiscalYear: 2029 },
+    { fiscalQuarter: 1, fiscalYear: 2029 },
+    { fiscalQuarter: 4, fiscalYear: 2028 },
+    { fiscalQuarter: 3, fiscalYear: 2028 },
+    { fiscalQuarter: 2, fiscalYear: 2028 },
+    { fiscalQuarter: 1, fiscalYear: 2028 },
+    { fiscalQuarter: 4, fiscalYear: 2027 },
+    { fiscalQuarter: 3, fiscalYear: 2027 },
+    { fiscalQuarter: 2, fiscalYear: 2027 },
+    { fiscalQuarter: 1, fiscalYear: 2027 },
+    { fiscalQuarter: 4, fiscalYear: 2026 },
+    { fiscalQuarter: 3, fiscalYear: 2026 },
+    { fiscalQuarter: 2, fiscalYear: 2026 },
+    { fiscalQuarter: 1, fiscalYear: 2026 },
+  ] as const;
+  return {
+    asOf: "2030-01-15T21:01:00.000Z",
+    coverage: {
+      earliestFiscalQuarter: 3,
+      earliestFiscalYear: 2029,
+      knownReportedCells: 60,
+      latestFiscalQuarter: 4,
+      latestFiscalYear: 2029,
+      missingFiscalQuarters,
+      requestedQuarterlyPeriods: 16,
+      returnedQuarterlyPeriods: 2,
+      status: "partial",
+      unknownReportedCells: 0,
+    },
+    profile: "personal_single_user_local_fundamentals",
+    provider: annualFinancials().provider,
+    quarters: [
+      {
+        fiscalQuarter: 4,
+        fiscalYear: 2029,
+        reported,
+        statementDate: "2030-01-15",
+      },
+      {
+        fiscalQuarter: 3,
+        fiscalYear: 2029,
+        reported,
+        statementDate: "2029-10-15",
+      },
+    ],
+    schemaVersion: "1.0.0",
+    security: {
+      country: "US",
+      exchangeMic: "XNAS",
+      issuerName: "Zero Alpha, Inc.",
+      listingId,
+      securityName: "Zero Alpha Common Stock",
+      symbol,
+    },
+    status: "available",
   };
 }
 
