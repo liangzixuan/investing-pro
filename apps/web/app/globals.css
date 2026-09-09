@@ -2024,6 +2024,90 @@ h4,
   background: rgb(255 255 255 / 76%);
 }
 
+.personal-watchlist-filings {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.watchlist-filings-selection,
+.watchlist-filings-results {
+  display: grid;
+  gap: 14px;
+}
+
+.personal-watchlist-filings summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.watchlist-filings-choices {
+  display: grid;
+  gap: 10px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 4px;
+  margin-top: 12px;
+}
+
+.watchlist-filings-choices label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.watchlist-filings-controls,
+.watchlist-filings-list li > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.watchlist-filings-controls label,
+.watchlist-filings-filter {
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.personal-watchlist-filings select,
+.personal-watchlist-filings input[type="search"] {
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.personal-watchlist-filings :is(input, select, button, summary):focus-visible {
+  outline: 2px solid var(--mint-deep);
+  outline-offset: 3px;
+}
+
+.watchlist-filings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.watchlist-filings-list li {
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.watchlist-filings-list p {
+  margin: 8px 0;
+}
+
+.watchlist-filings-research,
+.watchlist-filing-date {
+  font-size: 0.85rem;
+}
+
 .personal-financial-screener {
   display: grid;
   gap: 14px;

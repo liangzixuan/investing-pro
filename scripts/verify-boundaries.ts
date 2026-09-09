@@ -5186,6 +5186,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     providerPath,
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-sec-filings-provider.ts",
     secProviderPath,
     "apps/api/src/personal-security-master-routes.ts",
     "apps/api/src/personal-vault-routes.ts",
@@ -5199,6 +5200,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     marketRoutesPath,
     "apps/api/src/workspace-screener-routes.ts",
     "apps/api/src/workspace-server.ts",
+    "apps/api/src/workspace-watchlist-filings-routes.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
   ].sort();
   const expectedExternalSpecifiers = [
@@ -5378,6 +5380,44 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scripts/verify-boundaries.ts: SEC financial provider boundary classifier regressed",
     );
   }
+  const filingsProvider =
+    runtimeSources.get("apps/api/src/personal-sec-filings-provider.ts") ?? "";
+  const filingsMutations = [
+    (source: string) => `${source}\nvoid fetch("https://unreviewed.example");`,
+    (source: string) => `${source}\nconsole.log("unreviewed");`,
+    (source: string) => `${source}\nvoid process.env.UNREVIEWED;`,
+    (source: string) => `${source}\nimport "node:fs";`,
+    (source: string) =>
+      source.replace("data.sec.gov/submissions/CIK", "unreviewed.example/CIK"),
+    (source: string) =>
+      source.replace('redirect: "error"', 'redirect: "follow"'),
+    (source: string) =>
+      source.replace("this.#fetch(sourceUrl,", "this.#fetch(unreviewedUrl,"),
+    (source: string) =>
+      source.replace(
+        '"User-Agent": this.#userAgent!',
+        '"X-User-Agent": this.#userAgent!',
+      ),
+    (source: string) => source.replace("4 * 1024 * 1024", "40 * 1024 * 1024"),
+    (source: string) =>
+      source.replace("REQUEST_INTERVAL_MS = 300", "REQUEST_INTERVAL_MS = 0"),
+    (source: string) =>
+      source.replace("MAX_RECENT_ROWS = 10_000", "MAX_RECENT_ROWS = 100_000"),
+    (source: string) =>
+      source.replace("normalizeCik(value.cik) !== cik", "false"),
+  ];
+  if (
+    personalSecFilingsProviderViolation(filingsProvider) !== null ||
+    filingsMutations.some(
+      (mutateSource) =>
+        personalSecFilingsProviderViolation(mutateSource(filingsProvider)) ===
+        null,
+    )
+  ) {
+    found.push(
+      "scripts/verify-boundaries.ts: SEC filings provider boundary classifier regressed",
+    );
+  }
   return found;
 }
 
@@ -5409,10 +5449,11 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       if (
         path !== providerPath &&
         path !== secProviderPath &&
+        path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
-          `${path}: only the reviewed Tiingo and SEC financial providers may use the API runtime fetch capability`,
+          `${path}: only the reviewed Tiingo and SEC providers may use the API runtime fetch capability`,
         );
       }
       if (path !== providerPath && content.includes(providerHost)) {
@@ -5428,17 +5469,25 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
           `${path}: only the reviewed SEC financial provider may embed the SEC frames transport endpoint`,
         );
       }
+      if (
+        path !== "apps/api/src/personal-sec-filings-provider.ts" &&
+        content.includes("data.sec.gov/submissions")
+      ) {
+        found.push(
+          `${path}: only the reviewed SEC filings provider may embed the submissions transport endpoint`,
+        );
+      }
     }
     if (
       path.startsWith("apps/web/") &&
       !personalMarketDataIsTestSource(path) &&
       (content.includes("PERSONAL_SEC_USER_AGENT") ||
         collectModuleSpecifiers(content).some((specifier) =>
-          specifier.includes("personal-sec-financial-provider"),
+          /personal-sec-(?:financial|filings)-provider/u.test(specifier),
         ))
     ) {
       found.push(
-        `${path}: the browser must not import the SEC financial provider or its declared user-agent configuration`,
+        `${path}: the browser must not import SEC providers or their declared user-agent configuration`,
       );
     }
     if (
@@ -6449,14 +6498,17 @@ function personalMarketDataRuntimeBoundaryViolation(
     if (
       path !== providerPath &&
       path !== secProviderPath &&
+      path !== "apps/api/src/personal-sec-filings-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
-      return `${path}: only the reviewed Tiingo and SEC financial providers may use the API runtime fetch capability`;
+      return `${path}: only the reviewed Tiingo and SEC providers may use the API runtime fetch capability`;
     }
     if (
       (path === providerPath ||
         path === routesPath ||
         path === secProviderPath ||
+        path === "apps/api/src/personal-sec-filings-provider.ts" ||
+        path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
         path === "apps/api/src/workspace-financial-screen-routes.ts") &&
       findIdentifiers(source, new Set(["process"])).length > 0
     ) {
@@ -6477,8 +6529,168 @@ function personalMarketDataRuntimeBoundaryViolation(
     sources.get(secProviderPath) ?? "",
   );
   if (secViolation !== null) return `${secProviderPath}: ${secViolation}`;
+  const filingsViolation = personalSecFilingsProviderViolation(
+    sources.get("apps/api/src/personal-sec-filings-provider.ts") ?? "",
+  );
+  if (filingsViolation !== null) return filingsViolation;
   const routesViolation = personalMarketDataRoutesViolation(routes);
   return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
+}
+
+function personalSecFilingsProviderViolation(content: string): string | null {
+  const message =
+    "SEC filings provider must retain its reviewed bounded, fixed-source metadata transport";
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify(["@research-cockpit/contracts"])
+  )
+    return message;
+  const source = ts.createSourceFile(
+    "personal-sec-filings-provider.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    findIdentifiers(
+      source,
+      new Set([
+        "process",
+        "console",
+        "global",
+        "window",
+        "self",
+        "XMLHttpRequest",
+        "WebSocket",
+        "EventSource",
+        "setInterval",
+      ]),
+    ).length > 0 ||
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content)
+  )
+    return message;
+  const compact = content.replace(/\s+/gu, "");
+  const required = [
+    "constMAX_RESPONSE_BYTES=4*1024*1024;",
+    "constMAX_RECENT_ROWS=10_000;",
+    "constMAX_RETURNED_FILINGS=1_000;",
+    "constREQUEST_TIMEOUT_MS=10_000;",
+    "constREQUEST_INTERVAL_MS=300;",
+    "ciks.length>20",
+    "newSet(ciks).size!==ciks.length",
+    'if(this.#active!==undefined)fail("busy");',
+    "this.#active?.abort()",
+    "for(constcikofrequestedCiks)",
+    "if(this.#requestHasRun)awaitdelay(REQUEST_INTERVAL_MS,controller.signal);",
+    "setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS)",
+    "awaitreadBoundedText(response,controller.signal)",
+    "normalizeCik(value.cik)!==cik",
+    "accessions.length>MAX_RECENT_ROWS",
+    "forms.length!==accessions.length",
+    "filingDates.length!==accessions.length",
+    "reportDates.length!==accessions.length",
+    "size>MAX_RESPONSE_BYTES",
+    "previous.form!==form",
+    "previous.filingDate!==filingDate",
+    "previous.reportDate!==reportDate",
+  ];
+  if (required.some((anchor) => !compact.includes(anchor))) return message;
+  let endpoints = 0;
+  let links = 0;
+  let transports = 0;
+  let invalid = false;
+  const visit = (node: ts.Node): void => {
+    if (ts.isTemplateExpression(node) && /https?:\/\//iu.test(node.head.text)) {
+      const spans = node.templateSpans;
+      if (
+        node.head.text === "https://data.sec.gov/submissions/CIK" &&
+        spans.length === 1 &&
+        spans[0]?.expression.getText(source) === "cik" &&
+        spans[0].literal.text === ".json" &&
+        ts.isVariableDeclaration(node.parent) &&
+        ts.isIdentifier(node.parent.name) &&
+        node.parent.name.text === "sourceUrl"
+      ) {
+        endpoints += 1;
+      } else if (
+        node.head.text === "https://www.sec.gov/Archives/edgar/data/" &&
+        spans.length === 2 &&
+        spans[0]?.expression.getText(source).replace(/\s+/gu, "") ===
+          'cik.replace(/^0+/u,"")' &&
+        spans[0].literal.text === "/" &&
+        spans[1]?.expression.getText(source) === "accessionNumber" &&
+        spans[1].literal.text === "-index.htm"
+      ) {
+        links += 1;
+      } else invalid = true;
+    }
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      if (
+        (ts.isIdentifier(callee) && callee.text === "fetch") ||
+        namedBoundaryPropertyAccess(callee, new Set(["fetch"])) !== null
+      )
+        invalid = true;
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        callee.expression.kind === ts.SyntaxKind.ThisKeyword &&
+        callee.name.text === "#fetch"
+      ) {
+        transports += 1;
+        const [url, options] = node.arguments;
+        if (
+          node.arguments.length !== 2 ||
+          url === undefined ||
+          !ts.isIdentifier(url) ||
+          url.text !== "sourceUrl" ||
+          options === undefined ||
+          !ts.isObjectLiteralExpression(options)
+        )
+          invalid = true;
+        else {
+          const expected = new Map([
+            ["method", '"GET"'],
+            [
+              "headers",
+              '{Accept:"application/json","User-Agent":this.#userAgent!}',
+            ],
+            ["credentials", '"omit"'],
+            ["redirect", '"error"'],
+            ["referrerPolicy", '"no-referrer"'],
+            ["cache", '"no-store"'],
+            ["signal", "controller.signal"],
+          ]);
+          if (
+            options.properties.length !== expected.size ||
+            options.properties.some(
+              (property) =>
+                !ts.isPropertyAssignment(property) ||
+                property.initializer
+                  .getText(source)
+                  .replace(/\s+/gu, "")
+                  .replace(/,(?=\})/gu, "") !==
+                  expected.get(boundaryPropertyName(property.name) ?? ""),
+            )
+          )
+            invalid = true;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || endpoints !== 1 || links !== 1 || transports !== 1
+    ? message
+    : null;
 }
 
 function personalSecFinancialProviderViolation(content: string): string | null {
@@ -7493,6 +7705,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
+      "apps/api/src/workspace-watchlist-filings-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
+    ],
+    [
       "apps/api/src/personal-security-master-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
@@ -7555,6 +7771,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     [
       "apps/api/src/workspace-financial-screen-routes.ts",
       ["screenPersonalSecurityMaster", "type PersonalSecurityMasterCatalog"],
+    ],
+    [
+      "apps/api/src/workspace-watchlist-filings-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
     ],
   ]);
   for (const file of externalCompositionFilesToInspect) {
@@ -12585,6 +12809,19 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     [
       "apps/api/src/workspace-financial-screen-routes.ts",
       ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-watchlist-filings-routes.ts",
+      ["LocalResearchVaultError", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-watchlist-filings-routes.test.ts",
+      [
+        "LOCAL_RESEARCH_VAULT_PROFILE",
+        "LocalResearchVaultError",
+        "type LocalResearchRecord",
+        "type LocalResearchVault",
+      ],
     ],
   ]);
 }

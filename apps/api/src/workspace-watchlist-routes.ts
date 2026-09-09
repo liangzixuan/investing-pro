@@ -60,7 +60,7 @@ interface PutBody {
   readonly payload: JsonValue;
 }
 
-type WatchlistMembership = Readonly<{
+export type WatchlistMembership = Readonly<{
   country: "US";
   exchangeMic: string;
   instrumentType: "adr" | "common_stock";
@@ -75,7 +75,7 @@ type WatchlistMembership = Readonly<{
   symbol: string;
 }>;
 
-type MainWatchlistPayload = Readonly<{
+export type MainWatchlistPayload = Readonly<{
   memberships: readonly WatchlistMembership[];
   name: typeof MAIN_WATCHLIST_NAME;
   schemaVersion: 1;
@@ -211,7 +211,9 @@ function isPutBody(value: unknown): value is PutBody {
   return hasExactKeys(value, ["payload"]);
 }
 
-function isMainWatchlistPayload(value: unknown): value is MainWatchlistPayload {
+export function isMainWatchlistPayload(
+  value: unknown,
+): value is MainWatchlistPayload {
   if (!hasExactKeys(value, WATCHLIST_PAYLOAD_KEYS)) return false;
   if (
     value.schemaVersion !== 1 ||
@@ -267,7 +269,7 @@ function membershipsMatchCatalog(
   });
 }
 
-function membershipMatchesResult(
+export function membershipMatchesResult(
   membership: WatchlistMembership,
   result: PersonalSecurityMasterSearchResult,
 ): boolean {

@@ -50,6 +50,11 @@ import {
   type PersonalSecFinancialProvider,
 } from "./personal-sec-financial-provider";
 import { registerPersonalWorkspaceWatchlistRoutes } from "./workspace-watchlist-routes";
+import { registerPersonalWorkspaceWatchlistFilingsRoutes } from "./workspace-watchlist-filings-routes";
+import {
+  createSecPersonalFilingsProvider,
+  type PersonalSecFilingsProvider,
+} from "./personal-sec-filings-provider";
 
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
 const DEFAULT_LISTEN_OPTIONS: DemoApiListenOptions = Object.freeze({
@@ -64,6 +69,7 @@ export async function buildPersonalWorkspaceApp(
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
   marketDataProvider: PersonalMarketDataProvider = createTiingoPersonalMarketDataProvider(),
   financialProvider: PersonalSecFinancialProvider = createSecPersonalFinancialProvider(),
+  filingsProvider: PersonalSecFilingsProvider = createSecPersonalFilingsProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -127,8 +133,12 @@ export async function buildPersonalWorkspaceApp(
         try {
           financialProvider.close();
         } finally {
-          ownerSession.close();
-          done();
+          try {
+            filingsProvider.close();
+          } finally {
+            ownerSession.close();
+            done();
+          }
         }
       }
     }
@@ -173,6 +183,14 @@ export async function buildPersonalWorkspaceApp(
     catalog,
     vault,
     financialProvider,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceWatchlistFilingsRoutes(
+    app,
+    catalog,
+    vault,
+    filingsProvider,
     ownerSession,
     listenOptions,
   );

@@ -1798,7 +1798,7 @@ $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 = "sha256:<64 lowercase hex charac
 $env:RESEARCH_COCKPIT_VAULT_ROOT = "C:\absolute\owner-local\research-cockpit-vault"
 $env:RESEARCH_COCKPIT_VAULT_STARTUP = "initialize" # change to "open" after first start
 $env:PERSONAL_MARKET_DATA_TIINGO_TOKEN = "<owner Tiingo token>" # optional
-$env:PERSONAL_SEC_USER_AGENT = "<application name and real owner contact email>" # optional annual screening
+$env:PERSONAL_SEC_USER_AGENT = "<application name and real owner contact email>" # optional SEC screening and watchlist filings
 
 try {
   $workspaceBootstrapBytes = New-Object byte[] 32
@@ -1856,6 +1856,12 @@ Set the optional SEC contact above to enable it. See
 [setup and limitations](./docs/SEC_ANNUAL_FINANCIAL_SCREENING.md). This is a
 partial Cycle 3k-a2 slice; calendar-aligned annual frames are not TTM or
 point-in-time data, and actual catalog coverage still requires measurement.
+
+**Recent SEC filings** checks up to 20 selected My Watchlist listings over
+7, 30, or 90 days using the same SEC contact setting. It shows filed forms,
+source links, observation times, and explicit failed/unrequested coverage.
+Each load is on demand; no filing documents or raw responses are saved. See
+[watchlist filings setup and limits](./docs/WATCHLIST_SEC_FILINGS.md).
 
 Personal mode is a separate explicit startup. The runnable example below covers
 the promoted Cycle 3a readiness-only mode; it does not start a Cycle 3b dossier

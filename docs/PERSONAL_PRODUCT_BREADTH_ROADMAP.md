@@ -1100,6 +1100,19 @@ Exit criteria:
 Unavailable entitlements remain explicit conditional gaps; they do not block
 promotion of an independently useful, accurately labelled subcycle.
 
+### First partial Cycle 3l-a delivery
+
+[Recent SEC filings for My Watchlist](./WATCHLIST_SEC_FILINGS.md) adds explicit
+7/30/90-day checks for up to 20 selected saved listings through the official SEC
+submissions API. One request per distinct CIK preserves selected share-class
+associations. The view includes filing dates/forms, source links, observation
+times, issuer failures, unrequested coverage, and disclosed truncation. Requests
+and results are bound to the saved watchlist version and admitted catalog.
+
+This is filing metadata only. It does not complete the broader event calendar,
+upcoming earnings, dividend, news, estimate, ownership, or transcript targets.
+Live source and owner-catalog validation remain pending local configuration.
+
 ### Cycle 3m — personal portfolio analytics
 
 Target: add holdings, allocation, income, and performance without broker or

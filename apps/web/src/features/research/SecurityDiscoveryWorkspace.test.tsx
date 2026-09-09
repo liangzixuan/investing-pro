@@ -30,6 +30,7 @@ import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
 import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
 import type { PersonalFinancialScreenerProps } from "./PersonalFinancialScreener";
+import type { PersonalWatchlistFilingsProps } from "./PersonalWatchlistFilings";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
 
 const hookHarness = vi.hoisted(() => {
@@ -142,6 +143,7 @@ const componentMocks = vi.hoisted(() => ({
   QuarterlyFinancials: () => null,
   StockScreener: () => null,
   FinancialScreener: () => null,
+  WatchlistFilings: () => null,
   ValuationHistory: () => null,
 }));
 
@@ -213,6 +215,9 @@ vi.mock("./PersonalStockScreener", () => ({
 }));
 vi.mock("./PersonalFinancialScreener", () => ({
   PersonalFinancialScreener: componentMocks.FinancialScreener,
+}));
+vi.mock("./PersonalWatchlistFilings", () => ({
+  PersonalWatchlistFilings: componentMocks.WatchlistFilings,
 }));
 vi.mock("./PersonalValuationHistory", () => ({
   PersonalValuationHistory: componentMocks.ValuationHistory,
@@ -313,6 +318,34 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(
       requireStockScreener(rendered).props.savedListingIds.has("lst-screen"),
     ).toBe(true);
+  });
+
+  it("binds filing checks to the saved watchlist and clears them after session loss", async () => {
+    await activateWorkspace();
+    let panel = findElement<PersonalWatchlistFilingsProps>(
+      renderWorkspace(),
+      componentMocks.WatchlistFilings,
+    );
+    expect(panel?.props.enabled).toBe(false);
+    requireStockScreener(renderWorkspace()).props.onAddToWatchlist(screenRow());
+    await flushPromises();
+    panel = findElement<PersonalWatchlistFilingsProps>(
+      renderWorkspace(),
+      componentMocks.WatchlistFilings,
+    );
+    expect(panel?.props.enabled).toBe(true);
+    expect(panel?.props.catalogSnapshotSha256).toBe(snapshot().snapshotSha256);
+    expect(panel?.props.watchlistVersion).toBe(1);
+    const membership = panel?.props.memberships[0];
+    expect(membership?.listingId).toBe("lst-screen");
+    if (membership) panel?.props.onOpenResearch(membership);
+    expect(
+      requireMarketOverview(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-screen");
+    panel?.props.onSessionUnavailable();
+    expect(
+      findElement(renderWorkspace(), componentMocks.WatchlistFilings),
+    ).toBeUndefined();
   });
 
   it("routes annual financial screen identities and clears discovery after session loss", async () => {

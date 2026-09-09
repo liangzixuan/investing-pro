@@ -955,3 +955,4 @@ export interface ProblemDetailsDto {
   traceId: string;
 }
 export * from "./personal-financial-screener";
+export * from "./personal-watchlist-filings";

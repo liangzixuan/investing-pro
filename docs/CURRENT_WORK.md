@@ -25,19 +25,19 @@ unrelated hardening outside the active personal scope.
 | Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models             |
 | Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata          |
 | Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth |
-| Keep up with changes      | No daily events or portfolio workflow yet                                                                      | Events, holdings, alerts and source-permitted exports                  |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Live validation, upcoming events, holdings, alerts and exports         |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Current release: annual financial screening
+## Last verified release: annual financial screening
 
-The handover release `2f5bab2` completed Cycle 3k-a1 routing. Full local
-verification passed (2,570 tests and 9 skips); all five applicable hosted
-workflows passed on that exact commit.
+Release `e9c5a70` closed the first annual financial screening slice, following
+feature `ad16808`. Full local verification passed (2,677 tests and 9 existing
+skips); all six applicable hosted workflows passed on that exact release.
 
-The next feature is the first partial Cycle 3k-a2 slice: an explicit **Annual
+The feature is the first partial Cycle 3k-a2 slice: an explicit **Annual
 financial screen** in Discover. It joins six public SEC US-GAAP annual
 cross-company frames to the admitted catalog by CIK and supplies seven metrics:
 revenue, net income, operating income, operating cash flow, and their three
@@ -60,21 +60,33 @@ catalog coverage measurement has been recorded for this release. Missing,
 conflicting, malformed or failed-source facts remain unknown. A synthetic
 engineering result must not be reported as admitted real-market breadth.
 
+## Active delivery: recent watchlist filings
+
+The first partial Cycle 3l-a slice adds **Recent SEC filings** beside My Watchlist.
+Select up to 20 saved listings, check 7/30/90-day filing dates, and inspect source
+links plus explicit checked/failed/unrequested coverage. Saved catalog identities
+resolve the source CIKs; current watchlist versions prevent stale results.
+See [source, workflow and acceptance](./WATCHLIST_SEC_FILINGS.md).
+
+Live SEC validation still requires the owner's contact and startup configuration.
+The current shell has neither the SEC contact nor the configured catalog path
+and digest. This dependency does not prevent completing synthetic engineering
+validation of the next independently useful feature.
+
 Completion requires reviewed code, focused integration tests, the full local
 gate on clean source, and applicable hosted checks on the pushed revision.
-Record their actual results in the task handoff; this page does not predict
-that a release passed.
+Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority        | Deliverable                                                                                      | Dependency or reason                                                        |
-| --------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Now             | Deliver and verify seven-metric SEC annual screening                                             | Complete the first numerical discovery workflow                             |
-| Next            | Validate configured SEC coverage, then add watchlist dated events                                | Measure actual screening usefulness and add a daily return workflow         |
-| Then            | Watchlist earnings/dividend/event view                                                           | Gives the owner a reason to return each day; needs a permitted dated source |
-| Then            | Holdings and portfolio overview                                                                  | Reuse identity, local state, and validated pricing                          |
-| As inputs allow | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions         |
-| Later           | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                 |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| Now              | Deliver and verify recent watchlist SEC filings                                                  | Add a return workflow with an official source                         |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration             |
+| Next             | Holdings and a basic portfolio overview                                                          | Reuse admitted identity, encrypted local state, and validated pricing |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement              |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions   |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product           |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -92,9 +104,8 @@ where the next feature exposes concrete duplication or makes changes risky.
    examples for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/personal-security-master exec vitest run src/personal-security-master-screener.test.ts src/personal-security-master-screener.security.test.ts
-   pnpm --filter @research-cockpit/api exec vitest run src/workspace-screener-routes.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/PersonalStockScreener.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx
+   pnpm --filter @research-cockpit/api exec vitest run src/personal-sec-filings-provider.test.ts src/workspace-watchlist-filings-routes.test.ts src/workspace-static-graph.test.ts
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-watchlist-filings-api.test.ts src/features/research/PersonalWatchlistFilings.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx
    pnpm --filter @research-cockpit/api --filter @research-cockpit/web typecheck
    ```
 

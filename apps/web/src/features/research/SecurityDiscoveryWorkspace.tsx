@@ -48,6 +48,7 @@ import {
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
+import { PersonalWatchlistFilings } from "./PersonalWatchlistFilings";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
   PersonalMarketOverview,
@@ -1494,6 +1495,21 @@ export function SecurityDiscoveryWorkspace() {
               providerStatus={marketDataStatus}
               requestState={quarterlyFinancialsRequestState}
               selection={marketSelection}
+            />
+
+            <PersonalWatchlistFilings
+              catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+              watchlistVersion={workspace.version}
+              memberships={workspace.watchlist.memberships}
+              enabled={
+                workspace.watchlistAvailable &&
+                workspace.version > 0 &&
+                !snapshotChanged &&
+                watchlistState !== "saving" &&
+                !reconciling
+              }
+              onOpenResearch={selectMarketSecurity}
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
             />
 
             <section
