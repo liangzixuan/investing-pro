@@ -964,6 +964,8 @@ function normalizeSearchQuery(value: string): string | null {
     : null;
 }
 
+export { request as requestPersonalWorkspace };
+
 async function request(
   path: string,
   options: Pick<RequestInit, "body" | "headers" | "method" | "signal">,

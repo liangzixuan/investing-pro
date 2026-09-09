@@ -2024,6 +2024,153 @@ h4,
   background: rgb(255 255 255 / 76%);
 }
 
+.personal-financial-screener {
+  display: grid;
+  gap: 14px;
+}
+
+.financial-screen-controls,
+.financial-screen-saved {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.personal-financial-screener input,
+.personal-financial-screener select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.personal-financial-screener :is(input, select, button, summary):focus-visible {
+  outline: 3px solid var(--mint-deep);
+  outline-offset: 2px;
+}
+
+.personal-financial-screener .personal-stock-screener-run-actions {
+  flex-wrap: wrap;
+}
+
+.financial-screen-clauses {
+  display: grid;
+  gap: 10px;
+}
+
+.financial-screen-clause {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1fr) minmax(140px, 0.6fr) minmax(150px, 1fr)
+    auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.financial-screen-clause label {
+  display: grid;
+  gap: 6px;
+  color: var(--navy);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.financial-screen-results,
+.financial-screen-row-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.financial-screen-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.financial-screen-counts > div {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.financial-screen-counts dt {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.financial-screen-counts dd {
+  margin: 6px 0 0;
+  color: var(--navy);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.financial-screen-source-details,
+.financial-screen-cell {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+}
+
+.personal-financial-screener summary {
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.financial-screen-source-details li {
+  margin-block: 8px;
+}
+
+.personal-financial-screener .personal-stock-screener-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.financial-screen-table {
+  min-width: 1200px;
+  border-collapse: collapse;
+}
+
+.financial-screen-table :is(th, td) {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  font-size: 0.74rem;
+}
+
+.financial-screen-table caption {
+  padding: 12px 0;
+  color: var(--ink-soft);
+  text-align: left;
+  font-size: 0.74rem;
+}
+
+.financial-screen-cell > div {
+  min-width: 180px;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+}
+
+.financial-screen-digests {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .financial-screen-clause,
+  .financial-screen-counts {
+    grid-template-columns: 1fr;
+  }
+}
+
 .personal-stock-screener-saved-controls {
   display: grid;
   align-items: end;

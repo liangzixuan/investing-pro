@@ -29,6 +29,7 @@ import type { PersonalManualPeerComparisonProps } from "./PersonalManualPeerComp
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
 import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
+import type { PersonalFinancialScreenerProps } from "./PersonalFinancialScreener";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
 
 const hookHarness = vi.hoisted(() => {
@@ -140,6 +141,7 @@ const componentMocks = vi.hoisted(() => ({
   OwnerSession: () => null,
   QuarterlyFinancials: () => null,
   StockScreener: () => null,
+  FinancialScreener: () => null,
   ValuationHistory: () => null,
 }));
 
@@ -208,6 +210,9 @@ vi.mock("./PersonalQuarterlyFinancials", () => ({
 }));
 vi.mock("./PersonalStockScreener", () => ({
   PersonalStockScreener: componentMocks.StockScreener,
+}));
+vi.mock("./PersonalFinancialScreener", () => ({
+  PersonalFinancialScreener: componentMocks.FinancialScreener,
 }));
 vi.mock("./PersonalValuationHistory", () => ({
   PersonalValuationHistory: componentMocks.ValuationHistory,
@@ -308,6 +313,37 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(
       requireStockScreener(rendered).props.savedListingIds.has("lst-screen"),
     ).toBe(true);
+  });
+
+  it("routes annual financial screen identities and clears discovery after session loss", async () => {
+    await activateWorkspace();
+    let rendered = renderWorkspace();
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      rendered,
+      componentMocks.FinancialScreener,
+    );
+    expect(financial).toBeDefined();
+    expect(financial?.props.snapshot.snapshotSha256).toBe(
+      snapshot().snapshotSha256,
+    );
+    financial?.props.onOpenResearch(screenRow());
+    rendered = renderWorkspace();
+    expect(requireMarketOverview(rendered).props.selection?.listingId).toBe(
+      "lst-screen",
+    );
+    financial?.props.onAddToWatchlist(screenRow());
+    await flushPromises();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({
+        memberships: [expect.objectContaining({ listingId: "lst-screen" })],
+      }),
+      expect.any(AbortSignal),
+    );
+    financial?.props.onSessionUnavailable();
+    expect(
+      findElement(renderWorkspace(), componentMocks.FinancialScreener),
+    ).toBeUndefined();
   });
 
   it("keeps discovery available when the saved watchlist cannot be loaded", async () => {

@@ -44,6 +44,11 @@ import {
 } from "./personal-security-master-routes";
 import { registerPersonalWorkspaceMarketDataRoutes } from "./workspace-market-data-routes";
 import { registerPersonalWorkspaceScreenerRoutes } from "./workspace-screener-routes";
+import { registerPersonalWorkspaceFinancialScreenRoutes } from "./workspace-financial-screen-routes";
+import {
+  createSecPersonalFinancialProvider,
+  type PersonalSecFinancialProvider,
+} from "./personal-sec-financial-provider";
 import { registerPersonalWorkspaceWatchlistRoutes } from "./workspace-watchlist-routes";
 
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
@@ -58,6 +63,7 @@ export async function buildPersonalWorkspaceApp(
   ownerSession: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions = DEFAULT_LISTEN_OPTIONS,
   marketDataProvider: PersonalMarketDataProvider = createTiingoPersonalMarketDataProvider(),
+  financialProvider: PersonalSecFinancialProvider = createSecPersonalFinancialProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -118,8 +124,12 @@ export async function buildPersonalWorkspaceApp(
       try {
         marketDataProvider.close();
       } finally {
-        ownerSession.close();
-        done();
+        try {
+          financialProvider.close();
+        } finally {
+          ownerSession.close();
+          done();
+        }
       }
     }
   });
@@ -155,6 +165,14 @@ export async function buildPersonalWorkspaceApp(
     app,
     catalog,
     marketDataProvider,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceFinancialScreenRoutes(
+    app,
+    catalog,
+    vault,
+    financialProvider,
     ownerSession,
     listenOptions,
   );

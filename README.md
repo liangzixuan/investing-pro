@@ -1798,6 +1798,7 @@ $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 = "sha256:<64 lowercase hex charac
 $env:RESEARCH_COCKPIT_VAULT_ROOT = "C:\absolute\owner-local\research-cockpit-vault"
 $env:RESEARCH_COCKPIT_VAULT_STARTUP = "initialize" # change to "open" after first start
 $env:PERSONAL_MARKET_DATA_TIINGO_TOKEN = "<owner Tiingo token>" # optional
+$env:PERSONAL_SEC_USER_AGENT = "<application name and real owner contact email>" # optional annual screening
 
 try {
   $workspaceBootstrapBytes = New-Object byte[] 32
@@ -1819,6 +1820,7 @@ try {
   $workspaceBootstrapSecret = $null
   Remove-Item Env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET -ErrorAction SilentlyContinue
   Remove-Item Env:PERSONAL_MARKET_DATA_TIINGO_TOKEN -ErrorAction SilentlyContinue
+  Remove-Item Env:PERSONAL_SEC_USER_AGENT -ErrorAction SilentlyContinue
   Set-Clipboard -Value ([string]::Empty)
 }
 ```
@@ -1846,6 +1848,14 @@ selecting a listing to request the separate fundamentals feeds; no fundamentals
 request runs automatically. The older isolated
 security-master and generic-vault entrypoints remain available for their
 original bounded uses.
+
+Discover also includes an explicit **Annual financial screen** over public SEC
+cross-company data: seven annual size/profitability measures, numerical filters,
+source periods and coverage counts, stable pages, and encrypted saved criteria.
+Set the optional SEC contact above to enable it. See
+[setup and limitations](./docs/SEC_ANNUAL_FINANCIAL_SCREENING.md). This is a
+partial Cycle 3k-a2 slice; calendar-aligned annual frames are not TTM or
+point-in-time data, and actual catalog coverage still requires measurement.
 
 Personal mode is a separate explicit startup. The runnable example below covers
 the promoted Cycle 3a readiness-only mode; it does not start a Cycle 3b dossier

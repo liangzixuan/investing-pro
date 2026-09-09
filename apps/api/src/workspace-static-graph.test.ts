@@ -8,13 +8,14 @@ const SOURCE_DIRECTORY = resolve(import.meta.dirname);
 const WORKSPACE_ENTRY = resolve(SOURCE_DIRECTORY, "workspace-server.ts");
 
 describe("personal workspace startup static graph", () => {
-  it("combines only the catalog, vault, owner-session, market-data, and loopback modules", async () => {
+  it("combines only the catalog, vault, owner-session, market-data, SEC financial screening, and loopback modules", async () => {
     const graph = await staticGraph(WORKSPACE_ENTRY);
     expect([...graph.files].sort()).toEqual([
       "listen-options.ts",
       "personal-market-data-provider.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
+      "personal-sec-financial-provider.ts",
       "personal-security-master-routes.ts",
       "personal-vault-routes.ts",
       "security-master-app.ts",
@@ -23,6 +24,7 @@ describe("personal workspace startup static graph", () => {
       "vault-composition-root.ts",
       "workspace-app.ts",
       "workspace-composition-root.ts",
+      "workspace-financial-screen-routes.ts",
       "workspace-market-data-routes.ts",
       "workspace-screener-routes.ts",
       "workspace-server.ts",
@@ -37,6 +39,7 @@ describe("personal workspace startup static graph", () => {
       "@fastify/helmet",
       "@research-cockpit/contracts",
       "@research-cockpit/local-research-vault",
+      "@research-cockpit/personal-financial-analytics",
       "@research-cockpit/personal-security-master",
       "fastify",
       "node:crypto",

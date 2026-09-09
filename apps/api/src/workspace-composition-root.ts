@@ -22,6 +22,11 @@ import {
   PERSONAL_VAULT_STARTUP_ENVIRONMENT_KEY,
 } from "./vault-composition-root";
 import { buildPersonalWorkspaceApp } from "./workspace-app";
+import {
+  createSecPersonalFinancialProvider,
+  type PersonalSecFinancialProvider,
+  PERSONAL_SEC_USER_AGENT,
+} from "./personal-sec-financial-provider";
 
 export const PERSONAL_WORKSPACE_API_MODE = "personal_workspace" as const;
 
@@ -55,6 +60,7 @@ const PERSONAL_WORKSPACE_PRIVATE_ENVIRONMENT_KEYS = [
   PERSONAL_VAULT_STARTUP_ENVIRONMENT_KEY,
   PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY,
   ...FORBIDDEN_PRIVATE_CONFIGURATION_KEYS,
+  PERSONAL_SEC_USER_AGENT,
 ] as const;
 
 export class PersonalWorkspaceApiCompositionError extends Error {
@@ -159,6 +165,7 @@ async function preparePersonalWorkspaceConfiguredApp(
   const bootstrapSecret = environment[PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY];
   const marketDataToken =
     environment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY];
+  const secUserAgent = environment[PERSONAL_SEC_USER_AGENT];
   if (bootstrapSecret === undefined) {
     throw new PersonalWorkspaceApiCompositionError(
       "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED",
@@ -179,6 +186,7 @@ async function preparePersonalWorkspaceConfiguredApp(
 
   let vault: LocalResearchVault | undefined;
   let marketDataProvider: PersonalMarketDataProvider | undefined;
+  let financialProvider: PersonalSecFinancialProvider | undefined;
   try {
     const catalog = await loadPersonalSecurityMasterCatalog(
       snapshotPath,
@@ -191,14 +199,17 @@ async function preparePersonalWorkspaceConfiguredApp(
         : await LocalResearchVault.open(startupOptions);
     marketDataProvider =
       createTiingoPersonalMarketDataProvider(marketDataToken);
+    financialProvider = createSecPersonalFinancialProvider(secUserAgent);
     return await buildPersonalWorkspaceApp(
       catalog,
       vault,
       ownerSession,
       resolveDemoApiListenOptions(environment),
       marketDataProvider,
+      financialProvider,
     );
   } catch (error) {
+    financialProvider?.close();
     marketDataProvider?.close();
     vault?.close();
     ownerSession.close();

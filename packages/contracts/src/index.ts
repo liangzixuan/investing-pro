@@ -954,3 +954,4 @@ export interface ProblemDetailsDto {
   instance: string;
   traceId: string;
 }
+export * from "./personal-financial-screener";

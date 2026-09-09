@@ -17,83 +17,60 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                       | Important remaining gap                                       |
-| ------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                             | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                  | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                      | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                         | Compatible multi-company coverage and automatic peer metadata |
-| Screen for ideas          | Whole-catalog identity filters, columns, stable pages, encrypted saved definitions           | Numerical financial filters over a permitted bulk snapshot    |
-| Keep up with changes      | No daily events or portfolio workflow yet                                                    | Events, holdings, alerts and source-permitted exports         |
+| User job                  | Implemented capability                                                                                         | Important remaining gap                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                               | Catalog refresh and broader discovery data                             |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                   | Wider reconciliation and benchmark-relative analysis                   |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                    | Verified TTM and the shared 30-core-metric screening registry          |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models             |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata          |
+| Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth |
+| Keep up with changes      | No daily events or portfolio workflow yet                                                                      | Events, holdings, alerts and source-permitted exports                  |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Handover and current release
+## Current release: annual financial screening
 
-The interrupted task left feature commit `5dd44ac` (Cycle 3k-a1 catalog
-screener), directly following `fa63a5d`, plus six partially edited release
-routing files. The inherited feature was recorded as locally tested and built
-in that task; this handover must verify the finished candidate independently.
+The handover release `2f5bab2` completed Cycle 3k-a1 routing. Full local
+verification passed (2,570 tests and 9 skips); all five applicable hosted
+workflows passed on that exact commit.
 
-This release completes that routing and its regression tests, and adds this
-current-work guide and roadmap navigation. The routing is non-evidence:
-historical filing acceptance is not promoted onto new product commits.
-Completion requires a clean source commit, a successful full local gate,
-and successful applicable hosted workflows on the pushed revision. Use the
-actual command results and hosted run records to determine status; the
-presence of this document does not assert a green release.
+The next feature is the first partial Cycle 3k-a2 slice: an explicit **Annual
+financial screen** in Discover. It joins six public SEC US-GAAP annual
+cross-company frames to the admitted catalog by CIK and supplies seven metrics:
+revenue, net income, operating income, operating cash flow, and their three
+revenue margins. It supports numerical thresholds, sorting, bounded pages,
+coverage counts, source periods, company opening, watchlisting, and 20 saved
+criteria definitions.
 
-## Next deliverable: financial screening
+Source choice is resolved for this bounded slice. See
+[SEC annual financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md) for the
+exact source, setup, limits, formulas and acceptance checklist. One requested
+year is retained in server memory for 30 minutes; no per-company fan-out or
+raw-source persistence is required. Calendar-aligned annual frames can carry
+different fiscal dates and later restatements. Matching dates are required
+for ratios. This is neither TTM nor point-in-time screening.
 
-**User outcome:** run a numerical value, quality, or growth screen across a
-declared current set of companies, inspect why each company matches, then open
-it or add it to My Watchlist.
+The implementation is a partial delivery, not completion of Cycle 3k-a2:
+the 30-core-metric, 500-security, >=90% per-field coverage and independent
+validation/performance targets remain open. No actual SEC request or owner
+catalog coverage measurement has been recorded for this release. Missing,
+conflicting, malformed or failed-source facts remain unknown. A synthetic
+engineering result must not be reported as admitted real-market breadth.
 
-Deliver the data and the visible filters together as the first useful slice
-of Cycle 3k-a2:
-
-1. Confirm an exact source/product that permits bounded multi-company access.
-   Record endpoint or export, entitlement, timestamps, attribution, allowed
-   retention, request limits, and field definitions. Existing per-company
-   access is not proof of bulk access. Do not fan the company routes across
-   the catalog. This source choice remains unresolved.
-2. Map available inputs to shared, versioned metrics already used by company
-   and peer views. Start with a small useful set of value, quality, and growth
-   predicates. Thirty reported statement fields are not thirty analytical
-   screening metrics. Leave TTM unavailable until quarter-flow semantics are
-   verified.
-3. Build one bounded current snapshot with exact listing identities, field
-   units and periods, source times, and coverage counts. Honor the selected
-   source's storage rules. Do not introduce persistence or historical replay
-   claims when retention is unavailable.
-4. Extend the existing query engine, columns, pagination, and saved-definition
-   versioning. Numeric comparisons must distinguish match, non-match, and
-   unknown; a missing value must never become zero or pass a threshold.
-5. Demonstrate end to end: run filters, explain matching values and unknown
-   counts, save/reload criteria, rerun after a snapshot change, and open or
-   watchlist a result. Cover stale inputs, partial provider failure, and
-   incompatible period/unit cases with focused regression tests.
-
-A smaller declared cohort and metric set may ship as a partial slice. Full
-3k-a2 and 3h breadth stay open until the roadmap's 30-core-metric,
-500-security, coverage, independent-validation, and performance targets are
-actually met. Default starter screens still require their declared coverage;
-thin data does not justify presenting an empty preset as a completed feature.
-
-If the bulk source cannot be resolved, record the exact missing capability
-and move to an independently deliverable daily event/calendar slice using a
-verified permitted source. Do not spend repeated milestones on generic
-provider scaffolding while the source question remains unanswered.
+Completion requires reviewed code, focused integration tests, the full local
+gate on clean source, and applicable hosted checks on the pushed revision.
+Record their actual results in the task handoff; this page does not predict
+that a release passed.
 
 ## Delivery order
 
 | Priority        | Deliverable                                                                                      | Dependency or reason                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Now             | Close and verify the existing catalog-screener release                                           | Finish the interrupted user-visible milestone                               |
-| Next            | Current financial snapshot plus useful numerical screening                                       | Unlocks idea discovery and later peer coverage                              |
+| Now             | Deliver and verify seven-metric SEC annual screening                                             | Complete the first numerical discovery workflow                             |
+| Next            | Validate configured SEC coverage, then add watchlist dated events                                | Measure actual screening usefulness and add a daily return workflow         |
 | Then            | Watchlist earnings/dividend/event view                                                           | Gives the owner a reason to return each day; needs a permitted dated source |
 | Then            | Holdings and portfolio overview                                                                  | Reuse identity, local state, and validated pricing                          |
 | As inputs allow | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions         |
@@ -121,10 +98,13 @@ where the next feature exposes concrete duplication or makes changes risky.
    pnpm --filter @research-cockpit/api --filter @research-cockpit/web typecheck
    ```
 
-   If this Windows shell cannot resolve installed tools such as Prettier,
-   prepend the repository's `node_modules/.bin` to the current shell's `Path`
-   and use `corepack pnpm`. This fixes the observed command-resolution issue
-   without reinstalling dependencies or changing machine-wide settings.
+   If this Windows shell cannot resolve installed tools, use the installed
+   Node entrypoints for focused checks, for example
+   `node node_modules/vitest/vitest.mjs run <test-path>`. Prepend the root,
+   API and web `node_modules/.bin` directories to the current shell's `Path`
+   for the complete gate. After workspace dependencies change, refresh the
+   pinned install once with `pnpm install --frozen-lockfile`; avoid concurrent
+   package installation while agents run tests.
 
 4. Review the final diff, format touched files, and run applicable guardrails.
    Freeze the reviewed source in a clean commit before the full `pnpm verify`:

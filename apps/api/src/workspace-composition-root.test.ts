@@ -22,6 +22,7 @@ import {
 } from "./vault-composition-root";
 import { PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY } from "./personal-owner-session";
 import { PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY } from "./personal-market-data-provider";
+import { PERSONAL_SEC_USER_AGENT } from "./personal-sec-financial-provider";
 import {
   PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
   PERSONAL_OWNER_INTENT_HEADER_NAME,
@@ -69,12 +70,18 @@ describe("personal workspace composition root", () => {
     const sourceEnvironment = {
       ...workspaceEnvironment(fixture, "initialize", firstSecret),
       [PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY]: token,
+      [PERSONAL_SEC_USER_AGENT]: "ResearchCockpit test@example.invalid",
     };
     const captured = capturePersonalWorkspaceApiEnvironment(sourceEnvironment);
+    expect(sourceEnvironment[PERSONAL_SEC_USER_AGENT]).toBeUndefined();
+    expect(captured[PERSONAL_SEC_USER_AGENT]).toBe(
+      "ResearchCockpit test@example.invalid",
+    );
     expect(
       sourceEnvironment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY],
     ).toBeUndefined();
     const configured = await createPersonalWorkspaceConfiguredApp(captured);
+    expect(captured[PERSONAL_SEC_USER_AGENT]).toBeUndefined();
     applications.push(configured);
     expect(
       captured[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY],

@@ -65,6 +65,9 @@ importers:
       '@research-cockpit/personal-filing-corpus':
         specifier: workspace:*
         version: link:../../packages/personal-filing-corpus
+      '@research-cockpit/personal-financial-analytics':
+        specifier: workspace:*
+        version: link:../../packages/personal-financial-analytics
       '@research-cockpit/personal-security-master':
         specifier: workspace:*
         version: link:../../packages/personal-security-master
@@ -215,6 +218,9 @@ importers:
 
   packages/personal-financial-analytics:
     dependencies:
+      '@research-cockpit/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       decimal.js:
         specifier: 10.6.0
         version: 10.6.0

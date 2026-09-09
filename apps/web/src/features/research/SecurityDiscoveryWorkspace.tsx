@@ -47,6 +47,7 @@ import {
 } from "./PersonalManualPeerComparison";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalStockScreener } from "./PersonalStockScreener";
+import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
   PersonalMarketOverview,
@@ -1390,6 +1391,21 @@ export function SecurityDiscoveryWorkspace() {
 
             <PersonalStockScreener
               key={workspace.snapshot.snapshotSha256}
+              canAddToWatchlist={
+                workspace.watchlistAvailable &&
+                watchlistState !== "saving" &&
+                !reconciling &&
+                !snapshotChanged
+              }
+              onAddToWatchlist={addResult}
+              onOpenResearch={selectMarketSecurity}
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
+              savedListingIds={savedListingIds}
+              snapshot={workspace.snapshot}
+            />
+
+            <PersonalFinancialScreener
+              key={`financial-${workspace.snapshot.snapshotSha256}`}
               canAddToWatchlist={
                 workspace.watchlistAvailable &&
                 watchlistState !== "saving" &&

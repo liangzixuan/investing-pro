@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@research-cockpit/contracts": "workspace:*",
     "decimal.js": "10.6.0"
   }
 }

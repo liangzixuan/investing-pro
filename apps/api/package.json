@@ -24,6 +24,7 @@
     "@research-cockpit/connected-source-policy": "workspace:*",
     "@research-cockpit/contracts": "workspace:*",
     "@research-cockpit/local-research-vault": "workspace:*",
+    "@research-cockpit/personal-financial-analytics": "workspace:*",
     "@research-cockpit/personal-filing-corpus": "workspace:*",
     "@research-cockpit/personal-security-master": "workspace:*",
     "@research-cockpit/research-core": "workspace:*",

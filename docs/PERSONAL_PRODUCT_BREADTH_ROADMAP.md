@@ -34,7 +34,9 @@ statements, and valuation history; Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
 selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
 bounded manual peer comparison, and Cycle 3k-a1 adds a whole-catalog identity
-screener with encrypted saved criteria. Later Cycle 3e-b work, full
+screener with encrypted saved criteria. A first partial Cycle 3k-a2 slice adds
+seven SEC annual financial metrics and numerical filters; live catalog coverage
+remains unmeasured. Later Cycle 3e-b work, full
 3g/3h/3i/3j breadth, Cycle 3f, the metric-backed remainder of Cycle 3k, and
 Cycles 3l through 3q remain planned.**
 This does not alter
@@ -1053,6 +1055,18 @@ gate, starter screens, historical point-in-time queries, ranking,
 recommendations, export, and full Cycle 3k remain open for Cycle 3k-a2 and
 later work.
 
+### First partial Cycle 3k-a2 delivery
+
+The [SEC annual financial screen](./SEC_ANNUAL_FINANCIAL_SCREENING.md) adds
+seven annual size/profitability metrics, numerical AND predicates, visible
+known/unknown counts and source periods, stable pages, and saved definitions.
+Six fixed cross-company SEC Frames provide the source without per-company
+fan-out. Missing or inconsistent facts remain unknown. This is a partial
+implementation; no actual SEC request or owner-catalog coverage measurement
+is recorded. Thirty metrics, 500 covered securities, per-field coverage and
+independent validation remain the full-cycle targets. This does not change
+the bounded historical claims for Cycle 3k-a1 above.
+
 ## Wave 3 — daily operating workflow
 
 ### Cycle 3l — earnings, dividends, news, and event calendars
@@ -1211,12 +1225,12 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-09)
 
-Finish the interrupted Cycle 3k-a1 release, then deliver the first useful
-current financial-screening slice of 3k-a2: a permitted multi-company snapshot
-and numerical filters together. Reuse existing validated metric definitions;
-keep missing values explicit and report the actual cohort and field coverage.
-The bulk source and entitlement remain unresolved. A smaller useful slice
-does not close the full 30-core-metric/500-security gate.
+Cycle 3k-a1 and its handover release are closed. Deliver and verify the first
+partial 3k-a2 slice using public SEC annual cross-company Frames and seven
+numerical metrics. Source choice is resolved for this slice; configured live
+coverage and sampled values still require validation. Reuse shared metric
+definitions, keep missing values explicit, and report actual cohort coverage.
+This smaller slice does not close the 30-core-metric/500-security gate.
 
 Next prioritize watchlist events and a personal portfolio overview, followed
 by alerts and exports as their inputs and source permissions become available.
