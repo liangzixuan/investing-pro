@@ -374,6 +374,85 @@ jobs:
           fi
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
 
+      - name: Classify exact partial Cycle 3l-a1 non-evidence routing closure
+        id: cycle3la1_route
+        shell: bash
+        run: |
+          exact=false
+          cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
+          prior_closure="e9c5a705c49db7a632c6fcdfa0655b0fb3ec4e21"
+          feature="2152d1a337ee64821062025d884edb6f334f17ab"
+          expected=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
+          expected_feature=(
+            "M" "README.md"
+            "A" "apps/api/src/personal-sec-filings-provider.test.ts"
+            "A" "apps/api/src/personal-sec-filings-provider.ts"
+            "M" "apps/api/src/workspace-app.ts"
+            "M" "apps/api/src/workspace-composition-root.ts"
+            "M" "apps/api/src/workspace-static-graph.test.ts"
+            "A" "apps/api/src/workspace-watchlist-filings-routes.test.ts"
+            "A" "apps/api/src/workspace-watchlist-filings-routes.ts"
+            "M" "apps/api/src/workspace-watchlist-routes.ts"
+            "M" "apps/web/app/globals.css"
+            "A" "apps/web/src/features/research/PersonalWatchlistFilings.test.tsx"
+            "A" "apps/web/src/features/research/PersonalWatchlistFilings.tsx"
+            "M" "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx"
+            "M" "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx"
+            "A" "apps/web/src/lib/personal-watchlist-filings-api.test.ts"
+            "A" "apps/web/src/lib/personal-watchlist-filings-api.ts"
+            "M" "docs/CURRENT_WORK.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "A" "docs/WATCHLIST_SEC_FILINGS.md"
+            "M" "packages/contracts/src/index.ts"
+            "A" "packages/contracts/src/personal-watchlist-filings.ts"
+            "M" "scripts/verify-boundaries.ts"
+          )
+          matches_exactly() {
+            local -n expected_values="$1"
+            local -n actual_values="$2"
+            if [[ "${#actual_values[@]}" != "${#expected_values[@]}" ]]; then return 1; fi
+            for index in "${!expected_values[@]}"; do
+              if [[ "${actual_values[$index]}" != "${expected_values[$index]}" ]]; then return 1; fi
+            done
+          }
+          if git cat-file -e "$cycle2z_baseline^{commit}" && \
+             git cat-file -e "$prior_closure^{commit}" && \
+             git cat-file -e "$feature^{commit}"; then
+            read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
+            read -r -a feature_topology <<< "$(git rev-list --parents -n 1 "$feature")"
+            mapfile -d '' -t actual < <(
+              git diff --name-status --no-renames -z "$feature" HEAD --
+            )
+            mapfile -d '' -t feature_actual < <(
+              git diff --name-status --no-renames -z "$prior_closure" "$feature" --
+            )
+            if [[ "$(git merge-base "$cycle2z_baseline" HEAD)" == "$cycle2z_baseline" ]] && \
+               [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "69" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "69" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "70" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "70" ]] && \
+               [[ "${#feature_topology[@]}" == "2" ]] && \
+               [[ "${feature_topology[0]}" == "$feature" ]] && \
+               [[ "${feature_topology[1]}" == "$prior_closure" ]] && \
+               [[ "${#head_topology[@]}" == "2" ]] && \
+               [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+               [[ "${head_topology[1]}" == "$feature" ]] && \
+               matches_exactly expected actual && \
+               matches_exactly expected_feature feature_actual; then
+              exact=true
+            fi
+          fi
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
+
       - name: Install pinned pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -400,11 +479,11 @@ jobs:
         env:
           CI: "true"
           FILING_PAYLOAD_CUSTODY_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
-        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' }}
         run: pnpm filing-payload-custody:acceptance
 
       - name: Verify canonical evidence against the exact commit
-        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
@@ -420,7 +499,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID"
 
       - name: Upload filing payload custody evidence
-        if: ${{ success() && steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-payload-custody-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}
