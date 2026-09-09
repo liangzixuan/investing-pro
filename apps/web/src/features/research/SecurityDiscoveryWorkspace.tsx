@@ -36,6 +36,7 @@ import {
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
+import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
 import { PersonalHistoricalMultipleValuation } from "./PersonalHistoricalMultipleValuation";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
@@ -1177,6 +1178,11 @@ export function SecurityDiscoveryWorkspace() {
               onLoad={() => void loadAnnualFinancials()}
               providerStatus={marketDataStatus}
               requestState={annualFinancialsRequestState}
+              selection={marketSelection}
+            />
+
+            <PersonalFinancialQualityScorecard
+              financials={annualFinancials}
               selection={marketSelection}
             />
 

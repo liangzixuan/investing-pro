@@ -14,9 +14,10 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1 through 3i-a2 add a provider-backed market view, transparent
-trend/risk analytics, multi-period financials, and two inspectable valuation
-workflows to the daily-use discovery workflow. In the explicit
+Cycles 3g-a1 through 3j-a1 add a provider-backed market view, transparent
+trend/risk analytics, multi-period financials, two inspectable valuation
+workflows, and a financial-quality diagnostic to the daily-use discovery
+workflow. In the explicit
 `personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
 `My Watchlist`, and open a selected company without putting its symbol in the
@@ -86,6 +87,18 @@ screening model—not
 an audited FCFF normalization, forecast, target, recommendation, or copied
 vendor rating.
 
+Once annual financials are loaded, the browser can also run a transparent
+12-check financial-quality and balance-sheet diagnostic without another
+request. It reports each definition-based check separately as met, not met, or
+unavailable across profitability and cash generation, growth and efficiency,
+and balance-sheet resilience. The latest reported year supplies current checks;
+trend checks use only the immediately preceding consecutive fiscal year and
+never search farther back for a more convenient comparison. Exact observations,
+fiscal years, statement dates, formulas, and source references remain visible,
+while the summary reports counts rather than manufacturing a grade. This is not
+a sector-adjusted health rating, Piotroski/Altman/Beneish score, peer ranking,
+recommendation, or buy/sell signal.
+
 Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory and are not written to the vault, filesystem, browser
 storage, logs, exports, or Git.
@@ -100,13 +113,14 @@ growth over a zero or negative prior-year base as not meaningful. Insufficient
 history remains explicit. The currently reviewed
 [Tiingo terms](https://api.tiingo.com/tos/) permit non-reconstructable aggregate
 derivation, so no derived price or moving-average series is retained or exposed.
-This is a visible feature milestone, not full Cycle 3g or product parity: the
+These are visible feature milestones, not full Cycle 3g or product parity: the
 declared 100-symbol validation gate, independent corporate-action reconciliation,
 benchmark relative strength, broader indicators, verified TTM financials,
 point-in-time statements, the full 30-core-metric and 500-security validation
 gate, audited direct-FCFF inputs, forecast feeds, broader valuation models,
-fair-value history, peer tools, screening, events/news, portfolio analytics,
-alerts, and exports remain later product work.
+fair-value history, manual and automatic peer comparison, sector-relative
+percentiles, named diagnostic models, screening, events/news, portfolio
+analytics, alerts, and exports remain later product work.
 
 ## Historical synthetic slice
 

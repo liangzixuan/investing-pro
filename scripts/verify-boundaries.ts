@@ -5421,6 +5421,24 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "packages/personal-financial-analytics/src/personal-financial-quality-scorecard.ts",
+      [
+        "PERSONAL_FINANCIAL_QUALITY_SCORECARD_CHECK_IDS",
+        "PERSONAL_FINANCIAL_QUALITY_SCORECARD_MAX_ANNUAL_PERIODS",
+        '"operating_cash_flow - net_income > 0"',
+        '"current_revenue / prior_revenue - 1 > 0"',
+        '"current_current_assets / current_current_liabilities >= prior_current_assets / prior_current_liabilities"',
+        '"current_debt / current_assets <= prior_debt / prior_assets"',
+        '"statement_date_after_as_of"',
+        "export function buildPersonalFinancialQualityScorecard(",
+        "const current = contexts[0]",
+        "const prior = contexts[1]",
+        "current.period.fiscalYear - prior.period.fiscalYear !== 1",
+        "Decimal.clone({",
+        "isExactPlainRecord(",
+      ],
+    ],
+    [
       "apps/web/src/lib/personal-workspace-api.ts",
       [
         '"/v1/personal-filing/market-data/valuation-history"',
@@ -5490,6 +5508,21 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "apps/web/src/features/research/PersonalFinancialQualityScorecard.tsx",
+      [
+        "export function PersonalFinancialQualityScorecard(",
+        "buildPersonalFinancialQualityScorecard(",
+        'financials.security.country === "US"',
+        "12 transparent checks",
+        "provider&apos;s most-recent corrected annual",
+        "not sector-adjusted",
+        "grade, rating, or buy/sell signal",
+        "makes no network request",
+        "persists nothing",
+        "provides no export",
+      ],
+    ],
+    [
       "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
       [
         "useState<PersonalValuationHistoryDto | null>(null)",
@@ -5500,6 +5533,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "<PersonalValuationHistory",
         "<PersonalHistoricalMultipleValuation",
         "<PersonalFcffDcfValuation",
+        "<PersonalFinancialQualityScorecard",
       ],
     ],
   ]);
@@ -5507,7 +5541,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     const content = await readFile(resolvePath(root, path), "utf8");
     if (anchors.some((anchor) => !content.includes(anchor))) {
       found.push(
-        `${path}: valuation-history, historical-multiple, and DCF validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
+        `${path}: valuation-history, historical-multiple, DCF, and financial-quality validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
       );
     }
   }

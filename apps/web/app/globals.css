@@ -1939,6 +1939,74 @@ h4,
   text-align: left;
 }
 
+.personal-quality-scorecard-summary {
+  color: var(--navy);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.personal-quality-scorecard-group > h3 {
+  margin: 6px 0 0;
+  color: var(--navy);
+  font-size: 0.9rem;
+}
+
+.fcff-dcf-table-scroll .personal-quality-scorecard-table {
+  min-width: 1040px;
+}
+
+.personal-quality-scorecard-table th,
+.personal-quality-scorecard-table td {
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+}
+
+.personal-quality-scorecard-table tbody th {
+  min-width: 170px;
+}
+
+.personal-quality-scorecard-table tbody th span,
+.personal-quality-scorecard-table tbody th small,
+.personal-quality-scorecard-status small,
+.personal-quality-scorecard-observation span,
+.personal-quality-scorecard-observation small {
+  display: block;
+}
+
+.personal-quality-scorecard-table tbody th small,
+.personal-quality-scorecard-unavailable-reason,
+.personal-quality-scorecard-observation-meta {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.personal-quality-scorecard-table code,
+.personal-quality-scorecard-observation-meta {
+  overflow-wrap: anywhere;
+}
+
+.personal-quality-scorecard-table
+  tr[data-status="met"]
+  .personal-quality-scorecard-status
+  strong {
+  color: var(--mint-deep);
+}
+
+.personal-quality-scorecard-table
+  tr[data-status="not_met"]
+  .personal-quality-scorecard-status
+  strong,
+.personal-quality-scorecard-table
+  tr[data-status="unavailable"]
+  .personal-quality-scorecard-status
+  strong {
+  color: #8a4b32;
+}
+
 .fcff-dcf-cell-unavailable {
   color: var(--ink-soft);
   background: #f8f5ef;

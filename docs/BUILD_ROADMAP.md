@@ -1999,10 +1999,12 @@ Pass only for exact source revision
 `0374becdf96c1e9891d80e73024c8be0440fd812`; it records no real source,
 breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
-Cycles 3g-a1 and 3g-b1 add on-demand market data and transparent analytics,
-Cycle 3h-a1 adds annual statements, and Cycle 3h-a2 adds the bounded quarterly
-statement slice. Later Cycle
-3e-b work, full 3g/3h breadth, and Cycles 3f and 3i through 3q remain planned.**
+Cycles 3g-a1 and 3g-b1 add on-demand market data and transparent analytics;
+Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly statements,
+and valuation history; Cycles 3i-a1 and 3i-a2 add historical multiple bands and
+forward/reverse DCF; and Cycle 3j-a1 adds the first selected-company financial
+quality and balance-sheet diagnostic. Later Cycle 3e-b work, full 3g/3h/3i/3j
+breadth, Cycle 3f, and Cycles 3k through 3q remain planned.**
 No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
@@ -2579,6 +2581,32 @@ knownness, and 20-issuer independent validation remain open. Cycles 3i-a1 and
 3i-a2 do not establish audited/direct FCFF, forecasts, sector-wide
 applicability, independent issuer validation, composites, point-in-time
 fair-value history, or full Cycle 3i.
+
+Cycle 3j-a1 opens the first financial-quality and balance-sheet diagnostic
+workflow without a new API route or provider request. After annual financials
+are explicitly loaded for the selected listing, a browser-local decimal engine
+uses the latest reported fiscal year for current checks and only the immediately
+preceding consecutive fiscal year for trend checks. Twelve definition-based
+checks cover positive earnings and cash generation, cash conversion, revenue
+growth, gross and operating margins, revenue to ending assets, positive equity, current
+liquidity, and debt-to-assets direction. The engine never substitutes an older
+complete period when either of the latest two periods is missing or unusable.
+
+Every check is independently `met`, `not_met`, or `unavailable` and exposes its
+formula/version, exact current and prior observations, fiscal years, statement
+dates, USD input references, and typed missingness. Summary counts distinguish
+met, not met, and unavailable checks; they are not converted into a grade,
+rating, recommendation, or partial-as-complete score. Invalid envelope shape,
+chronology, fiscal ordering, unit, or decimal carriers fail closed, while a
+missing fact affects only checks that depend on it.
+
+The calculation is provider-most-recent and active-browser-memory-only. It
+makes no request, accesses no credential, and persists, logs, exports, or
+redistributes nothing. It does not establish point-in-time or sector-adjusted
+analysis, financial-sector applicability, manual or automatic peers, sector
+percentiles, Piotroski, Altman, Beneish, dividend safety, or full Cycle 3j.
+Manual owner-selected peers are the next bounded 3j slice; automatic peers wait
+for admitted sector/industry metadata and a compatible multi-company snapshot.
 
 The delivery waves are:
 

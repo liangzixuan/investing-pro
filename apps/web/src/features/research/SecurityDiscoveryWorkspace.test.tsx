@@ -22,6 +22,7 @@ import {
 
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { PersonalFcffDcfValuationProps } from "./PersonalFcffDcfValuation";
+import type { PersonalFinancialQualityScorecardProps } from "./PersonalFinancialQualityScorecard";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
@@ -129,6 +130,7 @@ const apiMocks = vi.hoisted(() => ({
 const componentMocks = vi.hoisted(() => ({
   AnnualFinancials: () => null,
   FcffDcfValuation: () => null,
+  FinancialQualityScorecard: () => null,
   HistoricalMultipleValuation: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
@@ -181,6 +183,9 @@ vi.mock("./PersonalAnnualFinancials", () => ({
 }));
 vi.mock("./PersonalFcffDcfValuation", () => ({
   PersonalFcffDcfValuation: componentMocks.FcffDcfValuation,
+}));
+vi.mock("./PersonalFinancialQualityScorecard", () => ({
+  PersonalFinancialQualityScorecard: componentMocks.FinancialQualityScorecard,
 }));
 vi.mock("./PersonalHistoricalMultipleValuation", () => ({
   PersonalHistoricalMultipleValuation:
@@ -608,6 +613,28 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(valuation.props.marketOverview).toBeNull();
     expect(valuation.props.valuationHistory).toBeNull();
     expect(valuation.props.annualFinancials).not.toBeNull();
+  });
+
+  it("feeds the quality scorecard only the explicitly loaded selected annual financials", async () => {
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    let scorecard = requireFinancialQualityScorecard(rendered);
+
+    expect(scorecard.props).toMatchObject({
+      financials: null,
+      selection: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+
+    requireAnnualFinancials(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    scorecard = requireFinancialQualityScorecard(rendered);
+
+    expect(scorecard.props.financials).toMatchObject({
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
   });
 
   it("aborts and clears valuation history when the selected market range changes", async () => {
@@ -1257,6 +1284,13 @@ function findFcffDcfValuation(value: unknown) {
   );
 }
 
+function findFinancialQualityScorecard(value: unknown) {
+  return findElement<PersonalFinancialQualityScorecardProps>(
+    value,
+    componentMocks.FinancialQualityScorecard,
+  );
+}
+
 function findHistoricalMultipleValuation(value: unknown) {
   return findElement<PersonalHistoricalMultipleValuationProps>(
     value,
@@ -1288,6 +1322,13 @@ function requireFcffDcfValuation(value: unknown) {
   const valuation = findFcffDcfValuation(value);
   if (valuation === undefined) throw new Error("Expected FCFF DCF valuation.");
   return valuation;
+}
+
+function requireFinancialQualityScorecard(value: unknown) {
+  const scorecard = findFinancialQualityScorecard(value);
+  if (scorecard === undefined)
+    throw new Error("Expected financial quality scorecard.");
+  return scorecard;
 }
 
 function requireQuarterlyFinancials(value: unknown) {

@@ -2533,10 +2533,11 @@ Exact design and evidence limits are in
 This historical correction used no private material and establishes no private
 sub-result. The later exact owner-authorized gate used the recorded package-
 owned-clock implementation and is represented only by the permitted coarse
-outcome. Neither record establishes competitor parity. Cycle 3e-b1 is the next
-highest-priority visible boundary: authenticated browser search plus durable
-typed owner-local watchlists, with security and privacy treated as acceptance
-criteria rather than standalone milestones.
+outcome. Neither record establishes competitor parity. Cycle 3e-b1 later added
+authenticated browser search plus durable typed owner-local watchlists; the
+subsequent 3g through 3j sections define the current visible browser-local
+research slices. Security and privacy remain acceptance criteria rather than
+standalone milestones.
 
 ## Cycle 3g-a1 personal on-demand market view model
 
@@ -2822,6 +2823,42 @@ recommendation, rating, financial-sector model, or reconstruction of a
 proprietary vendor method. Direct FCFF/lease normalization, diluted shares,
 forecast feeds, issuer-independent golden validation, applicability breadth,
 peer values, composites, and point-in-time fair-value history remain open.
+
+## Cycle 3j-a1 personal financial quality and balance-sheet diagnostic
+
+Cycle 3j-a1 derives a selected-company diagnostic entirely in the browser from
+an already authenticated and validated `PersonalAnnualFinancialsDto`. It makes
+no network request and persists no input or result. The adapter maps only the
+fixed reported-field registry into closed USD fact carriers with fiscal-year,
+statement-date, and source-reference identity. The engine admits at most ten
+strictly descending, unique annual periods and requires every statement date to
+be on or before the response `asOf` date.
+
+The latest exact period supplies current observations. Trend checks use only
+the next array member and require its fiscal year to be exactly one less; an
+older complete period is never substituted. The versioned 12-check registry is
+split across profitability/cash, growth/efficiency, and balance sheet. It tests
+positive net income, operating cash flow, and free cash flow; operating cash
+flow above net income; positive revenue growth; nondeclining gross margin,
+operating margin, and revenue-to-ending-assets ratio; positive shareholders'
+equity; current-assets-to-current-liabilities of at least one; nondeclining
+current ratio; and nonrising debt to assets.
+
+Every check owns its formula identity/expression, exact input references,
+current and optional prior fiscal coordinates, observations, comparison rule,
+and `met`, `not_met`, or typed `unavailable` state. Decimal calculations use an
+isolated high-precision constructor without intermediate native-number
+conversion. Nonpositive ratio denominators and missing, ambiguous, malformed,
+wrong-unit, or unreferenced facts cannot become numeric observations. Invalid
+top-level shape or chronology returns a value-free quarantined result. A ready
+result includes only met/not-met/unavailable coverage counts; it has no grade,
+ordinal label, recommendation, or buy/sell interpretation.
+
+The source remains Tiingo's provider-most-recent corrected annual history, not
+an as-reported or point-in-time snapshot. The diagnostic is not sector-adjusted
+or universally applicable and does not establish financial-sector semantics,
+peer selection/comparison, sector percentiles, Piotroski, Altman, Beneish,
+dividend safety, investment quality, competitor parity, or full Cycle 3j.
 
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;

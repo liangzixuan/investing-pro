@@ -1,4 +1,4 @@
-# Sprint 0 through promoted personal Cycle 3e-a threat model
+# Sprint 0 through personal Cycle 3j-a1 threat model
 
 ## Current trust boundaries
 
@@ -2860,6 +2860,39 @@ This boundary does not establish audited or direct FCFF, forecast accuracy,
 bank/insurer applicability, diluted shares, independent issuer validation,
 peer comparison, composites, point-in-time fair-value history, full Cycle 3i,
 or competitor parity.
+
+## Cycle 3j-a1 financial quality and balance-sheet diagnostic threat boundary
+
+Cycle 3j-a1 adds a browser-local derivation over the annual-financial response
+the owner already loaded explicitly. Assets at risk are exact fiscal chronology,
+reported-fact provenance, formula meaning, decimal precision, missingness, and
+honest presentation of simple checks. Primary threats are substituting an older
+complete period for an unusable latest comparison; mixing fiscal periods or
+units; treating zero or negative ratio denominators as meaningful; allowing a
+missing operand to become zero; counting unavailable checks as failures or
+successes; leaking a partial derived value from a quarantined envelope; and
+presenting coverage counts as a universal health grade, named academic score,
+sector ranking, or investment recommendation.
+
+Controls are strict exact-shape plain-record and array validation, bounded
+canonical decimal and source-reference carriers, USD-only facts, unique
+strictly descending fiscal years, statement-date/as-of chronology, exact
+latest-plus-immediately-prior selection, isolated high-precision decimal
+arithmetic, nonpositive-denominator rejection, component-local unavailable
+states, value-free whole-envelope quarantine, formula/version and exact-input
+metadata, deep-frozen output, and UI labels that separate met, not met, and
+unavailable counts. The UI disclaims sector adjustment, universal
+applicability, peer comparison, named academic models, ratings, and buy/sell
+interpretation.
+
+The engine makes no request, reads no credential, and adds no persistence,
+logging, export, redistribution, provider write, or Investing.com crawl. Inputs
+and results remain only in active component memory and disappear with the
+annual-financial response, selected market view, or owner session. The source
+is provider-most-recent rather than point-in-time. This boundary does not
+establish manual or automatic peers, sector percentiles, look-ahead-safe
+history, Piotroski, Altman, Beneish, dividend safety, financial-sector
+applicability, full Cycle 3j, or competitor parity.
 
 ## Gates before adding new trust boundaries
 

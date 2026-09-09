@@ -25,10 +25,12 @@ Pass only for exact source revision
 breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
 Cycles 3g-a1 and 3g-b1 deliver the first market-data and transparent-analytics
-slices; Cycles 3h-a1 and 3h-a2 are the current annual/quarterly statement-depth
-slices. Later
-Cycle 3e-b work, full 3g/3h breadth, and Cycles 3f and 3i through 3q remain
-planned.** This does not alter
+slices; Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly
+statements, and valuation history; Cycles 3i-a1 and 3i-a2 add historical
+multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
+selected-company quality and balance-sheet diagnostic. Later Cycle 3e-b work,
+full 3g/3h/3i/3j breadth, Cycle 3f, and Cycles 3k through 3q remain planned.**
+This does not alter
 the exact historical Cycle 2z personal result or
 make a feature-parity claim.
 
@@ -169,14 +171,14 @@ Later subcycles may widen a universe only with the same checks.
 | Personal dossier composition            | Promoted fixed-snapshot composition only for its exact source       | Cycle 3b        |
 | Connected source governance             | Provider-neutral public control plane promoted; no source activated | Cycle 3c        |
 | Durable personal state                  | Public/local-temporary SQLite vault promoted; no actual vault       | Cycle 3d        |
-| Security universe and local search      | Exact personal snapshot admitted and measured; API only             | Cycle 3e-a      |
+| Security universe and local search      | Exact personal snapshot plus authenticated browser search           | Cycle 3e-a      |
 | Browser discovery and local watchlists  | One typed durable primary list in an authenticated browser workflow | Cycle 3e-b1     |
 | Automated filings and amendments        | Manually prepared exact filing corpus                               | Cycle 3f        |
 | Quotes, price history, actions, charts  | On-demand Tiingo quote, six history ranges, actions, chart, table   | Cycle 3g        |
 | Transparent technical indicators        | Five metrics plus three SMA trend classifications on loaded history | Cycle 3g-b      |
-| Statements and metric depth             | Ten dossier facts plus 3h-a1 annual statements and core analytics   | Cycle 3h        |
-| Valuation models and history            | One exit-multiple model plus provider daily valuation history       | Cycle 3i        |
-| Peers, health, quality, and risk scores | No end-user comparison or scorecards                                | Cycle 3j        |
+| Statements and metric depth             | Annual/quarterly 30-field views plus bounded core analytics         | Cycle 3h        |
+| Valuation models and history            | Provider history, historical bands, and forward/reverse DCF         | Cycle 3i        |
+| Peers, health, quality, and risk scores | Selected-company 12-check diagnostic; no peer comparison            | Cycle 3j        |
 | Screener and saved views                | No universe query                                                   | Cycle 3k        |
 | Earnings, dividends, news, calendars    | No daily event workflow                                             | Cycle 3l        |
 | Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow                 | Cycle 3l-b      |
@@ -918,6 +920,19 @@ validation, composites, and the remaining Cycle 3i-a breadth stay open.
 
 Target: add transparent comparison and diagnostic workflows.
 
+Promotable subcycles:
+
+- **3j-a1:** a browser-local selected-company financial-quality and
+  balance-sheet diagnostic over already loaded annual statements, with 12
+  independently inspectable met/not-met/unavailable checks and no universal
+  grade;
+- **3j-a2:** owner-selected manual peer comparison over an explicitly loaded,
+  bounded in-memory set, with exact fiscal/date/currency compatibility and
+  visible small-sample limitations; and
+- **3j-a:** deterministic automatic peer selection and sector-relative
+  comparison only after an admitted sector/industry source and compatible
+  multi-company snapshot exist.
+
 Exit criteria:
 
 - deterministic peer selection with a visible rationale and manual override;
@@ -931,6 +946,22 @@ Exit criteria:
 
 These are original diagnostics, not copies of proprietary Health Score or
 instant-insight products.
+
+Cycle 3j-a1 uses the latest exact annual period for current checks and only the
+immediately preceding consecutive fiscal year for trend checks. It evaluates
+positive net income, operating cash flow, and free cash flow; operating cash
+flow above net income; positive revenue growth; nondeclining gross margin,
+operating margin, and revenue to ending assets; positive shareholders' equity; current
+ratio at least one; nondeclining current ratio; and nonrising debt to assets.
+Each check carries its formula/version, exact reported observations, fiscal
+coordinates, units, and source references. Missing or unusable operands make
+only dependent checks unavailable; malformed envelopes or chronology quarantine
+the whole result. Its summary is coverage accounting, not a score or rating.
+
+The slice is provider-most-recent and browser-memory-only. It is not
+point-in-time, sector-adjusted, look-ahead-safe, or universally applicable, and
+it does not claim peer comparison, percentiles, Piotroski, Altman, Beneish,
+dividend safety, a recommendation, or full Cycle 3j.
 
 ### Cycle 3k — typed screener and saved screens
 
