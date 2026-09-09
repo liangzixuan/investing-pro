@@ -1,4 +1,4 @@
-# Sprint 0 through personal Cycle 3j-a2 threat model
+# Sprint 0 through personal Cycle 3k-a1 threat model
 
 ## Current trust boundaries
 
@@ -2936,6 +2936,51 @@ small owner-selected sample and makes no automatic relevance, sector benchmark
 or percentile, statistical significance, fiscal-period-end comparability,
 point-in-time/look-ahead safety, financial-sector applicability, rank, winner,
 recommendation, competitor-parity, or full Cycle 3j claim.
+
+## Cycle 3k-a1 catalog screener threat boundary
+
+Cycle 3k-a1 adds an authenticated local query over every active, eligible
+identity in the admitted security-master snapshot and one encrypted saved-view
+definition record. Assets at risk are catalog membership, stable listing and
+issuer identities, snapshot binding, deterministic page boundaries, owner
+session state, and saved criteria confidentiality and integrity. Primary
+threats are caller-supplied SQL or arbitrary field traversal; coercion through
+prototype, accessor, or extra-key objects; Unicode or oversized-filter abuse;
+unbounded scans or response pages; nondeterministic tie ordering that duplicates
+or omits rows; a stale snapshot being presented as current; forged result
+identity entering research or a watchlist; cross-tab lost updates; result rows
+being mistaken for durable saved state; and a late response repopulating the UI
+after session loss.
+
+Controls are a closed, exact-shape, bounded AND query AST; discriminated
+field/operator variants; normalized text and exact enum/CIK/MIC validation;
+duplicate-clause rejection; an exact catalog snapshot-digest precondition; and
+an immutable in-memory catalog projection. Sort fields and directions are
+whitelisted, page offset and size are bounded, and stable ascending catalog
+identity tie-breaks complete every primary order. The response contains only
+the already public current identity projection. The local route uses the owner
+session's exact loopback/origin/method/body boundary and private/no-store
+response headers. The browser validates the full response and exact snapshot,
+uses abort plus request/session epochs, and passes the exact stable identity to
+existing selection and watchlist controls.
+
+Saved screens contain criteria, sort, columns, and the digest against which the
+definition was created—never result rows or provider payloads. At most 20
+normalized uniquely named entries live in one encrypted vault `settings`
+record. Exact payload validation, strong ETag compare-and-swap, fresh
+idempotency keys, and visible conflict reload behavior protect mutations. A
+snapshot mismatch is labelled stale and requires an explicit current-snapshot
+rerun. Ending the owner session clears all result rows and aborts work; the
+encrypted definitions remain durable as intended.
+
+This slice performs no external request, bulk Tiingo fan-out, background job,
+credential read, provider write, export, redistribution, or Investing.com
+crawl. Mandatory catalog identity fields are all known; that fact cannot be
+used to claim financial-field coverage. Sector, price, valuation, growth,
+profitability, income, momentum, risk, three-valued metric filtering,
+historical point-in-time screening, starter-screen hypotheses, rank,
+recommendation, competitor parity, and full Cycle 3k remain outside this
+boundary.
 
 ## Gates before adding new trust boundaries
 

@@ -78,6 +78,25 @@ export const PERSONAL_SECURITY_MASTER_SEARCH_TIE_BREAKS = Object.freeze([
   "unicode_code_point_listing_id",
 ] as const);
 
+export const PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION =
+  "1.0.0" as const;
+
+export const PERSONAL_SECURITY_MASTER_SCREENER_LIMITS = Object.freeze({
+  clauses: 4,
+  identityTextCodePoints: 128,
+  inValues: 16,
+  offset: 100_000,
+  pageLimit: 100,
+});
+
+export const PERSONAL_SECURITY_MASTER_SCREENER_SORT_FIELDS = Object.freeze([
+  "symbol",
+  "issuer_name",
+  "exchange_mic",
+  "instrument_type",
+  "cik",
+] as const);
+
 export const PERSONAL_SECURITY_MASTER_PROVIDER_MAPPING_TARGETS = Object.freeze({
   composite: "share_class_country_composite",
   issuer: "issuer",
@@ -102,6 +121,9 @@ export const PERSONAL_SECURITY_MASTER_CHECKS = Object.freeze([
   "required_share_class_and_listing_provider_mapping_coverage",
   "immutable_admission_and_defensive_search_results",
   "bounded_deterministic_symbol_and_name_search",
+  "snapshot_bound_bounded_catalog_identity_screener",
+  "closed_typed_and_filters_deterministic_sort_and_pagination",
+  "immutable_defensive_screener_results",
   "coarse_catalog_coverage_with_synthetic_nonclaim",
 ] as const);
 
@@ -115,6 +137,10 @@ export const PERSONAL_SECURITY_MASTER_NOT_PROVEN = Object.freeze([
   "licensed_exchange_effective_ticker_dates",
   "later_policy_revocation_after_offline_snapshot",
   "network_transport_file_persistence_or_vault_activation",
+  "financial_valuation_price_or_metric_screening",
+  "sector_industry_or_automatic_peer_metadata",
+  "point_in_time_historical_screening",
+  "screener_saved_view_persistence",
   "production_hardware_latency_slo",
   "multi_user_tenant_or_redistribution_safety",
 ] as const);
@@ -124,6 +150,7 @@ export const PERSONAL_SECURITY_MASTER_FAILURE_CODES = Object.freeze([
   "PERSONAL_SECURITY_MASTER_DIGEST_MISMATCH",
   "PERSONAL_SECURITY_MASTER_SNAPSHOT_INVALID",
   "PERSONAL_SECURITY_MASTER_SEARCH_INVALID",
+  "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
   "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID",
 ] as const);
 
@@ -273,6 +300,82 @@ export interface PersonalSecurityMasterSearchResponse {
   readonly totalMatches: number;
 }
 
+export type PersonalSecurityMasterScreenClause =
+  | Readonly<{
+      field: "identity_text";
+      operator: "matches";
+      value: string;
+    }>
+  | Readonly<{
+      field: "exchange_mic";
+      operator: "in";
+      values: readonly string[];
+    }>
+  | Readonly<{
+      field: "instrument_type";
+      operator: "in";
+      values: readonly PersonalSecurityMasterInstrumentType[];
+    }>
+  | Readonly<{
+      field: "cik";
+      operator: "equals";
+      value: string;
+    }>;
+
+export interface PersonalSecurityMasterScreenQuery {
+  readonly operator: "and";
+  readonly clauses: readonly PersonalSecurityMasterScreenClause[];
+}
+
+export type PersonalSecurityMasterScreenSortField =
+  (typeof PERSONAL_SECURITY_MASTER_SCREENER_SORT_FIELDS)[number];
+
+export type PersonalSecurityMasterScreenSortDirection = "asc" | "desc";
+
+export interface PersonalSecurityMasterScreenSort {
+  readonly field: PersonalSecurityMasterScreenSortField;
+  readonly direction: PersonalSecurityMasterScreenSortDirection;
+}
+
+export interface PersonalSecurityMasterScreenPage {
+  readonly offset: number;
+  readonly limit: number;
+}
+
+export interface PersonalSecurityMasterScreenInput {
+  readonly schemaVersion: typeof PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION;
+  readonly snapshotSha256: `sha256:${string}`;
+  readonly query: PersonalSecurityMasterScreenQuery;
+  readonly sort: PersonalSecurityMasterScreenSort;
+  readonly page: PersonalSecurityMasterScreenPage;
+}
+
+export interface PersonalSecurityMasterScreenRow {
+  readonly cik: string;
+  readonly country: "US";
+  readonly exchangeMic: string;
+  readonly instrumentType: PersonalSecurityMasterInstrumentType;
+  readonly issuerId: string;
+  readonly issuerName: string;
+  readonly listingId: string;
+  readonly securityId: string;
+  readonly securityName: string;
+  readonly shareClassId: string;
+  readonly shareClassName: string;
+  readonly symbol: string;
+}
+
+export interface PersonalSecurityMasterScreenResponse {
+  readonly schemaVersion: typeof PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION;
+  readonly snapshotSha256: `sha256:${string}`;
+  readonly totalUniverse: number;
+  readonly totalMatches: number;
+  readonly offset: number;
+  readonly limitApplied: number;
+  readonly hasMore: boolean;
+  readonly rows: readonly PersonalSecurityMasterScreenRow[];
+}
+
 export interface PersonalSecurityMasterMeasurementInput {
   readonly hardwareProfile: string;
   readonly iterations: number;
@@ -414,6 +517,24 @@ interface NormalizedSearchRequest {
   readonly symbolQuery: string | null;
 }
 
+type NormalizedScreenClause =
+  | Readonly<{ field: "identity_text"; value: string }>
+  | Readonly<{ field: "exchange_mic"; values: readonly string[] }>
+  | Readonly<{
+      field: "instrument_type";
+      values: readonly PersonalSecurityMasterInstrumentType[];
+    }>
+  | Readonly<{ field: "cik"; value: string }>;
+
+interface NormalizedScreenRequest {
+  readonly clauses: readonly NormalizedScreenClause[];
+  readonly direction: PersonalSecurityMasterScreenSortDirection;
+  readonly limit: number;
+  readonly offset: number;
+  readonly snapshotSha256: `sha256:${string}`;
+  readonly sortField: PersonalSecurityMasterScreenSortField;
+}
+
 interface RankedSearchResult {
   readonly rank: number;
   readonly result: PersonalSecurityMasterSearchResult;
@@ -522,6 +643,24 @@ export function searchPersonalSecurityMaster(
     return searchState(state, request);
   } catch (error) {
     throw publicError(error, "PERSONAL_SECURITY_MASTER_SEARCH_INVALID");
+  }
+}
+
+export function screenPersonalSecurityMaster(
+  catalog: PersonalSecurityMasterCatalog,
+  input: PersonalSecurityMasterScreenInput,
+): PersonalSecurityMasterScreenResponse {
+  try {
+    if (arguments.length !== 2) fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    const state = CATALOG_STATES.get(catalog);
+    if (state === undefined) fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    const request = snapshotScreenInput(input);
+    if (request.snapshotSha256 !== state.snapshotSha256) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    return screenState(state, request);
+  } catch (error) {
+    throw publicError(error, "PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
   }
 }
 
@@ -654,6 +793,233 @@ function normalizeSearchRequest(
     nameQuery,
     symbolQuery: normalizeSymbolQuery(query),
   });
+}
+
+function snapshotScreenInput(value: unknown): NormalizedScreenRequest {
+  const input = exactDataObject(
+    value,
+    ["page", "query", "schemaVersion", "snapshotSha256", "sort"],
+    "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+  );
+  if (
+    input.schemaVersion !== PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION ||
+    typeof input.snapshotSha256 !== "string" ||
+    !HASH.test(input.snapshotSha256)
+  ) {
+    fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  }
+
+  const query = exactDataObject(
+    input.query,
+    ["clauses", "operator"],
+    "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+  );
+  if (query.operator !== "and") {
+    fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  }
+  const clauseValues = exactBoundedDataArray(
+    query.clauses,
+    0,
+    PERSONAL_SECURITY_MASTER_SCREENER_LIMITS.clauses,
+    "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+  );
+  const seenFields = new Set<string>();
+  const clauses = clauseValues.map((clause) => {
+    const normalized = snapshotScreenClause(clause);
+    if (seenFields.has(normalized.field)) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    seenFields.add(normalized.field);
+    return normalized;
+  });
+
+  const sort = exactDataObject(
+    input.sort,
+    ["direction", "field"],
+    "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+  );
+  if (
+    !isScreenSortField(sort.field) ||
+    (sort.direction !== "asc" && sort.direction !== "desc")
+  ) {
+    fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  }
+
+  const page = exactDataObject(
+    input.page,
+    ["limit", "offset"],
+    "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+  );
+  if (
+    !Number.isSafeInteger(page.offset) ||
+    (page.offset as number) < 0 ||
+    (page.offset as number) > PERSONAL_SECURITY_MASTER_SCREENER_LIMITS.offset ||
+    !Number.isSafeInteger(page.limit) ||
+    (page.limit as number) < 1 ||
+    (page.limit as number) > PERSONAL_SECURITY_MASTER_SCREENER_LIMITS.pageLimit
+  ) {
+    fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  }
+
+  return Object.freeze({
+    clauses: Object.freeze(clauses),
+    direction: sort.direction,
+    limit: page.limit as number,
+    offset: page.offset as number,
+    snapshotSha256: input.snapshotSha256 as `sha256:${string}`,
+    sortField: sort.field,
+  });
+}
+
+function snapshotScreenClause(value: unknown): NormalizedScreenClause {
+  const field = dataPropertyValue(value, "field");
+  if (field === "identity_text") {
+    const clause = exactDataObject(
+      value,
+      ["field", "operator", "value"],
+      "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+    );
+    if (
+      clause.operator !== "matches" ||
+      typeof clause.value !== "string" ||
+      clause.value !== clause.value.trim() ||
+      clause.value !== clause.value.normalize("NFC") ||
+      !isBoundedText(
+        clause.value,
+        1,
+        PERSONAL_SECURITY_MASTER_SCREENER_LIMITS.identityTextCodePoints,
+      )
+    ) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    const normalized = normalizeSearchText(clause.value);
+    if (
+      codePointLength(normalized) < 1 ||
+      codePointLength(normalized) >
+        PERSONAL_SECURITY_MASTER_LIMITS.normalizedSearchQueryCodePoints
+    ) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    return Object.freeze({ field, value: normalized });
+  }
+  if (field === "exchange_mic") {
+    const clause = exactDataObject(
+      value,
+      ["field", "operator", "values"],
+      "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+    );
+    if (clause.operator !== "in") {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    const values = exactBoundedDataArray(
+      clause.values,
+      1,
+      PERSONAL_SECURITY_MASTER_SCREENER_LIMITS.inValues,
+      "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+    );
+    if (!values.every(isMic) || new Set(values).size !== values.length) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    return Object.freeze({
+      field,
+      values: Object.freeze(values),
+    });
+  }
+  if (field === "instrument_type") {
+    const clause = exactDataObject(
+      value,
+      ["field", "operator", "values"],
+      "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+    );
+    if (clause.operator !== "in") {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    const values = exactBoundedDataArray(
+      clause.values,
+      1,
+      PERSONAL_SECURITY_MASTER_SCREENER_LIMITS.inValues,
+      "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+    );
+    if (
+      !values.every(
+        (candidate) => candidate === "adr" || candidate === "common_stock",
+      ) ||
+      new Set(values).size !== values.length
+    ) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    return Object.freeze({
+      field,
+      values: Object.freeze(
+        values as readonly PersonalSecurityMasterInstrumentType[],
+      ),
+    });
+  }
+  if (field === "cik") {
+    const clause = exactDataObject(
+      value,
+      ["field", "operator", "value"],
+      "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
+    );
+    if (clause.operator !== "equals" || !isCik(clause.value)) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    return Object.freeze({ field, value: clause.value });
+  }
+  fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+}
+
+function dataPropertyValue(value: unknown, key: string): unknown {
+  if (!isPlainRecord(value)) fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (
+      descriptor === undefined ||
+      !("value" in descriptor) ||
+      descriptor.enumerable !== true
+    ) {
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    }
+    return descriptor.value;
+  } catch (error) {
+    if (error instanceof InternalPersonalSecurityMasterFailure) throw error;
+    fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  }
+}
+
+function exactBoundedDataArray(
+  value: unknown,
+  minimumLength: number,
+  maximumLength: number,
+  code: PersonalSecurityMasterFailureCode,
+): readonly unknown[] {
+  if (!Array.isArray(value)) fail(code);
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, "length");
+    const length: unknown = descriptor?.value;
+    if (
+      descriptor === undefined ||
+      !("value" in descriptor) ||
+      typeof length !== "number" ||
+      !Number.isSafeInteger(length) ||
+      length < minimumLength ||
+      length > maximumLength
+    ) {
+      fail(code);
+    }
+    return exactDenseDataArray(value, length, code);
+  } catch (error) {
+    if (error instanceof InternalPersonalSecurityMasterFailure) throw error;
+    fail(code);
+  }
+}
+
+function isScreenSortField(
+  value: unknown,
+): value is PersonalSecurityMasterScreenSortField {
+  return PERSONAL_SECURITY_MASTER_SCREENER_SORT_FIELDS.some(
+    (field) => field === value,
+  );
 }
 
 function snapshotMeasurementInput(value: unknown): {
@@ -1772,6 +2138,118 @@ function searchState(
     ),
     totalMatches: matches.length,
   });
+}
+
+function screenState(
+  state: CatalogState,
+  request: NormalizedScreenRequest,
+): PersonalSecurityMasterScreenResponse {
+  const matches = state.searchEntries.filter((entry) =>
+    request.clauses.every((clause) => screenClauseMatches(entry, clause)),
+  );
+  matches.sort((left, right) => compareScreenEntries(left, right, request));
+  const rows = matches
+    .slice(request.offset, request.offset + request.limit)
+    .map(screenRow);
+  return Object.freeze({
+    hasMore: request.offset + rows.length < matches.length,
+    limitApplied: request.limit,
+    offset: request.offset,
+    rows: Object.freeze(rows),
+    schemaVersion: PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION,
+    snapshotSha256: state.snapshotSha256,
+    totalMatches: matches.length,
+    totalUniverse: state.searchEntries.length,
+  });
+}
+
+function screenClauseMatches(
+  entry: SearchEntry,
+  clause: NormalizedScreenClause,
+): boolean {
+  if (clause.field === "identity_text") {
+    return [
+      normalizeSearchText(currentScreenSymbol(entry)),
+      entry.issuerNameNormalized,
+      entry.securityNameNormalized,
+      entry.shareClassNameNormalized,
+    ].some((candidate) => candidate.includes(clause.value));
+  }
+  if (clause.field === "exchange_mic") {
+    return clause.values.includes(entry.listing.exchangeMic);
+  }
+  if (clause.field === "instrument_type") {
+    return clause.values.includes(entry.record.instrumentType);
+  }
+  return entry.issuer.cik === clause.value;
+}
+
+function compareScreenEntries(
+  left: SearchEntry,
+  right: SearchEntry,
+  request: NormalizedScreenRequest,
+): number {
+  const primary = compareScreenPrimary(left, right, request.sortField);
+  return (
+    (request.direction === "asc" ? primary : -primary) ||
+    compareCodePoints(currentScreenSymbol(left), currentScreenSymbol(right)) ||
+    compareCodePoints(left.listing.exchangeMic, right.listing.exchangeMic) ||
+    compareCodePoints(left.listing.listingId, right.listing.listingId)
+  );
+}
+
+function compareScreenPrimary(
+  left: SearchEntry,
+  right: SearchEntry,
+  field: PersonalSecurityMasterScreenSortField,
+): number {
+  switch (field) {
+    case "symbol":
+      return compareCodePoints(
+        currentScreenSymbol(left),
+        currentScreenSymbol(right),
+      );
+    case "issuer_name":
+      return compareCodePoints(
+        left.issuerNameNormalized,
+        right.issuerNameNormalized,
+      );
+    case "exchange_mic":
+      return compareCodePoints(
+        left.listing.exchangeMic,
+        right.listing.exchangeMic,
+      );
+    case "instrument_type":
+      return compareCodePoints(
+        left.record.instrumentType,
+        right.record.instrumentType,
+      );
+    case "cik":
+      return compareCodePoints(left.issuer.cik, right.issuer.cik);
+  }
+}
+
+function screenRow(entry: SearchEntry): PersonalSecurityMasterScreenRow {
+  return Object.freeze({
+    cik: entry.issuer.cik,
+    country: entry.listing.country,
+    exchangeMic: entry.listing.exchangeMic,
+    instrumentType: entry.record.instrumentType,
+    issuerId: entry.record.issuerId,
+    issuerName: entry.issuer.issuerName,
+    listingId: entry.listing.listingId,
+    securityId: entry.record.securityId,
+    securityName: entry.record.securityName,
+    shareClassId: entry.shareClass.shareClassId,
+    shareClassName: entry.shareClass.shareClassName,
+    symbol: currentScreenSymbol(entry),
+  });
+}
+
+function currentScreenSymbol(entry: SearchEntry): string {
+  const symbol = entry.listing.currentSymbol;
+  if (symbol === null) fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+  return symbol;
 }
 
 function rankSearchEntry(

@@ -2949,6 +2949,51 @@ A database adapter must not infer “no omissions” merely because RLS hid rows
 it needs an explicit completeness signal and must use `count: null` when an
 exact count cannot be disclosed or established.
 
+## Cycle 3k-a1 catalog identity screener and saved criteria
+
+Cycle 3k-a1 evaluates the active, eligible listing projection already held by
+the admitted personal security-master catalog. A screen row is the current
+known catalog identity: `symbol`, `issuerName`, `securityName`, `shareClassName`,
+`exchangeMic`, `instrumentType`, `cik`, `issuerId`, `securityId`,
+`shareClassId`, `listingId`, and `country`. It exposes no raw source record,
+provider mapping, former-ticker history, credential, or provider payload.
+
+The request is a versioned closed record containing the exact catalog snapshot
+digest, one AND query node, one whitelisted sort, and one bounded offset/limit
+page. The initial discriminated predicates are identity text matching,
+exchange-MIC membership, instrument-type membership, and exact CIK equality.
+Predicate fields and operators are paired by their union variant; duplicate
+field predicates, unknown keys, accessors, nonplain records, malformed Unicode,
+unbounded arrays, and stale snapshot digests are invalid rather than coerced.
+No request carrier can express SQL, a provider URL, arbitrary nesting, a
+calculation, or a field outside the registry.
+
+Evaluation scans only the catalog's immutable active/eligible entries. The
+requested field controls the primary ordering and direction; deterministic
+ascending catalog-identity tie-breaks make repeated offset pages over the same
+snapshot stable. The response reports the catalog denominator, total matches,
+page bounds, continuation state, and exact snapshot digest. All fields in this
+initial registry are required-known by catalog admission, so metric-style
+unknown filtering is intentionally not inferred from the zero identity-unknown
+count.
+
+Saved-screen state is a single bounded version-1 `settings` payload in the
+encrypted local research vault. Each of at most 20 entries contains a safe
+stable identifier, normalized unique display name, the exact query, sort,
+visible identity columns, and `createdAgainstSnapshotSha256`. The record uses
+the vault's existing strong version precondition and idempotency key. A saved
+entry is a definition, not a materialized result: no returned row, count,
+Tiingo value, or external payload belongs in the payload. Loading a definition
+whose recorded digest differs from the current catalog produces a visible
+stale state; the owner must explicitly rerun it against the current snapshot.
+
+The browser owns only active-session screen results and in-flight request
+controllers. Ending the session or unmounting the workspace aborts requests
+and removes rows. Selecting a row reuses its exact catalog identity for the
+existing company-research and watchlist operations. Cycle 3k-a1 makes no
+provider request and is not a financial, valuation, sector, price, momentum,
+risk, historical, ranked, recommended, or exported screen.
+
 ## Projection boundary
 
 The complete source-controlled snapshot port and the reviewed B9 RLS database

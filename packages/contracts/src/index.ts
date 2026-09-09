@@ -232,6 +232,122 @@ export interface PersonalSecurityMasterSearchResponseDto {
   readonly totalMatches: number;
 }
 
+export type PersonalSecurityMasterScreenClauseDto =
+  | Readonly<{
+      field: "identity_text";
+      operator: "matches";
+      value: string;
+    }>
+  | Readonly<{
+      field: "exchange_mic";
+      operator: "in";
+      values: readonly string[];
+    }>
+  | Readonly<{
+      field: "instrument_type";
+      operator: "in";
+      values: readonly PersonalSecurityMasterInstrumentTypeDto[];
+    }>
+  | Readonly<{
+      field: "cik";
+      operator: "equals";
+      value: string;
+    }>;
+
+export interface PersonalSecurityMasterScreenQueryDto {
+  readonly clauses: readonly PersonalSecurityMasterScreenClauseDto[];
+  readonly operator: "and";
+}
+
+export type PersonalSecurityMasterScreenSortFieldDto =
+  "cik" | "exchange_mic" | "instrument_type" | "issuer_name" | "symbol";
+
+export type PersonalSecurityMasterScreenSortDirectionDto = "asc" | "desc";
+
+export interface PersonalSecurityMasterScreenSortDto {
+  readonly direction: PersonalSecurityMasterScreenSortDirectionDto;
+  readonly field: PersonalSecurityMasterScreenSortFieldDto;
+}
+
+export interface PersonalSecurityMasterScreenPageDto {
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export interface PersonalSecurityMasterScreenRequestDto {
+  readonly page: PersonalSecurityMasterScreenPageDto;
+  readonly query: PersonalSecurityMasterScreenQueryDto;
+  readonly schemaVersion: "1.0.0";
+  readonly snapshotSha256: `sha256:${string}`;
+  readonly sort: PersonalSecurityMasterScreenSortDto;
+}
+
+export interface PersonalSecurityMasterScreenRowDto {
+  readonly cik: string;
+  readonly country: "US";
+  readonly exchangeMic: string;
+  readonly instrumentType: PersonalSecurityMasterInstrumentTypeDto;
+  readonly issuerId: string;
+  readonly issuerName: string;
+  readonly listingId: string;
+  readonly securityId: string;
+  readonly securityName: string;
+  readonly shareClassId: string;
+  readonly shareClassName: string;
+  readonly symbol: string;
+}
+
+export interface PersonalSecurityMasterScreenResponseDto {
+  readonly hasMore: boolean;
+  readonly limitApplied: number;
+  readonly offset: number;
+  readonly rows: readonly PersonalSecurityMasterScreenRowDto[];
+  readonly schemaVersion: "1.0.0";
+  readonly snapshot: PersonalSecurityMasterSnapshotReceiptDto;
+  readonly snapshotSha256: `sha256:${string}`;
+  readonly totalMatches: number;
+  readonly totalUniverse: number;
+}
+
+export type PersonalScreenerSavedColumnDto =
+  "cik" | "exchange_mic" | "instrument_type" | "issuer_name" | "symbol";
+
+export interface PersonalScreenerSavedViewDto {
+  readonly columns: readonly PersonalScreenerSavedColumnDto[];
+  readonly createdAgainstSnapshotSha256: `sha256:${string}`;
+  readonly id: string;
+  readonly name: string;
+  readonly query: PersonalSecurityMasterScreenQueryDto;
+  readonly sort: PersonalSecurityMasterScreenSortDto;
+}
+
+export interface PersonalScreenerSavedViewsPayloadDto {
+  readonly schemaVersion: 1;
+  readonly views: readonly PersonalScreenerSavedViewDto[];
+}
+
+export interface PersonalScreenerSavedViewsRecordDto {
+  readonly createdAt: string;
+  readonly id: "stock-screener-saved-views";
+  readonly kind: "settings";
+  readonly payload: PersonalScreenerSavedViewsPayloadDto;
+  readonly payloadSha256: string;
+  readonly profile: "personal_single_user_local_vault";
+  readonly updatedAt: string;
+  readonly version: number;
+}
+
+export interface PersonalScreenerSavedViewsMutationReceiptDto {
+  readonly committedAt: string;
+  readonly digestSha256: string;
+  readonly id: "stock-screener-saved-views";
+  readonly kind: "settings";
+  readonly operation: "put";
+  readonly profile: "personal_single_user_local_vault";
+  readonly replayed: boolean;
+  readonly version: number;
+}
+
 export type PersonalMarketDataRangeDto =
   "1m" | "3m" | "ytd" | "1y" | "5y" | "10y";
 

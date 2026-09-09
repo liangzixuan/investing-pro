@@ -2004,8 +2004,10 @@ Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly statements,
 and valuation history; Cycles 3i-a1 and 3i-a2 add historical multiple bands and
 forward/reverse DCF; and Cycle 3j-a1 adds the first selected-company financial
 quality and balance-sheet diagnostic while Cycle 3j-a2 adds a bounded manual
-peer comparison. Later Cycle 3e-b work, full 3g/3h/3i/3j
-breadth, Cycle 3f, and Cycles 3k through 3q remain planned.**
+peer comparison, and Cycle 3k-a1 adds a whole-catalog identity screener with
+encrypted saved criteria. Later Cycle 3e-b work, full 3g/3h/3i/3j breadth,
+Cycle 3f, the metric-backed remainder of Cycle 3k, and Cycles 3l through 3q
+remain planned.**
 No parity claim is made.
 
 Cycle 3 is rebaselined as a sequenced **personal product-breadth program**. The
@@ -2633,6 +2635,31 @@ loaded annual data. The slice provides no automatic peer relevance, sector
 percentiles, statistical ranking, winner, recommendation, point-in-time claim,
 or full Cycle 3j. Automatic peers still wait for admitted sector/industry
 metadata and a compatible multi-company snapshot.
+
+Cycle 3k-a1 opens the first whole-universe stock-discovery workflow over the
+admitted local security catalog. A closed, versioned, AND-only query AST admits
+only bounded identity-text, exchange-MIC, instrument-type, and exact-CIK
+predicates. The catalog engine requires the caller's exact snapshot digest,
+applies a whitelisted identity sort, and returns a bounded page with stable
+symbol, MIC, and listing-identity tie-breaks. It accepts no caller SQL,
+arbitrary field, URL, provider parameter, or automatic network action.
+
+The authenticated personal workspace exposes one explicit screen action and a
+semantic result table with customizable identity columns. Results stay in
+active browser memory; each row can enter the existing selected-company flow
+or the exact-identity watchlist path. Up to 20 named definitions—criteria,
+sort, and columns only—share one encrypted, versioned vault `settings` record.
+Whole-record compare-and-swap and idempotency preserve cross-tab conflicts, and
+the saved snapshot digest makes a later-snapshot rerun visible. No result row
+or Tiingo payload is persisted.
+
+This catalog-only slice does not claim a screenable financial universe. Its
+identity fields are mandatory and therefore known, but sector, price,
+valuation, growth, profitability, income, momentum, and risk filters remain
+unavailable. A separately admitted multi-company snapshot with explicit
+known/unknown accounting, at least 500 covered securities, and 30 core metrics
+is the next Cycle 3k expansion; starter screens, historical point-in-time
+queries, ranking, recommendations, export, and full Cycle 3k remain open.
 
 The delivery waves are:
 

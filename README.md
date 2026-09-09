@@ -14,9 +14,10 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1 through 3j-a2 add a provider-backed market view, transparent
+Cycles 3g-a1 through 3k-a1 add a provider-backed market view, transparent
 trend/risk analytics, multi-period financials, two inspectable valuation
-workflows, a financial-quality diagnostic, and a manual peer comparison to the
+workflows, a financial-quality diagnostic, a manual peer comparison, and the
+first whole-catalog stock screener with encrypted saved criteria to the
 daily-use discovery workflow. In the explicit
 `personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
@@ -113,6 +114,22 @@ remain visible, missing cells and partial peer failures stay explicit, and the
 small owner-selected sample is never presented as a rank, winner, sector
 benchmark, recommendation, or buy/sell signal.
 
+The stock screener scans the admitted 3,000-plus active U.S.-listed
+common-stock and ADR catalog without contacting Tiingo. One explicit action can
+combine identity text, exchange MIC, instrument type, and exact CIK filters,
+then deterministically sort and page the matching identities. The semantic
+table supports customizable identity columns plus the same exact company-open
+and watchlist actions used by search. Up to 20 named criteria definitions are
+stored in one encrypted, versioned local-vault record; result rows are never
+saved. A saved definition keeps its source snapshot digest so a later-catalog
+rerun is visible and explicit.
+
+This first screener slice covers catalog identity only. It does not pretend
+that the universe already has sector, price, market-capitalization, valuation,
+growth, profitability, income, momentum, or risk data. Those filters need a
+separately admitted bulk screenable snapshot; per-company market-data routes
+are not fanned out across the catalog.
+
 Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory, including peer inputs and comparison results, and are
 not written to the vault, filesystem, browser storage, logs, exports, or Git.
@@ -133,7 +150,8 @@ benchmark relative strength, broader indicators, verified TTM financials,
 point-in-time statements, the full 30-core-metric and 500-security validation
 gate, audited direct-FCFF inputs, forecast feeds, broader valuation models,
 fair-value history, automatic peer selection, sector-relative
-percentiles, named diagnostic models, screening, events/news, portfolio
+percentiles, named diagnostic models, metric-backed screening and starter
+screens, events/news, portfolio
 analytics, alerts, and exports remain later product work.
 
 ## Historical synthetic slice

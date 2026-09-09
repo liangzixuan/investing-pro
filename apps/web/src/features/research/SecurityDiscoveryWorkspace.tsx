@@ -8,6 +8,7 @@ import type {
   PersonalQuarterlyFinancialsDto,
   PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResultDto,
+  PersonalSecurityMasterScreenRowDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
 import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
@@ -45,6 +46,7 @@ import {
   type PersonalManualPeerState,
 } from "./PersonalManualPeerComparison";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
+import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
   PersonalMarketOverview,
@@ -346,7 +348,9 @@ export function SecurityDiscoveryWorkspace() {
 
   function selectMarketSecurity(
     membership:
-      PersonalSecurityMasterSearchResultDto | PersonalWatchlistMembership,
+      | PersonalSecurityMasterSearchResultDto
+      | PersonalSecurityMasterScreenRowDto
+      | PersonalWatchlistMembership,
   ) {
     marketController.current?.abort();
     marketController.current = null;
@@ -978,7 +982,11 @@ export function SecurityDiscoveryWorkspace() {
     }
   }
 
-  function addResult(result: PersonalSecurityMasterSearchResultDto) {
+  function addResult(
+    result:
+      | PersonalSecurityMasterSearchResultDto
+      | PersonalSecurityMasterScreenRowDto,
+  ) {
     if (
       workspace === null ||
       !workspace.watchlistAvailable ||
@@ -1380,6 +1388,21 @@ export function SecurityDiscoveryWorkspace() {
                 )}
             </section>
 
+            <PersonalStockScreener
+              key={workspace.snapshot.snapshotSha256}
+              canAddToWatchlist={
+                workspace.watchlistAvailable &&
+                watchlistState !== "saving" &&
+                !reconciling &&
+                !snapshotChanged
+              }
+              onAddToWatchlist={addResult}
+              onOpenResearch={selectMarketSecurity}
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
+              savedListingIds={savedListingIds}
+              snapshot={workspace.snapshot}
+            />
+
             <PersonalMarketOverview
               adjustmentMode={marketAdjustmentMode}
               errorCode={marketErrorCode}
@@ -1771,7 +1794,9 @@ function SecurityIdentity({
   membership,
 }: {
   membership:
-    PersonalSecurityMasterSearchResultDto | PersonalWatchlistMembership;
+    | PersonalSecurityMasterSearchResultDto
+    | PersonalSecurityMasterScreenRowDto
+    | PersonalWatchlistMembership;
 }) {
   return (
     <div className="security-identity">

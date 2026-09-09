@@ -6,13 +6,18 @@ import type {
   PersonalQuarterlyFinancialsDto,
   PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
+  PersonalSecurityMasterScreenRequestDto,
+  PersonalSecurityMasterScreenResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
+  PersonalScreenerSavedViewsPayloadDto,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createEmptyPersonalWatchlist,
+  createEmptyPersonalScreenerSavedViews,
   fetchMainPersonalWatchlist,
+  fetchPersonalScreenerSavedViews,
   fetchPersonalAnnualFinancials,
   fetchPersonalMarketDataStatus,
   fetchPersonalMarketOverview,
@@ -23,6 +28,8 @@ import {
   normalizeWatchlistNote,
   PersonalWorkspaceApiError,
   saveMainPersonalWatchlist,
+  savePersonalScreenerSavedViews,
+  screenPersonalSecurities,
   searchPersonalSecurities,
   type PersonalWatchlistPayload,
 } from "./personal-workspace-api";
@@ -106,6 +113,149 @@ describe("personal workspace API client", () => {
     await expect(
       searchPersonalSecurities("ZERO", new AbortController().signal),
     ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("posts one exact typed local-universe screen and validates its snapshot", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(screenResponse()));
+    const input = screenRequest();
+
+    await expect(
+      screenPersonalSecurities(input, new AbortController().signal),
+    ).resolves.toMatchObject({
+      limitApplied: 25,
+      rows: [{ listingId: "lst-00001", symbol: "ZERO" }],
+      totalMatches: 1,
+      totalUniverse: 3_001,
+    });
+
+    expect(requestUrl(fetchMock.mock.calls[0]?.[0])).toBe(
+      "http://127.0.0.1:3100/v1/personal-filing/security-master/screen",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify(input),
+      cache: "no-store",
+      credentials: "include",
+      method: "POST",
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+    });
+  });
+
+  it("accepts an empty out-of-range screen page and rejects mismatched or extra response data", async () => {
+    const outOfRangeInput = {
+      ...screenRequest(),
+      page: { limit: 25, offset: 50 },
+    } satisfies PersonalSecurityMasterScreenRequestDto;
+    const base = screenResponse();
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...base,
+          hasMore: false,
+          offset: 50,
+          rows: [],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...base,
+          snapshotSha256: `sha256:${"b".repeat(64)}`,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ ...base, privateField: true }));
+
+    await expect(
+      screenPersonalSecurities(outOfRangeInput, new AbortController().signal),
+    ).resolves.toMatchObject({ hasMore: false, offset: 50, rows: [] });
+    await expect(
+      screenPersonalSecurities(screenRequest(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(
+      screenPersonalSecurities(screenRequest(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("rejects unusable identity normalization before a screen request", async () => {
+    for (const value of ["--- 🎯", "\uFDFA".repeat(128)]) {
+      const invalid = {
+        ...screenRequest(),
+        query: {
+          clauses: [{ field: "identity_text", operator: "matches", value }],
+          operator: "and",
+        },
+      } as PersonalSecurityMasterScreenRequestDto;
+      await expect(
+        screenPersonalSecurities(invalid, new AbortController().signal),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("loads, creates, and updates strict saved screener definitions with CAS headers", async () => {
+    const payload = savedScreenerViews();
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(jsonResponse(savedScreenerRecord(payload)))
+      .mockResolvedValueOnce(jsonResponse(screenerMutationReceipt(1), 201))
+      .mockResolvedValueOnce(jsonResponse(screenerMutationReceipt(2), 200));
+
+    await expect(
+      fetchPersonalScreenerSavedViews(new AbortController().signal),
+    ).resolves.toBeNull();
+    await expect(
+      fetchPersonalScreenerSavedViews(new AbortController().signal),
+    ).resolves.toMatchObject({ version: 2, payload });
+    await expect(
+      savePersonalScreenerSavedViews(0, payload, new AbortController().signal),
+    ).resolves.toMatchObject({ version: 1, payload });
+    await expect(
+      savePersonalScreenerSavedViews(1, payload, new AbortController().signal),
+    ).resolves.toMatchObject({ version: 2, payload });
+
+    expect(fetchMock.mock.calls[2]?.[1]?.headers).toMatchObject({
+      "If-None-Match": "*",
+      "X-Research-Cockpit-Idempotency-Key":
+        "saved-screen-11111111-2222-4333-8444-555555555555",
+      "X-Research-Cockpit-Intent": "personal-vault-create",
+    });
+    expect(fetchMock.mock.calls[3]?.[1]?.headers).toMatchObject({
+      "If-Match": '"v1"',
+      "X-Research-Cockpit-Intent": "personal-vault-update",
+    });
+  });
+
+  it("rejects saved screens without the mandatory symbol column or with duplicate names", async () => {
+    const payload = savedScreenerViews();
+    const first = payload.views[0];
+    if (first === undefined) throw new Error("Expected saved screen fixture.");
+    const withoutSymbol = {
+      schemaVersion: 1,
+      views: [{ ...first, columns: ["issuer_name"] }],
+    } as PersonalScreenerSavedViewsPayloadDto;
+    const duplicateNames = {
+      schemaVersion: 1,
+      views: [first, { ...first, id: "screen-two", name: "my screen" }],
+    } satisfies PersonalScreenerSavedViewsPayloadDto;
+
+    await expect(
+      savePersonalScreenerSavedViews(
+        0,
+        withoutSymbol,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(
+      savePersonalScreenerSavedViews(
+        0,
+        duplicateNames,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(createEmptyPersonalScreenerSavedViews()).toEqual({
+      schemaVersion: 1,
+      views: [],
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("loads either an absent or one exact typed main watchlist", async () => {
@@ -951,6 +1101,80 @@ function searchResponse(
     ],
     snapshot: snapshot(),
     totalMatches: 1,
+  };
+}
+
+function screenRequest(): PersonalSecurityMasterScreenRequestDto {
+  return {
+    page: { limit: 25, offset: 0 },
+    query: {
+      clauses: [{ field: "identity_text", operator: "matches", value: "Zero" }],
+      operator: "and",
+    },
+    schemaVersion: "1.0.0",
+    snapshotSha256: snapshot().snapshotSha256,
+    sort: { direction: "asc", field: "symbol" },
+  };
+}
+
+function screenResponse(): PersonalSecurityMasterScreenResponseDto {
+  const first = searchResponse("ZERO").results[0];
+  if (first === undefined) throw new Error("Expected search fixture.");
+  const { matchKind: _matchKind, matchedValue: _matchedValue, ...row } = first;
+  void _matchKind;
+  void _matchedValue;
+  return {
+    hasMore: false,
+    limitApplied: 25,
+    offset: 0,
+    rows: [row],
+    schemaVersion: "1.0.0",
+    snapshot: snapshot(),
+    snapshotSha256: snapshot().snapshotSha256,
+    totalMatches: 1,
+    totalUniverse: 3_001,
+  };
+}
+
+function savedScreenerViews(): PersonalScreenerSavedViewsPayloadDto {
+  return {
+    schemaVersion: 1,
+    views: [
+      {
+        columns: ["symbol", "issuer_name", "exchange_mic"],
+        createdAgainstSnapshotSha256: snapshot().snapshotSha256,
+        id: "screen-one",
+        name: "My Screen",
+        query: screenRequest().query,
+        sort: screenRequest().sort,
+      },
+    ],
+  };
+}
+
+function savedScreenerRecord(payload: PersonalScreenerSavedViewsPayloadDto) {
+  return {
+    createdAt: "2030-01-15T01:00:00.000Z",
+    id: "stock-screener-saved-views",
+    kind: "settings",
+    payload,
+    payloadSha256: "e".repeat(64),
+    profile: "personal_single_user_local_vault",
+    updatedAt: "2030-01-15T02:00:00.000Z",
+    version: 2,
+  };
+}
+
+function screenerMutationReceipt(version: number) {
+  return {
+    committedAt: "2030-01-15T03:00:00.000Z",
+    digestSha256: "f".repeat(64),
+    id: "stock-screener-saved-views",
+    kind: "settings",
+    operation: "put",
+    profile: "personal_single_user_local_vault",
+    replayed: false,
+    version,
   };
 }
 

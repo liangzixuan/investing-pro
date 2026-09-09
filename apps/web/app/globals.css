@@ -2011,6 +2011,176 @@ h4,
   background: linear-gradient(145deg, var(--surface) 0%, #f4f8f5 100%);
 }
 
+.personal-stock-screener {
+  background: linear-gradient(145deg, var(--surface) 0%, #f5f8f2 100%);
+}
+
+.personal-stock-screener-saved,
+.personal-stock-screener-form {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 76%);
+}
+
+.personal-stock-screener-saved-controls {
+  display: grid;
+  align-items: end;
+  grid-template-columns:
+    minmax(170px, 0.8fr) auto minmax(190px, 1fr)
+    auto auto auto;
+  gap: 10px;
+}
+
+.personal-stock-screener-saved-controls label,
+.personal-stock-screener-filters label,
+.personal-stock-screener-options > label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.personal-stock-screener-saved-controls label > span,
+.personal-stock-screener-filters label > span,
+.personal-stock-screener-options label > span,
+.personal-stock-screener-options legend {
+  color: var(--navy);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.personal-stock-screener input,
+.personal-stock-screener select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.personal-stock-screener input:focus-visible,
+.personal-stock-screener select:focus-visible,
+.personal-stock-screener button:focus-visible {
+  outline: 3px solid rgb(141 211 189 / 40%);
+  outline-offset: 1px;
+}
+
+.personal-stock-screener-delete {
+  color: #8d402e;
+}
+
+.personal-stock-screener-form {
+  display: grid;
+  gap: 14px;
+}
+
+.personal-stock-screener-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.personal-stock-screener-options {
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(150px, 0.45fr) minmax(130px, 0.35fr) minmax(
+      360px,
+      1fr
+    );
+  gap: 12px;
+}
+
+.personal-stock-screener-options fieldset {
+  min-width: 0;
+  padding: 8px 11px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.personal-stock-screener-options fieldset > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 13px;
+}
+
+.personal-stock-screener-options fieldset label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+}
+
+.personal-stock-screener-options fieldset input {
+  width: 15px;
+  min-height: 15px;
+  margin: 0;
+}
+
+.personal-stock-screener-run-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.personal-stock-screener-run-actions .compact-action,
+.personal-stock-screener-saved-controls .compact-action {
+  width: auto;
+}
+
+.personal-stock-screener-status {
+  min-height: 1.2em;
+}
+
+.financial-table-scroll .personal-stock-screener-table {
+  min-width: 900px;
+}
+
+.personal-stock-screener-table th,
+.personal-stock-screener-table td {
+  vertical-align: middle;
+  text-align: left;
+}
+
+.personal-stock-screener-table td:first-child {
+  color: var(--mint-deep);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-weight: 800;
+}
+
+.personal-stock-screener-table .security-result-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.personal-stock-screener-table .compact-action {
+  width: auto;
+  white-space: nowrap;
+}
+
+.personal-stock-screener-pagination {
+  display: flex;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.personal-stock-screener-pagination span {
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.68rem;
+}
+
 .manual-peer-intro {
   max-width: 920px;
 }
@@ -4212,6 +4382,19 @@ thead th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .personal-stock-screener-saved-controls {
+    grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto;
+  }
+
+  .personal-stock-screener-filters,
+  .personal-stock-screener-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .personal-stock-screener-options fieldset {
+    grid-column: 1 / -1;
+  }
+
   .financials-coverage-strip,
   .financial-metric-grid,
   .valuation-card-grid,
@@ -4388,6 +4571,27 @@ thead th {
   .manual-peer-picker > div,
   .manual-peer-roster {
     grid-template-columns: 1fr;
+  }
+
+  .personal-stock-screener-saved-controls,
+  .personal-stock-screener-filters,
+  .personal-stock-screener-options {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .personal-stock-screener-options fieldset {
+    grid-column: auto;
+  }
+
+  .personal-stock-screener-run-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .personal-stock-screener-run-actions .compact-action,
+  .personal-stock-screener-saved-controls .compact-action {
+    width: 100%;
   }
 
   .manual-peer-picker .compact-action,

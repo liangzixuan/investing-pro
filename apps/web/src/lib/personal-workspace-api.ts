@@ -8,8 +8,14 @@ import type {
   PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
+  PersonalSecurityMasterScreenClauseDto,
+  PersonalSecurityMasterScreenRequestDto,
+  PersonalSecurityMasterScreenResponseDto,
+  PersonalSecurityMasterScreenRowDto,
   PersonalSecurityMasterSnapshotReceiptDto,
   PersonalSecurityMasterStatusDto,
+  PersonalScreenerSavedViewsPayloadDto,
+  PersonalScreenerSavedViewsRecordDto,
 } from "@research-cockpit/contracts";
 
 const apiBaseUrl =
@@ -41,6 +47,12 @@ export const MAIN_PERSONAL_WATCHLIST_ID = "main" as const;
 export const MAIN_PERSONAL_WATCHLIST_NAME = "My Watchlist" as const;
 export const MAIN_PERSONAL_WATCHLIST_PATH =
   "/v1/personal-filing/workspace/watchlists/main" as const;
+export const PERSONAL_SECURITY_MASTER_SCREEN_PATH =
+  "/v1/personal-filing/security-master/screen" as const;
+export const PERSONAL_SCREENER_SAVED_VIEWS_ID =
+  "stock-screener-saved-views" as const;
+export const PERSONAL_SCREENER_SAVED_VIEWS_PATH =
+  "/v1/personal-filing/workspace/screener/saved-views" as const;
 
 const privateRequestOptions = Object.freeze({
   cache: "no-store",
@@ -105,6 +117,11 @@ export interface PersonalWatchlistRecord {
 export interface SavedPersonalWatchlist {
   readonly version: number;
   readonly payload: PersonalWatchlistPayload;
+}
+
+export interface SavedPersonalScreenerViews {
+  readonly payload: PersonalScreenerSavedViewsPayloadDto;
+  readonly version: number;
 }
 
 const snapshotKeys = [
@@ -204,6 +221,43 @@ const searchResultKeys = [
   "shareClassName",
   "symbol",
 ] as const;
+const screenRequestKeys = [
+  "page",
+  "query",
+  "schemaVersion",
+  "snapshotSha256",
+  "sort",
+] as const;
+const screenQueryKeys = ["clauses", "operator"] as const;
+const screenMatchClauseKeys = ["field", "operator", "value"] as const;
+const screenInClauseKeys = ["field", "operator", "values"] as const;
+const screenSortKeys = ["direction", "field"] as const;
+const screenPageKeys = ["limit", "offset"] as const;
+const screenResponseKeys = [
+  "hasMore",
+  "limitApplied",
+  "offset",
+  "rows",
+  "schemaVersion",
+  "snapshot",
+  "snapshotSha256",
+  "totalMatches",
+  "totalUniverse",
+] as const;
+const screenResultKeys = [
+  "cik",
+  "country",
+  "exchangeMic",
+  "instrumentType",
+  "issuerId",
+  "issuerName",
+  "listingId",
+  "securityId",
+  "securityName",
+  "shareClassId",
+  "shareClassName",
+  "symbol",
+] as const;
 const vaultRecordKeys = [
   "createdAt",
   "id",
@@ -213,6 +267,15 @@ const vaultRecordKeys = [
   "profile",
   "updatedAt",
   "version",
+] as const;
+const screenerSavedViewsPayloadKeys = ["schemaVersion", "views"] as const;
+const screenerSavedViewKeys = [
+  "columns",
+  "createdAgainstSnapshotSha256",
+  "id",
+  "name",
+  "query",
+  "sort",
 ] as const;
 const watchlistPayloadKeys = [
   "memberships",
@@ -679,6 +742,106 @@ export async function searchPersonalSecurities(
   return value;
 }
 
+export async function screenPersonalSecurities(
+  input: PersonalSecurityMasterScreenRequestDto,
+  signal: AbortSignal,
+): Promise<PersonalSecurityMasterScreenResponseDto> {
+  if (!isScreenRequest(input)) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const response = await request(PERSONAL_SECURITY_MASTER_SCREEN_PATH, {
+    body: JSON.stringify(input),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal,
+  });
+  if (!response.ok) throw responseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !isScreenResponse(value) ||
+    value.snapshotSha256 !== input.snapshotSha256 ||
+    value.snapshot.snapshotSha256 !== input.snapshotSha256 ||
+    value.offset !== input.page.offset ||
+    value.limitApplied !== input.page.limit
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return copyScreenResponse(value);
+}
+
+export async function fetchPersonalScreenerSavedViews(
+  signal: AbortSignal,
+): Promise<PersonalScreenerSavedViewsRecordDto | null> {
+  const response = await request(PERSONAL_SCREENER_SAVED_VIEWS_PATH, {
+    headers: { Accept: "application/json" },
+    method: "GET",
+    signal,
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw responseError(response.status);
+  const value: unknown = await response.json();
+  if (!isScreenerSavedViewsRecord(value)) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return copyScreenerSavedViewsRecord(value);
+}
+
+export async function savePersonalScreenerSavedViews(
+  currentVersion: number,
+  payload: PersonalScreenerSavedViewsPayloadDto,
+  signal: AbortSignal,
+): Promise<SavedPersonalScreenerViews> {
+  if (
+    !Number.isSafeInteger(currentVersion) ||
+    currentVersion < 0 ||
+    !isScreenerSavedViewsPayload(payload)
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const creating = currentVersion === 0;
+  const response = await request(PERSONAL_SCREENER_SAVED_VIEWS_PATH, {
+    body: JSON.stringify({ payload }),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(creating
+        ? { "If-None-Match": "*" }
+        : { "If-Match": `"v${String(currentVersion)}"` }),
+      "X-Research-Cockpit-Idempotency-Key":
+        mutationIdempotencyKey("saved-screen"),
+      "X-Research-Cockpit-Intent": creating
+        ? "personal-vault-create"
+        : "personal-vault-update",
+    },
+    method: "POST",
+    signal,
+  });
+  if (!response.ok) throw responseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !isMutationReceiptFor(
+      value,
+      PERSONAL_SCREENER_SAVED_VIEWS_ID,
+      "settings",
+    ) ||
+    value.version !== currentVersion + 1 ||
+    response.status !== (creating ? 201 : 200)
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return Object.freeze({
+    version: value.version,
+    payload: copyScreenerSavedViewsPayload(payload),
+  });
+}
+
+export function createEmptyPersonalScreenerSavedViews(): PersonalScreenerSavedViewsPayloadDto {
+  return Object.freeze({ schemaVersion: 1, views: Object.freeze([]) });
+}
+
 export async function fetchMainPersonalWatchlist(
   signal: AbortSignal,
 ): Promise<PersonalWatchlistRecord | null> {
@@ -723,7 +886,7 @@ export async function saveMainPersonalWatchlist(
       ...(creating
         ? { "If-None-Match": "*" }
         : { "If-Match": `"v${String(currentVersion)}"` }),
-      "X-Research-Cockpit-Idempotency-Key": mutationIdempotencyKey(),
+      "X-Research-Cockpit-Idempotency-Key": mutationIdempotencyKey("watchlist"),
       "X-Research-Cockpit-Intent": creating
         ? "personal-vault-create"
         : "personal-vault-update",
@@ -761,7 +924,8 @@ export function createEmptyPersonalWatchlist(
 }
 
 export function membershipFromSearchResult(
-  result: PersonalSecurityMasterSearchResultDto,
+  result:
+    PersonalSecurityMasterSearchResultDto | PersonalSecurityMasterScreenRowDto,
 ): PersonalWatchlistMembership {
   const candidate: PersonalWatchlistMembership = {
     country: result.country,
@@ -870,12 +1034,267 @@ function annualFinancialsResponseError(
   return marketOverviewResponseError(status);
 }
 
-function mutationIdempotencyKey(): string {
+function mutationIdempotencyKey(prefix: "saved-screen" | "watchlist"): string {
   try {
-    return `watchlist-${globalThis.crypto.randomUUID()}`;
+    return `${prefix}-${globalThis.crypto.randomUUID()}`;
   } catch {
     throw new PersonalWorkspaceApiError("unavailable");
   }
+}
+
+function isScreenRequest(
+  value: unknown,
+): value is PersonalSecurityMasterScreenRequestDto {
+  if (!hasExactKeys(value, screenRequestKeys)) return false;
+  return (
+    value.schemaVersion === "1.0.0" &&
+    typeof value.snapshotSha256 === "string" &&
+    digest.test(value.snapshotSha256) &&
+    isScreenQuery(value.query) &&
+    isScreenSort(value.sort) &&
+    isScreenPage(value.page)
+  );
+}
+
+function isScreenQuery(
+  value: unknown,
+): value is PersonalSecurityMasterScreenRequestDto["query"] {
+  if (!hasExactKeys(value, screenQueryKeys)) return false;
+  if (
+    value.operator !== "and" ||
+    !Array.isArray(value.clauses) ||
+    value.clauses.length > 4 ||
+    !value.clauses.every(isScreenClause)
+  ) {
+    return false;
+  }
+  return (
+    new Set(value.clauses.map((clause) => clause.field)).size ===
+    value.clauses.length
+  );
+}
+
+function isScreenClause(
+  value: unknown,
+): value is PersonalSecurityMasterScreenRequestDto["query"]["clauses"][number] {
+  if (hasExactKeys(value, screenMatchClauseKeys)) {
+    if (value.field === "identity_text" && value.operator === "matches") {
+      return normalizeScreenIdentityText(value.value) === value.value;
+    }
+    return (
+      value.field === "cik" &&
+      value.operator === "equals" &&
+      typeof value.value === "string" &&
+      /^[0-9]{10}$/u.test(value.value)
+    );
+  }
+  if (
+    !hasExactKeys(value, screenInClauseKeys) ||
+    !Array.isArray(value.values)
+  ) {
+    return false;
+  }
+  if (
+    value.operator !== "in" ||
+    value.values.length < 1 ||
+    value.values.length > 16 ||
+    new Set(value.values).size !== value.values.length
+  ) {
+    return false;
+  }
+  if (value.field === "exchange_mic") {
+    return value.values.every(
+      (candidate) =>
+        typeof candidate === "string" && exchangeMic.test(candidate),
+    );
+  }
+  return (
+    value.field === "instrument_type" &&
+    value.values.every(
+      (candidate) => candidate === "adr" || candidate === "common_stock",
+    )
+  );
+}
+
+function isScreenSort(
+  value: unknown,
+): value is PersonalSecurityMasterScreenRequestDto["sort"] {
+  return (
+    hasExactKeys(value, screenSortKeys) &&
+    [
+      "symbol",
+      "issuer_name",
+      "exchange_mic",
+      "instrument_type",
+      "cik",
+    ].includes(String(value.field)) &&
+    (value.direction === "asc" || value.direction === "desc")
+  );
+}
+
+function isScreenPage(
+  value: unknown,
+): value is PersonalSecurityMasterScreenRequestDto["page"] {
+  return (
+    hasExactKeys(value, screenPageKeys) &&
+    isNonnegativeInteger(value.offset) &&
+    value.offset <= 100_000 &&
+    isPositiveInteger(value.limit) &&
+    value.limit <= 100
+  );
+}
+
+function isScreenResponse(
+  value: unknown,
+): value is PersonalSecurityMasterScreenResponseDto {
+  if (!hasExactKeys(value, screenResponseKeys)) return false;
+  if (
+    value.schemaVersion !== "1.0.0" ||
+    typeof value.snapshotSha256 !== "string" ||
+    !digest.test(value.snapshotSha256) ||
+    !isSnapshot(value.snapshot) ||
+    value.snapshot.snapshotSha256 !== value.snapshotSha256 ||
+    !isNonnegativeInteger(value.totalUniverse) ||
+    !isNonnegativeInteger(value.totalMatches) ||
+    value.totalMatches > value.totalUniverse ||
+    !isNonnegativeInteger(value.offset) ||
+    value.offset > 100_000 ||
+    !isPositiveInteger(value.limitApplied) ||
+    value.limitApplied > 100 ||
+    typeof value.hasMore !== "boolean" ||
+    !Array.isArray(value.rows) ||
+    value.rows.length > value.limitApplied ||
+    !value.rows.every(isScreenResult) ||
+    new Set(value.rows.map((row) => row.listingId)).size !== value.rows.length
+  ) {
+    return false;
+  }
+  if (value.offset > value.totalMatches) {
+    return value.rows.length === 0 && value.hasMore === false;
+  }
+  return (
+    value.rows.length <= value.totalMatches - value.offset &&
+    value.hasMore === value.offset + value.rows.length < value.totalMatches
+  );
+}
+
+function isScreenResult(
+  value: unknown,
+): value is PersonalSecurityMasterScreenRowDto {
+  if (!hasExactKeys(value, screenResultKeys)) return false;
+  return (
+    typeof value.cik === "string" &&
+    /^[0-9]{10}$/u.test(value.cik) &&
+    value.country === "US" &&
+    typeof value.exchangeMic === "string" &&
+    exchangeMic.test(value.exchangeMic) &&
+    (value.instrumentType === "adr" ||
+      value.instrumentType === "common_stock") &&
+    isIdentifier(value.issuerId) &&
+    isDisplayText(value.issuerName) &&
+    isIdentifier(value.listingId) &&
+    isIdentifier(value.securityId) &&
+    isDisplayText(value.securityName) &&
+    isIdentifier(value.shareClassId) &&
+    isDisplayText(value.shareClassName) &&
+    typeof value.symbol === "string" &&
+    symbol.test(value.symbol)
+  );
+}
+
+function isScreenerSavedViewsRecord(
+  value: unknown,
+): value is PersonalScreenerSavedViewsRecordDto {
+  if (!hasExactKeys(value, vaultRecordKeys)) return false;
+  return (
+    isInstant(value.createdAt) &&
+    value.id === PERSONAL_SCREENER_SAVED_VIEWS_ID &&
+    value.kind === "settings" &&
+    isScreenerSavedViewsPayload(value.payload) &&
+    typeof value.payloadSha256 === "string" &&
+    bareDigest.test(value.payloadSha256) &&
+    value.profile === "personal_single_user_local_vault" &&
+    isInstant(value.updatedAt) &&
+    isPositiveInteger(value.version)
+  );
+}
+
+function isScreenerSavedViewsPayload(
+  value: unknown,
+): value is PersonalScreenerSavedViewsPayloadDto {
+  if (!hasExactKeys(value, screenerSavedViewsPayloadKeys)) return false;
+  if (
+    value.schemaVersion !== 1 ||
+    !Array.isArray(value.views) ||
+    value.views.length > 20 ||
+    !value.views.every(isScreenerSavedView)
+  ) {
+    return false;
+  }
+  return (
+    new Set(value.views.map((view) => view.id)).size === value.views.length &&
+    new Set(value.views.map((view) => view.name.toLocaleLowerCase("en-US")))
+      .size === value.views.length
+  );
+}
+
+function isScreenerSavedView(
+  value: unknown,
+): value is PersonalScreenerSavedViewsPayloadDto["views"][number] {
+  if (!hasExactKeys(value, screenerSavedViewKeys)) return false;
+  return (
+    isIdentifier(value.id) &&
+    normalizePersonalScreenerSavedViewName(value.name) === value.name &&
+    typeof value.createdAgainstSnapshotSha256 === "string" &&
+    digest.test(value.createdAgainstSnapshotSha256) &&
+    isScreenQuery(value.query) &&
+    isScreenSort(value.sort) &&
+    Array.isArray(value.columns) &&
+    value.columns.length >= 1 &&
+    value.columns.length <= 5 &&
+    value.columns.includes("symbol") &&
+    new Set(value.columns).size === value.columns.length &&
+    value.columns.every((column) =>
+      [
+        "symbol",
+        "issuer_name",
+        "exchange_mic",
+        "instrument_type",
+        "cik",
+      ].includes(String(column)),
+    )
+  );
+}
+
+export function normalizePersonalScreenerSavedViewName(
+  value: unknown,
+): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().normalize("NFC");
+  return normalized.length > 0 &&
+    [...normalized].length <= 80 &&
+    !controlFormatOrSurrogateCharacter.test(normalized)
+    ? normalized
+    : null;
+}
+
+function normalizeScreenIdentityText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().normalize("NFC");
+  const searchable = normalized
+    .normalize("NFKD")
+    .replace(/\p{M}+/gu, "")
+    .toUpperCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  return normalized.length > 0 &&
+    [...normalized].length <= 128 &&
+    searchable.length > 0 &&
+    [...searchable].length <= 512 &&
+    !controlFormatOrSurrogateCharacter.test(normalized)
+    ? normalized
+    : null;
 }
 
 function isSearchResponse(
@@ -1886,18 +2305,85 @@ function isWatchlistMembership(
 }
 
 function isMutationReceipt(value: unknown): value is { version: number } {
+  return isMutationReceiptFor(value, MAIN_PERSONAL_WATCHLIST_ID, "watchlist");
+}
+
+function isMutationReceiptFor(
+  value: unknown,
+  expectedId: string,
+  expectedKind: "settings" | "watchlist",
+): value is { version: number } {
   if (!hasExactKeys(value, mutationReceiptKeys)) return false;
   return (
     isInstant(value.committedAt) &&
     typeof value.digestSha256 === "string" &&
     bareDigest.test(value.digestSha256) &&
-    value.id === MAIN_PERSONAL_WATCHLIST_ID &&
-    value.kind === "watchlist" &&
+    value.id === expectedId &&
+    value.kind === expectedKind &&
     value.operation === "put" &&
     value.profile === "personal_single_user_local_vault" &&
     typeof value.replayed === "boolean" &&
     isPositiveInteger(value.version)
   );
+}
+
+function copyScreenResponse(
+  value: PersonalSecurityMasterScreenResponseDto,
+): PersonalSecurityMasterScreenResponseDto {
+  return Object.freeze({
+    ...value,
+    rows: Object.freeze(value.rows.map((row) => Object.freeze({ ...row }))),
+  });
+}
+
+function copyScreenerSavedViewsRecord(
+  value: PersonalScreenerSavedViewsRecordDto,
+): PersonalScreenerSavedViewsRecordDto {
+  return Object.freeze({
+    ...value,
+    payload: copyScreenerSavedViewsPayload(value.payload),
+  });
+}
+
+function copyScreenerSavedViewsPayload(
+  value: PersonalScreenerSavedViewsPayloadDto,
+): PersonalScreenerSavedViewsPayloadDto {
+  return Object.freeze({
+    schemaVersion: 1,
+    views: Object.freeze(
+      value.views.map((view) =>
+        Object.freeze({
+          ...view,
+          columns: Object.freeze([...view.columns]),
+          query: Object.freeze({
+            clauses: Object.freeze(view.query.clauses.map(copyScreenClause)),
+            operator: "and" as const,
+          }),
+          sort: Object.freeze({ ...view.sort }),
+        }),
+      ),
+    ),
+  });
+}
+
+function copyScreenClause(
+  clause: PersonalSecurityMasterScreenClauseDto,
+): PersonalSecurityMasterScreenClauseDto {
+  if (clause.field === "exchange_mic") {
+    return Object.freeze({
+      field: "exchange_mic",
+      operator: "in",
+      values: Object.freeze([...clause.values]),
+    });
+  }
+  if (clause.field === "instrument_type") {
+    return Object.freeze({
+      field: "instrument_type",
+      operator: "in",
+      values: Object.freeze([...clause.values]),
+    });
+  }
+  return Object.freeze({ ...clause });
 }
 
 function copyWatchlistPayload(

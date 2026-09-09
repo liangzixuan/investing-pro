@@ -43,6 +43,7 @@ import {
   registerPersonalSecurityMasterRoutes,
 } from "./personal-security-master-routes";
 import { registerPersonalWorkspaceMarketDataRoutes } from "./workspace-market-data-routes";
+import { registerPersonalWorkspaceScreenerRoutes } from "./workspace-screener-routes";
 import { registerPersonalWorkspaceWatchlistRoutes } from "./workspace-watchlist-routes";
 
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
@@ -137,6 +138,13 @@ export async function buildPersonalWorkspaceApp(
     listenOptions,
   );
   registerPersonalWorkspaceWatchlistRoutes(
+    app,
+    catalog,
+    vault,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceScreenerRoutes(
     app,
     catalog,
     vault,

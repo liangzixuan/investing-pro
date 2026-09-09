@@ -37,6 +37,10 @@ import {
 } from "./workspace-composition-root";
 import { PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH } from "./workspace-watchlist-routes";
 import { PERSONAL_MARKET_DATA_STATUS_PATH } from "./workspace-market-data-routes";
+import {
+  PERSONAL_SECURITY_MASTER_SCREEN_PATH,
+  PERSONAL_WORKSPACE_SCREENER_SAVED_VIEWS_PATH,
+} from "./workspace-screener-routes";
 
 interface WorkspaceFixture {
   readonly expectedSnapshotSha256: string;
@@ -113,7 +117,7 @@ describe("personal workspace composition root", () => {
     });
   }, 30_000);
 
-  it("serves search and a restart-persistent typed main watchlist through one owner session", async () => {
+  it("serves catalog screening plus restart-persistent typed watchlist and saved views", async () => {
     const fixture = await createWorkspaceFixture();
     const firstSecret = randomBytes(32).toString("hex");
     const sourceEnvironment = workspaceEnvironment(
@@ -153,6 +157,33 @@ describe("personal workspace composition root", () => {
       totalMatches: 1,
     });
 
+    const screened = await first.inject({
+      method: "POST",
+      url: PERSONAL_SECURITY_MASTER_SCREEN_PATH,
+      headers: {
+        ...ownerHeaders(firstCookie),
+        "content-type": "application/json",
+      },
+      payload: {
+        page: { limit: 2, offset: 0 },
+        query: {
+          clauses: [
+            { field: "exchange_mic", operator: "in", values: ["XNAS"] },
+          ],
+          operator: "and",
+        },
+        schemaVersion: "1.0.0",
+        snapshotSha256: fixture.expectedSnapshotSha256,
+        sort: { direction: "asc", field: "symbol" },
+      },
+      remoteAddress: "127.0.0.1",
+    });
+    expect(screened.statusCode).toBe(200);
+    expect(screened.json()).toMatchObject({
+      rows: [{ listingId: "lst-00000", symbol: "S00000" }],
+      snapshotSha256: fixture.expectedSnapshotSha256,
+    });
+
     const watchlistPath = PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH;
     const payload = productionWatchlistPayload(fixture.expectedSnapshotSha256);
     const create = await first.inject({
@@ -173,6 +204,26 @@ describe("personal workspace composition root", () => {
     });
     expect(create.statusCode).toBe(201);
     expect(create.headers.etag).toBe('"v1"');
+
+    const savedViewsPayload = productionSavedViewsPayload(
+      fixture.expectedSnapshotSha256,
+    );
+    const createSavedViews = await first.inject({
+      method: "POST",
+      url: PERSONAL_WORKSPACE_SCREENER_SAVED_VIEWS_PATH,
+      headers: {
+        ...ownerHeaders(firstCookie),
+        "content-type": "application/json",
+        "if-none-match": "*",
+        [PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME]:
+          "workspace-screener-saved-views-create",
+        [PERSONAL_OWNER_INTENT_HEADER_NAME]: "personal-vault-create",
+      },
+      payload: { payload: savedViewsPayload },
+      remoteAddress: "127.0.0.1",
+    });
+    expect(createSavedViews.statusCode).toBe(201);
+    expect(createSavedViews.headers.etag).toBe('"v1"');
 
     await first.close();
     applications.splice(applications.indexOf(first), 1);
@@ -200,6 +251,20 @@ describe("personal workspace composition root", () => {
       kind: "watchlist",
       id: "main",
       payload,
+      version: 1,
+    });
+    const persistedSavedViews = await second.inject({
+      method: "GET",
+      url: PERSONAL_WORKSPACE_SCREENER_SAVED_VIEWS_PATH,
+      headers: ownerHeaders(secondCookie),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(persistedSavedViews.statusCode).toBe(200);
+    expect(persistedSavedViews.headers.etag).toBe('"v1"');
+    expect(persistedSavedViews.json()).toMatchObject({
+      id: "stock-screener-saved-views",
+      kind: "settings",
+      payload: savedViewsPayload,
       version: 1,
     });
     const secondSearch = await second.inject({
@@ -740,6 +805,27 @@ function productionWatchlistPayload(snapshotSha256: string) {
     name: "My Watchlist",
     schemaVersion: 1,
     snapshotSha256,
+  } as const;
+}
+
+function productionSavedViewsPayload(snapshotSha256: string) {
+  return {
+    schemaVersion: 1,
+    views: [
+      {
+        columns: ["symbol", "issuer_name", "exchange_mic"],
+        createdAgainstSnapshotSha256: snapshotSha256,
+        id: "nasdaq",
+        name: "Nasdaq",
+        query: {
+          clauses: [
+            { field: "exchange_mic", operator: "in", values: ["XNAS"] },
+          ],
+          operator: "and",
+        },
+        sort: { direction: "asc", field: "symbol" },
+      },
+    ],
   } as const;
 }
 

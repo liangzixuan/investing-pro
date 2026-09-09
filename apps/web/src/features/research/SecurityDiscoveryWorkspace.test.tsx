@@ -8,6 +8,7 @@ import type {
   PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSearchResultDto,
+  PersonalSecurityMasterScreenRowDto,
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
 import React from "react";
@@ -27,6 +28,7 @@ import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistori
 import type { PersonalManualPeerComparisonProps } from "./PersonalManualPeerComparison";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
+import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
 
 const hookHarness = vi.hoisted(() => {
@@ -137,6 +139,7 @@ const componentMocks = vi.hoisted(() => ({
   MarketOverview: () => null,
   OwnerSession: () => null,
   QuarterlyFinancials: () => null,
+  StockScreener: () => null,
   ValuationHistory: () => null,
 }));
 
@@ -203,6 +206,9 @@ vi.mock("./PersonalManualPeerComparison", () => ({
 vi.mock("./PersonalQuarterlyFinancials", () => ({
   PersonalQuarterlyFinancials: componentMocks.QuarterlyFinancials,
 }));
+vi.mock("./PersonalStockScreener", () => ({
+  PersonalStockScreener: componentMocks.StockScreener,
+}));
 vi.mock("./PersonalValuationHistory", () => ({
   PersonalValuationHistory: componentMocks.ValuationHistory,
 }));
@@ -261,6 +267,47 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(textContent(rendered)).toContain("Your watchlist is empty");
     expect(apiMocks.fetchPersonalSecurityMasterStatus).toHaveBeenCalledOnce();
     expect(apiMocks.fetchMainPersonalWatchlist).toHaveBeenCalledOnce();
+  });
+
+  it("places the local screener in discovery and routes exact rows to research and My Watchlist", async () => {
+    await activateWorkspace();
+    let rendered = renderWorkspace();
+    const screener = requireStockScreener(rendered);
+    const row = screenRow();
+
+    expect(screener.props.snapshot.snapshotSha256).toBe(
+      snapshot().snapshotSha256,
+    );
+    expect(screener.props.savedListingIds.size).toBe(0);
+    expect(screener.props.canAddToWatchlist).toBe(true);
+
+    screener.props.onOpenResearch(row);
+    rendered = renderWorkspace();
+    expect(requireMarketOverview(rendered).props.selection).toMatchObject({
+      issuerId: "iss-screen",
+      listingId: "lst-screen",
+      symbol: "SCRN",
+    });
+
+    requireStockScreener(rendered).props.onAddToWatchlist(row);
+    await flushPromises();
+    rendered = renderWorkspace();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({
+        memberships: [
+          expect.objectContaining({
+            issuerId: "iss-screen",
+            listingId: "lst-screen",
+            symbol: "SCRN",
+          }),
+        ],
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(
+      requireStockScreener(rendered).props.savedListingIds.has("lst-screen"),
+    ).toBe(true);
   });
 
   it("keeps discovery available when the saved watchlist cannot be loaded", async () => {
@@ -1657,6 +1704,19 @@ function findManualPeerComparison(value: unknown) {
   );
 }
 
+function findStockScreener(value: unknown) {
+  return findElement<PersonalStockScreenerProps>(
+    value,
+    componentMocks.StockScreener,
+  );
+}
+
+function requireStockScreener(value: unknown) {
+  const screener = findStockScreener(value);
+  if (screener === undefined) throw new Error("Expected stock screener.");
+  return screener;
+}
+
 function findAnnualFinancials(value: unknown) {
   return findElement<PersonalAnnualFinancialsProps>(
     value,
@@ -1926,6 +1986,23 @@ function searchResult(
     shareClassId: `shr-${suffix}`,
     shareClassName: "Common",
     symbol,
+  };
+}
+
+function screenRow(): PersonalSecurityMasterScreenRowDto {
+  return {
+    cik: "0000000002",
+    country: "US",
+    exchangeMic: "XNYS",
+    instrumentType: "common_stock",
+    issuerId: "iss-screen",
+    issuerName: "Screen Company, Inc.",
+    listingId: "lst-screen",
+    securityId: "sec-screen",
+    securityName: "Screen Company Common Stock",
+    shareClassId: "shr-screen",
+    shareClassName: "Common",
+    symbol: "SCRN",
   };
 }
 

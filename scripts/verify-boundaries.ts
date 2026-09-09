@@ -122,6 +122,8 @@ const personalSecurityMasterPackagePrefix =
 const personalSecurityMasterPackagePaths = [
   `${personalSecurityMasterPackagePrefix}package.json`,
   `${personalSecurityMasterPackagePrefix}src/index.ts`,
+  `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.security.test.ts`,
+  `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master.ts`,
@@ -5192,6 +5194,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-app.ts",
     "apps/api/src/workspace-composition-root.ts",
     marketRoutesPath,
+    "apps/api/src/workspace-screener-routes.ts",
     "apps/api/src/workspace-server.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
   ].sort();
@@ -5390,6 +5393,69 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
 
   const personalResearchFeatureAnchors = new Map<string, readonly string[]>([
     [
+      "packages/personal-security-master/src/personal-security-master.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION",
+        "PERSONAL_SECURITY_MASTER_SCREENER_LIMITS",
+        "PERSONAL_SECURITY_MASTER_SCREENER_SORT_FIELDS",
+        "export function screenPersonalSecurityMaster(",
+        "const request = snapshotScreenInput(input);",
+        "request.snapshotSha256 !== state.snapshotSha256",
+        "const seenFields = new Set<string>();",
+        "state.searchEntries.filter((entry)",
+        "compareScreenEntries(left, right, request)",
+        "compareCodePoints(left.listing.listingId, right.listing.listingId)",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-screener-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_SCREEN_PATH",
+        "PERSONAL_WORKSPACE_SCREENER_SAVED_VIEWS_PATH",
+        'const SAVED_VIEWS_KIND = "settings"',
+        "const MAXIMUM_SAVED_VIEWS = 20",
+        "const MAXIMUM_SAVED_VIEW_NAME_CODE_POINTS = 80",
+        "const SCREEN_REQUEST_KEYS = [",
+        'const QUERY_KEYS = ["clauses", "operator"] as const',
+        'const SORT_KEYS = ["direction", "field"] as const',
+        'const PAGE_KEYS = ["limit", "offset"] as const',
+        'const SAVED_VIEWS_PAYLOAD_KEYS = ["schemaVersion", "views"] as const',
+        "const SAVED_VIEW_KEYS = [",
+        "const SAVED_COLUMNS = new Set([",
+        "const SORT_FIELDS = new Set([",
+        "authorizePersonalJsonRouteRequest(",
+        "authorizePersonalVaultMutationRouteRequest(",
+        "screenPersonalSecurityMaster(catalog, request.body)",
+        "function isSavedViewsPayload(",
+        "function isNormalizedIdentityText(",
+        "PERSONAL_SECURITY_MASTER_LIMITS.normalizedSearchQueryCodePoints",
+        "function normalizeSearchText(value: string): string",
+        '.normalize("NFKD")',
+        '.replace(COMBINING_MARKS, "")',
+        '.replace(NON_LETTER_OR_NUMBER, " ")',
+        "vault.putRecord({",
+        "createdAgainstSnapshotSha256",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-app.ts",
+      [
+        'import { registerPersonalWorkspaceScreenerRoutes } from "./workspace-screener-routes";',
+        "registerPersonalWorkspaceScreenerRoutes(",
+      ],
+    ],
+    [
+      "packages/contracts/src/index.ts",
+      [
+        "export type PersonalSecurityMasterScreenClauseDto =",
+        "export interface PersonalSecurityMasterScreenRequestDto",
+        "export interface PersonalSecurityMasterScreenResponseDto",
+        "export interface PersonalScreenerSavedViewDto",
+        "export interface PersonalScreenerSavedViewsPayloadDto",
+        'readonly id: "stock-screener-saved-views"',
+      ],
+    ],
+    [
       "packages/personal-market-analytics/src/personal-historical-multiple-valuation.ts",
       [
         "PERSONAL_HISTORICAL_MULTIPLE_VALUATION_MINIMUM_OBSERVATIONS",
@@ -5476,6 +5542,13 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     [
       "apps/web/src/lib/personal-workspace-api.ts",
       [
+        '"/v1/personal-filing/security-master/screen"',
+        '"/v1/personal-filing/workspace/screener/saved-views"',
+        "export async function screenPersonalSecurities(",
+        "export async function fetchPersonalScreenerSavedViews(",
+        "export async function savePersonalScreenerSavedViews(",
+        "function isScreenResponse(",
+        "function isScreenerSavedViewsPayload(",
         '"/v1/personal-filing/market-data/valuation-history"',
         "export async function fetchPersonalValuationHistory(",
         "): Promise<PersonalValuationHistoryDto>",
@@ -5587,6 +5660,22 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "apps/web/src/features/research/PersonalStockScreener.tsx",
+      [
+        "PERSONAL_STOCK_SCREENER_PAGE_SIZE",
+        "export function PersonalStockScreener(",
+        "export function buildPersonalStockScreenQuery(",
+        "export function buildPersonalStockScreenRequest(",
+        "fetchPersonalScreenerSavedViews(",
+        "savePersonalScreenerSavedViews(",
+        "screenPersonalSecurities(request, controller.signal)",
+        "createdAgainstSnapshotSha256",
+        "Previous results are stale",
+        "Saved screens retain",
+        "financial metric or market-provider request is made",
+      ],
+    ],
+    [
       "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
       [
         "useState<PersonalValuationHistoryDto | null>(null)",
@@ -5607,6 +5696,8 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "function clearManualPeerState(",
         "function clearManualPeerValuationState(",
         "<PersonalManualPeerComparison",
+        "<PersonalStockScreener",
+        "PersonalSecurityMasterScreenRowDto",
       ],
     ],
   ]);
@@ -5614,11 +5705,493 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     const content = await readFile(resolvePath(root, path), "utf8");
     if (anchors.some((anchor) => !content.includes(anchor))) {
       found.push(
-        `${path}: valuation-history, historical-multiple, DCF, financial-quality, and manual-peer validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
+        `${path}: valuation-history, historical-multiple, DCF, financial-quality, manual-peer, and stock-screener validation, formula, explicit UI, persistence, and active-session state anchors must remain present`,
       );
     }
   }
+
+  const screenerEngine = await readFile(
+    resolvePath(
+      root,
+      "packages/personal-security-master/src/personal-security-master.ts",
+    ),
+    "utf8",
+  );
+  const screenerRoutes = await readFile(
+    resolvePath(root, "apps/api/src/workspace-screener-routes.ts"),
+    "utf8",
+  );
+  const screenerComponent = await readFile(
+    resolvePath(
+      root,
+      "apps/web/src/features/research/PersonalStockScreener.tsx",
+    ),
+    "utf8",
+  );
+  const screenerBoundaryViolation = personalStockScreenerBoundaryViolation(
+    screenerEngine,
+    contracts,
+    screenerRoutes,
+    screenerComponent,
+  );
+  if (screenerBoundaryViolation !== null) {
+    found.push(`Cycle 3k-a1 stock screener: ${screenerBoundaryViolation}`);
+  }
+  const screenerClassifierRegressions = [
+    screenerBoundaryViolation !== null,
+    personalStockScreenerBoundaryViolation(
+      screenerEngine,
+      contracts,
+      screenerRoutes,
+      `${screenerComponent}\nvoid fetchPersonalMarketOverview();`,
+    ) === null,
+    personalStockScreenerBoundaryViolation(
+      screenerEngine,
+      contracts,
+      screenerRoutes,
+      `${screenerComponent}\nvoid "/v1/personal-filing/market-data/overview";`,
+    ) === null,
+    personalStockScreenerBoundaryViolation(
+      screenerEngine,
+      `${contracts}\nexport interface PersonalScreenerSavedViewDto { readonly rows: readonly unknown[]; }`,
+      screenerRoutes,
+      screenerComponent,
+    ) === null,
+    personalStockScreenerBoundaryViolation(
+      screenerEngine,
+      contracts,
+      screenerRoutes.replace('.normalize("NFKD")', '.normalize("NFC")'),
+      screenerComponent,
+    ) === null,
+  ];
+  const screenerClassifierRegression =
+    screenerClassifierRegressions.indexOf(true);
+  if (screenerClassifierRegression !== -1) {
+    found.push(
+      `scripts/verify-boundaries.ts: Cycle 3k-a1 stock-screener boundary classifier ${String(screenerClassifierRegression + 1)} regressed`,
+    );
+  }
   return found;
+}
+
+function personalStockScreenerBoundaryViolation(
+  engineContent: string,
+  contractsContent: string,
+  routesContent: string,
+  componentContent: string,
+): string | null {
+  const engine = ts.createSourceFile(
+    "packages/personal-security-master/src/personal-security-master.ts",
+    engineContent,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const contracts = ts.createSourceFile(
+    "packages/contracts/src/index.ts",
+    contractsContent,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const routes = ts.createSourceFile(
+    "apps/api/src/workspace-screener-routes.ts",
+    routesContent,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const component = ts.createSourceFile(
+    "apps/web/src/features/research/PersonalStockScreener.tsx",
+    componentContent,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+
+  if (
+    !cycle3kExactNumericObject(
+      engine,
+      "PERSONAL_SECURITY_MASTER_SCREENER_LIMITS",
+      {
+        clauses: 4,
+        identityTextCodePoints: 128,
+        inValues: 16,
+        offset: 100_000,
+        pageLimit: 100,
+      },
+    ) ||
+    !cycle3kExactStringCollection(
+      engine,
+      "PERSONAL_SECURITY_MASTER_SCREENER_SORT_FIELDS",
+      ["symbol", "issuer_name", "exchange_mic", "instrument_type", "cik"],
+    )
+  ) {
+    return "engine screener limits and sort vocabulary must remain exact";
+  }
+
+  const exactRouteCollections = [
+    [
+      "SCREEN_REQUEST_KEYS",
+      ["page", "query", "schemaVersion", "snapshotSha256", "sort"],
+    ],
+    ["QUERY_KEYS", ["clauses", "operator"]],
+    ["SORT_KEYS", ["direction", "field"]],
+    ["PAGE_KEYS", ["limit", "offset"]],
+    ["SAVED_VIEWS_PAYLOAD_KEYS", ["schemaVersion", "views"]],
+    [
+      "SAVED_VIEW_KEYS",
+      [
+        "columns",
+        "createdAgainstSnapshotSha256",
+        "id",
+        "name",
+        "query",
+        "sort",
+      ],
+    ],
+    [
+      "SAVED_COLUMNS",
+      ["cik", "exchange_mic", "instrument_type", "issuer_name", "symbol"],
+    ],
+    [
+      "SORT_FIELDS",
+      ["cik", "exchange_mic", "instrument_type", "issuer_name", "symbol"],
+    ],
+  ] as const;
+  for (const [name, values] of exactRouteCollections) {
+    if (!cycle3kExactStringCollection(routes, name, values)) {
+      return `API ${name} must remain the exact closed screener vocabulary`;
+    }
+  }
+
+  const exactContractInterfaces = [
+    ["PersonalSecurityMasterScreenQueryDto", ["clauses", "operator"]],
+    ["PersonalSecurityMasterScreenSortDto", ["direction", "field"]],
+    ["PersonalSecurityMasterScreenPageDto", ["limit", "offset"]],
+    [
+      "PersonalSecurityMasterScreenRequestDto",
+      ["page", "query", "schemaVersion", "snapshotSha256", "sort"],
+    ],
+    [
+      "PersonalScreenerSavedViewDto",
+      [
+        "columns",
+        "createdAgainstSnapshotSha256",
+        "id",
+        "name",
+        "query",
+        "sort",
+      ],
+    ],
+    ["PersonalScreenerSavedViewsPayloadDto", ["schemaVersion", "views"]],
+  ] as const;
+  for (const [name, keys] of exactContractInterfaces) {
+    if (!cycle3kExactReadonlyInterfaceKeys(contracts, name, keys)) {
+      return `${name} must remain an exact readonly closed definition`;
+    }
+  }
+
+  const engineNormalizer = cycle3kFunctionBody(engine, "normalizeSearchText");
+  const routeNormalizer = cycle3kFunctionBody(routes, "normalizeSearchText");
+  if (
+    engineNormalizer === null ||
+    routeNormalizer === null ||
+    engineNormalizer !== routeNormalizer ||
+    !routesContent.includes(
+      "PERSONAL_SECURITY_MASTER_LIMITS.normalizedSearchQueryCodePoints",
+    )
+  ) {
+    return "saved identity criteria must retain the engine's exact normalization and normalized-length bound";
+  }
+
+  if (
+    !cycle3kExactFrozenObjectVariableKeys(component, "view", [
+      "columns",
+      "createdAgainstSnapshotSha256",
+      "id",
+      "name",
+      "query",
+      "sort",
+    ])
+  ) {
+    return "the browser may persist only criteria, sort, columns, snapshot, name, and id in a saved-view definition";
+  }
+
+  const clientModule = "@/lib/personal-workspace-api";
+  const expectedClientBindings = [
+    "PersonalWorkspaceApiError",
+    "createEmptyPersonalScreenerSavedViews",
+    "fetchPersonalScreenerSavedViews",
+    "normalizePersonalScreenerSavedViewName",
+    "savePersonalScreenerSavedViews",
+    "screenPersonalSecurities",
+  ].sort();
+  const clientImports = component.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteralLike(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === clientModule,
+  );
+  if (
+    clientImports.length !== 1 ||
+    JSON.stringify(cycle3kNamedImportBindings(clientImports[0])) !==
+      JSON.stringify(expectedClientBindings)
+  ) {
+    return "PersonalStockScreener may import only the exact local screener and saved-view client functions";
+  }
+
+  const forbiddenMarketDataBindings = new Set([
+    "PERSONAL_ANNUAL_FINANCIALS_PATH",
+    "PERSONAL_MARKET_DATA_STATUS_PATH",
+    "PERSONAL_MARKET_OVERVIEW_PATH",
+    "PERSONAL_QUARTERLY_FINANCIALS_PATH",
+    "PERSONAL_VALUATION_HISTORY_PATH",
+    "fetchPersonalAnnualFinancials",
+    "fetchPersonalMarketDataStatus",
+    "fetchPersonalMarketOverview",
+    "fetchPersonalQuarterlyFinancials",
+    "fetchPersonalValuationHistory",
+  ]);
+  let marketDataCapability = false;
+  const visitComponent = (node: ts.Node): void => {
+    if (
+      (ts.isStringLiteralLike(node) ||
+        ts.isNoSubstitutionTemplateLiteral(node)) &&
+      node.text.startsWith("/v1/personal-filing/market-data/")
+    ) {
+      marketDataCapability = true;
+    }
+    if (ts.isCallExpression(node)) {
+      const target = unwrapBoundaryExpression(node.expression);
+      const calledName = ts.isIdentifier(target)
+        ? target.text
+        : ts.isPropertyAccessExpression(target)
+          ? target.name.text
+          : ts.isElementAccessExpression(target)
+            ? staticStringValue(target.argumentExpression)
+            : null;
+      if (
+        calledName === "fetch" ||
+        (calledName !== null && forbiddenMarketDataBindings.has(calledName))
+      ) {
+        marketDataCapability = true;
+      }
+    }
+    ts.forEachChild(node, visitComponent);
+  };
+  visitComponent(component);
+  return marketDataCapability
+    ? "PersonalStockScreener must not import, call, or embed any market-data provider client or route"
+    : null;
+}
+
+function cycle3kTopLevelVariableInitializer(
+  source: ts.SourceFile,
+  name: string,
+): ts.Expression | null {
+  const matches = source.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => [...statement.declarationList.declarations])
+    .filter(
+      (declaration) =>
+        ts.isIdentifier(declaration.name) && declaration.name.text === name,
+    );
+  return matches.length === 1 ? (matches[0]?.initializer ?? null) : null;
+}
+
+function cycle3kLiteralCollection(
+  source: ts.SourceFile,
+  name: string,
+): readonly string[] | null {
+  const initializer = cycle3kTopLevelVariableInitializer(source, name);
+  if (initializer === null) return null;
+  let value = unwrapBoundaryExpression(initializer);
+  if (
+    ts.isCallExpression(value) &&
+    ts.isPropertyAccessExpression(value.expression) &&
+    ts.isIdentifier(value.expression.expression) &&
+    value.expression.expression.text === "Object" &&
+    value.expression.name.text === "freeze" &&
+    value.arguments.length === 1 &&
+    value.arguments[0] !== undefined
+  ) {
+    value = unwrapBoundaryExpression(value.arguments[0]);
+  } else if (
+    ts.isNewExpression(value) &&
+    ts.isIdentifier(value.expression) &&
+    value.expression.text === "Set" &&
+    value.arguments?.length === 1 &&
+    value.arguments[0] !== undefined
+  ) {
+    value = unwrapBoundaryExpression(value.arguments[0]);
+  }
+  if (!ts.isArrayLiteralExpression(value)) return null;
+  const result: string[] = [];
+  for (const element of value.elements) {
+    const item = unwrapBoundaryExpression(element);
+    if (!ts.isStringLiteralLike(item)) return null;
+    result.push(item.text);
+  }
+  return result;
+}
+
+function cycle3kExactStringCollection(
+  source: ts.SourceFile,
+  name: string,
+  expected: readonly string[],
+): boolean {
+  return (
+    JSON.stringify(cycle3kLiteralCollection(source, name)) ===
+    JSON.stringify(expected)
+  );
+}
+
+function cycle3kExactNumericObject(
+  source: ts.SourceFile,
+  name: string,
+  expected: Readonly<Record<string, number>>,
+): boolean {
+  const initializer = cycle3kTopLevelVariableInitializer(source, name);
+  if (initializer === null) return false;
+  const call = unwrapBoundaryExpression(initializer);
+  if (
+    !ts.isCallExpression(call) ||
+    !ts.isPropertyAccessExpression(call.expression) ||
+    !ts.isIdentifier(call.expression.expression) ||
+    call.expression.expression.text !== "Object" ||
+    call.expression.name.text !== "freeze" ||
+    call.arguments.length !== 1 ||
+    call.arguments[0] === undefined
+  ) {
+    return false;
+  }
+  const object = unwrapBoundaryExpression(call.arguments[0]);
+  if (!ts.isObjectLiteralExpression(object)) return false;
+  const actual: Record<string, number> = {};
+  for (const property of object.properties) {
+    if (!ts.isPropertyAssignment(property)) return false;
+    const propertyName = propertyNameText(property.name);
+    const value = unwrapBoundaryExpression(property.initializer);
+    if (propertyName === null || !ts.isNumericLiteral(value)) return false;
+    actual[propertyName] = Number(value.text.replaceAll("_", ""));
+  }
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function cycle3kExactReadonlyInterfaceKeys(
+  source: ts.SourceFile,
+  name: string,
+  expected: readonly string[],
+): boolean {
+  const declarations = source.statements.filter(
+    (statement): statement is ts.InterfaceDeclaration =>
+      ts.isInterfaceDeclaration(statement) && statement.name.text === name,
+  );
+  if (declarations.length !== 1) return false;
+  const declaration = declarations[0];
+  if (declaration === undefined || declaration.heritageClauses !== undefined)
+    return false;
+  const keys: string[] = [];
+  for (const member of declaration.members) {
+    if (
+      !ts.isPropertySignature(member) ||
+      member.questionToken !== undefined ||
+      !(
+        ts.canHaveModifiers(member) &&
+        ts
+          .getModifiers(member)
+          ?.some((modifier) => modifier.kind === ts.SyntaxKind.ReadonlyKeyword)
+      )
+    ) {
+      return false;
+    }
+    const key = propertyNameText(member.name);
+    if (key === null) return false;
+    keys.push(key);
+  }
+  return JSON.stringify(keys.sort()) === JSON.stringify([...expected].sort());
+}
+
+function cycle3kFunctionBody(
+  source: ts.SourceFile,
+  name: string,
+): string | null {
+  const declarations = source.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) && statement.name?.text === name,
+  );
+  const body = declarations.length === 1 ? declarations[0]?.body : undefined;
+  return body?.getText(source).replace(/\s+/gu, "") ?? null;
+}
+
+function cycle3kExactFrozenObjectVariableKeys(
+  source: ts.SourceFile,
+  name: string,
+  expected: readonly string[],
+): boolean {
+  const matches: ts.VariableDeclaration[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === name
+    ) {
+      matches.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (matches.length !== 1 || matches[0]?.initializer === undefined)
+    return false;
+  const call = unwrapBoundaryExpression(matches[0].initializer);
+  if (
+    !ts.isCallExpression(call) ||
+    !ts.isPropertyAccessExpression(call.expression) ||
+    !ts.isIdentifier(call.expression.expression) ||
+    call.expression.expression.text !== "Object" ||
+    call.expression.name.text !== "freeze" ||
+    call.arguments.length !== 1 ||
+    call.arguments[0] === undefined
+  ) {
+    return false;
+  }
+  const object = unwrapBoundaryExpression(call.arguments[0]);
+  if (!ts.isObjectLiteralExpression(object)) return false;
+  const keys: string[] = [];
+  for (const property of object.properties) {
+    if (
+      !ts.isPropertyAssignment(property) &&
+      !ts.isShorthandPropertyAssignment(property)
+    ) {
+      return false;
+    }
+    const key = propertyNameText(property.name);
+    if (key === null) return false;
+    keys.push(key);
+  }
+  return JSON.stringify(keys.sort()) === JSON.stringify([...expected].sort());
+}
+
+function cycle3kNamedImportBindings(
+  declaration: ts.ImportDeclaration | undefined,
+): readonly string[] {
+  const clause = declaration?.importClause;
+  if (
+    clause === undefined ||
+    clause.isTypeOnly ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings)
+  ) {
+    return [];
+  }
+  const bindings: string[] = [];
+  for (const element of clause.namedBindings.elements) {
+    if (element.isTypeOnly || element.propertyName !== undefined) return [];
+    bindings.push(element.name.text);
+  }
+  return bindings.sort();
 }
 
 function personalValuationHistoryContractViolation(
@@ -6411,6 +6984,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts` as const;
   const securityTestPath =
     `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts` as const;
+  const screenerUnitTestPath =
+    `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.test.ts` as const;
+  const screenerSecurityTestPath =
+    `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.security.test.ts` as const;
   const sourcePreparationPath =
     `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation.ts` as const;
   const sourcePreparationUnitTestPath =
@@ -6495,7 +7072,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         );
       }
     } else if (
-      (path === unitTestPath || path === securityTestPath) &&
+      (path === unitTestPath ||
+        path === securityTestPath ||
+        path === screenerUnitTestPath ||
+        path === screenerSecurityTestPath) &&
       (!modules.includes("vitest") ||
         !modules.includes("./personal-security-master") ||
         modules.some((module) => !allowedTestModules.has(module)))
@@ -6541,10 +7121,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ["PERSONAL_SECURITY_MASTER_SEARCH_NORMALIZATION", false],
     ["PERSONAL_SECURITY_MASTER_SEARCH_RANKING", false],
     ["PERSONAL_SECURITY_MASTER_SEARCH_TIE_BREAKS", false],
+    ["PERSONAL_SECURITY_MASTER_SCREENER_LIMITS", false],
+    ["PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION", false],
+    ["PERSONAL_SECURITY_MASTER_SCREENER_SORT_FIELDS", false],
     ["PERSONAL_SECURITY_MASTER_SYMBOL_NORMALIZATION", false],
     ["PersonalSecurityMasterError", false],
     ["admitPersonalSecurityMasterSnapshot", false],
     ["measurePersonalSecurityMasterSearchP95", false],
+    ["screenPersonalSecurityMaster", false],
     ["searchPersonalSecurityMaster", false],
     ["PersonalSecurityMasterAdmissionInput", true],
     ["PersonalSecurityMasterCatalog", true],
@@ -6560,6 +7144,15 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ["PersonalSecurityMasterSearchMatchKind", true],
     ["PersonalSecurityMasterSearchResponse", true],
     ["PersonalSecurityMasterSearchResult", true],
+    ["PersonalSecurityMasterScreenClause", true],
+    ["PersonalSecurityMasterScreenInput", true],
+    ["PersonalSecurityMasterScreenPage", true],
+    ["PersonalSecurityMasterScreenQuery", true],
+    ["PersonalSecurityMasterScreenResponse", true],
+    ["PersonalSecurityMasterScreenRow", true],
+    ["PersonalSecurityMasterScreenSort", true],
+    ["PersonalSecurityMasterScreenSortDirection", true],
+    ["PersonalSecurityMasterScreenSortField", true],
     ["PersonalSecurityMasterSourcePolicyCompatibility", true],
   ] as const;
   const indexSource = ts.createSourceFile(
@@ -6589,6 +7182,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-market-data-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
+      "apps/api/src/workspace-screener-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
@@ -6637,6 +7234,17 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-screener-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "PERSONAL_SECURITY_MASTER_SCREENER_LIMITS",
+        "PERSONAL_SECURITY_MASTER_SCREENER_SCHEMA_VERSION",
+        "PersonalSecurityMasterError",
+        "screenPersonalSecurityMaster",
         "type PersonalSecurityMasterCatalog",
       ],
     ],
@@ -7192,6 +7800,7 @@ function personalSecurityMasterMeasurementBoundaryViolation(
         ![
           "admitPersonalSecurityMasterSnapshot",
           "measurePersonalSecurityMasterSearchP95",
+          "screenPersonalSecurityMaster",
           "searchPersonalSecurityMaster",
         ].includes(name),
     )
@@ -11617,6 +12226,16 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     [
+      "apps/api/src/workspace-screener-routes.test.ts",
+      [
+        "LOCAL_RESEARCH_VAULT_PROFILE",
+        "LocalResearchVaultError",
+        "type LocalResearchRecord",
+        "type LocalResearchVault",
+        "type PutLocalResearchRecordCommand",
+      ],
+    ],
+    [
       "apps/api/src/personal-vault-routes.ts",
       [
         "LOCAL_RESEARCH_RECORD_KINDS",
@@ -11639,6 +12258,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ["apps/api/src/workspace-composition-root.ts", ["LocalResearchVault"]],
     [
       "apps/api/src/workspace-watchlist-routes.ts",
+      ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-screener-routes.ts",
       ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
     ],
   ]);

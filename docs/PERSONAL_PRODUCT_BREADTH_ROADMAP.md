@@ -29,8 +29,10 @@ slices; Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly
 statements, and valuation history; Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
 selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
-bounded manual peer comparison. Later Cycle 3e-b work,
-full 3g/3h/3i/3j breadth, Cycle 3f, and Cycles 3k through 3q remain planned.**
+bounded manual peer comparison, and Cycle 3k-a1 adds a whole-catalog identity
+screener with encrypted saved criteria. Later Cycle 3e-b work, full
+3g/3h/3i/3j breadth, Cycle 3f, the metric-backed remainder of Cycle 3k, and
+Cycles 3l through 3q remain planned.**
 This does not alter
 the exact historical Cycle 2z personal result or
 make a feature-parity claim.
@@ -180,7 +182,7 @@ Later subcycles may widen a universe only with the same checks.
 | Statements and metric depth             | Annual/quarterly 30-field views plus bounded core analytics         | Cycle 3h        |
 | Valuation models and history            | Provider history, historical bands, and forward/reverse DCF         | Cycle 3i        |
 | Peers, health, quality, and risk scores | 12-check diagnostic plus bounded manual peer comparison             | Cycle 3j        |
-| Screener and saved views                | No universe query                                                   | Cycle 3k        |
+| Screener and saved views                | Whole-catalog identity query plus encrypted saved criteria          | Cycle 3k        |
 | Earnings, dividends, news, calendars    | No daily event workflow                                             | Cycle 3l        |
 | Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow                 | Cycle 3l-b      |
 | Transcript discovery                    | No transcript metadata or permitted-text workflow                   | Cycle 3l-c      |
@@ -993,9 +995,12 @@ queries.
 
 Promotable subcycles:
 
-- **3k-a:** typed query AST, deterministic sort/pagination, known/unknown
-  semantics, saved views, and the 30 core metrics plus identity and price
-  fields;
+- **3k-a1:** a typed, snapshot-bound query over the admitted catalog's known
+  identity fields, deterministic sort/pagination, customizable identity
+  columns, and encrypted saved criteria definitions;
+- **3k-a2:** extend the same query boundary to an admitted multi-company
+  current snapshot with known/unknown semantics and the 30 core metrics plus
+  price fields;
 - **3k-b:** field expansion toward 120 or more filters only where each field
   has coverage and a named discovery job; and
 - **3k-c:** 24 independently designed starter screens, then expansion toward
@@ -1015,6 +1020,34 @@ Three-valued filter semantics must distinguish true, false, and unknown.
 Historical screens must be snapshot-reproducible and look-ahead safe. Unless a
 starter screen is explicitly labelled sparse, its required fields must be
 known for at least 90% of its eligible denominator and at least 500 securities.
+
+Cycle 3k-a1 is the usable catalog-screener foundation. One explicit local
+operation evaluates a closed, AND-only query AST over the already admitted
+active U.S.-listed common-stock and ADR identities. The initial predicates are
+identity text, operating exchange MIC, instrument type, and exact CIK. Results
+can be sorted by symbol, issuer name, MIC, instrument type, or CIK and are
+returned in deterministic bounded pages with stable listing-identity
+tie-breaks. Every request is bound to the exact catalog snapshot digest; the
+engine accepts no SQL, provider URL, arbitrary field name, or unbounded page.
+
+The browser exposes the screener as an explicit action, keeps result rows only
+in active-session memory, and can open a selected company or add its exact
+catalog identity to the existing watchlist. Column choices and up to 20 named
+saved criteria definitions are stored as one versioned `settings` record in the
+encrypted local vault with compare-and-swap and idempotency. Results and Tiingo
+payloads are never stored with a saved screen. A definition records the
+snapshot against which it was saved and must be visibly rerun against the
+current snapshot when that digest changes.
+
+All Cycle 3k-a1 fields are mandatory catalog identity fields, so their known
+count equals the evaluated catalog denominator and their unknown count is zero.
+This is not evidence that any financial field is populated. Cycle 3k-a1 makes
+no provider request and does not add price, market-capitalization, valuation,
+sector, growth, profitability, income, momentum, or risk filters;
+three-valued metric semantics, the 30-field/500-security screenable-universe
+gate, starter screens, historical point-in-time queries, ranking,
+recommendations, export, and full Cycle 3k remain open for Cycle 3k-a2 and
+later work.
 
 ## Wave 3 — daily operating workflow
 
