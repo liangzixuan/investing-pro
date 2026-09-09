@@ -1,5 +1,9 @@
 # Personal product-breadth roadmap
 
+For current priorities and the short delivery plan, read
+[Current work](./CURRENT_WORK.md). It orders the next useful slices without
+changing the capability targets or historical acceptance requirements below.
+
 Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b is accepted and promoted
 only for exact source revision
@@ -1204,6 +1208,28 @@ This program does not imply that every benchmark feature is obtainable:
   content, and interface behavior are unavailable by design.
 
 ## Release order and stopping rules
+
+### Active delivery priority (2026-09-09)
+
+Finish the interrupted Cycle 3k-a1 release, then deliver the first useful
+current financial-screening slice of 3k-a2: a permitted multi-company snapshot
+and numerical filters together. Reuse existing validated metric definitions;
+keep missing values explicit and report the actual cohort and field coverage.
+The bulk source and entitlement remain unresolved. A smaller useful slice
+does not close the full 30-core-metric/500-security gate.
+
+Next prioritize watchlist events and a personal portfolio overview, followed
+by alerts and exports as their inputs and source permissions become available.
+If bulk screening is source-blocked, a permitted daily event slice may proceed
+independently. Historical screening, broad filing automation, large filter and
+model counts, and AI stay in the backlog while those everyday workflows are
+missing. Fix correctness, credential, and privacy blockers within the feature;
+unrelated governance and hardening do not become standalone product milestones.
+
+See [the current-work guide](./CURRENT_WORK.md) for the next slice's acceptance
+checklist and the focused development/full-release verification loop.
+
+### Dependency map and unchanged exit rules
 
 Delivery is dependency-guided, not a strict alphabetic chain. The four waves
 remain the default planning order:

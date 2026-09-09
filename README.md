@@ -2,6 +2,12 @@
 
 An evidence-first investment research workspace being built from the audited product plan. `Research Cockpit` is an internal working name and is not trademark-cleared.
 
+Start with [current work and delivery priorities](./docs/CURRENT_WORK.md) for
+the active handover, next product outcome, and development loop. Use
+[personal workspace setup](#personal-discovery-workspace) to run the app and
+[the breadth roadmap](./docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md) for capability
+targets. The detailed cycle records below retain historical acceptance claims.
+
 ## Active profile
 
 The active filing-corpus path is `personal_single_user_local`: one owner,

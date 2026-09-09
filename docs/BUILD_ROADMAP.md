@@ -1,5 +1,10 @@
 # Build roadmap after Sprint 0
 
+For the active release, next deliverable, and working loop, start with
+[Current work](./CURRENT_WORK.md). This document preserves the detailed build
+history; [the personal breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
+owns the product capability targets.
+
 Active filing-corpus profile: `personal_single_user_local`. The current project
 has one owner, runs locally, has no tenants or customers, is noncommercial,
 does not redistribute filing payloads, and is not a production service.
