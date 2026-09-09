@@ -56,6 +56,7 @@ on:
       - apps/web/src/features/research/owner-session-lifecycle.test.ts
       - apps/web/src/features/research/owner-session-lifecycle.ts
       - apps/web/src/features/research/test-personal-dossier-builder.ts
+      - apps/web/src/features/research/**
       - apps/web/src/lib/api.test.ts
       - apps/web/src/lib/api.ts
       - apps/web/src/lib/legacy-local-state-*.ts
@@ -93,6 +94,7 @@ on:
       - packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts
       - packages/filing-payload-custody/**
       - packages/local-research-vault/**
+      - packages/personal-market-analytics/**
       - packages/personal-security-master/**
       - packages/personal-filing-corpus/**
       - packages/contracts/openapi/openapi.yaml
@@ -159,6 +161,7 @@ on:
       - apps/web/src/features/research/owner-session-lifecycle.test.ts
       - apps/web/src/features/research/owner-session-lifecycle.ts
       - apps/web/src/features/research/test-personal-dossier-builder.ts
+      - apps/web/src/features/research/**
       - apps/web/src/lib/api.test.ts
       - apps/web/src/lib/api.ts
       - apps/web/src/lib/legacy-local-state-*.ts
@@ -196,6 +199,7 @@ on:
       - packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-verifier.test.ts
       - packages/filing-payload-custody/**
       - packages/local-research-vault/**
+      - packages/personal-market-analytics/**
       - packages/personal-security-master/**
       - packages/personal-filing-corpus/**
       - packages/contracts/openapi/openapi.yaml
@@ -227,14 +231,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Classify exact Cycle 3j-a1 non-evidence routing closure
-        id: cycle3ja1_route
+      - name: Classify exact Cycle 3j-a2 non-evidence routing closure
+        id: cycle3ja2_route
         shell: bash
         run: |
           exact=false
           cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
-          prior_closure="61501ab1d4f48bf56ea18448ce96c92de848e41e"
-          feature="02424b7cdd6bd736c232e31eb2575ff213332760"
+          prior_closure="2af82002d40307f6b7502e1e100370ceeef34db5"
+          feature="61e060fa7a00e8fd4d582a458dcf7921a3c0ff2a"
           expected=(
             "M" ".github/workflows/filing-parser-acceptance.yml"
             "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
@@ -264,10 +268,10 @@ jobs:
             )
             if [[ "$(git merge-base "$cycle2z_baseline" HEAD)" == "$cycle2z_baseline" ]] && \
                [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] && \
-               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "61" ]] && \
-               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "61" ]] && \
-               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "62" ]] && \
-               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "62" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "63" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "63" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "64" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "64" ]] && \
                [[ "${#feature_topology[@]}" == "2" ]] && \
                [[ "${feature_topology[0]}" == "$feature" ]] && \
                [[ "${feature_topology[1]}" == "$prior_closure" ]] && \
@@ -306,11 +310,11 @@ jobs:
         env:
           CI: "true"
           FILING_PAYLOAD_CUSTODY_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
-        if: ${{ steps.cycle3ja1_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ja2_route.outputs.exact != 'true' }}
         run: pnpm filing-payload-custody:acceptance
 
       - name: Verify canonical evidence against the exact commit
-        if: ${{ steps.cycle3ja1_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ja2_route.outputs.exact != 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
@@ -326,7 +330,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID"
 
       - name: Upload filing payload custody evidence
-        if: ${{ success() && steps.cycle3ja1_route.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle3ja2_route.outputs.exact != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-payload-custody-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}

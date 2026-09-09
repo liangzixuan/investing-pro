@@ -180,6 +180,10 @@ import {
   isCycle3ja1FeatureTopologyAllowed,
   isCycle3ja1RoutingClosureCommitDiffSetAllowed,
   isCycle3ja1RoutingClosureTopologyAllowed,
+  isCycle3ja2FeatureCommitDiffSetAllowed,
+  isCycle3ja2FeatureTopologyAllowed,
+  isCycle3ja2RoutingClosureCommitDiffSetAllowed,
+  isCycle3ja2RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -900,6 +904,10 @@ const CYCLE_3I_A2_ROUTING_CLOSURE_REVISION =
   "61501ab1d4f48bf56ea18448ce96c92de848e41e" as const;
 const CYCLE_3J_A1_FEATURE_REVISION =
   "02424b7cdd6bd736c232e31eb2575ff213332760" as const;
+const CYCLE_3J_A1_ROUTING_CLOSURE_REVISION =
+  "2af82002d40307f6b7502e1e100370ceeef34db5" as const;
+const CYCLE_3J_A2_FEATURE_REVISION =
+  "61e060fa7a00e8fd4d582a458dcf7921a3c0ff2a" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -2790,6 +2798,79 @@ const CYCLE_3J_A1_FEATURE_TRANSITION = [
 ];
 const CYCLE_3J_A1_ROUTING_CLOSURE_TRANSITION = [
   ...CYCLE_3I_A2_ROUTING_CLOSURE_TRANSITION,
+];
+const CYCLE_3J_A2_FEATURE_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalAnnualFinancials.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalFcffDcfValuation.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalFinancialQualityScorecard.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalHistoricalMultipleValuation.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalManualPeerComparison.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalManualPeerComparison.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalMarketOverview.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalMarketOverview.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalQuarterlyFinancials.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalValuationHistory.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  { path: "docs/BUILD_ROADMAP.md", status: "M" },
+  { path: "docs/CANONICAL_MODEL.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/THREAT_MODEL.md", status: "M" },
+  { path: "packages/personal-market-analytics/src/index.ts", status: "M" },
+  {
+    path: "packages/personal-market-analytics/src/personal-manual-peer-comparison.security.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-market-analytics/src/personal-manual-peer-comparison.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/personal-market-analytics/src/personal-manual-peer-comparison.ts",
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3J_A2_ROUTING_CLOSURE_TRANSITION = [
+  ...CYCLE_3J_A1_ROUTING_CLOSURE_TRANSITION,
 ];
 
 const CYCLE_2Z_PROTECTED_SURFACE_PATHS = [
@@ -8254,6 +8335,86 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedFinancialQualityClosure = [
+      "62",
+      "62",
+      CYCLE_3J_A1_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3J_A1_ROUTING_CLOSURE_REVISION} ${CYCLE_3J_A1_FEATURE_REVISION}`,
+      financialQualityFeature,
+    ] as const;
+    expect(
+      isCycle3ja1RoutingClosureTopologyAllowed(
+        ...pinnedFinancialQualityClosure,
+      ),
+    ).toBe(true);
+
+    const manualPeerFeature = [
+      "63",
+      "63",
+      CYCLE_3J_A2_FEATURE_REVISION,
+      `${CYCLE_3J_A2_FEATURE_REVISION} ${CYCLE_3J_A1_ROUTING_CLOSURE_REVISION}`,
+      pinnedFinancialQualityClosure,
+    ] as const;
+    expect(isCycle3ja2FeatureTopologyAllowed(...manualPeerFeature)).toBe(true);
+    expect(
+      isCycle3ja2FeatureTopologyAllowed(
+        "62",
+        "63",
+        CYCLE_3J_A2_FEATURE_REVISION,
+        `${CYCLE_3J_A2_FEATURE_REVISION} ${CYCLE_3J_A1_ROUTING_CLOSURE_REVISION}`,
+        pinnedFinancialQualityClosure,
+      ),
+    ).toBe(false);
+    const tamperedPinnedFinancialQualityClosure: unknown[] = [
+      ...pinnedFinancialQualityClosure,
+    ];
+    tamperedPinnedFinancialQualityClosure[4] = tamperedFinancialQualityFeature;
+    expect(
+      isCycle3ja2FeatureTopologyAllowed(
+        "63",
+        "63",
+        CYCLE_3J_A2_FEATURE_REVISION,
+        `${CYCLE_3J_A2_FEATURE_REVISION} ${CYCLE_3J_A1_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedFinancialQualityClosure as unknown as Parameters<
+          typeof isCycle3ja2FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const manualPeerClosureRevision = "d".repeat(40);
+    const manualPeerClosure = [
+      "64",
+      "64",
+      manualPeerClosureRevision,
+      `${manualPeerClosureRevision} ${CYCLE_3J_A2_FEATURE_REVISION}`,
+      manualPeerFeature,
+    ] as const;
+    expect(isCycle3ja2RoutingClosureTopologyAllowed(...manualPeerClosure)).toBe(
+      true,
+    );
+    expect(
+      isCycle3ja2RoutingClosureTopologyAllowed(
+        "64",
+        "64",
+        CYCLE_3J_A2_FEATURE_REVISION,
+        `${CYCLE_3J_A2_FEATURE_REVISION} ${CYCLE_3J_A2_FEATURE_REVISION}`,
+        manualPeerFeature,
+      ),
+    ).toBe(false);
+    const tamperedManualPeerFeature: unknown[] = [...manualPeerFeature];
+    tamperedManualPeerFeature[4] = tamperedPinnedFinancialQualityClosure;
+    expect(
+      isCycle3ja2RoutingClosureTopologyAllowed(
+        "64",
+        "64",
+        manualPeerClosureRevision,
+        `${manualPeerClosureRevision} ${CYCLE_3J_A2_FEATURE_REVISION}`,
+        tamperedManualPeerFeature as unknown as Parameters<
+          typeof isCycle3ja2RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -8447,6 +8608,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3J_A1_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ja2FeatureCommitDiffSetAllowed,
+      CYCLE_3J_A2_FEATURE_TRANSITION,
+      23,
+    );
+    expectExactTransition(
+      isCycle3ja2RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3J_A2_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -8514,6 +8685,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3I_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3J_A1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3J_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3J_A2_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3J_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -8633,6 +8806,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3I_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3J_A1_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3J_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3J_A2_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3J_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
