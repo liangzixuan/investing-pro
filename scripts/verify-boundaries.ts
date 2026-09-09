@@ -5202,6 +5202,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-server.ts",
     "apps/api/src/workspace-watchlist-filings-routes.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
+    "apps/api/src/workspace-portfolio-routes.ts",
   ].sort();
   const expectedExternalSpecifiers = [
     "@fastify/cors",
@@ -7709,6 +7710,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
     [
+      "apps/api/src/workspace-portfolio-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
+    ],
+    [
       "apps/api/src/personal-security-master-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
@@ -7742,6 +7747,15 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-watchlist-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+        "type PersonalSecurityMasterSearchResult",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-portfolio-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
@@ -12744,6 +12758,16 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
 > {
   return new Map([
     [
+      "apps/api/src/workspace-portfolio-routes.test.ts",
+      [
+        "LocalResearchVault",
+        "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+        "type WindowsOwnerOnlyAclPort",
+        "type WindowsOwnerOnlyAclTarget",
+        "type WindowsOwnerOnlyAclVerificationReceipt",
+      ],
+    ],
+    [
       "apps/api/src/personal-vault-routes.test.ts",
       [
         "LocalResearchVault",
@@ -12801,6 +12825,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     [
       "apps/api/src/workspace-watchlist-routes.ts",
       ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-portfolio-routes.ts",
+      ["LocalResearchVaultError", "type LocalResearchVault"],
     ],
     [
       "apps/api/src/workspace-screener-routes.ts",

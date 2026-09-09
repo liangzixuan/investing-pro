@@ -1132,6 +1132,21 @@ Exit criteria:
 Broker order entry and execution remain out of scope. A future read-only broker
 adapter requires its own credential and reconciliation milestone.
 
+### First partial Cycle 3m-a delivery
+
+[My Portfolio](./PERSONAL_PORTFOLIO.md) adds one encrypted manual holdings
+snapshot for up to 20 admitted stock/ADR listings, optional cash and total cost
+basis in USD, and quantity-confirmation dates. Explicit refresh reuses the
+existing Tiingo adapter sequentially. Exact decimal calculations expose priced
+subtotals, complete-value availability, unrealized change and allocation.
+Missing, stale or mismatched quotes keep complete totals unavailable. Catalog
+reconciliation preserves economic inputs only for consistent stable identities.
+
+The transaction ledger, multiple portfolios, imports, tax lots, realized gains,
+income, corporate-action processing and historical performance targets remain
+open. Manual snapshot valuation is an independently useful first delivery;
+it does not claim completion of Cycle 3m.
+
 ### Cycle 3n — background alerts and delivery
 
 Target: turn immediate local rule evaluation into a reliable monitoring

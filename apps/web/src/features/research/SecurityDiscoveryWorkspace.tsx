@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  PersonalPortfolioIdentity,
   PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
@@ -49,6 +50,7 @@ import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
 import { PersonalWatchlistFilings } from "./PersonalWatchlistFilings";
+import { PersonalPortfolio } from "./PersonalPortfolio";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
   PersonalMarketOverview,
@@ -89,6 +91,8 @@ export function SecurityDiscoveryWorkspace() {
   const [workspace, setWorkspace] = useState<LoadedWorkspace | null>(null);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [portfolioSelection, setPortfolioSelection] =
+    useState<PersonalPortfolioIdentity | null>(null);
   const [results, setResults] = useState<
     readonly PersonalSecurityMasterSearchResultDto[]
   >([]);
@@ -256,6 +260,7 @@ export function SecurityDiscoveryWorkspace() {
   }
 
   function clearMarketState() {
+    setPortfolioSelection(null);
     marketController.current?.abort();
     marketController.current = null;
     marketEpoch.current += 1;
@@ -348,12 +353,23 @@ export function SecurityDiscoveryWorkspace() {
     }
   }
 
+  function selectPortfolioSecurity(identity: PersonalPortfolioIdentity) {
+    setPortfolioSelection(portfolioIdentity(identity));
+    if (typeof document !== "undefined") {
+      queueMicrotask(() =>
+        document.getElementById("personal-portfolio")?.focus(),
+      );
+    }
+  }
+
   function selectMarketSecurity(
     membership:
       | PersonalSecurityMasterSearchResultDto
       | PersonalSecurityMasterScreenRowDto
-      | PersonalWatchlistMembership,
+      | PersonalWatchlistMembership
+      | PersonalPortfolioIdentity,
   ) {
+    setPortfolioSelection(portfolioIdentity(membership));
     marketController.current?.abort();
     marketController.current = null;
     marketEpoch.current += 1;
@@ -1362,6 +1378,13 @@ export function SecurityDiscoveryWorkspace() {
                           </button>
                           <button
                             className="secondary-action compact-action"
+                            onClick={() => selectPortfolioSecurity(result)}
+                            type="button"
+                          >
+                            Choose holding
+                          </button>
+                          <button
+                            className="secondary-action compact-action"
                             disabled={
                               saved ||
                               !workspace.watchlistAvailable ||
@@ -1418,6 +1441,14 @@ export function SecurityDiscoveryWorkspace() {
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
               snapshot={workspace.snapshot}
+            />
+
+            <PersonalPortfolio
+              catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+              enabled
+              selectedListing={portfolioSelection}
+              onOpenResearch={selectMarketSecurity}
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
             />
 
             <PersonalMarketOverview
@@ -1640,6 +1671,14 @@ export function SecurityDiscoveryWorkspace() {
                             type="button"
                           >
                             View market
+                          </button>
+                          <button
+                            aria-label={`Choose ${membership.symbol} for portfolio`}
+                            disabled={snapshotChanged || reconciling}
+                            onClick={() => selectPortfolioSecurity(membership)}
+                            type="button"
+                          >
+                            Choose holding
                           </button>
                           <button
                             aria-label={`Move ${membership.symbol} up`}
@@ -1930,6 +1969,24 @@ function withMemberships(
   return Object.freeze({
     ...watchlist,
     memberships: Object.freeze(memberships),
+  });
+}
+
+function portfolioIdentity(
+  value: PersonalPortfolioIdentity,
+): PersonalPortfolioIdentity {
+  return Object.freeze({
+    country: value.country,
+    exchangeMic: value.exchangeMic,
+    instrumentType: value.instrumentType,
+    issuerId: value.issuerId,
+    issuerName: value.issuerName,
+    listingId: value.listingId,
+    securityId: value.securityId,
+    securityName: value.securityName,
+    shareClassId: value.shareClassId,
+    shareClassName: value.shareClassName,
+    symbol: value.symbol,
   });
 }
 

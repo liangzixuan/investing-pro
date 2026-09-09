@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { LegacyLocalStateCleanup } from "@/features/research/LegacyLocalStateCleanup";
 
 import "./globals.css";
+import "@/features/research/personal-portfolio.css";
 
 export const metadata: Metadata = {
   title: "Research Cockpit — Synthetic Demo",

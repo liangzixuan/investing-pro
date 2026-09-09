@@ -27,6 +27,7 @@ describe("personal workspace startup static graph", () => {
       "workspace-composition-root.ts",
       "workspace-financial-screen-routes.ts",
       "workspace-market-data-routes.ts",
+      "workspace-portfolio-routes.ts",
       "workspace-screener-routes.ts",
       "workspace-server.ts",
       "workspace-watchlist-filings-routes.ts",

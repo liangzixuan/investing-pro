@@ -1,4 +1,12 @@
 export {
+  PERSONAL_PORTFOLIO_OVERVIEW_ROUNDING,
+  calculatePersonalPortfolioOverview,
+  type PersonalPortfolioOverviewHolding,
+  type PersonalPortfolioOverviewInput,
+  type PersonalPortfolioOverviewResult,
+} from "./personal-portfolio-overview";
+
+export {
   PERSONAL_MARKET_ANALYTICS_FORMULAS,
   PERSONAL_MARKET_ANALYTICS_FORMULA_SET_VERSION,
   PERSONAL_MARKET_ANALYTICS_METRIC_STATUSES,

@@ -1,0 +1,162 @@
+.personal-portfolio {
+  scroll-margin-top: 1.5rem;
+}
+.personal-portfolio .secondary-action {
+  width: auto;
+}
+.personal-portfolio > p,
+.portfolio-add-row p,
+.portfolio-cash p {
+  color: var(--muted, #64748b);
+  line-height: 1.55;
+}
+.portfolio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+}
+.portfolio-status {
+  min-height: 1.5em;
+}
+.portfolio-add-row,
+.portfolio-holding-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.portfolio-add-row,
+.portfolio-reconciliation {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 0.75rem;
+}
+.portfolio-add-row p,
+.portfolio-holding-heading p {
+  margin: 0.35rem 0 0;
+}
+.portfolio-add-row > div,
+.portfolio-holding-heading > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.portfolio-holdings {
+  display: grid;
+  gap: 1rem;
+}
+.portfolio-holding {
+  padding: 1rem;
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 0.75rem;
+  min-width: 0;
+}
+.portfolio-holding h3 {
+  margin: 0;
+}
+.portfolio-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.portfolio-fields label,
+.portfolio-cash label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.portfolio-fields input,
+.portfolio-cash input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 0.4rem;
+  background: var(--surface, white);
+  color: inherit;
+  padding: 0.65rem;
+  font: inherit;
+}
+.portfolio-fields input:focus-visible,
+.portfolio-cash input:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.portfolio-holding-values,
+.portfolio-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.portfolio-holding-values div,
+.portfolio-summary div {
+  min-width: 0;
+}
+.portfolio-holding-values dt,
+.portfolio-summary dt {
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+}
+.portfolio-holding-values dd,
+.portfolio-summary dd {
+  margin: 0.35rem 0 0;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-quote-note {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted, #64748b);
+  overflow-wrap: anywhere;
+}
+.portfolio-cash {
+  display: grid;
+  grid-template-columns: minmax(12rem, 20rem) 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+.portfolio-overview {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border, #dce3ed);
+}
+.portfolio-summary {
+  gap: 1.25rem;
+}
+.portfolio-summary dd {
+  font-size: 1.15rem;
+}
+.portfolio-reconciliation ul {
+  padding-left: 1.25rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .portfolio-add-row,
+  .portfolio-holding-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .portfolio-fields,
+  .portfolio-cash {
+    grid-template-columns: 1fr;
+  }
+  .portfolio-holding-values,
+  .portfolio-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .portfolio-cash {
+    gap: 0.35rem;
+  }
+}
+@media (max-width: 400px) {
+  .portfolio-holding-values,
+  .portfolio-summary {
+    grid-template-columns: 1fr;
+  }
+}

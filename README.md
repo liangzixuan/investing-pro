@@ -120,6 +120,13 @@ remain visible, missing cells and partial peer failures stay explicit, and the
 small owner-selected sample is never presented as a rank, winner, sector
 benchmark, recommendation, or buy/sell signal.
 
+**My Portfolio** stores up to 20 admitted holdings with manually entered shares,
+optional total cost basis and cash in USD, and quantity-confirmation dates in
+the existing encrypted local vault. Explicit price refresh shows valued and
+unavailable coverage, unrealized change against entered basis, and allocation
+when the entire portfolio can be valued. Stale prices and unknown amounts stay
+explicit. See [portfolio workflow and calculation rules](./docs/PERSONAL_PORTFOLIO.md).
+
 The stock screener scans the admitted 3,000-plus active U.S.-listed
 common-stock and ADR catalog without contacting Tiingo. One explicit action can
 combine identity text, exchange MIC, instrument type, and exact CIK filters,

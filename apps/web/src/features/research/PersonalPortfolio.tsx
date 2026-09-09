@@ -1,0 +1,979 @@
+"use client";
+
+import {
+  isPersonalPortfolioMoney,
+  isPersonalPortfolioPayload,
+  isPersonalPortfolioShares,
+  type PersonalMarketDataIdentityDto,
+  type PersonalMarketDataQuoteDto,
+  type PersonalPortfolioHolding,
+  type PersonalPortfolioIdentity,
+  type PersonalPortfolioPayload,
+} from "@research-cockpit/contracts";
+import { calculatePersonalPortfolioOverview } from "@research-cockpit/personal-market-analytics";
+import { useEffect, useRef, useState } from "react";
+
+import {
+  fetchPersonalPortfolio,
+  savePersonalPortfolio,
+} from "@/lib/personal-portfolio-api";
+import {
+  fetchPersonalMarketOverview,
+  PersonalWorkspaceApiError,
+  searchPersonalSecurities,
+} from "@/lib/personal-workspace-api";
+
+export interface PersonalPortfolioProps {
+  readonly catalogSnapshotSha256: `sha256:${string}`;
+  readonly enabled: boolean;
+  readonly selectedListing: PersonalPortfolioIdentity | null;
+  readonly onSessionUnavailable: () => void;
+  readonly onOpenResearch?: (identity: PersonalPortfolioIdentity) => void;
+}
+
+type QuoteObservation = Readonly<{
+  security: PersonalMarketDataIdentityDto;
+  quote: PersonalMarketDataQuoteDto;
+}>;
+type Operation = "load" | "save" | "prices" | "reconcile" | null;
+type Reconciliation = Readonly<{
+  holdings: readonly PersonalPortfolioHolding[];
+  unmatched: readonly string[];
+}>;
+
+export function PersonalPortfolio({
+  catalogSnapshotSha256,
+  enabled,
+  selectedListing,
+  onSessionUnavailable,
+  onOpenResearch,
+}: PersonalPortfolioProps) {
+  const [draft, setDraft] = useState<PersonalPortfolioPayload | null>(null);
+  const [saved, setSaved] = useState<PersonalPortfolioPayload | null>(null);
+  const [version, setVersion] = useState<number | null>(null);
+  const [operation, setOperation] = useState<Operation>(null);
+  const [message, setMessage] = useState(
+    "Load My Portfolio to view or create your holdings snapshot.",
+  );
+  const [quotes, setQuotes] = useState<readonly QuoteObservation[]>([]);
+  const [priceErrors, setPriceErrors] = useState<
+    readonly Readonly<{ listingId: string; message: string }>[]
+  >([]);
+  const [evaluatedAt, setEvaluatedAt] = useState(new Date().toISOString());
+  const [preview, setPreview] = useState<Reconciliation | null>(null);
+  const [conflicted, setConflicted] = useState(false);
+  const epoch = useRef(0);
+  const controller = useRef<AbortController | null>(null);
+  const retry = useRef<Readonly<{
+    body: string;
+    version: number | null;
+    key: string;
+  }> | null>(null);
+  const callback = useRef(onSessionUnavailable);
+  callback.current = onSessionUnavailable;
+  const context = JSON.stringify([enabled, catalogSnapshotSha256]);
+  const liveContext = useRef(context);
+  liveContext.current = context;
+  const previousCatalog = useRef(catalogSnapshotSha256);
+
+  function invalidate() {
+    epoch.current += 1;
+    controller.current?.abort();
+    controller.current = null;
+    setOperation(null);
+    setQuotes([]);
+    setPriceErrors([]);
+    setPreview(null);
+  }
+
+  function clearPrivateState() {
+    invalidate();
+    setDraft(null);
+    setSaved(null);
+    setVersion(null);
+    setConflicted(false);
+    retry.current = null;
+  }
+
+  useEffect(() => {
+    clearPrivateState();
+    setMessage(
+      enabled
+        ? "Load My Portfolio to view or create your holdings snapshot."
+        : "Validate the owner session to load My Portfolio.",
+    );
+    return () => {
+      epoch.current += 1;
+      controller.current?.abort();
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    if (previousCatalog.current !== catalogSnapshotSha256) {
+      previousCatalog.current = catalogSnapshotSha256;
+      invalidate();
+      setMessage(
+        "The catalog changed. Your holdings are preserved; preview identity reconciliation before saving or pricing.",
+      );
+    }
+  }, [catalogSnapshotSha256]);
+
+  useEffect(() => {
+    const timer = setInterval(
+      () => setEvaluatedAt(new Date().toISOString()),
+      60_000,
+    );
+    return () => clearInterval(timer);
+  }, []);
+
+  function start(next: Exclude<Operation, null>) {
+    invalidate();
+    const operationEpoch = epoch.current;
+    const operationContext = context;
+    const nextController = new AbortController();
+    controller.current = nextController;
+    setOperation(next);
+    return {
+      signal: nextController.signal,
+      current: () =>
+        epoch.current === operationEpoch &&
+        liveContext.current === operationContext &&
+        !nextController.signal.aborted,
+      finish: () => {
+        if (
+          epoch.current === operationEpoch &&
+          liveContext.current === operationContext
+        ) {
+          controller.current = null;
+          setOperation(null);
+        }
+      },
+    };
+  }
+
+  function failure(error: unknown, fallback: string) {
+    const code =
+      error instanceof PersonalWorkspaceApiError ? error.code : "unavailable";
+    if (code === "session_unavailable") {
+      clearPrivateState();
+      setMessage(
+        "The owner session expired. Revalidate it to load My Portfolio.",
+      );
+      callback.current();
+    } else if (code === "conflict") {
+      setConflicted(true);
+      setMessage(
+        "The saved portfolio or catalog changed. Your edits are preserved. Discard edits and reload the saved portfolio before saving again.",
+      );
+    } else setMessage(fallback);
+  }
+
+  async function load() {
+    if (!enabled) return;
+    const request = start("load");
+    setMessage("Loading encrypted holdings…");
+    try {
+      const record = await fetchPersonalPortfolio(request.signal);
+      if (!request.current()) return;
+      const payload = record?.payload ?? emptyPortfolio(catalogSnapshotSha256);
+      setDraft(payload);
+      setSaved(payload);
+      setVersion(record?.version ?? null);
+      setConflicted(false);
+      retry.current = null;
+      setMessage(
+        record === null
+          ? "No saved portfolio yet. Select a listing in company search, add its shares, then save."
+          : "Saved holdings loaded. Prices load only when you refresh them.",
+      );
+    } catch (error) {
+      if (request.current())
+        failure(
+          error,
+          "The portfolio could not be loaded. Your current edits are preserved; try loading again.",
+        );
+    } finally {
+      request.finish();
+    }
+  }
+
+  function edit(next: PersonalPortfolioPayload) {
+    invalidate();
+    setDraft(next);
+    retry.current = null;
+    setMessage(
+      "Unsaved changes. Save this snapshot to encrypted local storage.",
+    );
+  }
+
+  function updateHolding(
+    listingId: string,
+    changes: Partial<
+      Pick<
+        PersonalPortfolioHolding,
+        "shares" | "totalCostBasisUsd" | "confirmedOn"
+      >
+    >,
+  ) {
+    if (draft === null) return;
+    edit({
+      ...draft,
+      holdings: draft.holdings.map((holding) =>
+        holding.identity.listingId === listingId
+          ? { ...holding, ...changes }
+          : holding,
+      ),
+    });
+  }
+
+  async function save() {
+    if (
+      !enabled ||
+      draft === null ||
+      draft.snapshotSha256 !== catalogSnapshotSha256 ||
+      validationMessage(draft) !== null ||
+      conflicted
+    )
+      return;
+    const payload = draft;
+    const body = JSON.stringify(payload);
+    const pending = retry.current;
+    const key =
+      pending?.body === body && pending.version === version
+        ? pending.key
+        : crypto.randomUUID();
+    retry.current = { body, version, key };
+    const request = start("save");
+    setMessage("Saving encrypted holdings…");
+    try {
+      const receipt = await savePersonalPortfolio(
+        payload,
+        version,
+        key,
+        request.signal,
+      );
+      if (!request.current()) return;
+      setVersion(receipt.version);
+      setSaved(payload);
+      setConflicted(false);
+      retry.current = null;
+      setMessage("My Portfolio saved to encrypted local storage.");
+    } catch (error) {
+      if (request.current())
+        failure(
+          error,
+          "The save could not be confirmed. Retry unchanged edits to safely confirm the same save, or reload the saved portfolio.",
+        );
+    } finally {
+      request.finish();
+    }
+  }
+
+  async function refreshPrices() {
+    if (
+      !enabled ||
+      draft === null ||
+      draft.snapshotSha256 !== catalogSnapshotSha256 ||
+      validationMessage(draft) !== null ||
+      draft.holdings.length === 0
+    )
+      return;
+    const request = start("prices");
+    const observed: QuoteObservation[] = [];
+    const errors: Array<{ listingId: string; message: string }> = [];
+    for (const [index, holding] of draft.holdings.entries()) {
+      if (!request.current()) return;
+      setMessage(
+        `Checking ${holding.identity.symbol} (${String(index + 1)} of ${String(draft.holdings.length)})…`,
+      );
+      try {
+        const result = await fetchPersonalMarketOverview(
+          {
+            listingId: holding.identity.listingId,
+            symbol: holding.identity.symbol,
+            range: "1m",
+          },
+          request.signal,
+        );
+        if (!request.current()) return;
+        observed.push({ security: result.security, quote: result.quote });
+      } catch (error) {
+        if (!request.current()) return;
+        const code =
+          error instanceof PersonalWorkspaceApiError
+            ? error.code
+            : "unavailable";
+        if (code === "session_unavailable") {
+          failure(error, "");
+          return;
+        }
+        if (code === "rate_limited") {
+          setPriceErrors([
+            ...errors,
+            {
+              listingId: holding.identity.listingId,
+              message: "Provider rate limited",
+            },
+          ]);
+          setMessage(
+            "Tiingo rate limited the price check. The remaining holdings were not requested; try refreshing later.",
+          );
+          request.finish();
+          return;
+        }
+        if (
+          code === "not_configured" ||
+          code === "credentials_invalid" ||
+          code === "not_entitled"
+        ) {
+          setMessage(
+            code === "not_configured"
+              ? "Tiingo is not configured. Add its token in the existing local startup settings to refresh portfolio prices."
+              : "Tiingo access was not accepted. Check the configured token and market-data entitlement before refreshing prices.",
+          );
+          request.finish();
+          return;
+        }
+        errors.push({
+          listingId: holding.identity.listingId,
+          message: "Price request unavailable",
+        });
+      }
+      setQuotes([...observed]);
+      setPriceErrors([...errors]);
+      setEvaluatedAt(new Date().toISOString());
+    }
+    if (request.current())
+      setMessage(
+        "Price check complete. Missing or stale prices are excluded from complete totals; refresh to request new observations.",
+      );
+    request.finish();
+  }
+
+  async function reconcile() {
+    if (!enabled || draft === null) return;
+    const request = start("reconcile");
+    setMessage(
+      "Checking each saved listing identity against the current catalog…",
+    );
+    const holdings: PersonalPortfolioHolding[] = [];
+    const unmatched: string[] = [];
+    try {
+      for (const holding of draft.holdings) {
+        let matched: PersonalPortfolioHolding | null = null;
+        const queries = [
+          ...new Set([
+            holding.identity.symbol,
+            holding.identity.issuerName,
+            holding.identity.securityName,
+            holding.identity.shareClassName,
+          ]),
+        ].filter(
+          (query) => query.trim().length > 0 && [...query].length <= 128,
+        );
+        for (const query of queries) {
+          const result = await searchPersonalSecurities(
+            query,
+            request.signal,
+            25,
+          );
+          if (!request.current()) return;
+          if (result.snapshot.snapshotSha256 !== catalogSnapshotSha256)
+            throw new PersonalWorkspaceApiError("conflict");
+          const identity = result.results.find(
+            (candidate) =>
+              candidate.listingId === holding.identity.listingId &&
+              candidate.issuerId === holding.identity.issuerId &&
+              candidate.securityId === holding.identity.securityId &&
+              candidate.shareClassId === holding.identity.shareClassId,
+          );
+          if (identity) {
+            matched = {
+              identity: identityFields(identity),
+              shares: holding.shares,
+              totalCostBasisUsd: holding.totalCostBasisUsd,
+              confirmedOn: holding.confirmedOn,
+            };
+            break;
+          }
+        }
+        if (matched === null) unmatched.push(holding.identity.listingId);
+        holdings.push(matched ?? holding);
+      }
+      if (!request.current()) return;
+      setPreview({ holdings, unmatched });
+      setMessage(
+        unmatched.length === 0
+          ? "All listing identities matched. Review the preview, then apply it and save. Shares, cost basis, and confirmation dates are preserved."
+          : `${String(unmatched.length)} listing identities could not be matched. Every holding is preserved. Remove an unmatched holding explicitly only if appropriate, then preview again.`,
+      );
+    } catch (error) {
+      if (request.current())
+        failure(
+          error,
+          "Catalog identities could not be checked. Your holdings are preserved; try again.",
+        );
+    } finally {
+      request.finish();
+    }
+  }
+
+  const visibleDraft = enabled ? draft : null;
+  const dirty =
+    visibleDraft !== null &&
+    JSON.stringify(visibleDraft) !== JSON.stringify(saved);
+  const stale =
+    visibleDraft !== null &&
+    visibleDraft.snapshotSha256 !== catalogSnapshotSha256;
+  const invalid =
+    visibleDraft === null ? null : validationMessage(visibleDraft);
+  const locked =
+    !enabled ||
+    operation === "load" ||
+    operation === "save" ||
+    operation === "reconcile";
+  const overview =
+    visibleDraft !== null && !stale && invalid === null
+      ? calculatePersonalPortfolioOverview({
+          portfolio: visibleDraft,
+          quotes,
+          evaluatedAt: new Date().toISOString(),
+        })
+      : null;
+  const canAdd =
+    visibleDraft !== null &&
+    selectedListing !== null &&
+    !locked &&
+    !stale &&
+    visibleDraft.holdings.length < 20 &&
+    !visibleDraft.holdings.some(
+      (holding) => holding.identity.listingId === selectedListing.listingId,
+    );
+
+  return (
+    <section
+      className="watchlist-panel personal-portfolio"
+      id="personal-portfolio"
+      tabIndex={-1}
+      aria-labelledby="personal-portfolio-title"
+      aria-busy={operation !== null}
+    >
+      <div className="discovery-section-heading">
+        <div>
+          <p className="eyebrow">Holdings snapshot</p>
+          <h2 id="personal-portfolio-title">My Portfolio</h2>
+        </div>
+        <span>
+          {version === null
+            ? "USD · Up to 20 holdings"
+            : `USD · Saved version ${String(version)}`}
+        </span>
+      </div>
+      <p>
+        Track long-only stock and ADR holdings with your reported shares and
+        total cost basis. Values use reference quotes; gain or loss is
+        unrealized and excludes dividends, fees, taxes, and cash flows.
+      </p>
+      <div className="portfolio-actions">
+        <button
+          type="button"
+          className="secondary-action compact-action"
+          disabled={!enabled || operation !== null || dirty}
+          onClick={() => {
+            void load();
+          }}
+        >
+          {visibleDraft === null
+            ? "Load My Portfolio"
+            : "Reload saved portfolio"}
+        </button>
+        {dirty && (
+          <button
+            type="button"
+            className="text-button"
+            disabled={locked}
+            onClick={() => {
+              void load();
+            }}
+          >
+            Discard edits and reload
+          </button>
+        )}
+        {operation !== null && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              const wasSaving = operation === "save";
+              invalidate();
+              setMessage(
+                wasSaving
+                  ? "Save canceled locally; the server may have committed it. Retry unchanged edits to confirm, or reload the saved portfolio."
+                  : "Operation canceled. Holdings are preserved; transient prices were cleared.",
+              );
+            }}
+          >
+            Cancel portfolio operation
+          </button>
+        )}
+      </div>
+      <p className="portfolio-status" role="status" aria-live="polite">
+        {message}
+      </p>
+      {visibleDraft !== null && (
+        <>
+          {stale && (
+            <div className="discovery-warning">
+              <p>
+                This snapshot uses an older catalog. Reconcile listing
+                identities before saving or pricing.
+              </p>
+              <button
+                type="button"
+                className="secondary-action compact-action"
+                disabled={locked}
+                onClick={() => {
+                  void reconcile();
+                }}
+              >
+                Preview portfolio reconciliation
+              </button>
+            </div>
+          )}
+          {preview !== null && (
+            <div className="portfolio-reconciliation">
+              <h3>Identity reconciliation preview</h3>
+              <ul>
+                {preview.holdings.map((holding) => (
+                  <li key={holding.identity.listingId}>
+                    {holding.identity.symbol} · {holding.identity.issuerName} —{" "}
+                    {preview.unmatched.includes(holding.identity.listingId)
+                      ? "Unmatched; preserved"
+                      : "Exact listing, issuer, security, and share class matched"}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="secondary-action compact-action"
+                disabled={preview.unmatched.length !== 0 || locked}
+                onClick={() =>
+                  edit({
+                    ...visibleDraft,
+                    snapshotSha256: catalogSnapshotSha256,
+                    holdings: preview.holdings,
+                  })
+                }
+              >
+                Apply matched identities
+              </button>
+            </div>
+          )}
+          {invalid !== null && (
+            <p className="discovery-warning" role="alert">
+              {invalid}
+            </p>
+          )}
+          <div className="portfolio-actions">
+            <button
+              type="button"
+              className="secondary-action compact-action"
+              disabled={
+                locked ||
+                stale ||
+                invalid !== null ||
+                conflicted ||
+                (!dirty && version !== null)
+              }
+              onClick={() => {
+                void save();
+              }}
+            >
+              Save My Portfolio
+            </button>
+            <span>
+              {dirty
+                ? "Unsaved changes"
+                : version === null
+                  ? "Not saved yet"
+                  : "Saved holdings"}
+            </span>
+            <button
+              type="button"
+              className="secondary-action compact-action"
+              disabled={
+                locked ||
+                operation === "prices" ||
+                stale ||
+                invalid !== null ||
+                visibleDraft.holdings.length === 0
+              }
+              onClick={() => {
+                void refreshPrices();
+              }}
+            >
+              Refresh portfolio prices
+            </button>
+          </div>
+          <div className="portfolio-overview">
+            <h3>Portfolio overview{dirty ? " · Unsaved draft" : ""}</h3>
+            <p>
+              {overview === null
+                ? "Complete valid holdings and reconcile the catalog to calculate values."
+                : `${String(overview.coverage.pricedHoldings)} of ${String(overview.coverage.totalHoldings)} holdings priced · ${String(overview.coverage.staleHoldings)} stale · ${String(overview.coverage.unavailableHoldings)} unavailable`}
+            </p>
+            {quotes.length > 0 && (
+              <p className="portfolio-quote-note">
+                Quote age checked {displayTime(evaluatedAt)}. This check does
+                not fetch new prices.
+              </p>
+            )}
+            <dl className="portfolio-summary">
+              <div>
+                <dt>Total value including cash</dt>
+                <dd>{money(overview?.totalValueUsd)}</dd>
+              </div>
+              <div>
+                <dt>Priced holdings subtotal</dt>
+                <dd>{money(overview?.pricedHoldingsValueUsd)}</dd>
+              </div>
+              <div>
+                <dt>Known cost basis subtotal</dt>
+                <dd>{money(overview?.knownCostBasisSubtotalUsd)}</dd>
+              </div>
+              <div>
+                <dt>Cost basis of priced holdings</dt>
+                <dd>{money(overview?.pricedHoldingsCostBasisUsd)}</dd>
+              </div>
+              <div>
+                <dt>Unrealized gain / loss of priced holdings</dt>
+                <dd>
+                  {money(overview?.pricedHoldingsUnrealizedGainUsd)}
+                  {overview?.pricedHoldingsUnrealizedGainPercent !== null &&
+                  overview?.pricedHoldingsUnrealizedGainPercent !== undefined
+                    ? ` (${overview.pricedHoldingsUnrealizedGainPercent}%)`
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Unrealized gain / loss</dt>
+                <dd>
+                  {money(overview?.unrealizedGainUsd)}
+                  {overview?.unrealizedGainPercent !== null &&
+                  overview?.unrealizedGainPercent !== undefined
+                    ? ` (${overview.unrealizedGainPercent}%)`
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Cash</dt>
+                <dd>{money(overview?.cashUsd)}</dd>
+              </div>
+              <div>
+                <dt>Cash allocation</dt>
+                <dd>
+                  {overview?.cashAllocationPercent === null ||
+                  overview?.cashAllocationPercent === undefined
+                    ? "Unavailable"
+                    : `${overview.cashAllocationPercent}%`}
+                </dd>
+              </div>
+            </dl>
+            <p className="portfolio-quote-note">
+              Complete total value and allocation require current prices for
+              every holding and a known cash balance. Total unrealized gain
+              requires every cost basis. Quotes older than 36 hours are
+              excluded. Quotes remain in active session memory; only holdings
+              and cash are saved.
+            </p>
+          </div>
+          <div className="portfolio-add-row">
+            <div>
+              <strong>
+                {selectedListing === null
+                  ? "Choose a listing in company search"
+                  : `${selectedListing.symbol} · ${selectedListing.issuerName}`}
+              </strong>
+              <p>
+                {String(visibleDraft.holdings.length)} of 20 holdings · Select
+                “Choose holding” in company search or My Watchlist, or open a
+                company from a screener.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="secondary-action compact-action"
+              disabled={!canAdd}
+              onClick={() => {
+                if (canAdd && selectedListing !== null)
+                  edit({
+                    ...visibleDraft,
+                    holdings: [
+                      ...visibleDraft.holdings,
+                      {
+                        identity: identityFields(selectedListing),
+                        shares: "",
+                        totalCostBasisUsd: null,
+                        confirmedOn: utcDate(),
+                      },
+                    ],
+                  });
+              }}
+            >
+              Add selected holding
+            </button>
+          </div>
+          {visibleDraft.holdings.length === 0 && (
+            <p className="discovery-empty-state">
+              No holdings yet. Add a selected listing, or enter a cash-only
+              snapshot.
+            </p>
+          )}
+          <div className="portfolio-holdings">
+            {visibleDraft.holdings.map((holding) => {
+              const value = overview?.holdings.find(
+                (row) => row.listingId === holding.identity.listingId,
+              );
+              const priceError = priceErrors.find(
+                (row) => row.listingId === holding.identity.listingId,
+              )?.message;
+              return (
+                <article
+                  className="portfolio-holding"
+                  key={holding.identity.listingId}
+                >
+                  <div className="portfolio-holding-heading">
+                    <div>
+                      <h3>{holding.identity.symbol}</h3>
+                      <p>
+                        {holding.identity.issuerName} ·{" "}
+                        {holding.identity.exchangeMic}
+                      </p>
+                    </div>
+                    <div className="portfolio-actions">
+                      {onOpenResearch && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={locked || stale}
+                          onClick={() => onOpenResearch(holding.identity)}
+                        >
+                          Research {holding.identity.symbol}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={locked}
+                        onClick={() =>
+                          edit({
+                            ...visibleDraft,
+                            holdings: visibleDraft.holdings.filter(
+                              (row) =>
+                                row.identity.listingId !==
+                                holding.identity.listingId,
+                            ),
+                          })
+                        }
+                      >
+                        Remove {holding.identity.symbol}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="portfolio-fields">
+                    <label>
+                      Shares
+                      <input
+                        aria-label={`Shares for ${holding.identity.symbol}`}
+                        inputMode="decimal"
+                        maxLength={24}
+                        value={holding.shares}
+                        disabled={locked}
+                        onChange={(event) =>
+                          updateHolding(holding.identity.listingId, {
+                            shares: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Total cost basis (USD)
+                      <input
+                        aria-label={`Total cost basis for ${holding.identity.symbol}`}
+                        inputMode="decimal"
+                        maxLength={24}
+                        placeholder="Unknown"
+                        value={holding.totalCostBasisUsd ?? ""}
+                        disabled={locked}
+                        onChange={(event) =>
+                          updateHolding(holding.identity.listingId, {
+                            totalCostBasisUsd:
+                              event.target.value === ""
+                                ? null
+                                : event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Shares confirmed on
+                      <input
+                        aria-label={`Shares confirmed on for ${holding.identity.symbol}`}
+                        type="date"
+                        max={utcDate()}
+                        value={holding.confirmedOn}
+                        disabled={locked}
+                        onChange={(event) =>
+                          updateHolding(holding.identity.listingId, {
+                            confirmedOn: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <dl className="portfolio-holding-values">
+                    <div>
+                      <dt>Market value</dt>
+                      <dd>{money(value?.marketValueUsd)}</dd>
+                    </div>
+                    <div>
+                      <dt>Unrealized gain / loss</dt>
+                      <dd>
+                        {money(value?.unrealizedGainUsd)}
+                        {value?.unrealizedGainPercent !== null &&
+                        value?.unrealizedGainPercent !== undefined
+                          ? ` (${value.unrealizedGainPercent}%)`
+                          : ""}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Portfolio allocation</dt>
+                      <dd>
+                        {value?.allocationPercent === null ||
+                        value?.allocationPercent === undefined
+                          ? "Unavailable"
+                          : `${value.allocationPercent}%`}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="portfolio-quote-note">
+                    {stale
+                      ? "Catalog reconciliation required"
+                      : (priceError ??
+                        (value?.priceStatus === "priced"
+                          ? "Current reference quote"
+                          : value?.priceStatus === "stale"
+                            ? "Stale quote; excluded from valuation"
+                            : "Price unavailable"))}
+                    {value?.quote && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        {value.quote.kind === "end_of_day_close"
+                          ? "End-of-day close"
+                          : "Derived real-time reference"}{" "}
+                        · Reference price {value.quote.price} USD · Source{" "}
+                        {displayTime(value.quote.sourceTime)} · Received{" "}
+                        {displayTime(value.quote.ingestedAt)}
+                      </>
+                    )}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+          <div className="portfolio-cash">
+            <label>
+              Cash balance (USD)
+              <input
+                aria-label="Portfolio cash balance"
+                inputMode="decimal"
+                maxLength={24}
+                placeholder="Unknown"
+                value={visibleDraft.cashUsd ?? ""}
+                disabled={locked}
+                onChange={(event) =>
+                  edit({
+                    ...visibleDraft,
+                    cashUsd:
+                      event.target.value === "" ? null : event.target.value,
+                  })
+                }
+              />
+            </label>
+            <p>
+              Blank means unknown. Enter 0 when there is no cash. Blank cost
+              basis also means unknown.
+            </p>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function emptyPortfolio(
+  snapshotSha256: `sha256:${string}`,
+): PersonalPortfolioPayload {
+  return {
+    schemaVersion: 1,
+    name: "My Portfolio",
+    currency: "USD",
+    snapshotSha256,
+    cashUsd: null,
+    holdings: [],
+  };
+}
+
+function identityFields(
+  value: PersonalPortfolioIdentity,
+): PersonalPortfolioIdentity {
+  return {
+    country: value.country,
+    exchangeMic: value.exchangeMic,
+    instrumentType: value.instrumentType,
+    issuerId: value.issuerId,
+    issuerName: value.issuerName,
+    listingId: value.listingId,
+    securityId: value.securityId,
+    securityName: value.securityName,
+    shareClassId: value.shareClassId,
+    shareClassName: value.shareClassName,
+    symbol: value.symbol,
+  };
+}
+
+function validationMessage(payload: PersonalPortfolioPayload): string | null {
+  if (payload.cashUsd !== null && !isPersonalPortfolioMoney(payload.cashUsd))
+    return "Cash must be 0 to 1,000,000,000,000 USD with at most 2 decimal places, or blank for unknown.";
+  for (const holding of payload.holdings) {
+    if (!isPersonalPortfolioShares(holding.shares))
+      return `${holding.identity.symbol}: shares must be greater than 0 and at most 1,000,000,000, with at most 6 decimal places.`;
+    if (
+      holding.totalCostBasisUsd !== null &&
+      !isPersonalPortfolioMoney(holding.totalCostBasisUsd)
+    )
+      return `${holding.identity.symbol}: total cost basis must be 0 to 1,000,000,000,000 USD with at most 2 decimal places, or blank for unknown.`;
+    const date = new Date(`${holding.confirmedOn}T00:00:00.000Z`);
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/u.test(holding.confirmedOn) ||
+      !Number.isFinite(date.getTime()) ||
+      date.toISOString().slice(0, 10) !== holding.confirmedOn ||
+      holding.confirmedOn > utcDate()
+    )
+      return `${holding.identity.symbol}: enter a real confirmation date no later than today.`;
+  }
+  return isPersonalPortfolioPayload(payload, utcDate())
+    ? null
+    : "This holdings snapshot is invalid. Reload or correct the portfolio before saving.";
+}
+
+function utcDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+function money(value: string | null | undefined) {
+  return value === null || value === undefined ? "Unavailable" : `${value} USD`;
+}
+function displayTime(value: string) {
+  return value.replace("T", " ").replace("Z", " UTC");
+}

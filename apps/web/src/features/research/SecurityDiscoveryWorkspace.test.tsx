@@ -31,6 +31,7 @@ import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinanc
 import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
 import type { PersonalFinancialScreenerProps } from "./PersonalFinancialScreener";
 import type { PersonalWatchlistFilingsProps } from "./PersonalWatchlistFilings";
+import type { PersonalPortfolioProps } from "./PersonalPortfolio";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
 
 const hookHarness = vi.hoisted(() => {
@@ -144,6 +145,7 @@ const componentMocks = vi.hoisted(() => ({
   StockScreener: () => null,
   FinancialScreener: () => null,
   WatchlistFilings: () => null,
+  Portfolio: () => null,
   ValuationHistory: () => null,
 }));
 
@@ -218,6 +220,9 @@ vi.mock("./PersonalFinancialScreener", () => ({
 }));
 vi.mock("./PersonalWatchlistFilings", () => ({
   PersonalWatchlistFilings: componentMocks.WatchlistFilings,
+}));
+vi.mock("./PersonalPortfolio", () => ({
+  PersonalPortfolio: componentMocks.Portfolio,
 }));
 vi.mock("./PersonalValuationHistory", () => ({
   PersonalValuationHistory: componentMocks.ValuationHistory,
@@ -318,6 +323,32 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(
       requireStockScreener(rendered).props.savedListingIds.has("lst-screen"),
     ).toBe(true);
+  });
+
+  it("carries complete admitted identities to the portfolio and clears private selection on session loss", async () => {
+    await activateWorkspace();
+    const getPanel = () =>
+      findElement<PersonalPortfolioProps>(
+        renderWorkspace(),
+        componentMocks.Portfolio,
+      );
+    expect(getPanel()?.props.selectedListing).toBeNull();
+    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    const panel = getPanel();
+    expect(panel?.props.enabled).toBe(true);
+    expect(panel?.props.catalogSnapshotSha256).toBe(snapshot().snapshotSha256);
+    expect(panel?.props.selectedListing).toMatchObject({
+      listingId: "lst-screen",
+      issuerId: "iss-screen",
+      symbol: "SCRN",
+      securityId: screenRow().securityId,
+      shareClassId: screenRow().shareClassId,
+    });
+    expect(Object.keys(panel?.props.selectedListing ?? {})).toHaveLength(11);
+    panel?.props.onSessionUnavailable();
+    expect(getPanel()).toBeUndefined();
+    await activateWorkspace();
+    expect(getPanel()?.props.selectedListing).toBeNull();
   });
 
   it("binds filing checks to the saved watchlist and clears them after session loss", async () => {

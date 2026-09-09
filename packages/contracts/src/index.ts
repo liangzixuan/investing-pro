@@ -1,4 +1,15 @@
 export type DataMode = "synthetic";
+export {
+  PERSONAL_PORTFOLIO_LIMITS,
+  isPersonalPortfolioIdentity,
+  isPersonalPortfolioMoney,
+  isPersonalPortfolioPayload,
+  isPersonalPortfolioShares,
+  type PersonalPortfolioHolding,
+  type PersonalPortfolioIdentity,
+  type PersonalPortfolioPayload,
+} from "./personal-portfolio";
+
 export type QualityState = "verified_fixture" | "restated_fixture";
 export type MetricUnit =
   "USD_MILLIONS" | "USD_PER_SHARE" | "MILLIONS_SHARES" | "PERCENT" | "RATIO";
