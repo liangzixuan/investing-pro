@@ -219,7 +219,9 @@ function quarterlyFinancials(): PersonalQuarterlyFinancialsDto {
 
 function selection() {
   return {
+    country: "US" as const,
     exchangeMic: "XNAS",
+    issuerId: "issuer-zero",
     issuerName: "Zero Alpha, Inc.",
     listingId: "lst-zero",
     securityName: "Zero Alpha Common Stock",

@@ -14,10 +14,10 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1 through 3j-a1 add a provider-backed market view, transparent
+Cycles 3g-a1 through 3j-a2 add a provider-backed market view, transparent
 trend/risk analytics, multi-period financials, two inspectable valuation
-workflows, and a financial-quality diagnostic to the daily-use discovery
-workflow. In the explicit
+workflows, a financial-quality diagnostic, and a manual peer comparison to the
+daily-use discovery workflow. In the explicit
 `personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
 `My Watchlist`, and open a selected company without putting its symbol in the
@@ -99,9 +99,23 @@ while the summary reports counts rather than manufacturing a grade. This is not
 a sector-adjusted health rating, Piotroski/Altman/Beneish score, peer ranking,
 recommendation, or buy/sell signal.
 
+After at least one selected-company source—annual financials or same-range
+valuation history—is loaded, the owner can add up to three distinct-issuer peers from the current
+search results or reconciled My Watchlist. Adding a peer makes no request; each
+peer's explicit load action requests both existing annual and valuation routes,
+so a missing domain can remain visibly unavailable without blocking the other.
+The browser compares 15 fixed measures across scale, growth, profitability,
+balance-sheet efficiency, and market valuation. Annual cells use the selected
+company&apos;s latest fiscal year and require that exact year for every peer;
+valuation cells use the selected company&apos;s latest exact valuation date and
+never substitute a nearby date. Exact statement dates and response timestamps
+remain visible, missing cells and partial peer failures stay explicit, and the
+small owner-selected sample is never presented as a rank, winner, sector
+benchmark, recommendation, or buy/sell signal.
+
 Returned Tiingo data and the displayed analytics are held only in the active
-owner session's memory and are not written to the vault, filesystem, browser
-storage, logs, exports, or Git.
+owner session's memory, including peer inputs and comparison results, and are
+not written to the vault, filesystem, browser storage, logs, exports, or Git.
 The UI distinguishes an unconfigured token, unsupported symbol, rejected
 credential, fundamentals entitlement, rate limit, upstream outage, stale quote,
 loading, and retry state.
@@ -118,7 +132,7 @@ declared 100-symbol validation gate, independent corporate-action reconciliation
 benchmark relative strength, broader indicators, verified TTM financials,
 point-in-time statements, the full 30-core-metric and 500-security validation
 gate, audited direct-FCFF inputs, forecast feeds, broader valuation models,
-fair-value history, manual and automatic peer comparison, sector-relative
+fair-value history, automatic peer selection, sector-relative
 percentiles, named diagnostic models, screening, events/news, portfolio
 analytics, alerts, and exports remain later product work.
 

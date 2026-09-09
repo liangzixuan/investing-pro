@@ -28,7 +28,8 @@ Cycles 3g-a1 and 3g-b1 deliver the first market-data and transparent-analytics
 slices; Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly
 statements, and valuation history; Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
-selected-company quality and balance-sheet diagnostic. Later Cycle 3e-b work,
+selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
+bounded manual peer comparison. Later Cycle 3e-b work,
 full 3g/3h/3i/3j breadth, Cycle 3f, and Cycles 3k through 3q remain planned.**
 This does not alter
 the exact historical Cycle 2z personal result or
@@ -178,7 +179,7 @@ Later subcycles may widen a universe only with the same checks.
 | Transparent technical indicators        | Five metrics plus three SMA trend classifications on loaded history | Cycle 3g-b      |
 | Statements and metric depth             | Annual/quarterly 30-field views plus bounded core analytics         | Cycle 3h        |
 | Valuation models and history            | Provider history, historical bands, and forward/reverse DCF         | Cycle 3i        |
-| Peers, health, quality, and risk scores | Selected-company 12-check diagnostic; no peer comparison            | Cycle 3j        |
+| Peers, health, quality, and risk scores | 12-check diagnostic plus bounded manual peer comparison             | Cycle 3j        |
 | Screener and saved views                | No universe query                                                   | Cycle 3k        |
 | Earnings, dividends, news, calendars    | No daily event workflow                                             | Cycle 3l        |
 | Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow                 | Cycle 3l-b      |
@@ -958,10 +959,32 @@ coordinates, units, and source references. Missing or unusable operands make
 only dependent checks unavailable; malformed envelopes or chronology quarantine
 the whole result. Its summary is coverage accounting, not a score or rating.
 
-The slice is provider-most-recent and browser-memory-only. It is not
+The Cycle 3j-a1 slice is provider-most-recent and browser-memory-only. It is not
 point-in-time, sector-adjusted, look-ahead-safe, or universally applicable, and
 it does not claim peer comparison, percentiles, Piotroski, Altman, Beneish,
 dividend safety, a recommendation, or full Cycle 3j.
+
+Cycle 3j-a2 adds one selected company plus one to three peers chosen by the
+owner from current search results or a reconciled current-snapshot My
+Watchlist. Listing and issuer identifiers must both be distinct. Adding or
+removing a peer is memory-only and makes no request. After at least one usable
+selected-company source—annual or same-range valuation—is loaded, one explicit
+per-peer action requests both existing annual-financial and valuation-history
+routes, with at most two peer-load-originated provider reads in flight. Each peer can fail or remain partially
+available without hiding the other companies.
+
+The fixed 15-metric comparison covers revenue, market capitalization,
+enterprise value, revenue growth, gross/operating/net/free-cash-flow margins,
+net debt, debt to assets, current ratio, revenue to ending assets, P/E, P/B,
+and trailing PEG 1Y. The selected company's latest fiscal year and latest
+valuation point are the anchors; a peer must contain those exact coordinates,
+and neither an older fiscal year nor a nearby valuation date is substituted.
+Every company's statement/release date and response timestamp remains visible.
+USD/provider-most-recent semantics are required, while missing inputs affect
+only their cells. The result is a small owner-selected sample, not automatic
+peer relevance, a sector benchmark or percentile, a point-in-time comparison,
+a rank, winner, recommendation, financial-sector applicability claim, or full
+Cycle 3j.
 
 ### Cycle 3k — typed screener and saved screens
 

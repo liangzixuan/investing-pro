@@ -13,7 +13,9 @@ import {
 } from "./PriceHistoryChart";
 
 export interface PersonalMarketSelection {
+  readonly country: "US";
   readonly exchangeMic: string;
+  readonly issuerId: string;
   readonly issuerName: string;
   readonly listingId: string;
   readonly securityName: string;

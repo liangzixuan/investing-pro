@@ -24,6 +24,7 @@ import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { PersonalFcffDcfValuationProps } from "./PersonalFcffDcfValuation";
 import type { PersonalFinancialQualityScorecardProps } from "./PersonalFinancialQualityScorecard";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
+import type { PersonalManualPeerComparisonProps } from "./PersonalManualPeerComparison";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
@@ -132,6 +133,7 @@ const componentMocks = vi.hoisted(() => ({
   FcffDcfValuation: () => null,
   FinancialQualityScorecard: () => null,
   HistoricalMultipleValuation: () => null,
+  ManualPeerComparison: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
   QuarterlyFinancials: () => null,
@@ -193,6 +195,10 @@ vi.mock("./PersonalHistoricalMultipleValuation", () => ({
 }));
 vi.mock("./PersonalMarketOverview", () => ({
   PersonalMarketOverview: componentMocks.MarketOverview,
+}));
+vi.mock("./PersonalManualPeerComparison", () => ({
+  PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS: 3,
+  PersonalManualPeerComparison: componentMocks.ManualPeerComparison,
 }));
 vi.mock("./PersonalQuarterlyFinancials", () => ({
   PersonalQuarterlyFinancials: componentMocks.QuarterlyFinancials,
@@ -635,6 +641,380 @@ describe("SecurityDiscoveryWorkspace", () => {
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
     expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds a manual peer without a request and loads only that peer after the explicit action", async () => {
+    const subject = searchResult("ZERO", "lst-zero");
+    const peer = searchResult("PEER", "lst-peer");
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [subject, peer],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+      Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+    );
+    apiMocks.fetchPersonalValuationHistory.mockImplementation((input) =>
+      Promise.resolve(valuationHistory(input.listingId, input.symbol)),
+    );
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+
+    requireAnnualFinancials(rendered).props.onLoad();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockClear();
+    apiMocks.fetchPersonalValuationHistory.mockClear();
+
+    let comparison = requireManualPeerComparison(rendered);
+    const candidate = comparison.props.candidates.find(
+      (value) => value.listingId === "lst-peer",
+    );
+    expect(candidate).toMatchObject({
+      issuerId: "iss-peer",
+      listingId: "lst-peer",
+      symbol: "PEER",
+    });
+    if (candidate === undefined) throw new Error("Expected peer candidate.");
+    comparison.props.onAddPeer(candidate);
+    rendered = renderWorkspace();
+    comparison = requireManualPeerComparison(rendered);
+
+    expect(comparison.props.peers).toHaveLength(1);
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+
+    comparison.props.onLoadPeerData("lst-peer");
+    rendered = renderWorkspace();
+    expect(requireManualPeerComparison(rendered).props.peers[0]).toMatchObject({
+      annualFinancials: null,
+      requestState: "loading",
+      valuationHistory: null,
+    });
+    expect(
+      apiMocks.fetchPersonalAnnualFinancials,
+    ).toHaveBeenCalledExactlyOnceWith(
+      { listingId: "lst-peer", symbol: "PEER" },
+      expect.any(AbortSignal),
+    );
+    expect(
+      apiMocks.fetchPersonalValuationHistory,
+    ).toHaveBeenCalledExactlyOnceWith(
+      { listingId: "lst-peer", range: "1y", symbol: "PEER" },
+      expect.any(AbortSignal),
+    );
+
+    await flushPromises();
+    rendered = renderWorkspace();
+    expect(requireManualPeerComparison(rendered).props.peers[0]).toMatchObject({
+      annualErrorCode: null,
+      annualFinancials: {
+        security: { listingId: "lst-peer", symbol: "PEER" },
+      },
+      requestState: "idle",
+      valuationErrorCode: null,
+      valuationHistory: {
+        security: { listingId: "lst-peer", symbol: "PEER" },
+      },
+    });
+  });
+
+  it("does not start a peer request before the selected-company inputs are ready", async () => {
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("PEER", "lst-peer"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    let comparison = requireManualPeerComparison(rendered);
+    const candidate = comparison.props.candidates[0];
+    if (candidate === undefined) throw new Error("Expected peer candidate.");
+    comparison.props.onAddPeer(candidate);
+    rendered = renderWorkspace();
+    comparison = requireManualPeerComparison(rendered);
+    comparison.props.onLoadPeerData("lst-peer");
+    await flushPromises();
+
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.peers[0],
+    ).toMatchObject({ requestState: "idle" });
+
+    rendered = renderWorkspace();
+    requireAnnualFinancials(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockClear();
+    apiMocks.fetchPersonalValuationHistory.mockClear();
+    requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
+    await flushPromises();
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows peer acquisition from a same-range valuation-only primary", async () => {
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("PEER", "lst-peer"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    const candidate = requireManualPeerComparison(rendered).props.candidates[0];
+    if (candidate === undefined) throw new Error("Expected peer candidate.");
+    requireManualPeerComparison(rendered).props.onAddPeer(candidate);
+    rendered = renderWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockClear();
+    apiMocks.fetchPersonalValuationHistory.mockClear();
+
+    requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
+    await flushPromises();
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("isolates manual-peer partial failures and caps provider work at two concurrent requests", async () => {
+    const peers = [
+      searchResult("ONE", "lst-one"),
+      searchResult("TWO", "lst-two"),
+    ];
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [searchResult("ZERO", "lst-zero"), ...peers],
+      snapshot: snapshot(),
+      totalMatches: 3,
+    });
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    requireAnnualFinancials(rendered).props.onLoad();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockClear();
+    apiMocks.fetchPersonalValuationHistory.mockClear();
+
+    let comparison = requireManualPeerComparison(rendered);
+    for (const candidate of comparison.props.candidates) {
+      comparison.props.onAddPeer(candidate);
+      rendered = renderWorkspace();
+      comparison = requireManualPeerComparison(rendered);
+    }
+    const pendingAnnual = deferred<PersonalAnnualFinancialsDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(
+      pendingAnnual.promise,
+    );
+    apiMocks.fetchPersonalValuationHistory.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("not_entitled"),
+    );
+
+    comparison.props.onLoadPeerData("lst-one");
+    comparison.props.onLoadPeerData("lst-two");
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+
+    pendingAnnual.resolve(annualFinancials("lst-one", "ONE"));
+    await flushPromises();
+    rendered = renderWorkspace();
+    expect(requireManualPeerComparison(rendered).props.peers[0]).toMatchObject({
+      annualErrorCode: null,
+      annualFinancials: {
+        security: { listingId: "lst-one", symbol: "ONE" },
+      },
+      requestState: "idle",
+      valuationErrorCode: "not_entitled",
+      valuationHistory: null,
+    });
+  });
+
+  it("aborts manual-peer work and clears stale peer data on subject changes", async () => {
+    const pendingAnnual = deferred<PersonalAnnualFinancialsDto>();
+    const pendingValuation = deferred<PersonalValuationHistoryDto>();
+    const subject = searchResult("ZERO", "lst-zero");
+    const peer = searchResult("PEER", "lst-peer");
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [subject, peer],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    requireAnnualFinancials(rendered).props.onLoad();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    const comparison = requireManualPeerComparison(rendered);
+    const candidate = comparison.props.candidates[0];
+    if (candidate === undefined) throw new Error("Expected peer candidate.");
+    comparison.props.onAddPeer(candidate);
+    rendered = renderWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(
+      pendingAnnual.promise,
+    );
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+      pendingValuation.promise,
+    );
+    requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
+    rendered = renderWorkspace();
+    const annualSignal =
+      apiMocks.fetchPersonalAnnualFinancials.mock.calls.at(-1)?.[1];
+    const valuationSignal =
+      apiMocks.fetchPersonalValuationHistory.mock.calls.at(-1)?.[1];
+
+    const viewButtons = findAllElements(rendered, "button").filter(
+      (button) => textContent(button) === "View market",
+    ) as React.ReactElement<{ onClick: () => void }>[];
+    viewButtons[1]?.props.onClick();
+    expect(annualSignal?.aborted).toBe(true);
+    expect(valuationSignal?.aborted).toBe(true);
+    pendingAnnual.resolve(annualFinancials("lst-peer", "PEER"));
+    pendingValuation.resolve(valuationHistory("lst-peer", "PEER"));
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    expect(requireManualPeerComparison(rendered).props.peers).toEqual([]);
+    expect(requireManualPeerComparison(rendered).props.selection).toMatchObject(
+      {
+        listingId: "lst-peer",
+        symbol: "PEER",
+      },
+    );
+  });
+
+  it("clears the owner workspace immediately when either peer read loses the session", async () => {
+    const pendingValuation = deferred<PersonalValuationHistoryDto>();
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("PEER", "lst-peer"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    requireAnnualFinancials(rendered).props.onLoad();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    const comparison = requireManualPeerComparison(rendered);
+    const candidate = comparison.props.candidates[0];
+    if (candidate === undefined) throw new Error("Expected peer candidate.");
+    comparison.props.onAddPeer(candidate);
+    rendered = renderWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("session_unavailable"),
+    );
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+      pendingValuation.promise,
+    );
+    requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
+    await flushPromises();
+    rendered = renderWorkspace();
+
+    expect(textContent(rendered)).toContain("Security discovery locked");
+    expect(findManualPeerComparison(rendered)).toBeUndefined();
+    expect(
+      apiMocks.fetchPersonalValuationHistory.mock.calls.at(-1)?.[1].aborted,
+    ).toBe(true);
+  });
+
+  it("restores loaded peer annuals when a range change interrupts a refresh", async () => {
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("PEER", "lst-peer"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 2,
+    });
+    apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+      Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+    );
+    apiMocks.fetchPersonalValuationHistory.mockImplementation((input) =>
+      Promise.resolve(valuationHistory(input.listingId, input.symbol)),
+    );
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    requireAnnualFinancials(rendered).props.onLoad();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    const candidate = requireManualPeerComparison(rendered).props.candidates[0];
+    if (candidate === undefined) throw new Error("Expected peer candidate.");
+    requireManualPeerComparison(rendered).props.onAddPeer(candidate);
+    rendered = renderWorkspace();
+    requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
+    await flushPromises();
+    rendered = renderWorkspace();
+    expect(requireManualPeerComparison(rendered).props.peers[0]).toMatchObject({
+      annualFinancials: {
+        security: { listingId: "lst-peer", symbol: "PEER" },
+      },
+      valuationHistory: {
+        history: { range: "1y" },
+        security: { listingId: "lst-peer", symbol: "PEER" },
+      },
+    });
+
+    const pendingAnnual = deferred<PersonalAnnualFinancialsDto>();
+    const pendingValuation = deferred<PersonalValuationHistoryDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(
+      pendingAnnual.promise,
+    );
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+      pendingValuation.promise,
+    );
+    requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
+    rendered = renderWorkspace();
+    const annualSignal =
+      apiMocks.fetchPersonalAnnualFinancials.mock.calls.at(-1)?.[1];
+    const valuationSignal =
+      apiMocks.fetchPersonalValuationHistory.mock.calls.at(-1)?.[1];
+    requireMarketOverview(rendered).props.onLoad("5y");
+    expect(annualSignal?.aborted).toBe(true);
+    expect(valuationSignal?.aborted).toBe(true);
+    rendered = renderWorkspace();
+    expect(requireManualPeerComparison(rendered).props.peers[0]).toMatchObject({
+      annualFinancials: {
+        security: { listingId: "lst-peer", symbol: "PEER" },
+      },
+      requestState: "idle",
+      valuationErrorCode: null,
+      valuationHistory: null,
+    });
+
+    pendingAnnual.resolve(annualFinancials("lst-peer", "PEER"));
+    pendingValuation.resolve(valuationHistory("lst-peer", "PEER"));
+    await flushPromises();
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.peers[0]
+        ?.valuationHistory,
+    ).toBeNull();
   });
 
   it("aborts and clears valuation history when the selected market range changes", async () => {
@@ -1270,6 +1650,13 @@ function findMarketOverview(value: unknown) {
   );
 }
 
+function findManualPeerComparison(value: unknown) {
+  return findElement<PersonalManualPeerComparisonProps>(
+    value,
+    componentMocks.ManualPeerComparison,
+  );
+}
+
 function findAnnualFinancials(value: unknown) {
   return findElement<PersonalAnnualFinancialsProps>(
     value,
@@ -1355,6 +1742,13 @@ function requireMarketOverview(value: unknown) {
   const market = findMarketOverview(value);
   if (market === undefined) throw new Error("Expected market overview.");
   return market;
+}
+
+function requireManualPeerComparison(value: unknown) {
+  const comparison = findManualPeerComparison(value);
+  if (comparison === undefined)
+    throw new Error("Expected manual peer comparison.");
+  return comparison;
 }
 
 function requireOwnerSession(value: unknown) {

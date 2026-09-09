@@ -2003,7 +2003,8 @@ Cycles 3g-a1 and 3g-b1 add on-demand market data and transparent analytics;
 Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly statements,
 and valuation history; Cycles 3i-a1 and 3i-a2 add historical multiple bands and
 forward/reverse DCF; and Cycle 3j-a1 adds the first selected-company financial
-quality and balance-sheet diagnostic. Later Cycle 3e-b work, full 3g/3h/3i/3j
+quality and balance-sheet diagnostic while Cycle 3j-a2 adds a bounded manual
+peer comparison. Later Cycle 3e-b work, full 3g/3h/3i/3j
 breadth, Cycle 3f, and Cycles 3k through 3q remain planned.**
 No parity claim is made.
 
@@ -2600,13 +2601,38 @@ rating, recommendation, or partial-as-complete score. Invalid envelope shape,
 chronology, fiscal ordering, unit, or decimal carriers fail closed, while a
 missing fact affects only checks that depend on it.
 
-The calculation is provider-most-recent and active-browser-memory-only. It
+The Cycle 3j-a1 calculation is provider-most-recent and active-browser-memory-only. It
 makes no request, accesses no credential, and persists, logs, exports, or
 redistributes nothing. It does not establish point-in-time or sector-adjusted
-analysis, financial-sector applicability, manual or automatic peers, sector
+analysis, financial-sector applicability, peer comparison, sector
 percentiles, Piotroski, Altman, Beneish, dividend safety, or full Cycle 3j.
-Manual owner-selected peers are the next bounded 3j slice; automatic peers wait
-for admitted sector/industry metadata and a compatible multi-company snapshot.
+
+Cycle 3j-a2 adds one selected company and up to three manually chosen,
+distinct-issuer peers without adding an API route, provider adapter, contract,
+or persistence path. Candidates come from current search results and the
+reconciled current-snapshot watchlist. Adding or removing a peer makes no
+request. Once at least one selected-company source—annual financials or
+same-range valuation history—is usable, each peer has one explicit action that
+issues both existing read operations. One peer load at a time caps concurrency
+from peer-load actions at two provider requests; unrelated selected-company
+controls retain their existing independent request lifecycles.
+
+A browser-local engine exposes a fixed 15-row table across scale, growth,
+profitability, balance-sheet efficiency, and valuation. Annual comparison is
+anchored to the selected company's latest fiscal year and valuation comparison
+to its latest exact valuation date. Peers must contain those exact coordinates;
+there is no older-year or nearest-date fallback. Provider-most-recent, USD,
+range, identity, decimal, and chronology rules fail closed per data domain.
+Exact statement dates and response timestamps remain visible, and missing cells
+or partial peer failures do not erase valid cells from other companies.
+
+Peer inputs and results remain in active browser memory. Selected-company or
+session changes abort and clear them; range changes abort peer work and clear
+range-bound peer valuations while preserving the manual roster and already
+loaded annual data. The slice provides no automatic peer relevance, sector
+percentiles, statistical ranking, winner, recommendation, point-in-time claim,
+or full Cycle 3j. Automatic peers still wait for admitted sector/industry
+metadata and a compatible multi-company snapshot.
 
 The delivery waves are:
 

@@ -474,7 +474,9 @@ function defaultProps(
     annualFinancials: annualFinancials(),
     marketOverview: marketOverview(),
     selection: {
+      country: "US",
       exchangeMic: "XNAS",
+      issuerId: "issuer-zero",
       issuerName: "Zero Alpha, Inc.",
       listingId: "lst-zero",
       securityName: "ZERO Common Stock",

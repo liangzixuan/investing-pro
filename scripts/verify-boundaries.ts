@@ -5388,7 +5388,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     found.push(`${contractsPath}: ${contractViolation}`);
   }
 
-  const valuationWebAnchors = new Map<string, readonly string[]>([
+  const personalResearchFeatureAnchors = new Map<string, readonly string[]>([
     [
       "packages/personal-market-analytics/src/personal-historical-multiple-valuation.ts",
       [
@@ -5436,6 +5436,41 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "current.period.fiscalYear - prior.period.fiscalYear !== 1",
         "Decimal.clone({",
         "isExactPlainRecord(",
+      ],
+    ],
+    [
+      "packages/personal-market-analytics/src/personal-manual-peer-comparison.ts",
+      [
+        "PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS",
+        "PERSONAL_MANUAL_PEER_COMPARISON_METRIC_IDS",
+        "PERSONAL_MANUAL_PEER_COMPARISON_FORMULA_SET_VERSION",
+        "export function buildPersonalManualPeerComparison(",
+        "const listingIds = new Set<string>();",
+        "const issuerIds = new Set<string>();",
+        "primary.annual.data.years[0]?.fiscalYear",
+        "primary.valuation.data.latestPoint.date",
+        'provider.revisionBasis !== "provider_most_recent"',
+        'provider.valueCurrency !== "USD"',
+        "const range = history.range;",
+        'typeof range !== "string"',
+        '"exact_fiscal_year_not_found"',
+        "candidate.fiscalYear === fiscalYear - 1",
+        '"exact_prior_fiscal_year_not_found"',
+        '"exact_valuation_date_not_found"',
+        '"range_mismatch"',
+        "company.valuation.data.range !== primaryValuationRange",
+        "Decimal.clone({",
+        "exactRecord(",
+        "return freezeDeep({",
+      ],
+    ],
+    [
+      "packages/personal-market-analytics/src/index.ts",
+      [
+        "PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS",
+        "buildPersonalManualPeerComparison",
+        "type PersonalManualPeerComparisonResult",
+        'from "./personal-manual-peer-comparison"',
       ],
     ],
     [
@@ -5523,6 +5558,35 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "apps/web/src/features/research/PersonalMarketOverview.tsx",
+      [
+        "export interface PersonalMarketSelection",
+        'readonly country: "US"',
+        "readonly issuerId: string",
+        "readonly listingId: string",
+      ],
+    ],
+    [
+      "apps/web/src/features/research/PersonalManualPeerComparison.tsx",
+      [
+        "PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS",
+        "export function PersonalManualPeerComparison(",
+        "safelyBuildComparison({",
+        "return buildPersonalManualPeerComparison(input);",
+        "Adding a peer is network-free",
+        "Load comparison data",
+        "15 fixed metrics",
+        'row.cells[0]?.status === "available"',
+        "fullyComparable && hasComparablePeerCell",
+        "statement dates, which remain visible",
+        "manually selected sample",
+        "not a sector benchmark",
+        "The calculation makes no",
+        "Each explicit peer load requests the two disclosed",
+        "nothing is persisted or exported",
+      ],
+    ],
+    [
       "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
       [
         "useState<PersonalValuationHistoryDto | null>(null)",
@@ -5534,14 +5598,23 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "<PersonalHistoricalMultipleValuation",
         "<PersonalFcffDcfValuation",
         "<PersonalFinancialQualityScorecard",
+        "useState<",
+        "readonly PersonalManualPeerState[]",
+        "manualPeerControllers.current.size > 0",
+        "async function loadManualPeerData(",
+        "fetchPersonalAnnualFinancials(",
+        "fetchPersonalValuationHistory(",
+        "function clearManualPeerState(",
+        "function clearManualPeerValuationState(",
+        "<PersonalManualPeerComparison",
       ],
     ],
   ]);
-  for (const [path, anchors] of valuationWebAnchors) {
+  for (const [path, anchors] of personalResearchFeatureAnchors) {
     const content = await readFile(resolvePath(root, path), "utf8");
     if (anchors.some((anchor) => !content.includes(anchor))) {
       found.push(
-        `${path}: valuation-history, historical-multiple, DCF, and financial-quality validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
+        `${path}: valuation-history, historical-multiple, DCF, financial-quality, and manual-peer validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
       );
     }
   }

@@ -2860,6 +2860,43 @@ or universally applicable and does not establish financial-sector semantics,
 peer selection/comparison, sector percentiles, Piotroski, Altman, Beneish,
 dividend safety, investment quality, competitor parity, or full Cycle 3j.
 
+## Cycle 3j-a2 personal manual peer comparison
+
+Cycle 3j-a2 compares one selected company with one to three owner-selected
+peers in active browser memory. Every company carries a seven-field catalog
+selection identity including `listingId` and `issuerId`; listing and issuer IDs
+must both be unique. The annual and valuation responses must independently
+match the exact selected six-field provider identity. A malformed source
+quarantines only that company's affected annual or valuation domain rather than
+manufacturing a partial numeric value or discarding other valid domains.
+
+The selected company's newest valid annual fiscal year is the annual anchor.
+Every peer must contain that exact fiscal year; revenue growth additionally
+requires the exact immediately preceding year. No older convenient year is
+substituted. Each company's provider statement/release date and response
+`asOf` remain attached to its annual cells, and equal fiscal-year labels are not
+claimed to prove equal fiscal period ends. The selected company's
+`latestPoint.date` is the valuation anchor. Each peer must contain that exact
+date in the same requested range; nearest-date substitution is prohibited.
+
+The versioned registry has 15 rows: revenue, market capitalization, enterprise
+value, revenue growth, gross margin, operating margin, net margin, free-cash-
+flow margin, net debt, debt to assets, current ratio, revenue to ending assets,
+P/E, P/B, and trailing PEG 1Y. Reported and provider-supplied cells retain
+exact source references. Derived cells use isolated decimal arithmetic,
+published formulas and rounding, exact operand references, and positive-
+denominator rules. Missing sources, missing facts, unusable denominators, and
+missing anchor coordinates remain typed unavailable cells.
+
+Annual inputs are fixed to Tiingo's fundamentals statement feed and valuation
+inputs to its fundamentals daily feed, both in USD and on the
+`provider_most_recent` revision basis. Output is bounded and deeply frozen. The
+pure engine performs no request or persistence; the UI's per-peer explicit load
+action uses only the existing annual and valuation read routes. The comparison
+contains no aggregate, rank, winner, percentile, automatic peer-selection
+rationale, recommendation, point-in-time claim, financial-sector applicability
+claim, export, or full Cycle 3j assertion.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

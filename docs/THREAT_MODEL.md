@@ -1,4 +1,4 @@
-# Sprint 0 through personal Cycle 3j-a1 threat model
+# Sprint 0 through personal Cycle 3j-a2 threat model
 
 ## Current trust boundaries
 
@@ -2894,6 +2894,49 @@ establish manual or automatic peers, sector percentiles, look-ahead-safe
 history, Piotroski, Altman, Beneish, dividend safety, financial-sector
 applicability, full Cycle 3j, or competitor parity.
 
+## Cycle 3j-a2 manual peer comparison threat boundary
+
+Cycle 3j-a2 adds a browser-local comparison of one selected company and up to
+three companies the owner chooses from current search results or a reconciled
+current-snapshot watchlist. Assets at risk are subject/peer listing and issuer
+identity, annual and valuation coordinates, provider/revision/range/currency
+semantics, decimal precision, per-cell missingness, request bounds, and honest
+small-sample presentation. Primary threats are automatic data fetches; duplicate
+listings or alternate share classes presented as independent peers; response
+substitution; cross-range or cross-currency mixing; convenient older fiscal
+years or nearby valuation dates; missing values becoming zero; late responses
+committing after a selection, range, removal, or session change; one partial
+failure erasing valid data; and a manual sample being presented as a sector
+ranking or recommendation.
+
+Controls are exact catalog/provider identity checks, distinct `listingId` and
+`issuerId`, a maximum of three peers, and network-free add/remove actions. The
+at least one selected-company source—annual or same-range valuation—must already
+be usable. Each peer's explicit action invokes both existing annual-financial
+and valuation-history reads, and only one peer action may run at once, bounding
+peer-load-originated concurrency at two provider requests. One abort controller covers both reads;
+selected-company and session changes abort and clear all peers, peer removal
+aborts that peer, and a range change aborts peer work and clears its
+range-dependent valuation data. Controller identity and workspace epoch checks
+discard late completions.
+
+The engine independently validates plain-record shape, exact identity, Tiingo
+feeds, `provider_most_recent`, USD/ratio units, chronology, and the requested
+range. Annual cells use the selected company's latest fiscal-year anchor and
+require the exact prior year for growth. Valuation cells use the selected
+company's latest exact date. There is no older-year or nearest-date fallback.
+Typed unknown cells, per-domain quarantine, exact statement dates and response
+timestamps, isolated decimal arithmetic, formula/source metadata, bounded
+arrays, and deep-frozen output preserve missingness and provenance.
+
+Peer responses and comparison results remain only in active-session browser
+memory and add no API route, credential path, storage, logging, export,
+redistribution, provider write, or Investing.com crawl. The UI identifies a
+small owner-selected sample and makes no automatic relevance, sector benchmark
+or percentile, statistical significance, fiscal-period-end comparability,
+point-in-time/look-ahead safety, financial-sector applicability, rank, winner,
+recommendation, competitor-parity, or full Cycle 3j claim.
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.
@@ -2952,8 +2995,10 @@ applicability, full Cycle 3j, or competitor parity.
    engineering Pass only, and Cycle 3e-a2 records only its exact historical
    package-owned measurement correction as a public engineering Pass. Cycle
    3e-b1 supplies the browser-search and durable-watchlist boundary; 3g-a1,
-   3g-b1, 3h-a1, and 3h-a2 then add visible market, analytics, annual-financial,
-   and quarterly-financial slices. Security and privacy are acceptance criteria rather than standalone
+   3g-b1, 3h-a1, 3h-a2, and 3h-a3 then add visible market, analytics, annual,
+   quarterly, and valuation-history slices; 3i-a1/3i-a2 add transparent
+   valuation models; and 3j-a1/3j-a2 add selected-company diagnostics and
+   bounded manual comparison. Security and privacy are acceptance criteria rather than standalone
    milestones unless they block correctness, private data, or credentials.
    Organizational
    rights/steward approval and authority keys are separate enterprise-profile

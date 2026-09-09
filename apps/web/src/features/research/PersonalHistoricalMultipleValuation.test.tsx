@@ -312,7 +312,9 @@ describe("PersonalHistoricalMultipleValuation", () => {
       defaultProps({
         marketOverview: loaded.market,
         selection: {
+          country: "US",
           exchangeMic: "XNYS",
+          issuerId: "issuer-different",
           issuerName: "Different Issuer, Inc.",
           listingId: "lst-different",
           securityName: "Different Common Stock",
@@ -437,7 +439,9 @@ function loadedInputs(
 function selection() {
   const selected = identity();
   return {
+    country: selected.country,
     exchangeMic: selected.exchangeMic,
+    issuerId: "issuer-zero",
     issuerName: selected.issuerName,
     listingId: selected.listingId,
     securityName: selected.securityName,

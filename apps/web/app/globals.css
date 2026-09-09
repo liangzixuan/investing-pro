@@ -2007,6 +2007,186 @@ h4,
   color: #8a4b32;
 }
 
+.personal-manual-peer-comparison {
+  background: linear-gradient(145deg, var(--surface) 0%, #f4f8f5 100%);
+}
+
+.manual-peer-intro {
+  max-width: 920px;
+}
+
+.manual-peer-picker {
+  display: grid;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 72%);
+  gap: 8px;
+}
+
+.manual-peer-picker > label {
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.manual-peer-picker > div {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+}
+
+.manual-peer-picker select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 34px 8px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.manual-peer-picker > small {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+}
+
+.manual-peer-roster {
+  display: grid;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.manual-peer-card {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #cbd8d1;
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 78%);
+}
+
+.manual-peer-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.manual-peer-card-heading > div,
+.manual-peer-card-heading span,
+.manual-peer-card-heading small {
+  display: block;
+}
+
+.manual-peer-card-heading span,
+.manual-peer-card dt {
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.manual-peer-card-heading strong {
+  color: var(--navy);
+  font-size: 1.15rem;
+}
+
+.manual-peer-card-heading small {
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+}
+
+.manual-peer-card dl {
+  display: grid;
+  margin: 14px 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manual-peer-card dl > div {
+  min-width: 0;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.manual-peer-card dd {
+  margin: 4px 0 0;
+  color: var(--navy);
+  font-size: 0.7rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.manual-peer-card .discovery-status {
+  min-height: 48px;
+}
+
+.manual-peer-result {
+  margin-top: 18px;
+}
+
+.financial-table-scroll .manual-peer-table {
+  min-width: 920px;
+}
+
+.manual-peer-table th,
+.manual-peer-table td {
+  vertical-align: top;
+}
+
+.manual-peer-table thead th span,
+.manual-peer-table thead th small,
+.manual-peer-table tbody th span,
+.manual-peer-table tbody th small,
+.manual-peer-table .financial-cell-unknown small {
+  display: block;
+}
+
+.manual-peer-table thead th small,
+.manual-peer-table tbody th small,
+.manual-peer-table .financial-cell-unknown small {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 0.64rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.manual-peer-table .manual-peer-group-row th {
+  position: static;
+  width: auto;
+  padding: 8px 12px;
+  background: #eaf2ed;
+  color: var(--mint-deep);
+  box-shadow: none;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.manual-peer-primary-column {
+  background: #eef7f2;
+  box-shadow:
+    inset 2px 0 0 var(--mint-deep),
+    inset -1px 0 0 #cbd8d1;
+}
+
+.manual-peer-caveat {
+  margin-top: 18px;
+}
+
 .fcff-dcf-cell-unavailable {
   color: var(--ink-soft);
   background: #f8f5ef;
@@ -4028,6 +4208,10 @@ thead th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .manual-peer-roster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .financials-coverage-strip,
   .financial-metric-grid,
   .valuation-card-grid,
@@ -4198,6 +4382,16 @@ thead th {
   }
 
   .security-search-form button {
+    width: 100%;
+  }
+
+  .manual-peer-picker > div,
+  .manual-peer-roster {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-peer-picker .compact-action,
+  .manual-peer-card .compact-action {
     width: 100%;
   }
 
