@@ -7,6 +7,10 @@ allocation, and unrealized change against entered cost basis. This is the first
 partial Cycle 3m-a delivery. It uses the admitted US stock/ADR catalog, the
 existing local vault, and the existing Tiingo market-data connection.
 
+The optional [transaction ledger](./PERSONAL_PORTFOLIO_LEDGER.md) now extends
+this snapshot through explicit opening conversion. This page describes the
+original manual mode and the shared valuation rules.
+
 ## Workflow
 
 1. Open Discover after validating the owner session. Load **My Portfolio**.
@@ -59,7 +63,8 @@ row values can differ from their displayed total by a cent. Shares and money
 are stored as decimal strings. The estimate is unrealized change from manually
 entered basis, not transaction-ledger performance or tax accounting. Fees,
 dividends, realized gains, lots, deposits, withdrawals, FX, time-weighted return,
-XIRR and benchmarks are later milestones.
+XIRR and benchmarks are outside manual snapshot mode. The optional ledger
+adds recorded cash flows and FIFO estimates; historical performance remains open.
 
 ## Storage and reconciliation
 

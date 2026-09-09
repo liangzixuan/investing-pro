@@ -2,6 +2,8 @@ import type {
   PersonalMarketOverviewDto,
   PersonalPortfolioIdentity,
   PersonalPortfolioPayload,
+  PersonalPortfolioLedgerPayload,
+  PersonalPortfolioStoredPayload,
 } from "@research-cockpit/contracts";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +18,53 @@ const api = vi.hoisted(() => ({
   savePersonalPortfolio: vi.fn(),
   fetchPersonalMarketOverview: vi.fn(),
   searchPersonalSecurities: vi.fn(),
+}));
+vi.mock("./PersonalPortfolioLedgerEditor", () => ({
+  PersonalPortfolioLedgerEditor: (editorProps: {
+    ledger: PersonalPortfolioLedgerPayload;
+    disabled: boolean;
+    onChange: (next: PersonalPortfolioLedgerPayload) => void;
+    onPendingEditsChange: (pending: boolean) => void;
+  }) =>
+    React.createElement(
+      "div",
+      {
+        "data-ledger": editorProps.ledger,
+        "data-ledger-disabled": editorProps.disabled,
+      },
+      React.createElement(
+        "button",
+        { onClick: () => editorProps.onPendingEditsChange(true) },
+        "Test stage transaction",
+      ),
+      React.createElement(
+        "button",
+        { onClick: () => editorProps.onPendingEditsChange(false) },
+        "Test reset staged transaction",
+      ),
+      React.createElement(
+        "button",
+        {
+          onClick: () =>
+            editorProps.onChange({
+              ...editorProps.ledger,
+              transactions: [
+                ...editorProps.ledger.transactions,
+                {
+                  id: "test-deposit",
+                  date: "2026-09-09",
+                  type: "deposit",
+                  listingId: null,
+                  shares: null,
+                  grossUsd: "25",
+                  feeUsd: "0",
+                },
+              ],
+            }),
+        },
+        "Test ledger deposit",
+      ),
+    ),
 }));
 vi.mock("react", async (original) => ({
   ...(await original()),
@@ -61,6 +110,147 @@ afterEach(() => {
 });
 
 describe("PersonalPortfolio", () => {
+  it("requires staged ledger inputs to be applied or reset before save and reload", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    click(render(), "Test ledger deposit");
+    click(render(), "Test stage transaction");
+    expect(button(render(), "Save My Portfolio").props.disabled).toBe(true);
+    expect(button(render(), "Reload saved portfolio").props.disabled).toBe(
+      true,
+    );
+    expect(text(render())).toContain("Apply or reset the staged transaction");
+    click(render(), "Test reset staged transaction");
+    expect(button(render(), "Save My Portfolio").props.disabled).toBe(false);
+    click(render(), "Test stage transaction");
+    click(render(), "Discard edits and reload");
+    await flush();
+    expect(input(render(), "Portfolio cash balance").props.value).toBe("35.00");
+    expect(text(render())).not.toContain(
+      "Apply or reset the staged transaction",
+    );
+  });
+  it("converts explicitly, preserves unknown opening values, and saves the ledger only on Save", async () => {
+    const snapshot = portfolio();
+    api.fetchPersonalPortfolio.mockResolvedValue(
+      record({
+        ...snapshot,
+        cashUsd: null,
+        holdings: snapshot.holdings.map((holding) => ({
+          ...holding,
+          totalCostBasisUsd: null,
+        })),
+      }),
+    );
+    await load();
+    change(render(), "Opening balances as of", "2026-09-08");
+    click(render(), "Start transaction ledger");
+    expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
+    expect(text(render())).toContain("Transaction ledger");
+    expect(input(render(), "Shares for ONE").props).toMatchObject({
+      value: "2",
+      readOnly: true,
+    });
+    click(render(), "Test ledger deposit");
+    expect(input(render(), "Portfolio cash balance").props.value).toBe("");
+    click(render(), "Save My Portfolio");
+    await flush();
+    expect(api.savePersonalPortfolio.mock.calls[0]?.[0]).toMatchObject({
+      schemaVersion: 2,
+      basisMethod: "fifo_with_opening_pool",
+      opening: {
+        asOfDate: "2026-09-08",
+        cashUsd: null,
+        holdings: [
+          {
+            listingId: "listing-one",
+            shares: "2",
+            totalCostBasisUsd: null,
+            confirmedOn: "2026-09-08",
+          },
+        ],
+      },
+      transactions: [{ id: "test-deposit" }],
+    });
+    expect(api.savePersonalPortfolio.mock.calls[0]?.[0]).not.toHaveProperty(
+      "holdings",
+    );
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+  });
+
+  it("rejects opening conversion before confirmation or in the future", async () => {
+    await load();
+    for (const date of ["2026-09-07", "2026-09-10", "2026-02-30"]) {
+      change(render(), "Opening balances as of", date);
+      click(render(), "Start transaction ledger");
+      expect(text(render())).toContain("Enter a real opening date");
+      expect(text(render())).toContain("Holdings snapshot");
+    }
+  });
+
+  it("reopens a saved ledger, prices only current admitted identities, and derives cash", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    expect(button(render(), "Save My Portfolio").props.disabled).toBe(true);
+    expect(button(render(), "Research ONE").props.disabled).toBe(true);
+    expect(input(render(), "Portfolio cash balance").props.value).toBe("35.00");
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(api.searchPersonalSecurities).toHaveBeenCalledWith(
+      "ONE",
+      expect.any(AbortSignal),
+      25,
+    );
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(metric(render(), "Total value including cash")).toBe("135.00 USD");
+    click(render(), "Research ONE");
+    expect(props.onOpenResearch).toHaveBeenCalledWith(identity());
+  });
+
+  it("retains unmatched historical identities through catalog review without pricing a changed security", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(
+      record({ ...ledger(), snapshotSha256: digest("b") }),
+    );
+    api.searchPersonalSecurities.mockResolvedValue(
+      search([{ ...identity(), securityId: "different-security" }]),
+    );
+    await load();
+    click(render(), "Preview portfolio reconciliation");
+    await flush();
+    expect(text(render())).toContain("Unmatched; preserved");
+    click(render(), "Apply ledger identity review");
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(text(render())).toContain(
+      "Historical identity is not available in the current catalog",
+    );
+    expect(button(render(), "Research ONE").props.disabled).toBe(true);
+    click(render(), "Save My Portfolio");
+    await flush();
+    expect(api.savePersonalPortfolio.mock.calls[0]?.[0]).toEqual(ledger());
+  });
+
+  it("cancels historical admission reads and clears the ledger on owner session loss", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    const pending = deferred<ReturnType<typeof search>>();
+    api.searchPersonalSecurities.mockReturnValue(pending.promise);
+    await load();
+    click(render(), "Refresh portfolio prices");
+    const signal = api.searchPersonalSecurities.mock
+      .calls[0]?.[1] as AbortSignal;
+    props = { ...props, enabled: false };
+    render();
+    pending.resolve(search([identity()]));
+    await flush();
+    expect(signal.aborted).toBe(true);
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(text(render())).not.toContain("Transaction ledger");
+    expect(
+      elements(render()).some((element) => element.props["data-ledger"]),
+    ).toBe(false);
+  });
+
   it("requires explicit load, creates a manual snapshot, and saves only owner-entered holdings", async () => {
     api.fetchPersonalPortfolio.mockResolvedValue(null);
     await mount();
@@ -476,7 +666,40 @@ function portfolio(count = 1): PersonalPortfolioPayload {
     })),
   };
 }
-function record(payload = portfolio()) {
+function ledger(): PersonalPortfolioLedgerPayload {
+  return {
+    schemaVersion: 2,
+    name: "My Portfolio",
+    currency: "USD",
+    snapshotSha256: digest("a"),
+    basisMethod: "fifo_with_opening_pool",
+    identities: [identity()],
+    opening: {
+      asOfDate: "2026-09-08",
+      cashUsd: "10",
+      holdings: [
+        {
+          listingId: "listing-one",
+          shares: "2",
+          totalCostBasisUsd: "80",
+          confirmedOn: "2026-09-08",
+        },
+      ],
+    },
+    transactions: [
+      {
+        id: "prior-deposit",
+        date: "2026-09-09",
+        type: "deposit",
+        listingId: null,
+        shares: null,
+        grossUsd: "25",
+        feeUsd: "0",
+      },
+    ],
+  };
+}
+function record(payload: PersonalPortfolioStoredPayload = portfolio()) {
   return {
     profile: "personal_single_user_local_vault",
     kind: "portfolio",

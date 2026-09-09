@@ -192,7 +192,7 @@ Later subcycles may widen a universe only with the same checks.
 | Earnings, dividends, news, calendars    | No daily event workflow                                             | Cycle 3l        |
 | Analyst revisions and ownership events  | No analyst, insider, institutional, or 13F workflow                 | Cycle 3l-b      |
 | Transcript discovery                    | No transcript metadata or permitted-text workflow                   | Cycle 3l-c      |
-| Holdings and portfolio performance      | No portfolio model                                                  | Cycle 3m        |
+| Holdings and portfolio performance      | Snapshot valuation and a bounded transaction ledger                 | Cycle 3m        |
 | Background delivered alerts             | One immediate local rule evaluation                                 | Cycle 3n        |
 | Reports, exports, custom views          | No end-user export or saved layout                                  | Cycle 3o        |
 | Evidence-grounded AI and strategies     | No model integration                                                | Cycle 3p        |
@@ -1142,10 +1142,19 @@ subtotals, complete-value availability, unrealized change and allocation.
 Missing, stale or mismatched quotes keep complete totals unavailable. Catalog
 reconciliation preserves economic inputs only for consistent stable identities.
 
-The transaction ledger, multiple portfolios, imports, tax lots, realized gains,
-income, corporate-action processing and historical performance targets remain
-open. Manual snapshot valuation is an independently useful first delivery;
-it does not claim completion of Cycle 3m.
+### Second partial Cycle 3m-a delivery
+
+[The transaction ledger and safe CSV import](./PERSONAL_PORTFOLIO_LEDGER.md)
+add explicit opening conversion, six transaction types, derived holdings/cash,
+FIFO lots and realized estimates, recorded dividend/cash-flow totals, and a
+reviewed import of up to 100 rows. The single encrypted ledger supports 20
+registered identities and 250 transactions. Historical identities are retained;
+current catalog admission is checked before pricing each open holding.
+
+Opening holdings are aggregate pools, not reconstructed tax lots. Multiple
+portfolios, actual tax accounting, corporate-action processing, historical
+performance, TWR, XIRR and benchmarks remain open. These bounded deliveries do
+not claim completion of Cycle 3m.
 
 ### Cycle 3n — background alerts and delivery
 
@@ -1260,8 +1269,9 @@ coverage and sampled values still require validation. Reuse shared metric
 definitions, keep missing values explicit, and report actual cohort coverage.
 This smaller slice does not close the 30-core-metric/500-security gate.
 
-Next prioritize watchlist events and a personal portfolio overview, followed
-by alerts and exports as their inputs and source permissions become available.
+Next prioritize corporate-action reconciliation and historical-price coverage
+for portfolio performance, followed by alerts and exports as their inputs and
+source permissions become available.
 If bulk screening is source-blocked, a permitted daily event slice may proceed
 independently. Historical screening, broad filing automation, large filter and
 model counts, and AI stay in the backlog while those everyday workflows are

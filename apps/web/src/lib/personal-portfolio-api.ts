@@ -1,6 +1,6 @@
 import {
-  isPersonalPortfolioPayload,
-  type PersonalPortfolioPayload,
+  isPersonalPortfolioStoredPayload,
+  type PersonalPortfolioStoredPayload,
 } from "@research-cockpit/contracts";
 
 import {
@@ -19,7 +19,7 @@ export type PersonalPortfolioRecord = Readonly<{
   kind: "portfolio";
   id: "main";
   version: number;
-  payload: PersonalPortfolioPayload;
+  payload: PersonalPortfolioStoredPayload;
   payloadSha256: string;
   createdAt: string;
   updatedAt: string;
@@ -61,13 +61,13 @@ export async function fetchPersonalPortfolio(
 }
 
 export async function savePersonalPortfolio(
-  payload: PersonalPortfolioPayload,
+  payload: PersonalPortfolioStoredPayload,
   version: number | null,
   idempotencyKey: string,
   signal?: AbortSignal,
 ): Promise<PersonalPortfolioMutationReceipt> {
   if (
-    !isPersonalPortfolioPayload(
+    !isPersonalPortfolioStoredPayload(
       payload,
       new Date().toISOString().slice(0, 10),
     ) ||
@@ -151,7 +151,7 @@ function isRecord(value: unknown): value is PersonalPortfolioRecord {
     value.kind === "portfolio" &&
     value.id === "main" &&
     isPositiveInteger(value.version) &&
-    isPersonalPortfolioPayload(value.payload) &&
+    isPersonalPortfolioStoredPayload(value.payload) &&
     typeof value.payloadSha256 === "string" &&
     DIGEST.test(value.payloadSha256) &&
     isInstant(value.createdAt) &&
@@ -213,8 +213,29 @@ function hasKeys<const Keys extends readonly string[]>(
 }
 
 function copyPayload(
-  payload: PersonalPortfolioPayload,
-): PersonalPortfolioPayload {
+  payload: PersonalPortfolioStoredPayload,
+): PersonalPortfolioStoredPayload {
+  if (payload.schemaVersion === 2) {
+    return Object.freeze({
+      ...payload,
+      identities: Object.freeze(
+        payload.identities.map((identity) => Object.freeze({ ...identity })),
+      ),
+      opening: Object.freeze({
+        ...payload.opening,
+        holdings: Object.freeze(
+          payload.opening.holdings.map((holding) =>
+            Object.freeze({ ...holding }),
+          ),
+        ),
+      }),
+      transactions: Object.freeze(
+        payload.transactions.map((transaction) =>
+          Object.freeze({ ...transaction }),
+        ),
+      ),
+    });
+  }
   return Object.freeze({
     ...payload,
     holdings: Object.freeze(

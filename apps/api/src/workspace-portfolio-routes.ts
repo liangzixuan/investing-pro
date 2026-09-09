@@ -1,7 +1,8 @@
 import {
-  isPersonalPortfolioPayload,
+  isPersonalPortfolioStoredPayload,
   type PersonalPortfolioIdentity,
   type PersonalPortfolioPayload,
+  type PersonalPortfolioStoredPayload,
   type ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
@@ -58,10 +59,12 @@ export function registerPersonalWorkspacePortfolioRoutes(
       try {
         const record = vault.getRecord("portfolio", "main");
         // An older snapshot remains readable so the owner can reconcile it.
-        // Current-snapshot records must still agree with admitted identities.
+        // Manual snapshots must still agree with current admitted identities.
+        // Ledgers also retain historical identities admitted by earlier writes.
         if (
-          !isPersonalPortfolioPayload(record.payload) ||
-          (record.payload.snapshotSha256 === catalog.snapshotSha256 &&
+          !isPersonalPortfolioStoredPayload(record.payload) ||
+          (record.payload.schemaVersion === 1 &&
+            record.payload.snapshotSha256 === catalog.snapshotSha256 &&
             !holdingsMatchCatalog(catalog, record.payload))
         ) {
           return sendPortfolioProblem(
@@ -130,7 +133,10 @@ export function registerPersonalWorkspacePortfolioRoutes(
       if (payload.snapshotSha256 !== catalog.snapshotSha256) {
         return sendPortfolioProblem(reply, request, 409);
       }
-      if (!holdingsMatchCatalog(catalog, payload)) {
+      if (
+        payload.schemaVersion === 1 &&
+        !holdingsMatchCatalog(catalog, payload)
+      ) {
         return sendPortfolioProblem(reply, request, 400);
       }
       const expectedVersion = mutationPrecondition(request, intent);
@@ -142,6 +148,30 @@ export function registerPersonalWorkspacePortfolioRoutes(
         return sendPortfolioProblem(reply, request, 400);
       }
       try {
+        const previous = readPreviousPortfolio(vault);
+        let priorPayload: PersonalPortfolioStoredPayload | undefined;
+        if (previous !== null) {
+          if (!isPersonalPortfolioStoredPayload(previous.payload)) {
+            return sendPortfolioProblem(reply, request, 409);
+          }
+          priorPayload = previous.payload;
+        }
+        // Do not erase a ledger through a manual snapshot save. Old requests
+        // with an earlier version may still reach the vault's idempotent replay.
+        if (
+          previous?.version === expectedVersion &&
+          priorPayload?.schemaVersion === 2 &&
+          payload.schemaVersion === 1
+        ) {
+          return sendPortfolioProblem(reply, request, 409);
+        }
+        if (
+          payload.schemaVersion === 2 &&
+          expectedVersion === (previous?.version ?? 0) &&
+          !ledgerIdentitiesAdmitted(catalog, payload.identities, priorPayload)
+        ) {
+          return sendPortfolioProblem(reply, request, 400);
+        }
         const receipt = vault.putRecord({
           kind: "portfolio",
           id: "main",
@@ -162,18 +192,56 @@ export function registerPersonalWorkspacePortfolioRoutes(
 
 function isPutBody(
   value: unknown,
-): value is { readonly payload: PersonalPortfolioPayload } {
+): value is { readonly payload: PersonalPortfolioStoredPayload } {
   return (
     typeof value === "object" &&
     value !== null &&
     !Array.isArray(value) &&
     Object.keys(value).length === 1 &&
     "payload" in value &&
-    isPersonalPortfolioPayload(
+    isPersonalPortfolioStoredPayload(
       value.payload,
       new Date().toISOString().slice(0, 10),
     )
   );
+}
+
+function readPreviousPortfolio(vault: LocalResearchVault) {
+  try {
+    return vault.getRecord("portfolio", "main");
+  } catch (error) {
+    if (
+      error instanceof LocalResearchVaultError &&
+      (error.code === "VAULT_NOT_FOUND" || error.code === "VAULT_DELETED")
+    )
+      return null;
+    throw error;
+  }
+}
+
+function ledgerIdentitiesAdmitted(
+  catalog: PersonalSecurityMasterCatalog,
+  identities: readonly PersonalPortfolioIdentity[],
+  previous: PersonalPortfolioStoredPayload | undefined,
+): boolean {
+  const priorIdentities =
+    previous === undefined
+      ? []
+      : previous.schemaVersion === 1
+        ? previous.holdings.map((holding) => holding.identity)
+        : previous.identities;
+  return identities.every((identity) => {
+    const retained = priorIdentities.find(
+      (prior) => prior.listingId === identity.listingId,
+    );
+    if (retained !== undefined && identityMatchesResult(identity, retained))
+      return true;
+    const admitted = searchPersonalSecurityMaster(catalog, {
+      limit: PERSONAL_SECURITY_MASTER_LIMITS.searchResultCap,
+      query: identity.symbol,
+    }).results.find((result) => result.listingId === identity.listingId);
+    return admitted !== undefined && identityMatchesResult(identity, admitted);
+  });
 }
 
 function holdingsMatchCatalog(
@@ -191,7 +259,7 @@ function holdingsMatchCatalog(
 
 function identityMatchesResult(
   identity: PersonalPortfolioIdentity,
-  result: PersonalSecurityMasterSearchResult,
+  result: PersonalSecurityMasterSearchResult | PersonalPortfolioIdentity,
 ): boolean {
   return (
     identity.country === result.country &&

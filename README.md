@@ -126,6 +126,10 @@ the existing encrypted local vault. Explicit price refresh shows valued and
 unavailable coverage, unrealized change against entered basis, and allocation
 when the entire portfolio can be valued. Stale prices and unknown amounts stay
 explicit. See [portfolio workflow and calculation rules](./docs/PERSONAL_PORTFOLIO.md).
+The optional [transaction ledger and safe CSV import](./docs/PERSONAL_PORTFOLIO_LEDGER.md)
+records trades and cash movements, derives holdings and cash, and shows FIFO
+estimates from opening pools and buy lots. Imports preview before an explicit
+save; unknown values and historical identities stay visible.
 
 The stock screener scans the admitted 3,000-plus active U.S.-listed
 common-stock and ADR catalog without contacting Tiingo. One explicit action can

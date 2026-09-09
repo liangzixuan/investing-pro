@@ -1,0 +1,155 @@
+.portfolio-ledger {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border, #dce3ed);
+  padding-top: 1rem;
+}
+.portfolio-ledger > p,
+.ledger-help {
+  color: var(--muted, #64748b);
+  line-height: 1.55;
+}
+.ledger-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 0.75rem;
+  min-width: 0;
+}
+.ledger-section summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin: 0.85rem 0;
+}
+.ledger-actions button {
+  width: auto;
+}
+.ledger-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+.ledger-fields label,
+.ledger-csv-label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 0;
+}
+.ledger-fields input,
+.ledger-fields select,
+.ledger-csv-label textarea,
+.ledger-template {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 0.4rem;
+  background: var(--surface, white);
+  color: inherit;
+  padding: 0.65rem;
+  font: inherit;
+}
+.ledger-fields input:focus-visible,
+.ledger-fields select:focus-visible,
+.ledger-csv-label textarea:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.ledger-csv-label textarea,
+.ledger-template {
+  min-height: 7rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+.ledger-opening-position,
+.ledger-transaction {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border, #dce3ed);
+}
+.ledger-row-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.ledger-row-heading > div,
+.ledger-row-heading p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ledger-row-heading h4,
+.ledger-row-heading p {
+  margin: 0 0 0.3rem;
+}
+.ledger-transaction-values,
+.ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.ledger-transaction-values dt,
+.ledger-summary dt {
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+}
+.ledger-transaction-values dd,
+.ledger-summary dd {
+  margin: 0.3rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.ledger-identity-list,
+.ledger-import-preview {
+  padding-left: 1.2rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.ledger-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.ledger-duplicate-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  line-height: 1.5;
+}
+.ledger-duplicate-ack input {
+  margin-top: 0.25rem;
+}
+.ledger-file-input {
+  max-width: 100%;
+}
+@media (max-width: 720px) {
+  .ledger-fields {
+    grid-template-columns: 1fr;
+  }
+  .ledger-row-heading {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .ledger-transaction-values,
+  .ledger-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 400px) {
+  .ledger-transaction-values,
+  .ledger-summary {
+    grid-template-columns: 1fr;
+  }
+}

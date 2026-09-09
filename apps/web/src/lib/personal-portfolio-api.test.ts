@@ -1,4 +1,7 @@
-import type { PersonalPortfolioPayload } from "@research-cockpit/contracts";
+import type {
+  PersonalPortfolioLedgerPayload,
+  PersonalPortfolioPayload,
+} from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -18,13 +21,125 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("personal portfolio transport", () => {
+  it("reads a ledger without converting it and freezes every copied ledger collection", async () => {
+    const ledger = ledgerPayload();
+    const stored = { ...record(), payload: ledger };
+    fetchMock.mockResolvedValue(json(stored, 200, '"v1"'));
+    const loaded = await fetchPersonalPortfolio();
+    expect(loaded).toEqual(stored);
+    if (loaded?.payload.schemaVersion !== 2) throw new Error("Expected ledger");
+    expect(Object.isFrozen(loaded.payload.identities)).toBe(true);
+    expect(Object.isFrozen(loaded.payload.identities[0])).toBe(true);
+    expect(Object.isFrozen(loaded.payload.opening)).toBe(true);
+    expect(Object.isFrozen(loaded.payload.opening.holdings[0])).toBe(true);
+    expect(Object.isFrozen(loaded.payload.transactions)).toBe(true);
+    expect(Object.isFrozen(loaded.payload.transactions[0])).toBe(true);
+    expect(loaded.payload).not.toHaveProperty("portfolio");
+  });
+
+  it("saves the ledger itself with the same optimistic version and caller retry key", async () => {
+    fetchMock.mockResolvedValue(
+      json({ ...receipt(), version: 2 }, 200, '"v2"'),
+    );
+    const ledger = ledgerPayload();
+    const saved = await savePersonalPortfolio(ledger, 1, key);
+    expect(saved.version).toBe(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.any(URL),
+      expect.objectContaining({
+        body: JSON.stringify({ payload: ledger }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "If-Match": '"v1"',
+          "X-Research-Cockpit-Idempotency-Key": key,
+          "X-Research-Cockpit-Intent": "personal-vault-update",
+        },
+      }),
+    );
+    const body = fetchMock.mock.calls[0]?.[1]?.body;
+    expect(body).not.toContain("projectedHoldings");
+    expect(body).not.toContain("realized");
+  });
+
+  it("rejects semantically invalid ledgers on both read and write", async () => {
+    const ledger = ledgerPayload();
+    const transaction = ledger.transactions[0]!;
+    for (const invalid of [
+      { ...ledger, projection: "private-ledger-canary" },
+      {
+        ...ledger,
+        transactions: [{ ...transaction, type: "sell", shares: "100" }],
+      },
+      {
+        ...ledger,
+        transactions: [{ ...transaction, date: ledger.opening.asOfDate }],
+      },
+      { ...ledger, opening: { ...ledger.opening, cashUsd: "0" } },
+      { ...ledger, transactions: [transaction, transaction] },
+      {
+        ...ledger,
+        transactions: [{ ...transaction, listingId: "unregistered-listing" }],
+      },
+    ]) {
+      const callsBeforeWrite = fetchMock.mock.calls.length;
+      await expect(
+        savePersonalPortfolio(
+          invalid as PersonalPortfolioLedgerPayload,
+          1,
+          key,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(fetchMock).toHaveBeenCalledTimes(callsBeforeWrite);
+      fetchMock.mockResolvedValueOnce(
+        json({ ...record(), payload: invalid }, 200, '"v1"'),
+      );
+      await expect(fetchPersonalPortfolio()).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    }
+    await expect(
+      savePersonalPortfolio(
+        { ...ledger, transactions: [{ ...transaction, date: "9999-12-31" }] },
+        1,
+        key,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+  });
+
+  it("keeps historical ledger identities and unknown opening amounts readable", async () => {
+    const ledger = ledgerPayload();
+    const historical: PersonalPortfolioLedgerPayload = {
+      ...ledger,
+      snapshotSha256: `sha256:${"b".repeat(64)}`,
+      identities: ledger.identities.map((identity) => ({
+        ...identity,
+        symbol: "OLD",
+      })),
+      opening: {
+        ...ledger.opening,
+        cashUsd: null,
+        holdings: ledger.opening.holdings.map((holding) => ({
+          ...holding,
+          totalCostBasisUsd: null,
+        })),
+      },
+    };
+    const stored = { ...record(), payload: historical };
+    fetchMock.mockResolvedValue(json(stored, 200, '"v1"'));
+    expect(await fetchPersonalPortfolio()).toEqual(stored);
+  });
+
   it("reads the private loopback route and returns an immutable versioned snapshot", async () => {
     fetchMock.mockResolvedValue(json(record(), 200, '"v1"'));
     const signal = new AbortController().signal;
     const loaded = await fetchPersonalPortfolio(signal);
     expect(loaded).toEqual(record());
     expect(Object.isFrozen(loaded)).toBe(true);
-    expect(Object.isFrozen(loaded?.payload.holdings[0]?.identity)).toBe(true);
+    expect(loaded?.payload.schemaVersion).toBe(1);
+    if (loaded?.payload.schemaVersion !== 1)
+      throw new Error("Expected manual snapshot");
+    expect(Object.isFrozen(loaded.payload.holdings[0]?.identity)).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       new URL(
         "http://127.0.0.1:3100/v1/personal-filing/workspace/portfolio/main",
@@ -276,6 +391,37 @@ function record(): PersonalPortfolioRecord {
     payloadSha256: "a".repeat(64),
     createdAt: "2020-01-01T00:00:00.000Z",
     updatedAt: "2020-01-01T00:00:00.000Z",
+  };
+}
+
+function ledgerPayload(): PersonalPortfolioLedgerPayload {
+  const manual = payload();
+  return {
+    schemaVersion: 2,
+    name: "My Portfolio",
+    currency: "USD",
+    snapshotSha256: manual.snapshotSha256,
+    basisMethod: "fifo_with_opening_pool",
+    identities: manual.holdings.map((holding) => holding.identity),
+    opening: {
+      asOfDate: "2020-01-01",
+      cashUsd: "100",
+      holdings: manual.holdings.map(({ identity, ...holding }) => ({
+        ...holding,
+        listingId: identity.listingId,
+      })),
+    },
+    transactions: [
+      {
+        id: "ledger-buy-one",
+        date: "2020-01-02",
+        type: "buy",
+        listingId: manual.holdings[0]!.identity.listingId,
+        shares: "1",
+        grossUsd: "10",
+        feeUsd: "1",
+      },
+    ],
   };
 }
 

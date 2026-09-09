@@ -2,7 +2,10 @@ import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { PersonalPortfolioPayload } from "@research-cockpit/contracts";
+import type {
+  PersonalPortfolioLedgerPayload,
+  PersonalPortfolioPayload,
+} from "@research-cockpit/contracts";
 import {
   LocalResearchVault,
   WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE,
@@ -45,6 +48,320 @@ afterEach(async () => {
 });
 
 describe("personal portfolio storage routes", () => {
+  it("explicitly converts a manual snapshot to a durable ledger without changing unknown opening amounts", async () => {
+    const f = await readyApp();
+    const unknown = {
+      ...f.payload,
+      cashUsd: null,
+      holdings: [{ ...f.payload.holdings[0]!, totalCostBasisUsd: null }],
+    };
+    await writePortfolio(f, unknown, 0, "portfolio-before-conversion-key");
+    const ledger = ledgerPayload(unknown);
+    const converted = await writePortfolio(
+      f,
+      ledger,
+      1,
+      "portfolio-conversion-key",
+    );
+    expect(converted.statusCode).toBe(200);
+    expect(converted.headers.etag).toBe('"v2"');
+    expect((await readPortfolio(f)).json()).toMatchObject({
+      version: 2,
+      payload: ledger,
+    });
+    await f.app.close();
+    const reopened = await readyApp(f.root);
+    expect((await readPortfolio(reopened)).json()).toMatchObject({
+      version: 2,
+      payload: ledger,
+    });
+    const updated: PersonalPortfolioLedgerPayload = {
+      ...ledger,
+      transactions: [
+        {
+          id: "ledger-deposit-001",
+          date: "2020-01-02",
+          type: "deposit",
+          listingId: null,
+          shares: null,
+          grossUsd: "25.00",
+          feeUsd: "0",
+        },
+      ],
+    };
+    expect(
+      (
+        await writePortfolio(
+          reopened,
+          updated,
+          2,
+          "portfolio-ledger-update-key",
+        )
+      ).statusCode,
+    ).toBe(200);
+    expect((await readPortfolio(reopened)).json()).toMatchObject({
+      version: 3,
+      payload: updated,
+    });
+    expect(reopened.vault.inventory().records).toHaveLength(1);
+  });
+
+  it("retains only exact persisted historical identities while admitting current identities for new ledgers", async () => {
+    const f = await readyApp();
+    const identity = { ...f.payload.holdings[0]!.identity, symbol: "OLD" };
+    const manual = {
+      ...f.payload,
+      snapshotSha256: `sha256:${"f".repeat(64)}`,
+      holdings: [{ ...f.payload.holdings[0]!, identity }],
+    };
+    const historical = {
+      ...ledgerPayload(manual),
+      snapshotSha256: f.payload.snapshotSha256,
+    };
+    // An identity that has never been persisted or admitted cannot be introduced.
+    expect(
+      (await writePortfolio(f, historical, 0, "portfolio-unadmitted-key"))
+        .statusCode,
+    ).toBe(400);
+    f.vault.putRecord({
+      kind: "portfolio",
+      id: "main",
+      expectedVersion: 0,
+      idempotencyKey: "portfolio-historical-seed",
+      payload: manual,
+    });
+    expect(
+      (await writePortfolio(f, historical, 1, "portfolio-historical-convert"))
+        .statusCode,
+    ).toBe(200);
+    const loaded = await readPortfolio(f);
+    expect(loaded.statusCode).toBe(200);
+    expect(loaded.json()).toMatchObject({ payload: historical, version: 2 });
+    for (const field of [
+      "issuerId",
+      "issuerName",
+      "securityId",
+      "securityName",
+      "shareClassId",
+      "shareClassName",
+      "listingId",
+      "symbol",
+    ] as const) {
+      const changed = {
+        ...identity,
+        [field]: field === "symbol" ? "OTHER" : "changed-identity",
+      };
+      const invalid = {
+        ...historical,
+        identities: [changed],
+        opening: {
+          ...historical.opening,
+          holdings: historical.opening.holdings.map((holding) => ({
+            ...holding,
+            listingId: changed.listingId,
+          })),
+        },
+      };
+      expect(
+        (await writePortfolio(f, invalid, 2, "portfolio-changed-history"))
+          .statusCode,
+        field,
+      ).toBe(400);
+    }
+    for (const changed of [
+      {
+        ...identity,
+        exchangeMic: identity.exchangeMic === "XNYS" ? "XNAS" : "XNYS",
+      },
+      {
+        ...identity,
+        instrumentType:
+          identity.instrumentType === "adr" ? "common_stock" : "adr",
+      },
+    ]) {
+      expect(
+        (
+          await writePortfolio(
+            f,
+            { ...historical, identities: [changed] },
+            2,
+            "portfolio-changed-history",
+          )
+        ).statusCode,
+      ).toBe(400);
+    }
+    const sale: PersonalPortfolioLedgerPayload = {
+      ...historical,
+      transactions: [
+        {
+          id: "ledger-close-history",
+          date: "2020-01-02",
+          type: "sell",
+          listingId: identity.listingId,
+          shares: manual.holdings[0]!.shares,
+          grossUsd: "150",
+          feeUsd: "0",
+        },
+      ],
+    };
+    expect(
+      (await writePortfolio(f, sale, 2, "portfolio-sold-history-key"))
+        .statusCode,
+    ).toBe(200);
+    expect((await readPortfolio(f)).json()).toMatchObject({
+      version: 3,
+      payload: { identities: [identity], transactions: sale.transactions },
+    });
+    const reconciled = {
+      ...sale,
+      identities: [f.payload.holdings[0]!.identity],
+    };
+    expect(
+      (await writePortfolio(f, reconciled, 3, "portfolio-history-reconcile"))
+        .statusCode,
+    ).toBe(200);
+    const replay = await writePortfolio(
+      f,
+      historical,
+      1,
+      "portfolio-historical-convert",
+    );
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toMatchObject({ version: 2, replayed: true });
+    expect((await readPortfolio(f)).json()).toMatchObject({
+      version: 4,
+      payload: reconciled,
+    });
+    const forged = {
+      ...reconciled,
+      identities: [{ ...identity, issuerId: "new-unadmitted-issuer" }],
+    };
+    expect(
+      (await writePortfolio(f, forged, 3, "portfolio-forged-stale-key"))
+        .statusCode,
+    ).toBe(409);
+    expect((await readPortfolio(f)).json()).toMatchObject({
+      version: 4,
+      payload: reconciled,
+    });
+  });
+
+  it("blocks a ledger downgrade without blocking an earlier idempotent manual-save replay", async () => {
+    const f = await readyApp();
+    await writePortfolio(f, f.payload, 0, "portfolio-original-manual-key");
+    const ledger = ledgerPayload(f.payload);
+    await writePortfolio(f, ledger, 1, "portfolio-original-convert-key");
+    expect(
+      (await writePortfolio(f, f.payload, 2, "portfolio-downgrade-key"))
+        .statusCode,
+    ).toBe(409);
+    const replay = await writePortfolio(
+      f,
+      f.payload,
+      0,
+      "portfolio-original-manual-key",
+    );
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json()).toMatchObject({ version: 1, replayed: true });
+    const conversionReplay = await writePortfolio(
+      f,
+      ledger,
+      1,
+      "portfolio-original-convert-key",
+    );
+    expect(conversionReplay.statusCode).toBe(200);
+    expect(conversionReplay.json()).toMatchObject({
+      version: 2,
+      replayed: true,
+    });
+    expect(
+      (await writePortfolio(f, f.payload, 1, "portfolio-stale-new-manual-key"))
+        .statusCode,
+    ).toBe(409);
+    expect((await readPortfolio(f)).json()).toMatchObject({
+      version: 2,
+      payload: ledger,
+    });
+  });
+
+  it("rejects invalid ledger projections before any persistent write", async () => {
+    const f = await readyApp();
+    const put = vi.spyOn(f.vault, "putRecord");
+    const ledger = {
+      ...ledgerPayload(f.payload),
+      opening: { ...ledgerPayload(f.payload).opening, cashUsd: "100" },
+    };
+    const transaction = {
+      id: "ledger-transaction-one",
+      date: "2020-01-02",
+      type: "buy",
+      listingId: ledger.identities[0]!.listingId,
+      shares: "1",
+      grossUsd: "1",
+      feeUsd: "0",
+    };
+    for (const invalid of [
+      { ...ledger, projectedHoldings: "private-ledger-canary" },
+      {
+        ...ledger,
+        transactions: [{ ...transaction, type: "sell", shares: "2" }],
+      },
+      { ...ledger, transactions: [{ ...transaction, grossUsd: "101" }] },
+      { ...ledger, transactions: [{ ...transaction, date: "2020-01-01" }] },
+      { ...ledger, transactions: [{ ...transaction, date: "9999-12-31" }] },
+      { ...ledger, transactions: [transaction, transaction] },
+      {
+        ...ledger,
+        transactions: [
+          { ...transaction, date: "2020-01-03" },
+          { ...transaction, id: "ledger-transaction-two" },
+        ],
+      },
+      {
+        ...ledger,
+        opening: { ...ledger.opening, cashUsd: "1000000000000" },
+        transactions: [
+          {
+            ...transaction,
+            type: "deposit",
+            listingId: null,
+            shares: null,
+            grossUsd: "0.01",
+          },
+        ],
+      },
+    ]) {
+      const response = await writePortfolio(
+        f,
+        invalid,
+        0,
+        "portfolio-invalid-ledger-key",
+      );
+      expect(response.statusCode, JSON.stringify(invalid)).toBe(400);
+      expect(response.payload).not.toContain("private-ledger-canary");
+    }
+    expect(put).not.toHaveBeenCalled();
+    const valid = { ...ledger, transactions: [transaction] };
+    expect(
+      (await writePortfolio(f, valid, 0, "portfolio-valid-ledger-key"))
+        .statusCode,
+    ).toBe(201);
+    expect(put).toHaveBeenCalledOnce();
+    f.vault.putRecord({
+      kind: "portfolio",
+      id: "main",
+      expectedVersion: 1,
+      idempotencyKey: "portfolio-corrupt-projection",
+      payload: {
+        ...ledger,
+        transactions: [{ ...transaction, type: "sell", shares: "2" }],
+      },
+    });
+    const invalidRead = await readPortfolio(f);
+    expect(invalidRead.statusCode).toBe(409);
+    expect(invalidRead.json()).not.toHaveProperty("payload");
+  });
+
   it("authenticates before parsing and never reveals private input", async () => {
     const f = await readyApp();
     const get = vi.spyOn(f.vault, "getRecord");
@@ -381,6 +698,28 @@ describe("personal portfolio storage routes", () => {
     expect(invalid.json()).not.toHaveProperty("payload");
   });
 });
+
+function ledgerPayload(
+  payload: PersonalPortfolioPayload,
+): PersonalPortfolioLedgerPayload {
+  return {
+    schemaVersion: 2,
+    name: "My Portfolio",
+    currency: "USD",
+    snapshotSha256: payload.snapshotSha256,
+    basisMethod: "fifo_with_opening_pool",
+    identities: payload.holdings.map((holding) => holding.identity),
+    opening: {
+      asOfDate: "2020-01-01",
+      cashUsd: payload.cashUsd,
+      holdings: payload.holdings.map(({ identity, ...holding }) => ({
+        listingId: identity.listingId,
+        ...holding,
+      })),
+    },
+    transactions: [],
+  };
+}
 
 async function readyApp(existingRoot?: string) {
   const parent =

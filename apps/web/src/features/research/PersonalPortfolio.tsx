@@ -4,11 +4,14 @@ import {
   isPersonalPortfolioMoney,
   isPersonalPortfolioPayload,
   isPersonalPortfolioShares,
+  projectPersonalPortfolioLedger,
   type PersonalMarketDataIdentityDto,
   type PersonalMarketDataQuoteDto,
   type PersonalPortfolioHolding,
   type PersonalPortfolioIdentity,
   type PersonalPortfolioPayload,
+  type PersonalPortfolioStoredPayload,
+  type PersonalPortfolioLedgerPayload,
 } from "@research-cockpit/contracts";
 import { calculatePersonalPortfolioOverview } from "@research-cockpit/personal-market-analytics";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +25,7 @@ import {
   PersonalWorkspaceApiError,
   searchPersonalSecurities,
 } from "@/lib/personal-workspace-api";
+import { PersonalPortfolioLedgerEditor } from "./PersonalPortfolioLedgerEditor";
 
 export interface PersonalPortfolioProps {
   readonly catalogSnapshotSha256: `sha256:${string}`;
@@ -37,7 +41,8 @@ type QuoteObservation = Readonly<{
 }>;
 type Operation = "load" | "save" | "prices" | "reconcile" | null;
 type Reconciliation = Readonly<{
-  holdings: readonly PersonalPortfolioHolding[];
+  payload: PersonalPortfolioStoredPayload;
+  identities: readonly PersonalPortfolioIdentity[];
   unmatched: readonly string[];
 }>;
 
@@ -48,8 +53,14 @@ export function PersonalPortfolio({
   onSessionUnavailable,
   onOpenResearch,
 }: PersonalPortfolioProps) {
-  const [draft, setDraft] = useState<PersonalPortfolioPayload | null>(null);
-  const [saved, setSaved] = useState<PersonalPortfolioPayload | null>(null);
+  const [draft, setDraft] = useState<PersonalPortfolioStoredPayload | null>(
+    null,
+  );
+  const [saved, setSaved] = useState<PersonalPortfolioStoredPayload | null>(
+    null,
+  );
+  const [openingDate, setOpeningDate] = useState(utcDate());
+  const [pendingLedgerEdits, setPendingLedgerEdits] = useState(false);
   const [version, setVersion] = useState<number | null>(null);
   const [operation, setOperation] = useState<Operation>(null);
   const [message, setMessage] = useState(
@@ -91,6 +102,8 @@ export function PersonalPortfolio({
     setDraft(null);
     setSaved(null);
     setVersion(null);
+    setOpeningDate(utcDate());
+    setPendingLedgerEdits(false);
     setConflicted(false);
     retry.current = null;
   }
@@ -178,6 +191,7 @@ export function PersonalPortfolio({
       const payload = record?.payload ?? emptyPortfolio(catalogSnapshotSha256);
       setDraft(payload);
       setSaved(payload);
+      setPendingLedgerEdits(false);
       setVersion(record?.version ?? null);
       setConflicted(false);
       retry.current = null;
@@ -197,12 +211,12 @@ export function PersonalPortfolio({
     }
   }
 
-  function edit(next: PersonalPortfolioPayload) {
+  function edit(next: PersonalPortfolioStoredPayload) {
     invalidate();
     setDraft(next);
     retry.current = null;
     setMessage(
-      "Unsaved changes. Save this snapshot to encrypted local storage.",
+      "Unsaved changes. Save My Portfolio to encrypted local storage.",
     );
   }
 
@@ -215,7 +229,7 @@ export function PersonalPortfolio({
       >
     >,
   ) {
-    if (draft === null) return;
+    if (draft === null || draft.schemaVersion !== 1) return;
     edit({
       ...draft,
       holdings: draft.holdings.map((holding) =>
@@ -232,6 +246,7 @@ export function PersonalPortfolio({
       draft === null ||
       draft.snapshotSha256 !== catalogSnapshotSha256 ||
       validationMessage(draft) !== null ||
+      pendingLedgerEdits ||
       conflicted
     )
       return;
@@ -270,23 +285,51 @@ export function PersonalPortfolio({
   }
 
   async function refreshPrices() {
+    const holdingsSnapshot = snapshotFromStored(draft);
     if (
       !enabled ||
       draft === null ||
       draft.snapshotSha256 !== catalogSnapshotSha256 ||
       validationMessage(draft) !== null ||
-      draft.holdings.length === 0
+      holdingsSnapshot === null ||
+      holdingsSnapshot.holdings.length === 0
     )
       return;
     const request = start("prices");
     const observed: QuoteObservation[] = [];
     const errors: Array<{ listingId: string; message: string }> = [];
-    for (const [index, holding] of draft.holdings.entries()) {
+    for (const [index, holding] of holdingsSnapshot.holdings.entries()) {
       if (!request.current()) return;
       setMessage(
-        `Checking ${holding.identity.symbol} (${String(index + 1)} of ${String(draft.holdings.length)})…`,
+        `Checking ${holding.identity.symbol} (${String(index + 1)} of ${String(holdingsSnapshot.holdings.length)})…`,
       );
       try {
+        if (draft.schemaVersion === 2) {
+          const admitted = await searchPersonalSecurities(
+            holding.identity.symbol,
+            request.signal,
+            25,
+          );
+          if (!request.current()) return;
+          if (admitted.snapshot.snapshotSha256 !== catalogSnapshotSha256) {
+            failure(new PersonalWorkspaceApiError("conflict"), "");
+            request.finish();
+            return;
+          }
+          if (
+            !admitted.results.some((identity) =>
+              sameIdentity(identity, holding.identity),
+            )
+          ) {
+            errors.push({
+              listingId: holding.identity.listingId,
+              message:
+                "Historical identity is not available in the current catalog; price not requested",
+            });
+            setPriceErrors([...errors]);
+            continue;
+          }
+        }
         const result = await fetchPersonalMarketOverview(
           {
             listingId: holding.identity.listingId,
@@ -356,17 +399,21 @@ export function PersonalPortfolio({
     setMessage(
       "Checking each saved listing identity against the current catalog…",
     );
-    const holdings: PersonalPortfolioHolding[] = [];
+    const savedIdentities =
+      draft.schemaVersion === 1
+        ? draft.holdings.map((holding) => holding.identity)
+        : draft.identities;
+    const identities: PersonalPortfolioIdentity[] = [];
     const unmatched: string[] = [];
     try {
-      for (const holding of draft.holdings) {
-        let matched: PersonalPortfolioHolding | null = null;
+      for (const prior of savedIdentities) {
+        let matched: PersonalPortfolioIdentity | null = null;
         const queries = [
           ...new Set([
-            holding.identity.symbol,
-            holding.identity.issuerName,
-            holding.identity.securityName,
-            holding.identity.shareClassName,
+            prior.symbol,
+            prior.issuerName,
+            prior.securityName,
+            prior.shareClassName,
           ]),
         ].filter(
           (query) => query.trim().length > 0 && [...query].length <= 128,
@@ -382,30 +429,37 @@ export function PersonalPortfolio({
             throw new PersonalWorkspaceApiError("conflict");
           const identity = result.results.find(
             (candidate) =>
-              candidate.listingId === holding.identity.listingId &&
-              candidate.issuerId === holding.identity.issuerId &&
-              candidate.securityId === holding.identity.securityId &&
-              candidate.shareClassId === holding.identity.shareClassId,
+              candidate.listingId === prior.listingId &&
+              candidate.issuerId === prior.issuerId &&
+              candidate.securityId === prior.securityId &&
+              candidate.shareClassId === prior.shareClassId,
           );
           if (identity) {
-            matched = {
-              identity: identityFields(identity),
-              shares: holding.shares,
-              totalCostBasisUsd: holding.totalCostBasisUsd,
-              confirmedOn: holding.confirmedOn,
-            };
+            matched = identityFields(identity);
             break;
           }
         }
-        if (matched === null) unmatched.push(holding.identity.listingId);
-        holdings.push(matched ?? holding);
+        if (matched === null) unmatched.push(prior.listingId);
+        identities.push(matched ?? prior);
       }
       if (!request.current()) return;
-      setPreview({ holdings, unmatched });
+      const payload: PersonalPortfolioStoredPayload =
+        draft.schemaVersion === 1
+          ? {
+              ...draft,
+              holdings: draft.holdings.map((holding, index) => ({
+                ...holding,
+                identity: identities[index] ?? holding.identity,
+              })),
+            }
+          : { ...draft, identities };
+      setPreview({ payload, identities, unmatched });
       setMessage(
         unmatched.length === 0
           ? "All listing identities matched. Review the preview, then apply it and save. Shares, cost basis, and confirmation dates are preserved."
-          : `${String(unmatched.length)} listing identities could not be matched. Every holding is preserved. Remove an unmatched holding explicitly only if appropriate, then preview again.`,
+          : draft.schemaVersion === 2
+            ? `${String(unmatched.length)} historical identities could not be matched. Their opening balances and transactions are preserved; current pricing remains unavailable for unmatched identities. Review and apply to continue recording the ledger.`
+            : `${String(unmatched.length)} listing identities could not be matched. Every holding is preserved. Remove an unmatched holding explicitly only if appropriate, then preview again.`,
       );
     } catch (error) {
       if (request.current())
@@ -418,15 +472,52 @@ export function PersonalPortfolio({
     }
   }
 
-  const visibleDraft = enabled ? draft : null;
+  function startLedger() {
+    if (
+      !enabled ||
+      draft?.schemaVersion !== 1 ||
+      draft.snapshotSha256 !== catalogSnapshotSha256 ||
+      validationMessage(draft) !== null
+    )
+      return;
+    const candidate: PersonalPortfolioLedgerPayload = {
+      schemaVersion: 2,
+      name: "My Portfolio",
+      currency: "USD",
+      snapshotSha256: draft.snapshotSha256,
+      basisMethod: "fifo_with_opening_pool",
+      identities: draft.holdings.map((holding) => holding.identity),
+      opening: {
+        asOfDate: openingDate,
+        cashUsd: draft.cashUsd,
+        holdings: draft.holdings.map(({ identity, ...holding }) => ({
+          listingId: identity.listingId,
+          ...holding,
+        })),
+      },
+      transactions: [],
+    };
+    if (
+      projectPersonalPortfolioLedger(candidate, utcDate()).status !== "valid"
+    ) {
+      setMessage(
+        "Enter a real opening date no later than today and on or after every holding's confirmation date.",
+      );
+      return;
+    }
+    edit(candidate);
+  }
+
+  const ledgerDraft = enabled && draft?.schemaVersion === 2 ? draft : null;
+  const visibleDraft = enabled ? snapshotFromStored(draft) : null;
   const dirty =
-    visibleDraft !== null &&
-    JSON.stringify(visibleDraft) !== JSON.stringify(saved);
+    enabled &&
+    draft !== null &&
+    JSON.stringify(draft) !== JSON.stringify(saved);
   const stale =
     visibleDraft !== null &&
     visibleDraft.snapshotSha256 !== catalogSnapshotSha256;
-  const invalid =
-    visibleDraft === null ? null : validationMessage(visibleDraft);
+  const invalid = !enabled || draft === null ? null : validationMessage(draft);
   const locked =
     !enabled ||
     operation === "load" ||
@@ -442,6 +533,7 @@ export function PersonalPortfolio({
       : null;
   const canAdd =
     visibleDraft !== null &&
+    draft?.schemaVersion === 1 &&
     selectedListing !== null &&
     !locked &&
     !stale &&
@@ -460,7 +552,9 @@ export function PersonalPortfolio({
     >
       <div className="discovery-section-heading">
         <div>
-          <p className="eyebrow">Holdings snapshot</p>
+          <p className="eyebrow">
+            {ledgerDraft ? "Transaction ledger" : "Holdings snapshot"}
+          </p>
           <h2 id="personal-portfolio-title">My Portfolio</h2>
         </div>
         <span>
@@ -470,15 +564,23 @@ export function PersonalPortfolio({
         </span>
       </div>
       <p>
-        Track long-only stock and ADR holdings with your reported shares and
-        total cost basis. Values use reference quotes; gain or loss is
-        unrealized and excludes dividends, fees, taxes, and cash flows.
+        {ledgerDraft ? (
+          "Holdings and cash are derived from opening balances and recorded transactions. Reference quotes value remaining holdings; the ledger separately shows realized FIFO estimates and cash flows. Opening holdings are an aggregate pool, so these estimates are not tax accounting."
+        ) : (
+          <>
+            Track long-only stock and ADR holdings with your reported shares and
+            total cost basis. Values use reference quotes; gain or loss is
+            unrealized and excludes dividends, fees, taxes, and cash flows.
+          </>
+        )}
       </p>
       <div className="portfolio-actions">
         <button
           type="button"
           className="secondary-action compact-action"
-          disabled={!enabled || operation !== null || dirty}
+          disabled={
+            !enabled || operation !== null || dirty || pendingLedgerEdits
+          }
           onClick={() => {
             void load();
           }}
@@ -487,7 +589,7 @@ export function PersonalPortfolio({
             ? "Load My Portfolio"
             : "Reload saved portfolio"}
         </button>
-        {dirty && (
+        {(dirty || pendingLedgerEdits) && (
           <button
             type="button"
             className="text-button"
@@ -544,10 +646,10 @@ export function PersonalPortfolio({
             <div className="portfolio-reconciliation">
               <h3>Identity reconciliation preview</h3>
               <ul>
-                {preview.holdings.map((holding) => (
-                  <li key={holding.identity.listingId}>
-                    {holding.identity.symbol} · {holding.identity.issuerName} —{" "}
-                    {preview.unmatched.includes(holding.identity.listingId)
+                {preview.identities.map((identity) => (
+                  <li key={identity.listingId}>
+                    {identity.symbol} · {identity.issuerName} —{" "}
+                    {preview.unmatched.includes(identity.listingId)
                       ? "Unmatched; preserved"
                       : "Exact listing, issuer, security, and share class matched"}
                   </li>
@@ -556,16 +658,21 @@ export function PersonalPortfolio({
               <button
                 type="button"
                 className="secondary-action compact-action"
-                disabled={preview.unmatched.length !== 0 || locked}
+                disabled={
+                  (preview.payload.schemaVersion === 1 &&
+                    preview.unmatched.length !== 0) ||
+                  locked
+                }
                 onClick={() =>
                   edit({
-                    ...visibleDraft,
+                    ...preview.payload,
                     snapshotSha256: catalogSnapshotSha256,
-                    holdings: preview.holdings,
                   })
                 }
               >
-                Apply matched identities
+                {ledgerDraft
+                  ? "Apply ledger identity review"
+                  : "Apply matched identities"}
               </button>
             </div>
           )}
@@ -583,6 +690,7 @@ export function PersonalPortfolio({
                 stale ||
                 invalid !== null ||
                 conflicted ||
+                pendingLedgerEdits ||
                 (!dirty && version !== null)
               }
               onClick={() => {
@@ -615,6 +723,13 @@ export function PersonalPortfolio({
               Refresh portfolio prices
             </button>
           </div>
+          {pendingLedgerEdits && (
+            <p className="portfolio-status">
+              Apply or reset the staged transaction, opening balance or CSV
+              input before saving. Discard edits and reload clears all staged
+              input.
+            </p>
+          )}
           <div className="portfolio-overview">
             <h3>Portfolio overview{dirty ? " · Unsaved draft" : ""}</h3>
             <p>
@@ -683,50 +798,55 @@ export function PersonalPortfolio({
               Complete total value and allocation require current prices for
               every holding and a known cash balance. Total unrealized gain
               requires every cost basis. Quotes older than 36 hours are
-              excluded. Quotes remain in active session memory; only holdings
-              and cash are saved.
+              excluded. Quotes remain in active session memory.{" "}
+              {ledgerDraft
+                ? "Opening balances, identity history and transactions are saved encrypted."
+                : "Only holdings and cash are saved."}
             </p>
           </div>
-          <div className="portfolio-add-row">
-            <div>
-              <strong>
-                {selectedListing === null
-                  ? "Choose a listing in company search"
-                  : `${selectedListing.symbol} · ${selectedListing.issuerName}`}
-              </strong>
-              <p>
-                {String(visibleDraft.holdings.length)} of 20 holdings · Select
-                “Choose holding” in company search or My Watchlist, or open a
-                company from a screener.
-              </p>
+          {ledgerDraft === null && (
+            <div className="portfolio-add-row">
+              <div>
+                <strong>
+                  {selectedListing === null
+                    ? "Choose a listing in company search"
+                    : `${selectedListing.symbol} · ${selectedListing.issuerName}`}
+                </strong>
+                <p>
+                  {String(visibleDraft.holdings.length)} of 20 holdings · Select
+                  “Choose holding” in company search or My Watchlist, or open a
+                  company from a screener.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="secondary-action compact-action"
+                disabled={!canAdd}
+                onClick={() => {
+                  if (canAdd && selectedListing !== null)
+                    edit({
+                      ...visibleDraft,
+                      holdings: [
+                        ...visibleDraft.holdings,
+                        {
+                          identity: identityFields(selectedListing),
+                          shares: "",
+                          totalCostBasisUsd: null,
+                          confirmedOn: utcDate(),
+                        },
+                      ],
+                    });
+                }}
+              >
+                Add selected holding
+              </button>
             </div>
-            <button
-              type="button"
-              className="secondary-action compact-action"
-              disabled={!canAdd}
-              onClick={() => {
-                if (canAdd && selectedListing !== null)
-                  edit({
-                    ...visibleDraft,
-                    holdings: [
-                      ...visibleDraft.holdings,
-                      {
-                        identity: identityFields(selectedListing),
-                        shares: "",
-                        totalCostBasisUsd: null,
-                        confirmedOn: utcDate(),
-                      },
-                    ],
-                  });
-              }}
-            >
-              Add selected holding
-            </button>
-          </div>
+          )}
           {visibleDraft.holdings.length === 0 && (
             <p className="discovery-empty-state">
-              No holdings yet. Add a selected listing, or enter a cash-only
-              snapshot.
+              {ledgerDraft
+                ? "No open holdings. Record a buy or correct opening balances in the ledger below."
+                : "No holdings yet. Add a selected listing, or enter a cash-only snapshot."}
             </p>
           )}
           <div className="portfolio-holdings">
@@ -755,29 +875,40 @@ export function PersonalPortfolio({
                         <button
                           type="button"
                           className="text-button"
-                          disabled={locked || stale}
+                          disabled={
+                            locked ||
+                            stale ||
+                            (ledgerDraft !== null &&
+                              !quotes.some(
+                                (quote) =>
+                                  quote.security.listingId ===
+                                  holding.identity.listingId,
+                              ))
+                          }
                           onClick={() => onOpenResearch(holding.identity)}
                         >
                           Research {holding.identity.symbol}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="text-button"
-                        disabled={locked}
-                        onClick={() =>
-                          edit({
-                            ...visibleDraft,
-                            holdings: visibleDraft.holdings.filter(
-                              (row) =>
-                                row.identity.listingId !==
-                                holding.identity.listingId,
-                            ),
-                          })
-                        }
-                      >
-                        Remove {holding.identity.symbol}
-                      </button>
+                      {ledgerDraft === null && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={locked}
+                          onClick={() =>
+                            edit({
+                              ...visibleDraft,
+                              holdings: visibleDraft.holdings.filter(
+                                (row) =>
+                                  row.identity.listingId !==
+                                  holding.identity.listingId,
+                              ),
+                            })
+                          }
+                        >
+                          Remove {holding.identity.symbol}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="portfolio-fields">
@@ -788,6 +919,7 @@ export function PersonalPortfolio({
                         inputMode="decimal"
                         maxLength={24}
                         value={holding.shares}
+                        readOnly={ledgerDraft !== null}
                         disabled={locked}
                         onChange={(event) =>
                           updateHolding(holding.identity.listingId, {
@@ -804,6 +936,7 @@ export function PersonalPortfolio({
                         maxLength={24}
                         placeholder="Unknown"
                         value={holding.totalCostBasisUsd ?? ""}
+                        readOnly={ledgerDraft !== null}
                         disabled={locked}
                         onChange={(event) =>
                           updateHolding(holding.identity.listingId, {
@@ -822,6 +955,7 @@ export function PersonalPortfolio({
                         type="date"
                         max={utcDate()}
                         value={holding.confirmedOn}
+                        readOnly={ledgerDraft !== null}
                         disabled={locked}
                         onChange={(event) =>
                           updateHolding(holding.identity.listingId, {
@@ -891,21 +1025,64 @@ export function PersonalPortfolio({
                 maxLength={24}
                 placeholder="Unknown"
                 value={visibleDraft.cashUsd ?? ""}
+                readOnly={ledgerDraft !== null}
                 disabled={locked}
-                onChange={(event) =>
+                onChange={(event) => {
+                  if (draft?.schemaVersion !== 1) return;
                   edit({
                     ...visibleDraft,
                     cashUsd:
                       event.target.value === "" ? null : event.target.value,
-                  })
-                }
+                  });
+                }}
               />
             </label>
             <p>
-              Blank means unknown. Enter 0 when there is no cash. Blank cost
-              basis also means unknown.
+              {ledgerDraft
+                ? "Shares, basis and cash above are derived from the ledger. Correct opening balances or recorded transactions below to change them. Refresh prices to verify current catalog admission before opening research."
+                : "Blank means unknown. Enter 0 when there is no cash. Blank cost basis also means unknown."}
             </p>
           </div>
+          {ledgerDraft !== null ? (
+            <PersonalPortfolioLedgerEditor
+              key={`${context}:${String(version)}`}
+              ledger={ledgerDraft}
+              disabled={locked || stale || conflicted}
+              selectedListing={selectedListing}
+              onChange={edit}
+              onPendingEditsChange={setPendingLedgerEdits}
+            />
+          ) : (
+            <div className="portfolio-ledger-conversion">
+              <h3>Start recording transactions</h3>
+              <p>
+                Use this snapshot as opening balances at the end of the date
+                below. Transactions must be after that date. Shares, unknown
+                cash and unknown basis are preserved; each opening holding
+                becomes one aggregate FIFO pool. Review the ledger, then save to
+                keep the conversion.
+              </p>
+              <label>
+                Opening balances as of
+                <input
+                  aria-label="Opening balances as of"
+                  type="date"
+                  value={openingDate}
+                  max={utcDate()}
+                  disabled={locked || stale}
+                  onChange={(event) => setOpeningDate(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="secondary-action compact-action"
+                disabled={locked || stale || invalid !== null || conflicted}
+                onClick={startLedger}
+              >
+                Start transaction ledger
+              </button>
+            </div>
+          )}
         </>
       )}
     </section>
@@ -943,7 +1120,33 @@ function identityFields(
   };
 }
 
-function validationMessage(payload: PersonalPortfolioPayload): string | null {
+function snapshotFromStored(
+  payload: PersonalPortfolioStoredPayload | null,
+): PersonalPortfolioPayload | null {
+  if (payload === null || payload.schemaVersion === 1) return payload;
+  const result = projectPersonalPortfolioLedger(payload, utcDate());
+  return result.status === "valid" ? result.portfolio : null;
+}
+
+function sameIdentity(
+  left: PersonalPortfolioIdentity,
+  right: PersonalPortfolioIdentity,
+) {
+  return (
+    JSON.stringify(identityFields(left)) ===
+    JSON.stringify(identityFields(right))
+  );
+}
+
+function validationMessage(
+  payload: PersonalPortfolioStoredPayload,
+): string | null {
+  if (payload.schemaVersion === 2) {
+    const result = projectPersonalPortfolioLedger(payload, utcDate());
+    return result.status === "valid"
+      ? null
+      : "This ledger has invalid opening balances or transactions. Correct it or reload before saving or pricing.";
+  }
   if (payload.cashUsd !== null && !isPersonalPortfolioMoney(payload.cashUsd))
     return "Cash must be 0 to 1,000,000,000,000 USD with at most 2 decimal places, or blank for unknown.";
   for (const holding of payload.holdings) {
