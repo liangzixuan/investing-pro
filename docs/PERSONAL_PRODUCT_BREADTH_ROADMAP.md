@@ -872,8 +872,12 @@ Promotable subcycles:
 - **3i-a1:** browser-local historical P/E and P/B bands for one selected
   listing, using an exact-date raw-close join, visible applicability and
   exclusion accounting, deterministic quartiles, and no new provider request;
-- **3i-a:** FCFF DCF, reverse DCF, and historical-multiple models with
-  applicability gates, scenarios, and independent golden cases;
+- **3i-a2:** browser-local mechanical unlevered-FCF-proxy forward and reverse
+  DCF for one selected listing, with three owner scenarios, exact-date market
+  bridge and share-count proxies, and a 5-by-5 sensitivity table;
+- **3i-a:** finish the direct/audited FCFF and applicability-validation breadth
+  for the DCF, reverse-DCF, and historical-multiple models, including
+  independent golden cases;
 - **3i-b:** expansion to at least eight transparent families and at least 12
   variants only where each variant supports a distinct owner research job;
   and
@@ -900,8 +904,15 @@ same-date provider multiple and raw close are positive and there are at least
 multiple scenarios, implied prices, the current empirical percentile, exact
 sample and exclusion counts, and formula/version metadata. It uses the
 provider's most-recent corrected history, so it is historical context rather
-than point-in-time fair-value history. FCFF DCF, reverse DCF, forecasts,
-sensitivity tables, composites, and the remaining Cycle 3i-a breadth stay open.
+than point-in-time fair-value history.
+
+Cycle 3i-a2 adds an owner-editable forward DCF, a market-implied constant-growth
+reverse DCF, and a 5-by-5 WACC/terminal-growth sensitivity table. Its starting
+cash flow is explicitly a mechanical unlevered FCF proxy built from reported
+free cash flow and after-tax reported interest expense; its share count is
+implied from same-date market capitalization and raw close. Direct audited
+FCFF, forecast feeds, financial-sector applicability, independent issuer
+validation, composites, and the remaining Cycle 3i-a breadth stay open.
 
 ### Cycle 3j — peers, financial quality, and risk scorecards
 

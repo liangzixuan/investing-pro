@@ -2539,11 +2539,46 @@ remain explicit unavailable states. The results are provider-most-recent
 historical context, not intrinsic fair value, a target, recommendation, or
 point-in-time backtest, and they remain only in active browser memory.
 
+Cycle 3i-a2 adds the first intrinsic-valuation screening workflow without a new
+route or provider request. After price, annual financials, and valuation
+history are explicitly loaded for one exact listing, a browser-local decimal
+model uses one completed fiscal period's reported free cash flow and absolute
+interest expense to calculate a clearly labelled starting unlevered FCF proxy
+(mechanical). The engine first selects the latest date shared by the raw-bar
+and valuation-point series, then validates the raw close, market capitalization,
+and enterprise value on that exact date. If any of those exact-date values is
+missing or unusable, the result is unavailable; the engine never searches an
+older date for a valid triplet. It then derives the exact same-date provider
+EV-to-equity bridge and quote-consistent share-count proxy and runs conservative,
+base, and expansion constant-growth DCF scenarios. Owner-editable horizon, marginal
+tax-shield rate, WACC, terminal growth, and three scenario growth rates feed one
+disclosed formula. A bounded reverse DCF solves the constant growth rate
+implied by the provider enterprise value, and a 5-by-5 WACC/terminal-growth
+matrix exposes the base scenario's sensitivity. Invalid assumptions and
+missing, mismatched, future-dated, or unusable inputs stay typed unavailable
+states rather than producing a number.
+
+The calculation boundary independently requires USD annual-value and raw-price
+carriers, preserves exact source lexemes, uses 256-digit decimal arithmetic,
+and admits owner rate drafts to four decimal places. The reverse solver runs
+256 deterministic bisections and publishes both a rounded headline and an
+80-decimal audit rate; it withholds success unless that disclosed rate makes
+modeled and target enterprise values round to the same cent.
+
+The Cycle 3i-a2 result is a screen-grade proxy, not audited FCFF. It does not
+normalize leases, one-offs, cash interest versus accrued interest, tax
+deductibility, or provider accounting definitions; it also does not establish
+model applicability for banks or insurers. The share count is a same-date
+market-cap/raw-close proxy rather than diluted shares. Results and owner
+assumptions remain only in component memory and are reset on listing change.
+Nothing is fetched, persisted, exported, or sent to a provider by the model.
+
 These slices do not claim full Cycle 3h-a: verified TTM views, point-in-time
 restatement lineage, the full 30-core-metric set, 500-security coverage, 90%
-knownness, and 20-issuer independent validation remain open. Cycle 3i-a1 does
-not establish DCF/reverse DCF, forecasts, sensitivity tables, composites,
-point-in-time fair-value history, or full Cycle 3i.
+knownness, and 20-issuer independent validation remain open. Cycles 3i-a1 and
+3i-a2 do not establish audited/direct FCFF, forecasts, sector-wide
+applicability, independent issuer validation, composites, point-in-time
+fair-value history, or full Cycle 3i.
 
 The delivery waves are:
 

@@ -5403,6 +5403,24 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "packages/personal-market-analytics/src/personal-fcff-dcf-valuation.ts",
+      [
+        "PERSONAL_FCFF_DCF_ASSUMPTION_BOUNDS",
+        "PERSONAL_FCFF_DCF_REVERSE_BISECTION_ITERATIONS",
+        "PERSONAL_FCFF_DCF_REVERSE_EXACT_RATE_DECIMAL_PLACES",
+        "PERSONAL_FCFF_DCF_SENSITIVITY_WACC_DELTAS",
+        "PERSONAL_FCFF_DCF_SENSITIVITY_TERMINAL_GROWTH_DELTAS",
+        '"provider_enterprise_value - provider_market_capitalization"',
+        '"annual_statement_after_reference_date"',
+        '"scenario_growth_not_ordered"',
+        '"target_money_precision_not_resolved"',
+        'input.priceCurrency !== "USD"',
+        'input.valueCurrency !== "USD"',
+        "export function calculatePersonalFcffDcfValuation(",
+        "latestCommonObservation(",
+      ],
+    ],
+    [
       "apps/web/src/lib/personal-workspace-api.ts",
       [
         '"/v1/personal-filing/market-data/valuation-history"',
@@ -5454,6 +5472,24 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "apps/web/src/features/research/PersonalFcffDcfValuation.tsx",
+      [
+        "export function PersonalFcffDcfValuation(",
+        "readonly annualFinancials: PersonalAnnualFinancialsDto | null",
+        "readonly marketOverview: PersonalMarketOverviewDto | null",
+        "readonly valuationHistory: PersonalValuationHistoryDto | null",
+        "calculatePersonalFcffDcfValuation({",
+        "starting unlevered FCF proxy",
+        "market-implied constant annual FCF-proxy growth",
+        "Cent-tie-out solver rate (audit)",
+        "base DCF sensitivity table",
+        "provider EV-to-equity bridge",
+        "Quote-consistent share-count proxy",
+        "persists nothing",
+        "provides no export",
+      ],
+    ],
+    [
       "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
       [
         "useState<PersonalValuationHistoryDto | null>(null)",
@@ -5463,6 +5499,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "function clearValuationHistoryState(",
         "<PersonalValuationHistory",
         "<PersonalHistoricalMultipleValuation",
+        "<PersonalFcffDcfValuation",
       ],
     ],
   ]);
@@ -5470,7 +5507,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     const content = await readFile(resolvePath(root, path), "utf8");
     if (anchors.some((anchor) => !content.includes(anchor))) {
       found.push(
-        `${path}: valuation-history and historical-multiple validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
+        `${path}: valuation-history, historical-multiple, and DCF validation, formula, explicit UI, metric registry, and active-session state anchors must remain present`,
       );
     }
   }

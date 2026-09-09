@@ -21,6 +21,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
+import type { PersonalFcffDcfValuationProps } from "./PersonalFcffDcfValuation";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
@@ -127,6 +128,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 const componentMocks = vi.hoisted(() => ({
   AnnualFinancials: () => null,
+  FcffDcfValuation: () => null,
   HistoricalMultipleValuation: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
@@ -176,6 +178,9 @@ vi.mock("./OwnerSessionPanel", () => ({
 }));
 vi.mock("./PersonalAnnualFinancials", () => ({
   PersonalAnnualFinancials: componentMocks.AnnualFinancials,
+}));
+vi.mock("./PersonalFcffDcfValuation", () => ({
+  PersonalFcffDcfValuation: componentMocks.FcffDcfValuation,
 }));
 vi.mock("./PersonalHistoricalMultipleValuation", () => ({
   PersonalHistoricalMultipleValuation:
@@ -558,6 +563,51 @@ describe("SecurityDiscoveryWorkspace", () => {
     valuation = requireHistoricalMultipleValuation(rendered);
     expect(valuation.props.marketOverview).toBeNull();
     expect(valuation.props.valuationHistory).toBeNull();
+  });
+
+  it("composes the DCF workspace only from the explicitly loaded selected inputs", async () => {
+    await activateWorkspace();
+    let rendered: React.ReactNode = await searchAndSelectMarket("ZERO");
+    let valuation = requireFcffDcfValuation(rendered);
+
+    expect(valuation.props).toMatchObject({
+      annualFinancials: null,
+      marketOverview: null,
+      selection: { listingId: "lst-zero", symbol: "ZERO" },
+      valuationHistory: null,
+    });
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+
+    requireMarketOverview(rendered).props.onLoad("1y");
+    requireAnnualFinancials(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    requireValuationHistory(rendered).props.onLoad();
+    await flushPromises();
+    rendered = renderWorkspace();
+    valuation = requireFcffDcfValuation(rendered);
+
+    expect(valuation.props.marketOverview).toMatchObject({
+      history: { range: "1y" },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+    expect(valuation.props.annualFinancials).toMatchObject({
+      coverage: { returnedAnnualYears: 1 },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+    expect(valuation.props.valuationHistory).toMatchObject({
+      history: { range: "1y" },
+      security: { listingId: "lst-zero", symbol: "ZERO" },
+    });
+
+    requireMarketOverview(rendered).props.onLoad("5y");
+    rendered = renderWorkspace();
+    valuation = requireFcffDcfValuation(rendered);
+    expect(valuation.props.marketOverview).toBeNull();
+    expect(valuation.props.valuationHistory).toBeNull();
+    expect(valuation.props.annualFinancials).not.toBeNull();
   });
 
   it("aborts and clears valuation history when the selected market range changes", async () => {
@@ -1200,6 +1250,13 @@ function findAnnualFinancials(value: unknown) {
   );
 }
 
+function findFcffDcfValuation(value: unknown) {
+  return findElement<PersonalFcffDcfValuationProps>(
+    value,
+    componentMocks.FcffDcfValuation,
+  );
+}
+
 function findHistoricalMultipleValuation(value: unknown) {
   return findElement<PersonalHistoricalMultipleValuationProps>(
     value,
@@ -1225,6 +1282,12 @@ function requireAnnualFinancials(value: unknown) {
   const annual = findAnnualFinancials(value);
   if (annual === undefined) throw new Error("Expected annual financials.");
   return annual;
+}
+
+function requireFcffDcfValuation(value: unknown) {
+  const valuation = findFcffDcfValuation(value);
+  if (valuation === undefined) throw new Error("Expected FCFF DCF valuation.");
+  return valuation;
 }
 
 function requireQuarterlyFinancials(value: unknown) {

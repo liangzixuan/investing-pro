@@ -2825,6 +2825,42 @@ This boundary does not establish intrinsic valuation, forecasts, DCF/reverse
 DCF, peer comparison, sensitivity analysis, composite weighting, point-in-time
 fair-value history, full Cycle 3i, or competitor parity.
 
+## Cycle 3i-a2 mechanical unlevered-FCF-proxy DCF threat boundary
+
+Cycle 3i-a2 adds a browser-local derivation over three already authenticated
+and strictly validated responses. Assets at risk are listing identity,
+financial-period provenance, exact-date price/market-cap/enterprise-value
+alignment, assumption integrity, decimal precision, solver termination, and
+honest presentation of accounting and share-count proxies. Primary threats are
+cross-listing or cross-range composition; adjusted-price or nearest-date
+substitution; unknown, zero, negative, or non-finite inputs entering the model;
+WACC not exceeding terminal growth; extreme growth or horizon assumptions;
+reverse-solver non-convergence; invalid sensitivity cells appearing numeric;
+owner assumptions surviving a listing change; and a mechanical proxy being
+presented as audited FCFF or a recommendation.
+
+Controls are strict exact-shape input validation, exact listing equality, an
+exact latest-shared-date join, raw-close-only market input, positive market
+gates, explicit decimal-string parsing, bounded assumptions, mandatory
+WACC/terminal-growth ordering, deterministic decimal projection and bisection,
+strict USD currency carriers, 256-digit arithmetic, a disclosed 80-decimal
+reverse audit rate, a cent-resolution success gate, typed
+below-range/above-range/unavailable solver states, explicit unavailable
+sensitivity cells, deep-frozen calculation output, visible source dates and
+formula/version metadata, and component remount on listing change. The UI names
+the starting cash flow `starting unlevered FCF proxy (mechanical)`, names the
+share count as quote-consistent rather than diluted, exposes every owner input,
+and disclaims unresolved accounting normalization and financial-sector
+applicability.
+
+The calculation introduces no request, credential access, persistence, export,
+logging, or provider write. It uses only responses the owner explicitly loaded
+into the active session and loses them with the market view or owner session.
+This boundary does not establish audited or direct FCFF, forecast accuracy,
+bank/insurer applicability, diluted shares, independent issuer validation,
+peer comparison, composites, point-in-time fair-value history, full Cycle 3i,
+or competitor parity.
+
 ## Gates before adding new trust boundaries
 
 1. **Authentication or customer tenant data:** building on b1's bounded real-PostgreSQL run and the live-verified container-local b2/b3 service-account boundaries, prove end-user identity/role mapping, BOLA isolation, pooled context cleanup, external TLS, production secret handling, retention, export/delete, DSAR, backup deletion, and restore before adding verified OIDC/JWT identity. A database service login or synthetic context is never accepted as end-user authentication evidence.

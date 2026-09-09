@@ -2759,6 +2759,70 @@ vendor method. DCF, reverse DCF, forecast assumptions, sensitivity tables,
 composites, peer-implied values, and fair-value history remain later Cycle 3i
 work.
 
+## Cycle 3i-a2 personal mechanical unlevered-FCF-proxy DCF model
+
+Cycle 3i-a2 derives forward DCF scenarios and a reverse-implied constant-growth
+result entirely in the browser from already validated
+`PersonalAnnualFinancialsDto`, `PersonalMarketOverviewDto`, and
+`PersonalValuationHistoryDto` inputs. It makes no network request and persists
+no source, assumption, or result. All three response identities must exactly
+match the selected six-field listing identity. The engine first selects the
+latest exact date shared by the raw-bar and valuation-point series. It then
+validates the raw close, market capitalization, and enterprise value on that
+exact selected date. If any is unknown, nonpositive, or otherwise unusable, the
+result is unavailable; the engine never falls back to an older date that happens
+to contain a valid triplet. Adjusted-price and nearest-date substitution are
+also prohibited.
+
+The starting value is named `starting unlevered FCF proxy (mechanical)`, not
+normalized or audited FCFF. It is `reported free cash flow + abs(reported
+interest expense) × (1 − owner marginal tax-shield rate)` for one completed
+annual fiscal period at or before the valuation date. The calculation does not
+resolve whether provider FCF is exactly CFO minus capital expenditure, cash
+versus accrued interest, tax deductibility, leases, one-offs, or provider
+normalization choices. The same-date market bridge is `enterprise value −
+market capitalization`; the quote-consistent share-count proxy is `market
+capitalization ÷ raw close` and is not a diluted-share measure.
+
+For each conservative, base, and expansion scenario, projected cash flow is
+`starting proxy × (1 + scenario growth)^year`. Annual cash flows are discounted
+at owner-entered WACC. Terminal value is `final projected cash flow × (1 +
+terminal growth) ÷ (WACC − terminal growth)`, and the DCF enterprise value is
+the sum of discounted annual cash flows and discounted terminal value. Implied
+equity value subtracts the same-date provider EV-to-equity bridge; implied
+price divides that equity value by the same-date share-count proxy. Reverse DCF
+holds the common assumptions fixed and deterministically solves for the
+constant FCF-proxy growth rate whose modeled enterprise value rounds to the
+same cent as provider enterprise value; out-of-bound solutions remain explicit
+rather than clamped.
+
+All annual values, valuation values, and raw closes are admitted only with an
+explicit USD carrier. Source and owner decimal lexemes are preserved exactly;
+owner-entered rates admit at most four decimal places. Calculations use 256
+decimal digits. Reverse DCF performs 256 deterministic bisections, exposes a
+rounded four-decimal headline plus an 80-decimal audit rate, and reports success
+only when that disclosed rate makes modeled and provider enterprise values
+round to the same cent. Failure to resolve that money unit is
+a typed unavailable state rather than a claimed solution.
+
+The result contains exact input values, currency carriers, and dates, scenario projections,
+discounted components, terminal contribution, implied values, reverse-solver
+status, sensitivity axes/cells, formula/schema versions, and rounding metadata.
+Decimal arithmetic has no intermediate display rounding. A 5-by-5 base-scenario
+matrix varies WACC by minus two through plus two percentage points and terminal
+growth by minus one through plus one percentage point; any cell that violates
+the model's bounds or rate ordering is explicitly unavailable. Typed
+unavailable states cover missing prerequisites, identity or range mismatch, no
+shared market date, future-dated or unusable financial values, unusable market
+values, nonpositive residual equity, and invalid owner assumptions.
+
+This model is an owner-controlled screening aid. It is not an audited FCFF
+normalization, provider forecast, fair-value history, price target,
+recommendation, rating, financial-sector model, or reconstruction of a
+proprietary vendor method. Direct FCFF/lease normalization, diluted shares,
+forecast feeds, issuer-independent golden validation, applicability breadth,
+peer values, composites, and point-in-time fair-value history remain open.
+
 These bounded database results do not prove production identity or external
 authentication. `session_user` identifies only the database service account;
 it does not bind an end user to a principal or organization, and

@@ -14,9 +14,9 @@ preserved and becomes applicable only if that scope widens.
 
 ## Current personal milestone
 
-Cycles 3g-a1, 3g-b1, 3h-a1, 3h-a2, and 3h-a3 add a provider-backed market view,
-transparent trend/risk analytics, and multi-period financials to the daily-use
-discovery workflow. In the explicit
+Cycles 3g-a1 through 3i-a2 add a provider-backed market view, transparent
+trend/risk analytics, multi-period financials, and two inspectable valuation
+workflows to the daily-use discovery workflow. In the explicit
 `personal_workspace` mode, the owner can
 authenticate, search the admitted local security universe, keep one encrypted
 `My Watchlist`, and open a selected company without putting its symbol in the
@@ -69,6 +69,23 @@ are transparent historical-multiple scenarios from provider-most-recent data,
 not intrinsic fair value, a price target, a point-in-time backtest, or a
 buy/sell signal.
 
+Once price, annual financials, and valuation history are loaded for the exact
+same listing, the browser can also run a forward DCF and a reverse DCF without
+another request. Because the connected feed does not supply a verified direct
+unlevered FCFF series, the starting cash flow is labelled **starting unlevered
+FCF proxy (mechanical)**: reported free cash flow plus the absolute reported
+interest expense after applying the owner-entered marginal tax-shield rate.
+The owner can edit conservative, base, and expansion growth, horizon, WACC,
+tax-shield rate, and terminal growth. The panel shows all three implied prices,
+the market-implied constant growth result, a 5-by-5 WACC/terminal-growth
+sensitivity table, and the exact source dates, bridge, quote-consistent share
+proxy, formulas, and caveats. The reverse result labels its four-decimal
+headline as rounded and discloses the audit rate that ties modeled and provider
+enterprise values to the displayed cent. This is an owner-controlled
+screening model—not
+an audited FCFF normalization, forecast, target, recommendation, or copied
+vendor rating.
+
 Returned Tiingo data and the displayed analytics are held only in the active
 owner session's memory and are not written to the vault, filesystem, browser
 storage, logs, exports, or Git.
@@ -87,9 +104,9 @@ This is a visible feature milestone, not full Cycle 3g or product parity: the
 declared 100-symbol validation gate, independent corporate-action reconciliation,
 benchmark relative strength, broader indicators, verified TTM financials,
 point-in-time statements, the full 30-core-metric and 500-security validation
-gate, DCF/reverse-DCF and broader valuation models, fair-value history, peer
-tools, screening, events/news, portfolio analytics, alerts, and exports remain
-later product work.
+gate, audited direct-FCFF inputs, forecast feeds, broader valuation models,
+fair-value history, peer tools, screening, events/news, portfolio analytics,
+alerts, and exports remain later product work.
 
 ## Historical synthetic slice
 

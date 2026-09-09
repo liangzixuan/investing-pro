@@ -35,6 +35,7 @@ import {
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
+import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
 import { PersonalHistoricalMultipleValuation } from "./PersonalHistoricalMultipleValuation";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
@@ -1177,6 +1178,14 @@ export function SecurityDiscoveryWorkspace() {
               providerStatus={marketDataStatus}
               requestState={annualFinancialsRequestState}
               selection={marketSelection}
+            />
+
+            <PersonalFcffDcfValuation
+              key={marketSelection?.listingId ?? "no-selection"}
+              annualFinancials={annualFinancials}
+              marketOverview={marketOverview}
+              selection={marketSelection}
+              valuationHistory={valuationHistory}
             />
 
             <PersonalQuarterlyFinancials
