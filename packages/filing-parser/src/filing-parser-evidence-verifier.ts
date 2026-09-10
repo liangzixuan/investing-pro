@@ -252,6 +252,10 @@ const CYCLE_3M_A1_ROUTING_CLOSURE_REVISION =
   "fc9a94e190cfc76f2bcc17c56d3403293aa7e18d" as const;
 const CYCLE_3M_A2_FEATURE_REVISION =
   "e2bc175a3fdb9863fc81467ca9f92bcdb63cf027" as const;
+const CYCLE_3M_A2_ROUTING_CLOSURE_REVISION =
+  "e30cb7b45881469eab2ec5ca53be096c4bf86689" as const;
+const CYCLE_3M_A3_FEATURE_REVISION =
+  "2688fdfc5fcc88a53e77932c8580e45dcac2ca0c" as const;
 
 const CYCLE_2P_CORPUS_ADMISSION_PATH =
   "packages/filing-parser/src/corpus-admission.ts" as const;
@@ -4442,6 +4446,95 @@ const CYCLE_3M_A2_ROUTING_CLOSURE_TRANSITION = Object.freeze([
     status: "M",
   },
 ]);
+const CYCLE_3M_A3_FEATURE_TRANSITION = Object.freeze([
+  { path: "README.md", status: "M" },
+  { path: "apps/api/src/workspace-portfolio-routes.test.ts", status: "M" },
+  { path: "apps/api/src/workspace-portfolio-routes.ts", status: "M" },
+  { path: "apps/web/app/layout.tsx", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolio.test.tsx",
+    status: "M",
+  },
+  { path: "apps/web/src/features/research/PersonalPortfolio.tsx", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolioHistoryCoverage.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolioHistoryCoverage.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolioLedgerEditor.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolioLedgerEditor.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolioSplitEditor.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalPortfolioSplitEditor.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/personal-portfolio-history.css",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/personal-portfolio-ledger.css",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/personal-portfolio-api.test.ts", status: "M" },
+  { path: "apps/web/src/lib/personal-portfolio-api.ts", status: "M" },
+  { path: "apps/web/src/lib/personal-portfolio-history.test.ts", status: "A" },
+  { path: "apps/web/src/lib/personal-portfolio-history.ts", status: "A" },
+  {
+    path: "apps/web/src/lib/personal-portfolio-ledger-csv.test.ts",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/personal-portfolio-ledger-csv.ts", status: "M" },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "docs/PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md", status: "A" },
+  { path: "docs/PERSONAL_PORTFOLIO_LEDGER.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  {
+    path: "packages/contracts/src/personal-portfolio-ledger.test.ts",
+    status: "M",
+  },
+  { path: "packages/contracts/src/personal-portfolio-ledger.ts", status: "M" },
+]);
+const CYCLE_3M_A3_ROUTING_CLOSURE_TRANSITION = Object.freeze([
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+]);
 
 const CYCLE_2V_SOURCE_TRANSITION = Object.freeze(
   [
@@ -4738,6 +4831,8 @@ const CYCLE_3E_A_PROTECTED_SURFACE_PATHS = new Set([
   ...CYCLE_3M_A1_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3M_A2_FEATURE_TRANSITION.map((entry) => entry.path),
   ...CYCLE_3M_A2_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3M_A3_FEATURE_TRANSITION.map((entry) => entry.path),
+  ...CYCLE_3M_A3_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
 ]);
 const CYCLE_2K_TRANSITION_PATHS = new Set(
   CYCLE_2K_TRANSITION.map((entry) => entry.path),
@@ -8224,6 +8319,28 @@ export function isCycle3ma2FeatureTopologyAllowed(
   );
 }
 
+/** @internal Exact merge-free partial portfolio split-reconciliation and historical-price-coverage lineage. */
+export function isCycle3ma3FeatureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  closureTopology: readonly [
+    ...Parameters<typeof isCycle3ma2RoutingClosureTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "75" &&
+    firstParentCount === "75" &&
+    COMMIT_SHA.test(revision) &&
+    revision === CYCLE_3M_A3_FEATURE_REVISION &&
+    parentLine ===
+      `${CYCLE_3M_A3_FEATURE_REVISION} ${CYCLE_3M_A2_ROUTING_CLOSURE_REVISION}` &&
+    closureTopology[2] === CYCLE_3M_A2_ROUTING_CLOSURE_REVISION &&
+    isCycle3ma2RoutingClosureTopologyAllowed(...closureTopology)
+  );
+}
+
 /** @internal One merge-free routing-closure child of the exact catalog identity-screener feature. */
 export function isCycle3ka1RoutingClosureTopologyAllowed(
   successorCount: string,
@@ -8326,6 +8443,27 @@ export function isCycle3ma2RoutingClosureTopologyAllowed(
     parentLine === `${revision} ${CYCLE_3M_A2_FEATURE_REVISION}` &&
     featureTopology[2] === CYCLE_3M_A2_FEATURE_REVISION &&
     isCycle3ma2FeatureTopologyAllowed(...featureTopology)
+  );
+}
+
+/** @internal One exact non-evidence portfolio routing-closure child. */
+export function isCycle3ma3RoutingClosureTopologyAllowed(
+  successorCount: string,
+  firstParentCount: string,
+  revision: string,
+  parentLine: string,
+  featureTopology: readonly [
+    ...Parameters<typeof isCycle3ma3FeatureTopologyAllowed>,
+  ],
+): boolean {
+  return (
+    successorCount === "76" &&
+    firstParentCount === "76" &&
+    COMMIT_SHA.test(revision) &&
+    revision !== CYCLE_3M_A3_FEATURE_REVISION &&
+    parentLine === `${revision} ${CYCLE_3M_A3_FEATURE_REVISION}` &&
+    featureTopology[2] === CYCLE_3M_A3_FEATURE_REVISION &&
+    isCycle3ma3FeatureTopologyAllowed(...featureTopology)
   );
 }
 
@@ -10061,6 +10199,16 @@ export function isCycle3ma2FeatureCommitDiffSetAllowed(
   );
 }
 
+/** @internal Exact partial manual portfolio feature inventory. */
+export function isCycle3ma3FeatureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3M_A3_FEATURE_TRANSITION,
+  );
+}
+
 /** @internal Exact Cycle 3k-a1 routing-closure transition. */
 export function isCycle3ka1RoutingClosureCommitDiffSetAllowed(
   entries: readonly { readonly path: string; readonly status: string }[],
@@ -10108,6 +10256,16 @@ export function isCycle3ma2RoutingClosureCommitDiffSetAllowed(
   return exactAdmissionValidityBridgeDiffSet(
     entries,
     CYCLE_3M_A2_ROUTING_CLOSURE_TRANSITION,
+  );
+}
+
+/** @internal Exact partial manual portfolio routing-closure inventory. */
+export function isCycle3ma3RoutingClosureCommitDiffSetAllowed(
+  entries: readonly { readonly path: string; readonly status: string }[],
+): boolean {
+  return exactAdmissionValidityBridgeDiffSet(
+    entries,
+    CYCLE_3M_A3_ROUTING_CLOSURE_TRANSITION,
   );
 }
 
@@ -12126,6 +12284,25 @@ async function verifyCycle2zTransition(
       128,
     ),
   );
+  const cycle3ma2RoutingClosureParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      [
+        "rev-list",
+        "--parents",
+        "--max-count=1",
+        CYCLE_3M_A2_ROUTING_CLOSURE_REVISION,
+      ],
+      128,
+    ),
+  );
+  const cycle3ma3FeatureParentLine = decodeGitParentLine(
+    await git(
+      repositoryPath,
+      ["rev-list", "--parents", "--max-count=1", CYCLE_3M_A3_FEATURE_REVISION],
+      128,
+    ),
+  );
   const directSource = isCycle2zDirectChildAllowed(
     successorCount,
     firstParentCount,
@@ -12909,6 +13086,20 @@ async function verifyCycle2zTransition(
     cycle3ma2FeatureParentLine,
     pinnedCycle3ma1RoutingClosureTopology,
   ] as const;
+  const pinnedCycle3ma2RoutingClosureTopology = [
+    "74",
+    "74",
+    CYCLE_3M_A2_ROUTING_CLOSURE_REVISION,
+    cycle3ma2RoutingClosureParentLine,
+    pinnedCycle3ma2FeatureTopology,
+  ] as const;
+  const pinnedCycle3ma3FeatureTopology = [
+    "75",
+    "75",
+    CYCLE_3M_A3_FEATURE_REVISION,
+    cycle3ma3FeatureParentLine,
+    pinnedCycle3ma2RoutingClosureTopology,
+  ] as const;
   const cycle3eaSource = isCycle3eaSourceTopologyAllowed(
     successorCount,
     firstParentCount,
@@ -13283,7 +13474,23 @@ async function verifyCycle2zTransition(
     parentLine,
     pinnedCycle3ma2FeatureTopology,
   );
-  const cycle3ma2Routing = cycle3ma2Feature || cycle3ma2RoutingClosure;
+  const cycle3ma3Feature = isCycle3ma3FeatureTopologyAllowed(
+    successorCount,
+    firstParentCount,
+    revision,
+    parentLine,
+    pinnedCycle3ma2RoutingClosureTopology,
+  );
+  const cycle3ma3RoutingClosure = isCycle3ma3RoutingClosureTopologyAllowed(
+    successorCount,
+    firstParentCount,
+    revision,
+    parentLine,
+    pinnedCycle3ma3FeatureTopology,
+  );
+  const cycle3ma3Routing = cycle3ma3Feature || cycle3ma3RoutingClosure;
+  const cycle3ma2Routing =
+    cycle3ma2Feature || cycle3ma2RoutingClosure || cycle3ma3Routing;
   const cycle3ma1Routing =
     cycle3ma1Feature || cycle3ma1RoutingClosure || cycle3ma2Routing;
   const cycle3la1Routing =
@@ -14449,13 +14656,30 @@ async function verifyCycle2zTransition(
     );
     if (!isCycle3ma2FeatureCommitDiffSetAllowed(entries)) invalidReview();
   }
-  if (cycle3ma2RoutingClosure) {
+  if (cycle3ma2RoutingClosure || cycle3ma3Routing) {
     const entries = await cycle2pDiffEntries(
       repositoryPath,
       CYCLE_3M_A2_FEATURE_REVISION,
-      revision,
+      cycle3ma2RoutingClosure ? revision : CYCLE_3M_A2_ROUTING_CLOSURE_REVISION,
     );
     if (!isCycle3ma2RoutingClosureCommitDiffSetAllowed(entries))
+      invalidReview();
+  }
+  if (cycle3ma3Routing) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3M_A2_ROUTING_CLOSURE_REVISION,
+      cycle3ma3Feature ? revision : CYCLE_3M_A3_FEATURE_REVISION,
+    );
+    if (!isCycle3ma3FeatureCommitDiffSetAllowed(entries)) invalidReview();
+  }
+  if (cycle3ma3RoutingClosure) {
+    const entries = await cycle2pDiffEntries(
+      repositoryPath,
+      CYCLE_3M_A3_FEATURE_REVISION,
+      revision,
+    );
+    if (!isCycle3ma3RoutingClosureCommitDiffSetAllowed(entries))
       invalidReview();
   }
 
