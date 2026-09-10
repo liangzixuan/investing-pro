@@ -182,6 +182,7 @@ describe("portfolio end-of-day valuation history", () => {
       lastValueUsd: "139.00",
       netExternalFlowsUsd: "0.00",
       changeAfterExternalFlowsUsd: "9.00",
+      endpointReturn: { status: "available", percent: "6.92" },
     });
   });
 
@@ -280,9 +281,18 @@ describe("portfolio end-of-day valuation history", () => {
       completeDates: 0,
       unknownCashDates: 4,
     });
-    expect(
-      Object.values(result.comparison).every((value) => value === null),
-    ).toBe(true);
+    expect(result.comparison).toEqual({
+      firstDate: null,
+      lastDate: null,
+      firstValueUsd: null,
+      lastValueUsd: null,
+      netExternalFlowsUsd: null,
+      changeAfterExternalFlowsUsd: null,
+      endpointReturn: {
+        status: "unavailable",
+        reason: "insufficient_complete_dates",
+      },
+    });
   });
 
   it("does not carry prices over an absent date or interpolate between observations", () => {
@@ -423,6 +433,7 @@ describe("portfolio end-of-day valuation history", () => {
       lastValueUsd: "0.01",
       netExternalFlowsUsd: "0.00",
       changeAfterExternalFlowsUsd: "0.00",
+      endpointReturn: { status: "available", percent: "0.00" },
     });
   });
 
@@ -442,16 +453,26 @@ describe("portfolio end-of-day valuation history", () => {
       lastValueUsd: "148.00",
       netExternalFlowsUsd: "2.00",
       changeAfterExternalFlowsUsd: "6.00",
+      endpointReturn: { status: "unavailable", reason: "external_flows" },
     });
   });
 
-  it("withholds every comparison field with fewer than two complete dates", () => {
+  it("withholds comparison amounts and return with fewer than two complete dates", () => {
     for (const observations of [history([]), history([bar("2026-09-02")])]) {
-      expect(
-        Object.values(valid(input(ledger(), observations)).comparison).every(
-          (value) => value === null,
-        ),
-      ).toBe(true);
+      const comparison = valid(input(ledger(), observations)).comparison;
+      expect(comparison).toEqual({
+        firstDate: null,
+        lastDate: null,
+        firstValueUsd: null,
+        lastValueUsd: null,
+        netExternalFlowsUsd: null,
+        changeAfterExternalFlowsUsd: null,
+        endpointReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
+      });
+      expect(Object.isFrozen(comparison.endpointReturn)).toBe(true);
     }
   });
 
@@ -469,6 +490,10 @@ describe("portfolio end-of-day valuation history", () => {
       cashUsd: "100.00",
       totalValueUsd: "130.00",
       netExternalFlowUsd: "0.00",
+    });
+    expect(result.comparison.endpointReturn).toEqual({
+      status: "available",
+      percent: "0.00",
     });
   });
 
@@ -490,8 +515,245 @@ describe("portfolio end-of-day valuation history", () => {
     expect(Object.isFrozen(result.points)).toBe(true);
     expect(Object.isFrozen(result.coverage)).toBe(true);
     expect(Object.isFrozen(result.comparison)).toBe(true);
+    expect(Object.isFrozen(result.comparison.endpointReturn)).toBe(true);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
   });
+});
+
+describe("portfolio endpoint percentage returns", () => {
+  it.each([
+    ["100", "125", "25.00"],
+    ["100", "75", "-25.00"],
+    ["100", "100", "0.00"],
+    ["10000", "10000.50", "0.01"],
+    ["10000", "9999.50", "-0.01"],
+    ["10000", "9999.51", "0.00"],
+    ["10000", "10000.49", "0.00"],
+  ])(
+    "rounds the return from %s to %s to %s percent without negative zero",
+    (startingPrice, endingPrice, percent) => {
+      const base = ledger();
+      const source = {
+        ...base,
+        opening: {
+          ...base.opening,
+          cashUsd: "0",
+          holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+        },
+      };
+      const result = valid(
+        input(
+          source,
+          history([
+            bar("2026-09-01", startingPrice),
+            bar("2026-09-04", endingPrice),
+          ]),
+        ),
+      );
+      expect(result.coverage).toMatchObject({
+        completeDates: 2,
+        missingPriceDates: 2,
+      });
+      expect(result.comparison.endpointReturn).toEqual({
+        status: "available",
+        percent,
+      });
+    },
+  );
+
+  it.each([
+    [`100004${"9".repeat(45)}`, "0.00"],
+    [`100005${"0".repeat(45)}`, "0.01"],
+    [`99995${"0".repeat(45)}`, "-0.01"],
+  ])(
+    "preserves exact percentage boundaries for huge values %s",
+    (end, percent) => {
+      const base = ledger();
+      const source = {
+        ...base,
+        opening: {
+          ...base.opening,
+          cashUsd: "0",
+          holdings: [{ ...base.opening.holdings[0]!, shares: "1000000000" }],
+        },
+      };
+      const result = valid(
+        input(
+          source,
+          history([
+            bar("2026-09-01", `1${"0".repeat(50)}`),
+            bar("2026-09-04", end),
+          ]),
+        ),
+      );
+      expect(result.comparison.firstValueUsd).toBe(`1${"0".repeat(59)}.00`);
+      expect(result.comparison.endpointReturn).toEqual({
+        status: "available",
+        percent,
+      });
+    },
+  );
+
+  it("reports a total loss when recorded internal costs exhaust the portfolio", () => {
+    const base = ledger([cash("fee", "fee", "2026-09-02", "100")]);
+    const source = { ...base, opening: { ...base.opening, holdings: [] } };
+    const result = valid({ ...input(source), histories: [] });
+    expect(result.comparison).toMatchObject({
+      firstValueUsd: "100.00",
+      lastValueUsd: "0.00",
+      changeAfterExternalFlowsUsd: "-100.00",
+      endpointReturn: { status: "available", percent: "-100.00" },
+    });
+  });
+
+  it.each(["0", "0.004"])(
+    "withholds a return when the displayed starting value is zero (%s exact)",
+    (startingValue) => {
+      const base = ledger();
+      const source = {
+        ...base,
+        opening: {
+          ...base.opening,
+          cashUsd: "0",
+          holdings:
+            startingValue === "0"
+              ? []
+              : [{ ...base.opening.holdings[0]!, shares: "1" }],
+        },
+      };
+      const result = valid(
+        input(
+          source,
+          history([bar("2026-09-01", "0.004"), bar("2026-09-04", "0.01")]),
+        ),
+      );
+      expect(result.comparison).toMatchObject({
+        firstValueUsd: "0.00",
+        endpointReturn: {
+          status: "unavailable",
+          reason: "non_positive_starting_value",
+        },
+      });
+      expect(result.comparison.changeAfterExternalFlowsUsd).toBe(
+        startingValue === "0" ? "0.00" : "0.01",
+      );
+    },
+  );
+
+  it.each(["deposit", "withdrawal"] as const)(
+    "excludes first-date and later-than-last %s activities from eligibility",
+    (type) => {
+      const source = ledger([
+        cash("first", type, "2026-09-02", "10"),
+        cash("after-last", type, "2026-09-04", "10"),
+      ]);
+      const result = valid(
+        input(source, history([bar("2026-09-02"), bar("2026-09-03")])),
+      );
+      expect(result.comparison).toMatchObject({
+        firstDate: "2026-09-02",
+        lastDate: "2026-09-03",
+        netExternalFlowsUsd: "0.00",
+        endpointReturn: { status: "available", percent: "0.00" },
+      });
+      expect(result.points[3]?.netExternalFlowUsd).toBe(
+        type === "deposit" ? "10.00" : "-10.00",
+      );
+    },
+  );
+
+  it("excludes pre-window external activities while retaining their cash in the baseline", () => {
+    const source = ledger([
+      cash("deposit", "deposit", "2026-09-02", "20"),
+      cash("withdrawal", "withdrawal", "2026-09-02", "5"),
+    ]);
+    const result = valid({
+      ...input(source, history([bar("2026-09-03"), bar("2026-09-04")])),
+      startDate: "2026-09-03",
+    });
+    expect(result.comparison).toMatchObject({
+      firstValueUsd: "145.00",
+      lastValueUsd: "145.00",
+      netExternalFlowsUsd: "0.00",
+      endpointReturn: { status: "available", percent: "0.00" },
+    });
+  });
+
+  it.each(["deposit", "withdrawal"] as const)(
+    "blocks a %s on the last complete date while keeping the dollar bridge",
+    (type) => {
+      const result = valid(
+        input(
+          ledger([cash("last-date", type, "2026-09-03", "10")]),
+          history([bar("2026-09-02"), bar("2026-09-03", "11")]),
+        ),
+      );
+      expect(result.comparison).toMatchObject({
+        firstDate: "2026-09-02",
+        lastDate: "2026-09-03",
+        changeAfterExternalFlowsUsd: "3.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+      });
+    },
+  );
+
+  it.each(["2026-09-02", "2026-09-03"])(
+    "blocks offsetting flows with a withdrawal on %s, including missing-price dates",
+    (withdrawalDate) => {
+      const source = ledger([
+        cash("deposit", "deposit", "2026-09-02", "10"),
+        cash("withdrawal", "withdrawal", withdrawalDate, "10"),
+      ]);
+      const result = valid(
+        input(source, history([bar("2026-09-01"), bar("2026-09-04", "11")])),
+      );
+      expect(result.comparison).toMatchObject({
+        netExternalFlowsUsd: "0.00",
+        changeAfterExternalFlowsUsd: "3.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+      });
+      expect(result.coverage.missingPriceDates).toBe(2);
+    },
+  );
+
+  it("retains internal trades, trade fees, recorded dividends and fees in the return", () => {
+    const source = ledger([
+      trade("buy", "buy", "2026-09-02", "1", "10", "1"),
+      trade("sell", "sell", "2026-09-02", "2", "24", "2"),
+      cash("dividend", "dividend", "2026-09-03", "3"),
+      cash("fee", "fee", "2026-09-04", "1"),
+    ]);
+    const result = valid(
+      input(source, history([bar("2026-09-01"), bar("2026-09-04", "12")])),
+    );
+    expect(result.comparison).toMatchObject({
+      firstValueUsd: "130.00",
+      lastValueUsd: "137.00",
+      netExternalFlowsUsd: "0.00",
+      changeAfterExternalFlowsUsd: "7.00",
+      endpointReturn: { status: "available", percent: "5.38" },
+    });
+  });
+
+  it.each([
+    ["2", "1", "2", "5"],
+    ["1", "4", "0.25", "40"],
+  ])(
+    "uses reconciled %s:%s shares and raw closes without inventing split returns",
+    (numerator, denominator, factor, close) => {
+      const result = valid(
+        input(
+          ledger([split("action", "2026-09-02", numerator, denominator)]),
+          history([bar("2026-09-01"), bar("2026-09-02", close, factor)]),
+        ),
+      );
+      expect(result.comparison).toMatchObject({
+        firstValueUsd: "130.00",
+        lastValueUsd: "130.00",
+        endpointReturn: { status: "available", percent: "0.00" },
+      });
+    },
+  );
 });
 
 describe("portfolio valuation split lineage", () => {

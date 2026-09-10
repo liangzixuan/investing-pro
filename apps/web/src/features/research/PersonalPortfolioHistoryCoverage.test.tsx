@@ -139,6 +139,15 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         missingPriceListingIds: ["listing-one"],
       });
     }
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        firstDate: "2026-01-01",
+        lastDate: "2026-01-04",
+        firstValueUsd: "250.00",
+        lastValueUsd: "400.00",
+        endpointReturn: { status: "available", percent: "60.00" },
+      },
+    });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
     expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(1);
     expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
@@ -167,12 +176,25 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       holdingsValueUsd: "200.00",
       totalValueUsd: "420.00",
     });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        firstDate: "2026-01-03",
+        lastDate: "2026-01-04",
+        endpointReturn: { status: "available", percent: "0.00" },
+      },
+    });
     click(render(), "Cancel history review");
     pending.resolve(market(1));
     await flush();
     expect(point(render(), "2026-01-01")).toMatchObject({
       pricedHoldings: 1,
       missingPriceListingIds: ["listing-two"],
+    });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        firstDate: "2026-01-03",
+        endpointReturn: { status: "available", percent: "0.00" },
+      },
     });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
   });
@@ -809,6 +831,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         lastValueUsd: "120.00",
         netExternalFlowsUsd: "20.00",
         changeAfterExternalFlowsUsd: "0.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
       },
     });
     if (result?.status !== "available")
@@ -847,6 +870,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         lastValueUsd: null,
         netExternalFlowsUsd: null,
         changeAfterExternalFlowsUsd: null,
+        endpointReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
       },
     });
   });
@@ -902,6 +929,71 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(point(render(), "2026-09-09")).toMatchObject({
       totalValueUsd: "100.00",
     });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        endpointReturn: { status: "available", percent: "0.00" },
+      },
+    });
+  });
+
+  it("withholds return for offsetting flows on an unpriced date and clears the comparison across range and session changes", async () => {
+    props = {
+      ...props,
+      ledger: {
+        ...ledger(),
+        transactions: [
+          {
+            id: "offsetting-deposit",
+            date: "2026-01-02",
+            type: "deposit",
+            listingId: null,
+            shares: null,
+            grossUsd: "25",
+            feeUsd: "0",
+          },
+          {
+            id: "offsetting-withdrawal",
+            date: "2026-01-02",
+            type: "withdrawal",
+            listingId: null,
+            shares: null,
+            grossUsd: "25",
+            feeUsd: "0",
+          },
+          ...ledger().transactions,
+        ],
+      },
+    };
+    await review();
+    expect(point(render(), "2026-01-02")).toMatchObject({
+      totalValueUsd: null,
+      netExternalFlowUsd: "0.00",
+    });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        firstDate: "2026-01-01",
+        lastDate: "2026-01-04",
+        netExternalFlowsUsd: "0.00",
+        changeAfterExternalFlowsUsd: "100.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+      },
+    });
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(1);
+
+    changeRange("1m");
+    expect(valuation(render())).toBeNull();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    api.fetchPersonalMarketOverview.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("session_unavailable"),
+    );
+    click(render(), "Review history");
+    await flush();
+    expect(valuation(render())).toBeNull();
+    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(2);
+    expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
   });
 });
 

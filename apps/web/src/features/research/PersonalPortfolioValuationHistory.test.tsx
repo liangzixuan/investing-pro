@@ -48,6 +48,110 @@ describe("PersonalPortfolioValuationHistory", () => {
     expect(content).toContain(
       "strictly after the first compared date through the last",
     );
+    expect(metric(view, "Return between compared dates")).toContain(
+      "Unavailable",
+    );
+    expect(content).not.toContain("or a percentage return");
+  });
+
+  it.each([
+    ["10.00", "132.00", "12.00"],
+    ["-50.00", "60.00", "-60.00"],
+    ["0.00", "120.00", "0.00"],
+  ])(
+    "displays the exact supplied %s percent return with the compared dates",
+    (percent, lastValueUsd, changeAfterExternalFlowsUsd) => {
+      const base = history();
+      result = history({
+        points: base.points.map((entry) =>
+          entry.date === "2026-09-04"
+            ? {
+                ...entry,
+                totalValueUsd: lastValueUsd,
+                netExternalFlowUsd: "0.00",
+              }
+            : entry,
+        ),
+        comparison: {
+          ...base.comparison,
+          lastValueUsd,
+          netExternalFlowsUsd: "0.00",
+          changeAfterExternalFlowsUsd,
+          endpointReturn: { status: "available", percent },
+        },
+      });
+      const view = render();
+      expect(metric(view, "Return between compared dates")).toBe(`${percent}%`);
+      expect(text(view)).toContain(
+        "2026-09-02 to 2026-09-04: first and last complete values",
+      );
+      expect(metric(view, "First complete value · 2026-09-02")).toBe(
+        "120.00 USD",
+      );
+      expect(metric(view, "Last complete value · 2026-09-04")).toBe(
+        `${lastValueUsd} USD`,
+      );
+      expect(text(view)).toContain(
+        "change in displayed endpoint values divided by the positive starting value",
+      );
+      expect(text(view)).toContain(
+        "not annualized, time-weighted or money-weighted",
+      );
+    },
+  );
+
+  it.each([
+    [
+      "insufficient_complete_dates",
+      "At least two complete dated values are required.",
+    ],
+    [
+      "external_flows",
+      "Deposits or withdrawals occurred between the compared endpoints",
+    ],
+    [
+      "non_positive_starting_value",
+      "The displayed starting value must be greater than zero.",
+    ],
+  ] as const)(
+    "explains why the percentage is unavailable for %s",
+    (reason, explanation) => {
+      result = history({
+        comparison: {
+          ...(reason === "insufficient_complete_dates"
+            ? noComparison()
+            : history().comparison),
+          ...(reason === "non_positive_starting_value"
+            ? { firstValueUsd: "0.00", netExternalFlowsUsd: "0.00" }
+            : {}),
+          endpointReturn: { status: "unavailable", reason },
+        },
+      });
+      const value = metric(render(), "Return between compared dates");
+      expect(value).toContain("Unavailable");
+      expect(value).toContain(explanation);
+      expect(value).not.toContain("%");
+    },
+  );
+
+  it("retains the dollar bridge when offsetting external flows block percentage return", () => {
+    result = history({
+      comparison: {
+        ...history().comparison,
+        netExternalFlowsUsd: "0.00",
+        changeAfterExternalFlowsUsd: "40.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+      },
+    });
+    const view = render();
+    expect(metric(view, "Recorded net external flows")).toBe("0.00 USD");
+    expect(metric(view, "Change after external cash flows")).toBe("40.00 USD");
+    expect(metric(view, "Return between compared dates")).toContain(
+      "including any that offset each other",
+    );
+    expect(text(view)).toContain(
+      "after the first date through the last, even if they net to zero",
+    );
   });
 
   it("plots only complete dots with separate unavailable markers and an equivalent accessible table", () => {
@@ -327,6 +431,10 @@ function noComparison(): Available["comparison"] {
     lastValueUsd: null,
     netExternalFlowsUsd: null,
     changeAfterExternalFlowsUsd: null,
+    endpointReturn: {
+      status: "unavailable",
+      reason: "insufficient_complete_dates",
+    },
   };
 }
 function history(overrides: Partial<Available> = {}): Available {
@@ -366,6 +474,7 @@ function history(overrides: Partial<Available> = {}): Available {
       lastValueUsd: "160.00",
       netExternalFlowsUsd: "25.00",
       changeAfterExternalFlowsUsd: "15.00",
+      endpointReturn: { status: "unavailable", reason: "external_flows" },
     },
     ...overrides,
   };

@@ -32,7 +32,7 @@
 }
 .portfolio-valuation-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
 }
 .portfolio-valuation-summary > div {
@@ -47,6 +47,14 @@
   margin: 0.4rem 0 0;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+}
+.portfolio-valuation-summary dd small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted, #64748b);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.45;
 }
 .portfolio-valuation-chart {
   margin: 1.25rem 0;

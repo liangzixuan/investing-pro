@@ -33,6 +33,16 @@ export interface PersonalPortfolioValuationHistoryPoint {
   readonly netExternalFlowUsd: string;
 }
 
+export type PersonalPortfolioEndpointReturn =
+  | Readonly<{ status: "available"; percent: string }>
+  | Readonly<{
+      status: "unavailable";
+      reason:
+        | "insufficient_complete_dates"
+        | "external_flows"
+        | "non_positive_starting_value";
+    }>;
+
 export type PersonalPortfolioValuationHistoryResult =
   | Readonly<{ status: "invalid"; reason: string }>
   | Readonly<{
@@ -55,6 +65,7 @@ export type PersonalPortfolioValuationHistoryResult =
         lastValueUsd: string | null;
         netExternalFlowsUsd: string | null;
         changeAfterExternalFlowsUsd: string | null;
+        endpointReturn: PersonalPortfolioEndpointReturn;
       }>;
     }>;
 
@@ -63,6 +74,7 @@ type Endpoint = Readonly<{
   date: string;
   value: bigint;
   externalFlows: bigint;
+  externalFlowCount: number;
 }>;
 const DAY_MS = 86_400_000;
 const MAX_DAYS = 3_660;
@@ -237,6 +249,7 @@ function calculate(
     ledger.opening.cashUsd === null ? null : scaled(ledger.opening.cashUsd, 2);
   let activityIndex = 0;
   let externalFlows = 0n;
+  let externalFlowCount = 0;
   let first: Endpoint | null = null;
   let last: Endpoint | null = null;
   const points: PersonalPortfolioValuationHistoryPoint[] = [];
@@ -283,11 +296,13 @@ function calculate(
           case "deposit":
             cashChange = gross;
             externalFlows += gross;
+            externalFlowCount += 1;
             if (activity.date === date) dailyExternalFlow += gross;
             break;
           case "withdrawal":
             cashChange = -gross;
             externalFlows -= gross;
+            externalFlowCount += 1;
             if (activity.date === date) dailyExternalFlow -= gross;
             break;
           case "dividend":
@@ -329,7 +344,7 @@ function calculate(
         ? pricedValue + cash * priceScale
         : null;
     if (value !== null) {
-      const endpoint = { date, value, externalFlows };
+      const endpoint = { date, value, externalFlows, externalFlowCount };
       first ??= endpoint;
       last = endpoint;
       coverage.completeDates += 1;
@@ -355,6 +370,7 @@ function calculate(
       }),
     );
   }
+  const endpointReturn = calculateEndpointReturn(first, last, priceScale);
   const comparison =
     first !== null && last !== null && first.date !== last.date
       ? {
@@ -370,6 +386,7 @@ function calculate(
               roundScaledCents(first.value, priceScale) -
               (last.externalFlows - first.externalFlows),
           ),
+          endpointReturn,
         }
       : {
           firstDate: null,
@@ -378,6 +395,7 @@ function calculate(
           lastValueUsd: null,
           netExternalFlowsUsd: null,
           changeAfterExternalFlowsUsd: null,
+          endpointReturn,
         };
   return Object.freeze({
     status: "available",
@@ -387,6 +405,35 @@ function calculate(
     points: Object.freeze(points),
     coverage: Object.freeze(coverage),
     comparison: Object.freeze(comparison),
+  });
+}
+
+function calculateEndpointReturn(
+  first: Endpoint | null,
+  last: Endpoint | null,
+  scale: bigint,
+): PersonalPortfolioEndpointReturn {
+  if (first === null || last === null || first.date === last.date)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "insufficient_complete_dates",
+    });
+  // Count individual activities: offsetting deposits and withdrawals still
+  // require a return method with an explicit external-flow timing policy.
+  if (last.externalFlowCount !== first.externalFlowCount)
+    return Object.freeze({ status: "unavailable", reason: "external_flows" });
+  const startingCents = roundScaledCents(first.value, scale);
+  if (startingCents <= 0n)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "non_positive_starting_value",
+    });
+  // Use the displayed endpoint cents, like the dollar bridge. Multiplication
+  // by 10,000 expresses percent in hundredths; ties round away from zero.
+  const changeCents = roundScaledCents(last.value, scale) - startingCents;
+  return Object.freeze({
+    status: "available",
+    percent: cents(roundScaledCents(changeCents * 10_000n, startingCents)),
   });
 }
 

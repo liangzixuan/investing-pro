@@ -133,11 +133,14 @@ save; unknown values and historical identities stay visible.
 The optional [split records and history review](./docs/PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md)
 preserve exact FIFO basis through manually recorded splits and reverse splits.
 On-demand EOD observations flag possible missing actions and price-history gaps;
-provider observations are never written into the saved ledger. Historical
-percentage-return methods remain a separate milestone. The same request now
+provider observations are never written into the saved ledger. The same request
 also shows [historical portfolio values](./docs/PERSONAL_PORTFOLIO_VALUATION_HISTORY.md)
 from recorded end-of-day shares and cash, exact raw closes, explicit missing
-dates, and a dollar comparison after recorded deposits and withdrawals.
+dates, and a dollar comparison after recorded deposits and withdrawals. An
+endpoint percentage return is available when the compared starting value is
+positive and no deposits or withdrawals occurred between those dated values.
+Intervals with external flows retain the dollar comparison and show why the
+percentage is unavailable; offsetting deposits and withdrawals still count.
 
 The stock screener scans the admitted 3,000-plus active U.S.-listed
 common-stock and ADR catalog without contacting Tiingo. One explicit action can

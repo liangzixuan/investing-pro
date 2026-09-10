@@ -69,8 +69,7 @@ export function PersonalPortfolioValuationHistory({
           {compared
             ? `${comparison.firstDate} to ${comparison.lastDate}: first and last complete values in this window.`
             : "At least two complete dated values are needed for a comparison."}{" "}
-          This does not establish values at unpriced window endpoints or a
-          percentage return.
+          This does not establish values at unpriced window endpoints.
         </p>
         <dl className="portfolio-valuation-summary">
           <div>
@@ -88,6 +87,21 @@ export function PersonalPortfolioValuationHistory({
             <dd>{money(comparison.lastValueUsd)}</dd>
           </div>
           <div>
+            <dt>Return between compared dates</dt>
+            <dd>
+              {comparison.endpointReturn.status === "available" ? (
+                `${comparison.endpointReturn.percent}%`
+              ) : (
+                <>
+                  Unavailable
+                  <small>
+                    {returnUnavailableReason(comparison.endpointReturn.reason)}
+                  </small>
+                </>
+              )}
+            </dd>
+          </div>
+          <div>
             <dt>Recorded net external flows</dt>
             <dd>{money(comparison.netExternalFlowsUsd)}</dd>
           </div>
@@ -97,11 +111,17 @@ export function PersonalPortfolioValuationHistory({
           </div>
         </dl>
         <p className="portfolio-valuation-note">
+          The percentage uses the change in displayed endpoint values divided by
+          the positive starting value. It requires no deposits or withdrawals
+          after the first date through the last, even if they net to zero. It
+          covers only the compared dates and is not annualized, time-weighted or
+          money-weighted.
+        </p>
+        <p className="portfolio-valuation-note">
           External flows are recorded deposits minus withdrawals strictly after
           the first compared date through the last. The USD change subtracts
-          those flows from the change in value; it is not a time-weighted or
-          money-weighted return. Dates between compared observations may still
-          have unavailable values.
+          those flows from the change in value. Dates between compared
+          observations may still have unavailable values.
         </p>
       </div>
 
@@ -310,6 +330,22 @@ function HistoryChart({ result }: { readonly result: AvailableHistory }) {
 
 function money(value: string | null, unknown = "Unavailable") {
   return value === null ? unknown : `${value} USD`;
+}
+
+function returnUnavailableReason(
+  reason: Extract<
+    AvailableHistory["comparison"]["endpointReturn"],
+    { status: "unavailable" }
+  >["reason"],
+) {
+  return {
+    insufficient_complete_dates:
+      "At least two complete dated values are required.",
+    external_flows:
+      "Deposits or withdrawals occurred between the compared endpoints, including any that offset each other.",
+    non_positive_starting_value:
+      "The displayed starting value must be greater than zero.",
+  }[reason];
 }
 
 function coverageLabel(point: HistoryPoint) {

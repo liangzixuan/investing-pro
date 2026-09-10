@@ -1,9 +1,11 @@
-# My Portfolio: historical value and cash-flow reconciliation
+# My Portfolio: historical value and endpoint returns
 
-This fourth partial Cycle 3m-a delivery reconstructs daily end-of-day holdings
+The fourth partial Cycle 3m-a delivery reconstructs daily end-of-day holdings
 and cash from the recorded ledger, values them using exact-date raw EOD closes,
-and compares two explicitly dated complete observations. It does not calculate
-percentage returns, TWR, XIRR, benchmark performance or tax results.
+and compares two explicitly dated complete observations. The fifth partial
+delivery adds an endpoint percentage return for intervals without recorded
+deposits or withdrawals. TWR, XIRR, benchmark performance and tax results remain
+separate work.
 
 ## Workflow
 
@@ -24,7 +26,8 @@ The comparison uses the **first and last fully valued dates**, shown by date
 alongside their values. These can differ from the requested window endpoints.
 It does not silently claim that an unpriced endpoint was valued. At least two
 distinct complete dates are required. The net external flow and dollar change
-refer only to that explicitly dated comparison interval.
+refer only to that explicitly dated comparison interval. When eligible, the
+endpoint percentage uses the same two dates, not unpriced window boundaries.
 
 ## Date and value conventions
 
@@ -94,14 +97,55 @@ provider dividend ex-date observations do not create cash, receivables, accruals
 or reinvestment. Missing intermediate prices do not supply daily return factors.
 This dollar bridge is not a percentage return or an annualized result.
 
+## Endpoint percentage return
+
+The comparison shows an endpoint return only when it has two distinct complete
+dates, the displayed first value is greater than zero, and no deposit or
+withdrawal is recorded strictly after the first date through the last date.
+Every such activity counts: equal deposits and withdrawals do not make the
+interval eligible. A flow on the first date is already included in its end-of-day
+value; a flow on the last date makes the interval ineligible. Activities before
+the first or after the last compared date do not affect this eligibility rule.
+
+`endpoint return (%) = (displayed last value - displayed first value) / displayed first value * 100`
+
+Both values are the same rounded USD cents shown in the comparison. The ratio
+uses exact integer arithmetic and is rounded to two percentage decimal places,
+with halfway values rounded away from zero. A rounded zero is displayed as
+`0.00%`, never negative zero. A positive underlying value that rounds to `0.00 USD`
+does not supply a usable displayed denominator and is ineligible. This rounding
+policy makes the result reproducible from the displayed amounts; cent rounding
+can materially affect percentages for very small portfolios.
+
+For example, `100.00 USD` to `110.00 USD` with no external activity yields
+`10.00%`. With a `100.00 USD` deposit, `100.00 USD` to `210.00 USD` retains the
+`10.00 USD` dollar change after flows, but the percentage is unavailable.
+The panel states whether it lacks two complete values, has external flows, or
+has a nonpositive starting value. It never substitutes zero for an unavailable
+return. If multiple conditions apply, insufficient endpoints take precedence,
+then external flows, then the starting-value check.
+
+This is the return over the displayed interval, without annualization or daily
+linking. Intermediate missing prices remain visible but do not prevent this
+endpoint calculation. They cannot establish daily returns, drawdown or a
+complete trading-day history. Recorded internal trades, dividends and fees
+remain reflected in the ledger's holdings and cash. The existing cash-basis,
+corporate-action and raw-price limits still apply; provider dividend observations
+do not add income. The result is not a benchmark comparison or a claim of TWR,
+XIRR or GIPS compliance.
+
+## Source and methodology context
+
 Tiingo describes both raw and adjusted fields in its
 [EOD documentation](https://www.tiingo.com/documentation/end-of-day). Raw closes
 are used here with the ledger's already adjusted share quantities to avoid
 applying splits twice. CFA Institute's
 [GIPS methodology handbook](https://www.gipsstandards.org/standards/gips-standards-for-firms/gips-standards-handbook-for-firms/)
-illustrates why return calculations need explicit valuation and external-flow
-timing policies. These references were checked on 2026-09-10; this personal tool
-makes no GIPS compliance claim.
+illustrates why return calculations with external cash flows need explicit
+valuation and timing policies. The handbook was rechecked on 2026-09-10. The
+restriction to intervals without recorded external flows and the displayed-cent
+rounding rule above are this product's bounded implementation choices; they do
+not implement the handbook's full methodology or claim compliance.
 
 ## Storage, bounds and validation
 
@@ -122,5 +166,9 @@ bounds are rejected. Calculated results are immutable.
 Synthetic tests cover exact arithmetic, same-day cash and share events, splits,
 missing dates, unknown cash, closed positions, comparison flow boundaries,
 request/session invalidation and responsive presentation. Live owner Tiingo
-coverage still requires the configured runtime. Percentage-return methods,
-dividend accruals, other corporate actions and benchmarks remain separate work.
+coverage still requires the configured runtime. Returns for intervals with
+external flows, dividend accruals, other corporate actions and benchmarks remain
+separate work. Percentage tests include offsetting flows, dated boundaries,
+zero starting values, gains/losses, rounding ties, exact large amounts and raw
+split-adjusted share quantities. Loader tests verify that eligibility updates
+reuse the existing observations and clear with the owner context.

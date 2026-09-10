@@ -1180,6 +1180,23 @@ The first/last complete observations have an explicitly dated dollar bridge
 after recorded deposits and withdrawals. No provider data or derived series is
 persisted. Percentage returns, TWR, XIRR and benchmark comparisons remain open.
 
+### Fifth partial Cycle 3m-a delivery
+
+[Endpoint percentage returns](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#endpoint-percentage-return)
+extend the same dated comparison for intervals without recorded deposits or
+withdrawals. Both endpoints must be complete, and the displayed first value must
+be positive. Any external-flow activity after the first through the last date
+blocks the percentage, including offsetting deposits and withdrawals. Exact
+integer division uses the displayed endpoint cents and rounds to two percentage
+decimals, with halfway values away from zero.
+
+The dollar bridge remains available for intervals with external flows. Missing
+intermediate observations stay visible; the endpoint result does not fill those
+gaps, annualize or calculate daily linked performance. The existing history
+request and session invalidation are reused, with no schema or persistence
+change. Flow-adjusted methods, TWR, XIRR, other corporate actions and benchmark
+comparisons remain open.
+
 ### Cycle 3n — background alerts and delivery
 
 Target: turn immediate local rule evaluation into a reliable monitoring
@@ -1291,17 +1308,17 @@ loads are delivered. Their configured live coverage and sampled values still
 require validation; the seven-metric screen does not close the broader
 30-core-metric/500-security gate.
 
-The current partial 3m-a slice delivers historical portfolio values and a dated
-dollar comparison after recorded external cash flows, following the transaction
-ledger, manual splits and historical-price coverage. Complete the reviewed
-feature and release gates described in the current-work guide.
+Historical portfolio values and the dated dollar bridge are delivered. The
+current fifth partial 3m-a slice adds percentage return between complete
+observed endpoints for intervals with no deposits or withdrawals. It makes
+positive starting value, rounding and date boundaries explicit; offsetting
+external flows still make the interval ineligible. Complete the reviewed feature
+and release gates described in the current-work guide.
 
-Next prioritize percentage return between complete observed endpoints for
-intervals with no deposits or withdrawals. Define eligibility, positive starting
-value, rounding and date boundaries explicitly; offsetting external flows must
-still make an interval ineligible. Preserve the dollar comparison for intervals
-with external flows. TWR, XIRR, dividend accruals and other corporate actions
-remain separate work requiring their own timing and coverage rules.
+Next assess a cash-flow-adjusted period-return estimate with explicit timing
+and coverage rules, retaining the dollar bridge when a percentage is
+unavailable. TWR, XIRR, dividend accruals and other corporate actions remain
+separate work requiring their own methodology and evidence.
 
 Alerts and exports follow as their inputs and source permissions become
 available. A permitted daily event slice may proceed independently when bulk

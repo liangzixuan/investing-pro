@@ -17,39 +17,41 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                         | Important remaining gap                                                |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                               | Catalog refresh and broader discovery data                             |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                   | Wider reconciliation and benchmark-relative analysis                   |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                    | Verified TTM and the shared 30-core-metric screening registry          |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models             |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata          |
-| Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Live validation, upcoming events, alerts and exports                   |
-| Track holdings            | Encrypted snapshot/ledger, splits, daily historical values, allocation and FIFO estimates                      | Percentage returns, further corporate actions and live coverage        |
+| User job                  | Implemented capability                                                                                         | Important remaining gap                                                  |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                               | Catalog refresh and broader discovery data                               |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                   | Wider reconciliation and benchmark-relative analysis                     |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                    | Verified TTM and the shared 30-core-metric screening registry            |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models               |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata            |
+| Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth   |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Live validation, upcoming events, alerts and exports                     |
+| Track holdings            | Encrypted snapshot/ledger, splits, daily values, eligible endpoint returns and FIFO estimates                  | Returns with external flows, further corporate actions and live coverage |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: split reconciliation and history coverage
+## Last verified release: historical portfolio valuation
 
-Release `4381ee3` closed manual splits and historical-price coverage, following
-feature `2688fdf`. Full local verification passed (3,241 tests and 9 existing
+Release `11890c7` closed historical values and the dated dollar bridge, following
+feature `20ffde3`. Full local verification passed (3,321 tests and 9 existing
 skips); all four applicable hosted workflows passed on attempt 1 for that exact
 release, including Ubuntu and Windows CI. See
-[split and history rules](./PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md).
+[historical valuation rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: historical portfolio valuation
+## Active delivery: endpoint percentage returns
 
-The next partial Cycle 3m-a slice reuses EOD history to value recorded daily
-holdings and cash. It makes unavailable dates explicit and compares the first
-and last complete observations after recorded deposits and withdrawals.
-Percentage returns remain separate. See
-[historical valuation rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md).
+The fifth partial Cycle 3m-a slice adds an endpoint percentage to the existing
+first/last complete observations when the starting value is positive and no
+deposits or withdrawals occurred after the first through the last date.
+Offsetting external flows still make the interval ineligible. The calculation
+uses the displayed endpoint cents and explicit rounding; the existing dollar
+bridge remains available for intervals with external flows. See
+[endpoint return rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#endpoint-percentage-return).
 
 Live SEC validation still requires the owner's contact and startup configuration.
 The current shell has neither the SEC contact nor the configured catalog path
@@ -62,14 +64,14 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| Now              | Deliver and verify historical portfolio valuation                                                | Reuse reconciled activities and exact observations                       |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                |
-| Next             | Endpoint percentage returns for intervals without deposits or withdrawals                        | Require complete endpoints, positive starting value and flow eligibility |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                 |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions      |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product              |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Deliver and verify endpoint percentage returns                                                   | Require complete endpoints, positive value and no external-flow activities |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                  |
+| Next             | Cash-flow-adjusted period-return estimates with explicit methodology                             | Review timing assumptions, coverage and eligibility before implementation  |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -84,14 +86,11 @@ where the next feature exposes concrete duplication or makes changes risky.
    API/UI, and review where useful. Agree on the shared contract first. One
    owner integrates changes and controls the release candidate.
 3. During editing, run focused tests and typechecks. From the repository root,
-   examples for this feature are:
+   focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/api exec vitest run src/workspace-portfolio-routes.test.ts src/workspace-static-graph.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-portfolio-api.test.ts src/lib/personal-portfolio-ledger-csv.test.ts src/features/research/PersonalPortfolio.test.tsx src/features/research/PersonalPortfolioLedgerEditor.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx
-   pnpm --filter @research-cockpit/contracts exec vitest run src/personal-portfolio-ledger.test.ts
-   pnpm --filter @research-cockpit/personal-market-analytics exec vitest run src/personal-portfolio-overview.test.ts
-   pnpm --filter @research-cockpit/api --filter @research-cockpit/web typecheck
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-portfolio-valuation-history.test.ts src/features/research/PersonalPortfolioValuationHistory.test.tsx src/features/research/PersonalPortfolioHistoryCoverage.test.tsx
+   pnpm --filter @research-cockpit/web typecheck
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed
