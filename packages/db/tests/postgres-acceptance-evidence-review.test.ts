@@ -911,7 +911,7 @@ function evidenceAdapterTests(): void {
     },
   );
 
-  it("rejects a changed or missing v10 pool source at the anchored commit", async () => {
+  it("rejects a changed v10 pool source at the anchored commit", async () => {
     const changed = await createFixture();
     await writeFile(
       join(
@@ -928,7 +928,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(changed, changedCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects a missing v10 pool source at the anchored commit", async () => {
     const missing = await createFixture();
     await rm(
       join(
@@ -946,7 +948,7 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("rejects a changed or missing v11 migration deployer at the anchored commit", async () => {
+  it("rejects a changed v11 migration deployer at the anchored commit", async () => {
     const changed = await createFixture();
     await writeFile(
       join(
@@ -967,7 +969,9 @@ function evidenceAdapterTests(): void {
         await inputAtCommit(changed, changedCommit),
       ),
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
+  });
 
+  it("rejects a missing v11 migration deployer at the anchored commit", async () => {
     const missing = await createFixture();
     await rm(
       join(
