@@ -236,6 +236,10 @@ import {
   isCycle3ha6FeatureTopologyAllowed,
   isCycle3ha6RoutingClosureCommitDiffSetAllowed,
   isCycle3ha6RoutingClosureTopologyAllowed,
+  isCycle3ha7FeatureCommitDiffSetAllowed,
+  isCycle3ha7FeatureTopologyAllowed,
+  isCycle3ha7RoutingClosureCommitDiffSetAllowed,
+  isCycle3ha7RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -1012,6 +1016,10 @@ const CYCLE_3H_A5_ROUTING_CLOSURE_REVISION =
   "14002d430e06f9db21a127543ebe8b9029bb33fd" as const;
 const CYCLE_3H_A6_FEATURE_REVISION =
   "37ab12627f93eadd25af71e1bb43112fbcda75e5" as const;
+const CYCLE_3H_A6_ROUTING_CLOSURE_REVISION =
+  "f538be68faff7e31b98ccff878f6ca8452951fc7" as const;
+const CYCLE_3H_A7_FEATURE_REVISION =
+  "80ef20f680c79a7dec97c4868b3b82c9f255ad32" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -3854,6 +3862,93 @@ const CYCLE_3H_A6_FEATURE_TRANSITION = [
   { path: "docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md", status: "M" },
 ];
 const CYCLE_3H_A6_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3H_A7_FEATURE_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "apps/api/src/copy-validators.ts", status: "M" },
+  {
+    path: "apps/api/src/personal-sec-filing-context-parser.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/personal-sec-filing-context-parser.ts", status: "A" },
+  {
+    path: "apps/api/src/personal-sec-filing-context-provider.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/personal-sec-filing-context-provider.ts", status: "A" },
+  {
+    path: "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+    status: "M",
+  },
+  { path: "apps/api/src/workspace-app.ts", status: "M" },
+  { path: "apps/api/src/workspace-composition-root.test.ts", status: "M" },
+  { path: "apps/api/src/workspace-composition-root.ts", status: "M" },
+  {
+    path: "apps/api/src/workspace-sec-filing-context-routes.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/workspace-sec-filing-context-routes.ts", status: "A" },
+  { path: "apps/api/src/workspace-static-graph.test.ts", status: "M" },
+  { path: "apps/api/workers/personal_sec_filing_context.py", status: "A" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalSecFilingContext.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalSecFilingContext.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalSecQuarterlyEvidence.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalSecQuarterlyEvidence.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/lib/personal-sec-filing-context-api.test.ts",
+    status: "A",
+  },
+  { path: "apps/web/src/lib/personal-sec-filing-context-api.ts", status: "A" },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/PERSONAL_SEC_FILING_CONTEXT.md", status: "A" },
+  { path: "docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  {
+    path: "packages/contracts/src/personal-sec-filing-context.ts",
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3H_A7_ROUTING_CLOSURE_TRANSITION = [
   { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -10819,6 +10914,118 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedSecQuarterlyComparisonClosure = [
+      "90",
+      "90",
+      CYCLE_3H_A6_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3H_A6_ROUTING_CLOSURE_REVISION} ${CYCLE_3H_A6_FEATURE_REVISION}`,
+      secQuarterlyComparisonFeature,
+    ] as const;
+    expect(
+      isCycle3ha6RoutingClosureTopologyAllowed(
+        ...pinnedSecQuarterlyComparisonClosure,
+      ),
+    ).toBe(true);
+    const secFilingContextFeature = [
+      "91",
+      "91",
+      CYCLE_3H_A7_FEATURE_REVISION,
+      `${CYCLE_3H_A7_FEATURE_REVISION} ${CYCLE_3H_A6_ROUTING_CLOSURE_REVISION}`,
+      pinnedSecQuarterlyComparisonClosure,
+    ] as const;
+    expect(isCycle3ha7FeatureTopologyAllowed(...secFilingContextFeature)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "90"],
+      [1, "92"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3H_A7_FEATURE_REVISION} ${CYCLE_3H_A6_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3H_A7_FEATURE_REVISION} ${CYCLE_3H_A6_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...secFilingContextFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha7FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha7FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedSecQuarterlyComparisonClosure: unknown[] = [
+      ...pinnedSecQuarterlyComparisonClosure,
+    ];
+    tamperedPinnedSecQuarterlyComparisonClosure[4] =
+      tamperedSecQuarterlyComparisonFeature;
+    expect(
+      isCycle3ha7FeatureTopologyAllowed(
+        "91",
+        "91",
+        CYCLE_3H_A7_FEATURE_REVISION,
+        `${CYCLE_3H_A7_FEATURE_REVISION} ${CYCLE_3H_A6_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedSecQuarterlyComparisonClosure as unknown as Parameters<
+          typeof isCycle3ha7FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const secFilingContextClosureRevision = "e".repeat(40);
+    const secFilingContextClosure = [
+      "92",
+      "92",
+      secFilingContextClosureRevision,
+      `${secFilingContextClosureRevision} ${CYCLE_3H_A7_FEATURE_REVISION}`,
+      secFilingContextFeature,
+    ] as const;
+    expect(
+      isCycle3ha7RoutingClosureTopologyAllowed(...secFilingContextClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "91"],
+      [1, "93"],
+      [2, CYCLE_3H_A7_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${secFilingContextClosureRevision} ${CYCLE_3H_A6_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${secFilingContextClosureRevision} ${CYCLE_3H_A7_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...secFilingContextClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha7RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha7RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedSecFilingContextFeature: unknown[] = [
+      ...secFilingContextFeature,
+    ];
+    tamperedSecFilingContextFeature[4] =
+      tamperedPinnedSecQuarterlyComparisonClosure;
+    expect(
+      isCycle3ha7RoutingClosureTopologyAllowed(
+        "92",
+        "92",
+        secFilingContextClosureRevision,
+        `${secFilingContextClosureRevision} ${CYCLE_3H_A7_FEATURE_REVISION}`,
+        tamperedSecFilingContextFeature as unknown as Parameters<
+          typeof isCycle3ha7RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -11152,6 +11359,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3H_A6_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ha7FeatureCommitDiffSetAllowed,
+      CYCLE_3H_A7_FEATURE_TRANSITION,
+      28,
+    );
+    expectExactTransition(
+      isCycle3ha7RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3H_A7_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -11247,6 +11464,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3H_A5_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3H_A6_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3H_A6_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A7_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A7_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -11394,6 +11613,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3H_A5_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3H_A6_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3H_A6_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A7_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A7_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
