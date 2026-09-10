@@ -30,7 +30,9 @@ breadth, latency, or private operation in that historical subcycle record.
 Cycle 3e-b1 is implemented as the first visible discovery/watchlist slice;
 Cycles 3g-a1 and 3g-b1 deliver the first market-data and transparent-analytics
 slices; Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly
-statements, and valuation history; Cycles 3i-a1 and 3i-a2 add historical
+statements, and valuation history; partial Cycle 3h-a4 adds quarterly coverage
+and an offline compatibility assessment before source admission and TTM;
+Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
 selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
 bounded manual peer comparison, and Cycle 3k-a1 adds a whole-catalog identity
@@ -833,12 +835,21 @@ provider P/E, P/B, and trailing PEG 1Y with exact USD or unitless-ratio labels
 and explicit unknown cells. The current provider-most-recent revision basis is
 visible and is not presented as point-in-time or as-reported history.
 
+Partial Cycle 3h-a4 adds a browser-local assessment of revenue and net income
+over the latest four exact expected fiscal slots. It separates missing quarters
+and unknown cells from missing fact-level period, flow-basis, unit, scope,
+concept and revision evidence. An offline compatibility contract checks
+standalone calendar-month periods and preserves unsupported cases; matching
+declared metadata is not source verification. The loaded provider response
+remains blocked and no TTM amount, new request or source admission is added.
+See [quarterly compatibility](./PERSONAL_QUARTERLY_COMPATIBILITY.md).
+
 These are independently useful statement-depth slices, not full 3h-a. They do
 not establish verified TTM aggregation, point-in-time/restatement history, the
 planned 30-core-metric registry, 500-security coverage, 90% knownness, or the
 20-issuer independent validation gate. TTM remains visibly unavailable because
-the admitted source documentation does not establish whether quarterly flow
-values are standalone or cumulative. Tiingo currently documents the full
+the loaded quarterly contract lacks the fact-level evidence needed to establish
+compatible durations, standalone flows, units, scope and revisions. Tiingo currently documents the full
 fundamentals feed as an add-on and a three-year Dow 30 evaluation; the exact
 owner entitlement therefore remains visible rather than assumed.
 
@@ -850,6 +861,8 @@ Promotable subcycles:
   coordinates, missingness, and fail-closed TTM gating;
 - **3h-a3:** provider-backed daily history for five valuation fields, with
   fixed units, explicit missingness, and active-session-only custody;
+- **3h-a4 (partial):** latest-four-slot revenue/net-income coverage and an
+  offline compatibility assessment; source admission and aggregation remain open;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
   initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived
@@ -1333,7 +1346,7 @@ This program does not imply that every benchmark feature is obtainable:
 
 ## Release order and stopping rules
 
-### Active delivery priority (2026-09-09)
+### Active delivery priority (2026-09-10)
 
 The first SEC annual cross-company Frames slice and recent watchlist filing
 loads are delivered. Their configured live coverage and sampled values still
@@ -1341,15 +1354,16 @@ require validation; the seven-metric screen does not close the broader
 30-core-metric/500-security gate.
 
 Historical portfolio values, the dated dollar bridge, eligible endpoint
-percentages and Modified Dietz estimates are delivered. The current seventh
-partial 3m-a slice adds linked returns with complete values at every cash-flow
+percentages and Modified Dietz estimates are delivered. The seventh partial
+3m-a slice also delivers linked returns with complete values at every cash-flow
 date under an explicit EOD convention. Missing flow-date values and unsupported
-capital states remain unavailable; no intraday timing is inferred. Complete
-the reviewed feature and release gates described in the current-work guide.
+capital states remain unavailable; no intraday timing is inferred.
 
-Next assess verified trailing-twelve-month financials from compatible quarterly
-observations before expanding screening metrics. This addresses the financial
-view's explicit TTM gap while broader return methods remain in the backlog.
+The active partial 3h-a4 slice exposes quarterly coverage and missing source
+evidence for revenue and net income, backed by an offline compatibility check.
+Next admit a bounded period-aware source and validate its actual periods, units,
+scope and revision selection before calculating trailing-period financials or
+expanding screening metrics. Broader return methods remain in the backlog.
 XIRR, benchmark comparisons, dividend accruals and other corporate actions need
 their own methodology and evidence.
 

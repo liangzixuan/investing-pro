@@ -52,6 +52,16 @@ describe("PersonalQuarterlyFinancials", () => {
     expect(visibleText(markup)).toContain(
       "Choose a security to inspect quarterly statements",
     );
+    expect(markup).not.toContain("financials-ttm-gate");
+    expect(onLoad).not.toHaveBeenCalled();
+  });
+
+  it("waits for a loaded response before assessing the selected company", () => {
+    const onLoad = vi.fn();
+    const markup = render({ onLoad, selection: selection() });
+
+    expect(markup).not.toContain("financials-ttm-gate");
+    expect(visibleText(markup)).toContain("Load quarterly financials");
     expect(onLoad).not.toHaveBeenCalled();
   });
 
@@ -109,6 +119,155 @@ describe("PersonalQuarterlyFinancials", () => {
       "Quarterly financials are not included for this account",
     );
     expect(markup).toContain('aria-label="Revenue unknown for FY 2029 Q4"');
+  });
+
+  it("keeps TTM unavailable when all four reported values are known", () => {
+    const base = quarterlyFinancials();
+    const first = base.quarters[0]!;
+    const financials = withQuarters(
+      [4, 3, 2, 1].map((fiscalQuarter) => ({
+        ...first,
+        fiscalQuarter: fiscalQuarter as 1 | 2 | 3 | 4,
+        reported: {
+          ...first.reported,
+          revenue: { status: "known", value: "0" },
+          net_income: { status: "known", value: "-12.50" },
+        },
+      })),
+    );
+    const onLoad = vi.fn();
+    const markup = render({ financials, onLoad, selection: selection() });
+    const assessment = compatibilityMarkup(markup);
+
+    for (const metric of ["Revenue", "Net income"]) {
+      const text = visibleText(metricMarkup(markup, metric));
+      expect(text).toContain("TTM unavailable");
+      expect(text).toContain("4 of 4 reported values known");
+      expect(text).toContain("All four values are present");
+      expect(text).not.toContain("Value unknown");
+      expect(text).not.toContain("Not returned");
+    }
+    expect(visibleText(assessment)).toContain(
+      "Known reported values alone do not establish a compatible twelve-month period",
+    );
+    expect(assessment).not.toContain("$");
+    expect(markup).toContain("−$12.50");
+    expect(onLoad).not.toHaveBeenCalled();
+  });
+
+  it("explains the six missing evidence categories once for both metrics", () => {
+    const markup = render({
+      financials: quarterlyFinancials(),
+      selection: selection(),
+    });
+    const assessment = visibleText(compatibilityMarkup(markup));
+
+    for (const reason of [
+      "Actual period start/end dates",
+      "A verified fiscal calendar",
+      "Per-value currency, unit and scale evidence",
+      "Consistent issuer and consolidated reporting scope",
+      "Consistent accounting definitions and sign conventions",
+      "Source references and compatible revisions",
+    ]) {
+      expect(assessment.split(reason)).toHaveLength(2);
+    }
+    expect(assessment).toContain("Statement dates are provider release dates");
+    expect(assessment).not.toContain("Period ended");
+    expect(assessment).not.toContain("2029-01-01");
+  });
+
+  it("assesses four expected coordinates across a fiscal-year boundary", () => {
+    const first = quarterlyFinancials().quarters[0]!;
+    const financials = withQuarters([
+      { ...first, fiscalYear: 2030, fiscalQuarter: 1 },
+      { ...first, fiscalYear: 2029, fiscalQuarter: 4 },
+      { ...first, fiscalYear: 2029, fiscalQuarter: 3 },
+      { ...first, fiscalYear: 2029, fiscalQuarter: 2 },
+    ]);
+    const markup = render({ financials, selection: selection() });
+    const details = compatibilityDetails(markup);
+
+    expect(visibleText(details)).toContain("Inspect the four fiscal quarters");
+    expect(details.indexOf("FY 2029 Q2")).toBeLessThan(
+      details.indexOf("FY 2029 Q3"),
+    );
+    expect(details.indexOf("FY 2029 Q3")).toBeLessThan(
+      details.indexOf("FY 2029 Q4"),
+    );
+    expect(details.indexOf("FY 2029 Q4")).toBeLessThan(
+      details.indexOf("FY 2030 Q1"),
+    );
+    expect(details).not.toContain("FY 2029 Q1");
+    expect(details).not.toContain("open=");
+    expect(details.match(/<li>/gu)).toHaveLength(4);
+  });
+
+  it("never replaces a missing expected quarter with an older returned row", () => {
+    const first = quarterlyFinancials().quarters[0]!;
+    const financials = withQuarters([
+      { ...first, fiscalYear: 2029, fiscalQuarter: 4 },
+      { ...first, fiscalYear: 2029, fiscalQuarter: 3 },
+      { ...first, fiscalYear: 2029, fiscalQuarter: 1 },
+      { ...first, fiscalYear: 2028, fiscalQuarter: 4 },
+    ]);
+    const markup = render({ financials, selection: selection() });
+
+    expect(visibleText(metricMarkup(markup, "Revenue"))).toContain(
+      "3 of 4 reported values known Not returned: FY 2029 Q2",
+    );
+    const details = visibleText(compatibilityDetails(markup));
+    expect(details).toContain(
+      "FY 2029 Q2 Revenue: quarter not returned Net income: quarter not returned",
+    );
+    expect(details).not.toContain("FY 2028 Q4");
+  });
+
+  it("distinguishes an unknown metric value from an absent fiscal quarter", () => {
+    const base = quarterlyFinancials();
+    const first = base.quarters[0]!;
+    const financials = withQuarters([
+      {
+        ...first,
+        reported: {
+          ...first.reported,
+          revenue: {
+            status: "unknown",
+            value: null,
+            reason: "not_supplied_by_provider",
+          },
+        },
+      },
+      base.quarters[1]!,
+    ]);
+    const markup = render({ financials, selection: selection() });
+    const revenue = visibleText(metricMarkup(markup, "Revenue"));
+    const netIncome = visibleText(metricMarkup(markup, "Net income"));
+
+    expect(revenue).toContain("1 of 4 reported values known");
+    expect(revenue).toContain("Not returned: FY 2029 Q1, FY 2029 Q2");
+    expect(revenue).toContain("Value unknown: FY 2029 Q4");
+    expect(netIncome).toContain("2 of 4 reported values known");
+    expect(netIncome).not.toContain("Value unknown");
+    expect(visibleText(compatibilityDetails(markup))).toContain(
+      "FY 2029 Q4 Revenue: value unknown · Statement date Jan 15, 2030 Net income: reported value known",
+    );
+  });
+
+  it("withholds counts and evidence claims when the selection does not match", () => {
+    const markup = render({
+      financials: quarterlyFinancials(),
+      selection: { ...selection(), listingId: "lst-other" },
+    });
+    const assessment = visibleText(compatibilityMarkup(markup));
+
+    expect(assessment).toContain(
+      "Quarterly compatibility could not be assessed",
+    );
+    expect(assessment).not.toContain("reported values known");
+    expect(assessment).not.toContain("Evidence still needed");
+    expect(assessment).not.toContain("Inspect the four fiscal quarters");
+    expect(assessment).not.toContain("Per-value currency");
   });
 });
 
@@ -227,6 +386,80 @@ function selection() {
     securityName: "Zero Alpha Common Stock",
     symbol: "ZERO",
   };
+}
+
+function withQuarters(
+  quarters: PersonalQuarterlyFinancialsDto["quarters"],
+): PersonalQuarterlyFinancialsDto {
+  const base = quarterlyFinancials();
+  const latest = quarters[0]!;
+  const earliest = quarters[quarters.length - 1]!;
+  const knownReportedCells = quarters.reduce(
+    (total, quarter) =>
+      total +
+      Object.values(quarter.reported).filter((cell) => cell.status === "known")
+        .length,
+    0,
+  );
+  const missingFiscalQuarters = Array.from({ length: 16 }, (_, offset) => {
+    const ordinal = latest.fiscalYear * 4 + latest.fiscalQuarter - 1 - offset;
+    return {
+      fiscalQuarter: ((ordinal % 4) + 1) as 1 | 2 | 3 | 4,
+      fiscalYear: Math.floor(ordinal / 4),
+    };
+  }).filter(
+    (coordinate) =>
+      !quarters.some(
+        (quarter) =>
+          quarter.fiscalYear === coordinate.fiscalYear &&
+          quarter.fiscalQuarter === coordinate.fiscalQuarter,
+      ),
+  );
+
+  return {
+    ...base,
+    quarters,
+    coverage: {
+      ...base.coverage,
+      earliestFiscalQuarter: earliest.fiscalQuarter,
+      earliestFiscalYear: earliest.fiscalYear,
+      latestFiscalQuarter: latest.fiscalQuarter,
+      latestFiscalYear: latest.fiscalYear,
+      knownReportedCells,
+      unknownReportedCells:
+        quarters.length * fieldKeys.length - knownReportedCells,
+      missingFiscalQuarters,
+      returnedQuarterlyPeriods: quarters.length,
+    },
+  };
+}
+
+function compatibilityMarkup(markup: string): string {
+  const start = markup.indexOf(
+    '<section aria-labelledby="quarterly-ttm-compatibility-title"',
+  );
+  const end = markup.indexOf('<div class="financial-statement-stack"', start);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return markup.slice(start, end);
+}
+
+function metricMarkup(markup: string, metric: string): string {
+  const start = markup.indexOf(
+    `<section aria-label="${metric} TTM compatibility"`,
+  );
+  const end = markup.indexOf("</section>", start);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return markup.slice(start, end);
+}
+
+function compatibilityDetails(markup: string): string {
+  const start = markup.indexOf('<details class="financials-ttm-details"');
+  const end = markup.indexOf("</details>", start);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return markup.slice(start, end);
 }
 
 function render(

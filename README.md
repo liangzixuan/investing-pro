@@ -51,9 +51,13 @@ A second explicit action loads up to sixteen fiscal quarters over the same
 fixed 30-field registry. Quarterly identity comes from the provider's fiscal
 year and quarter, while `statementDate` is labelled as a statement/release date
 rather than silently presented as a fiscal period end. Missing quarters occupy
-their exact slots and missing cells stay blank. TTM remains visibly unavailable
-until the source's quarter-flow aggregation basis is verified; the application
-does not guess by summing potentially cumulative values.
+their exact slots and missing cells stay blank. A local compatibility assessment
+shows revenue and net-income coverage for the latest four expected fiscal slots,
+including field-specific omissions and the source evidence still needed. TTM
+remains unavailable: fiscal labels and known values do not prove compatible
+periods, standalone flows, units, scope or revisions. The offline consistency
+checks do not admit a source or calculate an aggregate. See
+[quarterly compatibility](./docs/PERSONAL_QUARTERLY_COMPATIBILITY.md).
 
 A third explicit fundamentals action loads daily valuation history over the
 same 1M, 3M, YTD, 1Y, 5Y, or 10Y range selected for the price view. It shows

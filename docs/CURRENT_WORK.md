@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-09 during the handover from **Investing Pro+** to
+Updated 2026-09-10 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -32,28 +32,36 @@ These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: cash-flow-adjusted return estimates
+## Last verified release: linked portfolio returns
 
-Release `c9c7de8` closed Modified Dietz estimates beside the endpoint percentage
-and dated dollar bridge, following feature `7565f8a`. Full local verification
-passed (3,385 tests and 9 existing skips). All four hosted workflows passed on
-that exact release. Linux and the three specialized workflows passed on
-attempt 1; Windows passed one same-source retry after two unchanged database
-tests timed out. No source, assertion or timeout changes were needed. See
-[Modified Dietz rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#cash-flow-adjusted-return-estimate-modified-dietz).
+Release `12e2495` closed linked period returns under an explicit end-of-day flow
+convention, following feature `2fbaf50`. Full local verification passed:
+3,426 Vitest tests plus 10 Node-runner tests, with 9 existing skips. All four
+hosted workflows, including Windows and Ubuntu CI, passed on attempt 1 for that
+exact release. Desktop/mobile external Chrome QA and independent reviews passed.
+The endpoint percentage, Modified Dietz estimate and dollar bridge remain
+available under their own rules. See
+[linked return rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#linked-return-end-of-day-flow-convention).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: linked period returns
+## Active delivery: quarterly compatibility before TTM
 
-The seventh partial Cycle 3m-a slice adds a linked return under an explicit
-end-of-day flow convention. It requires complete valuations at every date
-containing a deposit or withdrawal, including offsetting activities. Exact
-subperiod factors are compounded before final rounding; unsupported capital
-states and missing boundaries have dated explanations. The existing endpoint
-percentage, Modified Dietz estimate and dollar bridge remain available under
-their own rules. See [linked return rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#linked-return-end-of-day-flow-convention).
+Partial Cycle 3h-a4 shows revenue and net-income coverage across the latest four
+expected fiscal quarters. Missing slots and unknown values remain distinct from
+missing period, flow-basis, unit, scope, concept and revision evidence. A pure
+offline assessment checks supplied evidence for internal consistency; the
+current provider response supplies none of that fact-level metadata, so TTM
+stays unavailable even when all four values are known. No new source request or
+aggregation is added. See [quarterly compatibility](./PERSONAL_QUARTERLY_COMPATIBILITY.md).
+
+Acceptance requires exact four-slot selection without substituting older values,
+field-specific missingness, selected-listing identity binding, explicit unsupported
+calendar/YTD cases, and a fixed source-admission gate even for fully compatible
+synthetic inputs. The existing quarterly tables and session lifecycle continue
+to use the same response. Verify readable desktop/mobile layout and keyboard
+disclosure, then complete the clean-source local and exact-revision hosted gates.
 
 Live SEC validation still requires the owner's contact and startup configuration.
 The current shell has neither the SEC contact nor the configured catalog path
@@ -66,14 +74,14 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Now              | Deliver and verify linked period returns                                                         | Require complete flow-date values, explicit EOD timing and eligible subperiods |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                      |
-| Next             | Verified trailing-twelve-month financials from compatible quarterly observations                 | Establish period compatibility before expanding screening metrics              |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                       |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions            |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                    |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Now              | Deliver quarterly coverage and offline compatibility assessment                                  | Make missing inputs and evidence explicit before TTM aggregation                |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                       |
+| Next             | Admit period-aware quarterly source evidence, then verified trailing-period financials           | Validate source metadata and revision selection before aggregation or screening |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                        |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions             |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                     |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -91,7 +99,9 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-portfolio-valuation-history.test.ts src/features/research/PersonalPortfolioValuationHistory.test.tsx src/features/research/PersonalPortfolioHistoryCoverage.test.tsx
+   pnpm --filter @research-cockpit/personal-financial-analytics exec vitest run src/personal-quarterly-compatibility.test.ts
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-quarterly-compatibility.test.ts src/features/research/PersonalQuarterlyFinancials.test.tsx
+   pnpm --filter @research-cockpit/personal-financial-analytics typecheck
    pnpm --filter @research-cockpit/web typecheck
    ```
 

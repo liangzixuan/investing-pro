@@ -5,10 +5,13 @@ import type {
 import {
   PERSONAL_FINANCIAL_REPORTED_FIELDS,
   type PersonalFinancialStatementId,
+  type PersonalQuarterlyCompatibilityIssueReason,
+  type PersonalQuarterlyCompatibilityMetricKey,
 } from "@research-cockpit/personal-financial-analytics";
 
 import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api";
 
+import { assessLoadedPersonalQuarterlyFinancials } from "../../lib/personal-quarterly-compatibility";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
 
 export interface PersonalQuarterlyFinancialsProps {
@@ -106,7 +109,10 @@ export function PersonalQuarterlyFinancials({
           </div>
 
           {financials === null ? null : (
-            <QuarterlyFinancialsResult financials={financials} />
+            <QuarterlyFinancialsResult
+              financials={financials}
+              selection={selection}
+            />
           )}
         </>
       )}
@@ -116,8 +122,10 @@ export function PersonalQuarterlyFinancials({
 
 function QuarterlyFinancialsResult({
   financials,
+  selection,
 }: {
   readonly financials: PersonalQuarterlyFinancialsDto;
+  readonly selection: PersonalMarketSelection;
 }) {
   const latest = {
     fiscalQuarter: financials.coverage.latestFiscalQuarter,
@@ -170,15 +178,7 @@ function QuarterlyFinancialsResult({
         </p>
       )}
 
-      <div className="financials-ttm-gate" role="note">
-        <strong>Trailing 12 months is not calculated yet.</strong>
-        <span>
-          The provider identifies fiscal quarters but does not define whether
-          every income and cash-flow value is a standalone quarter or a
-          cumulative year-to-date amount. TTM will stay unavailable until that
-          basis is verified; the reported quarters below are unaffected.
-        </span>
-      </div>
+      <QuarterlyCompatibility financials={financials} selection={selection} />
 
       <div className="financial-statement-stack">
         {(["income_statement", "balance_sheet", "cash_flow"] as const).map(
@@ -277,6 +277,203 @@ function QuarterlyFinancialsResult({
         point-in-time backtest view. Export and redistribution are prohibited.
       </p>
     </div>
+  );
+}
+
+const compatibilityMetricLabels = {
+  revenue: "Revenue",
+  net_income: "Net income",
+} as const satisfies Readonly<
+  Record<PersonalQuarterlyCompatibilityMetricKey, string>
+>;
+
+const compatibilityIssueLabels = {
+  period_evidence_missing:
+    "Actual period start/end dates and whether each value is a standalone quarter or a cumulative year-to-date amount.",
+  fiscal_calendar_evidence_missing:
+    "A verified fiscal calendar, including the fiscal-year start and how quarters are defined.",
+  unit_evidence_missing:
+    "Per-value currency, unit and scale evidence; the feed's USD label alone does not verify each observation.",
+  scope_evidence_missing:
+    "Consistent issuer and consolidated reporting scope for the contributing values.",
+  concept_evidence_missing:
+    "Consistent accounting definitions and sign conventions for each metric.",
+  source_revision_evidence_missing:
+    "Source references and compatible revisions for the contributing values.",
+  missing_fiscal_slot: "An expected fiscal quarter was not returned.",
+  unknown_value: "A reported value is unknown.",
+  unsupported_period_basis:
+    "A standalone-quarter basis is required; cumulative, annual and balance-date values cannot be added as quarters.",
+  unsupported_fiscal_calendar:
+    "This fiscal calendar needs a separately verified period policy.",
+  period_calendar_mismatch:
+    "The reported dates do not match the declared fiscal quarter.",
+  fiscal_calendar_mismatch:
+    "The contributing values use incompatible fiscal calendars.",
+  noncontiguous_periods:
+    "The reporting periods overlap or leave a gap between their dates.",
+  unsupported_unit:
+    "The contributing values need a supported, consistent USD unit and scale.",
+  issuer_mismatch: "The evidence does not match the selected issuer.",
+  unsupported_scope:
+    "The reporting scope is not supported for this consolidated comparison.",
+  unsupported_sign_convention:
+    "The accounting sign convention needs verification.",
+  concept_mismatch:
+    "The contributing values use incompatible accounting definitions.",
+  mixed_sources:
+    "The contributing values use different sources that have not been reconciled.",
+  revision_set_mismatch:
+    "The contributing values do not share a compatible revision set.",
+} as const satisfies Readonly<
+  Record<PersonalQuarterlyCompatibilityIssueReason, string>
+>;
+
+function QuarterlyCompatibility({
+  financials,
+  selection,
+}: {
+  readonly financials: PersonalQuarterlyFinancialsDto;
+  readonly selection: PersonalMarketSelection;
+}) {
+  const assessment = assessLoadedPersonalQuarterlyFinancials(
+    financials,
+    selection,
+  );
+
+  if (assessment.status === "quarantined") {
+    return (
+      <section
+        aria-labelledby="quarterly-ttm-compatibility-title"
+        className="financials-ttm-gate"
+      >
+        <h3 id="quarterly-ttm-compatibility-title">
+          Trailing 12 months is not calculated yet.
+        </h3>
+        <strong>Quarterly compatibility could not be assessed.</strong>
+        <p>
+          The loaded response could not be validated for this selection. Refresh
+          the quarterly statements before checking compatibility again.
+        </p>
+      </section>
+    );
+  }
+
+  const evidenceReasons = Array.from(
+    new Set(
+      assessment.metrics.flatMap((metric) =>
+        metric.issues
+          .map((issue) => issue.reason)
+          .filter(
+            (reason) =>
+              reason !== "missing_fiscal_slot" && reason !== "unknown_value",
+          ),
+      ),
+    ),
+  );
+
+  return (
+    <section
+      aria-labelledby="quarterly-ttm-compatibility-title"
+      className="financials-ttm-gate"
+    >
+      <h3 id="quarterly-ttm-compatibility-title">
+        Trailing 12 months is not calculated yet.
+      </h3>
+      <p>
+        Revenue and net income are checked against the latest four expected
+        fiscal quarters. Known reported values alone do not establish a
+        compatible twelve-month period.
+      </p>
+
+      <div className="financials-ttm-metrics">
+        {assessment.metrics.map((metric) => {
+          const label = compatibilityMetricLabels[metric.metric];
+          const missing = metric.periods.filter(
+            (period) => period.status === "missing",
+          );
+          const unknown = metric.periods.filter(
+            (period) => period.status === "unknown",
+          );
+          return (
+            <section
+              aria-label={`${label} TTM compatibility`}
+              className="financials-ttm-metric"
+              key={metric.metric}
+            >
+              <h4>{label}</h4>
+              <span className="financials-ttm-status">TTM unavailable</span>
+              <p>
+                <strong>{metric.knownValues} of 4</strong> reported values known
+              </p>
+              {missing.length === 0 ? null : (
+                <p>Not returned: {missing.map(quarterLabel).join(", ")}.</p>
+              )}
+              {unknown.length === 0 ? null : (
+                <p>Value unknown: {unknown.map(quarterLabel).join(", ")}.</p>
+              )}
+              {metric.status === "compatible_inputs" ? (
+                <p>
+                  Input checks passed; source verification is still required.
+                </p>
+              ) : missing.length === 0 && unknown.length === 0 ? (
+                <p>
+                  All four values are present; compatibility evidence is
+                  incomplete.
+                </p>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+
+      {evidenceReasons.length === 0 ? null : (
+        <div className="financials-ttm-evidence">
+          <h4>Evidence still needed</h4>
+          <p>The loaded data does not establish all of the following:</p>
+          <ul>
+            {evidenceReasons.map((reason) => (
+              <li key={reason}>{compatibilityIssueLabels[reason]}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <details className="financials-ttm-details">
+        <summary>Inspect the four fiscal quarters</summary>
+        <ul className="financials-ttm-slot-list">
+          {assessment.slots.map((slot) => (
+            <li key={quarterKey(slot)}>
+              <strong>{quarterLabel(slot)}</strong>
+              {assessment.metrics.map((metric) => {
+                const period = metric.periods.find(
+                  (candidate) => quarterKey(candidate) === quarterKey(slot),
+                );
+                return (
+                  <span key={metric.metric}>
+                    {compatibilityMetricLabels[metric.metric]}:{" "}
+                    {period?.status === "known"
+                      ? "reported value known"
+                      : period?.status === "unknown"
+                        ? "value unknown"
+                        : "quarter not returned"}
+                    {period?.statementDate === null || period === undefined
+                      ? ""
+                      : ` · Statement date ${formatDate(period.statementDate)}`}
+                  </span>
+                );
+              })}
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <p>
+        Statement dates are provider release dates. A source with compatible
+        period evidence must be verified before TTM aggregation. The reported
+        statements below remain available.
+      </p>
+    </section>
   );
 }
 
