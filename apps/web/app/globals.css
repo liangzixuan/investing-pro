@@ -5533,6 +5533,56 @@ thead th {
   white-space: pre-wrap;
 }
 
+.sec-filing-metadata {
+  margin: 18px 0;
+}
+
+.sec-filing-metadata h4 {
+  margin: 0 0 8px;
+  color: var(--navy);
+  font-size: 0.9rem;
+}
+
+.sec-filing-metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sec-filing-metadata-field {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.sec-filing-metadata-field h5,
+.sec-filing-metadata-field p {
+  margin: 0 0 6px;
+}
+
+.sec-filing-metadata-field h5 {
+  color: var(--navy);
+  font-size: 0.8rem;
+}
+
+.sec-filing-metadata-field p,
+.sec-filing-metadata-duration {
+  font-size: 0.75rem;
+}
+
+.sec-filing-metadata-duration {
+  display: block;
+  margin-top: 4px;
+}
+
+.sec-filing-metadata-reference + .sec-filing-metadata-reference {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
 @media (max-width: 900px) {
   .sec-quarterly-coverage {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5554,6 +5604,10 @@ thead th {
   }
 
   .sec-quarterly-comparison-coordinates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sec-filing-metadata-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

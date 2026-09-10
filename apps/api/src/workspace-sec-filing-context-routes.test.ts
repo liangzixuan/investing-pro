@@ -76,7 +76,7 @@ describe("selected SEC filing context route", () => {
         files: [],
       },
     };
-    const document = `<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL" xmlns:x="http://www.xbrl.org/2003/instance" xmlns:g="http://fasb.org/us-gaap/2025" xmlns:iso="http://www.xbrl.org/2003/iso4217"><x:context id="c"><x:entity><x:identifier scheme="http://www.sec.gov/CIK">1</x:identifier></x:entity><x:period><x:startDate>2026-01-01</x:startDate><x:endDate>2026-03-31</x:endDate></x:period></x:context><x:unit id="u"><x:measure>iso:USD</x:measure></x:unit><ix:nonFraction id="revenue" name="g:Revenues" contextRef="c" unitRef="u" decimals="0">100</ix:nonFraction></html>`;
+    const document = `<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL" xmlns:x="http://www.xbrl.org/2003/instance" xmlns:g="http://fasb.org/us-gaap/2025" xmlns:iso="http://www.xbrl.org/2003/iso4217" xmlns:d="http://xbrl.sec.gov/dei/2025"><x:context id="c"><x:entity><x:identifier scheme="http://www.sec.gov/CIK">1</x:identifier></x:entity><x:period><x:startDate>2026-01-01</x:startDate><x:endDate>2026-03-31</x:endDate></x:period></x:context><x:unit id="u"><x:measure>iso:USD</x:measure></x:unit><ix:nonFraction id="revenue" name="g:Revenues" contextRef="c" unitRef="u" decimals="0">100</ix:nonFraction><ix:nonNumeric id="document-type" name="d:DocumentType" contextRef="c">10-Q</ix:nonNumeric><ix:nonNumeric id="period-end" name="d:DocumentPeriodEndDate" contextRef="c">2026-03-31</ix:nonNumeric><ix:nonNumeric id="year-focus" name="d:DocumentFiscalYearFocus" contextRef="c">2026</ix:nonNumeric><ix:nonNumeric id="period-focus" name="d:DocumentFiscalPeriodFocus" contextRef="c">Q1</ix:nonNumeric></html>`;
     const source = vi.fn<typeof fetch>((input) => {
       const url =
         typeof input === "string"
@@ -112,18 +112,56 @@ describe("selected SEC filing context route", () => {
       });
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({
+        schemaVersion: "2.0.0",
         inspection: {
           status: "available",
           cik: "0000000001",
           observation: { id: retained.id, value: "100" },
           analysis: {
             status: "matched",
+            reportingMetadata: {
+              status: "assessed",
+              reason: null,
+              fields: [
+                { concept: "DocumentType", status: "observed", value: "10-Q" },
+                {
+                  concept: "DocumentPeriodEndDate",
+                  status: "observed",
+                  value: "2026-03-31",
+                },
+                {
+                  concept: "DocumentFiscalYearFocus",
+                  status: "observed",
+                  value: "2026",
+                },
+                {
+                  concept: "DocumentFiscalPeriodFocus",
+                  status: "observed",
+                  value: "Q1",
+                },
+              ],
+            },
             candidates: [
               { factId: "revenue", value: "100", entityCik: "0000000001" },
             ],
           },
         },
       });
+      const inspection =
+        response.json<PersonalSecFilingContextResponseDto>().inspection;
+      expect(inspection.status).toBe("available");
+      if (inspection.status === "available") {
+        expect(inspection.analysis.schemaVersion).toBe("2.0.0");
+        expect(inspection.analysis.reportingMetadata.observations).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              factId: "period-end",
+              entityCik: "0000000001",
+              value: "2026-03-31",
+            }),
+          ]),
+        );
+      }
       expect(source).toHaveBeenCalledTimes(3);
       expect(response.payload).not.toContain("<html");
       expect(response.payload).not.toContain("owner@example.test");
@@ -174,7 +212,7 @@ describe("selected SEC filing context route", () => {
     {},
     { listingId: "lst-00000", symbol: "S00000" },
     {
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       catalogSnapshotSha256: "bad",
       listingId: "lst-00000",
       symbol: "S00000",
@@ -184,6 +222,17 @@ describe("selected SEC filing context route", () => {
     expect((await fixture.request(body)).statusCode).toBe(400);
     expect(fixture.loadContext).not.toHaveBeenCalled();
   });
+
+  it.each(["1.0.0", "2.1.0", "3.0.0", null])(
+    "rejects incompatible schema version %j before acquisition",
+    async (schemaVersion) => {
+      const fixture = await setup();
+      expect(
+        (await fixture.request({ ...fixture.body, schemaVersion })).statusCode,
+      ).toBe(400);
+      expect(fixture.loadContext).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects caller-supplied CIK, unknown listing, stale catalog and query variants", async () => {
     const fixture = await setup();
@@ -356,7 +405,7 @@ async function setup() {
   );
   applications.push(app);
   const body = {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: catalog.snapshotSha256,
     listingId: "lst-00000",
     symbol: "S00000",

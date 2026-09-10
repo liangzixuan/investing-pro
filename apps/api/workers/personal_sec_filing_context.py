@@ -16,6 +16,11 @@ from html.parser import HTMLParser
 DOCUMENT_BYTES = 32 * 1024 * 1024
 INPUT_BYTES = 45 * 1024 * 1024
 OUTPUT_BYTES = 1024 * 1024
+SCHEMA_VERSION = "2.0.0"
+METADATA_OUTPUT_BYTES = 128 * 1024
+DEI_CONCEPTS = ("DocumentType", "DocumentPeriodEndDate", "DocumentFiscalYearFocus", "DocumentFiscalPeriodFocus")
+# Exact targetNamespace identifiers verified against the SEC 2024/2025/2026 schemas.
+DEI_NAMESPACES = {"http://xbrl.sec.gov/dei/2024", "http://xbrl.sec.gov/dei/2025", "http://xbrl.sec.gov/dei/2026"}
 IX = {"http://www.xbrl.org/2008/inlineXBRL", "http://www.xbrl.org/2013/inlineXBRL"}
 XBRLI = "http://www.xbrl.org/2003/instance"
 XBRLDI = "http://xbrl.org/2006/xbrldi"
@@ -111,12 +116,15 @@ def semantic_case(raw_tag, namespace, local):
 
 
 class Node:
-    __slots__ = ("tag", "namespace", "local", "attrs", "namespaces", "ordinal", "children", "parts", "text_length")
+    __slots__ = ("tag", "raw_tag", "namespace", "local", "attrs", "namespaces", "ordinal", "children", "parts", "text_length", "metadata", "unsupported_metadata_ancestor")
 
-    def __init__(self, tag, namespace, local, attrs, namespaces, ordinal):
+    def __init__(self, tag, namespace, local, attrs, namespaces, ordinal, metadata=False, raw_tag=None):
         self.tag, self.namespace, self.local = tag, namespace, local
+        self.raw_tag = raw_tag or tag
         self.attrs, self.namespaces, self.ordinal = attrs, namespaces, ordinal
         self.children, self.parts, self.text_length = [], [], 0
+        self.metadata = metadata
+        self.unsupported_metadata_ancestor = False
 
     def text(self):
         return "".join(self.parts)
@@ -128,6 +136,7 @@ class Document(HTMLParser):
         self.concept, self.stack, self.contexts, self.units, self.facts = concept, [], {}, {}, []
         self.nodes, self.ids, self.doctype = 0, set(), False
         self.closed_void = False
+        self.metadata, self.metadata_count, self.metadata_limit = [], 0, None
 
     def handle_decl(self, declaration):
         if self.doctype or declaration.strip().lower() != "doctype html":
@@ -215,8 +224,20 @@ class Document(HTMLParser):
         is_unit = namespace == XBRLI and local == "unit"
         name = qname(attrs.get("name", ""), namespaces)
         is_fact = (local in ("nonfraction", "fraction", "nonnumeric") and name["localName"] == self.concept) or (expanded["localName"] == self.concept.lower() and gaap_namespace(namespace))
-        capture = parent is not None or is_context or is_unit or is_fact
-        node = Node(tag, namespace, local, attrs, namespaces, self.nodes) if capture else None
+        is_metadata = (local in ("nonfraction", "fraction", "nonnumeric") and metadata_concept(name["localName"]) is not None) or (namespace not in (None, "", XHTML) and metadata_concept(local) is not None)
+        if is_metadata:
+            self.metadata_count += 1
+            if self.metadata_count > 40:
+                self.metadata_limit = "candidate_limit"
+                self.metadata.clear()
+        capture = parent is not None or is_context or is_unit or is_fact or (is_metadata and self.metadata_limit is None)
+        metadata_node = not is_fact and (is_metadata or (parent is not None and parent.metadata))
+        node = Node(tag, namespace, local, attrs, namespaces, self.nodes, metadata_node, raw_tag[1]) if capture else None
+        if is_metadata and node is not None:
+            for ancestor_tag, ancestor_namespaces, _ancestor_node in self.stack:
+                ancestor = qname(ancestor_tag, ancestor_namespaces)
+                if (ancestor["namespace"] in IX and ancestor["localName"] not in ("header", "hidden")) or ancestor["namespace"] in (XBRLI, XBRLDI):
+                    node.unsupported_metadata_ancestor = True
         if parent is not None:
             parent.children.append(node)
         if is_context or is_unit:
@@ -230,6 +251,8 @@ class Document(HTMLParser):
             if len(self.facts) >= 100:
                 fail("candidate_limit")
             self.facts.append(node)
+        if is_metadata and self.metadata_limit is None:
+            self.metadata.append(node)
         self.stack.append((tag, namespaces, node))
         if namespace in (None, "", XHTML) and local in VOID and ":" not in tag:
             self.handle_endtag(tag)
@@ -267,8 +290,15 @@ class Document(HTMLParser):
         # Only retain bounded context/unit/fact content, never unrelated filing HTML.
         for _tag, _ns, node in self.stack:
             if node is not None:
+                if node.metadata and self.metadata_limit is not None:
+                    continue
                 node.text_length += utf16_length(data)
                 if node.text_length > 4096:
+                    if node.metadata:
+                        self.metadata_limit = "output_limit"
+                        self.metadata.clear()
+                        node.parts.clear()
+                        continue
                     fail()
                 node.parts.append(data)
 
@@ -370,24 +400,8 @@ def numeric(node, candidate, issues):
     return value
 
 
-def project_candidate(node, document, selected, cik):
-    a = node.attrs
-    for key in ("id", "contextref", "unitref", "name", "format", "sign", "scale", "decimals", "precision"):
-        if key in a:
-            bounded(a[key])
-    candidate = {
-        "locator": f"/elements/{node.ordinal}", "factId": a.get("id"), "contextId": a.get("contextref"), "unitId": a.get("unitref"),
-        "concept": qname(a.get("name", node.tag), node.namespaces),
-        "entityIdentifier": None, "entityScheme": None, "entityCik": None, "dimensions": [],
-        "periodKind": "unsupported", "startDate": None, "endDate": None, "unit": None, "unitMeasures": [],
-        "rawText": node.text(), "format": qname(a["format"], node.namespaces) if "format" in a else None,
-        "sign": a.get("sign"), "scale": a.get("scale"), "decimals": a.get("decimals"), "precision": a.get("precision"), "value": None, "issues": [],
-    }
+def project_context(candidate, document, cik, selected=None):
     issues = candidate["issues"]
-    if candidate["concept"]["localName"] != selected["concept"] or not gaap_namespace(candidate["concept"]["namespace"]):
-        issues.append("invalid_namespace")
-    if any(value is not None and not ID.fullmatch(value) for value in (candidate["factId"], candidate["contextId"], candidate["unitId"])):
-        issues.append("invalid_identifier")
     context = document.contexts.get(candidate["contextId"])
     if context is None:
         issues.append("unresolved_context")
@@ -422,15 +436,36 @@ def project_candidate(node, document, selected, cik):
             starts, ends, instants = children(period, XBRLI, "startdate"), children(period, XBRLI, "enddate"), children(period, XBRLI, "instant")
             if len(starts) == len(ends) == 1 and not instants and len(period.children) == 2 and not starts[0].children and not ends[0].children and valid_date(starts[0].text().strip()) and valid_date(ends[0].text().strip()) and starts[0].text().strip() <= ends[0].text().strip():
                 candidate.update(periodKind="duration", startDate=starts[0].text().strip(), endDate=ends[0].text().strip())
-                if candidate["startDate"] != selected["startDate"] or candidate["endDate"] != selected["endDate"]:
+                if selected is not None and (candidate["startDate"] != selected["startDate"] or candidate["endDate"] != selected["endDate"]):
                     issues.append("period_mismatch")
             elif len(instants) == 1 and len(period.children) == 1 and not instants[0].children and valid_date(instants[0].text().strip()):
                 candidate.update(periodKind="instant", endDate=instants[0].text().strip())
-                issues.append("period_mismatch")
+                issues.append("period_mismatch" if selected is not None else "unsupported_period")
             else:
                 issues.append("unsupported_period")
         else:
             issues.append("unsupported_period")
+
+
+def project_candidate(node, document, selected, cik):
+    a = node.attrs
+    for key in ("id", "contextref", "unitref", "name", "format", "sign", "scale", "decimals", "precision"):
+        if key in a:
+            bounded(a[key])
+    candidate = {
+        "locator": f"/elements/{node.ordinal}", "factId": a.get("id"), "contextId": a.get("contextref"), "unitId": a.get("unitref"),
+        "concept": qname(a.get("name", node.tag), node.namespaces),
+        "entityIdentifier": None, "entityScheme": None, "entityCik": None, "dimensions": [],
+        "periodKind": "unsupported", "startDate": None, "endDate": None, "unit": None, "unitMeasures": [],
+        "rawText": node.text(), "format": qname(a["format"], node.namespaces) if "format" in a else None,
+        "sign": a.get("sign"), "scale": a.get("scale"), "decimals": a.get("decimals"), "precision": a.get("precision"), "value": None, "issues": [],
+    }
+    issues = candidate["issues"]
+    if candidate["concept"]["localName"] != selected["concept"] or not gaap_namespace(candidate["concept"]["namespace"]):
+        issues.append("invalid_namespace")
+    if any(value is not None and not ID.fullmatch(value) for value in (candidate["factId"], candidate["contextId"], candidate["unitId"])):
+        issues.append("invalid_identifier")
+    project_context(candidate, document, cik, selected)
     unit = document.units.get(candidate["unitId"])
     if unit is None:
         issues.append("unresolved_unit")
@@ -463,7 +498,82 @@ def analyze(document, selected, cik):
         status = "ambiguous"
     else:
         status = "matched" if corresponding[0]["value"] == selected["value"] else "value_differs"
-    return {"status": status, "reason": reason, "candidates": candidates, "correspondingCandidateLocators": [row["locator"] for row in corresponding]}
+    return {"schemaVersion": SCHEMA_VERSION, "status": status, "reason": reason, "candidates": candidates, "correspondingCandidateLocators": [row["locator"] for row in corresponding], "reportingMetadata": reporting_metadata(document, cik)}
+
+
+def empty_metadata(status="assessed", reason=None):
+    return {"status": status, "reason": reason, "fields": [{"concept": concept, "status": "missing" if status == "assessed" else "unsupported", "value": None, "observationLocators": []} for concept in DEI_CONCEPTS], "observations": []}
+
+
+def metadata_value(concept, raw):
+    # XML whitespace only. No language/century/date transform inference.
+    value = re.sub(r"[ \t\r\n]+", " ", raw).strip(" ")
+    if concept == "DocumentType":
+        return value if value in ("10-Q", "10-Q/A", "10-K", "10-K/A") else None
+    if concept == "DocumentPeriodEndDate":
+        return value if valid_date(value) else None
+    if concept == "DocumentFiscalYearFocus":
+        return value if re.fullmatch(r"[1-9][0-9]{3}", value) else None
+    if concept == "DocumentFiscalPeriodFocus":
+        # The SEC DEI fiscalPeriodItemType enumerates FY/Q1/Q2/Q3, not Q4.
+        return value if value in ("FY", "Q1", "Q2", "Q3") else None
+    return None
+
+
+def metadata_concept(local):
+    return next((concept for concept in DEI_CONCEPTS if local is not None and concept.lower() == local.lower()), None)
+
+
+def project_metadata(node, document, cik):
+    a = node.attrs
+    for key in ("id", "contextref", "name", "format"):
+        if key in a:
+            bounded(a[key])
+    source_name = a.get("name", "") if node.local in ("nonfraction", "fraction", "nonnumeric") else node.raw_tag
+    candidate = {"locator": f"/elements/{node.ordinal}", "factId": a.get("id"), "contextId": a.get("contextref"), "concept": qname(source_name, node.namespaces), "entityIdentifier": None, "entityScheme": None, "entityCik": None, "dimensions": [], "periodKind": "unsupported", "startDate": None, "endDate": None, "rawText": node.text(), "format": qname(a["format"], node.namespaces) if "format" in a else None, "value": None, "issues": []}
+    issues = candidate["issues"]
+    if candidate["concept"]["namespace"] not in DEI_NAMESPACES or candidate["concept"]["localName"] not in DEI_CONCEPTS:
+        issues.append("invalid_namespace")
+    if any(value is not None and not ID.fullmatch(value) for value in (candidate["factId"], candidate["contextId"])):
+        issues.append("invalid_identifier")
+    project_context(candidate, document, cik)
+    allowed = {"id", "name", "contextref", "format", "footnoterefs", "xmlns"}
+    if node.namespace not in IX or node.local != "nonnumeric" or node.children or node.unsupported_metadata_ancestor or any(key.endswith(":nil") for key in a) or any(":" not in key and key not in allowed for key in a):
+        issues.append("unsupported_inline")
+    if candidate["format"] is not None:
+        issues.append("unsupported_transform")
+    if "unsupported_inline" not in issues and "unsupported_transform" not in issues:
+        candidate["value"] = metadata_value(candidate["concept"]["localName"], candidate["rawText"])
+        if candidate["value"] is None:
+            issues.append("invalid_metadata_value")
+    candidate["issues"] = list(dict.fromkeys(issues))
+    return candidate
+
+
+def reporting_metadata(document, cik):
+    if document.metadata_limit is not None:
+        return empty_metadata("limited", document.metadata_limit)
+    try:
+        observations = [project_metadata(node, document, cik) for node in document.metadata]
+    except Unsupported:
+        # Metadata projection bounds must not erase an independent numeric result.
+        return empty_metadata("limited", "output_limit")
+    fields = []
+    for concept in DEI_CONCEPTS:
+        rows = [row for row in observations if metadata_concept(row["concept"]["localName"]) == concept]
+        eligible = [row for row in rows if not row["issues"]]
+        uncertain = [row for row in rows if row["issues"] and row["issues"] != ["entity_mismatch"]]
+        values = {row["value"] for row in eligible}
+        status = "unsupported" if uncertain else "missing" if not values else "conflicting" if len(values) > 1 else "observed"
+        fields.append({"concept": concept, "status": status, "value": eligible[0]["value"] if status == "observed" else None, "observationLocators": [row["locator"] for row in rows]})
+    metadata = {"status": "assessed", "reason": None, "fields": fields, "observations": observations}
+    if len(json.dumps(metadata, ensure_ascii=True, separators=(",", ":")).encode("utf-8")) > METADATA_OUTPUT_BYTES:
+        return empty_metadata("limited", "output_limit")
+    return metadata
+
+
+def global_failure(reason):
+    return {"schemaVersion": SCHEMA_VERSION, "status": "unsupported", "reason": reason, "candidates": [], "correspondingCandidateLocators": [], "reportingMetadata": empty_metadata("unavailable", reason)}
 
 
 def read_request():
@@ -478,7 +588,7 @@ def read_request():
             value[key] = item
         return value
     request = json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=object_pairs)
-    if not isinstance(request, dict) or set(request) != {"documentBase64", "cik", "selection"}:
+    if not isinstance(request, dict) or set(request) != {"schemaVersion", "documentBase64", "cik", "selection"} or request["schemaVersion"] != SCHEMA_VERSION:
         fail()
     selection = request["selection"]
     if not isinstance(selection, dict) or selection.get("concept") not in CONCEPTS or not canonical(selection.get("value")) or not valid_date(selection.get("startDate")) or not valid_date(selection.get("endDate")) or selection["startDate"] > selection["endDate"] or not re.fullmatch(r"[0-9]{10}", request["cik"]) or int(request["cik"]) == 0:
@@ -505,12 +615,12 @@ def main():
         document.finish()
         result = analyze(document, selected, cik)
     except Unsupported as error:
-        result = {"status": "unsupported", "reason": error.reason, "candidates": [], "correspondingCandidateLocators": []}
+        result = global_failure(error.reason)
     except (ValueError, TypeError, KeyError, UnicodeError, RecursionError, OverflowError):
-        result = {"status": "unsupported", "reason": "invalid_document", "candidates": [], "correspondingCandidateLocators": []}
+        result = global_failure("invalid_document")
     output = json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")) + "\n"
     if len(output.encode("utf-8")) > OUTPUT_BYTES:
-        output = '{"status":"unsupported","reason":"output_limit","candidates":[],"correspondingCandidateLocators":[]}\n'
+        output = json.dumps(global_failure("output_limit"), separators=(",", ":")) + "\n"
     sys.stdout.write(output)
 
 

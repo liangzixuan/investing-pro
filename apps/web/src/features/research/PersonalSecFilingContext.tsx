@@ -6,6 +6,8 @@ import type {
   PersonalSecFilingContextQNameDto,
   PersonalSecFilingContextResponseDto,
   PersonalSecFilingContextUnavailableReason,
+  PersonalSecFilingReportingMetadataDto,
+  PersonalSecFilingReportingObservationDto,
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState } from "react";
@@ -160,7 +162,7 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
     try {
       const next = await fetchPersonalSecFilingContext(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           catalogSnapshotSha256,
           listingId: selection.listingId,
           symbol: selection.symbol,
@@ -261,6 +263,11 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
               <dd>
                 {observation.startDate ?? "Unknown start"} to{" "}
                 {observation.endDate}
+                <span className="sec-filing-metadata-duration">
+                  {observation.durationDays === null
+                    ? "Inclusive duration unavailable"
+                    : `${observation.durationDays} days, inclusive`}
+                </span>
               </dd>
             </div>
             <div>
@@ -346,6 +353,10 @@ function InspectionResult({
   const rows = analysis.candidates.slice(page * size, (page + 1) * size);
   return (
     <>
+      <ReportingMetadata
+        metadata={analysis.reportingMetadata}
+        reportDate={observation.filing.reportDate}
+      />
       <p className="sec-filing-context-outcome" role="status">
         <strong>{outcome[analysis.status]}</strong>
         {analysis.reason === null
@@ -515,6 +526,148 @@ function InspectionResult({
         </div>
       ) : null}
     </>
+  );
+}
+
+const reportingLabels = {
+  DocumentType: "Document type",
+  DocumentPeriodEndDate: "Document period end",
+  DocumentFiscalYearFocus: "Fiscal year focus",
+  DocumentFiscalPeriodFocus: "Fiscal period focus",
+} as const;
+const reportingStatus = {
+  observed: "Observed; supported references agree",
+  missing: "No supported same-issuer value",
+  conflicting: "Conflicting reported values",
+  unsupported: "Value unresolved",
+} as const;
+
+function ReportingMetadata({
+  metadata,
+  reportDate,
+}: {
+  readonly metadata: PersonalSecFilingReportingMetadataDto;
+  readonly reportDate: string | null;
+}) {
+  const periodEnd = metadata.fields.find(
+    (field) => field.concept === "DocumentPeriodEndDate",
+  );
+  return (
+    <section
+      className="sec-filing-metadata"
+      aria-labelledby="sec-filing-metadata-title"
+    >
+      <h4 id="sec-filing-metadata-title">Filing-declared reporting metadata</h4>
+      <p className="sec-quarterly-caveat">
+        These labels describe this filing. They do not assign fiscal labels to
+        the selected fact, whose actual dates and inclusive duration are shown
+        above. Comparative and longer-duration facts can appear in the same
+        filing. Standalone-quarter/YTD basis, revisions and TTM remain
+        unresolved.
+      </p>
+      {metadata.status === "assessed" ? null : (
+        <p className="discovery-warning" role="status">
+          {metadata.status === "limited"
+            ? "Reporting metadata reached a separate extraction limit. No partial metadata references are shown; the numeric result below is assessed separately."
+            : "Reporting metadata is unavailable because the document could not be fully inspected. No partial metadata references are shown."}
+          {metadata.reason === null
+            ? null
+            : ` Reason: ${metadata.reason.replaceAll("_", " ")}.`}
+        </p>
+      )}
+      <div className="sec-filing-metadata-grid">
+        {metadata.fields.map((field) => {
+          const references = metadata.observations.filter((row) =>
+            field.observationLocators.includes(row.locator),
+          );
+          return (
+            <section className="sec-filing-metadata-field" key={field.concept}>
+              <h5>{reportingLabels[field.concept]}</h5>
+              <p>{field.concept}</p>
+              <p>
+                <strong>{field.value ?? "No resolved value"}</strong>
+              </p>
+              <p>{reportingStatus[field.status]}</p>
+              {references.length === 0 ? (
+                <p>No retained references.</p>
+              ) : (
+                <details className="sec-quarterly-row-details">
+                  <summary>
+                    Inspect {references.length}{" "}
+                    {references.length === 1 ? "reference" : "references"} for{" "}
+                    {field.concept}
+                  </summary>
+                  {references.map((row) => (
+                    <ReportingReference key={row.locator} row={row} />
+                  ))}
+                </details>
+              )}
+            </section>
+          );
+        })}
+      </div>
+      <p className="sec-quarterly-message">
+        <strong>Report-end comparison with current Submissions.</strong>{" "}
+        {periodEnd?.status === "observed" && periodEnd.value !== null
+          ? reportDate === null
+            ? `The filing declares ${periodEnd.value}; current Submissions does not supply a report date, so agreement cannot be checked.`
+            : periodEnd.value === reportDate
+              ? `The filing-declared period end and current Submissions report date agree: ${reportDate}.`
+              : `The filing declares ${periodEnd.value}; current Submissions reports ${reportDate}. These dates differ; neither replaces the selected fact’s period.`
+          : `The filing-declared period end is unresolved. Current Submissions report date: ${reportDate ?? "not supplied"}. No agreement is established.`}
+      </p>
+    </section>
+  );
+}
+
+function ReportingReference({
+  row,
+}: {
+  readonly row: PersonalSecFilingReportingObservationDto;
+}) {
+  return (
+    <dl className="sec-filing-metadata-reference">
+      <dt>Document element / fact / context identifiers</dt>
+      <dd>
+        {row.locator} / {row.factId ?? "Absent"} / {row.contextId ?? "Absent"}
+      </dd>
+      <dt>Resolved DEI concept</dt>
+      <dd>{describeQName(row.concept)}</dd>
+      <dt>Context entity</dt>
+      <dd>
+        CIK {row.entityCik ?? "unresolved"} ·{" "}
+        {row.entityIdentifier ?? "Unresolved"} ·{" "}
+        {row.entityScheme ?? "Unresolved"}
+      </dd>
+      <dt>Metadata context period</dt>
+      <dd>
+        {row.periodKind} · {row.startDate ?? "No start date"} to{" "}
+        {row.endDate ?? "No end date"}
+      </dd>
+      <dt>Raw metadata text</dt>
+      <dd className="sec-filing-context-raw">{row.rawText || "Empty"}</dd>
+      <dt>Format attribute</dt>
+      <dd>{row.format === null ? "Absent" : describeQName(row.format)}</dd>
+      <dt>Normalized reference value</dt>
+      <dd>{row.value ?? "Unavailable"}</dd>
+      <dt>Reference assessment</dt>
+      <dd>
+        {row.issues.length === 0
+          ? "Supported same-issuer reference"
+          : row.issues.map((issue) => issue.replaceAll("_", " ")).join("; ")}
+      </dd>
+      <dt>Dimensions</dt>
+      <dd>
+        {row.dimensions.length === 0
+          ? "No explicit/typed dimensions retained"
+          : row.dimensions
+              .map(
+                (dimension) =>
+                  `${dimension.kind}: ${describeQName(dimension.dimension)} · ${dimension.member === null ? (dimension.typedText ?? "Member unresolved") : describeQName(dimension.member)}`,
+              )
+              .join("; ")}
+      </dd>
+    </dl>
   );
 }
 

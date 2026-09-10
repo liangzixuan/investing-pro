@@ -170,6 +170,7 @@ describe("personal workspace composition root", () => {
       url: PERSONAL_SEC_FILING_CONTEXT_PATH,
       payload: {
         ...evidenceRequest.payload,
+        schemaVersion: "2.0.0",
         selection: {
           id: `sec-fact:${"a".repeat(64)}`,
           metric: "revenue",

@@ -61,6 +61,47 @@ strings retain at most 64 characters. The entity scheme must be exactly
 Supported US-GAAP namespace dates are calendar-valid years 2009–2099. These
 checks establish bounded correspondence, not full taxonomy or DTS validation.
 
+## Filing-declared reporting metadata
+
+Partial Cycle 3h-a8 uses the same primary document to collect `DocumentType`,
+`DocumentPeriodEndDate`, `DocumentFiscalYearFocus` and
+`DocumentFiscalPeriodFocus`. The inspector shows these filing declarations beside
+the selected fact's actual dates and inclusive duration. For example, a filing
+can declare FY2026 Q3 while a selected comparative fact covers January through
+March 2025. Filing focus does not classify the selected fact's duration.
+
+The declared report end is compared separately with the refreshed Submissions
+report date. Agreement, difference, missingness and unresolved declarations are
+explicit. Neither source silently replaces the other. Equivalent references
+remain separate; differing eligible values receive no preferred reference.
+Unresolved relevant scope or content prevents an observed field value. Explicitly
+wrong-issuer rows remain visible as excluded references.
+
+Supported DEI namespace identifiers are exactly `http://xbrl.sec.gov/dei/2024`,
+`http://xbrl.sec.gov/dei/2025` and `http://xbrl.sec.gov/dei/2026`, verified against
+the SEC's [2024 schema](https://xbrl.sec.gov/dei/2024/dei-2024.xsd),
+[2025 schema](https://xbrl.sec.gov/dei/2025/dei-2025.xsd) and
+[2026 schema](https://xbrl.sec.gov/dei/2026/dei-2026.xsd). Prefix spelling alone
+never establishes a namespace. These identifiers are not runtime fetch targets.
+The supported document-type subset is `10-Q`, `10-Q/A`, `10-K` and `10-K/A`;
+the inspector's acquisition remains restricted to selected `10-Q`/`10-Q/A`
+observations. Fiscal-period values are `FY`, `Q1`, `Q2` and `Q3`, as enumerated
+by the schemas. Fiscal years require four digits; report ends require a
+calendar-valid ISO date. Text normalization collapses only XML whitespace.
+
+The initial metadata subset accepts direct text-only `ix:nonNumeric` values in
+well-formed duration contexts for the selected issuer without dimensions.
+Context dates are preserved and need not equal the selected financial fact's
+period. Transforms, nested markup, continuations, tuples, alternate targets, nil
+and escape semantics remain unsupported. Unsupported or unfamiliar declarations
+are not inferred from visible prose. The underlying context and entity checks
+are shared with numeric inspection, whose correspondence rules remain unchanged.
+
+Route request/response and worker input/output use schema version `2.0.0`, with
+a required structured metadata projection. Quarterly evidence and stored data
+schemas do not change. The client validates field status, values and reference
+membership against the returned observations before displaying them.
+
 ## Runtime and bounds
 
 Use the existing owner SEC contact setting and a Python 3 runtime available to
@@ -77,7 +118,11 @@ A separate asynchronous process uses fixed arguments, no shell and a hidden
 window on Windows. Input, output and error streams are bounded; the worker has
 a 10-second deadline and a 1 MiB structured-output limit. Parsing is limited to
 one million elements, depth 256, 20,000 contexts, 5,000 units and 100 candidate
-facts. A global limit never reports a partial prefix as complete evidence.
+facts. Metadata has a separate 40-candidate and 128 KiB structured-output budget.
+A metadata limit clears the whole metadata projection and reports it as limited,
+while preserving an independently complete numeric comparison. Global malformed
+document, process and output failures clear all projections. A global limit never
+reports a partial prefix as complete evidence.
 Cancellation and shutdown terminate active work. Selection, catalog, evidence
 generation and owner-session changes discard results and suppress late replies.
 Raw HTML stays ephemeral on the server and is never rendered or executed by the
@@ -90,6 +135,10 @@ different periods with the same end date, duplicate and conflicting references,
 entity/namespace spoofing, dimensions, unsupported constructs, source and parser
 limits, runtime failure, cancellation and stale requests. Real-worker integration
 and external Chrome desktop/mobile/keyboard QA are required release checks.
+Metadata acceptance covers comparative dates, three- and nine-month selections,
+non-calendar fiscal years, amendments, identical/conflicting references, missing
+fields, spoofed namespaces, malformed scope and metadata limits without extra
+source requests or changes to numeric eligibility.
 
 These checks establish the bounded engineering behavior. Live parsing coverage
 remains unproven until configured sources and supported filings are independently

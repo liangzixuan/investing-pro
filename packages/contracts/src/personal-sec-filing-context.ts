@@ -1,6 +1,20 @@
 import type { PersonalMarketDataIdentityDto } from "./index";
 import type { PersonalSecQuarterlyObservationDto } from "./personal-sec-quarterly-evidence";
 
+export const PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION = "2.0.0" as const;
+export const PERSONAL_SEC_FILING_REPORTING_CONCEPTS = Object.freeze([
+  "DocumentType",
+  "DocumentPeriodEndDate",
+  "DocumentFiscalYearFocus",
+  "DocumentFiscalPeriodFocus",
+] as const);
+/** Explicit SEC schema targetNamespace values; these are identifiers, not fetch URLs. */
+export const PERSONAL_SEC_FILING_DEI_NAMESPACES = Object.freeze([
+  "http://xbrl.sec.gov/dei/2024",
+  "http://xbrl.sec.gov/dei/2025",
+  "http://xbrl.sec.gov/dei/2026",
+] as const);
+
 export const PERSONAL_SEC_FILING_CONTEXT_LIMITS = Object.freeze({
   documentBytes: 32 * 1024 * 1024,
   workerTimeoutMs: 10_000,
@@ -19,6 +33,8 @@ export const PERSONAL_SEC_FILING_CONTEXT_LIMITS = Object.freeze({
   namespaceCharacters: 256,
   rawTextCharacters: 4096,
   decimalCharacters: 64,
+  metadataCandidates: 40,
+  metadataOutputBytes: 128 * 1024,
 });
 
 /** A browser request identifies a selection; only fresh server sources revalidate it. */
@@ -102,6 +118,7 @@ export interface PersonalSecFilingContextCandidateDto {
 }
 
 export interface PersonalSecFilingContextParserResultDto {
+  readonly schemaVersion: "2.0.0";
   readonly status:
     | "matched"
     | "value_differs"
@@ -112,6 +129,64 @@ export interface PersonalSecFilingContextParserResultDto {
   readonly reason: PersonalSecFilingContextIssue | null;
   readonly candidates: readonly PersonalSecFilingContextCandidateDto[];
   readonly correspondingCandidateLocators: readonly string[];
+  readonly reportingMetadata: PersonalSecFilingReportingMetadataDto;
+}
+
+export type PersonalSecFilingReportingConcept =
+  (typeof PERSONAL_SEC_FILING_REPORTING_CONCEPTS)[number];
+export type PersonalSecFilingReportingIssue =
+  PersonalSecFilingContextIssue | "invalid_metadata_value";
+export type PersonalSecFilingReportingObservationDto = Pick<
+  PersonalSecFilingContextCandidateDto,
+  | "locator"
+  | "factId"
+  | "contextId"
+  | "concept"
+  | "entityIdentifier"
+  | "entityScheme"
+  | "entityCik"
+  | "dimensions"
+  | "periodKind"
+  | "startDate"
+  | "endDate"
+  | "rawText"
+  | "format"
+  | "value"
+> & {
+  readonly issues: readonly PersonalSecFilingReportingIssue[];
+};
+export interface PersonalSecFilingReportingFieldDto {
+  readonly concept: PersonalSecFilingReportingConcept;
+  readonly status: "observed" | "missing" | "conflicting" | "unsupported";
+  readonly value: string | null;
+  /** All retained references for this concept, including excluded/unsupported rows. */
+  readonly observationLocators: readonly string[];
+}
+export interface PersonalSecFilingReportingMetadataDto {
+  readonly status: "assessed" | "limited" | "unavailable";
+  readonly reason: PersonalSecFilingContextIssue | null;
+  /** Exactly the four concepts in PERSONAL_SEC_FILING_REPORTING_CONCEPTS order. */
+  readonly fields: readonly PersonalSecFilingReportingFieldDto[];
+  readonly observations: readonly PersonalSecFilingReportingObservationDto[];
+}
+
+/** Empty typed projection for an assessed document with no retained DEI facts. */
+export function createEmptyPersonalSecFilingReportingMetadata(): PersonalSecFilingReportingMetadataDto {
+  return Object.freeze({
+    status: "assessed",
+    reason: null,
+    fields: Object.freeze(
+      PERSONAL_SEC_FILING_REPORTING_CONCEPTS.map((concept) =>
+        Object.freeze({
+          concept,
+          status: "missing" as const,
+          value: null,
+          observationLocators: Object.freeze([]),
+        }),
+      ),
+    ),
+    observations: Object.freeze([]),
+  });
 }
 
 export type PersonalSecFilingContextUnavailableReason =
@@ -154,7 +229,7 @@ export type PersonalSecFilingContextInspectionDto =
     }>;
 
 export interface PersonalSecFilingContextRequestDto {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "2.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly listingId: string;
   readonly symbol: string;
@@ -162,7 +237,7 @@ export interface PersonalSecFilingContextRequestDto {
 }
 
 export interface PersonalSecFilingContextResponseDto {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "2.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly security: PersonalMarketDataIdentityDto & {
     readonly issuerId: string;

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  createEmptyPersonalSecFilingReportingMetadata,
   PERSONAL_SEC_FILING_CONTEXT_LIMITS,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS,
   type PersonalSecFilingContextParserResultDto,
@@ -34,10 +35,12 @@ const SUBMISSIONS_URL = `https://data.sec.gov/submissions/CIK${CIK}.json`;
 const DOCUMENT_URL = `https://www.sec.gov/Archives/edgar/data/42/${ACCESSION.replaceAll("-", "")}/report.htm`;
 const DOCUMENT = "<html><body>synthetic document only</body></html>";
 const ANALYSIS: PersonalSecFilingContextParserResultDto = Object.freeze({
+  schemaVersion: "2.0.0",
   status: "no_corresponding_fact",
   reason: null,
   candidates: Object.freeze([]),
   correspondingCandidateLocators: Object.freeze([]),
+  reportingMetadata: createEmptyPersonalSecFilingReportingMetadata(),
 });
 
 function fact(
@@ -146,6 +149,129 @@ function setup(
 async function finish<T>(pending: Promise<T>): Promise<T> {
   await vi.runAllTimersAsync();
   return pending;
+}
+
+function reportingMetadataDocument(input: {
+  startDate: string;
+  endDate: string;
+  metadata?: string;
+  metadataStartDate?: string;
+}): string {
+  return `<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL" xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:us-gaap="http://fasb.org/us-gaap/2025" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:dei="http://xbrl.sec.gov/dei/2025">
+    <xbrli:context id="numeric"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">42</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>${input.startDate}</xbrli:startDate><xbrli:endDate>${input.endDate}</xbrli:endDate></xbrli:period></xbrli:context>
+    <xbrli:context id="reporting"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">42</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>${input.metadataStartDate ?? "2025-01-01"}</xbrli:startDate><xbrli:endDate>2025-09-30</xbrli:endDate></xbrli:period></xbrli:context>
+    <xbrli:unit id="usd"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit>
+    <ix:nonFraction id="revenue" name="us-gaap:Revenues" contextRef="numeric" unitRef="usd" decimals="0">120</ix:nonFraction>
+    ${input.metadata ?? ""}
+  </html>`;
+}
+
+function reportingFields(
+  input: {
+    documentType?: string;
+    reportEnd?: string;
+    fiscalYear?: string;
+    fiscalPeriod?: string;
+  } = {},
+): string {
+  return [
+    ["DocumentType", input.documentType ?? "10-Q"],
+    ["DocumentPeriodEndDate", input.reportEnd ?? "2025-09-30"],
+    ["DocumentFiscalYearFocus", input.fiscalYear ?? "2025"],
+    ["DocumentFiscalPeriodFocus", input.fiscalPeriod ?? "Q3"],
+  ]
+    .map(
+      ([concept, value]) =>
+        `<ix:nonNumeric name="dei:${concept}" contextRef="reporting">${value}</ix:nonNumeric>`,
+    )
+    .join("");
+}
+
+async function inspectReportingMetadata(input: {
+  startDate: string;
+  endDate: string;
+  metadata?: string;
+  metadataStartDate?: string;
+  form?: "10-Q" | "10-Q/A";
+  fiscalYear?: number;
+  fiscalPeriod?: string;
+  submissionReportDate?: string;
+}) {
+  vi.useRealTimers();
+  const row = fact({
+    start: input.startDate,
+    end: input.endDate,
+    accn: "0000999999-25-000003",
+    filed: "2025-11-03",
+    fy: input.fiscalYear ?? 2025,
+    fp: input.fiscalPeriod ?? "Q3",
+    form: input.form ?? "10-Q",
+    frame: null,
+  });
+  const requested = selection([row]);
+  const document = reportingMetadataDocument(input);
+  const documentUrl = `https://www.sec.gov/Archives/edgar/data/42/${requested.accessionNumber.replaceAll("-", "")}/report.htm`;
+  const fetch = vi.fn<typeof globalThis.fetch>((request) => {
+    const source = url(request);
+    if (source === FACTS_URL)
+      return Promise.resolve(Response.json(facts([row])));
+    if (source === SUBMISSIONS_URL)
+      return Promise.resolve(
+        Response.json(
+          submissions({
+            accessionNumber: [requested.accessionNumber],
+            form: [requested.form],
+            filingDate: [requested.filedDate],
+            reportDate: [input.submissionReportDate ?? "2025-09-30"],
+            acceptanceDateTime: ["2025-11-03T16:00:00Z"],
+          }),
+        ),
+      );
+    if (source === documentUrl)
+      return Promise.resolve(
+        new Response(document, {
+          headers: { "Content-Type": "text/html" },
+        }),
+      );
+    throw Error("Unexpected synthetic source request");
+  });
+  const provider = createSecPersonalFilingContextProvider(USER_AGENT, {
+    fetch,
+    now: () => NOW,
+    scheduler: { wait: () => Promise.resolve() },
+  });
+  try {
+    const result = await provider.loadContext(CIK, requested);
+    expect(result.status).toBe("available");
+    if (result.status !== "available")
+      throw Error(`Unavailable synthetic metadata: ${result.reason}`);
+    expect(fetch.mock.calls.map(([request]) => url(request))).toEqual([
+      FACTS_URL,
+      SUBMISSIONS_URL,
+      documentUrl,
+    ]);
+    expect(result.observation).toMatchObject({
+      ...requested,
+      periodBasis: "unresolved",
+      filingFocusYear: input.fiscalYear ?? 2025,
+      filingFocusPeriod: input.fiscalPeriod ?? "Q3",
+    });
+    expect(result.analysis).toMatchObject({ status: "matched", reason: null });
+    expect(result.analysis.candidates).toHaveLength(1);
+    expect(result.analysis.candidates[0]).toMatchObject({
+      startDate: input.startDate,
+      endDate: input.endDate,
+      contextId: "numeric",
+      value: "120",
+      issues: [],
+    });
+    expect(result.document.sha256).toBe(
+      `sha256:${createHash("sha256").update(document).digest("hex")}`,
+    );
+    return result;
+  } finally {
+    provider.close();
+  }
 }
 
 describe("SEC selected filing context acquisition", () => {
@@ -876,5 +1002,169 @@ describe("SEC selected filing context acquisition", () => {
     } finally {
       provider.close();
     }
+  });
+
+  it.each([
+    {
+      label: "three-month Q3 fact",
+      startDate: "2025-07-01",
+      endDate: "2025-09-30",
+      durationDays: 92,
+    },
+    {
+      label: "nine-month fact from the Q3 filing",
+      startDate: "2025-01-01",
+      endDate: "2025-09-30",
+      durationDays: 273,
+    },
+    {
+      label: "prior-year comparative fact",
+      startDate: "2024-07-01",
+      endDate: "2024-09-30",
+      durationDays: 92,
+    },
+  ])(
+    "keeps the $label separate from the filing's declared Q3 focus",
+    async (period) => {
+      const result = await inspectReportingMetadata({
+        ...period,
+        metadata: reportingFields(),
+      });
+      expect(result.observation.durationDays).toBe(period.durationDays);
+      expect(result.analysis.reportingMetadata).toMatchObject({
+        status: "assessed",
+        reason: null,
+        fields: [
+          { concept: "DocumentType", status: "observed", value: "10-Q" },
+          {
+            concept: "DocumentPeriodEndDate",
+            status: "observed",
+            value: "2025-09-30",
+          },
+          {
+            concept: "DocumentFiscalYearFocus",
+            status: "observed",
+            value: "2025",
+          },
+          {
+            concept: "DocumentFiscalPeriodFocus",
+            status: "observed",
+            value: "Q3",
+          },
+        ],
+      });
+      expect(result.analysis.reportingMetadata.observations).toHaveLength(4);
+      for (const observation of result.analysis.reportingMetadata
+        .observations) {
+        expect(observation).toMatchObject({
+          contextId: "reporting",
+          entityCik: CIK,
+          startDate: "2025-01-01",
+          endDate: "2025-09-30",
+          issues: [],
+        });
+      }
+      expect(Object.isFrozen(result.analysis.reportingMetadata)).toBe(true);
+      expect(
+        Object.isFrozen(result.analysis.reportingMetadata.observations),
+      ).toBe(true);
+    },
+  );
+
+  it("preserves noncalendar fiscal focus and amended form without assigning a quarter basis", async () => {
+    const result = await inspectReportingMetadata({
+      startDate: "2025-07-01",
+      endDate: "2025-09-30",
+      metadataStartDate: "2025-07-01",
+      form: "10-Q/A",
+      fiscalYear: 2026,
+      fiscalPeriod: "Q1",
+      metadata: reportingFields({
+        documentType: "10-Q/A",
+        fiscalYear: "2026",
+        fiscalPeriod: "Q1",
+      }),
+    });
+    expect(result.observation).toMatchObject({
+      form: "10-Q/A",
+      durationDays: 92,
+      filingFocusYear: 2026,
+      filingFocusPeriod: "Q1",
+      periodBasis: "unresolved",
+      filing: { form: "10-Q/A", reportDate: "2025-09-30" },
+    });
+    expect(
+      result.analysis.reportingMetadata.fields.map((field) => [
+        field.status,
+        field.value,
+      ]),
+    ).toEqual([
+      ["observed", "10-Q/A"],
+      ["observed", "2025-09-30"],
+      ["observed", "2026"],
+      ["observed", "Q1"],
+    ]);
+  });
+
+  it("keeps an exact financial match available when all filing reporting fields are absent", async () => {
+    const result = await inspectReportingMetadata({
+      startDate: "2025-07-01",
+      endDate: "2025-09-30",
+    });
+    expect(result.analysis.reportingMetadata).toMatchObject({
+      status: "assessed",
+      reason: null,
+      observations: [],
+    });
+    expect(result.analysis.reportingMetadata.fields).toHaveLength(4);
+    for (const field of result.analysis.reportingMetadata.fields) {
+      expect(field).toMatchObject({
+        status: "missing",
+        value: null,
+        observationLocators: [],
+      });
+    }
+  });
+
+  it("retains conflicting declared report ends without rejecting the independently matched financial fact", async () => {
+    const result = await inspectReportingMetadata({
+      startDate: "2025-07-01",
+      endDate: "2025-09-30",
+      metadata:
+        reportingFields() +
+        '<ix:nonNumeric name="dei:DocumentPeriodEndDate" contextRef="reporting">2025-06-30</ix:nonNumeric>',
+    });
+    const metadata = result.analysis.reportingMetadata;
+    expect(metadata.status).toBe("assessed");
+    expect(metadata.fields[1]).toMatchObject({
+      concept: "DocumentPeriodEndDate",
+      status: "conflicting",
+      value: null,
+    });
+    expect(metadata.fields[1]?.observationLocators).toHaveLength(2);
+    const references = new Set(metadata.fields[1]?.observationLocators);
+    expect(
+      metadata.observations
+        .filter((row) => references.has(row.locator))
+        .map((row) => row.value),
+    ).toEqual(["2025-09-30", "2025-06-30"]);
+    expect(result.observation.filing.reportDate).toBe("2025-09-30");
+  });
+
+  it("preserves a declared report end that differs from Submissions without rewriting either source", async () => {
+    const result = await inspectReportingMetadata({
+      startDate: "2025-07-01",
+      endDate: "2025-09-30",
+      metadata: reportingFields(),
+      submissionReportDate: "2025-09-29",
+    });
+    expect(result.observation.filing).toMatchObject({
+      status: "matched",
+      reportDate: "2025-09-29",
+    });
+    expect(result.analysis.reportingMetadata.fields[1]).toMatchObject({
+      status: "observed",
+      value: "2025-09-30",
+    });
   });
 });

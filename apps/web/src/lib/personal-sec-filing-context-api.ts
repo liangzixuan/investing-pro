@@ -1,10 +1,14 @@
 import {
   PERSONAL_SEC_FILING_CONTEXT_LIMITS as limits,
+  PERSONAL_SEC_FILING_DEI_NAMESPACES as deiNamespaces,
+  PERSONAL_SEC_FILING_REPORTING_CONCEPTS as reportingConcepts,
   PERSONAL_SEC_QUARTERLY_CONCEPTS,
   type PersonalSecFilingContextCandidateDto,
   type PersonalSecFilingContextRequestDto,
   type PersonalSecFilingContextResponseDto,
   type PersonalSecFilingContextSelectionDto,
+  type PersonalSecFilingReportingFieldDto,
+  type PersonalSecFilingReportingObservationDto,
   type PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 
@@ -55,6 +59,7 @@ const issues = [
   "invalid_numeric",
   "decimal_limit",
 ] as const;
+const reportingIssues = [...issues, "invalid_metadata_value"] as const;
 const reasons = [
   "selection_changed_or_not_retained",
   "accession_not_in_current_submissions",
@@ -97,7 +102,7 @@ export async function fetchPersonalSecFilingContext(
       "symbol",
       "selection",
     ]) ||
-    input.schemaVersion !== "1.0.0" ||
+    input.schemaVersion !== "2.0.0" ||
     !matches(input.catalogSnapshotSha256, digest) ||
     !matches(input.listingId, identifier) ||
     !matches(input.symbol, symbolPattern) ||
@@ -156,7 +161,7 @@ function isResponse(
       "security",
       "inspection",
     ]) ||
-    value.schemaVersion !== "1.0.0" ||
+    value.schemaVersion !== "2.0.0" ||
     value.catalogSnapshotSha256 !== input.catalogSnapshotSha256 ||
     !keys(value.security, [
       "country",
@@ -298,11 +303,14 @@ function analysis(
 ): boolean {
   if (
     !keys(value, [
+      "schemaVersion",
       "status",
       "reason",
       "candidates",
       "correspondingCandidateLocators",
+      "reportingMetadata",
     ]) ||
+    value.schemaVersion !== "2.0.0" ||
     !member(
       [
         "matched",
@@ -322,6 +330,15 @@ function analysis(
   )
     return false;
   const rows = value.candidates;
+  if (
+    !reportingMetadata(
+      value.reportingMetadata,
+      cik,
+      value.reason !== null && rows.length === 0 ? value.reason : null,
+      new Set(rows.map((row) => row.locator)),
+    )
+  )
+    return false;
   if (
     rows.some(
       (row, index) =>
@@ -410,6 +427,225 @@ function analysis(
     );
   if (value.status === "ambiguous") return values.size > 1;
   return value.status === "no_corresponding_fact" && corresponding.length === 0;
+}
+
+function reportingMetadata(
+  value: unknown,
+  cik: string,
+  globalReason: unknown,
+  numericLocators: ReadonlySet<string>,
+): boolean {
+  if (
+    !keys(value, ["status", "reason", "fields", "observations"]) ||
+    !member(["assessed", "limited", "unavailable"], value.status) ||
+    !(value.reason === null || member(issues, value.reason)) ||
+    !Array.isArray(value.fields) ||
+    value.fields.length !== reportingConcepts.length ||
+    !value.fields.every(reportingField) ||
+    value.fields.some(
+      (field, index) => field.concept !== reportingConcepts[index],
+    ) ||
+    !Array.isArray(value.observations) ||
+    value.observations.length > limits.metadataCandidates ||
+    !value.observations.every(reportingObservation) ||
+    new TextEncoder().encode(JSON.stringify(value)).byteLength >
+      limits.metadataOutputBytes
+  )
+    return false;
+  const rows = value.observations;
+  if (
+    rows.some(
+      (row, index) =>
+        numericLocators.has(row.locator) ||
+        (index > 0 &&
+          Number(row.locator.slice(10)) <=
+            Number(rows[index - 1]!.locator.slice(10))),
+    )
+  )
+    return false;
+  if (value.status !== "assessed")
+    return (
+      rows.length === 0 &&
+      value.fields.every(
+        (field) =>
+          field.status === "unsupported" &&
+          field.value === null &&
+          field.observationLocators.length === 0,
+      ) &&
+      (value.status === "unavailable"
+        ? globalReason !== null && value.reason === globalReason
+        : globalReason === null &&
+          member(["candidate_limit", "output_limit"], value.reason))
+    );
+  if (value.reason !== null || globalReason !== null) return false;
+  for (const row of rows) {
+    const excluded =
+      row.issues.length === 1 && row.issues[0] === "entity_mismatch";
+    if (
+      (row.issues.length === 0 || excluded) &&
+      (!matches(row.contextId, /^[A-Za-z_][A-Za-z0-9_.-]{0,255}$/u) ||
+        !(
+          row.factId === null ||
+          matches(row.factId, /^[A-Za-z_][A-Za-z0-9_.-]{0,255}$/u)
+        ) ||
+        !(excluded
+          ? row.entityCik !== null && row.entityCik !== cik
+          : row.entityCik === cik) ||
+        row.entityScheme !== "http://www.sec.gov/CIK" ||
+        !matches(row.entityIdentifier, /^[0-9]{1,10}$/u) ||
+        row.entityIdentifier.padStart(10, "0") !== row.entityCik ||
+        !member(deiNamespaces, row.concept.namespace) ||
+        !member(reportingConcepts, row.concept.localName) ||
+        !matches(
+          row.concept.raw,
+          /^(?:[A-Za-z_][A-Za-z0-9_.-]*:)?[A-Za-z_][A-Za-z0-9_.-]*$/u,
+        ) ||
+        row.concept.raw.split(":").at(-1) !== row.concept.localName ||
+        row.periodKind !== "duration" ||
+        row.startDate === null ||
+        row.endDate === null ||
+        row.startDate > row.endDate ||
+        row.dimensions.length !== 0 ||
+        row.format !== null ||
+        row.value === null ||
+        row.rawText.replace(/[\t\n\r ]+/gu, " ").replace(/^ | $/gu, "") !==
+          row.value)
+    )
+      return false;
+  }
+  return value.fields.every((field) => {
+    const references = rows.filter(
+      (row) => reportingConcept(row.concept.localName) === field.concept,
+    );
+    if (
+      JSON.stringify(field.observationLocators) !==
+      JSON.stringify(references.map((row) => row.locator))
+    )
+      return false;
+    const uncertain = references.some(
+      (row) =>
+        row.issues.length > 0 &&
+        !(row.issues.length === 1 && row.issues[0] === "entity_mismatch"),
+    );
+    const eligibleValues = new Set(
+      references
+        .filter((row) => row.issues.length === 0)
+        .map((row) => row.value),
+    );
+    const status = uncertain
+      ? "unsupported"
+      : eligibleValues.size === 0
+        ? "missing"
+        : eligibleValues.size > 1
+          ? "conflicting"
+          : "observed";
+    return (
+      field.status === status &&
+      (status === "observed"
+        ? eligibleValues.has(field.value)
+        : field.value === null)
+    );
+  });
+}
+
+function reportingField(
+  value: unknown,
+): value is PersonalSecFilingReportingFieldDto {
+  return (
+    keys(value, ["concept", "status", "value", "observationLocators"]) &&
+    member(reportingConcepts, value.concept) &&
+    member(
+      ["observed", "missing", "conflicting", "unsupported"],
+      value.status,
+    ) &&
+    (value.value === null || reportingValue(value.concept, value.value)) &&
+    Array.isArray(value.observationLocators) &&
+    value.observationLocators.length <= limits.metadataCandidates &&
+    value.observationLocators.every((locator) => typeof locator === "string")
+  );
+}
+
+function reportingObservation(
+  value: unknown,
+): value is PersonalSecFilingReportingObservationDto {
+  return (
+    keys(value, [
+      "locator",
+      "factId",
+      "contextId",
+      "concept",
+      "entityIdentifier",
+      "entityScheme",
+      "entityCik",
+      "dimensions",
+      "periodKind",
+      "startDate",
+      "endDate",
+      "rawText",
+      "format",
+      "value",
+      "issues",
+    ]) &&
+    matches(value.locator, /^\/elements\/[1-9][0-9]{0,6}$/u) &&
+    Number(value.locator.slice(10)) <= limits.nodes &&
+    nullableSourceText(value.factId, limits.identifierCharacters) &&
+    nullableSourceText(value.contextId, limits.identifierCharacters) &&
+    qname(value.concept) &&
+    record(value.concept) &&
+    reportingConcept(value.concept.localName) !== null &&
+    nullableSourceText(value.entityIdentifier, limits.identifierCharacters) &&
+    nullableSourceText(value.entityScheme, limits.namespaceCharacters) &&
+    (value.entityCik === null || matches(value.entityCik, cikPattern)) &&
+    Array.isArray(value.dimensions) &&
+    value.dimensions.length <= limits.dimensionsPerContext &&
+    value.dimensions.every(
+      (dimension) =>
+        keys(dimension, ["kind", "dimension", "member", "typedText"]) &&
+        qname(dimension.dimension) &&
+        ((dimension.kind === "explicit" &&
+          qname(dimension.member) &&
+          dimension.typedText === null) ||
+          (dimension.kind === "typed" &&
+            dimension.member === null &&
+            rawText(dimension.typedText))),
+    ) &&
+    member(["duration", "instant", "unsupported"], value.periodKind) &&
+    (value.startDate === null || date(value.startDate)) &&
+    (value.endDate === null || date(value.endDate)) &&
+    rawText(value.rawText) &&
+    (value.format === null || qname(value.format)) &&
+    (value.value === null ||
+      reportingValue(
+        reportingConcept(value.concept.localName)!,
+        value.value,
+      )) &&
+    Array.isArray(value.issues) &&
+    value.issues.length <= reportingIssues.length &&
+    value.issues.every((issue) => member(reportingIssues, issue)) &&
+    new Set(value.issues).size === value.issues.length
+  );
+}
+
+function reportingConcept(
+  value: unknown,
+): (typeof reportingConcepts)[number] | null {
+  return typeof value === "string"
+    ? (reportingConcepts.find(
+        (concept) => concept.toLowerCase() === value.toLowerCase(),
+      ) ?? null)
+    : null;
+}
+
+function reportingValue(concept: string, value: unknown): value is string {
+  if (concept === "DocumentType")
+    return member(["10-Q", "10-Q/A", "10-K", "10-K/A"], value);
+  if (concept === "DocumentPeriodEndDate") return date(value);
+  if (concept === "DocumentFiscalYearFocus")
+    return matches(value, /^[1-9][0-9]{3}$/u);
+  return (
+    concept === "DocumentFiscalPeriodFocus" &&
+    member(["FY", "Q1", "Q2", "Q3"], value)
+  );
 }
 
 function candidate(

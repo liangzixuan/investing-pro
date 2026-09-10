@@ -34,7 +34,8 @@ statements, and valuation history; partial Cycle 3h-a4 adds quarterly coverage
 and an offline compatibility assessment before source admission and TTM;
 partial Cycle 3h-a5 adds selected-company SEC dated observations and filing joins;
 partial Cycle 3h-a6 adds local same-period observation comparisons;
-partial Cycle 3h-a7 adds primary-filing context inspection;
+partial Cycle 3h-a7 adds primary-filing context inspection and partial 3h-a8
+adds filing-declared reporting metadata;
 Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
 selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
@@ -873,6 +874,13 @@ unsupported constructs remain visible. This source correspondence neither
 admits a fiscal calendar nor selects revision operands; live coverage requires
 independent checks. See [filing-context inspection](./PERSONAL_SEC_FILING_CONTEXT.md).
 
+Partial Cycle 3h-a8 extracts four filing-declared DEI fields during that same
+bounded parse. Exact namespaces, issuer contexts and direct text semantics govern
+observed values; missing, conflicting, unsupported and limited metadata remain
+explicit. The inspector shows filing focus beside actual fact dates and compares
+the declared report end with current Submissions separately. It adds no source
+request, fiscal-slot assignment, revision selection or TTM eligibility.
+
 These are independently useful statement-depth slices, not full 3h-a. They do
 not establish verified TTM aggregation, point-in-time/restatement history, the
 planned 30-core-metric registry, 500-security coverage, 90% knownness, or the
@@ -898,6 +906,8 @@ Promotable subcycles:
   exact values and accession conflicts; no revision selection or new source load;
 - **3h-a7 (partial):** bounded primary-document inspection of a revalidated SEC
   observation, with exact correspondence evidence and explicit unresolved cases;
+- **3h-a8 (partial):** filing-declared reporting metadata beside actual fact
+  dates, with explicit source disagreement and independent bounded metadata;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
   initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived

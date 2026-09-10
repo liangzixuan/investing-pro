@@ -1,7 +1,10 @@
+import { createEmptyPersonalSecFilingReportingMetadata } from "@research-cockpit/contracts";
 import type {
   PersonalSecFilingContextCandidateDto,
   PersonalSecFilingContextResponseDto,
   PersonalSecQuarterlyObservationDto,
+  PersonalSecFilingReportingMetadataDto,
+  PersonalSecFilingReportingObservationDto,
 } from "@research-cockpit/contracts";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +54,243 @@ beforeEach(() => {
 afterEach(() => harness.unmount());
 
 describe("PersonalSecFilingContext", () => {
+  it("shows all four declared fields and references separately from the actual fact period", async () => {
+    render();
+    await flush();
+    const view = render();
+    expect(text(view)).toContain("Filing-declared reporting metadata");
+    for (const label of [
+      "DocumentType",
+      "DocumentPeriodEndDate",
+      "DocumentFiscalYearFocus",
+      "DocumentFiscalPeriodFocus",
+    ])
+      expect(text(view)).toContain(`Inspect 1 reference for ${label}`);
+    expect(text(view)).toContain("91 days, inclusive");
+    expect(text(view)).toContain(
+      "Metadata context period duration · 2026-01-01 to 2026-06-30",
+    );
+    expect(text(view)).toContain(
+      "Actual source period 2026-04-01 to 2026-06-30",
+    );
+    expect(text(view)).toContain("http://xbrl.sec.gov/dei/2026");
+    expect(text(view)).toContain(
+      "They do not assign fiscal labels to the selected fact",
+    );
+    expect(text(view)).toContain("report date agree: 2026-06-30");
+    expect(
+      elements(view).filter((element) => element.type === "details").length,
+    ).toBeGreaterThanOrEqual(6);
+    expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ["2026-07-01", "2026-09-30", 92],
+    ["2026-01-01", "2026-09-30", 273],
+    ["2025-07-01", "2025-09-30", 92],
+  ] as const)(
+    "keeps Q3 filing labels separate from selected period %s through %s",
+    async (startDate, endDate, durationDays) => {
+      const base = response();
+      if (base.inspection.status !== "available") throw new Error();
+      const declared = reportingMetadata();
+      const metadata = {
+        ...declared,
+        fields: declared.fields.map((field) =>
+          field.concept === "DocumentFiscalPeriodFocus"
+            ? { ...field, value: "Q3" }
+            : field,
+        ),
+        observations: declared.observations.map((row) =>
+          row.concept.localName === "DocumentFiscalPeriodFocus"
+            ? { ...row, value: "Q3", rawText: "Q3" }
+            : row,
+        ),
+      };
+      const selected = { ...observation(), startDate, endDate, durationDays };
+      props = { ...props, observation: selected };
+      api.fetchPersonalSecFilingContext.mockResolvedValue({
+        ...base,
+        inspection: {
+          ...base.inspection,
+          observation: selected,
+          analysis: {
+            ...base.inspection.analysis,
+            reportingMetadata: metadata,
+          },
+        },
+      });
+      render();
+      await flush();
+      const view = text(render());
+      expect(view).toContain(
+        `Actual source period ${startDate} to ${endDate} ${durationDays} days, inclusive`,
+      );
+      expect(view).toContain("DocumentFiscalPeriodFocus Q3");
+      expect(view).toContain(
+        "Comparative and longer-duration facts can appear in the same filing",
+      );
+      expect(view).toContain("TTM remains unavailable");
+    },
+  );
+  it.each([null, "2026-09-30"])(
+    "compares the declared end with refreshed Submissions reportDate %s",
+    async (reportDate) => {
+      const base = response();
+      if (base.inspection.status !== "available") throw new Error();
+      props = {
+        ...props,
+        observation: {
+          ...observation(),
+          filing: { ...observation().filing, reportDate: "2025-01-01" },
+        },
+      };
+      api.fetchPersonalSecFilingContext.mockResolvedValue({
+        ...base,
+        inspection: {
+          ...base.inspection,
+          observation: {
+            ...base.inspection.observation,
+            filing: { ...base.inspection.observation.filing, reportDate },
+          },
+        },
+      });
+      render();
+      await flush();
+      const view = text(render());
+      expect(view).toContain(
+        reportDate === null
+          ? "current Submissions does not supply a report date"
+          : "current Submissions reports 2026-09-30. These dates differ",
+      );
+      expect(view).not.toContain("2025-01-01");
+    },
+  );
+  it.each(["missing", "conflicting", "unsupported"] as const)(
+    "shows %s field values without choosing or inferring a report end",
+    async (status) => {
+      const base = response();
+      if (base.inspection.status !== "available") throw new Error();
+      const metadata = reportingMetadata();
+      const next = {
+        ...metadata,
+        fields: metadata.fields.map((field) => ({
+          ...field,
+          status,
+          value: null,
+        })),
+      };
+      api.fetchPersonalSecFilingContext.mockResolvedValue({
+        ...base,
+        inspection: {
+          ...base.inspection,
+          analysis: { ...base.inspection.analysis, reportingMetadata: next },
+        },
+      });
+      render();
+      await flush();
+      const view = text(render());
+      expect(view).toContain(
+        status === "missing"
+          ? "No supported same-issuer value"
+          : status === "conflicting"
+            ? "Conflicting reported values"
+            : "Value unresolved",
+      );
+      expect(view).toContain("The filing-declared period end is unresolved");
+      expect(view).toContain("No agreement is established");
+      expect(view).toContain("Exact value correspondence found");
+    },
+  );
+  it("keeps metadata uncertainty references as text in native details", async () => {
+    const base = response();
+    if (base.inspection.status !== "available") throw new Error();
+    const metadata = reportingMetadata();
+    const original = metadata.observations[0]!;
+    const row: PersonalSecFilingReportingObservationDto = {
+      ...original,
+      locator: "/elements/204",
+      rawText: "<script>private()</script>",
+      value: null,
+      issues: ["unsupported_inline"],
+    };
+    const next = {
+      ...metadata,
+      fields: metadata.fields.map((field, index) =>
+        index === 0
+          ? {
+              ...field,
+              status: "unsupported",
+              value: null,
+              observationLocators: [...field.observationLocators, row.locator],
+            }
+          : field,
+      ),
+      observations: [...metadata.observations, row],
+    };
+    api.fetchPersonalSecFilingContext.mockResolvedValue({
+      ...base,
+      inspection: {
+        ...base.inspection,
+        analysis: { ...base.inspection.analysis, reportingMetadata: next },
+      },
+    });
+    render();
+    await flush();
+    const view = render();
+    expect(text(view)).toContain("Inspect 2 references for DocumentType");
+    expect(text(view)).toContain("<script>private()</script>");
+    expect(text(view)).toContain("unsupported inline");
+    expect(
+      elements(view).some(
+        (element) =>
+          element.type === "script" ||
+          element.props.dangerouslySetInnerHTML !== undefined,
+      ),
+    ).toBe(false);
+  });
+  it("retains numeric correspondence when only metadata is limited", async () => {
+    const base = response();
+    if (base.inspection.status !== "available") throw new Error();
+    api.fetchPersonalSecFilingContext.mockResolvedValue({
+      ...base,
+      inspection: {
+        ...base.inspection,
+        analysis: {
+          ...base.inspection.analysis,
+          reportingMetadata: { ...unavailableMetadata(), status: "limited" },
+        },
+      },
+    });
+    render();
+    await flush();
+    const view = text(render());
+    expect(view).toContain(
+      "Reporting metadata reached a separate extraction limit",
+    );
+    expect(view).toContain("Exact value correspondence found");
+    expect(view).not.toContain("Inspect 1 reference for DocumentType");
+  });
+  it.each(["observation", "catalog", "session", "source generation"])(
+    "clears loaded metadata immediately when %s changes",
+    async (kind) => {
+      render();
+      await flush();
+      expect(text(render())).toContain("Filing-declared reporting metadata");
+      if (kind === "observation")
+        props = { ...props, observation: { ...observation(), value: "50" } };
+      if (kind === "catalog")
+        props = { ...props, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` };
+      if (kind === "session") props = { ...props, enabled: false };
+      if (kind === "source generation")
+        props = { ...props, responseGeneration: 2 };
+      expect(text(render(false))).not.toContain(
+        "Filing-declared reporting metadata",
+      );
+      harness.effects();
+      await flush();
+      expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+    },
+  );
   it("dispatches the deliberate inspection once after StrictMode replay and retains exact provenance", async () => {
     render();
     expect(api.fetchPersonalSecFilingContext).not.toHaveBeenCalled();
@@ -175,6 +415,8 @@ describe("PersonalSecFilingContext", () => {
         inspection: {
           ...base.inspection,
           analysis: {
+            schemaVersion: "2.0.0",
+            reportingMetadata: reportingMetadata(),
             status,
             reason: status === "unsupported" ? "unsupported_dimensions" : null,
             candidates: [
@@ -224,6 +466,8 @@ describe("PersonalSecFilingContext", () => {
       inspection: {
         ...base.inspection,
         analysis: {
+          schemaVersion: "2.0.0",
+          reportingMetadata: unavailableMetadata(),
           status: "unsupported",
           reason: "candidate_limit",
           candidates: [],
@@ -273,6 +517,7 @@ describe("PersonalSecFilingContext", () => {
     api.fetchPersonalSecFilingContext.mockReturnValueOnce(pending.promise);
     click(render(), "Refresh filing inspection");
     expect(text(render())).not.toContain("Exact value correspondence found");
+    expect(text(render())).not.toContain("Filing-declared reporting metadata");
     const signal = api.fetchPersonalSecFilingContext.mock.calls.at(
       -1,
     )?.[1] as AbortSignal;
@@ -282,6 +527,7 @@ describe("PersonalSecFilingContext", () => {
     await flush();
     expect(text(render())).toContain("Filing inspection cancelled");
     expect(text(render())).not.toContain("Exact value correspondence found");
+    expect(text(render())).not.toContain("Filing-declared reporting metadata");
     expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledTimes(2);
   });
   it.each([
@@ -616,7 +862,7 @@ function candidate(): PersonalSecFilingContextCandidateDto {
 }
 function response(): PersonalSecFilingContextResponseDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     security: {
       country: "US",
@@ -649,11 +895,59 @@ function response(): PersonalSecFilingContextResponseDto {
         bytes: 1000,
       },
       analysis: {
+        schemaVersion: "2.0.0",
+        reportingMetadata: reportingMetadata(),
         status: "matched",
         reason: null,
         candidates: [candidate()],
         correspondingCandidateLocators: ["/elements/1"],
       },
     },
+  };
+}
+
+function reportingMetadata(): PersonalSecFilingReportingMetadataDto {
+  const empty = createEmptyPersonalSecFilingReportingMetadata();
+  const values = ["10-Q", "2026-06-30", "2026", "Q2"];
+  const observations: PersonalSecFilingReportingObservationDto[] =
+    empty.fields.map((field, index) => ({
+      locator: `/elements/${200 + index}`,
+      factId: `dei-${index}`,
+      contextId: "reporting-duration",
+      concept: {
+        raw: `dei:${field.concept}`,
+        namespace: "http://xbrl.sec.gov/dei/2026",
+        localName: field.concept,
+      },
+      entityIdentifier: "0000000001",
+      entityScheme: "http://www.sec.gov/CIK",
+      entityCik: "0000000001",
+      dimensions: [],
+      periodKind: "duration",
+      startDate: "2026-01-01",
+      endDate: "2026-06-30",
+      rawText: values[index]!,
+      format: null,
+      value: values[index]!,
+      issues: [],
+    }));
+  return {
+    ...empty,
+    fields: empty.fields.map((field, index) => ({
+      ...field,
+      status: "observed",
+      value: values[index]!,
+      observationLocators: [observations[index]!.locator],
+    })),
+    observations,
+  };
+}
+function unavailableMetadata(): PersonalSecFilingReportingMetadataDto {
+  const empty = createEmptyPersonalSecFilingReportingMetadata();
+  return {
+    ...empty,
+    status: "unavailable",
+    reason: "candidate_limit",
+    fields: empty.fields.map((field) => ({ ...field, status: "unsupported" })),
   };
 }

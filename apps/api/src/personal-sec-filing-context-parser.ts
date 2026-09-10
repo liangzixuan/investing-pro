@@ -3,11 +3,16 @@ import { fileURLToPath } from "node:url";
 
 import {
   PERSONAL_SEC_FILING_CONTEXT_LIMITS as LIMITS,
+  PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION,
+  PERSONAL_SEC_FILING_DEI_NAMESPACES,
+  PERSONAL_SEC_FILING_REPORTING_CONCEPTS,
   PERSONAL_SEC_QUARTERLY_CONCEPTS,
   type PersonalSecFilingContextCandidateDto,
   type PersonalSecFilingContextIssue,
   type PersonalSecFilingContextParserResultDto,
   type PersonalSecFilingContextSelectionDto,
+  type PersonalSecFilingReportingMetadataDto,
+  type PersonalSecFilingReportingObservationDto,
 } from "@research-cockpit/contracts";
 
 export type PersonalSecFilingContextParserErrorCode =
@@ -121,6 +126,7 @@ class FilingContextParser implements PersonalSecFilingContextParser {
     const cik = input.cik;
     const stdin = Buffer.from(
       JSON.stringify({
+        schemaVersion: PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION,
         documentBase64: Buffer.from(input.document).toString("base64"),
         cik,
         selection,
@@ -462,11 +468,14 @@ function validResult(
 ): value is PersonalSecFilingContextParserResultDto {
   if (
     !record(value, [
+      "schemaVersion",
       "status",
       "reason",
       "candidates",
       "correspondingCandidateLocators",
+      "reportingMetadata",
     ]) ||
+    value.schemaVersion !== PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION ||
     ![
       "matched",
       "value_differs",
@@ -488,6 +497,7 @@ function validResult(
   )
     return false;
   const candidates = value.candidates;
+  if (!validMetadata(value.reportingMetadata, value, cik)) return false;
   const locators = candidates.map((row) => row.locator);
   if (
     locators.some(
@@ -559,5 +569,251 @@ function freezeResult(
     correspondingCandidateLocators: Object.freeze([
       ...value.correspondingCandidateLocators,
     ]),
+    reportingMetadata: freezeMetadata(value.reportingMetadata),
   });
+}
+
+function metadataValue(concept: string | null, raw: string): string | null {
+  const value = raw.replace(/[ \t\r\n]+/gu, " ").replace(/^ | $/gu, "");
+  if (concept === "DocumentType")
+    return ["10-Q", "10-Q/A", "10-K", "10-K/A"].includes(value) ? value : null;
+  if (concept === "DocumentPeriodEndDate") return date(value) ? value : null;
+  if (concept === "DocumentFiscalYearFocus")
+    return /^[1-9][0-9]{3}$/u.test(value) ? value : null;
+  if (concept === "DocumentFiscalPeriodFocus")
+    return ["FY", "Q1", "Q2", "Q3"].includes(value) ? value : null;
+  return null;
+}
+function reportingConcept(localName: string | null) {
+  return PERSONAL_SEC_FILING_REPORTING_CONCEPTS.find(
+    (concept) => concept.toLowerCase() === localName?.toLowerCase(),
+  );
+}
+function validReportingObservation(
+  value: unknown,
+  cik: string,
+): value is PersonalSecFilingReportingObservationDto {
+  if (
+    !record(value, [
+      "locator",
+      "factId",
+      "contextId",
+      "concept",
+      "entityIdentifier",
+      "entityScheme",
+      "entityCik",
+      "dimensions",
+      "periodKind",
+      "startDate",
+      "endDate",
+      "rawText",
+      "format",
+      "value",
+      "issues",
+    ]) ||
+    !text(value.locator) ||
+    !/^\/elements\/[1-9][0-9]{0,6}$/u.test(value.locator) ||
+    Number(value.locator.slice(10)) > LIMITS.nodes ||
+    !["factId", "contextId", "entityIdentifier", "entityScheme"].every((key) =>
+      nullableText(value[key]),
+    ) ||
+    !(
+      value.entityCik === null ||
+      (typeof value.entityCik === "string" &&
+        /^[0-9]{10}$/u.test(value.entityCik) &&
+        !/^0+$/u.test(value.entityCik))
+    ) ||
+    !validQName(value.concept) ||
+    !(value.format === null || validQName(value.format)) ||
+    !text(value.rawText, LIMITS.rawTextCharacters) ||
+    !["duration", "instant", "unsupported"].includes(
+      String(value.periodKind),
+    ) ||
+    !(value.startDate === null || date(value.startDate)) ||
+    !(value.endDate === null || date(value.endDate)) ||
+    !nullableText(value.value) ||
+    !Array.isArray(value.issues) ||
+    value.issues.length > ISSUES.size + 1 ||
+    new Set(value.issues).size !== value.issues.length ||
+    !value.issues.every(
+      (issue: unknown) =>
+        issue === "invalid_metadata_value" ||
+        (typeof issue === "string" &&
+          ISSUES.has(issue as PersonalSecFilingContextIssue)),
+    )
+  )
+    return false;
+  if (
+    !Array.isArray(value.dimensions) ||
+    value.dimensions.length > LIMITS.dimensionsPerContext ||
+    !value.dimensions.every(
+      (dimension: unknown) =>
+        record(dimension, ["kind", "dimension", "member", "typedText"]) &&
+        validQName(dimension.dimension) &&
+        ((dimension.kind === "explicit" &&
+          validQName(dimension.member) &&
+          dimension.typedText === null) ||
+          (dimension.kind === "typed" &&
+            dimension.member === null &&
+            text(dimension.typedText, LIMITS.rawTextCharacters))),
+    )
+  )
+    return false;
+  const row = value as unknown as PersonalSecFilingReportingObservationDto;
+  if (!reportingConcept(row.concept.localName)) return false;
+  if (
+    row.value !== null &&
+    metadataValue(
+      reportingConcept(row.concept.localName) ?? null,
+      row.value,
+    ) !== row.value
+  )
+    return false;
+  const excluded =
+    row.issues.length === 1 && row.issues[0] === "entity_mismatch";
+  if (row.issues.length === 0 || excluded) {
+    const rawName =
+      /^(?:[A-Za-z_][A-Za-z0-9_.-]*:)?([A-Za-z_][A-Za-z0-9_.-]*)$/u.exec(
+        row.concept.raw,
+      );
+    if (
+      !rawName ||
+      rawName[1] !== row.concept.localName ||
+      !(PERSONAL_SEC_FILING_DEI_NAMESPACES as readonly unknown[]).includes(
+        row.concept.namespace,
+      ) ||
+      !row.contextId ||
+      !/^[A-Za-z_][A-Za-z0-9_.-]{0,255}$/u.test(row.contextId) ||
+      (row.factId !== null &&
+        !/^[A-Za-z_][A-Za-z0-9_.-]{0,255}$/u.test(row.factId)) ||
+      row.entityScheme !== "http://www.sec.gov/CIK" ||
+      !row.entityIdentifier ||
+      !/^[0-9]{1,10}$/u.test(row.entityIdentifier) ||
+      !row.entityCik ||
+      row.entityIdentifier.padStart(10, "0") !== row.entityCik ||
+      (excluded ? row.entityCik === cik : row.entityCik !== cik) ||
+      row.dimensions.length !== 0 ||
+      row.periodKind !== "duration" ||
+      row.startDate === null ||
+      row.endDate === null ||
+      row.startDate > row.endDate ||
+      row.format !== null ||
+      row.value === null ||
+      row.value !== metadataValue(row.concept.localName, row.rawText)
+    )
+      return false;
+  }
+  return true;
+}
+function validMetadata(
+  value: unknown,
+  analysis: Record<string, unknown>,
+  cik: string,
+): value is PersonalSecFilingReportingMetadataDto {
+  if (
+    !record(value, ["status", "reason", "fields", "observations"]) ||
+    !["assessed", "limited", "unavailable"].includes(String(value.status)) ||
+    !(
+      value.reason === null ||
+      (typeof value.reason === "string" &&
+        ISSUES.has(value.reason as PersonalSecFilingContextIssue))
+    ) ||
+    !Array.isArray(value.fields) ||
+    value.fields.length !== 4 ||
+    !Array.isArray(value.observations) ||
+    value.observations.length > LIMITS.metadataCandidates ||
+    !value.observations.every((row: unknown) =>
+      validReportingObservation(row, cik),
+    ) ||
+    Buffer.byteLength(JSON.stringify(value), "utf8") >
+      LIMITS.metadataOutputBytes
+  )
+    return false;
+  const observations = value.observations;
+  if (
+    observations.some(
+      (row, index) =>
+        index > 0 &&
+        Number(row.locator.slice(10)) <=
+          Number(observations[index - 1]?.locator.slice(10)),
+    )
+  )
+    return false;
+  const numericLocators = new Set(
+    (analysis.candidates as PersonalSecFilingContextCandidateDto[]).map(
+      (row) => row.locator,
+    ),
+  );
+  if (observations.some((row) => numericLocators.has(row.locator)))
+    return false;
+  const globalFailure =
+    analysis.status === "unsupported" &&
+    analysis.reason !== null &&
+    (analysis.candidates as unknown[]).length === 0;
+  if (
+    globalFailure
+      ? value.status !== "unavailable" || value.reason !== analysis.reason
+      : value.status === "unavailable"
+  )
+    return false;
+  if (
+    value.status === "assessed"
+      ? value.reason !== null
+      : value.observations.length !== 0 ||
+        (value.status === "limited" &&
+          value.reason !== "candidate_limit" &&
+          value.reason !== "output_limit")
+  )
+    return false;
+  return value.fields.every((field: unknown, index: number) => {
+    if (
+      !record(field, ["concept", "status", "value", "observationLocators"]) ||
+      field.concept !== PERSONAL_SEC_FILING_REPORTING_CONCEPTS[index] ||
+      !["observed", "missing", "conflicting", "unsupported"].includes(
+        String(field.status),
+      ) ||
+      !nullableText(field.value) ||
+      !Array.isArray(field.observationLocators)
+    )
+      return false;
+    if (value.status !== "assessed")
+      return (
+        field.status === "unsupported" &&
+        field.value === null &&
+        field.observationLocators.length === 0
+      );
+    const rows = observations.filter(
+      (row) => reportingConcept(row.concept.localName) === field.concept,
+    );
+    if (
+      JSON.stringify(field.observationLocators) !==
+      JSON.stringify(rows.map((row) => row.locator))
+    )
+      return false;
+    const eligible = rows.filter((row) => row.issues.length === 0);
+    const uncertain = rows.some(
+      (row) =>
+        row.issues.length > 0 &&
+        !(row.issues.length === 1 && row.issues[0] === "entity_mismatch"),
+    );
+    const values = new Set(eligible.map((row) => row.value));
+    const status = uncertain
+      ? "unsupported"
+      : values.size === 0
+        ? "missing"
+        : values.size > 1
+          ? "conflicting"
+          : "observed";
+    return (
+      field.status === status &&
+      field.value === (status === "observed" ? eligible[0]?.value : null)
+    );
+  });
+}
+function freezeMetadata<T>(value: T): T {
+  if (typeof value === "object" && value !== null) {
+    Object.values(value).forEach(freezeMetadata);
+    Object.freeze(value);
+  }
+  return value;
 }

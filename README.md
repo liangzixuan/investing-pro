@@ -70,6 +70,8 @@ and known start/end dates. It makes no additional source requests and keeps
 coverage limits and conflicting values within an accession visible.
 **Inspect filing context** rechecks one selected observation and its filing
 metadata, then compares exact structured facts from one primary SEC document.
+The same parse exposes four filing-declared reporting fields beside the selected
+fact's dates, with explicit metadata conflicts, missingness and unsupported cases.
 Matching, differing, ambiguous and unsupported outcomes remain explicit; existing
 evidence stays usable on failure. See [filing-context inspection](./docs/PERSONAL_SEC_FILING_CONTEXT.md) and
 [SEC quarterly evidence](./docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md).

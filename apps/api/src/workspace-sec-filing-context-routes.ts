@@ -99,7 +99,7 @@ export function registerPersonalWorkspaceSecFilingContextRoutes(
           return sendProblem(reply, request, 502, "provider_unavailable");
         }
         const response: PersonalSecFilingContextResponseDto = {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           catalogSnapshotSha256: catalog.snapshotSha256,
           security: {
             country: listing.country,
@@ -145,7 +145,7 @@ function isRequest(
   return (
     Object.keys(row).sort().join(",") ===
       "catalogSnapshotSha256,listingId,schemaVersion,selection,symbol" &&
-    row.schemaVersion === "1.0.0" &&
+    row.schemaVersion === "2.0.0" &&
     typeof row.catalogSnapshotSha256 === "string" &&
     /^sha256:[0-9a-f]{64}$/u.test(row.catalogSnapshotSha256) &&
     typeof row.listingId === "string" &&

@@ -3,6 +3,11 @@ import { once } from "node:events";
 
 import {
   PERSONAL_SEC_FILING_CONTEXT_LIMITS as LIMITS,
+  PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION,
+  PERSONAL_SEC_FILING_DEI_NAMESPACES,
+  PERSONAL_SEC_FILING_REPORTING_CONCEPTS,
+  createEmptyPersonalSecFilingReportingMetadata,
+  type PersonalSecFilingContextIssue,
   type PersonalSecFilingContextSelectionDto,
 } from "@research-cockpit/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,6 +31,28 @@ const selection: PersonalSecFilingContextSelectionDto = Object.freeze({
   filedDate: "2025-05-01",
 });
 const parsers: PersonalSecFilingContextParser[] = [];
+function emptyResult(reason: PersonalSecFilingContextIssue | null = null) {
+  const metadata = createEmptyPersonalSecFilingReportingMetadata();
+  return {
+    schemaVersion: PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION,
+    status: reason === null ? "no_corresponding_fact" : "unsupported",
+    reason,
+    candidates: [],
+    correspondingCandidateLocators: [],
+    reportingMetadata:
+      reason === null
+        ? metadata
+        : {
+            status: "unavailable",
+            reason,
+            observations: [],
+            fields: metadata.fields.map((field) => ({
+              ...field,
+              status: "unsupported",
+            })),
+          },
+  };
+}
 function parser(): PersonalSecFilingContextParser {
   const value = createPersonalSecFilingContextParser();
   parsers.push(value);
@@ -196,12 +223,7 @@ describe("selected SEC filing context real isolated worker", () => {
     const result = await parse(
       document(fact().replace("Revenues", "SalesRevenueNet")),
     );
-    expect(result).toEqual({
-      status: "no_corresponding_fact",
-      reason: null,
-      candidates: [],
-      correspondingCandidateLocators: [],
-    });
+    expect(result).toEqual(emptyResult());
     expect(
       (
         await parse(
@@ -507,12 +529,7 @@ describe("selected SEC filing context real isolated worker", () => {
     const html = document(
       fact("€".repeat(4096), 'format="ixt:fixed-zero"').repeat(100),
     );
-    expect(await parse(html)).toEqual({
-      status: "unsupported",
-      reason: "output_limit",
-      candidates: [],
-      correspondingCandidateLocators: [],
-    });
+    expect(await parse(html)).toEqual(emptyResult("output_limit"));
   });
 
   it("uses the same UTF16 text bound as its consumers and rejects invalid UTF8", async () => {
@@ -535,12 +552,7 @@ describe("selected SEC filing context real isolated worker", () => {
         cik: "0000000042",
         selection,
       }),
-    ).toEqual({
-      status: "unsupported",
-      reason: "invalid_document",
-      candidates: [],
-      correspondingCandidateLocators: [],
-    });
+    ).toEqual(emptyResult("invalid_document"));
   });
 
   it("supports each selected concept and dates through an amended quarterly form", async () => {
@@ -567,12 +579,7 @@ describe("selected SEC filing context real isolated worker", () => {
       (await parse(document(fact().repeat(LIMITS.candidates)))).candidates,
     ).toHaveLength(LIMITS.candidates);
     expect(await parse(document(fact().repeat(LIMITS.candidates + 1)))).toEqual(
-      {
-        status: "unsupported",
-        reason: "candidate_limit",
-        candidates: [],
-        correspondingCandidateLocators: [],
-      },
+      emptyResult("candidate_limit"),
     );
   });
 
@@ -625,6 +632,325 @@ describe("selected SEC filing context real isolated worker", () => {
   });
 });
 
+function metadataFact(
+  concept = "DocumentType",
+  value = "10-Q",
+  attributes = "",
+  contextId = "m",
+) {
+  return `<ix:nonNumeric name="dei:${concept}" contextRef="${contextId}" ${attributes}>${value}</ix:nonNumeric>`;
+}
+function metadataDocument(
+  rows = metadataFact(),
+  contexts = context("m", "2024-07-01", "2025-03-31"),
+  namespace: string = PERSONAL_SEC_FILING_DEI_NAMESPACES[1],
+) {
+  return document(fact() + rows, context() + contexts).replace(
+    "<html ",
+    `<html xmlns:dei="${namespace}" `,
+  );
+}
+
+describe("filing DEI reporting metadata real isolated worker", () => {
+  it.each(PERSONAL_SEC_FILING_DEI_NAMESPACES)(
+    "retains four direct values and separate duration context under %s",
+    async (namespace) => {
+      const values = ["10-Q/A", "2025-03-31", "2026", "Q1"];
+      const rows = PERSONAL_SEC_FILING_REPORTING_CONCEPTS.map(
+        (concept, index) =>
+          metadataFact(concept, ` \t${values[index]}\r\n `, `id="m${index}"`),
+      ).join("");
+      const result = await parse(
+        metadataDocument(
+          `<ix:header><ix:hidden>${rows}</ix:hidden></ix:header>`,
+          undefined,
+          namespace,
+        ),
+      );
+      expect(result.schemaVersion).toBe("2.0.0");
+      expect(result.status).toBe("matched");
+      expect(result.candidates[0]?.startDate).toBe("2025-01-01");
+      expect(
+        result.reportingMetadata.fields.map((field) => [
+          field.status,
+          field.value,
+        ]),
+      ).toEqual(values.map((value) => ["observed", value]));
+      expect(result.reportingMetadata.observations).toHaveLength(4);
+      expect(result.reportingMetadata.observations[0]).toMatchObject({
+        contextId: "m",
+        startDate: "2024-07-01",
+        endDate: "2025-03-31",
+        rawText: " \t10-Q/A\r\n ",
+        issues: [],
+      });
+      expect(Object.isFrozen(result.reportingMetadata)).toBe(true);
+      expect(
+        Object.isFrozen(
+          result.reportingMetadata.fields[0]?.observationLocators,
+        ),
+      ).toBe(true);
+      expect(
+        Object.isFrozen(result.reportingMetadata.observations[0]?.concept),
+      ).toBe(true);
+      expect(
+        Object.isFrozen(result.reportingMetadata.observations[0]?.issues),
+      ).toBe(true);
+    },
+  );
+
+  it("leaves absent metadata missing and preserves equivalent references without choosing a revision", async () => {
+    expect((await parse()).reportingMetadata).toEqual(
+      createEmptyPersonalSecFilingReportingMetadata(),
+    );
+    const equal = await parse(
+      metadataDocument(metadataFact() + metadataFact("DocumentType", " 10-Q ")),
+    );
+    expect(equal.reportingMetadata.fields[0]).toMatchObject({
+      status: "observed",
+      value: "10-Q",
+    });
+    expect(equal.reportingMetadata.fields[0]?.observationLocators).toHaveLength(
+      2,
+    );
+    const conflict = await parse(
+      metadataDocument(metadataFact() + metadataFact("DocumentType", "10-K")),
+    );
+    expect(conflict.reportingMetadata.fields[0]).toMatchObject({
+      status: "conflicting",
+      value: null,
+    });
+    expect(conflict.status).toBe("matched");
+  });
+
+  it.each([
+    ["DocumentType", "8-K", ""],
+    ["DocumentPeriodEndDate", "2025-02-29", ""],
+    ["DocumentPeriodEndDate", "03/31/2025", ""],
+    ["DocumentFiscalYearFocus", "0999", ""],
+    ["DocumentFiscalPeriodFocus", "Q4", ""],
+    ["DocumentFiscalPeriodFocus", "q1", ""],
+    ["DocumentType", "\u00a010-Q\u00a0", ""],
+    ["DocumentPeriodEndDate", "2025-03-31", 'format="ixt:date-year-month-day"'],
+    ["DocumentType", "10-Q", 'continuedAt="next"'],
+    ["DocumentType", "<span>10-Q</span>", ""],
+  ])(
+    "keeps unsupported %s metadata explicit",
+    async (concept, value, attrs) => {
+      const result = await parse(
+        metadataDocument(metadataFact(concept, value, attrs)),
+      );
+      expect(result.status).toBe("matched");
+      const field = result.reportingMetadata.fields.find(
+        (row) => row.concept === concept,
+      );
+      expect(field).toMatchObject({ status: "unsupported", value: null });
+      expect(field?.observationLocators).toHaveLength(1);
+      expect(
+        result.reportingMetadata.observations[0]?.issues.length,
+      ).toBeGreaterThan(0);
+    },
+  );
+
+  it.each([
+    '<ix:tuple name="us-gaap:Tuple">ROW</ix:tuple>',
+    '<ix:continuation id="continued">ROW</ix:continuation>',
+    "<ix:exclude>ROW</ix:exclude>",
+    '<ix:nonNumeric name="dei:OtherConcept" contextRef="m">ROW</ix:nonNumeric>',
+  ])(
+    "does not admit metadata nested in unsupported inline ancestry %s",
+    async (wrapper) => {
+      const result = await parse(
+        metadataDocument(
+          metadataFact() + wrapper.replace("ROW", metadataFact()),
+        ),
+      );
+      expect(result.status).toBe("matched");
+      expect(result.reportingMetadata.fields[0]).toMatchObject({
+        status: "unsupported",
+        value: null,
+      });
+      expect(
+        result.reportingMetadata.fields[0]?.observationLocators,
+      ).toHaveLength(2);
+      expect(result.reportingMetadata.observations[1]?.issues).toContain(
+        "unsupported_inline",
+      );
+    },
+  );
+
+  it.each([
+    metadataFact("documenttype", "10-K"),
+    '<dei:DocumentType contextRef="m">10-K</dei:DocumentType>',
+    metadataFact().replace(
+      'name="dei:DocumentType"',
+      'name="spoof:DocumentType" xmlns:spoof="https://attacker.invalid/dei/2025"',
+    ),
+  ])(
+    "retains recognizable unsupported forms instead of hiding them behind a clean sibling",
+    async (row) => {
+      const result = await parse(metadataDocument(metadataFact() + row));
+      expect(result.status).toBe("matched");
+      expect(result.reportingMetadata.fields[0]).toMatchObject({
+        status: "unsupported",
+        value: null,
+      });
+      expect(result.reportingMetadata.observations).toHaveLength(2);
+      expect(result.reportingMetadata.observations[1]?.concept.raw).toBe(
+        row.includes("documenttype")
+          ? "dei:documenttype"
+          : row.includes("spoof:")
+            ? "spoof:DocumentType"
+            : "dei:DocumentType",
+      );
+    },
+  );
+
+  it.each([
+    "http://xbrl.sec.gov/dei/2023",
+    "https://xbrl.sec.gov/dei/2025",
+    "http://xbrl.sec.gov/dei/2025/extra",
+  ])("does not infer namespace support for %s", async (namespace) => {
+    const result = await parse(
+      metadataDocument(undefined, undefined, namespace),
+    );
+    expect(result.reportingMetadata.observations[0]?.issues).toContain(
+      "invalid_namespace",
+    );
+    expect(result.reportingMetadata.fields[0]?.status).toBe("unsupported");
+  });
+
+  it("excludes only proven well-formed wrong-issuer metadata", async () => {
+    const wrong = context("other", "2024-07-01", "2025-03-31", "7");
+    const clean = metadataFact();
+    const wrongFact = metadataFact("DocumentType", "10-K", "", "other");
+    const excluded = await parse(metadataDocument(wrongFact, wrong));
+    expect(excluded.reportingMetadata.fields[0]?.status).toBe("missing");
+    expect(excluded.reportingMetadata.observations[0]?.issues).toEqual([
+      "entity_mismatch",
+    ]);
+    const combined = await parse(
+      metadataDocument(clean + wrongFact, context("m") + wrong),
+    );
+    expect(combined.reportingMetadata.fields[0]).toMatchObject({
+      status: "observed",
+      value: "10-Q",
+    });
+    const malformed = wrong.replace(
+      "</xbrli:entity>",
+      "<xbrli:period><xbrli:instant>2025-01-01</xbrli:instant></xbrli:period></xbrli:entity>",
+    );
+    const uncertain = await parse(
+      metadataDocument(clean + wrongFact, context("m") + malformed),
+    );
+    expect(uncertain.reportingMetadata.fields[0]?.status).toBe("unsupported");
+    expect(uncertain.reportingMetadata.observations[1]?.issues).toEqual(
+      expect.arrayContaining(["entity_mismatch", "malformed_context"]),
+    );
+  });
+
+  it.each([
+    "",
+    context("m").replace(
+      'scheme="http://www.sec.gov/CIK"',
+      'scheme="https://www.sec.gov/CIK"',
+    ),
+    context("m").replace(
+      "<xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-03-31</xbrli:endDate>",
+      "<xbrli:instant>2025-03-31</xbrli:instant>",
+    ),
+    context(
+      "m",
+      undefined,
+      undefined,
+      undefined,
+      '<xbrli:segment><xbrldi:explicitMember dimension="us-gaap:Axis">us-gaap:Member</xbrldi:explicitMember></xbrli:segment>',
+    ),
+  ])(
+    "does not observe unresolved, unsupported or dimensional context",
+    async (contexts) => {
+      const result = await parse(metadataDocument(undefined, contexts));
+      expect(result.reportingMetadata.fields[0]?.status).toBe("unsupported");
+      expect(result.status).toBe("matched");
+    },
+  );
+
+  it("keeps exactly forty metadata references and fails empty above that cap independently of numeric facts", async () => {
+    const complete = await parse(metadataDocument(metadataFact().repeat(40)));
+    expect(complete.reportingMetadata.observations).toHaveLength(40);
+    expect(complete.reportingMetadata.fields[0]?.status).toBe("observed");
+    const limited = await parse(metadataDocument(metadataFact().repeat(41)));
+    expect(limited.status).toBe("matched");
+    expect(limited.candidates).toHaveLength(1);
+    expect(limited.reportingMetadata).toMatchObject({
+      status: "limited",
+      reason: "candidate_limit",
+      observations: [],
+    });
+    expect(
+      limited.reportingMetadata.fields.every(
+        (field) =>
+          field.status === "unsupported" &&
+          field.value === null &&
+          field.observationLocators.length === 0,
+      ),
+    ).toBe(true);
+  });
+
+  it("accepts the exact metadata byte budget and clears the whole projection one byte above it", async () => {
+    const baseline = await parse(metadataDocument(metadataFact().repeat(40)));
+    const remaining =
+      LIMITS.metadataOutputBytes -
+      Buffer.byteLength(JSON.stringify(baseline.reportingMetadata), "utf8");
+    const paddingPerRow = Math.floor(remaining / 40);
+    const paddingRemainder = remaining % 40;
+    const rows = Array.from({ length: 40 }, (_, index) =>
+      metadataFact(
+        "DocumentType",
+        " ".repeat(paddingPerRow + (index < paddingRemainder ? 1 : 0)) + "10-Q",
+      ),
+    ).join("");
+    expect(paddingPerRow + 5).toBeLessThanOrEqual(LIMITS.rawTextCharacters);
+    const exact = await parse(metadataDocument(rows));
+    expect(exact.reportingMetadata.status).toBe("assessed");
+    expect(
+      Buffer.byteLength(JSON.stringify(exact.reportingMetadata), "utf8"),
+    ).toBe(LIMITS.metadataOutputBytes);
+    const excessive = await parse(
+      metadataDocument(rows.replace("10-Q", " 10-Q")),
+    );
+    expect(excessive.status).toBe("matched");
+    expect(excessive.reportingMetadata).toMatchObject({
+      status: "limited",
+      reason: "output_limit",
+      observations: [],
+    });
+  });
+
+  it.each([
+    metadataFact("DocumentType", "x".repeat(4097)),
+    metadataFact("DocumentType", "€".repeat(4096)).repeat(6),
+  ])(
+    "limits metadata text/projection without erasing a numeric match",
+    async (rows) => {
+      const result = await parse(metadataDocument(rows));
+      expect(result.status).toBe("matched");
+      expect(result.reportingMetadata).toMatchObject({
+        status: "limited",
+        reason: "output_limit",
+        observations: [],
+      });
+    },
+  );
+
+  it("does not retain metadata after global malformed-document failure", async () => {
+    const result = await parse(
+      metadataDocument().replace("xmlns:dei=", "XMLNS:dei="),
+    );
+    expect(result).toEqual(emptyResult("invalid_namespace"));
+  });
+});
+
 function alternateWorker(script: string) {
   let child: ChildProcessWithoutNullStreams | undefined;
   const launched = vi.fn((...args: unknown[]) => {
@@ -649,11 +975,92 @@ describe("asynchronous filing worker boundary", () => {
     selection,
   };
 
+  it.each([
+    ["missing result version", "delete result.schemaVersion"],
+    ["old result version", 'result.schemaVersion = "1.0.0"'],
+    ["missing metadata", "delete result.reportingMetadata"],
+    ["extra metadata key", "result.reportingMetadata.extra = true"],
+    ["missing fixed field", "result.reportingMetadata.fields.pop()"],
+    ["wrong field order", "result.reportingMetadata.fields.reverse()"],
+    [
+      "missing reference",
+      "result.reportingMetadata.fields[0].observationLocators = []",
+    ],
+    ["fabricated value", 'result.reportingMetadata.fields[0].value = "10-K"'],
+    [
+      "invented conflict",
+      'result.reportingMetadata.fields[0].status = "conflicting"; result.reportingMetadata.fields[0].value = null',
+    ],
+    ["hidden observation", "result.reportingMetadata.observations = []"],
+    [
+      "reused numeric locator",
+      "result.reportingMetadata.observations[0].locator = result.candidates[0].locator; result.reportingMetadata.fields[0].observationLocators = [result.candidates[0].locator]",
+    ],
+    [
+      "clean wrong-case QName",
+      'result.reportingMetadata.observations[0].concept.raw = "dei:documenttype"; result.reportingMetadata.observations[0].concept.localName = "documenttype"',
+    ],
+    [
+      "clean mismatched QName",
+      'result.reportingMetadata.observations[0].concept.raw = "dei:DocumentFiscalYearFocus"',
+    ],
+    [
+      "clean unsupported namespace",
+      'result.reportingMetadata.observations[0].concept.namespace = "https://xbrl.sec.gov/dei/2025"',
+    ],
+    [
+      "clean transformed value",
+      'result.reportingMetadata.observations[0].format = { raw:"ixt:fixed-zero",localName:"fixed-zero",namespace:"http://www.xbrl.org/inlineXBRL/transformation/2020-02-12" }',
+    ],
+    [
+      "clean instant context",
+      'result.reportingMetadata.observations[0].periodKind = "instant"; result.reportingMetadata.observations[0].startDate = null',
+    ],
+    [
+      "forged same-issuer exclusion",
+      'result.reportingMetadata.observations[0].issues = ["entity_mismatch"]; result.reportingMetadata.fields[0].status = "missing"; result.reportingMetadata.fields[0].value = null',
+    ],
+    [
+      "forged raw issuer exclusion",
+      'result.reportingMetadata.observations[0].issues = ["entity_mismatch"]; result.reportingMetadata.observations[0].entityCik = "0000000007"; result.reportingMetadata.fields[0].status = "missing"; result.reportingMetadata.fields[0].value = null',
+    ],
+    [
+      "forged unresolved issuer exclusion",
+      'result.reportingMetadata.observations[0].issues = ["entity_mismatch"]; result.reportingMetadata.observations[0].entityCik = null; result.reportingMetadata.fields[0].status = "missing"; result.reportingMetadata.fields[0].value = null',
+    ],
+    [
+      "uncertainty hidden by observed value",
+      'result.reportingMetadata.observations[0].issues = ["unresolved_context"]',
+    ],
+    [
+      "partial limit prefix",
+      'result.reportingMetadata.status = "limited"; result.reportingMetadata.reason = "candidate_limit"',
+    ],
+    [
+      "invented global failure",
+      'result.reportingMetadata.status = "unavailable"; result.reportingMetadata.reason = "invalid_document"',
+    ],
+  ])("rejects %s in worker reporting metadata", async (_label, mutation) => {
+    const valid = await parse(metadataDocument());
+    const script = `process.stdin.resume();process.stdin.on("end",()=>{const result=${JSON.stringify(valid)};${mutation};process.stdout.write(JSON.stringify(result))})`;
+    const worker = alternateWorker(script);
+    await expect(worker.value.parse(input)).rejects.toMatchObject({
+      code: "invalid_output",
+    });
+  });
+
+  it("sends an explicit versioned worker request", async () => {
+    const worker = alternateWorker(
+      `let raw="";process.stdin.setEncoding("utf8");process.stdin.on("data",data=>raw+=data);process.stdin.on("end",()=>{const request=JSON.parse(raw);if(request.schemaVersion!=="2.0.0"||Object.keys(request).sort().join(",")!=="cik,documentBase64,schemaVersion,selection")process.exitCode=1;else process.stdout.write(${JSON.stringify(JSON.stringify(emptyResult()))})})`,
+    );
+    expect(await worker.value.parse(input)).toEqual(emptyResult());
+  });
+
   it("fixes executable/isolated arguments, hides Windows child and excludes inherited secrets", async () => {
     vi.stubEnv("SEC_SECRET_CANARY", "must-not-reach-worker");
     vi.stubEnv("PYTHONPATH", "untrusted-modules");
     const worker = alternateWorker(
-      'process.stdin.resume(); process.stdin.on("end",()=>process.stdout.write(JSON.stringify({status:"no_corresponding_fact",reason:null,candidates:[],correspondingCandidateLocators:[]})))',
+      `process.stdin.resume(); process.stdin.on("end",()=>process.stdout.write(${JSON.stringify(JSON.stringify(emptyResult()))}))`,
     );
     expect((await worker.value.parse(input)).status).toBe(
       "no_corresponding_fact",
@@ -688,11 +1095,11 @@ describe("asynchronous filing worker boundary", () => {
     ['process.stdout.write("not-json")', "invalid_output"],
     ["process.stdout.write(Buffer.from([255,255]))", "invalid_output"],
     [
-      'process.stdout.write(JSON.stringify({status:"matched",reason:null,candidates:[],correspondingCandidateLocators:[]}))',
+      `process.stdout.write(${JSON.stringify(JSON.stringify({ ...emptyResult(), status: "matched" }))})`,
       "invalid_output",
     ],
     [
-      'process.stdout.write(JSON.stringify({status:"no_corresponding_fact",reason:null,candidates:[],correspondingCandidateLocators:[],extra:true}))',
+      `process.stdout.write(${JSON.stringify(JSON.stringify({ ...emptyResult(), extra: true }))})`,
       "invalid_output",
     ],
     [

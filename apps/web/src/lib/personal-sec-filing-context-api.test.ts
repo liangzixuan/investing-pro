@@ -1,8 +1,11 @@
+import { createEmptyPersonalSecFilingReportingMetadata } from "@research-cockpit/contracts";
 import type {
   PersonalSecFilingContextCandidateDto,
   PersonalSecFilingContextRequestDto,
   PersonalSecFilingContextResponseDto,
   PersonalSecQuarterlyObservationDto,
+  PersonalSecFilingReportingMetadataDto,
+  PersonalSecFilingReportingObservationDto,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -16,6 +19,417 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe("filing-declared metadata browser validation", () => {
+  it("retains four declared fields, their differing duration context and frozen references", async () => {
+    fetchMock.mockResolvedValue(json(response()));
+    const value = await fetchPersonalSecFilingContext(request(), signal());
+    if (value.inspection.status !== "available") throw new Error();
+    const metadata = value.inspection.analysis.reportingMetadata;
+    expect(metadata).toEqual(reportingMetadata());
+    expect(metadata.observations[0]?.startDate).toBe("2026-01-01");
+    expect(value.inspection.observation.startDate).toBe("2026-04-01");
+    expect(Object.isFrozen(metadata.fields[0]?.observationLocators)).toBe(true);
+    expect(Object.isFrozen(metadata.observations[0]?.concept)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+  it.each([
+    "missing",
+    "same references",
+    "conflicting",
+    "unsupported",
+    "wrong issuer",
+  ])(
+    "accepts an honest %s metadata assessment without changing numeric correspondence",
+    async (kind) => {
+      const base = reportingMetadata();
+      const first = base.observations[0]!;
+      const row: PersonalSecFilingReportingObservationDto = {
+        ...first,
+        locator: "/elements/204",
+        concept: {
+          ...first.concept,
+          raw: "report:DocumentType",
+          namespace: "http://xbrl.sec.gov/dei/2024",
+        },
+        ...(kind === "conflicting"
+          ? { rawText: "10-Q/A", value: "10-Q/A" }
+          : {}),
+        ...(kind === "unsupported"
+          ? {
+              rawText: "<b>10-Q</b>",
+              value: null,
+              issues: ["unsupported_inline"] as const,
+            }
+          : {}),
+        ...(kind === "wrong issuer"
+          ? {
+              entityIdentifier: "2",
+              entityCik: "0000000002",
+              issues: ["entity_mismatch"] as const,
+            }
+          : {}),
+      };
+      const metadata =
+        kind === "missing"
+          ? createEmptyPersonalSecFilingReportingMetadata()
+          : {
+              ...base,
+              observations: [...base.observations, row],
+              fields: base.fields.map((field, index) =>
+                index === 0
+                  ? {
+                      ...field,
+                      status:
+                        kind === "conflicting"
+                          ? "conflicting"
+                          : kind === "unsupported"
+                            ? "unsupported"
+                            : "observed",
+                      value:
+                        kind === "conflicting" || kind === "unsupported"
+                          ? null
+                          : field.value,
+                      observationLocators: [
+                        ...field.observationLocators,
+                        row.locator,
+                      ],
+                    }
+                  : field,
+              ),
+            };
+      fetchMock.mockResolvedValue(json(withMetadata(metadata)));
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).resolves.toMatchObject({
+        inspection: {
+          analysis: { status: "matched", reportingMetadata: metadata },
+        },
+      });
+    },
+  );
+  it.each(["candidate_limit", "output_limit"] as const)(
+    "preserves numeric evidence when metadata alone reaches %s",
+    async (reason) => {
+      const metadata = { ...unavailableMetadata(), status: "limited", reason };
+      fetchMock.mockResolvedValue(json(withMetadata(metadata)));
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).resolves.toMatchObject({
+        inspection: {
+          analysis: {
+            status: "matched",
+            candidates: [candidate()],
+            reportingMetadata: metadata,
+          },
+        },
+      });
+    },
+  );
+  it.each(["documenttype", "DocumentType"])(
+    "preserves unsupported DEI form %s without treating it as absent",
+    async (localName) => {
+      const base = reportingMetadata();
+      const first = base.observations[0]!;
+      const row: PersonalSecFilingReportingObservationDto = {
+        ...first,
+        locator: "/elements/204",
+        concept: { ...first.concept, raw: `dei:${localName}`, localName },
+        rawText: "10-Q/A",
+        value: "10-Q/A",
+        issues: ["unsupported_inline"],
+      };
+      const metadata = {
+        ...base,
+        observations: [...base.observations, row],
+        fields: base.fields.map((field, index) =>
+          index === 0
+            ? {
+                ...field,
+                status: "unsupported",
+                value: null,
+                observationLocators: [
+                  ...field.observationLocators,
+                  row.locator,
+                ],
+              }
+            : field,
+        ),
+      };
+      fetchMock.mockResolvedValue(json(withMetadata(metadata)));
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).resolves.toMatchObject({
+        inspection: { analysis: { reportingMetadata: metadata } },
+      });
+    },
+  );
+  it.each([
+    ["missing projection", () => null],
+    ["missing field", (value) => ({ ...value, fields: value.fields.slice(1) })],
+    [
+      "wrong field order",
+      (value) => ({ ...value, fields: [...value.fields].reverse() }),
+    ],
+    [
+      "unreferenced observation",
+      (value) => ({
+        ...value,
+        fields: value.fields.map((field) => ({
+          ...field,
+          observationLocators: [],
+        })),
+      }),
+    ],
+    [
+      "false conflict",
+      (value) => ({
+        ...value,
+        fields: value.fields.map((field) => ({
+          ...field,
+          status: "conflicting",
+          value: null,
+        })),
+      }),
+    ],
+    [
+      "unsupported namespace marked observed",
+      (value) =>
+        patchMetadataRow(value, {
+          concept: {
+            ...value.observations[0]!.concept,
+            namespace: "https://xbrl.sec.gov/dei/2026",
+          },
+        }),
+    ],
+    [
+      "unadmitted namespace year",
+      (value) =>
+        patchMetadataRow(value, {
+          concept: {
+            ...value.observations[0]!.concept,
+            namespace: "http://xbrl.sec.gov/dei/2023",
+          },
+        }),
+    ],
+    [
+      "raw concept spoof",
+      (value) =>
+        patchMetadataRow(value, {
+          concept: {
+            ...value.observations[0]!.concept,
+            raw: "dei:DifferentName",
+          },
+        }),
+    ],
+    [
+      "mis-cased concept claimed supported",
+      (value) =>
+        patchMetadataRow(value, {
+          concept: {
+            ...value.observations[0]!.concept,
+            raw: "dei:documenttype",
+            localName: "documenttype",
+          },
+        }),
+    ],
+    [
+      "invalid raw QName",
+      (value) =>
+        patchMetadataRow(value, {
+          concept: {
+            ...value.observations[0]!.concept,
+            raw: "dei:extra:DocumentType",
+          },
+        }),
+    ],
+    [
+      "same issuer called mismatch",
+      (value) =>
+        patchMetadataRow(value, {
+          rawText: "10-Q/A",
+          value: "10-Q/A",
+          issues: ["entity_mismatch"],
+        }),
+    ],
+    [
+      "unresolved issuer called mismatch",
+      (value) =>
+        patchMetadataRow(value, {
+          entityIdentifier: null,
+          entityCik: null,
+          issues: ["entity_mismatch"],
+        }),
+    ],
+    [
+      "mismatch with uncertain scope",
+      (value) =>
+        patchMetadataRow(value, {
+          entityIdentifier: "2",
+          entityCik: "0000000002",
+          issues: ["entity_mismatch", "malformed_context"],
+        }),
+    ],
+    [
+      "instant metadata treated as duration",
+      (value) =>
+        patchMetadataRow(value, { periodKind: "instant", startDate: null }),
+    ],
+    [
+      "reversed metadata duration",
+      (value) => patchMetadataRow(value, { startDate: "2026-07-01" }),
+    ],
+    [
+      "missing context ID",
+      (value) => patchMetadataRow(value, { contextId: null }),
+    ],
+    [
+      "claimed supported transform",
+      (value) =>
+        patchMetadataRow(value, {
+          format: {
+            raw: "ixt:date",
+            namespace: "transform",
+            localName: "date",
+          },
+        }),
+    ],
+    [
+      "non-XML whitespace normalization",
+      (value) => patchMetadataRow(value, { rawText: "\u00a010-Q\u00a0" }),
+    ],
+    [
+      "unsupported fiscal token",
+      (value) => ({
+        ...value,
+        fields: value.fields.map((field, i) =>
+          i === 3 ? { ...field, value: "Q4" } : field,
+        ),
+        observations: value.observations.map((row, i) =>
+          i === 3 ? { ...row, value: "Q4", rawText: "Q4" } : row,
+        ),
+      }),
+    ],
+    [
+      "invalid declared date",
+      (value) => ({
+        ...value,
+        fields: value.fields.map((field, i) =>
+          i === 1 ? { ...field, value: "2026-02-30" } : field,
+        ),
+        observations: value.observations.map((row, i) =>
+          i === 1
+            ? { ...row, value: "2026-02-30", rawText: "2026-02-30" }
+            : row,
+        ),
+      }),
+    ],
+    [
+      "numeric locator reused",
+      (value) => patchMetadataRow(value, { locator: "/elements/1" }),
+    ],
+    [
+      "duplicate metadata locator",
+      (value) => ({
+        ...value,
+        observations: [...value.observations, value.observations[0]!],
+      }),
+    ],
+    [
+      "metadata prefix after limit",
+      (value) => ({ ...value, status: "limited", reason: "candidate_limit" }),
+    ],
+    ["unrelated metadata unavailability", () => unavailableMetadata()],
+    [
+      "too many references",
+      (value) => ({
+        ...value,
+        observations: Array.from({ length: 41 }, (_, i) => ({
+          ...value.observations[0]!,
+          locator: `/elements/${200 + i}`,
+        })),
+      }),
+    ],
+    [
+      "metadata byte budget exceeded",
+      (value) => ({
+        ...value,
+        observations: Array.from({ length: 40 }, (_, i) => ({
+          ...value.observations[0]!,
+          locator: `/elements/${200 + i}`,
+          rawText: "a".repeat(4096),
+          value: null,
+          issues: ["invalid_metadata_value"],
+        })),
+      }),
+    ],
+  ] satisfies readonly (readonly [
+    string,
+    (value: PersonalSecFilingReportingMetadataDto) => unknown,
+  ])[])("rejects forged or unbounded metadata: %s", async (_, mutate) => {
+    fetchMock.mockResolvedValue(
+      json(withMetadata(mutate(reportingMetadata()))),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("rejects old request, response and parser versions", async () => {
+    await expect(
+      fetchPersonalSecFilingContext(
+        {
+          ...request(),
+          schemaVersion: "1.0.0",
+        } as unknown as PersonalSecFilingContextRequestDto,
+        signal(),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValueOnce(
+      json({ ...response(), schemaVersion: "1.0.0" }),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    const value = response();
+    if (value.inspection.status !== "available") throw new Error();
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...value,
+        inspection: {
+          ...value.inspection,
+          analysis: { ...value.inspection.analysis, schemaVersion: "1.0.0" },
+        },
+      }),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+});
+
+function withMetadata(metadata: unknown) {
+  const value = response();
+  if (value.inspection.status !== "available") throw new Error();
+  return {
+    ...value,
+    inspection: {
+      ...value.inspection,
+      analysis: { ...value.inspection.analysis, reportingMetadata: metadata },
+    },
+  };
+}
+function patchMetadataRow(
+  value: PersonalSecFilingReportingMetadataDto,
+  patch: Partial<PersonalSecFilingReportingObservationDto>,
+) {
+  return {
+    ...value,
+    observations: value.observations.map((row, index) =>
+      index === 0 ? { ...row, ...patch } : row,
+    ),
+  };
+}
 
 describe("filing-context browser decoder", () => {
   it("sends only the URL-free selection through authenticated POST and freezes exact evidence", async () => {
@@ -92,6 +506,8 @@ describe("filing-context browser decoder", () => {
       inspection: {
         ...base.inspection,
         analysis: {
+          schemaVersion: "2.0.0",
+          reportingMetadata: reportingMetadata(),
           status,
           reason: status === "unsupported" ? "unsupported_unit" : null,
           candidates,
@@ -120,6 +536,8 @@ describe("filing-context browser decoder", () => {
         inspection: {
           ...base.inspection,
           analysis: {
+            schemaVersion: "2.0.0",
+            reportingMetadata: reportingMetadata(),
             status: "unsupported",
             reason: "invalid_namespace",
             candidates: [unsupported],
@@ -139,6 +557,8 @@ describe("filing-context browser decoder", () => {
         inspection: {
           ...base.inspection,
           analysis: {
+            schemaVersion: "2.0.0",
+            reportingMetadata: unavailableMetadata(),
             status: "unsupported",
             reason: "candidate_limit",
             candidates: [],
@@ -455,7 +875,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalSecFilingContextRequestDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "lst-zero",
     symbol: "ZERO",
@@ -530,7 +950,7 @@ function candidate(): PersonalSecFilingContextCandidateDto {
 }
 function response(): PersonalSecFilingContextResponseDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     security: {
       country: "US",
@@ -563,11 +983,59 @@ function response(): PersonalSecFilingContextResponseDto {
         bytes: 1000,
       },
       analysis: {
+        schemaVersion: "2.0.0",
+        reportingMetadata: reportingMetadata(),
         status: "matched",
         reason: null,
         candidates: [candidate()],
         correspondingCandidateLocators: ["/elements/1"],
       },
     },
+  };
+}
+
+function reportingMetadata(): PersonalSecFilingReportingMetadataDto {
+  const empty = createEmptyPersonalSecFilingReportingMetadata();
+  const values = ["10-Q", "2026-06-30", "2026", "Q2"];
+  const observations: PersonalSecFilingReportingObservationDto[] =
+    empty.fields.map((field, index) => ({
+      locator: `/elements/${200 + index}`,
+      factId: `dei-${index}`,
+      contextId: "reporting-duration",
+      concept: {
+        raw: `dei:${field.concept}`,
+        namespace: "http://xbrl.sec.gov/dei/2026",
+        localName: field.concept,
+      },
+      entityIdentifier: "0000000001",
+      entityScheme: "http://www.sec.gov/CIK",
+      entityCik: "0000000001",
+      dimensions: [],
+      periodKind: "duration",
+      startDate: "2026-01-01",
+      endDate: "2026-06-30",
+      rawText: values[index]!,
+      format: null,
+      value: values[index]!,
+      issues: [],
+    }));
+  return {
+    ...empty,
+    fields: empty.fields.map((field, index) => ({
+      ...field,
+      status: "observed",
+      value: values[index]!,
+      observationLocators: [observations[index]!.locator],
+    })),
+    observations,
+  };
+}
+function unavailableMetadata(): PersonalSecFilingReportingMetadataDto {
+  const empty = createEmptyPersonalSecFilingReportingMetadata();
+  return {
+    ...empty,
+    status: "unavailable",
+    reason: "candidate_limit",
+    fields: empty.fields.map((field) => ({ ...field, status: "unsupported" })),
   };
 }
