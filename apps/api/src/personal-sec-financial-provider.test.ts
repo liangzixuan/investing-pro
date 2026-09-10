@@ -2,9 +2,19 @@ import { PERSONAL_SEC_ANNUAL_CONCEPTS } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  createSecPersonalFinancialProvider,
+  createSecPersonalFinancialProvider as createProvider,
   PERSONAL_SEC_USER_AGENT,
 } from "./personal-sec-financial-provider";
+import { createPersonalSecRequestScheduler } from "./personal-sec-request-scheduler";
+
+function createSecPersonalFinancialProvider(
+  ...[userAgent, dependencies]: Parameters<typeof createProvider>
+) {
+  return createProvider(userAgent, {
+    scheduler: createPersonalSecRequestScheduler({ now: () => Date.now() }),
+    ...dependencies,
+  });
+}
 
 const NOW = new Date("2026-09-09T18:00:00.000Z");
 const USER_AGENT = "PersonalResearch/1.0 owner@example.test";
@@ -485,6 +495,7 @@ describe("SEC annual financial provider", () => {
     const controller = new AbortController();
     const pending = provider.loadSnapshot(2025, controller.signal);
     const rejected = expect(pending).rejects.toMatchObject({ code: "aborted" });
+    await vi.advanceTimersByTimeAsync(0);
     controller.abort();
     await rejected;
     expect(fetch.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);

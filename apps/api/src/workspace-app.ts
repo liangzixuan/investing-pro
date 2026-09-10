@@ -56,6 +56,11 @@ import {
   createSecPersonalFilingsProvider,
   type PersonalSecFilingsProvider,
 } from "./personal-sec-filings-provider";
+import {
+  createSecPersonalQuarterlyEvidenceProvider,
+  type PersonalSecQuarterlyEvidenceProvider,
+} from "./personal-sec-quarterly-evidence-provider";
+import { registerPersonalWorkspaceSecQuarterlyEvidenceRoutes } from "./workspace-sec-quarterly-evidence-routes";
 
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
 const DEFAULT_LISTEN_OPTIONS: DemoApiListenOptions = Object.freeze({
@@ -71,6 +76,7 @@ export async function buildPersonalWorkspaceApp(
   marketDataProvider: PersonalMarketDataProvider = createTiingoPersonalMarketDataProvider(),
   financialProvider: PersonalSecFinancialProvider = createSecPersonalFinancialProvider(),
   filingsProvider: PersonalSecFilingsProvider = createSecPersonalFilingsProvider(),
+  quarterlyEvidenceProvider: PersonalSecQuarterlyEvidenceProvider = createSecPersonalQuarterlyEvidenceProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -137,8 +143,12 @@ export async function buildPersonalWorkspaceApp(
           try {
             filingsProvider.close();
           } finally {
-            ownerSession.close();
-            done();
+            try {
+              quarterlyEvidenceProvider.close();
+            } finally {
+              ownerSession.close();
+              done();
+            }
           }
         }
       }
@@ -199,6 +209,13 @@ export async function buildPersonalWorkspaceApp(
     catalog,
     vault,
     filingsProvider,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceSecQuarterlyEvidenceRoutes(
+    app,
+    catalog,
+    quarterlyEvidenceProvider,
     ownerSession,
     listenOptions,
   );

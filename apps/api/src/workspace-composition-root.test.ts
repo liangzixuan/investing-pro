@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { FastifyInstance } from "fastify";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   captureSecurityMasterApiEnvironment,
@@ -38,6 +38,7 @@ import {
 } from "./workspace-composition-root";
 import { PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH } from "./workspace-watchlist-routes";
 import { PERSONAL_MARKET_DATA_STATUS_PATH } from "./workspace-market-data-routes";
+import { PERSONAL_SEC_QUARTERLY_EVIDENCE_PATH } from "./workspace-sec-quarterly-evidence-routes";
 import {
   PERSONAL_SECURITY_MASTER_SCREEN_PATH,
   PERSONAL_WORKSPACE_SCREENER_SAVED_VIEWS_PATH,
@@ -54,6 +55,8 @@ const applications: FastifyInstance[] = [];
 const directories: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   await Promise.all(applications.splice(0).map(async (app) => app.close()));
   await Promise.all(
     directories
@@ -80,6 +83,38 @@ describe("personal workspace composition root", () => {
     expect(
       sourceEnvironment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY],
     ).toBeUndefined();
+    const source = vi.fn<typeof fetch>((input, init) => {
+      expect(new Headers(init?.headers).get("User-Agent")).toBe(
+        "ResearchCockpit test@example.invalid",
+      );
+      const sourceUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      return Promise.resolve(
+        Response.json(
+          sourceUrl.includes("/companyfacts/")
+            ? { cik: 1, facts: { "us-gaap": {} } }
+            : {
+                cik: "0000000001",
+                filings: {
+                  recent: {
+                    accessionNumber: [],
+                    form: [],
+                    filingDate: [],
+                    reportDate: [],
+                    acceptanceDateTime: [],
+                  },
+                  files: [],
+                },
+              },
+        ),
+      );
+    });
+    vi.stubGlobal("fetch", source);
+    expect(source).not.toHaveBeenCalled();
     const configured = await createPersonalWorkspaceConfiguredApp(captured);
     expect(captured[PERSONAL_SEC_USER_AGENT]).toBeUndefined();
     applications.push(configured);
@@ -99,6 +134,36 @@ describe("personal workspace composition root", () => {
     expect(configuredStatus.statusCode).toBe(200);
     expect(configuredStatus.json()).toMatchObject({ status: "configured" });
     expect(configuredStatus.payload).not.toContain(token);
+    const evidenceRequest = {
+      method: "POST" as const,
+      url: PERSONAL_SEC_QUARTERLY_EVIDENCE_PATH,
+      payload: {
+        schemaVersion: "1.0.0",
+        catalogSnapshotSha256: fixture.expectedSnapshotSha256,
+        listingId: "lst-00000",
+        symbol: "S00000",
+      },
+      remoteAddress: "127.0.0.1",
+    };
+    const configuredEvidence = await configured.inject({
+      ...evidenceRequest,
+      headers: {
+        ...ownerHeaders(configuredCookie),
+        "content-type": "application/json",
+      },
+    });
+    expect(configuredEvidence.statusCode).toBe(200);
+    expect(configuredEvidence.json()).toMatchObject({
+      evidence: {
+        sources: {
+          companyFacts: { status: "available" },
+          submissions: { status: "available" },
+        },
+      },
+    });
+    expect(source).toHaveBeenCalledTimes(2);
+    expect(configuredEvidence.payload).not.toContain("test@example.invalid");
+    vi.unstubAllGlobals();
     await closeTracked(configured);
 
     const secondSecret = randomBytes(32).toString("hex");
@@ -121,6 +186,17 @@ describe("personal workspace composition root", () => {
     expect(unconfiguredStatus.statusCode).toBe(200);
     expect(unconfiguredStatus.json()).toMatchObject({
       status: "not_configured",
+    });
+    const unconfiguredEvidence = await unconfigured.inject({
+      ...evidenceRequest,
+      headers: {
+        ...ownerHeaders(unconfiguredCookie),
+        "content-type": "application/json",
+      },
+    });
+    expect(unconfiguredEvidence.statusCode).toBe(503);
+    expect(unconfiguredEvidence.json()).toMatchObject({
+      code: "not_configured",
     });
   }, 30_000);
 

@@ -32,6 +32,7 @@ Cycles 3g-a1 and 3g-b1 deliver the first market-data and transparent-analytics
 slices; Cycles 3h-a1, 3h-a2, and 3h-a3 add annual statements, quarterly
 statements, and valuation history; partial Cycle 3h-a4 adds quarterly coverage
 and an offline compatibility assessment before source admission and TTM;
+partial Cycle 3h-a5 adds selected-company SEC dated observations and filing joins;
 Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
 selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
@@ -844,6 +845,16 @@ declared metadata is not source verification. The loaded provider response
 remains blocked and no TTM amount, new request or source admission is added.
 See [quarterly compatibility](./PERSONAL_QUARTERLY_COMPATIBILITY.md).
 
+Partial Cycle 3h-a5 adds a separate explicit SEC evidence view for one catalog
+issuer. Company Facts observations retain exact USD values, dates, concepts and
+accessions. Current Submissions supplies filing membership and metadata where
+available; missing and conflicting joins stay visible. Same-end-date durations
+and revision alternatives remain distinct. Neither filing-focus labels nor
+calendar frames are assigned to fiscal slots. Shared SEC request pacing, bounded
+loads and session cancellation support this source path; live coverage and
+revision-operand admission remain open. See
+[SEC quarterly evidence](./PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
+
 These are independently useful statement-depth slices, not full 3h-a. They do
 not establish verified TTM aggregation, point-in-time/restatement history, the
 planned 30-core-metric registry, 500-security coverage, 90% knownness, or the
@@ -863,6 +874,8 @@ Promotable subcycles:
   fixed units, explicit missingness, and active-session-only custody;
 - **3h-a4 (partial):** latest-four-slot revenue/net-income coverage and an
   offline compatibility assessment; source admission and aggregation remain open;
+- **3h-a5 (partial):** selected-company SEC dated USD observations with filing
+  joins and unresolved fiscal/revision metadata; no TTM aggregation;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
   initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived
@@ -1359,10 +1372,10 @@ percentages and Modified Dietz estimates are delivered. The seventh partial
 date under an explicit EOD convention. Missing flow-date values and unsupported
 capital states remain unavailable; no intraday timing is inferred.
 
-The active partial 3h-a4 slice exposes quarterly coverage and missing source
-evidence for revenue and net income, backed by an offline compatibility check.
-Next admit a bounded period-aware source and validate its actual periods, units,
-scope and revision selection before calculating trailing-period financials or
+The active partial 3h-a5 slice adds bounded SEC observations and filing joins
+beside the existing quarterly compatibility assessment.
+Next validate fiscal calendars, standalone flow basis and revision selection
+against independent filing evidence before calculating trailing-period financials or
 expanding screening metrics. Broader return methods remain in the backlog.
 XIRR, benchmark comparisons, dividend accruals and other corporate actions need
 their own methodology and evidence.

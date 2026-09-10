@@ -8,6 +8,11 @@ import {
   type PersonalSecAnnualFrameDto,
 } from "@research-cockpit/contracts";
 
+import {
+  sharedPersonalSecRequestScheduler,
+  type PersonalSecRequestScheduler,
+} from "./personal-sec-request-scheduler";
+
 export const PERSONAL_SEC_USER_AGENT = "PERSONAL_SEC_USER_AGENT" as const;
 
 export type PersonalSecFinancialProviderErrorCode =
@@ -26,6 +31,7 @@ export interface PersonalSecFinancialProvider {
 export interface SecPersonalFinancialProviderDependencies {
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => Date;
+  readonly scheduler?: PersonalSecRequestScheduler;
 }
 
 interface ActiveSnapshotLoad {
@@ -76,6 +82,7 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
   readonly #userAgent: string | undefined;
   readonly #fetch: typeof globalThis.fetch;
   readonly #now: () => Date;
+  readonly #scheduler: PersonalSecRequestScheduler;
   #closed = false;
   #cache: PersonalSecAnnualFinancialSnapshotDto | undefined;
   #active: ActiveSnapshotLoad | undefined;
@@ -88,7 +95,13 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
     this.#userAgent = validUserAgent(userAgent) ? userAgent : undefined;
     this.#fetch = dependencies.fetch ?? globalThis.fetch;
     this.#now = dependencies.now ?? (() => new Date());
-    if (typeof this.#fetch !== "function" || typeof this.#now !== "function") {
+    this.#scheduler =
+      dependencies.scheduler ?? sharedPersonalSecRequestScheduler;
+    if (
+      typeof this.#fetch !== "function" ||
+      typeof this.#now !== "function" ||
+      typeof this.#scheduler.wait !== "function"
+    ) {
       throw new TypeError(MESSAGE);
     }
   }
@@ -168,6 +181,13 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
       // One provider operation at a time, and spacing between every request,
       // including separate refreshes, keeps this adapter below five per second.
       if (this.#requestHasRun) await delay(REQUEST_INTERVAL_MS, signal);
+      try {
+        await this.#scheduler.wait(signal);
+      } catch {
+        if (this.#closed || signal.aborted) fail("aborted");
+        fail("busy");
+      }
+      if (this.#closed || signal.aborted) fail("aborted");
       this.#requestHasRun = true;
       frames.push(await this.#loadFrame(concept, calendarYear, signal));
     }

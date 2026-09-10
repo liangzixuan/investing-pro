@@ -5187,6 +5187,8 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
     "apps/api/src/personal-sec-filings-provider.ts",
+    "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+    "apps/api/src/personal-sec-request-scheduler.ts",
     secProviderPath,
     "apps/api/src/personal-security-master-routes.ts",
     "apps/api/src/personal-vault-routes.ts",
@@ -5201,6 +5203,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-screener-routes.ts",
     "apps/api/src/workspace-server.ts",
     "apps/api/src/workspace-watchlist-filings-routes.ts",
+    "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
     "apps/api/src/workspace-portfolio-routes.ts",
   ].sort();
@@ -5419,6 +5422,38 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scripts/verify-boundaries.ts: SEC filings provider boundary classifier regressed",
     );
   }
+  const quarterlyProvider =
+    runtimeSources.get(
+      "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+    ) ?? "";
+  const quarterlyMutations = [
+    quarterlyProvider.replace(
+      "data.sec.gov/api/xbrl/companyfacts",
+      "unreviewed.example/facts",
+    ),
+    quarterlyProvider.replace('redirect: "error"', 'redirect: "follow"'),
+    quarterlyProvider.replace(
+      "this.#fetch(sourceUrl,",
+      "this.#fetch(unreviewedUrl,",
+    ),
+    quarterlyProvider.replace(
+      "await this.#scheduler.wait(signal)",
+      "await Promise.resolve()",
+    ),
+    quarterlyProvider.replace("normalizeCik(value.cik) !== cik", "false"),
+    quarterlyProvider.replace("size > LIMITS.responseBytes", "false"),
+  ];
+  if (
+    personalSecQuarterlyEvidenceProviderViolation(quarterlyProvider) !== null ||
+    quarterlyMutations.some(
+      (changed) =>
+        personalSecQuarterlyEvidenceProviderViolation(changed) === null,
+    )
+  ) {
+    found.push(
+      "scripts/verify-boundaries.ts: SEC quarterly evidence provider boundary classifier regressed",
+    );
+  }
   return found;
 }
 
@@ -5451,6 +5486,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== providerPath &&
         path !== secProviderPath &&
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
+        path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
@@ -5472,6 +5508,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       }
       if (
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
+        path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         content.includes("data.sec.gov/submissions")
       ) {
         found.push(
@@ -5484,7 +5521,9 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       !personalMarketDataIsTestSource(path) &&
       (content.includes("PERSONAL_SEC_USER_AGENT") ||
         collectModuleSpecifiers(content).some((specifier) =>
-          /personal-sec-(?:financial|filings)-provider/u.test(specifier),
+          /personal-sec-(?:financial|filings|quarterly-evidence)-provider/u.test(
+            specifier,
+          ),
         ))
     ) {
       found.push(
@@ -6500,6 +6539,7 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== providerPath &&
       path !== secProviderPath &&
       path !== "apps/api/src/personal-sec-filings-provider.ts" &&
+      path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
       return `${path}: only the reviewed Tiingo and SEC providers may use the API runtime fetch capability`;
@@ -6509,6 +6549,8 @@ function personalMarketDataRuntimeBoundaryViolation(
         path === routesPath ||
         path === secProviderPath ||
         path === "apps/api/src/personal-sec-filings-provider.ts" ||
+        path === "apps/api/src/personal-sec-quarterly-evidence-provider.ts" ||
+        path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
         path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
         path === "apps/api/src/workspace-financial-screen-routes.ts") &&
       findIdentifiers(source, new Set(["process"])).length > 0
@@ -6534,8 +6576,97 @@ function personalMarketDataRuntimeBoundaryViolation(
     sources.get("apps/api/src/personal-sec-filings-provider.ts") ?? "",
   );
   if (filingsViolation !== null) return filingsViolation;
+  const quarterlyViolation = personalSecQuarterlyEvidenceProviderViolation(
+    sources.get("apps/api/src/personal-sec-quarterly-evidence-provider.ts") ??
+      "",
+  );
+  if (quarterlyViolation !== null) return quarterlyViolation;
   const routesViolation = personalMarketDataRoutesViolation(routes);
   return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
+}
+
+function personalSecQuarterlyEvidenceProviderViolation(
+  content: string,
+): string | null {
+  const message =
+    "SEC quarterly evidence must retain its bounded fixed-source transport and catalog CIK checks";
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify([
+      "node:crypto",
+      "@research-cockpit/contracts",
+      "./personal-sec-request-scheduler",
+    ])
+  )
+    return message;
+  const compact = content.replace(/\s+/gu, "");
+  const required = [
+    "awaitthis.#scheduler.wait(signal)",
+    "setTimeout(()=>controller.abort(),LIMITS.requestTimeoutMs,)",
+    "parseJson(awaitreadBoundedText(response,controller.signal))",
+    "normalizeCik(value.cik)!==cik",
+    "inspectedRows>LIMITS.candidateRows",
+    "accessions.length>LIMITS.submissionRows",
+    "size>LIMITS.responseBytes",
+    "response.redirected",
+    'response.url!==""&&response.url!==sourceUrl',
+    "this.#active?.abort()",
+    'if(this.#active!==undefined)fail("busy");',
+  ];
+  if (required.some((anchor) => !compact.includes(anchor))) return message;
+  if (compact.split("normalizeCik(value.cik)!==cik").length !== 3)
+    return message;
+  const source = ts.createSourceFile(
+    "sec-quarterly.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let invalid = false;
+  let fetches = 0;
+  const urls = new Set([
+    "`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`",
+    "`https://data.sec.gov/submissions/CIK${cik}.json`",
+    '`https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u,"")}/${accession}-index.htm`',
+  ]);
+  const visit = (node: ts.Node): void => {
+    if (ts.isTemplateExpression(node) && /https?:\/\//iu.test(node.head.text)) {
+      if (!urls.delete(node.getText(source).replace(/\s+/gu, "")))
+        invalid = true;
+    }
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      if (
+        (ts.isIdentifier(callee) && callee.text === "fetch") ||
+        namedBoundaryPropertyAccess(callee, new Set(["fetch"])) !== null
+      )
+        invalid = true;
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        callee.name.text === "#fetch"
+      ) {
+        fetches += 1;
+        const expected =
+          'this.#fetch(sourceUrl,{method:"GET",headers:{Accept:"application/json","User-Agent":this.#userAgent!},credentials:"omit",redirect:"error",referrerPolicy:"no-referrer",cache:"no-store",signal:controller.signal})';
+        if (
+          node
+            .getText(source)
+            .replace(/\s+/gu, "")
+            .replace(/,(?=[})])/gu, "") !== expected
+        )
+          invalid = true;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || fetches !== 1 || urls.size !== 0 ? message : null;
 }
 
 function personalSecFilingsProviderViolation(content: string): string | null {
@@ -6543,7 +6674,10 @@ function personalSecFilingsProviderViolation(content: string): string | null {
     "SEC filings provider must retain its reviewed bounded, fixed-source metadata transport";
   if (
     JSON.stringify(collectModuleSpecifiers(content)) !==
-    JSON.stringify(["@research-cockpit/contracts"])
+    JSON.stringify([
+      "@research-cockpit/contracts",
+      "./personal-sec-request-scheduler",
+    ])
   )
     return message;
   const source = ts.createSourceFile(
@@ -6697,9 +6831,13 @@ function personalSecFilingsProviderViolation(content: string): string | null {
 function personalSecFinancialProviderViolation(content: string): string | null {
   if (
     JSON.stringify(collectModuleSpecifiers(content)) !==
-    JSON.stringify(["node:crypto", "@research-cockpit/contracts"])
+    JSON.stringify([
+      "node:crypto",
+      "@research-cockpit/contracts",
+      "./personal-sec-request-scheduler",
+    ])
   ) {
-    return "SEC financial provider imports must remain node:crypto and shared contracts only";
+    return "SEC financial provider imports must remain node:crypto, shared contracts and the shared SEC scheduler only";
   }
   const source = ts.createSourceFile(
     "personal-sec-financial-provider.ts",
@@ -7710,6 +7848,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
     [
+      "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
       "apps/api/src/workspace-portfolio-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
@@ -7788,6 +7930,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-watchlist-filings-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
@@ -12779,6 +12929,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ],
     [
       "apps/api/src/workspace-market-data-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts",
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     [

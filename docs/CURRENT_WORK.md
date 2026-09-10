@@ -32,36 +32,34 @@ These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: linked portfolio returns
+## Last verified release: quarterly compatibility
 
-Release `12e2495` closed linked period returns under an explicit end-of-day flow
-convention, following feature `2fbaf50`. Full local verification passed:
-3,426 Vitest tests plus 10 Node-runner tests, with 9 existing skips. All four
+Release `63c204b` closed quarterly coverage and offline compatibility, following
+feature `af4d7fb`. Full local verification passed:
+3,528 Vitest tests plus 10 Node-runner tests, with 9 existing skips. All four
 hosted workflows, including Windows and Ubuntu CI, passed on attempt 1 for that
 exact release. Desktop/mobile external Chrome QA and independent reviews passed.
-The endpoint percentage, Modified Dietz estimate and dollar bridge remain
-available under their own rules. See
-[linked return rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#linked-return-end-of-day-flow-convention).
+The quarterly assessment checks the latest four exact fiscal slots and supplied
+compatibility declarations, while retaining a fixed source-admission gate. See
+[quarterly compatibility](./PERSONAL_QUARTERLY_COMPATIBILITY.md).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: quarterly compatibility before TTM
+## Active delivery: selected-company SEC quarterly evidence
 
-Partial Cycle 3h-a4 shows revenue and net-income coverage across the latest four
-expected fiscal quarters. Missing slots and unknown values remain distinct from
-missing period, flow-basis, unit, scope, concept and revision evidence. A pure
-offline assessment checks supplied evidence for internal consistency; the
-current provider response supplies none of that fact-level metadata, so TTM
-stays unavailable even when all four values are known. No new source request or
-aggregation is added. See [quarterly compatibility](./PERSONAL_QUARTERLY_COMPATIBILITY.md).
+Partial Cycle 3h-a5 adds an explicit SEC Company Facts / current Submissions view
+for the selected catalog issuer. It shows exact dated USD revenue/net-income
+observations, distinct concepts and revisions, filing references and unresolved
+metadata. It does not infer fiscal slots from filing-focus labels or durations,
+choose revision operands, or calculate TTM. See
+[SEC quarterly evidence](./PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
 
-Acceptance requires exact four-slot selection without substituting older values,
-field-specific missingness, selected-listing identity binding, explicit unsupported
-calendar/YTD cases, and a fixed source-admission gate even for fully compatible
-synthetic inputs. The existing quarterly tables and session lifecycle continue
-to use the same response. Verify readable desktop/mobile layout and keyboard
-disclosure, then complete the clean-source local and exact-revision hosted gates.
+Acceptance requires catalog/CIK binding, lossless values, distinct same-end-date
+durations, accession membership/conflict handling, explicit caps and partial source
+states. Shared SEC pacing covers concurrent features; cancel and selection/catalog/
+session changes invalidate late results. Verify desktop/mobile layout and keyboard
+disclosure, then complete clean-source local and exact-revision hosted gates.
 
 Live SEC validation still requires the owner's contact and startup configuration.
 The current shell has neither the SEC contact nor the configured catalog path
@@ -74,14 +72,14 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| Now              | Deliver quarterly coverage and offline compatibility assessment                                  | Make missing inputs and evidence explicit before TTM aggregation                |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                       |
-| Next             | Admit period-aware quarterly source evidence, then verified trailing-period financials           | Validate source metadata and revision selection before aggregation or screening |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                        |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions             |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                     |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Deliver selected-company SEC observations with exact dates and filing references                 | Establish an inspectable metadata path before selecting quarterly operands |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                  |
+| Next             | Validate fiscal calendars and revision selection, then verified trailing-period financials       | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -99,9 +97,9 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/personal-financial-analytics exec vitest run src/personal-quarterly-compatibility.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-quarterly-compatibility.test.ts src/features/research/PersonalQuarterlyFinancials.test.tsx
-   pnpm --filter @research-cockpit/personal-financial-analytics typecheck
+   pnpm --filter @research-cockpit/api exec vitest run src/personal-sec-quarterly-evidence-provider.test.ts src/personal-sec-request-scheduler.test.ts src/workspace-sec-quarterly-evidence-routes.test.ts src/workspace-static-graph.test.ts
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-sec-quarterly-evidence-api.test.ts src/features/research/PersonalSecQuarterlyEvidence.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx
+   pnpm --filter @research-cockpit/api typecheck
    pnpm --filter @research-cockpit/web typecheck
    ```
 

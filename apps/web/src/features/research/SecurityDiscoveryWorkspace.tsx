@@ -47,6 +47,7 @@ import {
   type PersonalManualPeerState,
 } from "./PersonalManualPeerComparison";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
+import { PersonalSecQuarterlyEvidence } from "./PersonalSecQuarterlyEvidence";
 import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
 import { PersonalWatchlistFilings } from "./PersonalWatchlistFilings";
@@ -1526,6 +1527,13 @@ export function SecurityDiscoveryWorkspace() {
               providerStatus={marketDataStatus}
               requestState={quarterlyFinancialsRequestState}
               selection={marketSelection}
+            />
+
+            <PersonalSecQuarterlyEvidence
+              catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+              selection={marketSelection}
+              enabled
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
             />
 
             <PersonalWatchlistFilings

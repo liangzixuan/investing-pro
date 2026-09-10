@@ -28,6 +28,7 @@ import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistori
 import type { PersonalManualPeerComparisonProps } from "./PersonalManualPeerComparison";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
+import type { PersonalSecQuarterlyEvidenceProps } from "./PersonalSecQuarterlyEvidence";
 import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
 import type { PersonalFinancialScreenerProps } from "./PersonalFinancialScreener";
 import type { PersonalWatchlistFilingsProps } from "./PersonalWatchlistFilings";
@@ -142,6 +143,7 @@ const componentMocks = vi.hoisted(() => ({
   MarketOverview: () => null,
   OwnerSession: () => null,
   QuarterlyFinancials: () => null,
+  SecQuarterlyEvidence: () => null,
   StockScreener: () => null,
   FinancialScreener: () => null,
   WatchlistFilings: () => null,
@@ -211,6 +213,9 @@ vi.mock("./PersonalManualPeerComparison", () => ({
 }));
 vi.mock("./PersonalQuarterlyFinancials", () => ({
   PersonalQuarterlyFinancials: componentMocks.QuarterlyFinancials,
+}));
+vi.mock("./PersonalSecQuarterlyEvidence", () => ({
+  PersonalSecQuarterlyEvidence: componentMocks.SecQuarterlyEvidence,
 }));
 vi.mock("./PersonalStockScreener", () => ({
   PersonalStockScreener: componentMocks.StockScreener,
@@ -377,6 +382,65 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(
       findElement(renderWorkspace(), componentMocks.WatchlistFilings),
     ).toBeUndefined();
+  });
+
+  it("binds SEC quarterly evidence to the selected company independently of Tiingo setup", async () => {
+    apiMocks.fetchPersonalMarketDataStatus.mockResolvedValue({
+      ...marketStatus(),
+      status: "not_configured",
+    });
+    await activateWorkspace();
+    const getPanel = () =>
+      findElement<PersonalSecQuarterlyEvidenceProps>(
+        renderWorkspace(),
+        componentMocks.SecQuarterlyEvidence,
+      );
+    expect(getPanel()?.props.selection).toBeNull();
+    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    const panel = getPanel();
+    expect(panel?.props.enabled).toBe(true);
+    expect(panel?.props.catalogSnapshotSha256).toBe(snapshot().snapshotSha256);
+    expect(panel?.props.selection).toEqual({
+      country: screenRow().country,
+      exchangeMic: screenRow().exchangeMic,
+      issuerId: screenRow().issuerId,
+      issuerName: screenRow().issuerName,
+      listingId: screenRow().listingId,
+      securityName: screenRow().securityName,
+      symbol: screenRow().symbol,
+    });
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).not.toHaveBeenCalled();
+    requireMarketOverview(renderWorkspace()).props.onClear();
+    expect(getPanel()?.props.selection).toBeNull();
+  });
+
+  it("removes SEC quarterly evidence immediately on session loss and revalidates its catalog context", async () => {
+    await activateWorkspace();
+    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    const panel = findElement<PersonalSecQuarterlyEvidenceProps>(
+      renderWorkspace(),
+      componentMocks.SecQuarterlyEvidence,
+    );
+    panel?.props.onSessionUnavailable();
+    expect(
+      findElement(renderWorkspace(), componentMocks.SecQuarterlyEvidence),
+    ).toBeUndefined();
+    const changedSnapshot = {
+      ...snapshot(),
+      snapshotSha256: `sha256:${"b".repeat(64)}` as const,
+    };
+    apiMocks.fetchPersonalSecurityMasterStatus.mockResolvedValue({
+      snapshot: changedSnapshot,
+    });
+    await activateWorkspace();
+    const revalidated = findElement<PersonalSecQuarterlyEvidenceProps>(
+      renderWorkspace(),
+      componentMocks.SecQuarterlyEvidence,
+    );
+    expect(revalidated?.props.catalogSnapshotSha256).toBe(
+      changedSnapshot.snapshotSha256,
+    );
+    expect(revalidated?.props.selection).toBeNull();
   });
 
   it("routes annual financial screen identities and clears discovery after session loss", async () => {

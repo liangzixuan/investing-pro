@@ -59,6 +59,14 @@ periods, standalone flows, units, scope or revisions. The offline consistency
 checks do not admit a source or calculate an aggregate. See
 [quarterly compatibility](./docs/PERSONAL_QUARTERLY_COMPATIBILITY.md).
 
+**Load SEC quarterly evidence** separately loads dated USD revenue and net-income
+observations from Company Facts and joins their accessions to current Submissions
+for the selected catalog issuer. Exact periods, concepts, filing references and
+unresolved metadata remain visible. Refresh and cancel are explicit; no fiscal
+slots, revision operands or TTM totals are inferred. It uses the existing SEC
+contact setting independently of Tiingo. See
+[SEC quarterly evidence](./docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
+
 A third explicit fundamentals action loads daily valuation history over the
 same 1M, 3M, YTD, 1Y, 5Y, or 10Y range selected for the price view. It shows
 Tiingo-supplied market capitalization and enterprise value in USD plus provider
@@ -1830,7 +1838,7 @@ $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 = "sha256:<64 lowercase hex charac
 $env:RESEARCH_COCKPIT_VAULT_ROOT = "C:\absolute\owner-local\research-cockpit-vault"
 $env:RESEARCH_COCKPIT_VAULT_STARTUP = "initialize" # change to "open" after first start
 $env:PERSONAL_MARKET_DATA_TIINGO_TOKEN = "<owner Tiingo token>" # optional
-$env:PERSONAL_SEC_USER_AGENT = "<application name and real owner contact email>" # optional SEC screening and watchlist filings
+$env:PERSONAL_SEC_USER_AGENT = "<application name and real owner contact email>" # optional SEC screen, filings and quarterly evidence
 
 try {
   $workspaceBootstrapBytes = New-Object byte[] 32

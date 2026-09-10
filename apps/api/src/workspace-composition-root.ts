@@ -31,6 +31,10 @@ import {
   createSecPersonalFilingsProvider,
   type PersonalSecFilingsProvider,
 } from "./personal-sec-filings-provider";
+import {
+  createSecPersonalQuarterlyEvidenceProvider,
+  type PersonalSecQuarterlyEvidenceProvider,
+} from "./personal-sec-quarterly-evidence-provider";
 
 export const PERSONAL_WORKSPACE_API_MODE = "personal_workspace" as const;
 
@@ -192,6 +196,8 @@ async function preparePersonalWorkspaceConfiguredApp(
   let marketDataProvider: PersonalMarketDataProvider | undefined;
   let financialProvider: PersonalSecFinancialProvider | undefined;
   let filingsProvider: PersonalSecFilingsProvider | undefined;
+  let quarterlyEvidenceProvider:
+    PersonalSecQuarterlyEvidenceProvider | undefined;
   try {
     const catalog = await loadPersonalSecurityMasterCatalog(
       snapshotPath,
@@ -206,6 +212,8 @@ async function preparePersonalWorkspaceConfiguredApp(
       createTiingoPersonalMarketDataProvider(marketDataToken);
     financialProvider = createSecPersonalFinancialProvider(secUserAgent);
     filingsProvider = createSecPersonalFilingsProvider(secUserAgent);
+    quarterlyEvidenceProvider =
+      createSecPersonalQuarterlyEvidenceProvider(secUserAgent);
     return await buildPersonalWorkspaceApp(
       catalog,
       vault,
@@ -214,8 +222,10 @@ async function preparePersonalWorkspaceConfiguredApp(
       marketDataProvider,
       financialProvider,
       filingsProvider,
+      quarterlyEvidenceProvider,
     );
   } catch (error) {
+    quarterlyEvidenceProvider?.close();
     filingsProvider?.close();
     financialProvider?.close();
     marketDataProvider?.close();

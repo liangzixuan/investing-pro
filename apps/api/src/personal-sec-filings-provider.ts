@@ -3,6 +3,11 @@ import type {
   PersonalSecRecentFilingDto,
 } from "@research-cockpit/contracts";
 
+import {
+  sharedPersonalSecRequestScheduler,
+  type PersonalSecRequestScheduler,
+} from "./personal-sec-request-scheduler";
+
 export type PersonalSecFilingsProviderErrorCode =
   "not_configured" | "invalid_request" | "busy" | "aborted";
 
@@ -20,6 +25,7 @@ export interface PersonalSecFilingsProvider {
 export interface SecPersonalFilingsProviderDependencies {
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => Date;
+  readonly scheduler?: PersonalSecRequestScheduler;
 }
 
 const MESSAGE = "Personal watchlist filing data is unavailable.";
@@ -62,6 +68,7 @@ class SecPersonalFilingsProvider implements PersonalSecFilingsProvider {
   readonly #userAgent: string | undefined;
   readonly #fetch: typeof globalThis.fetch;
   readonly #now: () => Date;
+  readonly #scheduler: PersonalSecRequestScheduler;
   #closed = false;
   #active: AbortController | undefined;
   #requestHasRun = false;
@@ -73,7 +80,13 @@ class SecPersonalFilingsProvider implements PersonalSecFilingsProvider {
     this.#userAgent = validUserAgent(userAgent) ? userAgent : undefined;
     this.#fetch = dependencies.fetch ?? globalThis.fetch;
     this.#now = dependencies.now ?? (() => new Date());
-    if (typeof this.#fetch !== "function" || typeof this.#now !== "function") {
+    this.#scheduler =
+      dependencies.scheduler ?? sharedPersonalSecRequestScheduler;
+    if (
+      typeof this.#fetch !== "function" ||
+      typeof this.#now !== "function" ||
+      typeof this.#scheduler.wait !== "function"
+    ) {
       throw new TypeError(MESSAGE);
     }
   }
@@ -129,9 +142,16 @@ class SecPersonalFilingsProvider implements PersonalSecFilingsProvider {
       for (const cik of requestedCiks) {
         if (controller.signal.aborted) fail("aborted");
         // This adapter remains below four requests/second even across batches.
-        // The annual Frames adapter independently waits 220 ms between requests.
+        // A shared scheduler also bounds aggregate SEC traffic across providers.
         if (this.#requestHasRun)
           await delay(REQUEST_INTERVAL_MS, controller.signal);
+        try {
+          await this.#scheduler.wait(controller.signal);
+        } catch {
+          if (this.#closed || controller.signal.aborted) fail("aborted");
+          fail("busy");
+        }
+        if (this.#closed || controller.signal.aborted) fail("aborted");
         this.#requestHasRun = true;
         issuers.push(
           await this.#loadIssuer(cik, fromDate, throughDate, controller.signal),
