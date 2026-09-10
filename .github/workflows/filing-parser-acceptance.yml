@@ -893,6 +893,91 @@ jobs:
           fi
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
 
+      - name: Classify exact partial Cycle 3h-a5 non-evidence routing closure
+        id: cycle3ha5_route
+        shell: bash
+        run: |
+          exact=false
+          cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
+          prior_closure="63c204bccb4975ea44cf53bdea536ca3ec5afc20"
+          feature="6e6bef9ffa4b1520eeb753768a90b767df4cbd21"
+          expected=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
+          expected_feature=(
+            "M" "README.md"
+            "M" "apps/api/src/personal-sec-filings-provider.test.ts"
+            "M" "apps/api/src/personal-sec-filings-provider.ts"
+            "M" "apps/api/src/personal-sec-financial-provider.test.ts"
+            "M" "apps/api/src/personal-sec-financial-provider.ts"
+            "A" "apps/api/src/personal-sec-quarterly-evidence-provider.test.ts"
+            "A" "apps/api/src/personal-sec-quarterly-evidence-provider.ts"
+            "A" "apps/api/src/personal-sec-request-scheduler.test.ts"
+            "A" "apps/api/src/personal-sec-request-scheduler.ts"
+            "M" "apps/api/src/workspace-app.ts"
+            "M" "apps/api/src/workspace-composition-root.test.ts"
+            "M" "apps/api/src/workspace-composition-root.ts"
+            "A" "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts"
+            "A" "apps/api/src/workspace-sec-quarterly-evidence-routes.ts"
+            "M" "apps/api/src/workspace-static-graph.test.ts"
+            "M" "apps/web/app/globals.css"
+            "A" "apps/web/src/features/research/PersonalSecQuarterlyEvidence.test.tsx"
+            "A" "apps/web/src/features/research/PersonalSecQuarterlyEvidence.tsx"
+            "M" "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx"
+            "M" "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx"
+            "A" "apps/web/src/lib/personal-sec-quarterly-evidence-api.test.ts"
+            "A" "apps/web/src/lib/personal-sec-quarterly-evidence-api.ts"
+            "M" "docs/CURRENT_WORK.md"
+            "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+            "A" "docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md"
+            "M" "packages/contracts/src/index.ts"
+            "A" "packages/contracts/src/personal-sec-quarterly-evidence.ts"
+            "M" "scripts/verify-boundaries.ts"
+          )
+          matches_exactly() {
+            local -n expected_values="$1"
+            local -n actual_values="$2"
+            if [[ "${#actual_values[@]}" != "${#expected_values[@]}" ]]; then return 1; fi
+            for index in "${!expected_values[@]}"; do
+              if [[ "${actual_values[$index]}" != "${expected_values[$index]}" ]]; then return 1; fi
+            done
+          }
+          if git cat-file -e "$cycle2z_baseline^{commit}" && \
+             git cat-file -e "$prior_closure^{commit}" && \
+             git cat-file -e "$feature^{commit}"; then
+            read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
+            read -r -a feature_topology <<< "$(git rev-list --parents -n 1 "$feature")"
+            mapfile -d '' -t actual < <(
+              git diff --name-status --no-renames -z "$feature" HEAD --
+            )
+            mapfile -d '' -t feature_actual < <(
+              git diff --name-status --no-renames -z "$prior_closure" "$feature" --
+            )
+            if [[ "$(git merge-base "$cycle2z_baseline" HEAD)" == "$cycle2z_baseline" ]] && \
+               [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "87" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "87" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "88" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "88" ]] && \
+               [[ "${#feature_topology[@]}" == "2" ]] && \
+               [[ "${feature_topology[0]}" == "$feature" ]] && \
+               [[ "${feature_topology[1]}" == "$prior_closure" ]] && \
+               [[ "${#head_topology[@]}" == "2" ]] && \
+               [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+               [[ "${head_topology[1]}" == "$feature" ]] && \
+               matches_exactly expected actual && \
+               matches_exactly expected_feature feature_actual; then
+              exact=true
+            fi
+          fi
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
+
       - name: Install pinned pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -924,11 +1009,11 @@ jobs:
         env:
           CI: "true"
           FILING_PARSER_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-isolation-v1.json
-        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' }}
         run: pnpm filing-parser:acceptance
 
       - name: Verify canonical evidence against the exact commit
-        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-parser-isolation-v1.json
@@ -944,7 +1029,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID"
 
       - name: Upload filing parser isolation evidence
-        if: ${{ success() && steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-parser-isolation-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}

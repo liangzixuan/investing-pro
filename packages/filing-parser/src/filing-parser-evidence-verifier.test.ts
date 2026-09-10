@@ -245,6 +245,10 @@ import {
   isCycle3ha4FeatureTopologyAllowed,
   isCycle3ha4RoutingClosureCommitDiffSetAllowed,
   isCycle3ha4RoutingClosureTopologyAllowed,
+  isCycle3ha5FeatureCommitDiffSetAllowed,
+  isCycle3ha5FeatureTopologyAllowed,
+  isCycle3ha5RoutingClosureCommitDiffSetAllowed,
+  isCycle3ha5RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -1028,6 +1032,10 @@ const CYCLE_3M_A7_ROUTING_CLOSURE_REVISION =
   "12e24957407f9fd318972fa87402672736660274" as const;
 const CYCLE_3H_A4_FEATURE_REVISION =
   "af4d7fbd4a392d26f54c4bad07ddbe70d524a312" as const;
+const CYCLE_3H_A4_ROUTING_CLOSURE_REVISION =
+  "63c204bccb4975ea44cf53bdea536ca3ec5afc20" as const;
+const CYCLE_3H_A5_FEATURE_REVISION =
+  "6e6bef9ffa4b1520eeb753768a90b767df4cbd21" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -3560,6 +3568,96 @@ const CYCLE_3H_A4_FEATURE_TRANSITION = [
   },
 ];
 const CYCLE_3H_A4_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3H_A5_FEATURE_TRANSITION = [
+  { path: "README.md", status: "M" },
+  { path: "apps/api/src/personal-sec-filings-provider.test.ts", status: "M" },
+  { path: "apps/api/src/personal-sec-filings-provider.ts", status: "M" },
+  { path: "apps/api/src/personal-sec-financial-provider.test.ts", status: "M" },
+  { path: "apps/api/src/personal-sec-financial-provider.ts", status: "M" },
+  {
+    path: "apps/api/src/personal-sec-quarterly-evidence-provider.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/personal-sec-request-scheduler.test.ts", status: "A" },
+  { path: "apps/api/src/personal-sec-request-scheduler.ts", status: "A" },
+  { path: "apps/api/src/workspace-app.ts", status: "M" },
+  { path: "apps/api/src/workspace-composition-root.test.ts", status: "M" },
+  { path: "apps/api/src/workspace-composition-root.ts", status: "M" },
+  {
+    path: "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/workspace-static-graph.test.ts", status: "M" },
+  { path: "apps/web/app/globals.css", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalSecQuarterlyEvidence.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalSecQuarterlyEvidence.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/lib/personal-sec-quarterly-evidence-api.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/lib/personal-sec-quarterly-evidence-api.ts",
+    status: "A",
+  },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md", status: "A" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  {
+    path: "packages/contracts/src/personal-sec-quarterly-evidence.ts",
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3H_A5_ROUTING_CLOSURE_TRANSITION = [
   { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -9706,6 +9804,118 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedQuarterlyCompatibilityClosure = [
+      "86",
+      "86",
+      CYCLE_3H_A4_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3H_A4_ROUTING_CLOSURE_REVISION} ${CYCLE_3H_A4_FEATURE_REVISION}`,
+      quarterlyCompatibilityFeature,
+    ] as const;
+    expect(
+      isCycle3ha4RoutingClosureTopologyAllowed(
+        ...pinnedQuarterlyCompatibilityClosure,
+      ),
+    ).toBe(true);
+    const secQuarterlyEvidenceFeature = [
+      "87",
+      "87",
+      CYCLE_3H_A5_FEATURE_REVISION,
+      `${CYCLE_3H_A5_FEATURE_REVISION} ${CYCLE_3H_A4_ROUTING_CLOSURE_REVISION}`,
+      pinnedQuarterlyCompatibilityClosure,
+    ] as const;
+    expect(
+      isCycle3ha5FeatureTopologyAllowed(...secQuarterlyEvidenceFeature),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "86"],
+      [1, "88"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3H_A5_FEATURE_REVISION} ${CYCLE_3H_A4_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3H_A5_FEATURE_REVISION} ${CYCLE_3H_A4_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...secQuarterlyEvidenceFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha5FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha5FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedQuarterlyCompatibilityClosure: unknown[] = [
+      ...pinnedQuarterlyCompatibilityClosure,
+    ];
+    tamperedPinnedQuarterlyCompatibilityClosure[4] =
+      tamperedQuarterlyCompatibilityFeature;
+    expect(
+      isCycle3ha5FeatureTopologyAllowed(
+        "87",
+        "87",
+        CYCLE_3H_A5_FEATURE_REVISION,
+        `${CYCLE_3H_A5_FEATURE_REVISION} ${CYCLE_3H_A4_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedQuarterlyCompatibilityClosure as unknown as Parameters<
+          typeof isCycle3ha5FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const secQuarterlyEvidenceClosureRevision = "e".repeat(40);
+    const secQuarterlyEvidenceClosure = [
+      "88",
+      "88",
+      secQuarterlyEvidenceClosureRevision,
+      `${secQuarterlyEvidenceClosureRevision} ${CYCLE_3H_A5_FEATURE_REVISION}`,
+      secQuarterlyEvidenceFeature,
+    ] as const;
+    expect(
+      isCycle3ha5RoutingClosureTopologyAllowed(...secQuarterlyEvidenceClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "87"],
+      [1, "89"],
+      [2, CYCLE_3H_A5_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${secQuarterlyEvidenceClosureRevision} ${CYCLE_3H_A4_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${secQuarterlyEvidenceClosureRevision} ${CYCLE_3H_A5_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...secQuarterlyEvidenceClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ha5RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ha5RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedSecQuarterlyEvidenceFeature: unknown[] = [
+      ...secQuarterlyEvidenceFeature,
+    ];
+    tamperedSecQuarterlyEvidenceFeature[4] =
+      tamperedPinnedQuarterlyCompatibilityClosure;
+    expect(
+      isCycle3ha5RoutingClosureTopologyAllowed(
+        "88",
+        "88",
+        secQuarterlyEvidenceClosureRevision,
+        `${secQuarterlyEvidenceClosureRevision} ${CYCLE_3H_A5_FEATURE_REVISION}`,
+        tamperedSecQuarterlyEvidenceFeature as unknown as Parameters<
+          typeof isCycle3ha5RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes the exact source, evidence, promotion, alias, and routing transitions", () => {
@@ -10019,6 +10229,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3H_A4_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ha5FeatureCommitDiffSetAllowed,
+      CYCLE_3H_A5_FEATURE_TRANSITION,
+      28,
+    );
+    expectExactTransition(
+      isCycle3ha5RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3H_A5_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -10110,6 +10330,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3M_A7_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3H_A4_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3H_A4_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A5_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3H_A5_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
