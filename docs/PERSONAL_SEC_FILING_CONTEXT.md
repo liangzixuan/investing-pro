@@ -61,6 +61,33 @@ strings retain at most 64 characters. The entity scheme must be exactly
 Supported US-GAAP namespace dates are calendar-valid years 2009–2099. These
 checks establish bounded correspondence, not full taxonomy or DTS validation.
 
+## Explain unresolved references
+
+Partial Cycle 3h-a12 adds **Why this value remains unresolved** when retained
+candidate issues prevent correspondence. Groups use the complete reported issue
+set and whether explicit, typed or unknown scope is retained. Each reference
+shows its own observed dimension details. Equivalent references
+remain separate, with a control for opening each exact candidate context. The
+control changes the candidate page when needed, opens the disclosure and moves
+keyboard focus to it. It does not reload source data. Later ordinary paging does
+not replay a prior jump; refresh, cancellation and selection changes clear the
+inspection and its pending navigation.
+
+The grouping uses the existing validated response and preserves its numeric
+decision. The parser currently excludes a numeric row from uncertainty if its
+issues include an issuer or period mismatch, even alongside other issues. Those
+references remain inspectable with their additional issues. Their exclusion is
+not presented as proof of well-formed scope. Changing this rule needs separate
+review and tests; this explanation does not admit additional numerical facts.
+
+An `unsupported_dimensions` issue is broader than projected explicit or typed
+members. When no such members are retained, the explanation states that scope
+details are unavailable. It does not call the context dimension-free. Resolved
+axis/member identifiers show what the projection observed; they do not establish
+container grammar, taxonomy defaults, consolidated scope or full XBRL validity.
+Typed-member text stays in the existing candidate disclosure. Matched, differing,
+ambiguous and empty/global-failure outcomes retain their distinct meanings.
+
 ## Filing-declared reporting metadata
 
 Partial Cycle 3h-a8 uses the same primary document to collect `DocumentType`,
@@ -193,9 +220,15 @@ repair comparison used all five original selections and three original document
 digests: 21 successful GETs, with unchanged NVDA/GOOGL summaries. AVGO reaches 72
 numeric candidates and observes document type, fiscal year and fiscal-period
 focus. All report ends identify the same 2020 English date transform addressed
-above; dimensional numeric scope remains unsupported. Final transform coverage
-must be recorded for the exact new release and documents in its handoff. Every
-earlier failure and result remains preserved separately.
+above. The final report-date comparison on release `ec9b302` repeated the
+original five selections and three document digests with 21 successful GETs.
+All report ends are observed and agree with fresh Submissions; the comparative
+NVDA selection retains its older actual fact period. Numeric summaries and the
+other metadata summaries are unchanged. Dimensional numeric scope remains
+unsupported. The separate context-explanation diagnostic remains pending at
+source freeze. Any eventual result applies only to its declared selection and
+document; its actual status is recorded in the local handoff. Every earlier
+failure and result remains preserved separately.
 No eligible amendment was retained in the sample. These are
 specific observed outcomes, not general filing coverage. Fiscal-calendar, flow-
 basis and revision admission remain later work.

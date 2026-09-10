@@ -1,6 +1,7 @@
 import { createEmptyPersonalSecFilingReportingMetadata } from "@research-cockpit/contracts";
 import type {
   PersonalSecFilingContextCandidateDto,
+  PersonalSecFilingContextIssue,
   PersonalSecFilingContextResponseDto,
   PersonalSecQuarterlyObservationDto,
   PersonalSecFilingReportingMetadataDto,
@@ -521,6 +522,311 @@ describe("PersonalSecFilingContext", () => {
         );
     },
   );
+  it("groups complete blocking issue sets and preserves observed scope identifiers", async () => {
+    const first = scopeCandidate(
+      2,
+      ["unsupported_dimensions", "unsupported_unit"],
+      "explicit",
+    );
+    const second = scopeCandidate(
+      3,
+      ["unsupported_unit", "unsupported_dimensions"],
+      "explicit",
+    );
+    const third = scopeCandidate(4, ["unsupported_dimensions"], "typed");
+    api.fetchPersonalSecFilingContext.mockResolvedValue(
+      scopeResponse([first, second, third]),
+    );
+    render();
+    await flush();
+    const view = render();
+    expect(text(view)).toContain("Why this value remains unresolved");
+    expect(
+      text(view).indexOf("Correspondence could not be established"),
+    ).toBeLessThan(text(view).indexOf("Why this value remains unresolved"));
+    expect(
+      text(view).indexOf("Why this value remains unresolved"),
+    ).toBeLessThan(text(view).indexOf("Filing-declared reporting metadata"));
+    expect(text(view)).toContain(
+      "3 retained references prevent a supported comparison",
+    );
+    expect(text(view)).toContain("1 corresponding reference is also retained");
+    expect(text(view)).toContain(
+      "Context scope is outside the supported comparison; Unit is outside the supported USD form · Explicit dimensions retained: custom:ScopeAxis → custom:Member · 2 references",
+    );
+    expect(text(view)).toContain(
+      "custom:ScopeAxis · urn:scope:test · ScopeAxis",
+    );
+    expect(text(view)).toContain("custom:Member · urn:scope:test · Member");
+    expect(text(view)).toContain(
+      "Typed member interpretation remains unsupported",
+    );
+    for (const number of [2, 3, 4])
+      expect(
+        button(view, `Inspect reference /elements/${number}`),
+      ).toBeDefined();
+    expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+  });
+  it("keeps different retained dimension members in separate reason groups", async () => {
+    const first = scopeCandidate(2, ["unsupported_dimensions"], "explicit");
+    const second = scopeCandidate(3, ["unsupported_dimensions"], "explicit");
+    const third = scopeCandidate(4, ["unsupported_dimensions"], "explicit");
+    const dimension = second.dimensions[0];
+    if (dimension === undefined || dimension.member === null) throw new Error();
+    api.fetchPersonalSecFilingContext.mockResolvedValue(
+      scopeResponse([
+        first,
+        {
+          ...second,
+          dimensions: [{ ...dimension, member: null }],
+        },
+        {
+          ...third,
+          dimensions: [
+            {
+              ...dimension,
+              member: { ...dimension.member, namespace: "urn:scope:other" },
+            },
+          ],
+        },
+      ]),
+    );
+    render();
+    await flush();
+    const view = render();
+    const groups = elements(view).filter(
+      (element) =>
+        element.type === "summary" &&
+        text(element).includes("Explicit dimensions retained"),
+    );
+    expect(groups).toHaveLength(3);
+    expect(new Set(groups.map(text)).size).toBe(3);
+    expect(text(groups[0])).toContain("custom:ScopeAxis → custom:Member");
+    expect(text(groups[1])).toContain("custom:ScopeAxis → Unresolved member");
+    expect(text(groups[0])).toContain("First reference /elements/2");
+    expect(text(groups[2])).toContain("First reference /elements/4");
+    expect(groups.every((group) => text(group).endsWith("1 reference"))).toBe(
+      true,
+    );
+    expect(text(view)).toContain("Member: unresolved");
+  });
+  it("does not turn empty projected dimensions into known dimension-free scope", async () => {
+    api.fetchPersonalSecFilingContext.mockResolvedValue(
+      scopeResponse([scopeCandidate(2, ["unsupported_dimensions"])]),
+    );
+    render();
+    await flush();
+    const view = text(render());
+    expect(view).toContain("Scope details unavailable");
+    expect(view).toContain(
+      "Specific scope details are unavailable in this response",
+    );
+    expect(view).not.toContain("dimension-free");
+    expect(view).toContain("a clean candidate cannot establish a match");
+    expect(view).toContain("DocumentPeriodEndDate 2026-06-30 Observed");
+  });
+  it("keeps mixed mismatch issues visible without changing the blocking set", async () => {
+    const blocker = scopeCandidate(2, ["unsupported_dimensions"]);
+    const mixed = {
+      ...scopeCandidate(3, [
+        "entity_mismatch",
+        "malformed_context",
+        "unsupported_dimensions",
+      ]),
+      entityIdentifier: "2",
+      entityCik: "0000000002",
+    };
+    const outside = {
+      ...scopeCandidate(4, ["period_mismatch"]),
+      startDate: "2025-04-01",
+      endDate: "2025-06-30",
+    };
+    api.fetchPersonalSecFilingContext.mockResolvedValue(
+      scopeResponse([blocker, mixed, outside]),
+    );
+    render();
+    await flush();
+    const view = text(render());
+    expect(view).toContain(
+      "1 retained reference prevents a supported comparison",
+    );
+    expect(view).toContain("References excluded by the current comparison · 2");
+    expect(view).toContain(
+      "Issuer mismatch reported; Context structure could not be verified; Context scope is outside the supported comparison",
+    );
+    expect(view).toContain("exclusion does not verify their context scope");
+    expect(view).toContain("Correspondence could not be established");
+  });
+  it.each([
+    "matched",
+    "value_differs",
+    "ambiguous",
+    "no_corresponding_fact",
+  ] as const)(
+    "preserves an honest %s outcome without an unresolved-scope heading",
+    async (status) => {
+      const base = response();
+      if (base.inspection.status !== "available") throw new Error();
+      const first = candidate();
+      const rows =
+        status === "matched"
+          ? [first]
+          : status === "value_differs"
+            ? [{ ...first, rawText: "12", value: "12" }]
+            : status === "ambiguous"
+              ? [
+                  first,
+                  {
+                    ...first,
+                    locator: "/elements/2",
+                    factId: "conflicting-fact",
+                    rawText: "12",
+                    value: "12",
+                  },
+                ]
+              : [
+                  {
+                    ...first,
+                    entityIdentifier: "2",
+                    entityCik: "0000000002",
+                    issues: ["entity_mismatch"] as const,
+                  },
+                ];
+      api.fetchPersonalSecFilingContext.mockResolvedValue({
+        ...base,
+        inspection: {
+          ...base.inspection,
+          analysis: {
+            ...base.inspection.analysis,
+            status,
+            reason: null,
+            candidates: rows,
+            correspondingCandidateLocators: rows
+              .filter((row) => row.issues.length === 0)
+              .map((row) => row.locator),
+          },
+        },
+      });
+      render();
+      await flush();
+      const view = text(render());
+      expect(view).not.toContain("Why this value remains unresolved");
+      expect(view).toContain("DocumentPeriodEndDate 2026-06-30 Observed");
+      expect(view).toContain(
+        status === "matched"
+          ? "Exact value correspondence found"
+          : status === "value_differs"
+            ? "Corresponding filing value differs"
+            : status === "ambiguous"
+              ? "Conflicting corresponding values"
+              : "No corresponding fact found",
+      );
+    },
+  );
+  it("navigates to an exact later-page context once and permits a repeated jump", async () => {
+    api.fetchPersonalSecFilingContext.mockResolvedValue(
+      scopeResponse(
+        Array.from({ length: 11 }, (_, index) =>
+          scopeCandidate(index + 2, ["unsupported_dimensions"]),
+        ),
+      ),
+    );
+    render();
+    await flush();
+    click(render(), "Inspect reference /elements/12");
+    const later = render(false);
+    expect(text(later)).toContain("11 – 12 of 12 filing candidates");
+    const details = elements(later).find(
+      (element) =>
+        element.type === "details" &&
+        typeof element.props.ref === "function" &&
+        text(element).includes("Document element /elements/12"),
+    );
+    expect(details).toBeDefined();
+    const summary = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    const target = { open: false, querySelector: vi.fn(() => summary) };
+    (details!.props.ref as (value: unknown) => void)(target);
+    harness.effects();
+    expect(target.open).toBe(true);
+    expect(summary.focus).toHaveBeenCalledOnce();
+    expect(summary.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    target.open = false;
+    click(render(), "Inspect reference /elements/12");
+    render();
+    expect(target.open).toBe(true);
+    expect(summary.focus).toHaveBeenCalledTimes(2);
+    target.open = false;
+    click(render(), "Previous filing candidates");
+    render();
+    click(render(), "Next filing candidates");
+    render();
+    expect(target.open).toBe(false);
+    expect(summary.focus).toHaveBeenCalledTimes(2);
+    expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+  });
+  it("clears a pending jump on refresh and cancellation without reopening a later result", async () => {
+    const result = scopeResponse([
+      scopeCandidate(2, ["unsupported_dimensions"]),
+    ]);
+    api.fetchPersonalSecFilingContext.mockResolvedValueOnce(result);
+    render();
+    await flush();
+    const old = render();
+    click(old, "Inspect reference /elements/2");
+    const pending = deferred<PersonalSecFilingContextResponseDto>();
+    api.fetchPersonalSecFilingContext.mockReturnValueOnce(pending.promise);
+    click(old, "Refresh filing inspection");
+    expect(text(render())).not.toContain("Why this value remains unresolved");
+    click(old, "Inspect reference /elements/2");
+    click(render(), "Cancel filing inspection");
+    pending.resolve(result);
+    await flush();
+    expect(text(render())).not.toContain("Why this value remains unresolved");
+    api.fetchPersonalSecFilingContext.mockResolvedValueOnce(result);
+    click(render(), "Refresh filing inspection");
+    await flush();
+    const current = render(false);
+    const details = elements(current).find(
+      (element) =>
+        element.type === "details" &&
+        typeof element.props.ref === "function" &&
+        text(element).includes("Document element /elements/2"),
+    );
+    const summary = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    const target = { open: false, querySelector: vi.fn(() => summary) };
+    (details!.props.ref as (value: unknown) => void)(target);
+    harness.effects();
+    expect(target.open).toBe(false);
+    expect(summary.focus).not.toHaveBeenCalled();
+    expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledTimes(3);
+  });
+  it.each(["observation", "catalog", "session", "source generation"])(
+    "clears the scope explanation and ignores stale jumps after %s changes",
+    async (kind) => {
+      api.fetchPersonalSecFilingContext.mockResolvedValue(
+        scopeResponse([scopeCandidate(2, ["unsupported_dimensions"])]),
+      );
+      render();
+      await flush();
+      const old = render();
+      expect(text(old)).toContain("Why this value remains unresolved");
+      if (kind === "observation")
+        props = { ...props, observation: { ...observation(), value: "50" } };
+      if (kind === "catalog")
+        props = { ...props, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` };
+      if (kind === "session") props = { ...props, enabled: false };
+      if (kind === "source generation")
+        props = { ...props, responseGeneration: 2 };
+      expect(text(render(false))).not.toContain(
+        "Why this value remains unresolved",
+      );
+      click(old, "Inspect reference /elements/2");
+      harness.effects();
+      await flush();
+      expect(text(render())).not.toContain("Why this value remains unresolved");
+      expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+    },
+  );
   it("shows a global limit without candidate values or zero-valued inference", async () => {
     const base = response();
     if (base.inspection.status !== "available") throw new Error();
@@ -964,6 +1270,68 @@ function response(): PersonalSecFilingContextResponseDto {
         reason: null,
         candidates: [candidate()],
         correspondingCandidateLocators: ["/elements/1"],
+      },
+    },
+  };
+}
+
+function scopeCandidate(
+  element: number,
+  issues: readonly PersonalSecFilingContextIssue[],
+  dimensionKind?: "explicit" | "typed",
+): PersonalSecFilingContextCandidateDto {
+  return {
+    ...candidate(),
+    locator: `/elements/${element}`,
+    factId: `scope-fact-${element}`,
+    contextId: `scope-context-${element}`,
+    issues,
+    dimensions:
+      dimensionKind === undefined
+        ? []
+        : [
+            {
+              kind: dimensionKind,
+              dimension: {
+                raw: "custom:ScopeAxis",
+                namespace: "urn:scope:test",
+                localName: "ScopeAxis",
+              },
+              member:
+                dimensionKind === "explicit"
+                  ? {
+                      raw: "custom:Member",
+                      namespace: "urn:scope:test",
+                      localName: "Member",
+                    }
+                  : null,
+              typedText:
+                dimensionKind === "typed" ? "Uninterpreted member" : null,
+            },
+          ],
+  };
+}
+function scopeResponse(
+  rows: readonly PersonalSecFilingContextCandidateDto[],
+): PersonalSecFilingContextResponseDto {
+  const base = response();
+  if (base.inspection.status !== "available") throw new Error();
+  const blocker = rows.find(
+    (row) =>
+      row.issues.length > 0 &&
+      !row.issues.includes("entity_mismatch") &&
+      !row.issues.includes("period_mismatch"),
+  );
+  return {
+    ...base,
+    inspection: {
+      ...base.inspection,
+      analysis: {
+        ...base.inspection.analysis,
+        status: "unsupported",
+        reason: blocker?.issues[0] ?? "unsupported_dimensions",
+        candidates: [candidate(), ...rows],
+        correspondingCandidateLocators: [candidate().locator],
       },
     },
   };

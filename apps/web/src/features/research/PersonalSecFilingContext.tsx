@@ -3,6 +3,7 @@
 import type {
   PersonalSecFilingContextCandidateDto,
   PersonalSecFilingContextInspectionDto,
+  PersonalSecFilingContextIssue,
   PersonalSecFilingContextQNameDto,
   PersonalSecFilingContextResponseDto,
   PersonalSecFilingContextUnavailableReason,
@@ -78,6 +79,7 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
   );
   const [isError, setIsError] = useState(false);
   const [page, setPage] = useState(0);
+  const [candidateNavigation, setCandidateNavigation] = useState(0);
   const context = JSON.stringify([
     catalogSnapshotSha256,
     selection,
@@ -96,6 +98,8 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
   const callbacks = useRef(props);
   callbacks.current = props;
   const heading = useRef<HTMLHeadingElement | null>(null);
+  const pendingCandidate = useRef<string | null>(null);
+  const candidateDetails = useRef(new Map<string, HTMLDetailsElement>());
   const deliberateRequest = useRef({ token: requestToken, context });
   if (deliberateRequest.current.token !== requestToken)
     deliberateRequest.current = { token: requestToken, context };
@@ -118,11 +122,32 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
     });
     return () => {
       mounted.current = false;
+      pendingCandidate.current = null;
       epoch.current += 1;
       controller.current?.abort();
       controller.current = null;
     };
   }, [context, requestToken]);
+
+  useEffect(() => {
+    if (
+      activeContext.current !== context ||
+      loadedContext !== context ||
+      !enabled
+    ) {
+      pendingCandidate.current = null;
+      return;
+    }
+    const locator = pendingCandidate.current;
+    if (locator === null) return;
+    const details = candidateDetails.current.get(locator);
+    if (details === undefined) return;
+    pendingCandidate.current = null;
+    details.open = true;
+    const summary = details.querySelector("summary");
+    summary?.focus();
+    summary?.scrollIntoView({ block: "nearest" });
+  }, [candidateNavigation, context, enabled, loadedContext, page, result]);
 
   function invalidate(nextMessage: string) {
     epoch.current += 1;
@@ -131,6 +156,8 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
     setResult(null);
     setRunning(false);
     setPage(0);
+    pendingCandidate.current = null;
+    setCandidateNavigation(0);
     setMessage(nextMessage);
     setIsError(false);
   }
@@ -220,6 +247,34 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
     enabled && !sessionLost.current && loadedContext === context;
   const inspection = currentContext ? (result?.inspection ?? null) : null;
   const isRunning = currentContext && running;
+  const candidateViewEpoch = epoch.current;
+  function inspectCandidate(locator: string) {
+    if (
+      activeContext.current !== context ||
+      epoch.current !== candidateViewEpoch ||
+      !currentContext ||
+      inspection?.status !== "available"
+    )
+      return;
+    const index = inspection.analysis.candidates.findIndex(
+      (row) => row.locator === locator,
+    );
+    if (index < 0) return;
+    pendingCandidate.current = locator;
+    setPage(Math.floor(index / 10));
+    setCandidateNavigation((current) => current + 1);
+  }
+  function changeCandidatePage(nextPage: number) {
+    pendingCandidate.current = null;
+    setPage(nextPage);
+  }
+  function registerCandidateDetails(
+    locator: string,
+    element: HTMLDetailsElement | null,
+  ) {
+    if (element === null) candidateDetails.current.delete(locator);
+    else candidateDetails.current.set(locator, element);
+  }
   return (
     <section
       id="sec-filing-context"
@@ -322,7 +377,9 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
         <InspectionResult
           inspection={inspection}
           page={page}
-          onPageChange={setPage}
+          onPageChange={changeCandidatePage}
+          onInspectCandidate={inspectCandidate}
+          onCandidateDetails={registerCandidateDetails}
         />
       )}
       <p className="sec-quarterly-caveat">
@@ -340,6 +397,8 @@ function InspectionResult({
   inspection,
   page,
   onPageChange,
+  onInspectCandidate,
+  onCandidateDetails,
 }: {
   readonly inspection: Extract<
     PersonalSecFilingContextInspectionDto,
@@ -347,16 +406,17 @@ function InspectionResult({
   >;
   readonly page: number;
   readonly onPageChange: (page: number) => void;
+  readonly onInspectCandidate: (locator: string) => void;
+  readonly onCandidateDetails: (
+    locator: string,
+    element: HTMLDetailsElement | null,
+  ) => void;
 }) {
   const { analysis, observation } = inspection;
   const size = 10;
   const rows = analysis.candidates.slice(page * size, (page + 1) * size);
   return (
     <>
-      <ReportingMetadata
-        metadata={analysis.reportingMetadata}
-        reportDate={observation.filing.reportDate}
-      />
       <p className="sec-filing-context-outcome" role="status">
         <strong>{outcome[analysis.status]}</strong>
         {analysis.reason === null
@@ -377,12 +437,15 @@ function InspectionResult({
         </p>
       ) : null}
       {analysis.status === "unsupported" && analysis.candidates.length > 0 ? (
-        <p className="discovery-warning">
-          Some candidates remain unsupported or uncertain. Retained references
-          are shown for inspection; a clean candidate cannot establish a match
-          while relevant uncertainty remains.
-        </p>
+        <UnresolvedValueExplanation
+          analysis={analysis}
+          onInspectCandidate={onInspectCandidate}
+        />
       ) : null}
+      <ReportingMetadata
+        metadata={analysis.reportingMetadata}
+        reportDate={observation.filing.reportDate}
+      />
       <details className="sec-quarterly-row-details">
         <summary>Inspect revalidated source references</summary>
         <dl>
@@ -487,7 +550,10 @@ function InspectionResult({
                           .join("; ")}
                       </span>
                     ) : null}
-                    <CandidateDetails candidate={candidate} />
+                    <CandidateDetails
+                      candidate={candidate}
+                      onDetails={onCandidateDetails}
+                    />
                   </td>
                 </tr>
               ))}
@@ -526,6 +592,224 @@ function InspectionResult({
         </div>
       ) : null}
     </>
+  );
+}
+
+const issueExplanation: Record<PersonalSecFilingContextIssue, string> = {
+  invalid_document: "Document could not be fully inspected",
+  document_limit: "Document size limit reached",
+  node_limit: "Document element limit reached",
+  depth_limit: "Document nesting limit reached",
+  attribute_limit: "Attribute limit reached",
+  context_limit: "Context limit reached",
+  unit_limit: "Unit limit reached",
+  candidate_limit: "Candidate limit reached",
+  output_limit: "Inspection output limit reached",
+  duplicate_id: "A source identifier is duplicated",
+  invalid_namespace: "Concept namespace could not be verified",
+  invalid_identifier: "A source identifier is invalid",
+  malformed_context: "Context structure could not be verified",
+  unresolved_context: "Referenced context was not found",
+  unsupported_entity: "Issuer identity could not be verified",
+  entity_mismatch: "Issuer mismatch reported",
+  unsupported_dimensions: "Context scope is outside the supported comparison",
+  unsupported_unit: "Unit is outside the supported USD form",
+  unresolved_unit: "Referenced unit was not found",
+  unsupported_period: "Context period is unsupported",
+  period_mismatch: "Period mismatch reported",
+  unsupported_inline: "Inline fact structure is unsupported",
+  unsupported_transform: "Value transformation is unsupported",
+  invalid_numeric: "Numeric text could not be interpreted",
+  decimal_limit: "Numeric precision exceeds the supported bound",
+};
+
+function scopeShape(candidate: PersonalSecFilingContextCandidateDto): string {
+  if (candidate.dimensions.length === 0)
+    return candidate.issues.includes("unsupported_dimensions")
+      ? "Scope details unavailable"
+      : "No explicit or typed dimensions retained";
+  const explicit = candidate.dimensions.some(
+    (dimension) => dimension.kind === "explicit",
+  );
+  const typed = candidate.dimensions.some(
+    (dimension) => dimension.kind === "typed",
+  );
+  return explicit && typed
+    ? "Explicit and typed dimensions retained"
+    : explicit
+      ? "Explicit dimensions retained"
+      : "Typed dimensions retained";
+}
+
+function scopeSummary(candidate: PersonalSecFilingContextCandidateDto): string {
+  const scope = scopeShape(candidate);
+  if (candidate.dimensions.length === 0)
+    return `${scope} · First context ${candidate.contextId ?? candidate.locator}`;
+  const dimensions = candidate.dimensions
+    .slice(0, 2)
+    .map((dimension) =>
+      dimension.kind === "explicit"
+        ? `${dimension.dimension.raw} → ${dimension.member?.raw ?? "Unresolved member"}`
+        : `${dimension.dimension.raw} (typed)`,
+    );
+  return `${scope}: ${dimensions.join("; ")}${candidate.dimensions.length > 2 ? `; ${candidate.dimensions.length - 2} more` : ""}`;
+}
+
+function UnresolvedValueExplanation({
+  analysis,
+  onInspectCandidate,
+}: {
+  readonly analysis: Extract<
+    PersonalSecFilingContextInspectionDto,
+    { status: "available" }
+  >["analysis"];
+  readonly onInspectCandidate: (locator: string) => void;
+}) {
+  const excluded = analysis.candidates.filter(
+    (row) =>
+      row.issues.includes("entity_mismatch") ||
+      row.issues.includes("period_mismatch"),
+  );
+  const blocking = analysis.candidates.filter(
+    (row) => row.issues.length > 0 && !excluded.includes(row),
+  );
+  const groups = new Map<
+    string,
+    {
+      issues: readonly PersonalSecFilingContextIssue[];
+      scope: string;
+      rows: PersonalSecFilingContextCandidateDto[];
+    }
+  >();
+  for (const row of blocking) {
+    const issues = [...row.issues].sort();
+    const scope = scopeShape(row);
+    const key = JSON.stringify([issues, scope, row.dimensions]);
+    const group = groups.get(key);
+    if (group === undefined)
+      groups.set(key, { issues, scope: scopeSummary(row), rows: [row] });
+    else group.rows.push(row);
+  }
+  const scopeCounts = new Map<string, number>();
+  for (const group of groups.values())
+    scopeCounts.set(group.scope, (scopeCounts.get(group.scope) ?? 0) + 1);
+  return (
+    <section
+      className="sec-filing-explanation"
+      aria-labelledby="sec-filing-explanation-title"
+    >
+      <h4 id="sec-filing-explanation-title">
+        Why this value remains unresolved
+      </h4>
+      <p>
+        {blocking.length} retained{" "}
+        {blocking.length === 1 ? "reference prevents" : "references prevent"} a
+        supported comparison.{" "}
+        {analysis.correspondingCandidateLocators.length > 0
+          ? `${analysis.correspondingCandidateLocators.length} corresponding ${analysis.correspondingCandidateLocators.length === 1 ? "reference is" : "references are"} also retained; a clean candidate cannot establish a match while relevant uncertainty remains.`
+          : "No corresponding reference resolves these issues; a clean candidate cannot establish a match while relevant uncertainty remains."}
+      </p>
+      {[...groups].map(([key, group]) => (
+        <details key={key} className="sec-quarterly-row-details">
+          <summary>
+            {group.issues.map((issue) => issueExplanation[issue]).join("; ")} ·{" "}
+            {group.scope}
+            {(scopeCounts.get(group.scope) ?? 0) > 1
+              ? ` · First reference ${group.rows[0]?.locator ?? "unresolved"}`
+              : null}{" "}
+            · {group.rows.length}{" "}
+            {group.rows.length === 1 ? "reference" : "references"}
+          </summary>
+          <ul>
+            {group.rows.map((row) => (
+              <ExplanationReference
+                key={row.locator}
+                candidate={row}
+                onInspectCandidate={onInspectCandidate}
+              />
+            ))}
+          </ul>
+        </details>
+      ))}
+      {excluded.length > 0 ? (
+        <details className="sec-quarterly-row-details">
+          <summary>
+            References excluded by the current comparison · {excluded.length}
+          </summary>
+          <p>
+            The current comparison excludes references with a reported issuer or
+            period mismatch. Their other issues remain listed; exclusion does
+            not verify their context scope.
+          </p>
+          <ul>
+            {excluded.map((row) => (
+              <ExplanationReference
+                key={row.locator}
+                candidate={row}
+                onInspectCandidate={onInspectCandidate}
+              />
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function ExplanationReference({
+  candidate,
+  onInspectCandidate,
+}: {
+  readonly candidate: PersonalSecFilingContextCandidateDto;
+  readonly onInspectCandidate: (locator: string) => void;
+}) {
+  return (
+    <li>
+      <p>
+        <strong>Context {candidate.contextId ?? "unresolved"}</strong> · CIK{" "}
+        {candidate.entityCik ?? "unresolved"} ·{" "}
+        {candidate.startDate ?? "Unknown start"} to{" "}
+        {candidate.endDate ?? "Unknown end"}
+      </p>
+      <p>
+        {candidate.issues.map((issue) => issueExplanation[issue]).join("; ")}
+      </p>
+      {candidate.dimensions.length === 0 ? (
+        <p>
+          {candidate.issues.includes("unsupported_dimensions")
+            ? "The parser flagged unsupported context scope, but no explicit or typed dimensions were retained. Specific scope details are unavailable in this response."
+            : "No explicit or typed dimensions were retained; this does not resolve the listed issues."}
+        </p>
+      ) : (
+        <>
+          <ul>
+            {candidate.dimensions.map((dimension, index) => (
+              <li key={index}>
+                {dimension.kind === "explicit"
+                  ? "Explicit dimension"
+                  : "Typed dimension"}
+                : {describeQName(dimension.dimension)}
+                {dimension.kind === "explicit"
+                  ? ` · Member: ${dimension.member === null ? "unresolved" : describeQName(dimension.member)}`
+                  : " · Typed member interpretation remains unsupported; inspect its source context."}
+              </li>
+            ))}
+          </ul>
+          <p>
+            These are retained dimension references. The response does not
+            describe all context structure or establish consolidated scope.
+          </p>
+        </>
+      )}
+      <div className="sec-quarterly-actions">
+        <button
+          type="button"
+          onClick={() => onInspectCandidate(candidate.locator)}
+        >
+          Inspect reference {candidate.locator}
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -673,11 +957,19 @@ function ReportingReference({
 
 function CandidateDetails({
   candidate,
+  onDetails,
 }: {
   readonly candidate: PersonalSecFilingContextCandidateDto;
+  readonly onDetails: (
+    locator: string,
+    element: HTMLDetailsElement | null,
+  ) => void;
 }) {
   return (
-    <details className="sec-quarterly-row-details">
+    <details
+      className="sec-quarterly-row-details"
+      ref={(element) => onDetails(candidate.locator, element)}
+    >
       <summary>Inspect candidate context</summary>
       <dl>
         <dt>Document element</dt>

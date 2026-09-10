@@ -34,54 +34,57 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `4309cf0` repairs AVGO's canonical Inline XBRL linking attributes, following
-the ASCII declaration and packaged-startup fixes. Its clean native gate passed
-4,249 tests and all 24 builds. Four hosted workflows and both platforms passed on
-the first attempt. External Chrome desktop, mobile and keyboard checks passed.
+Release `ec9b302` supports the observed filing report-end date transform, following
+the declaration, linking-attribute and packaged-startup repairs. Its clean native
+gate passed 4,400 tests and all 24 builds. Four hosted workflows and both platforms
+passed on the first attempt. External Chrome desktop, mobile and keyboard checks
+passed. The configured workspace is running; sign-in remains a separate user step.
 
-The owner has configured SEC contact, an admitted catalog and an encrypted vault.
-The source workspace was restored through its existing launcher; post-restart
-sign-in is separate from source parsing acceptance. The final live check made 21
-successful SEC GETs for the original five selections and three document digests.
-NVDA/GOOGL summaries stayed unchanged; AVGO now reaches analysis and exposes its
-filing type and fiscal labels. All five numeric selections remain unsupported
-because of dimensions. All three documents use the same unsupported report-end
-transform. Catalog gaps, including AAPL and MSFT, remain separate. Tiingo is not
-configured. Actual runtime/session details are in the local checkpoint.
+The final pinned live comparison completed 21 successful SEC GETs across the
+original five selections and three documents. Report ends resolve for NVDA,
+GOOGL and AVGO and agree with fresh Submissions. NVDA's comparative observation
+retains its older actual period. Numeric summaries and other reporting metadata
+are unchanged; all five numeric results remain unsupported because of dimensions.
+These results describe only that retained sample. Actual acceptance/runtime
+details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: filing-declared report-end dates
+## Active delivery: explain unresolved filing references
 
-Partial Cycle 3h-a11 supports the observed `date-monthname-day-year-en` transform
-from the exact 2020 registry namespace for `DocumentPeriodEndDate`. This lets the
-existing inspector show the filing's canonical report end and its independent
-comparison with Submissions. Actual dates of short, long and comparative financial
-observations remain unchanged.
+Partial Cycle 3h-a12 adds a “Why this value remains unresolved” explanation to
+the existing filing inspector. It groups retained blocking references by their
+complete issue sets and whether explicit, typed or unknown scope is retained.
+Individual references show the dimension details in the validated response.
+Each reference opens its exact candidate context, including candidates
+on later pages, without another source request. Repeated jumps, paging and focus
+remain local interactions; refresh, cancellation and selection changes discard
+the prior inspection and its navigation state.
 
-The Python worker and a shared Node/browser normalizer implement the specified
-month spellings, separators, year expansion, first-month selection and calendar
-validity within the existing resource/date bounds. The original text, format,
-entity, context and reference remain inspectable. Unknown formats and invalid
-inputs remain explicit. Eligible values and proven wrong-issuer exclusions require
-independent output recomputation; unresolved or conflicting siblings prevent a
-preferred field value. The response shape and acquisition requests do not change.
+The explanation preserves the parser's numeric decision. Rows the current
+comparison excludes for issuer/period mismatch remain visible with every issue;
+that classification is not proof that a mixed-issue context is well formed.
+An unsupported dimension reason with no projected members remains unknown scope.
+Projected axis/member names do not establish consolidated scope, taxonomy
+defaults or container grammar. Typed content is inspected only in the existing
+candidate disclosure. Filing metadata and selected values remain unchanged.
 
-Acceptance includes real-worker lexical/calendar cases, Node and browser forged-
-output controls, mixed scope/uncertainty, reference display and comparison states,
-unchanged numeric results and selected periods, and desktop/mobile/keyboard QA.
-Freeze the reviewed source before the complete native gate and applicable hosted
-checks. A freshly declared live comparison must retain the original selections
-and document digests, with earlier results preserved. Record actual outcomes in
-the release handoff; this guide does not predict successful live coverage.
+Acceptance covers supported and unresolved outcomes, complete issue grouping,
+explicit/typed/unknown dimension details, mixed mismatch exclusions, retained
+clean siblings, reference multiplicity, cross-page open/focus and no additional
+fetches. Use the actual strict client for desktop/mobile/keyboard browser QA.
+Freeze the reviewed source before the complete native gate and hosted checks.
+A bounded live diagnostic may describe only its declared, pinned selection and
+document; raw documents and numerical fact values stay in memory. Record actual
+coverage and any limits in the local handoff, without predicting a live pass.
 
-Dimensional numeric admission needs separate evidence. This date label does not
-establish consolidated scope, a standalone quarter, fiscal calendars, revisions
-or TTM. Keep catalog refresh and broader metric coverage independent.
+Numeric admission, fiscal calendars, standalone quarters, revisions and TTM remain
+separate evidence-dependent work. Keep catalog refresh and broader source coverage
+independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Decode the observed filing report-end date transform                                             | Show the declared date and compare it independently with Submissions       |
+| Now              | Explain unresolved filing references and open their exact candidate contexts                     | Make existing scope uncertainty actionable without changing numeric rules  |
 | Configured next  | Validate live SEC screening coverage and watchlist filing loads                                  | SEC contact and local workspace are ready; retain explicit coverage gaps   |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |

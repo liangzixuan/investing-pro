@@ -5533,6 +5533,28 @@ thead th {
   white-space: pre-wrap;
 }
 
+.sec-filing-explanation {
+  margin: 16px 0;
+  padding: 14px;
+  border-left: 3px solid var(--amber);
+  background: #fffbf0;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.sec-filing-explanation h4 {
+  margin: 0 0 10px;
+  color: var(--navy);
+}
+
+.sec-filing-explanation ul {
+  padding-left: 20px;
+}
+
+.sec-filing-explanation li + li {
+  margin-top: 12px;
+}
+
 .sec-filing-metadata {
   margin: 18px 0;
 }
