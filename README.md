@@ -64,7 +64,10 @@ observations from Company Facts and joins their accessions to current Submission
 for the selected catalog issuer. Exact periods, concepts, filing references and
 unresolved metadata remain visible. Refresh and cancel are explicit; no fiscal
 slots, revision operands or TTM totals are inferred. It uses the existing SEC
-contact setting independently of Tiingo. See
+contact setting independently of Tiingo. **Compare same period** compares exact
+values and filing references across retained observations for the same concept
+and known start/end dates. It makes no additional source requests and keeps
+coverage limits and conflicting values within an accession visible. See
 [SEC quarterly evidence](./docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
 
 A third explicit fundamentals action loads daily valuation history over the

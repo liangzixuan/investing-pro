@@ -30,6 +30,32 @@ The SEC describes Company Facts as standard-taxonomy facts applying to the entir
 filing entity, separated by units. Current Submissions is a bounded recent filing
 history. See the [SEC API documentation](https://www.sec.gov/search-filings/edgar-application-programming-interfaces).
 
+## Compare observations for the same period
+
+Partial Cycle 3h-a6 adds **Compare same period** to a selected loaded observation.
+The comparison uses the full retained response, including observations outside
+the visible table page. It matches the exact metric, taxonomy, concept, USD unit
+and start/end dates within that issuer response. A missing start date cannot
+establish the same period. Different revenue concepts and same-end-date periods
+with different starts remain separate.
+
+The result distinguishes a single retained observation, agreement on the same
+value, and different reported values. Values are compared as canonical decimal
+strings without floating-point conversion. Counts distinguish observations from
+unique accessions and unique values. Multiple values within one accession are
+flagged separately; metadata variants are preserved. Rows show their filed dates,
+forms, accessions and filing-match status. Only matched metadata receives a filing
+link. Filed-date ordering does not establish a preferred revision or an order
+within the same date.
+
+Comparison, pagination and dismissal make no requests. Changing the metric clears
+the selected comparison; refresh, cancellation and changes to the selected
+company, catalog or owner session clear it with the loaded evidence. Truncation,
+excluded source rows, unavailable filing metadata and older-history limits remain
+visible. A single observation means no other matching observation was retained,
+not that the amount was never revised. Agreement is limited to the loaded rows;
+different values do not establish a restatement or a usable revision operand.
+
 ## What remains unresolved
 
 Actual dates and duration do not classify a fact as a standalone fiscal quarter.
@@ -80,3 +106,9 @@ not establish live coverage. Live validation still requires configured owner
 sources and comparisons against independent filings, including comparative
 periods, amendments, missing units and week-based calendars. No live-source or
 20-issuer validation claim is made by this slice.
+
+Comparison tests additionally cover exact large/negative/zero values, aliases,
+distinct periods, missing starts, metadata variants, same-accession conflicts,
+stable ordering, full-response grouping and lifecycle cleanup. This local
+comparison does not fetch or parse a filing document. Source fact/context
+correspondence remains the next independent source-evidence outcome.

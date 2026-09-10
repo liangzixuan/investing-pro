@@ -156,6 +156,320 @@ describe("PersonalSecQuarterlyEvidence", () => {
     ).toHaveLength(3);
   });
 
+  it("opens a single-observation comparison accessibly and restores focus on close", async () => {
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    const trigger = { isConnected: true, focus: vi.fn() };
+    compareObservation(render(), observation(), trigger);
+    const view = render(false);
+    const region = comparisonRegion(view);
+    expect(text(region)).toContain("Single retained observation.");
+    expect(text(region)).toContain(
+      "1 retained observation across 1 distinct accession",
+    );
+    expect(text(region)).toContain("1 distinct reported value");
+    expect(text(region)).toContain("Issuer CIK 0000000001");
+    expect(text(region)).toContain("Revenue · USD");
+    expect(text(region)).toContain("us-gaap:Revenues");
+    expect(text(region)).toContain("2026-04-01 to 2026-06-30");
+    expect(text(region)).toContain("$12,345,678,901,234,567,890.12");
+    expect(text(region)).toContain("no revision is selected for calculation");
+    expect(text(region)).toContain("TTM remains unavailable");
+    expect(compareButton(view, observation()).props).toMatchObject({
+      "aria-expanded": true,
+      "aria-controls": "sec-quarterly-comparison",
+    });
+    expect(
+      elements(view).filter(
+        (element) =>
+          element.type === "tr" && element.props["aria-current"] === "true",
+      ),
+    ).toHaveLength(2);
+    const heading = elements(region).find((element) => element.type === "h3");
+    expect(heading?.props.tabIndex).toBe(-1);
+    const headingFocus = vi.fn();
+    (heading?.props.ref as { current: unknown }).current = {
+      focus: headingFocus,
+    };
+    harness.effects();
+    expect(headingFocus).toHaveBeenCalledOnce();
+    click(render(), "Close comparison");
+    expect(trigger.focus).toHaveBeenCalledOnce();
+    expect(hasComparison(render())).toBe(false);
+    expect(compareButton(render(), observation()).props["aria-expanded"]).toBe(
+      false,
+    );
+    expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes same-value metadata variants from distinct filings", async () => {
+    const first = observation();
+    const second = {
+      ...observation(1),
+      accessionNumber: first.accessionNumber,
+      frame: null,
+    };
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue(
+      withObservations([first, second]),
+    );
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(render(), first);
+    const region = comparisonRegion(render());
+    expect(text(region)).toContain("Same reported value.");
+    expect(text(region)).toContain(
+      "2 retained observations across 1 distinct accession",
+    );
+    expect(text(region)).not.toContain(
+      "Different values within this accession",
+    );
+    expect(comparisonRows(region)).toHaveLength(2);
+  });
+
+  it("preserves a one-cent large-value difference and flags conflicting rows within an accession", async () => {
+    const first = observation();
+    const second = {
+      ...observation(1),
+      accessionNumber: first.accessionNumber,
+      value: "12345678901234567890.13",
+    };
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue(
+      withObservations([
+        first,
+        second,
+        { ...observation(2), value: "-12.5" },
+        { ...observation(3), value: "0" },
+      ]),
+    );
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(render(), first);
+    const region = comparisonRegion(render());
+    expect(text(region)).toContain("Different reported values.");
+    expect(text(region)).toContain(
+      "4 retained observations across 3 distinct accessions",
+    );
+    expect(text(region)).toContain("4 distinct reported values");
+    expect(text(region)).toContain("$12,345,678,901,234,567,890.12");
+    expect(text(region)).toContain("$12,345,678,901,234,567,890.13");
+    expect(text(region)).toContain("−$12.5");
+    expect(text(region)).toContain("$0");
+    expect(
+      comparisonRows(region).filter((row) =>
+        text(row).includes("Different values within this accession"),
+      ),
+    ).toHaveLength(2);
+    expect(text(region)).toContain(
+      "Different values do not establish a restatement",
+    );
+  });
+
+  it("compares the full loaded response from a later source page and paginates locally", async () => {
+    const all = Array.from({ length: 30 }, (_, index) => observation(index));
+    const base = withObservations(all);
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue({
+      ...base,
+      evidence: {
+        ...base.evidence,
+        olderHistoryAvailable: true,
+        coverage: {
+          ...base.evidence.coverage,
+          availableObservations: 130,
+          invalidRows: 2,
+          truncated: true,
+        },
+        sources: {
+          ...base.evidence.sources,
+          submissions: {
+            ...base.evidence.sources.submissions,
+            status: "rate_limited",
+          },
+        },
+      },
+    });
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    click(render(), "Next observations");
+    compareObservation(render(), observation(25));
+    let region = comparisonRegion(render());
+    expect(text(region)).toContain(
+      "30 retained observations across 30 distinct accessions",
+    );
+    expect(text(region)).toContain("1 – 25 of 30 matching observations");
+    expect(text(region)).toContain(observation(0).accessionNumber);
+    expect(comparisonRows(region)).toHaveLength(25);
+    expect(text(region)).toContain(
+      "Matching observations may have been omitted",
+    );
+    expect(text(region)).toContain("Older filing metadata was not loaded");
+    expect(text(region)).toContain(
+      "2 invalid source rows were excluded from the loaded observations and this comparison",
+    );
+    expect(text(region)).toContain("Current submissions: Rate limited");
+    expect(text(region)).toContain(
+      `Selected observation: $12,345,678,901,234,567,890.12 · Accession ${observation(25).accessionNumber}`,
+    );
+    click(region, "Next comparison observations");
+    region = comparisonRegion(render());
+    expect(text(region)).toContain("26 – 30 of 30 matching observations");
+    expect(comparisonRows(region)).toHaveLength(5);
+    expect(text(region)).toContain("Selected observation");
+    expect(button(region, "Next comparison observations").props.disabled).toBe(
+      true,
+    );
+    click(region, "Previous comparison observations");
+    expect(text(comparisonRegion(render()))).toContain(
+      "1 – 25 of 30 matching observations",
+    );
+    expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+  });
+
+  it("keeps revenue aliases, other durations and net income outside the selected period group", async () => {
+    const all = [
+      observation(),
+      { ...observation(1), concept: "SalesRevenueNet" as const },
+      { ...observation(2), startDate: "2026-01-01", durationDays: 181 },
+      {
+        ...observation(3),
+        metric: "net_income" as const,
+        concept: "NetIncomeLoss" as const,
+      },
+      observation(4),
+    ];
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue(
+      withObservations(all),
+    );
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(render(), observation());
+    const region = comparisonRegion(render());
+    expect(text(region)).toContain(
+      "2 retained observations across 2 distinct accessions",
+    );
+    expect(text(region)).not.toContain("SalesRevenueNet");
+    expect(text(region)).not.toContain("2026-01-01");
+    expect(text(region)).not.toContain("NetIncomeLoss");
+    expect(comparisonRows(region)).toHaveLength(2);
+    change(render(), "SEC observation metric", "net_income");
+    expect(hasComparison(render())).toBe(false);
+    expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+  });
+
+  it("explains a missing start date without grouping multiple unknown periods", async () => {
+    const first = { ...observation(), startDate: null, durationDays: null };
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue(
+      withObservations([
+        first,
+        { ...observation(1), startDate: null, durationDays: null },
+      ]),
+    );
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(render(), first);
+    const region = comparisonRegion(render());
+    expect(text(region)).toContain(
+      "Comparison unavailable: this observation has no start date",
+    );
+    expect(text(region)).toContain("Unknown periods are not grouped together");
+    expect(text(region)).toContain(first.accessionNumber);
+    expect(text(region)).not.toContain(observation(1).accessionNumber);
+    expect(elements(region).some((element) => element.type === "table")).toBe(
+      false,
+    );
+    expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+  });
+
+  it("keeps all filing statuses and provenance while linking only metadata-matched comparisons", async () => {
+    const statuses = [
+      "matched",
+      "metadata_conflict",
+      "not_in_current_submissions",
+      "submissions_unavailable",
+    ] as const;
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue(
+      withObservations(
+        statuses.map((status, index) => ({
+          ...observation(index),
+          filing: { ...observation(index).filing, status },
+        })),
+      ),
+    );
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(render(), observation());
+    const region = comparisonRegion(render());
+    expect(text(region)).toContain("Matched to current submissions");
+    expect(text(region)).toContain("Filing metadata conflict");
+    expect(text(region)).toContain("Not found in current submissions");
+    expect(text(region)).toContain("Filing metadata unavailable");
+    const links = elements(region).filter((element) => element.type === "a");
+    expect(links).toHaveLength(1);
+    expect(links[0]?.props).toMatchObject({
+      href: observation().filing.sourceUrl,
+      target: "_blank",
+      rel: "noopener noreferrer",
+    });
+    expect(
+      elements(region).filter((element) => element.type === "summary"),
+    ).toHaveLength(4);
+    expect(text(region)).toContain("Company Facts locator");
+  });
+
+  it("clears comparison during refresh/cancel and rejects an old compare callback", async () => {
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    const oldView = render();
+    compareObservation(oldView, observation());
+    expect(hasComparison(render())).toBe(true);
+    const pending = deferred<PersonalSecQuarterlyEvidenceResponseDto>();
+    api.fetchPersonalSecQuarterlyEvidence.mockReturnValueOnce(pending.promise);
+    click(render(), "Refresh SEC quarterly evidence");
+    compareObservation(oldView, observation());
+    expect(hasComparison(render())).toBe(false);
+    click(render(), "Cancel SEC evidence load");
+    pending.resolve(response());
+    await flush();
+    expect(hasComparison(render())).toBe(false);
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(oldView, observation());
+    expect(hasComparison(render())).toBe(false);
+  });
+
+  it.each(["listing", "catalog", "session", "closed selection"])(
+    "hides a selected comparison immediately when %s changes",
+    async (kind) => {
+      await mount();
+      click(render(), "Load SEC quarterly evidence");
+      await flush();
+      const oldView = render();
+      compareObservation(oldView, observation());
+      expect(hasComparison(render())).toBe(true);
+      if (kind === "listing")
+        props = {
+          ...props,
+          selection: { ...selection(), listingId: "lst-other" },
+        };
+      if (kind === "catalog")
+        props = { ...props, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` };
+      if (kind === "session") props = { ...props, enabled: false };
+      if (kind === "closed selection") props = { ...props, selection: null };
+      expect(hasComparison(render(false))).toBe(false);
+      compareObservation(oldView, observation());
+      harness.effects();
+      expect(hasComparison(render())).toBe(false);
+      expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+    },
+  );
+
   it.each([
     "metadata_conflict",
     "not_in_current_submissions",
@@ -457,6 +771,12 @@ function response(count = 1): PersonalSecQuarterlyEvidenceResponseDto {
     },
   };
 }
+function withObservations(
+  observations: readonly PersonalSecQuarterlyObservationDto[],
+): PersonalSecQuarterlyEvidenceResponseDto {
+  const base = response(observations.length);
+  return { ...base, evidence: { ...base.evidence, observations } };
+}
 function observation(index = 0): PersonalSecQuarterlyObservationDto {
   const accessionNumber = `0000000001-26-${String(index + 1).padStart(6, "0")}`;
   return {
@@ -622,6 +942,47 @@ function button(value: unknown, label: string) {
 }
 function click(value: unknown, label: string) {
   button(value, label).props.onClick?.();
+}
+function hasComparison(value: unknown): boolean {
+  return elements(value).some(
+    (element) => element.props.id === "sec-quarterly-comparison",
+  );
+}
+function comparisonRegion(value: unknown) {
+  const region = elements(value).find(
+    (element) => element.props.id === "sec-quarterly-comparison",
+  );
+  if (!region) throw new Error("Missing same-period comparison");
+  return region;
+}
+function comparisonRows(value: unknown) {
+  const body = elements(value).find((element) => element.type === "tbody");
+  return elements(body).filter((element) => element.type === "tr");
+}
+function compareButton(
+  value: unknown,
+  item: PersonalSecQuarterlyObservationDto,
+) {
+  const found = elements(value).find(
+    (element) =>
+      element.type === "button" &&
+      typeof element.props["aria-label"] === "string" &&
+      element.props["aria-label"].includes(
+        `accession ${item.accessionNumber}, value ${item.value} USD`,
+      ),
+  );
+  if (!found) throw new Error(`Missing compare action: ${item.id}`);
+  return found;
+}
+function compareObservation(
+  value: unknown,
+  item: PersonalSecQuarterlyObservationDto,
+  trigger: unknown = null,
+) {
+  const onClick = compareButton(value, item).props.onClick as (event: {
+    currentTarget: unknown;
+  }) => void;
+  onClick({ currentTarget: trigger });
 }
 function change(value: unknown, label: string, next: string) {
   const input = elements(value).find(

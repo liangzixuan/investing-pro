@@ -7,6 +7,10 @@ import type {
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  comparePersonalSecQuarterlyObservations,
+  type PersonalSecQuarterlyComparison,
+} from "../../lib/personal-sec-quarterly-comparison";
 import { fetchPersonalSecQuarterlyEvidence } from "../../lib/personal-sec-quarterly-evidence-api";
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
@@ -49,6 +53,11 @@ export function PersonalSecQuarterlyEvidence({
   const [error, setError] = useState(false);
   const [page, setPage] = useState(0);
   const [metric, setMetric] = useState("all");
+  const [comparisonId, setComparisonId] = useState<string | null>(null);
+  const [comparisonPage, setComparisonPage] = useState(0);
+  const comparisonHeading = useRef<HTMLHeadingElement | null>(null);
+  const comparisonTrigger = useRef<HTMLButtonElement | null>(null);
+  const observationsRegion = useRef<HTMLDivElement | null>(null);
   const epoch = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const callback = useRef(onSessionUnavailable);
@@ -68,13 +77,21 @@ export function PersonalSecQuarterlyEvidence({
     setError(false);
     setPage(0);
     setMetric("all");
+    setComparisonId(null);
+    setComparisonPage(0);
+    comparisonTrigger.current = null;
     setLoadedContext(context);
     return () => {
       epoch.current += 1;
       controller.current?.abort();
       controller.current = null;
+      comparisonTrigger.current = null;
     };
   }, [context]);
+
+  useEffect(() => {
+    if (comparisonId !== null) comparisonHeading.current?.focus();
+  }, [comparisonId]);
 
   function invalidate(nextMessage: string) {
     epoch.current += 1;
@@ -86,6 +103,9 @@ export function PersonalSecQuarterlyEvidence({
     setError(false);
     setPage(0);
     setMetric("all");
+    setComparisonId(null);
+    setComparisonPage(0);
+    comparisonTrigger.current = null;
   }
 
   async function load() {
@@ -178,6 +198,36 @@ export function PersonalSecQuarterlyEvidence({
       (item) => metric === "all" || item.metric === metric,
     ) ?? [];
   const rows = observations.slice(page * pageSize, (page + 1) * pageSize);
+  const comparison =
+    current !== null && comparisonId !== null
+      ? comparePersonalSecQuarterlyObservations(current.evidence, comparisonId)
+      : null;
+  const renderEpoch = epoch.current;
+
+  function closeComparison() {
+    setComparisonId(null);
+    setComparisonPage(0);
+    if (comparisonTrigger.current?.isConnected)
+      comparisonTrigger.current.focus();
+    else observationsRegion.current?.focus();
+    comparisonTrigger.current = null;
+  }
+
+  function openComparison(id: string, trigger: HTMLButtonElement | null) {
+    if (
+      current === null ||
+      renderEpoch !== epoch.current ||
+      activeContext.current !== context
+    )
+      return;
+    if (comparisonId === id) {
+      closeComparison();
+      return;
+    }
+    comparisonTrigger.current = trigger;
+    setComparisonPage(0);
+    setComparisonId(id);
+  }
 
   return (
     <section
@@ -321,6 +371,9 @@ export function PersonalSecQuarterlyEvidence({
                 onChange={(event) => {
                   setMetric(event.target.value);
                   setPage(0);
+                  setComparisonId(null);
+                  setComparisonPage(0);
+                  comparisonTrigger.current = null;
                 }}
               >
                 <option value="all">Revenue and net income</option>
@@ -334,6 +387,63 @@ export function PersonalSecQuarterlyEvidence({
                 : `${page * pageSize + 1} – ${Math.min((page + 1) * pageSize, observations.length)} of ${observations.length} loaded observations`}
             </p>
           </div>
+          {comparison === null ? null : (
+            <section
+              className="sec-quarterly-comparison"
+              id="sec-quarterly-comparison"
+              aria-labelledby="sec-quarterly-comparison-title"
+            >
+              <div className="sec-quarterly-comparison-heading">
+                <h3
+                  id="sec-quarterly-comparison-title"
+                  ref={comparisonHeading}
+                  tabIndex={-1}
+                >
+                  Same-period comparison
+                </h3>
+                <button type="button" onClick={closeComparison}>
+                  Close comparison
+                </button>
+              </div>
+              <ComparisonResult
+                comparison={comparison}
+                page={comparisonPage}
+                onPageChange={setComparisonPage}
+              />
+              <p className="sec-quarterly-message">
+                Uses only the loaded observations; comparison makes no source
+                requests. Different values do not establish a restatement, and
+                no revision is selected for calculation. This is not a complete
+                revision history. TTM remains unavailable.
+              </p>
+              {current.evidence.coverage.truncated ? (
+                <p className="discovery-warning">
+                  This source response was truncated. Matching observations may
+                  have been omitted, so this comparison may be incomplete.
+                </p>
+              ) : null}
+              {current.evidence.coverage.invalidRows > 0 ? (
+                <p className="discovery-warning">
+                  {current.evidence.coverage.invalidRows} invalid source rows
+                  were excluded from the loaded observations and this
+                  comparison.
+                </p>
+              ) : null}
+              {current.evidence.sources.submissions.status !== "available" ? (
+                <p className="discovery-warning">
+                  Current submissions:{" "}
+                  {sourceLabels[current.evidence.sources.submissions.status]}.
+                  Filing metadata could not be fully checked.
+                </p>
+              ) : null}
+              {current.evidence.olderHistoryAvailable ? (
+                <p className="sec-quarterly-message">
+                  Older filing metadata was not loaded. Unmatched accession
+                  metadata remains unresolved.
+                </p>
+              ) : null}
+            </section>
+          )}
           {rows.length === 0 ? (
             <p className="discovery-empty-state">
               No dated USD observations are available for this selection. Source
@@ -341,6 +451,7 @@ export function PersonalSecQuarterlyEvidence({
             </p>
           ) : (
             <div
+              ref={observationsRegion}
               className="sec-quarterly-table-scroll"
               role="region"
               tabIndex={0}
@@ -361,7 +472,17 @@ export function PersonalSecQuarterlyEvidence({
                 </thead>
                 <tbody>
                   {rows.map((item) => (
-                    <tr key={item.id}>
+                    <tr
+                      key={item.id}
+                      className={
+                        comparisonId === item.id
+                          ? "sec-quarterly-selected-row"
+                          : undefined
+                      }
+                      aria-current={
+                        comparisonId === item.id ? "true" : undefined
+                      }
+                    >
                       <th scope="row">
                         <strong>
                           {item.metric === "revenue" ? "Revenue" : "Net income"}
@@ -384,8 +505,34 @@ export function PersonalSecQuarterlyEvidence({
                         </span>
                         <span>Period basis unresolved</span>
                       </td>
-                      <td className="sec-quarterly-value">
-                        {formatUsd(item.value)}
+                      <td>
+                        <strong className="sec-quarterly-value">
+                          {formatUsd(item.value)}
+                        </strong>
+                        <button
+                          className="sec-quarterly-compare-action"
+                          type="button"
+                          aria-label={`Compare same period for ${metricLabel(item.metric)}, ${item.concept}, ${item.startDate ?? "unknown start date"} to ${item.endDate}, accession ${item.accessionNumber}, value ${item.value} USD`}
+                          aria-expanded={comparisonId === item.id}
+                          aria-controls={
+                            comparison === null
+                              ? undefined
+                              : "sec-quarterly-comparison"
+                          }
+                          onClick={(event) =>
+                            openComparison(
+                              item.id,
+                              event?.currentTarget ?? null,
+                            )
+                          }
+                        >
+                          Compare same period
+                        </button>
+                        {comparisonId === item.id ? (
+                          <span className="sec-quarterly-selected-label">
+                            Selected for comparison
+                          </span>
+                        ) : null}
                       </td>
                       <td>
                         <span>
@@ -441,6 +588,185 @@ export function PersonalSecQuarterlyEvidence({
         </>
       )}
     </section>
+  );
+}
+
+function ComparisonResult({
+  comparison,
+  page,
+  onPageChange,
+}: {
+  readonly comparison: PersonalSecQuarterlyComparison;
+  readonly page: number;
+  readonly onPageChange: (page: number) => void;
+}) {
+  const selected = comparison.selected;
+  return (
+    <>
+      <dl className="sec-quarterly-comparison-coordinates">
+        <div>
+          <dt>Reported field and unit</dt>
+          <dd>
+            {metricLabel(selected.metric)} · {selected.unit}
+          </dd>
+        </div>
+        <div>
+          <dt>Exact source concept</dt>
+          <dd>{`${selected.taxonomy}:${selected.concept}`}</dd>
+        </div>
+        <div>
+          <dt>Actual source period</dt>
+          <dd>
+            {selected.startDate ?? "Start date not supplied"} to{" "}
+            {selected.endDate}
+          </dd>
+        </div>
+      </dl>
+      <p className="sec-quarterly-message">
+        Issuer CIK {comparison.cik} · Selected observation:{" "}
+        {formatUsd(selected.value)} · Accession {selected.accessionNumber} ·{" "}
+        {selected.form} · Filed {selected.filedDate}.
+      </p>
+      {comparison.status === "missing_period" ? (
+        <p className="discovery-warning" role="status">
+          Comparison unavailable: this observation has no start date. Unknown
+          periods are not grouped together.
+        </p>
+      ) : (
+        <>
+          <p className="sec-quarterly-comparison-summary" role="status">
+            <strong>
+              {comparison.relation === "single_observation"
+                ? "Single retained observation."
+                : comparison.relation === "same_value"
+                  ? "Same reported value."
+                  : "Different reported values."}
+            </strong>{" "}
+            {comparison.rows.length} retained{" "}
+            {comparison.rows.length === 1 ? "observation" : "observations"}{" "}
+            across {comparison.distinctAccessions} distinct{" "}
+            {comparison.distinctAccessions === 1 ? "accession" : "accessions"}.{" "}
+            {comparison.distinctValues} distinct reported{" "}
+            {comparison.distinctValues === 1 ? "value" : "values"}.
+          </p>
+          {comparison.conflictingAccessions.length === 0 ? null : (
+            <p className="discovery-warning">
+              Different values occur within{" "}
+              {comparison.conflictingAccessions.length}{" "}
+              {comparison.conflictingAccessions.length === 1
+                ? "accession"
+                : "accessions"}
+              . The affected rows are flagged below; filing membership does not
+              resolve these differences.
+            </p>
+          )}
+          <div
+            className="sec-quarterly-table-scroll"
+            role="region"
+            tabIndex={0}
+            aria-label="Same-period SEC observation comparison"
+          >
+            <table className="sec-quarterly-table sec-quarterly-comparison-table">
+              <caption>
+                Exact source period and concept shown above · oldest filing date
+                first · no preferred revision
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Value (USD)</th>
+                  <th scope="col">Accession and filing</th>
+                  <th scope="col">Filing match</th>
+                  <th scope="col">Provenance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.rows
+                  .slice(page * pageSize, (page + 1) * pageSize)
+                  .map((item) => (
+                    <tr
+                      key={item.id}
+                      className={
+                        item.id === selected.id
+                          ? "sec-quarterly-selected-row"
+                          : undefined
+                      }
+                      aria-current={
+                        item.id === selected.id ? "true" : undefined
+                      }
+                    >
+                      <th scope="row">
+                        <strong className="sec-quarterly-value">
+                          {formatUsd(item.value)}
+                        </strong>
+                        {item.id === selected.id ? (
+                          <span className="sec-quarterly-selected-label">
+                            Selected observation
+                          </span>
+                        ) : null}
+                      </th>
+                      <td>
+                        <strong>{item.accessionNumber}</strong>
+                        <span>
+                          {item.form} · Filed {item.filedDate}
+                        </span>
+                        {comparison.conflictingAccessions.includes(
+                          item.accessionNumber,
+                        ) ? (
+                          <span className="sec-quarterly-comparison-conflict">
+                            Different values within this accession
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>{filingLabels[item.filing.status]}</td>
+                      <td>
+                        {item.filing.status === "matched" &&
+                        item.filing.sourceUrl !== null ? (
+                          <a
+                            href={item.filing.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View SEC filing
+                          </a>
+                        ) : null}
+                        <ObservationDetails observation={item} />
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="sec-quarterly-actions">
+            <p role="status">
+              {page * pageSize + 1} –{" "}
+              {Math.min((page + 1) * pageSize, comparison.rows.length)} of{" "}
+              {comparison.rows.length} matching observations
+            </p>
+            {comparison.rows.length > pageSize ? (
+              <nav
+                aria-label="SEC comparison pages"
+                className="sec-quarterly-actions"
+              >
+                <button
+                  type="button"
+                  disabled={page === 0}
+                  onClick={() => onPageChange(Math.max(0, page - 1))}
+                >
+                  Previous comparison observations
+                </button>
+                <button
+                  type="button"
+                  disabled={(page + 1) * pageSize >= comparison.rows.length}
+                  onClick={() => onPageChange(page + 1)}
+                >
+                  Next comparison observations
+                </button>
+              </nav>
+            ) : null}
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -509,6 +835,11 @@ function sameSelection(
 }
 function formatInstant(value: string): string {
   return `${value.replace("T", " ").replace(/Z$/u, "")} UTC`;
+}
+function metricLabel(
+  metric: PersonalSecQuarterlyObservationDto["metric"],
+): string {
+  return metric === "revenue" ? "Revenue" : "Net income";
 }
 function formatUsd(value: string): string {
   const negative = value.startsWith("-");

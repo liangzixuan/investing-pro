@@ -32,38 +32,44 @@ These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: quarterly compatibility
+## Last verified release: SEC quarterly evidence
 
-Release `63c204b` closed quarterly coverage and offline compatibility, following
-feature `af4d7fb`. Full local verification passed:
-3,528 Vitest tests plus 10 Node-runner tests, with 9 existing skips. All four
+Release `14002d4` closed the selected-company SEC evidence view, following
+feature `6e6bef9`. Full local verification passed:
+3,760 Vitest tests plus 10 Node-runner tests, with 9 existing skips. All five
 hosted workflows, including Windows and Ubuntu CI, passed on attempt 1 for that
 exact release. Desktop/mobile external Chrome QA and independent reviews passed.
-The quarterly assessment checks the latest four exact fiscal slots and supplied
-compatibility declarations, while retaining a fixed source-admission gate. See
-[quarterly compatibility](./PERSONAL_QUARTERLY_COMPATIBILITY.md).
+The source view preserves exact USD observations, dated periods, concepts and
+filing joins, with bounded loading and shared SEC request pacing. It leaves
+fiscal-quarter classification, revision selection and TTM unresolved. See
+[SEC quarterly evidence](./PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: selected-company SEC quarterly evidence
+## Active delivery: compare SEC observations for the same period
 
-Partial Cycle 3h-a5 adds an explicit SEC Company Facts / current Submissions view
-for the selected catalog issuer. It shows exact dated USD revenue/net-income
-observations, distinct concepts and revisions, filing references and unresolved
-metadata. It does not infer fiscal slots from filing-focus labels or durations,
-choose revision operands, or calculate TTM. See
-[SEC quarterly evidence](./PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
+Partial Cycle 3h-a6 adds an explicit comparison for a selected loaded observation.
+It groups only exact metric, taxonomy, concept, USD unit and known start/end dates
+within one issuer response. It shows retained values and filing references, with
+separate counts for observations, accessions and values. Different reported
+values within one accession remain visible. All comparison actions use loaded
+data; no additional source requests or revision operands are introduced.
 
-Acceptance requires catalog/CIK binding, lossless values, distinct same-end-date
-durations, accession membership/conflict handling, explicit caps and partial source
-states. Shared SEC pacing covers concurrent features; cancel and selection/catalog/
-session changes invalidate late results. Verify desktop/mobile layout and keyboard
-disclosure, then complete clean-source local and exact-revision hosted gates.
+Acceptance requires lossless comparisons, separate aliases and durations, an
+explicit missing-period state, complete use of retained observations across
+table pages, and coverage limits visible with the result. Refresh, cancel and
+selection/catalog/session changes clear the comparison. Verify desktop/mobile
+layout and keyboard access, then complete local and exact-revision hosted gates.
+
+Filing-context inspection follows as its own parser/acquisition slice. The
+existing raw extractor requires a fixed annual ten-fact input and does not
+preserve the context/entity evidence needed for quarterly correspondence. Keep
+that annual contract stable while adding the narrower quarterly projection.
 
 Live SEC validation still requires the owner's contact and startup configuration.
-The current shell has neither the SEC contact nor the configured catalog path
-and digest. This dependency does not prevent completing synthetic engineering
+The last verified release found neither the SEC contact nor the configured
+catalog path and digest in its shell. This dependency does not prevent synthetic engineering
 validation of the next independently useful feature.
 
 Completion requires reviewed code, focused integration tests, the full local
@@ -72,14 +78,14 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Deliver selected-company SEC observations with exact dates and filing references                 | Establish an inspectable metadata path before selecting quarterly operands |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                  |
-| Next             | Validate fiscal calendars and revision selection, then verified trailing-period financials       | Source observations alone do not prove four compatible standalone quarters |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
+| Priority         | Deliverable                                                                                        | Dependency or reason                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Now              | Compare retained SEC observations for exactly the same concept and period                          | Make reported-value differences inspectable without assigning revisions    |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                    | Requires owner contact and existing startup configuration                  |
+| Next             | Inspect selected filing contexts, then validate calendars, revision selection and trailing periods | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                    | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                         | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests   | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -97,9 +103,7 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/api exec vitest run src/personal-sec-quarterly-evidence-provider.test.ts src/personal-sec-request-scheduler.test.ts src/workspace-sec-quarterly-evidence-routes.test.ts src/workspace-static-graph.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-sec-quarterly-evidence-api.test.ts src/features/research/PersonalSecQuarterlyEvidence.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx
-   pnpm --filter @research-cockpit/api typecheck
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-sec-quarterly-comparison.test.ts src/lib/personal-sec-quarterly-evidence-api.test.ts src/features/research/PersonalSecQuarterlyEvidence.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx
    pnpm --filter @research-cockpit/web typecheck
    ```
 
