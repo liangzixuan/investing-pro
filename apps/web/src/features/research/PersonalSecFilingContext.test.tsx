@@ -84,6 +84,69 @@ describe("PersonalSecFilingContext", () => {
     expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
   });
   it.each([
+    ["2026-06-30", "report date agree: 2026-06-30"],
+    [
+      "2026-07-01",
+      "current Submissions reports 2026-07-01. These dates differ",
+    ],
+  ])(
+    "shows a normalized date and original transformation provenance beside Submissions %s",
+    async (reportDate, comparison) => {
+      const base = response();
+      if (base.inspection.status !== "available") throw new Error();
+      const metadata = reportingMetadata();
+      const transformed = {
+        ...metadata,
+        observations: metadata.observations.map((row, index) =>
+          index === 1
+            ? {
+                ...row,
+                rawText: "June 30, 2026",
+                format: {
+                  raw: "ixt:date-monthname-day-year-en",
+                  namespace:
+                    "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+                  localName: "date-monthname-day-year-en",
+                },
+              }
+            : row,
+        ),
+      };
+      api.fetchPersonalSecFilingContext.mockResolvedValue({
+        ...base,
+        inspection: {
+          ...base.inspection,
+          observation: {
+            ...base.inspection.observation,
+            filing: { ...base.inspection.observation.filing, reportDate },
+          },
+          analysis: {
+            ...base.inspection.analysis,
+            reportingMetadata: transformed,
+          },
+        },
+      });
+      render();
+      await flush();
+      const view = text(render());
+      expect(view).toContain("DocumentPeriodEndDate 2026-06-30 Observed");
+      expect(view).toContain("Raw metadata text June 30, 2026");
+      expect(view).toContain("Format attribute ixt:date-monthname-day-year-en");
+      expect(view).toContain(
+        "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+      );
+      expect(view).toContain("Normalized reference value 2026-06-30");
+      expect(view).toContain("/elements/201 / dei-1 / reporting-duration");
+      expect(view).toContain(
+        "Actual source period 2026-04-01 to 2026-06-30 91 days, inclusive",
+      );
+      expect(view).toContain(comparison);
+      expect(view).toContain("Exact value correspondence found");
+      expect(view).toContain("TTM remains unavailable");
+      expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+    },
+  );
+  it.each([
     ["2026-07-01", "2026-09-30", 92],
     ["2026-01-01", "2026-09-30", 273],
     ["2025-07-01", "2025-09-30", 92],

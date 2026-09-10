@@ -998,5 +998,6 @@ export interface ProblemDetailsDto {
   traceId: string;
 }
 export * from "./personal-sec-filing-context";
+export * from "./personal-sec-reporting-value";
 export * from "./personal-financial-screener";
 export * from "./personal-watchlist-filings";

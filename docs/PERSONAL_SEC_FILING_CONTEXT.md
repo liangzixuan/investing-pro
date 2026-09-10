@@ -92,10 +92,28 @@ calendar-valid ISO date. Text normalization collapses only XML whitespace.
 The initial metadata subset accepts direct text-only `ix:nonNumeric` values in
 well-formed duration contexts for the selected issuer without dimensions.
 Context dates are preserved and need not equal the selected financial fact's
-period. Transforms, nested markup, continuations, tuples, alternate targets, nil
-and escape semantics remain unsupported. Unsupported or unfamiliar declarations
-are not inferred from visible prose. The underlying context and entity checks
-are shared with numeric inspection, whose correspondence rules remain unchanged.
+period. Nested markup, continuations, tuples, alternate targets, nil and escape
+semantics remain unsupported. The report-end transform below is the only supported
+metadata transform. Unsupported or unfamiliar declarations are not inferred from
+visible prose. The underlying context and entity checks are shared with numeric
+inspection, whose correspondence rules remain unchanged.
+
+Partial Cycle 3h-a11 supports `date-monthname-day-year-en` in the exact
+`http://www.xbrl.org/inlineXBRL/transformation/2020-02-12` namespace, only for
+`DocumentPeriodEndDate`. The [2020 registry's input type and function definition](https://www.xbrl.org/Specification/inlineXBRL-transformationRegistry/REC-2020-02-12/inlineXBRL-transformationRegistry-REC-2020-02-12.html)
+specify the English month spellings, nonnumeric separators, one/two/four-digit
+years, first-month selection and calendar validity. One- and two-digit years
+expand into the 2000s. The application retains its 4,096-character input bound
+and supported date years 1000–9999; it does not use locale-dependent date parsing.
+
+The worker retains the original text and namespace-resolved format beside the
+canonical date. Node and browser validators share a pure normalizer and recompute
+the result before admitting either an eligible reference or a proven wrong-issuer
+exclusion. Unknown formats stay `unsupported_transform`; invalid input to the
+supported transform stays `invalid_metadata_value`. A valid sibling cannot hide
+an unresolved or conflicting declaration. The existing panel displays the date
+and its source reference, then compares it independently with Submissions. That
+agreement does not establish the selected fact's fiscal period or flow basis.
 
 Route request/response and worker input/output use schema version `2.0.0`, with
 a required structured metadata projection. Quarterly evidence and stored data
@@ -170,11 +188,14 @@ parsed the three NVDA selections and GOOGL selection. Numeric comparison remaine
 unsupported because of dimensions; each filing exposed three DEI labels while its
 report-end date transform remained unsupported. AVGO still returned a global
 `invalid_document`. A further exact-digest diagnosis located its first rejection
-at canonical `fromRefs` on an Inline XBRL 2013 `relationship`. A reviewed candidate
-on the same original bytes reaches 72 numeric candidates and observes document
-type, fiscal year and fiscal-period focus; dimensional numeric scope and report end
-remain unresolved. The original failure is preserved separately from this
-candidate and final release acceptance.
+at canonical `fromRefs` on an Inline XBRL 2013 `relationship`. The final linking
+repair comparison used all five original selections and three original document
+digests: 21 successful GETs, with unchanged NVDA/GOOGL summaries. AVGO reaches 72
+numeric candidates and observes document type, fiscal year and fiscal-period
+focus. All report ends identify the same 2020 English date transform addressed
+above; dimensional numeric scope remains unsupported. Final transform coverage
+must be recorded for the exact new release and documents in its handoff. Every
+earlier failure and result remains preserved separately.
 No eligible amendment was retained in the sample. These are
 specific observed outcomes, not general filing coverage. Fiscal-calendar, flow-
 basis and revision admission remain later work.

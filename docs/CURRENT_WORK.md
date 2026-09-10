@@ -34,59 +34,54 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `fe04a47` repaired ASCII filing declarations and packaged API startup.
-Its clean native gate passed 4,221 tests and all 24 builds; four applicable hosted
-workflows passed. Windows needed one unchanged retry after an existing database
-test timed out. The original failure and retry remain in the release handoff.
+Release `4309cf0` repairs AVGO's canonical Inline XBRL linking attributes, following
+the ASCII declaration and packaged-startup fixes. Its clean native gate passed
+4,249 tests and all 24 builds. Four hosted workflows and both platforms passed on
+the first attempt. External Chrome desktop, mobile and keyboard checks passed.
 
-The owner has now configured SEC contact and an admitted local catalog, initialized
-an empty encrypted vault, and signed in. The first real sample made 21 successful
-SEC GETs but all five inspections across three documents returned `invalid_document`.
-A pinned-digest declaration repair lets the three NVDA selections and GOOGL reach
-analysis, with dimensional values and the report-date transform still unsupported.
-AVGO remained globally unavailable. Its next bounded diagnosis reproduced the same
-document and found canonical `fromRefs` on an Inline XBRL 2013 `relationship`
-element rejected by an incomplete attribute-casing map. Catalog exact-match gaps,
-including AAPL and MSFT, remain separate from SEC coverage. Tiingo is not configured.
+The owner has configured SEC contact, an admitted catalog and an encrypted vault.
+The source workspace was restored through its existing launcher; post-restart
+sign-in is separate from source parsing acceptance. The final live check made 21
+successful SEC GETs for the original five selections and three document digests.
+NVDA/GOOGL summaries stayed unchanged; AVGO now reaches analysis and exposes its
+filing type and fiscal labels. All five numeric selections remain unsupported
+because of dimensions. All three documents use the same unsupported report-end
+transform. Catalog gaps, including AAPL and MSFT, remain separate. Tiingo is not
+configured. Actual runtime/session details are in the local checkpoint.
 
-## Active delivery: canonical Inline XBRL linking attributes
+## Active delivery: filing-declared report-end dates
 
-Partial Cycle 3h-a10 recognizes canonical casing for the standard linking/footnote
-attributes on their specified Inline XBRL namespace and element. The current
-six-name map covers fact references but misses `fromRefs`, `toRefs`, `linkRole`,
-`footnoteID`, `footnoteLinkRole` and `footnoteRole`. The observed `fromRefs` failure
-occurs before any selected-value analysis, including on otherwise ignored markup.
+Partial Cycle 3h-a11 supports the observed `date-monthname-day-year-en` transform
+from the exact 2020 registry namespace for `DocumentPeriodEndDate`. This lets the
+existing inspector show the filing's canonical report end and its independent
+comparison with Submissions. Actual dates of short, long and comparative financial
+observations remain unchanged.
 
-Scope the additional names to the 2013 `relationship`, 2013 `footnote` and 2008
-`footnote` elements. Preserve malformed casing, duplicate attributes, unquoted
-semantic attributes and wrong-scope rejection. Traversing these elements does not
-resolve their links, consume footnotes as facts, or expand numeric/DEI eligibility.
-Dimensions, transforms, continuations, fiscal calendars, flow basis and TTM remain
-separate. The ASCII declaration and packaged-startup checks remain in place.
+The Python worker and a shared Node/browser normalizer implement the specified
+month spellings, separators, year expansion, first-month selection and calendar
+validity within the existing resource/date bounds. The original text, format,
+entity, context and reference remain inspectable. Unknown formats and invalid
+inputs remain explicit. Eligible values and proven wrong-issuer exclusions require
+independent output recomputation; unresolved or conflicting siblings prevent a
+preferred field value. The response shape and acquisition requests do not change.
 
-The original five-case live sample and every failed baseline remain preserved.
-The first AVGO diagnostic made five successful GETs and identified the exact
-failure site; a separately declared five-GET discriminator identified the canonical
-attribute using fixed enums. The reviewed candidate, checked on those same bytes
-without another acquisition, reaches 72 numeric candidates and three filing labels
-(10-Q, FY2026 and Q3). Numeric comparison remains unsupported because of dimensions;
-report end remains unresolved. The original failed result is preserved separately.
-Record final live and release outcomes in the handoff; this sample does not
-establish general filing coverage.
+Acceptance includes real-worker lexical/calendar cases, Node and browser forged-
+output controls, mixed scope/uncertainty, reference display and comparison states,
+unchanged numeric results and selected periods, and desktop/mobile/keyboard QA.
+Freeze the reviewed source before the complete native gate and applicable hosted
+checks. A freshly declared live comparison must retain the original selections
+and document digests, with earlier results preserved. Record actual outcomes in
+the release handoff; this guide does not predict successful live coverage.
 
-Acceptance includes canonical linking/footnote cases, their wrong-case and
-wrong-namespace/element controls, unchanged selected-value and metadata limits,
-the original AVGO digest, focused worker checks, the complete clean-source gate
-and applicable hosted workflows. Report numeric/metadata outcomes and any later
-rejections separately from the corrected first failure.
-Actual release hashes and live outcomes are recorded in the local release handoff;
-this page does not predict the final gate result.
+Dimensional numeric admission needs separate evidence. This date label does not
+establish consolidated scope, a standalone quarter, fiscal calendars, revisions
+or TTM. Keep catalog refresh and broader metric coverage independent.
 
 ## Delivery order
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Repair the observed canonical Inline XBRL attribute rejection                                    | Let valid linking markup reach the existing bounded analysis               |
+| Now              | Decode the observed filing report-end date transform                                             | Show the declared date and compare it independently with Submissions       |
 | Configured next  | Validate live SEC screening coverage and watchlist filing loads                                  | SEC contact and local workspace are ready; retain explicit coverage gaps   |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |

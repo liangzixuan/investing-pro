@@ -156,7 +156,7 @@ describe("selected SEC filing context real isolated worker", () => {
     const html = metadataDocument(
       metadataFact(
         "DocumentPeriodEndDate",
-        "March 31, 2025",
+        "February 30, 2025",
         'format="ixt:date-monthname-day-year-en"',
       ),
     ).replace('decimals="0"', 'decimals="0" continuedAt="missing"');
@@ -811,6 +811,258 @@ function metadataDocument(
 }
 
 describe("filing DEI reporting metadata real isolated worker", () => {
+  const dateFormat = 'format="ixt:date-monthname-day-year-en"';
+
+  it.each([
+    [" \tJune\r\n30,\t2026\n", "2026-06-30"],
+    ["January, March and April the 30th, 1969", "1969-01-30"],
+    ["JanuaRY 2, 2025", "2025-01-02"],
+    ["JANuary 2, 2025", "2025-01-02"],
+    ["Sept 3, 2025", "2025-09-03"],
+    ["Jun\u00a030,\u00a02026", "2026-06-30"],
+    ["Feb 29, 0", "2000-02-29"],
+    ["Feb 29, 00", "2000-02-29"],
+    ["Jan 1, 9", "2009-01-01"],
+    ["Jan 1, 99", "2099-01-01"],
+    ["Jan 01, 1000", "1000-01-01"],
+    ["Dec 31, 9999", "9999-12-31"],
+  ])(
+    "normalizes declared report-end date %s without changing fact periods",
+    async (raw, expected) => {
+      const result = await parse(
+        metadataDocument(
+          metadataFact("DocumentPeriodEndDate", raw, dateFormat),
+        ),
+      );
+      expect(result.status).toBe("matched");
+      expect(result.candidates[0]).toMatchObject({
+        value: "100",
+        startDate: "2025-01-01",
+        endDate: "2025-03-31",
+      });
+      expect(result.reportingMetadata.fields[1]).toMatchObject({
+        status: "observed",
+        value: expected,
+      });
+      expect(result.reportingMetadata.observations[0]).toMatchObject({
+        rawText: raw,
+        value: expected,
+        issues: [],
+        startDate: "2024-07-01",
+        endDate: "2025-03-31",
+        format: {
+          raw: "ixt:date-monthname-day-year-en",
+          namespace: "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+          localName: "date-monthname-day-year-en",
+        },
+      });
+      expect(
+        Object.isFrozen(result.reportingMetadata.observations[0]?.format),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    "February then March 31, 2025",
+    "Feb 29, 1900",
+    "April 31, 2025",
+    "Jan 00, 2025",
+    "Jan 001, 2025",
+    "Jan 1, 025",
+    "Jan 1, 0999",
+    "Jan 1, 10000",
+    "Jan 1, 2025, 2026",
+    "Jan 1, 2025 trailing",
+    "prefix Jan 1, 2025",
+    "jan 1, 2025",
+    "jAn 1, 2025",
+    "May1, 2025",
+    "Jan 1, ２０２５",
+    "Jan ١, 2025",
+    "Jan 1, 2025\u2028",
+  ])(
+    "retains invalid supported-transform value %s as metadata uncertainty",
+    async (raw) => {
+      const result = await parse(
+        metadataDocument(
+          metadataFact("DocumentPeriodEndDate", raw, dateFormat),
+        ),
+      );
+      expect(result.status).toBe("matched");
+      expect(result.reportingMetadata.fields[1]).toMatchObject({
+        status: "unsupported",
+        value: null,
+      });
+      expect(result.reportingMetadata.observations[0]).toMatchObject({
+        value: null,
+        issues: ["invalid_metadata_value"],
+      });
+    },
+  );
+
+  it.each([
+    'format="ixt:date-month-day-year"',
+    'format="ixt:DATE-MONTHNAME-DAY-YEAR-EN"',
+    'format="ixt:date-monthname-day-year-en" xmlns:ixt="http://www.xbrl.org/inlineXBRL/transformation/2022-02-16"',
+    'format="unknown:date-monthname-day-year-en"',
+    'format="ixt::date-monthname-day-year-en"',
+  ])(
+    "keeps unadmitted report-end formats unsupported: %s",
+    async (attributes) => {
+      const result = await parse(
+        metadataDocument(
+          metadataFact("DocumentPeriodEndDate", "June 30, 2026", attributes),
+        ),
+      );
+      expect(result.status).toBe("matched");
+      expect(result.reportingMetadata.observations[0]).toMatchObject({
+        value: null,
+        issues: ["unsupported_transform"],
+      });
+    },
+  );
+
+  it("accepts a bound alternate prefix and exact maximum raw text length", async () => {
+    const raw = `Jan${"😀".repeat(2043)} 1 2025`;
+    expect(raw.length).toBe(4096);
+    const result = await parse(
+      metadataDocument(
+        metadataFact(
+          "DocumentPeriodEndDate",
+          raw,
+          'format="datefmt:date-monthname-day-year-en" xmlns:datefmt="http://www.xbrl.org/inlineXBRL/transformation/2020-02-12"',
+        ),
+      ),
+    );
+    expect(result.reportingMetadata.fields[1]).toMatchObject({
+      status: "observed",
+      value: "2025-01-01",
+    });
+    expect(result.reportingMetadata.observations[0]?.format?.raw).toBe(
+      "datefmt:date-monthname-day-year-en",
+    );
+  });
+
+  it("compares canonical dates across direct and transformed duplicate references", async () => {
+    const transformed = metadataFact(
+      "DocumentPeriodEndDate",
+      "June 30, 2026",
+      dateFormat,
+    );
+    const equal = await parse(
+      metadataDocument(
+        transformed + metadataFact("DocumentPeriodEndDate", "2026-06-30"),
+      ),
+    );
+    expect(equal.reportingMetadata.fields[1]).toMatchObject({
+      status: "observed",
+      value: "2026-06-30",
+    });
+    expect(equal.reportingMetadata.fields[1]?.observationLocators).toHaveLength(
+      2,
+    );
+    const conflict = await parse(
+      metadataDocument(
+        transformed +
+          metadataFact("DocumentPeriodEndDate", "July 1, 2026", dateFormat),
+      ),
+    );
+    expect(conflict.reportingMetadata.fields[1]).toMatchObject({
+      status: "conflicting",
+      value: null,
+    });
+    const uncertain = await parse(
+      metadataDocument(
+        transformed +
+          metadataFact(
+            "DocumentPeriodEndDate",
+            "February 30, 2026",
+            dateFormat,
+          ),
+      ),
+    );
+    expect(uncertain.reportingMetadata.fields[1]).toMatchObject({
+      status: "unsupported",
+      value: null,
+    });
+  });
+
+  it("excludes only a proven valid wrong-issuer transformed row", async () => {
+    const clean = metadataFact(
+      "DocumentPeriodEndDate",
+      "June 30, 2026",
+      dateFormat,
+    );
+    const contexts =
+      context("m") + context("other", "2025-01-01", "2025-03-31", "0000000007");
+    const excluded = await parse(
+      metadataDocument(
+        clean +
+          metadataFact(
+            "DocumentPeriodEndDate",
+            "July 1, 2026",
+            dateFormat,
+            "other",
+          ),
+        contexts,
+      ),
+    );
+    expect(excluded.reportingMetadata.fields[1]).toMatchObject({
+      status: "observed",
+      value: "2026-06-30",
+    });
+    expect(excluded.reportingMetadata.observations[1]?.issues).toEqual([
+      "entity_mismatch",
+    ]);
+    const uncertain = await parse(
+      metadataDocument(
+        clean +
+          metadataFact(
+            "DocumentPeriodEndDate",
+            "February 30, 2026",
+            dateFormat,
+            "other",
+          ),
+        contexts,
+      ),
+    );
+    expect(uncertain.reportingMetadata.fields[1]).toMatchObject({
+      status: "unsupported",
+      value: null,
+    });
+    expect(uncertain.reportingMetadata.observations[1]?.issues).toEqual([
+      "entity_mismatch",
+      "invalid_metadata_value",
+    ]);
+  });
+
+  it("does not extend date normalization to other fields, numeric facts or inline constructs", async () => {
+    const wrongField = await parse(
+      metadataDocument(
+        metadataFact("DocumentFiscalYearFocus", "June 30, 2026", dateFormat),
+      ),
+    );
+    expect(wrongField.reportingMetadata.observations[0]?.issues).toEqual([
+      "unsupported_transform",
+    ]);
+    const numeric = await parse(document(fact("100", dateFormat)));
+    expect(numeric.reason).toBe("unsupported_transform");
+    for (const raw of ["<span>June 30, 2026</span>", "June 30, 2026"]) {
+      const attributes = raw.startsWith("<")
+        ? dateFormat
+        : `${dateFormat} continuedAt="later"`;
+      const result = await parse(
+        metadataDocument(
+          metadataFact("DocumentPeriodEndDate", raw, attributes),
+        ),
+      );
+      expect(result.reportingMetadata.observations[0]).toMatchObject({
+        value: null,
+        issues: ["unsupported_inline"],
+      });
+    }
+  });
+
   it.each(PERSONAL_SEC_FILING_DEI_NAMESPACES)(
     "retains four direct values and separate duration context under %s",
     async (namespace) => {
@@ -1134,6 +1386,35 @@ describe("asynchronous filing worker boundary", () => {
     cik: "0000000042",
     selection,
   };
+
+  it.each([
+    ["wrong normalized date", 'row.value="2026-07-01";field.value=row.value'],
+    [
+      "wrong transform namespace",
+      'row.format.namespace="http://www.xbrl.org/inlineXBRL/transformation/2022-02-16"',
+    ],
+    ["mismatched raw QName", 'row.format.raw="ixt:date-month-day-year"'],
+    ["malformed raw QName", 'row.format.raw="ixt::date-monthname-day-year-en"'],
+    ["wrong local name", 'row.format.localName="date-month-day-year"'],
+    ["hidden invalid date", 'row.rawText="February 30, 2026"'],
+    ["implicit format inference", "row.format=null"],
+    ["first-month fallback", 'row.rawText="February then June 30, 2026"'],
+    ["raw trailing line separator", 'row.rawText += "\\u2028"'],
+  ])("rejects forged transformed metadata: %s", async (_label, mutation) => {
+    const valid = await parse(
+      metadataDocument(
+        metadataFact(
+          "DocumentPeriodEndDate",
+          "June 30, 2026",
+          'format="ixt:date-monthname-day-year-en"',
+        ),
+      ),
+    );
+    const script = `process.stdin.resume();process.stdin.on("end",()=>{const result=${JSON.stringify(valid)};const row=result.reportingMetadata.observations[0];const field=result.reportingMetadata.fields[1];${mutation};process.stdout.write(JSON.stringify(result))})`;
+    await expect(
+      alternateWorker(script).value.parse(input),
+    ).rejects.toMatchObject({ code: "invalid_output" });
+  });
 
   it.each([
     ["missing result version", "delete result.schemaVersion"],

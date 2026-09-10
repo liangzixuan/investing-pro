@@ -21,6 +21,12 @@ METADATA_OUTPUT_BYTES = 128 * 1024
 DEI_CONCEPTS = ("DocumentType", "DocumentPeriodEndDate", "DocumentFiscalYearFocus", "DocumentFiscalPeriodFocus")
 # Exact targetNamespace identifiers verified against the SEC 2024/2025/2026 schemas.
 DEI_NAMESPACES = {"http://xbrl.sec.gov/dei/2024", "http://xbrl.sec.gov/dei/2025", "http://xbrl.sec.gov/dei/2026"}
+REPORTING_DATE_NAMESPACE = "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12"
+REPORTING_DATE_FORMAT = "date-monthname-day-year-en"
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+MONTH_SPELLINGS = MONTHS + tuple(month[:3] for month in MONTHS) + tuple(month.upper() for month in MONTHS) + tuple(month[:3].upper() for month in MONTHS)
+# TRR4 4.1/4.58: retain the first enumerated month and broad nonnumeric separators.
+REPORTING_DATE = re.compile(r"(" + "|".join(MONTH_SPELLINGS) + r")[^0-9]+([0-9]{1,2})[^0-9]+([0-9]{1,2}|[0-9]{4})\Z")
 IX = {"http://www.xbrl.org/2008/inlineXBRL", "http://www.xbrl.org/2013/inlineXBRL"}
 XBRLI = "http://www.xbrl.org/2003/instance"
 XBRLDI = "http://xbrl.org/2006/xbrldi"
@@ -517,9 +523,29 @@ def empty_metadata(status="assessed", reason=None):
     return {"status": status, "reason": reason, "fields": [{"concept": concept, "status": "missing" if status == "assessed" else "unsupported", "value": None, "observationLocators": []} for concept in DEI_CONCEPTS], "observations": []}
 
 
-def metadata_value(concept, raw):
-    # XML whitespace only. No language/century/date transform inference.
+def metadata_format_supported(concept, format):
+    if concept not in DEI_CONCEPTS:
+        return False
+    if format is None:
+        return True
+    return (concept == "DocumentPeriodEndDate" and format["namespace"] == REPORTING_DATE_NAMESPACE
+            and format["localName"] == REPORTING_DATE_FORMAT and QNAME.fullmatch(format["raw"]) is not None
+            and format["raw"].split(":")[-1] == format["localName"])
+
+
+def metadata_value(concept, raw, format=None):
+    if not metadata_format_supported(concept, format) or utf16_length(raw) > 4096 or CONTROL.search(raw):
+        return None
+    # XML whitespace only. Date normalization requires the exact declared format.
     value = re.sub(r"[ \t\r\n]+", " ", raw).strip(" ")
+    if format is not None:
+        parts = REPORTING_DATE.fullmatch(value)
+        if parts is None:
+            return None
+        month = next(index + 1 for index, name in enumerate(MONTHS) if name[:3].upper() == parts[1][:3].upper())
+        year = int(parts[3]) + (2000 if len(parts[3]) <= 2 else 0)
+        date = f"{year:04d}-{month:02d}-{int(parts[2]):02d}"
+        return date if valid_date(date) else None
     if concept == "DocumentType":
         return value if value in ("10-Q", "10-Q/A", "10-K", "10-K/A") else None
     if concept == "DocumentPeriodEndDate":
@@ -552,10 +578,10 @@ def project_metadata(node, document, cik):
     allowed = {"id", "name", "contextref", "format", "footnoterefs", "xmlns"}
     if node.namespace not in IX or node.local != "nonnumeric" or node.children or node.unsupported_metadata_ancestor or any(key.endswith(":nil") for key in a) or any(":" not in key and key not in allowed for key in a):
         issues.append("unsupported_inline")
-    if candidate["format"] is not None:
+    if candidate["format"] is not None and not metadata_format_supported(candidate["concept"]["localName"], candidate["format"]):
         issues.append("unsupported_transform")
     if "unsupported_inline" not in issues and "unsupported_transform" not in issues:
-        candidate["value"] = metadata_value(candidate["concept"]["localName"], candidate["rawText"])
+        candidate["value"] = metadata_value(candidate["concept"]["localName"], candidate["rawText"], candidate["format"])
         if candidate["value"] is None:
             issues.append("invalid_metadata_value")
     candidate["issues"] = list(dict.fromkeys(issues))

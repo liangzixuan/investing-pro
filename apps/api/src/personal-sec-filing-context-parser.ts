@@ -7,6 +7,7 @@ import {
   PERSONAL_SEC_FILING_DEI_NAMESPACES,
   PERSONAL_SEC_FILING_REPORTING_CONCEPTS,
   PERSONAL_SEC_QUARTERLY_CONCEPTS,
+  normalizePersonalSecReportingValue,
   type PersonalSecFilingContextCandidateDto,
   type PersonalSecFilingContextIssue,
   type PersonalSecFilingContextParserResultDto,
@@ -573,17 +574,6 @@ function freezeResult(
   });
 }
 
-function metadataValue(concept: string | null, raw: string): string | null {
-  const value = raw.replace(/[ \t\r\n]+/gu, " ").replace(/^ | $/gu, "");
-  if (concept === "DocumentType")
-    return ["10-Q", "10-Q/A", "10-K", "10-K/A"].includes(value) ? value : null;
-  if (concept === "DocumentPeriodEndDate") return date(value) ? value : null;
-  if (concept === "DocumentFiscalYearFocus")
-    return /^[1-9][0-9]{3}$/u.test(value) ? value : null;
-  if (concept === "DocumentFiscalPeriodFocus")
-    return ["FY", "Q1", "Q2", "Q3"].includes(value) ? value : null;
-  return null;
-}
 function reportingConcept(localName: string | null) {
   return PERSONAL_SEC_FILING_REPORTING_CONCEPTS.find(
     (concept) => concept.toLowerCase() === localName?.toLowerCase(),
@@ -663,7 +653,7 @@ function validReportingObservation(
   if (!reportingConcept(row.concept.localName)) return false;
   if (
     row.value !== null &&
-    metadataValue(
+    normalizePersonalSecReportingValue(
       reportingConcept(row.concept.localName) ?? null,
       row.value,
     ) !== row.value
@@ -697,9 +687,13 @@ function validReportingObservation(
       row.startDate === null ||
       row.endDate === null ||
       row.startDate > row.endDate ||
-      row.format !== null ||
       row.value === null ||
-      row.value !== metadataValue(row.concept.localName, row.rawText)
+      row.value !==
+        normalizePersonalSecReportingValue(
+          row.concept.localName,
+          row.rawText,
+          row.format,
+        )
     )
       return false;
   }

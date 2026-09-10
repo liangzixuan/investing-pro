@@ -1,4 +1,6 @@
 import {
+  isSupportedPersonalSecReportingFormat,
+  normalizePersonalSecReportingValue,
   PERSONAL_SEC_FILING_CONTEXT_LIMITS as limits,
   PERSONAL_SEC_FILING_DEI_NAMESPACES as deiNamespaces,
   PERSONAL_SEC_FILING_REPORTING_CONCEPTS as reportingConcepts,
@@ -506,10 +508,16 @@ function reportingMetadata(
         row.endDate === null ||
         row.startDate > row.endDate ||
         row.dimensions.length !== 0 ||
-        row.format !== null ||
+        !isSupportedPersonalSecReportingFormat(
+          row.concept.localName,
+          row.format,
+        ) ||
         row.value === null ||
-        row.rawText.replace(/[\t\n\r ]+/gu, " ").replace(/^ | $/gu, "") !==
-          row.value)
+        normalizePersonalSecReportingValue(
+          row.concept.localName,
+          row.rawText,
+          row.format,
+        ) !== row.value)
     )
       return false;
   }

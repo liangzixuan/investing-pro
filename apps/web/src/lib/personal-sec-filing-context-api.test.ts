@@ -1,6 +1,7 @@
 import { createEmptyPersonalSecFilingReportingMetadata } from "@research-cockpit/contracts";
 import type {
   PersonalSecFilingContextCandidateDto,
+  PersonalSecFilingContextQNameDto,
   PersonalSecFilingContextRequestDto,
   PersonalSecFilingContextResponseDto,
   PersonalSecQuarterlyObservationDto,
@@ -19,6 +20,233 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+const reportDateFormat: PersonalSecFilingContextQNameDto = {
+  raw: "ixt:date-monthname-day-year-en",
+  namespace: "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+  localName: "date-monthname-day-year-en",
+};
+
+describe("transformed reporting-date browser validation", () => {
+  it.each(["June 30, 2026", "\tJun. 30th, 26\r\n"])(
+    "recomputes %s while retaining source format and selected numeric period",
+    async (rawText) => {
+      const metadata = transformedDateMetadata({ rawText });
+      fetchMock.mockResolvedValue(json(withMetadata(metadata)));
+      const value = await fetchPersonalSecFilingContext(request(), signal());
+      expect(value).toMatchObject({
+        inspection: {
+          observation: {
+            startDate: "2026-04-01",
+            endDate: "2026-06-30",
+            periodBasis: "unresolved",
+          },
+          analysis: { status: "matched", reportingMetadata: metadata },
+        },
+      });
+      if (value.inspection.status !== "available") throw new Error();
+      expect(value.inspection.analysis.candidates).toEqual([candidate()]);
+      expect(
+        Object.isFrozen(
+          value.inspection.analysis.reportingMetadata.observations[1]?.format,
+        ),
+      ).toBe(true);
+      expect(fetchMock).toHaveBeenCalledOnce();
+    },
+  );
+  it.each(["same value", "different value", "wrong issuer"])(
+    "assesses a transformed sibling with %s without choosing a preferred reference",
+    async (kind) => {
+      const base = transformedDateMetadata();
+      const original = base.observations[1]!;
+      const sibling: PersonalSecFilingReportingObservationDto = {
+        ...original,
+        locator: "/elements/204",
+        rawText: kind === "different value" ? "July 1, 2026" : "Jun 30, 26",
+        value: kind === "different value" ? "2026-07-01" : "2026-06-30",
+        ...(kind === "wrong issuer"
+          ? {
+              entityIdentifier: "2",
+              entityCik: "0000000002",
+              issues: ["entity_mismatch"] as const,
+            }
+          : {}),
+      };
+      const metadata = {
+        ...base,
+        observations: [...base.observations, sibling],
+        fields: base.fields.map((field, index) =>
+          index === 1
+            ? {
+                ...field,
+                status: kind === "different value" ? "conflicting" : "observed",
+                value: kind === "different value" ? null : field.value,
+                observationLocators: [
+                  ...field.observationLocators,
+                  sibling.locator,
+                ],
+              }
+            : field,
+        ),
+      };
+      fetchMock.mockResolvedValue(json(withMetadata(metadata)));
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).resolves.toMatchObject({
+        inspection: {
+          analysis: { status: "matched", reportingMetadata: metadata },
+        },
+      });
+    },
+  );
+  it.each([
+    ["malformed context", ["malformed_context"]],
+    ["mixed wrong issuer", ["entity_mismatch", "malformed_context"]],
+    ["invalid transformed date", ["invalid_metadata_value"]],
+    ["unsupported transform", ["unsupported_transform"]],
+  ] as const)(
+    "keeps %s uncertainty ahead of a valid transformed sibling",
+    async (kind, issues) => {
+      const base = transformedDateMetadata();
+      const original = base.observations[1]!;
+      const sibling: PersonalSecFilingReportingObservationDto = {
+        ...original,
+        locator: "/elements/204",
+        rawText:
+          kind === "invalid transformed date"
+            ? "June 31, 2026"
+            : original.rawText,
+        value: null,
+        issues,
+        ...(kind === "mixed wrong issuer"
+          ? { entityIdentifier: "2", entityCik: "0000000002" }
+          : {}),
+        ...(kind === "unsupported transform"
+          ? {
+              format: {
+                ...reportDateFormat,
+                namespace:
+                  "https://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+              },
+            }
+          : {}),
+      };
+      const metadata = {
+        ...base,
+        observations: [...base.observations, sibling],
+        fields: base.fields.map((field, index) =>
+          index === 1
+            ? {
+                ...field,
+                status: "unsupported",
+                value: null,
+                observationLocators: [
+                  ...field.observationLocators,
+                  sibling.locator,
+                ],
+              }
+            : field,
+        ),
+      };
+      fetchMock.mockResolvedValueOnce(json(withMetadata(metadata)));
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).resolves.toMatchObject({
+        inspection: {
+          analysis: { status: "matched", reportingMetadata: metadata },
+        },
+      });
+      fetchMock.mockResolvedValueOnce(
+        json(
+          withMetadata({
+            ...metadata,
+            fields: metadata.fields.map((field, index) =>
+              index === 1
+                ? { ...field, status: "observed", value: "2026-06-30" }
+                : field,
+            ),
+          }),
+        ),
+      );
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+  it.each([
+    ["forged canonical date", { value: "2026-07-01" }],
+    [
+      "wrong registry namespace",
+      {
+        format: {
+          ...reportDateFormat,
+          namespace: "http://www.xbrl.org/inlineXBRL/transformation/2022-02-16",
+        },
+      },
+    ],
+    [
+      "wrong transform name",
+      {
+        format: {
+          ...reportDateFormat,
+          raw: "ixt:date-day-monthname-year-en",
+          localName: "date-day-monthname-year-en",
+        },
+      },
+    ],
+    [
+      "spoofed raw QName",
+      { format: { ...reportDateFormat, raw: "ixt:fixed-zero" } },
+    ],
+    [
+      "malformed raw QName",
+      {
+        format: {
+          ...reportDateFormat,
+          raw: "ixt:extra:date-monthname-day-year-en",
+        },
+      },
+    ],
+    ["unknown month case", { rawText: "JuNe 30, 2026" }],
+    ["impossible calendar date", { rawText: "June 31, 2026" }],
+    ["three-digit year", { rawText: "June 30, 026" }],
+    ["non-ASCII digits", { rawText: "June ３０, 2026" }],
+  ] satisfies readonly (readonly [
+    string,
+    Partial<PersonalSecFilingReportingObservationDto>,
+  ])[])("rejects transformed-date assertion with %s", async (_, patch) => {
+    fetchMock.mockResolvedValue(
+      json(withMetadata(transformedDateMetadata(patch))),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it.each([false, true])(
+    "rejects a date transform on the wrong concept, excluded=%s",
+    async (excluded) => {
+      const base = reportingMetadata();
+      const metadata = patchMetadataRow(base, {
+        format: reportDateFormat,
+        ...(excluded
+          ? {
+              entityIdentifier: "2",
+              entityCik: "0000000002",
+              issues: ["entity_mismatch"],
+            }
+          : {}),
+      });
+      if (excluded)
+        metadata.fields = metadata.fields.map((field, index) =>
+          index === 0 ? { ...field, status: "missing", value: null } : field,
+        );
+      fetchMock.mockResolvedValue(json(withMetadata(metadata)));
+      await expect(
+        fetchPersonalSecFilingContext(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+});
 
 describe("filing-declared metadata browser validation", () => {
   it("retains four declared fields, their differing duration context and frozen references", async () => {
@@ -1028,6 +1256,26 @@ function reportingMetadata(): PersonalSecFilingReportingMetadataDto {
       observationLocators: [observations[index]!.locator],
     })),
     observations,
+  };
+}
+function transformedDateMetadata(
+  patch: Partial<PersonalSecFilingReportingObservationDto> = {},
+): PersonalSecFilingReportingMetadataDto {
+  const base = reportingMetadata();
+  const row = {
+    ...base.observations[1]!,
+    rawText: "June 30, 2026",
+    format: reportDateFormat,
+    ...patch,
+  };
+  return {
+    ...base,
+    observations: base.observations.map((original, index) =>
+      index === 1 ? row : original,
+    ),
+    fields: base.fields.map((field, index) =>
+      index === 1 ? { ...field, value: row.value } : field,
+    ),
   };
 }
 function unavailableMetadata(): PersonalSecFilingReportingMetadataDto {
