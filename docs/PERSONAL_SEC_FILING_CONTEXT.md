@@ -114,6 +114,18 @@ encoding matching is restricted to ASCII letters. Malformed declarations and
 encoding conflicts remain global failures. Source requests and numeric/reporting-
 metadata projections are unchanged.
 
+Partial Cycle 3h-a10 recognizes additional canonical attribute casing on specific
+Inline XBRL linking elements. The 2013 `relationship` element uses `fromRefs`,
+`toRefs` and `linkRole`; its `footnote` element uses `footnoteRole`. The 2008
+`footnote` element uses `footnoteID`, `footnoteLinkRole` and `footnoteRole`, as
+defined by the normative [1.1 schema](https://www.xbrl.org/specification/inlinexbrl-part2/rec-2013-11-18/inlinexbrl-part2-rec-2013-11-18.html)
+and [1.0 schema](https://www.xbrl.org/specification/inlinexbrl-part2/rec-2010-04-20/inlinexbrl-part2-rec-2010-04-20.html).
+Lowercase/wrong-case variants, duplicates and unquoted semantic attributes remain
+invalid. These names are scoped to their declared namespace and element; they do
+not grant corresponding casing support to unrelated XBRLI/XBRLDI or inline nodes.
+The inspector traverses the markup without resolving relationships or footnotes,
+and existing numeric and metadata eligibility rules still apply.
+
 Use the existing owner SEC contact setting and a Python 3 runtime available to
 the API process. Tiingo remains independent. Missing Python produces an explicit
 runtime-unavailable result. The source worker ships with the API build.
@@ -157,6 +169,12 @@ failed globally. A subsequent pinned-digest check with the declaration repair
 parsed the three NVDA selections and GOOGL selection. Numeric comparison remained
 unsupported because of dimensions; each filing exposed three DEI labels while its
 report-end date transform remained unsupported. AVGO still returned a global
-`invalid_document`. No eligible amendment was retained in the sample. These are
+`invalid_document`. A further exact-digest diagnosis located its first rejection
+at canonical `fromRefs` on an Inline XBRL 2013 `relationship`. A reviewed candidate
+on the same original bytes reaches 72 numeric candidates and observes document
+type, fiscal year and fiscal-period focus; dimensional numeric scope and report end
+remain unresolved. The original failure is preserved separately from this
+candidate and final release acceptance.
+No eligible amendment was retained in the sample. These are
 specific observed outcomes, not general filing coverage. Fiscal-calendar, flow-
 basis and revision admission remain later work.

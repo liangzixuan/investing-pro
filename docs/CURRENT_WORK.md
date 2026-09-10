@@ -34,44 +34,51 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `e7e1ab6` delivered four filing-declared DEI fields beside selected-fact
-dates. Its clean native gate passed 4,180 tests and all 24 builds; four applicable
-hosted workflows passed. That synthetic acceptance did not establish live coverage.
+Release `fe04a47` repaired ASCII filing declarations and packaged API startup.
+Its clean native gate passed 4,221 tests and all 24 builds; four applicable hosted
+workflows passed. Windows needed one unchanged retry after an existing database
+test timed out. The original failure and retry remain in the release handoff.
 
 The owner has now configured SEC contact and an admitted local catalog, initialized
 an empty encrypted vault, and signed in. The first real sample made 21 successful
 SEC GETs but all five inspections across three documents returned `invalid_document`.
-A bounded follow-up pinned the original NVDA bytes and identified the first cause:
-an XML declaration specifying ASCII, with an entirely ASCII document. The existing
-worker accepted only UTF-8 declarations. Catalog exact-match gaps, including AAPL
-and MSFT, remain separate from SEC coverage. Tiingo is still not configured.
+A pinned-digest declaration repair lets the three NVDA selections and GOOGL reach
+analysis, with dimensional values and the report-date transform still unsupported.
+AVGO remained globally unavailable. Its next bounded diagnosis reproduced the same
+document and found canonical `fromRefs` on an Inline XBRL 2013 `relationship`
+element rejected by an incomplete attribute-casing map. Catalog exact-match gaps,
+including AAPL and MSFT, remain separate from SEC coverage. Tiingo is not configured.
 
-## Active delivery: ASCII filing declarations and packaged startup
+## Active delivery: canonical Inline XBRL linking attributes
 
-Partial Cycle 3h-a9 accepts the observed ASCII declaration only when the document
-bytes satisfy that encoding. The same bounded worker retains existing source,
-namespace, context, numeric and reporting-metadata checks. Unsupported encodings,
-malformed declarations and conflicting byte declarations must remain explicit.
-The change does not infer fiscal calendars, standalone quarters, revisions or TTM.
+Partial Cycle 3h-a10 recognizes canonical casing for the standard linking/footnote
+attributes on their specified Inline XBRL namespace and element. The current
+six-name map covers fact references but misses `fromRefs`, `toRefs`, `linkRole`,
+`footnoteID`, `footnoteLinkRole` and `footnoteRole`. The observed `fromRefs` failure
+occurs before any selected-value analysis, including on otherwise ignored markup.
 
-The fixed-worker check preserved all five frozen selections and original document
-digests. Three NVDA selections and GOOGL now reach analysis, exposing three DEI
-labels while dimensional numeric ambiguity and the report-end date transform
-remain unsupported. AVGO still fails globally and remains a separate diagnostic
-case. All 21 verification GETs returned HTTP 200; no amendment was available in
-the retained sample. Preserve these limitations when describing live coverage.
+Scope the additional names to the 2013 `relationship`, 2013 `footnote` and 2008
+`footnote` elements. Preserve malformed casing, duplicate attributes, unquoted
+semantic attributes and wrong-scope rejection. Traversing these elements does not
+resolve their links, consume footnotes as facts, or expand numeric/DEI eligibility.
+Dimensions, transforms, continuations, fiscal calendars, flow basis and TTM remain
+separate. The ASCII declaration and packaged-startup checks remain in place.
 
-The API build also preserves Node's `node:` import prefix. A bundler default had
-rewritten `node:sqlite` into an unresolved package import. Fresh workspace and vault
-artifacts now run an isolated startup smoke after bundling and resource copying;
-missing configuration must produce the application's controlled failure. No vault,
-contact, bootstrap or source request is needed for that check.
+The original five-case live sample and every failed baseline remain preserved.
+The first AVGO diagnostic made five successful GETs and identified the exact
+failure site; a separately declared five-GET discriminator identified the canonical
+attribute using fixed enums. The reviewed candidate, checked on those same bytes
+without another acquisition, reaches 72 numeric candidates and three filing labels
+(10-Q, FY2026 and Q3). Numeric comparison remains unsupported because of dimensions;
+report end remains unresolved. The original failed result is preserved separately.
+Record final live and release outcomes in the handoff; this sample does not
+establish general filing coverage.
 
-Acceptance includes a minimal ASCII declaration reproducer, encoding-conflict and
-malformed-declaration controls, the original real-document digest, focused worker
-and startup tests, the complete clean-source gate and applicable hosted workflows.
-Report exact numeric/metadata outcomes and any later limits separately from the
-header fix. A passing first declaration alone does not establish parsing coverage.
+Acceptance includes canonical linking/footnote cases, their wrong-case and
+wrong-namespace/element controls, unchanged selected-value and metadata limits,
+the original AVGO digest, focused worker checks, the complete clean-source gate
+and applicable hosted workflows. Report numeric/metadata outcomes and any later
+rejections separately from the corrected first failure.
 Actual release hashes and live outcomes are recorded in the local release handoff;
 this page does not predict the final gate result.
 
@@ -79,7 +86,7 @@ this page does not predict the final gate result.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Repair observed ASCII filing parsing and packaged API startup                                    | Unblock verified source inspection and ordinary packaged local startup     |
+| Now              | Repair the observed canonical Inline XBRL attribute rejection                                    | Let valid linking markup reach the existing bounded analysis               |
 | Configured next  | Validate live SEC screening coverage and watchlist filing loads                                  | SEC contact and local workspace are ready; retain explicit coverage gaps   |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |

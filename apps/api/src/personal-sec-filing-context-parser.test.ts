@@ -95,6 +95,93 @@ function parse(
 }
 
 describe("selected SEC filing context real isolated worker", () => {
+  const linkingAttributes = [
+    ["2013", "relationship", "fromRefs"],
+    ["2013", "relationship", "toRefs"],
+    ["2013", "relationship", "linkRole"],
+    ["2013", "footnote", "footnoteRole"],
+    ["2008", "footnote", "footnoteID"],
+    ["2008", "footnote", "footnoteLinkRole"],
+    ["2008", "footnote", "footnoteRole"],
+  ] as const;
+
+  it.each(linkingAttributes)(
+    "traverses canonical %s %s %s without adding fact evidence",
+    async (year, element, attribute) => {
+      const html = metadataDocument();
+      const node = `<ix:${element} xmlns:ix="http://www.xbrl.org/${year}/inlineXBRL" ${attribute}="unresolved-reference"/>`;
+      expect(await parse(html.replace("</body>", `${node}</body>`))).toEqual(
+        await parse(html),
+      );
+    },
+  );
+
+  it.each(linkingAttributes)(
+    "rejects case variants of %s %s %s",
+    async (year, element, attribute) => {
+      for (const wrongCase of [
+        attribute.toLowerCase(),
+        attribute.toUpperCase(),
+      ]) {
+        const node = `<ix:${element} xmlns:ix="http://www.xbrl.org/${year}/inlineXBRL" ${wrongCase}="x"/>`;
+        expect(await parse(document(fact() + node))).toEqual(
+          emptyResult("invalid_document"),
+        );
+      }
+    },
+  );
+
+  it.each([
+    '<ix:relationship xmlns:ix="http://www.xbrl.org/2008/inlineXBRL" fromRefs="x"/>',
+    '<ix:footnote footnoteID="x"/>',
+    '<ix:footnote footnoteLinkRole="x"/>',
+    '<ix:references fromRefs="x"/>',
+    '<ix:relationship footnoteRole="x"/>',
+    '<ix:footnote linkRole="x"/>',
+    '<xbrli:context fromRefs="x"/>',
+    '<xbrldi:explicitMember footnoteRole="x"/>',
+    '<ix:relationship fromRefs="x" fromrefs="y"/>',
+    "<ix:relationship fromRefs=x/>",
+    '<ix:relationship fromRefs="x" continuationFrom="y"/>',
+  ])("keeps linking names scoped and XML syntax strict: %s", async (node) => {
+    expect(await parse(document(fact() + node))).toEqual(
+      emptyResult("invalid_document"),
+    );
+  });
+
+  it("does not resolve standard links or use them to clear numeric or metadata issues", async () => {
+    const links =
+      '<ix:relationship fromRefs="missing-fact" toRefs="missing-note" linkRole="urn:synthetic:role" arcrole="urn:synthetic:arc"/>' +
+      '<ix:footnote id="note" footnoteRole="urn:synthetic:note">Uninterpreted note</ix:footnote>';
+    const html = metadataDocument(
+      metadataFact(
+        "DocumentPeriodEndDate",
+        "March 31, 2025",
+        'format="ixt:date-monthname-day-year-en"',
+      ),
+    ).replace('decimals="0"', 'decimals="0" continuedAt="missing"');
+    const baseline = await parse(html);
+    expect(baseline.reason).toBe("unsupported_inline");
+    expect(baseline.reportingMetadata.fields[1]?.status).toBe("unsupported");
+    expect(await parse(html.replace("</body>", `${links}</body>`))).toEqual(
+      baseline,
+    );
+  });
+
+  it("keeps a linking child inside a numeric fact unsupported", async () => {
+    const result = await parse(
+      document(
+        fact().replace(
+          "100</ix:nonFraction>",
+          '100<ix:relationship fromRefs="x" toRefs="y"/></ix:nonFraction>',
+        ),
+      ),
+    );
+    expect(result.status).toBe("unsupported");
+    expect(result.reason).toBe("unsupported_inline");
+    expect(result.correspondingCandidateLocators).toEqual([]);
+  });
+
   it.each([
     '<?xml version="1.0" encoding="ASCII"?>',
     "<?xml version='1.0' encoding='US-ASCII'?>",
@@ -829,6 +916,7 @@ describe("filing DEI reporting metadata real isolated worker", () => {
     '<ix:continuation id="continued">ROW</ix:continuation>',
     "<ix:exclude>ROW</ix:exclude>",
     '<ix:nonNumeric name="dei:OtherConcept" contextRef="m">ROW</ix:nonNumeric>',
+    '<ix:footnote id="metadata-note" footnoteRole="urn:synthetic:note">ROW</ix:footnote>',
   ])(
     "does not admit metadata nested in unsupported inline ancestry %s",
     async (wrapper) => {

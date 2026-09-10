@@ -45,6 +45,13 @@ SEMANTIC_NAMES = {
     **{namespace: {"nonfraction": "nonFraction", "nonnumeric": "nonNumeric"} for namespace in IX},
 }
 SEMANTIC_ATTRIBUTES = {"contextref": "contextRef", "unitref": "unitRef", "continuedat": "continuedAt", "tupleref": "tupleRef", "tupleid": "tupleID", "footnoterefs": "footnoteRefs"}
+# Canonical linking-attribute names from the Inline XBRL 1.0/1.1 schemas.
+# These nodes are traversed, not resolved into relationships or fact evidence.
+IX_LINKING_ATTRIBUTES = {
+    ("http://www.xbrl.org/2013/inlineXBRL", "relationship"): {"fromrefs": "fromRefs", "torefs": "toRefs", "linkrole": "linkRole"},
+    ("http://www.xbrl.org/2013/inlineXBRL", "footnote"): {"footnoterole": "footnoteRole"},
+    ("http://www.xbrl.org/2008/inlineXBRL", "footnote"): {"footnoteid": "footnoteID", "footnotelinkrole": "footnoteLinkRole", "footnoterole": "footnoteRole"},
+}
 
 
 class Unsupported(Exception):
@@ -213,9 +220,10 @@ class Document(HTMLParser):
         if namespace in SEMANTIC_NAMES:
             if unquoted_attributes:
                 fail()
+            linking_attributes = IX_LINKING_ATTRIBUTES.get((namespace, local), {})
             for raw_key in attribute_names:
                 key = raw_key.lower()
-                if ":" not in key and raw_key != SEMANTIC_ATTRIBUTES.get(key, key):
+                if ":" not in key and raw_key != linking_attributes.get(key, SEMANTIC_ATTRIBUTES.get(key, key)):
                     fail()
         identifier = attrs.get("id")
         if identifier is not None:
