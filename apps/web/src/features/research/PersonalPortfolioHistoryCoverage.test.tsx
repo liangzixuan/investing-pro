@@ -147,6 +147,73 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         lastValueUsd: "400.00",
         endpointReturn: { status: "available", percent: "60.00" },
         modifiedDietzReturn: { status: "available", percent: "60.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "60.00",
+          subperiods: 1,
+        },
+      },
+    });
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(1);
+    expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
+  });
+
+  it("links loaded flow-date values without additional requests or replacing the Dietz estimate", async () => {
+    props = {
+      ...props,
+      ledger: {
+        ...ledger(),
+        transactions: [
+          {
+            id: "deposit-before-split",
+            date: "2026-01-02",
+            type: "deposit",
+            listingId: null,
+            shares: null,
+            grossUsd: "100",
+            feeUsd: "0",
+          },
+          ...ledger().transactions,
+        ],
+      },
+    };
+    const value = market();
+    api.fetchPersonalMarketOverview.mockResolvedValue({
+      ...value,
+      history: {
+        ...value.history,
+        bars: [
+          pricedBar("2026-01-01", "10"),
+          pricedBar("2026-01-02", "15"),
+          pricedBar("2026-01-03", "8", "2"),
+          pricedBar("2026-01-04", "11"),
+        ],
+      },
+    });
+    await mount();
+    expect(valuation(render())).toBeNull();
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    click(render(), "Review history");
+    await flush();
+    expect(point(render(), "2026-01-02")).toMatchObject({
+      totalValueUsd: "350.00",
+      netExternalFlowUsd: "100.00",
+    });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        firstDate: "2026-01-01",
+        lastDate: "2026-01-04",
+        firstValueUsd: "200.00",
+        lastValueUsd: "420.00",
+        changeAfterExternalFlowsUsd: "120.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+        modifiedDietzReturn: { status: "available", percent: "45.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "50.00",
+          subperiods: 2,
+        },
       },
     });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
@@ -183,6 +250,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         lastDate: "2026-01-04",
         endpointReturn: { status: "available", percent: "0.00" },
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "0.00",
+          subperiods: 1,
+        },
       },
     });
     click(render(), "Cancel history review");
@@ -197,6 +269,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         firstDate: "2026-01-03",
         endpointReturn: { status: "available", percent: "0.00" },
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: { status: "available", percent: "0.00" },
       },
     });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
@@ -235,6 +308,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
           status: "unavailable",
           reason: "insufficient_complete_dates",
         },
+        linkedPeriodReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
       },
     });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
@@ -257,6 +334,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(valuation(render())).toMatchObject({
       comparison: {
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: { status: "available", percent: "0.00" },
       },
     });
     props = {
@@ -274,6 +352,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
           status: "unavailable",
           reason: "insufficient_complete_dates",
         },
+        linkedPeriodReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
       },
     });
     expect(signal.aborted).toBe(false);
@@ -287,6 +369,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(valuation(render())).toMatchObject({
       comparison: {
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: { status: "available", percent: "0.00" },
       },
     });
     pending.resolve(market(1));
@@ -361,6 +444,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       expect(valuation(render())).toMatchObject({
         comparison: {
           modifiedDietzReturn: { status: "available", percent: "50.00" },
+          linkedPeriodReturn: { status: "available", percent: "50.00" },
         },
       });
       if (kind === "ledger")
@@ -402,10 +486,23 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(point(render(), "2026-01-03")).toMatchObject({
       totalValueUsd: null,
     });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        linkedPeriodReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
+      },
+    });
     second.resolve(market());
     await flush();
     expect(point(render(), "2026-01-03")).toMatchObject({
       totalValueUsd: "300.00",
+    });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        linkedPeriodReturn: { status: "available", percent: "50.00" },
+      },
     });
   });
 
@@ -866,6 +963,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         changeAfterExternalFlowsUsd: "0.00",
         endpointReturn: { status: "unavailable", reason: "external_flows" },
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "0.00",
+          subperiods: 3,
+        },
       },
     });
     if (result?.status !== "available")
@@ -909,6 +1011,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
           reason: "insufficient_complete_dates",
         },
         modifiedDietzReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
+        linkedPeriodReturn: {
           status: "unavailable",
           reason: "insufficient_complete_dates",
         },
@@ -971,6 +1077,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       comparison: {
         endpointReturn: { status: "available", percent: "0.00" },
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "0.00",
+          subperiods: 1,
+        },
       },
     });
   });
@@ -1023,6 +1134,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
           modifiedDietzReturn: {
             status: "available",
             percent: estimatePercent,
+          },
+          linkedPeriodReturn: {
+            status: "unavailable",
+            reason: "incomplete_flow_date_value",
+            blockingDates: ["2026-01-02"],
           },
         },
       });
@@ -1129,6 +1245,17 @@ function bar(
     dividendCash,
     raw: { ...ohlcv },
     adjusted: { ...ohlcv },
+  };
+}
+function pricedBar(
+  date: string,
+  price: string,
+  splitFactor = "1",
+): PersonalMarketDataDailyBarDto {
+  const value = bar(date, splitFactor);
+  return {
+    ...value,
+    raw: { ...value.raw, open: price, high: price, low: price, close: price },
   };
 }
 function market(index = 0): PersonalMarketOverviewDto {

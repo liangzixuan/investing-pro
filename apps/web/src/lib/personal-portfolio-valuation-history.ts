@@ -54,6 +54,19 @@ export type PersonalPortfolioModifiedDietzReturn =
         | "estimate_below_total_loss";
     }>;
 
+export type PersonalPortfolioLinkedPeriodReturn =
+  | Readonly<{ status: "available"; percent: string; subperiods: number }>
+  | Readonly<{
+      status: "unavailable";
+      reason:
+        | "insufficient_complete_dates"
+        | "non_positive_starting_value"
+        | "incomplete_flow_date_value"
+        | "non_positive_subperiod_start"
+        | "negative_flow_adjusted_value";
+      blockingDates: readonly string[];
+    }>;
+
 export type PersonalPortfolioValuationHistoryResult =
   | Readonly<{ status: "invalid"; reason: string }>
   | Readonly<{
@@ -78,10 +91,16 @@ export type PersonalPortfolioValuationHistoryResult =
         changeAfterExternalFlowsUsd: string | null;
         endpointReturn: PersonalPortfolioEndpointReturn;
         modifiedDietzReturn: PersonalPortfolioModifiedDietzReturn;
+        linkedPeriodReturn: PersonalPortfolioLinkedPeriodReturn;
       }>;
     }>;
 
 type Price = Readonly<{ coefficient: bigint; places: number }>;
+type FlowBoundary = Readonly<{
+  date: string;
+  value: bigint | null;
+  netExternalFlow: bigint;
+}>;
 type Endpoint = Readonly<{
   date: string;
   day: bigint;
@@ -267,6 +286,7 @@ function calculate(
   let externalFlowDaySum = 0n;
   let first: Endpoint | null = null;
   let last: Endpoint | null = null;
+  const flowBoundaries: FlowBoundary[] = [];
   const points: PersonalPortfolioValuationHistoryPoint[] = [];
   const coverage = {
     totalDates: 0,
@@ -282,6 +302,7 @@ function calculate(
   ) {
     const date = new Date(instant).toISOString().slice(0, 10);
     let dailyExternalFlow = 0n;
+    let hasDailyExternalFlow = false;
     while (activityIndex < ledger.transactions.length) {
       const activity = ledger.transactions[activityIndex]!;
       if (activity.date > date) break;
@@ -328,6 +349,7 @@ function calculate(
             break;
         }
         if (activity.type === "deposit" || activity.type === "withdrawal") {
+          if (activity.date === date) hasDailyExternalFlow = true;
           const flowDay = BigInt(
             (Date.parse(`${activity.date}T00:00:00.000Z`) - startTime) / DAY_MS,
           );
@@ -364,6 +386,8 @@ function calculate(
       completeHoldings && cash !== null
         ? pricedValue + cash * priceScale
         : null;
+    if (hasDailyExternalFlow)
+      flowBoundaries.push({ date, value, netExternalFlow: dailyExternalFlow });
     if (value !== null) {
       const endpoint = {
         date,
@@ -404,6 +428,12 @@ function calculate(
     last,
     priceScale,
   );
+  const linkedPeriodReturn = calculateLinkedPeriodReturn(
+    first,
+    last,
+    priceScale,
+    flowBoundaries,
+  );
   const comparison =
     first !== null && last !== null && first.date !== last.date
       ? {
@@ -421,6 +451,7 @@ function calculate(
           ),
           endpointReturn,
           modifiedDietzReturn,
+          linkedPeriodReturn,
         }
       : {
           firstDate: null,
@@ -431,6 +462,7 @@ function calculate(
           changeAfterExternalFlowsUsd: null,
           endpointReturn,
           modifiedDietzReturn,
+          linkedPeriodReturn,
         };
   return Object.freeze({
     status: "available",
@@ -515,6 +547,111 @@ function calculateModifiedDietzReturn(
     status: "available",
     percent: cents(roundScaledCents(gainDays * 10_000n, capitalDays)),
   });
+}
+
+function calculateLinkedPeriodReturn(
+  first: Endpoint | null,
+  last: Endpoint | null,
+  scale: bigint,
+  flowBoundaries: readonly FlowBoundary[],
+): PersonalPortfolioLinkedPeriodReturn {
+  if (first === null || last === null || first.date === last.date)
+    return unavailableLinkedReturn("insufficient_complete_dates", []);
+  const startingCents = roundScaledCents(first.value, scale);
+  if (startingCents <= 0n)
+    return unavailableLinkedReturn("non_positive_starting_value", [first.date]);
+  // Include dates containing any external activity, even when their signed
+  // amounts offset. First-date flows already belong to the starting value.
+  const boundaries = flowBoundaries.filter(
+    (boundary) => boundary.date > first.date && boundary.date <= last.date,
+  );
+  const missingDates = boundaries
+    .filter((boundary) => boundary.value === null)
+    .map((boundary) => boundary.date);
+  if (missingDates.length > 0)
+    return unavailableLinkedReturn("incomplete_flow_date_value", missingDates);
+  if (boundaries.at(-1)?.date !== last.date)
+    boundaries.push({
+      date: last.date,
+      value: last.value,
+      netExternalFlow: 0n,
+    });
+
+  let numerator = 1n;
+  let denominator = 1n;
+  let previousCents = startingCents;
+  let previousDate = first.date;
+  for (const boundary of boundaries) {
+    if (previousCents <= 0n)
+      return unavailableLinkedReturn("non_positive_subperiod_start", [
+        previousDate,
+      ]);
+    const boundaryCents = roundScaledCents(boundary.value!, scale);
+    // Under the declared EOD convention, subtract that date's net transfer
+    // from its post-flow value. This is not an observed intraday valuation.
+    const adjustedCents = boundaryCents - boundary.netExternalFlow;
+    if (adjustedCents < 0n)
+      return unavailableLinkedReturn("negative_flow_adjusted_value", [
+        boundary.date,
+      ]);
+    if (adjustedCents === 0n) {
+      numerator = 0n;
+      denominator = 1n;
+    } else if (numerator !== 0n) {
+      // Reduce each factor and cross-cancel before multiplication. At most
+      // 250 flow dates plus the final observation produce 251 exact factors.
+      const factorDivisor = greatestCommonDivisor(adjustedCents, previousCents);
+      let factorNumerator = adjustedCents / factorDivisor;
+      let factorDenominator = previousCents / factorDivisor;
+      const numeratorDivisor = greatestCommonDivisor(
+        numerator,
+        factorDenominator,
+      );
+      numerator /= numeratorDivisor;
+      factorDenominator /= numeratorDivisor;
+      const denominatorDivisor = greatestCommonDivisor(
+        factorNumerator,
+        denominator,
+      );
+      factorNumerator /= denominatorDivisor;
+      denominator /= denominatorDivisor;
+      numerator *= factorNumerator;
+      denominator *= factorDenominator;
+    }
+    // A zero product still visits every later boundary and eligibility check.
+    previousCents = boundaryCents;
+    previousDate = boundary.date;
+  }
+  return Object.freeze({
+    status: "available",
+    percent: cents(
+      roundScaledCents((numerator - denominator) * 10_000n, denominator),
+    ),
+    subperiods: boundaries.length,
+  });
+}
+
+function unavailableLinkedReturn(
+  reason: Extract<
+    PersonalPortfolioLinkedPeriodReturn,
+    { status: "unavailable" }
+  >["reason"],
+  blockingDates: string[],
+): PersonalPortfolioLinkedPeriodReturn {
+  return Object.freeze({
+    status: "unavailable",
+    reason,
+    blockingDates: Object.freeze(blockingDates),
+  });
+}
+
+function greatestCommonDivisor(left: bigint, right: bigint): bigint {
+  while (right !== 0n) {
+    const remainder = left % right;
+    left = right;
+    right = remainder;
+  }
+  return left;
 }
 
 function parseDecimal(value: unknown): Price | null {

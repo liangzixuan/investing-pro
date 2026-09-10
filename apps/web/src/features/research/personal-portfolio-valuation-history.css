@@ -38,6 +38,11 @@
 .portfolio-valuation-summary > div {
   min-width: 0;
 }
+.portfolio-valuation-linked {
+  grid-column: 1 / -1;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border, #dce3ed);
+}
 .portfolio-valuation-summary dt {
   color: var(--muted, #64748b);
   font-size: 0.82rem;
@@ -56,18 +61,32 @@
   font-weight: 400;
   line-height: 1.45;
 }
-.portfolio-valuation-methods {
+.portfolio-valuation-methods,
+.portfolio-valuation-blocking-dates {
   color: var(--muted, #64748b);
   font-size: 0.82rem;
 }
-.portfolio-valuation-methods summary {
+.portfolio-valuation-methods summary,
+.portfolio-valuation-blocking-dates summary {
   cursor: pointer;
   padding: 0.65rem 0;
   font-weight: 600;
 }
-.portfolio-valuation-methods summary:focus-visible {
+.portfolio-valuation-methods summary:focus-visible,
+.portfolio-valuation-blocking-dates summary:focus-visible,
+.portfolio-valuation-blocking-dates [role="region"]:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
+}
+.portfolio-valuation-blocking-dates [role="region"] {
+  max-height: 14rem;
+  overflow-y: auto;
+  font-weight: 400;
+}
+.portfolio-valuation-blocking-dates ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.6;
 }
 .portfolio-valuation-chart {
   margin: 1.25rem 0;

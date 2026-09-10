@@ -6,7 +6,9 @@ and compares two explicitly dated complete observations. The fifth partial
 delivery adds an endpoint percentage return for intervals without recorded
 deposits or withdrawals. The sixth partial delivery adds a Modified Dietz
 estimate for intervals with recorded cash flows, using an explicit end-of-day
-timing convention. Exact TWR, XIRR, benchmark performance and tax results remain
+timing convention. The seventh partial delivery adds a linked return using
+checked values at each external-flow date under that same timing convention.
+Measured intraday TWR, XIRR, benchmark performance and tax results remain
 separate work.
 
 ## Workflow
@@ -29,9 +31,11 @@ alongside their values. These can differ from the requested window endpoints.
 It does not silently claim that an unpriced endpoint was valued. At least two
 distinct complete dates are required. The net external flow and dollar change
 refer only to that explicitly dated comparison interval. When eligible, the
-endpoint percentage and Modified Dietz estimate use the same two dates, not
-unpriced window boundaries. The comparison's expandable methodology describes
-their eligibility and timing conventions.
+endpoint percentage, Modified Dietz estimate and linked return use the same
+two dates, not unpriced window boundaries. The comparison's expandable
+methodology describes their eligibility and timing conventions. Linking adds
+valuation requirements at intervening cash-flow dates; it does not shorten the
+interval to avoid a missing value.
 
 ## Date and value conventions
 
@@ -194,11 +198,93 @@ one, depositing `100.00 USD` on day nine and paying a `30.00 USD` fee ends at
 `70.00 USD`. Its `20.00 USD` weighted capital implies `-150%`; the product
 withholds that estimate and retains the `-30.00 USD` dollar bridge.
 
-No return is annualized, no period is geometrically linked, and no exact TWR or
-XIRR is claimed. Unknown cash and unresolved split evidence still prevent
+The Dietz estimate is not annualized or geometrically linked, and no exact TWR
+or XIRR is claimed. Unknown cash and unresolved split evidence still prevent
 complete affected endpoints. All values remain conditional on recorded ledger
 activities and observed raw prices; fees and recorded dividends retain their
 existing cash effects, while provider dividend observations add no cash.
+
+## Linked return: end-of-day flow convention
+
+The linked return compounds subperiod returns between complete values at
+external-flow dates. It treats each date's deposits and withdrawals as a net
+cash flow placed after that date's return measurement. The saved ledger's
+same-day activity order and resulting holdings/cash are unchanged. This is a
+declared daily convention, not an observed valuation immediately before each
+intraday transfer.
+
+Start with the first complete value. Create a boundary at every date containing
+any deposit or withdrawal strictly after the first through the last compared
+date, even when that date's activities net to zero. Append the last compared
+date if it is not already a boundary. First-date flows are already included in
+the starting value; later-than-last flows are outside the comparison.
+
+For boundary `k`, let `V_k` be its displayed post-flow EOD value, `C_k` its signed
+net external flow, and `V_previous` the previous boundary's displayed post-flow
+value:
+
+`factor_k = (V_k - C_k) / V_previous`
+
+`linked return (%) = (product(factor_k) - 1) * 100`
+
+A final boundary with no external activity uses `C_k = 0`. A final-date flow
+is adjusted exactly once. The numerator is a flow-adjusted value under this
+convention; it is not a measured pre-transfer value. Internal trades, recorded
+dividends and fees stay in the portfolio value. Provider dividend observations
+never create recorded cash.
+
+Both endpoints and every flow-date boundary must have complete values. Cash-only
+dates need no market price; active holdings need exact-date raw closes. Unknown
+cash and unresolved split evidence still prevent complete affected values.
+Missing non-flow dates remain visible without blocking this period calculation.
+Additional non-flow observations do not add subperiods, so incidental price
+coverage does not change the result. This does not establish a complete daily
+return series or drawdown history.
+
+Eligibility and dated reasons are checked in this order:
+
+1. Require two distinct complete endpoints; otherwise no blocking date is given.
+2. Require positive displayed starting cents; identify the first date if not.
+3. Require complete values on all cash-flow dates; report every missing date in
+   chronological order, including dates with offsetting activities.
+4. For each subperiod in order, require a positive previous post-flow value and
+   a nonnegative current flow-adjusted value. A nonpositive denominator identifies
+   the previous date; a negative numerator identifies the current date.
+
+A zero numerator is a valid total loss, but all later boundaries and denominators
+must still pass. The engine does not stop evidence checks when the product
+becomes zero. A zero post-flow value is permitted at the final boundary. A final
+withdrawal of unchanged capital therefore gives `0.00%`, not a loss. A portfolio
+emptied before a later subperiod is unavailable; the product does not silently
+restart after re-funding. Negative flow-adjusted values are withheld under this
+long-only EOD convention rather than changing timing or clamping the result.
+
+The engine uses the same displayed integer cents as the dated value table.
+Subperiod ratios use reduced BigInt fractions with cross-cancellation; no factor
+is rounded. Only the final percentage is rounded to two decimals, halfway away
+from zero, with no negative zero. At most 250 activity dates yield 251 factors.
+The result records the number of linked subperiods and remains immutable in
+session memory. The existing endpoint percentage, Dietz estimate and dollar
+bridge keep their own eligibility when linking is unavailable.
+
+For a ten-day interval starting at `100.00 USD`, a day-five deposit of
+`100.00 USD`, complete day-five value `250.00 USD` and ending value `275.00 USD`
+give factors `1.50` and `1.10`: linked return `65.00%`. The same endpoints and
+cash-flow dates give a Dietz estimate of `50.00%`. If the day-five value were
+`200.00 USD`, the linked result would instead be `37.50%`; the Dietz estimate
+would still be `50.00%`. If that date's value is missing, the linked result is
+unavailable while the estimate remains available.
+
+For an exact-rounding example, values `0.03`, `0.01`, `0.03 USD` with offsetting
+external activities at the middle boundary give `(1/3) * 3 = 1` and `0.00%`.
+Compounding individually rounded percentage figures would change the answer.
+
+All results cover only the compared dates and are not annualized. Without
+transfer timestamps and pre-transfer valuations, this convention cannot measure
+actual intraday cash exposure or claim exact transfer-time TWR. Unrecorded
+activities, settlement/receivables, dividend accruals and other corporate actions
+remain outside the reconstruction. These are product calculation choices, not
+a GIPS-compliant performance record.
 
 ## Source and methodology context
 
@@ -207,9 +293,9 @@ Tiingo describes both raw and adjusted fields in its
 are used here with the ledger's already adjusted share quantities to avoid
 applying splits twice. CFA Institute's
 [GIPS methodology handbook](https://www.gipsstandards.org/standards/gips-standards-for-firms/gips-standards-handbook-for-firms/)
-describes Modified Dietz, end-of-day flow weighting and the limitations of an
-estimate without valuations at each flow. The handbook was checked on
-2026-09-10. This product chooses EOD timing, displayed-cent endpoints and the
+describes Modified Dietz, geometric linking, cash-flow-date valuations and
+consistent daily flow conventions. The handbook was checked on 2026-09-10.
+This product chooses EOD timing, displayed-cent boundaries and the
 eligibility rules above; it does not implement the handbook's full performance
 framework or claim GIPS compliance.
 
@@ -232,7 +318,7 @@ bounds are rejected. Calculated results are immutable.
 Synthetic tests cover exact arithmetic, same-day cash and share events, splits,
 missing dates, unknown cash, closed positions, comparison flow boundaries,
 request/session invalidation and responsive presentation. Live owner Tiingo
-coverage still requires the configured runtime. Exact TWR, XIRR, dividend
+coverage still requires the configured runtime. Measured intraday TWR, XIRR, dividend
 accruals, other corporate actions and benchmarks remain separate work.
 Percentage tests include offsetting flows, dated boundaries,
 zero starting values, gains/losses, rounding ties, exact large amounts and raw
@@ -241,3 +327,8 @@ reuse the existing observations and clear with the owner context. Dietz tests
 also cover different-date weights, missing flow-date prices, zero and negative
 weighted capital, near-zero exact capital, the unrounded loss-range boundary,
 and equality with the endpoint return when no external flows occur.
+Linked-return checks cover required flow-date values, offsetting activities,
+missing-boundary precedence, zero/negative adjusted capital, final full
+withdrawals, exact factor chaining, large inputs and continued evidence checks
+after a zero factor. Loader and presenter checks retain request/session clearing
+and accessible dated explanations.

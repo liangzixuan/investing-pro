@@ -26,33 +26,34 @@ unrelated hardening outside the active personal scope.
 | Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata          |
 | Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth |
 | Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Live validation, upcoming events, alerts and exports                   |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint returns, flow-adjusted estimates and FIFO                     | Linked returns, further corporate actions and live coverage            |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                 | Further corporate actions, benchmarks and live coverage                |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: endpoint portfolio returns
+## Last verified release: cash-flow-adjusted return estimates
 
-Release `051e25a` closed endpoint percentage returns beside historical values
-and the dated dollar bridge, following feature `8ccb4ca`. Full local
-verification passed (3,352 tests and 9 existing
-skips); all four applicable hosted workflows passed on attempt 1 for that exact
-release, including Ubuntu and Windows CI. See
-[endpoint return rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md).
+Release `c9c7de8` closed Modified Dietz estimates beside the endpoint percentage
+and dated dollar bridge, following feature `7565f8a`. Full local verification
+passed (3,385 tests and 9 existing skips). All four hosted workflows passed on
+that exact release. Linux and the three specialized workflows passed on
+attempt 1; Windows passed one same-source retry after two unchanged database
+tests timed out. No source, assertion or timeout changes were needed. See
+[Modified Dietz rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#cash-flow-adjusted-return-estimate-modified-dietz).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: cash-flow-adjusted period-return estimate
+## Active delivery: linked period returns
 
-The sixth partial Cycle 3m-a slice adds a Modified Dietz estimate beside the
-existing endpoint percentage and dollar bridge. It weights recorded deposits
-and withdrawals by remaining calendar days under an explicit end-of-day
-convention. Complete endpoints, positive starting value and positive exact
-weighted capital are required. Estimates below the supported loss range are
-withheld before rounding, and the dollar amounts remain available. See
-[Modified Dietz rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#cash-flow-adjusted-return-estimate-modified-dietz).
+The seventh partial Cycle 3m-a slice adds a linked return under an explicit
+end-of-day flow convention. It requires complete valuations at every date
+containing a deposit or withdrawal, including offsetting activities. Exact
+subperiod factors are compounded before final rounding; unsupported capital
+states and missing boundaries have dated explanations. The existing endpoint
+percentage, Modified Dietz estimate and dollar bridge remain available under
+their own rules. See [linked return rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#linked-return-end-of-day-flow-convention).
 
 Live SEC validation still requires the owner's contact and startup configuration.
 The current shell has neither the SEC contact nor the configured catalog path
@@ -65,14 +66,14 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Now              | Deliver and verify Modified Dietz period-return estimates                                        | Require complete endpoints, explicit EOD timing and positive weighted capital |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                     |
-| Next             | Linked period returns with checked valuations at external flows                                  | Require compatible flow-date observations and explicit daily timing           |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                      |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions           |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                   |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Now              | Deliver and verify linked period returns                                                         | Require complete flow-date values, explicit EOD timing and eligible subperiods |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                      |
+| Next             | Verified trailing-twelve-month financials from compatible quarterly observations                 | Establish period compatibility before expanding screening metrics              |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                       |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions            |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                    |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

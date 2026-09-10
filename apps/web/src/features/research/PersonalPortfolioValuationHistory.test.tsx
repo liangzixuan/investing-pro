@@ -244,7 +244,141 @@ describe("PersonalPortfolioValuationHistory", () => {
     expect(text(view)).toContain(
       "Percentages cover the compared dates and are not annualized",
     );
-    expect(elements(view, "dt")).toHaveLength(6);
+    expect(elements(view, "dt")).toHaveLength(7);
+  });
+
+  it.each([
+    ["10.00", 2],
+    ["-100.00", 3],
+    ["0.00", 1],
+    ["999999999999.99", 251],
+  ] as const)(
+    "displays supplied linked return %s with %s subperiods",
+    (percent, subperiods) => {
+      result = history({
+        comparison: {
+          ...history().comparison,
+          linkedPeriodReturn: { status: "available", percent, subperiods },
+        },
+      });
+      const view = render();
+      expect(metric(view, "Linked return")).toBe(
+        `${percent}%${subperiods} subperiod${subperiods === 1 ? "" : "s"} · End-of-day flow convention`,
+      );
+      expect(metric(view, "Change after external cash flows")).toBe(
+        "15.00 USD",
+      );
+      expect(metric(view, "Cash-flow-adjusted return estimate")).toContain(
+        "12.50%",
+      );
+      expect(metric(view, "Return between compared dates")).toContain(
+        "Unavailable",
+      );
+      expect(text(view)).toContain(
+        "2026-09-02 to 2026-09-04: first and last complete values",
+      );
+    },
+  );
+
+  it.each([
+    [
+      "insufficient_complete_dates",
+      "At least two complete dated values are required.",
+      [],
+    ],
+    [
+      "non_positive_starting_value",
+      "The displayed starting value must be greater than zero.",
+      ["2026-09-02"],
+    ],
+    [
+      "incomplete_flow_date_value",
+      "including dates with offsetting flows",
+      ["2026-09-03", "2026-09-04"],
+    ],
+    [
+      "non_positive_subperiod_start",
+      "A subperiod starts from zero or a negative displayed portfolio value.",
+      ["2026-09-03"],
+    ],
+    [
+      "negative_flow_adjusted_value",
+      "Subtracting the date’s net external flow produces a negative value",
+      ["2026-09-04"],
+    ],
+  ] as const)(
+    "explains unavailable linked return for %s and preserves its blocking dates",
+    (reason, explanation, blockingDates) => {
+      result = history({
+        comparison: {
+          ...(reason === "insufficient_complete_dates"
+            ? noComparison()
+            : history().comparison),
+          linkedPeriodReturn: { status: "unavailable", reason, blockingDates },
+        },
+      });
+      const value = metric(render(), "Linked return");
+      expect(value).toContain("Unavailable");
+      expect(value).toContain(explanation);
+      expect(value).toContain("End-of-day flow convention");
+      for (const date of blockingDates) expect(value).toContain(date);
+      if (blockingDates.length === 0)
+        expect(value).not.toContain("Blocking date");
+      expect(value).not.toContain("subperiods ·");
+    },
+  );
+
+  it("keeps every blocking date in a collapsed keyboard-accessible list and removes it with replaced results", () => {
+    const blockingDates = Array.from({ length: 250 }, (_, index) =>
+      new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+    );
+    result = history({
+      comparison: {
+        ...history().comparison,
+        linkedPeriodReturn: {
+          status: "unavailable",
+          reason: "incomplete_flow_date_value",
+          blockingDates,
+        },
+      },
+    });
+    const view = render();
+    const disclosure = elements(view, "details").find(
+      (entry) => entry.props.className === "portfolio-valuation-blocking-dates",
+    );
+    expect(disclosure?.props.open).toBeUndefined();
+    expect(text(elements(disclosure, "summary")[0])).toBe(
+      `250 blocking dates · ${blockingDates[0]} to ${blockingDates.at(-1)} · Show all dates`,
+    );
+    expect(elements(disclosure, "li").map(text)).toEqual(blockingDates);
+    expect(elements(disclosure, "div")[0]?.props).toMatchObject({
+      role: "region",
+      tabIndex: 0,
+      "aria-label": "Blocking dates for linked return",
+    });
+    result = history();
+    expect(elements(render(), "li")).toHaveLength(0);
+    expect(text(render())).not.toContain("2026-01-01");
+  });
+
+  it("explains flow-date linking without claiming measured intraday timing or filling other gaps", () => {
+    const view = render();
+    const details = elements(view, "details").find(
+      (entry) => entry.props.className === "portfolio-valuation-methods",
+    );
+    expect(text(details)).toContain("even when a date’s flows net to zero");
+    expect(text(details)).toContain(
+      "Missing values on other dates remain unchecked and need not block linking",
+    );
+    expect(text(details)).toContain(
+      "Multiply these factors and subtract one; intermediate factors are not rounded",
+    );
+    expect(text(details)).toContain(
+      "does not measure returns at actual intraday transfer times",
+    );
+    expect(text(view)).toContain(
+      "Percentages cover the compared dates and are not annualized",
+    );
   });
 
   it("plots only complete dots with separate unavailable markers and an equivalent accessible table", () => {
@@ -532,6 +666,11 @@ function noComparison(): Available["comparison"] {
       status: "unavailable",
       reason: "insufficient_complete_dates",
     },
+    linkedPeriodReturn: {
+      status: "unavailable",
+      reason: "insufficient_complete_dates",
+      blockingDates: [],
+    },
   };
 }
 function history(overrides: Partial<Available> = {}): Available {
@@ -573,6 +712,11 @@ function history(overrides: Partial<Available> = {}): Available {
       changeAfterExternalFlowsUsd: "15.00",
       endpointReturn: { status: "unavailable", reason: "external_flows" },
       modifiedDietzReturn: { status: "available", percent: "12.50" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "12.50",
+        subperiods: 1,
+      },
     },
     ...overrides,
   };

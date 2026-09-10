@@ -184,6 +184,11 @@ describe("portfolio end-of-day valuation history", () => {
       changeAfterExternalFlowsUsd: "9.00",
       endpointReturn: { status: "available", percent: "6.92" },
       modifiedDietzReturn: { status: "available", percent: "6.92" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "6.92",
+        subperiods: 1,
+      },
     });
   });
 
@@ -296,6 +301,11 @@ describe("portfolio end-of-day valuation history", () => {
       modifiedDietzReturn: {
         status: "unavailable",
         reason: "insufficient_complete_dates",
+      },
+      linkedPeriodReturn: {
+        status: "unavailable",
+        reason: "insufficient_complete_dates",
+        blockingDates: [],
       },
     });
   });
@@ -440,6 +450,11 @@ describe("portfolio end-of-day valuation history", () => {
       changeAfterExternalFlowsUsd: "0.00",
       endpointReturn: { status: "available", percent: "0.00" },
       modifiedDietzReturn: { status: "available", percent: "0.00" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "0.00",
+        subperiods: 1,
+      },
     });
   });
 
@@ -461,6 +476,11 @@ describe("portfolio end-of-day valuation history", () => {
       changeAfterExternalFlowsUsd: "6.00",
       endpointReturn: { status: "unavailable", reason: "external_flows" },
       modifiedDietzReturn: { status: "available", percent: "4.33" },
+      linkedPeriodReturn: {
+        status: "unavailable",
+        reason: "incomplete_flow_date_value",
+        blockingDates: ["2026-09-03"],
+      },
     });
   });
 
@@ -482,9 +502,19 @@ describe("portfolio end-of-day valuation history", () => {
           status: "unavailable",
           reason: "insufficient_complete_dates",
         },
+        linkedPeriodReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+          blockingDates: [],
+        },
       });
       expect(Object.isFrozen(comparison.endpointReturn)).toBe(true);
       expect(Object.isFrozen(comparison.modifiedDietzReturn)).toBe(true);
+      expect(Object.isFrozen(comparison.linkedPeriodReturn)).toBe(true);
+      if (comparison.linkedPeriodReturn.status === "unavailable")
+        expect(
+          Object.isFrozen(comparison.linkedPeriodReturn.blockingDates),
+        ).toBe(true);
     }
   });
 
@@ -511,6 +541,11 @@ describe("portfolio end-of-day valuation history", () => {
       status: "available",
       percent: "0.00",
     });
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "available",
+      percent: "0.00",
+      subperiods: 1,
+    });
   });
 
   it("supports unchanged V2 financial ledgers and immutable JSON-safe output", () => {
@@ -533,6 +568,7 @@ describe("portfolio end-of-day valuation history", () => {
     expect(Object.isFrozen(result.comparison)).toBe(true);
     expect(Object.isFrozen(result.comparison.endpointReturn)).toBe(true);
     expect(Object.isFrozen(result.comparison.modifiedDietzReturn)).toBe(true);
+    expect(Object.isFrozen(result.comparison.linkedPeriodReturn)).toBe(true);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
   });
 });
@@ -579,6 +615,11 @@ describe("portfolio endpoint percentage returns", () => {
         status: "available",
         percent,
       });
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "available",
+        percent,
+        subperiods: 1,
+      });
     },
   );
 
@@ -616,6 +657,11 @@ describe("portfolio endpoint percentage returns", () => {
         status: "available",
         percent,
       });
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "available",
+        percent,
+        subperiods: 1,
+      });
     },
   );
 
@@ -629,6 +675,11 @@ describe("portfolio endpoint percentage returns", () => {
       changeAfterExternalFlowsUsd: "-100.00",
       endpointReturn: { status: "available", percent: "-100.00" },
       modifiedDietzReturn: { status: "available", percent: "-100.00" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "-100.00",
+        subperiods: 1,
+      },
     });
   });
 
@@ -663,6 +714,11 @@ describe("portfolio endpoint percentage returns", () => {
           status: "unavailable",
           reason: "non_positive_starting_value",
         },
+        linkedPeriodReturn: {
+          status: "unavailable",
+          reason: "non_positive_starting_value",
+          blockingDates: ["2026-09-01"],
+        },
       });
       expect(result.comparison.changeAfterExternalFlowsUsd).toBe(
         startingValue === "0" ? "0.00" : "0.01",
@@ -685,6 +741,11 @@ describe("portfolio endpoint percentage returns", () => {
         lastDate: "2026-09-03",
         netExternalFlowsUsd: "0.00",
         endpointReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "0.00",
+          subperiods: 1,
+        },
       });
       expect(result.points[3]?.netExternalFlowUsd).toBe(
         type === "deposit" ? "10.00" : "-10.00",
@@ -706,6 +767,11 @@ describe("portfolio endpoint percentage returns", () => {
       lastValueUsd: "145.00",
       netExternalFlowsUsd: "0.00",
       endpointReturn: { status: "available", percent: "0.00" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "0.00",
+        subperiods: 1,
+      },
     });
   });
 
@@ -763,6 +829,11 @@ describe("portfolio endpoint percentage returns", () => {
       changeAfterExternalFlowsUsd: "7.00",
       endpointReturn: { status: "available", percent: "5.38" },
       modifiedDietzReturn: { status: "available", percent: "5.38" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "5.38",
+        subperiods: 1,
+      },
     });
   });
 
@@ -783,6 +854,11 @@ describe("portfolio endpoint percentage returns", () => {
         lastValueUsd: "130.00",
         endpointReturn: { status: "available", percent: "0.00" },
         modifiedDietzReturn: { status: "available", percent: "0.00" },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: "0.00",
+          subperiods: 1,
+        },
       });
     },
   );
@@ -1092,6 +1168,509 @@ describe("portfolio Modified Dietz period estimates", () => {
       percent: "10.00",
     });
     expect(result).toEqual(valid(input(source, observations)));
+  });
+});
+
+describe("portfolio linked returns under the end-of-day flow convention", () => {
+  function flowInput(
+    transactions: readonly PersonalPortfolioLedgerActivity[],
+    bars: History["bars"],
+  ): PersonalPortfolioValuationHistoryInput {
+    const base = ledger(transactions);
+    return {
+      ...input(
+        {
+          ...base,
+          opening: {
+            ...base.opening,
+            cashUsd: "90",
+            holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+          },
+        },
+        history(bars, "2026-09-01", "2026-09-11"),
+      ),
+      endDate: "2026-09-11",
+    };
+  }
+
+  function cashInput(
+    transactions: readonly PersonalPortfolioLedgerActivity[],
+    cashUsd = "100",
+  ): PersonalPortfolioValuationHistoryInput {
+    const base = ledger(transactions);
+    return {
+      ...input({
+        ...base,
+        opening: { ...base.opening, cashUsd, holdings: [] },
+      }),
+      histories: [],
+    };
+  }
+
+  it.each([
+    ["10", "30", "10.00", "13.33"],
+    ["60", "85", "65.00", "50.00"],
+    ["10", "85", "37.50", "50.00"],
+  ])(
+    "uses the checked flow-date close %s and ending close %s",
+    (flowClose, endClose, linked, dietz) => {
+      const result = valid(
+        flowInput(
+          [cash("flow", "deposit", "2026-09-06", "100")],
+          [
+            bar("2026-09-01"),
+            bar("2026-09-06", flowClose),
+            bar("2026-09-11", endClose),
+          ],
+        ),
+      );
+      expect(result.comparison).toMatchObject({
+        firstValueUsd: "100.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+        modifiedDietzReturn: { status: "available", percent: dietz },
+        linkedPeriodReturn: {
+          status: "available",
+          percent: linked,
+          subperiods: 2,
+        },
+      });
+    },
+  );
+
+  it("links offsetting flows on different dates as separate subperiods", () => {
+    const result = valid(
+      flowInput(
+        [
+          cash("in", "deposit", "2026-09-03", "100"),
+          cash("out", "withdrawal", "2026-09-09", "100"),
+        ],
+        [
+          bar("2026-09-01"),
+          bar("2026-09-03"),
+          bar("2026-09-09", "50"),
+          bar("2026-09-11", "64"),
+        ],
+      ),
+    );
+    expect(result.comparison).toMatchObject({
+      lastValueUsd: "154.00",
+      netExternalFlowsUsd: "0.00",
+      modifiedDietzReturn: { status: "available", percent: "33.75" },
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "32.00",
+        subperiods: 3,
+      },
+    });
+  });
+
+  it.each(["2026-09-06", "2026-09-07"])(
+    "reports all missing flow dates, including offsets on %s",
+    (withdrawalDate) => {
+      const value = flowInput(
+        [
+          cash("in", "deposit", "2026-09-06", "100"),
+          cash("out", "withdrawal", withdrawalDate, "100"),
+        ],
+        [bar("2026-09-01"), bar("2026-09-11", "20")],
+      );
+      const before = structuredClone(value);
+      const result = valid(value);
+      const expectedDates =
+        withdrawalDate === "2026-09-06"
+          ? [withdrawalDate]
+          : ["2026-09-06", withdrawalDate];
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "unavailable",
+        reason: "incomplete_flow_date_value",
+        blockingDates: expectedDates,
+      });
+      expect(result.comparison.modifiedDietzReturn.status).toBe("available");
+      expect(value).toEqual(before);
+      expect(Object.isFrozen(result.comparison.linkedPeriodReturn)).toBe(true);
+      if (result.comparison.linkedPeriodReturn.status === "unavailable")
+        expect(
+          Object.isFrozen(result.comparison.linkedPeriodReturn.blockingDates),
+        ).toBe(true);
+      expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+    },
+  );
+
+  it("does not depend on observation density on non-flow dates", () => {
+    const transactions = [cash("in", "deposit", "2026-09-06", "100")];
+    const bars = [
+      bar("2026-09-01"),
+      bar("2026-09-06", "60"),
+      bar("2026-09-11", "85"),
+    ];
+    const sparse = valid(flowInput(transactions, bars));
+    const dense = valid(
+      flowInput(transactions, [
+        bars[0]!,
+        bar("2026-09-03", "0.01"),
+        bars[1]!,
+        bar("2026-09-08", "999999"),
+        bars[2]!,
+      ]),
+    );
+    expect(sparse.coverage.completeDates).toBe(3);
+    expect(dense.coverage.completeDates).toBe(5);
+    expect(sparse.comparison).toEqual(dense.comparison);
+  });
+
+  it.each(["deposit", "withdrawal"] as const)(
+    "adjusts a final-date %s once without an extra subperiod",
+    (type) => {
+      const result = valid(
+        flowInput(
+          [cash("last", type, "2026-09-11", "50")],
+          [bar("2026-09-01"), bar("2026-09-11", "20")],
+        ),
+      );
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "available",
+        percent: "10.00",
+        subperiods: 1,
+      });
+    },
+  );
+
+  it("groups same-day external activity while preserving internal trades and recorded income", () => {
+    const result = valid(
+      input(
+        ledger([
+          cash("in", "deposit", "2026-09-02", "20"),
+          trade("buy", "buy", "2026-09-02", "1", "10", "1"),
+          cash("out", "withdrawal", "2026-09-02", "20"),
+          trade("sell", "sell", "2026-09-02", "2", "24", "2"),
+          cash("dividend", "dividend", "2026-09-03", "3"),
+          cash("fee", "fee", "2026-09-04", "1"),
+        ]),
+        history([
+          bar("2026-09-01"),
+          bar("2026-09-02", "12", "1", "999"),
+          bar("2026-09-04", "12", "1", "999"),
+        ]),
+      ),
+    );
+    expect(result.comparison).toMatchObject({
+      lastValueUsd: "137.00",
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "5.38",
+        subperiods: 2,
+      },
+    });
+  });
+
+  it("cancels exact reciprocal factors rather than linking rounded percentages", () => {
+    const base = ledger([
+      cash("in", "deposit", "2026-09-02", "0.01"),
+      cash("out", "withdrawal", "2026-09-02", "0.01"),
+    ]);
+    const source = {
+      ...base,
+      opening: {
+        ...base.opening,
+        cashUsd: "0",
+        holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+      },
+    };
+    const result = valid(
+      input(
+        source,
+        history([
+          bar("2026-09-01", "0.03"),
+          bar("2026-09-02", "0.01"),
+          bar("2026-09-04", "0.03"),
+        ]),
+      ),
+    );
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "available",
+      percent: "0.00",
+      subperiods: 2,
+    });
+  });
+
+  it("uses displayed cents at a subcent flow-date boundary", () => {
+    const base = ledger([cash("in", "deposit", "2026-09-02", "0.01")]);
+    const source = {
+      ...base,
+      opening: {
+        ...base.opening,
+        cashUsd: "0",
+        holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+      },
+    };
+    const result = valid(
+      input(
+        source,
+        history([
+          bar("2026-09-01", "0.006"),
+          bar("2026-09-02", "0.004"),
+          bar("2026-09-04", "0.02"),
+        ]),
+      ),
+    );
+    expect(result.points.map((point) => point.totalValueUsd)).toEqual([
+      "0.01",
+      "0.01",
+      null,
+      "0.03",
+    ]);
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "available",
+      percent: "-100.00",
+      subperiods: 2,
+    });
+  });
+
+  it("does not impose a positive return cap", () => {
+    const result = valid(
+      cashInput([
+        cash("in", "deposit", "2026-09-02", "100"),
+        cash("gain", "dividend", "2026-09-04", "2000"),
+      ]),
+    );
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "available",
+      percent: "1000.00",
+      subperiods: 2,
+    });
+  });
+
+  it.each([
+    ["dividend", "1.00", "0.01"],
+    ["fee", "1.00", "-0.01"],
+    ["fee", "0.99", "0.00"],
+  ] as const)(
+    "rounds the final chain after %s %s halfway away from zero",
+    (type, amount, percent) => {
+      const result = valid(
+        cashInput(
+          [
+            cash("in", "deposit", "2026-09-02", "10000"),
+            cash("internal", type, "2026-09-03", amount),
+          ],
+          "10000",
+        ),
+      );
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "available",
+        percent,
+        subperiods: 2,
+      });
+    },
+  );
+
+  it.each(["100", "0.01"])(
+    "permits a final full withdrawal of %s without inventing a loss",
+    (amount) => {
+      const result = valid(
+        cashInput([cash("out", "withdrawal", "2026-09-04", amount)], amount),
+      );
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "available",
+        percent: "0.00",
+        subperiods: 1,
+      });
+    },
+  );
+
+  it("retains a zero factor when later denominators remain positive", () => {
+    const result = valid(
+      cashInput([
+        cash("loss", "fee", "2026-09-02", "100"),
+        cash("in", "deposit", "2026-09-02", "100"),
+        cash("gain", "dividend", "2026-09-03", "10"),
+      ]),
+    );
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "available",
+      percent: "-100.00",
+      subperiods: 2,
+    });
+  });
+
+  it.each([
+    [
+      cash("out", "withdrawal", "2026-09-02", "100"),
+      cash("in", "deposit", "2026-09-03", "100"),
+    ],
+    [cash("out", "withdrawal", "2026-09-02", "100")],
+  ])(
+    "rejects another subperiod after a zero post-flow value %#",
+    (...transactions) => {
+      const result = valid(cashInput(transactions));
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "unavailable",
+        reason: "non_positive_subperiod_start",
+        blockingDates: ["2026-09-02"],
+      });
+    },
+  );
+
+  it("checks a later zero denominator even after a total-loss factor", () => {
+    const result = valid(
+      cashInput([
+        cash("loss", "fee", "2026-09-02", "100"),
+        cash("in", "deposit", "2026-09-02", "100"),
+        cash("out", "withdrawal", "2026-09-03", "100"),
+      ]),
+    );
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "unavailable",
+      reason: "non_positive_subperiod_start",
+      blockingDates: ["2026-09-03"],
+    });
+  });
+
+  it.each([false, true])(
+    "checks a negative flow-adjusted value after an earlier zero factor: %s",
+    (earlierZero) => {
+      const result = valid(
+        cashInput([
+          ...(earlierZero
+            ? [
+                cash("loss", "fee", "2026-09-02", "100"),
+                cash("refill", "deposit", "2026-09-02", "100"),
+              ]
+            : []),
+          cash("in", "deposit", "2026-09-03", "100"),
+          cash("fee", "fee", "2026-09-03", "150"),
+        ]),
+      );
+      expect(result.comparison.linkedPeriodReturn).toEqual({
+        status: "unavailable",
+        reason: "negative_flow_adjusted_value",
+        blockingDates: ["2026-09-03"],
+      });
+    },
+  );
+
+  it.each(["0", "100"])(
+    "checks starting value, then every missing flow date, before a negative factor (%s cash)",
+    (cashUsd) => {
+      const base = ledger([
+        cash("in", "deposit", "2026-09-02", "100"),
+        cash("loss", "fee", "2026-09-02", cashUsd === "0" ? "100" : "150"),
+        cash("later", "deposit", "2026-09-03", "10"),
+      ]);
+      const source = {
+        ...base,
+        opening: {
+          ...base.opening,
+          cashUsd,
+          holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+        },
+      };
+      const result = valid(
+        input(
+          source,
+          history([
+            bar("2026-09-01", "0.004"),
+            bar("2026-09-02", "0.004"),
+            bar("2026-09-04", "0.004"),
+          ]),
+        ),
+      );
+      expect(result.comparison.linkedPeriodReturn).toEqual(
+        cashUsd === "0"
+          ? {
+              status: "unavailable",
+              reason: "non_positive_starting_value",
+              blockingDates: ["2026-09-01"],
+            }
+          : {
+              status: "unavailable",
+              reason: "incomplete_flow_date_value",
+              blockingDates: ["2026-09-03"],
+            },
+      );
+    },
+  );
+
+  it("checks missing later flow values even after a zero factor", () => {
+    const base = ledger([
+      cash("loss", "fee", "2026-09-02", "100"),
+      cash("in", "deposit", "2026-09-02", "100"),
+      cash("later", "deposit", "2026-09-03", "10"),
+    ]);
+    const source = {
+      ...base,
+      opening: {
+        ...base.opening,
+        holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+      },
+    };
+    const result = valid(
+      input(
+        source,
+        history([
+          bar("2026-09-01", "0.004"),
+          bar("2026-09-02", "0.004"),
+          bar("2026-09-04", "0.004"),
+        ]),
+      ),
+    );
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "unavailable",
+      reason: "incomplete_flow_date_value",
+      blockingDates: ["2026-09-03"],
+    });
+  });
+
+  it("uses raw split-date values for a deposit boundary", () => {
+    const result = valid(
+      input(
+        ledger([split(), cash("in", "deposit", "2026-09-02", "100")]),
+        history([
+          bar("2026-09-01"),
+          bar("2026-09-02", "5", "2"),
+          bar("2026-09-04", "5"),
+        ]),
+      ),
+    );
+    expect(result.comparison.linkedPeriodReturn).toEqual({
+      status: "available",
+      percent: "0.00",
+      subperiods: 2,
+    });
+  });
+
+  it("keeps comparisons before unresolved split warnings and cannot link through them", () => {
+    const value = input(
+      ledger([cash("in", "deposit", "2026-09-03", "100")]),
+      history([
+        bar("2026-09-01"),
+        bar("2026-09-02"),
+        bar("2026-09-03", "5", "2"),
+        bar("2026-09-04", "5"),
+      ]),
+    );
+    const result = valid(value);
+    expect(result.comparison).toMatchObject({
+      firstDate: "2026-09-01",
+      lastDate: "2026-09-02",
+      netExternalFlowsUsd: "0.00",
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "0.00",
+        subperiods: 1,
+      },
+    });
+    expect(result.points[2]?.totalValueUsd).toBeNull();
+    expect(
+      valid({
+        ...value,
+        priorSplitReviewDates: { "listing-a": ["2026-08-31"] },
+      }).comparison.linkedPeriodReturn,
+    ).toEqual({
+      status: "unavailable",
+      reason: "insufficient_complete_dates",
+      blockingDates: [],
+    });
   });
 });
 
@@ -1421,7 +2000,7 @@ describe("valuation history input bounds and UTC windows", () => {
     );
     const base = ledger(
       Array.from({ length: 250 }, (_, index) =>
-        cash(`deposit-${String(index)}`, "deposit", "2026-09-02", "1"),
+        cash(`deposit-${String(index)}`, "deposit", bars[index + 1]!.date, "1"),
       ),
     );
     const source: PersonalPortfolioLedgerPayloadV3 = {
@@ -1459,6 +2038,11 @@ describe("valuation history input bounds and UTC windows", () => {
       lastValueUsd: "1450.00",
       netExternalFlowsUsd: "250.00",
       changeAfterExternalFlowsUsd: "0.00",
+      linkedPeriodReturn: {
+        status: "available",
+        percent: "0.00",
+        subperiods: 251,
+      },
     });
   });
 });

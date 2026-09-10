@@ -144,6 +144,9 @@ percentage is unavailable; offsetting deposits and withdrawals still count.
 The same panel also offers a Modified Dietz period-return estimate with explicit
 end-of-day flow weighting. It shows eligibility and approximation limits, keeps
 missing prices visible, and preserves the original dollar comparison.
+It also provides a linked return when every recorded external-flow date has a
+complete value. Subperiods are compounded under a declared end-of-day flow
+convention; unavailable dates and unsupported capital states are identified.
 
 The stock screener scans the admitted 3,000-plus active U.S.-listed
 common-stock and ADR catalog without contacting Tiingo. One explicit action can

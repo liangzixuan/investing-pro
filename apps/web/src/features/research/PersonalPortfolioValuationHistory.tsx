@@ -127,11 +127,40 @@ export function PersonalPortfolioValuationHistory({
               <small>Modified Dietz · end-of-day flows</small>
             </dd>
           </div>
+          <div className="portfolio-valuation-linked">
+            <dt>Linked return</dt>
+            <dd>
+              {comparison.linkedPeriodReturn.status === "available" ? (
+                <>
+                  {comparison.linkedPeriodReturn.percent}%
+                  <small>
+                    {comparison.linkedPeriodReturn.subperiods} subperiod
+                    {comparison.linkedPeriodReturn.subperiods === 1 ? "" : "s"}
+                    {" · "}End-of-day flow convention
+                  </small>
+                </>
+              ) : (
+                <>
+                  Unavailable
+                  <small>
+                    {linkedUnavailableReason(
+                      comparison.linkedPeriodReturn.reason,
+                    )}
+                  </small>
+                  <small>End-of-day flow convention</small>
+                  <BlockingDates
+                    dates={comparison.linkedPeriodReturn.blockingDates}
+                  />
+                </>
+              )}
+            </dd>
+          </div>
         </dl>
         <p className="portfolio-valuation-note">
           Percentages cover the compared dates and are not annualized. Modified
           Dietz estimates the effect of recorded cash-flow timing using an
-          end-of-day convention.
+          end-of-day convention. Linked return checks values on recorded
+          external-flow dates under the same timing assumption.
         </p>
         <details className="portfolio-valuation-methods">
           <summary>How these comparisons are calculated</summary>
@@ -158,6 +187,22 @@ export function PersonalPortfolioValuationHistory({
             Estimates below -100% are withheld rather than clamped. Modified
             Dietz is not an exact time-weighted return. Dates between compared
             observations may still have unavailable values.
+          </p>
+          <p>
+            Linked return requires a complete portfolio value on every deposit
+            or withdrawal date strictly after the first compared date through
+            the last, even when a date’s flows net to zero. These dates and the
+            final compared date form its subperiod boundaries. Missing values on
+            other dates remain unchecked and need not block linking.
+          </p>
+          <p>
+            At each boundary, subtract that date’s net external flow from its
+            displayed end-of-day value, then divide by the previous boundary’s
+            displayed post-flow value. Multiply these factors and subtract one;
+            intermediate factors are not rounded. Every subperiod must start
+            with positive value, and every flow-adjusted value must be
+            nonnegative. This end-of-day convention does not measure returns at
+            actual intraday transfer times.
           </p>
         </details>
       </div>
@@ -367,6 +412,55 @@ function HistoryChart({ result }: { readonly result: AvailableHistory }) {
 
 function money(value: string | null, unknown = "Unavailable") {
   return value === null ? unknown : `${value} USD`;
+}
+
+function BlockingDates({ dates }: { readonly dates: readonly string[] }) {
+  if (dates.length === 0) return null;
+  if (dates.length <= 3)
+    return (
+      <small>
+        Blocking {dates.length === 1 ? "date" : "dates"}: {dates.join(", ")}
+      </small>
+    );
+  return (
+    <details className="portfolio-valuation-blocking-dates">
+      <summary>
+        {dates.length} blocking dates · {dates[0]} to {dates.at(-1)} · Show all
+        dates
+      </summary>
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Blocking dates for linked return"
+      >
+        <ol>
+          {dates.map((date) => (
+            <li key={date}>{date}</li>
+          ))}
+        </ol>
+      </div>
+    </details>
+  );
+}
+
+function linkedUnavailableReason(
+  reason: Extract<
+    AvailableHistory["comparison"]["linkedPeriodReturn"],
+    { status: "unavailable" }
+  >["reason"],
+) {
+  return {
+    insufficient_complete_dates:
+      "At least two complete dated values are required.",
+    non_positive_starting_value:
+      "The displayed starting value must be greater than zero.",
+    incomplete_flow_date_value:
+      "A complete portfolio value is required on every deposit or withdrawal date, including dates with offsetting flows.",
+    non_positive_subperiod_start:
+      "A subperiod starts from zero or a negative displayed portfolio value.",
+    negative_flow_adjusted_value:
+      "Subtracting the date’s net external flow produces a negative value under the end-of-day convention.",
+  }[reason];
 }
 
 function returnUnavailableReason(

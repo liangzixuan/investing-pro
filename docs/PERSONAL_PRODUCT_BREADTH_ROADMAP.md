@@ -1213,6 +1213,22 @@ flow-date prices stay visible; no new data request, schema or persistence is
 introduced. This does not close exact TWR, XIRR, benchmark or broader
 corporate-action requirements.
 
+### Seventh partial Cycle 3m-a delivery
+
+[Linked period returns](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#linked-return-end-of-day-flow-convention)
+compound exact subperiod factors under a declared end-of-day flow convention.
+Every date with a recorded deposit or withdrawal needs a complete value, even
+when activities offset to zero. Missing non-flow dates remain visible without
+changing the compared interval. Ineligible capital states and required missing
+values have dated explanations; the endpoint percentage, Dietz estimate and
+dollar comparison retain their own eligibility.
+
+This uses the existing raw-price history, ledger, identity checks and transient
+session state. It adds no provider request or stored schema. Full withdrawals
+on the final date are distinguished from losses; empty/refunded episodes are
+not silently joined. Exact intraday performance, XIRR, benchmarks, dividend
+accruals and other corporate actions remain separate requirements.
+
 ### Cycle 3n — background alerts and delivery
 
 Target: turn immediate local rule evaluation into a reliable monitoring
@@ -1324,17 +1340,18 @@ loads are delivered. Their configured live coverage and sampled values still
 require validation; the seven-metric screen does not close the broader
 30-core-metric/500-security gate.
 
-Historical portfolio values, the dated dollar bridge and eligible endpoint
-percentages are delivered. The current sixth partial 3m-a slice adds a Modified
-Dietz estimate under an explicit end-of-day cash-flow convention, with exact
-weighted-capital eligibility and visible approximation limits. Complete the
-reviewed feature and release gates described in the current-work guide.
+Historical portfolio values, the dated dollar bridge, eligible endpoint
+percentages and Modified Dietz estimates are delivered. The current seventh
+partial 3m-a slice adds linked returns with complete values at every cash-flow
+date under an explicit EOD convention. Missing flow-date values and unsupported
+capital states remain unavailable; no intraday timing is inferred. Complete
+the reviewed feature and release gates described in the current-work guide.
 
-Next assess linked period returns with explicit valuation requirements at each
-external flow and consistent daily timing. Do not infer missing flow-date prices
-or describe a timing approximation as exact intraday performance. XIRR,
-benchmark comparisons, dividend accruals and other corporate actions remain
-separate work requiring their own methodology and evidence.
+Next assess verified trailing-twelve-month financials from compatible quarterly
+observations before expanding screening metrics. This addresses the financial
+view's explicit TTM gap while broader return methods remain in the backlog.
+XIRR, benchmark comparisons, dividend accruals and other corporate actions need
+their own methodology and evidence.
 
 Alerts and exports follow as their inputs and source permissions become
 available. A permitted daily event slice may proceed independently when bulk
