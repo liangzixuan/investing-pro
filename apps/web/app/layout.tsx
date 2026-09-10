@@ -6,6 +6,7 @@ import { LegacyLocalStateCleanup } from "@/features/research/LegacyLocalStateCle
 import "./globals.css";
 import "@/features/research/personal-portfolio.css";
 import "@/features/research/personal-portfolio-ledger.css";
+import "@/features/research/personal-portfolio-history.css";
 
 export const metadata: Metadata = {
   title: "Research Cockpit — Synthetic Demo",

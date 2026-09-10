@@ -6,6 +6,8 @@ Record buys, sells, deposits, withdrawals, cash dividends and fees in the same
 encrypted My Portfolio record. Opening balances and the ordered ledger derive
 current holdings, remaining basis, cash, realized estimates and cash-flow totals.
 This second partial Cycle 3m-a delivery does not complete historical performance.
+The subsequent [split reconciliation and history review](./PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md)
+adds an explicit schema 3 upgrade while preserving this financial CSV profile.
 
 ## Workflow
 
@@ -71,7 +73,8 @@ identified in its [stock basis FAQ](https://www.irs.gov/faqs/capital-gains-losse
 and [Publication 550](https://www.irs.gov/publications/p550). This application
 does not reconstruct actual acquisition lots from an aggregate opening balance.
 Its FIFO estimate is **not tax accounting**: specific-lot identification, wash
-sales, corporate actions, reinvestment, FX and tax adjustments are unsupported.
+sales, corporate actions other than manually recorded splits, reinvestment, FX
+and tax adjustments are unsupported.
 Deposits and withdrawals are cash flows, not investment returns. Income totals
 are recorded cash dividends only; no yield, TWR, XIRR or benchmark claim is made.
 

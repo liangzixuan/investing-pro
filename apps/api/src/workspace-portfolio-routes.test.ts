@@ -2,9 +2,12 @@ import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type {
-  PersonalPortfolioLedgerPayload,
-  PersonalPortfolioPayload,
+import {
+  projectPersonalPortfolioLedger,
+  type PersonalPortfolioLedgerPayload,
+  type PersonalPortfolioLedgerPayloadV2,
+  type PersonalPortfolioLedgerPayloadV3,
+  type PersonalPortfolioPayload,
 } from "@research-cockpit/contracts";
 import {
   LocalResearchVault,
@@ -48,6 +51,76 @@ afterEach(async () => {
 });
 
 describe("personal portfolio storage routes", () => {
+  it("durably upgrades a ledger for splits and derives later sales from the saved activity order", async () => {
+    const f = await readyApp();
+    await writePortfolio(f, f.payload, 0, "portfolio-split-manual-key");
+    await writePortfolio(
+      f,
+      ledgerPayload(f.payload),
+      1,
+      "portfolio-split-v2-key",
+    );
+    const split = splitLedgerPayload(f.payload);
+    const upgraded = await writePortfolio(
+      f,
+      split,
+      2,
+      "portfolio-split-v3-key",
+    );
+    expect(upgraded.statusCode).toBe(200);
+    expect(upgraded.headers.etag).toBe('"v3"');
+    expect(projectPersonalPortfolioLedger(split)).toMatchObject({
+      status: "valid",
+      portfolio: {
+        cashUsd: null,
+        holdings: [{ shares: "2.500002", totalCostBasisUsd: "123.45" }],
+      },
+      realized: { sales: 0, totalGainUsd: "0.00" },
+    });
+    await f.app.close();
+    const reopened = await readyApp(f.root);
+    expect((await readPortfolio(reopened)).json()).toMatchObject({
+      version: 3,
+      payload: split,
+    });
+    const sold: PersonalPortfolioLedgerPayloadV3 = {
+      ...split,
+      transactions: [
+        ...split.transactions,
+        {
+          ...split.transactions[0]!,
+          id: "portfolio-reverse-split",
+          type: "split",
+          listingId: split.identities[0]!.listingId,
+          date: "2020-01-03",
+          ratioNumerator: "1",
+          ratioDenominator: "2",
+        },
+        {
+          id: "portfolio-post-split-sale",
+          date: "2020-01-03",
+          type: "sell",
+          listingId: split.identities[0]!.listingId,
+          shares: "1.250001",
+          grossUsd: "125",
+          feeUsd: "0",
+        },
+      ],
+    };
+    expect(
+      (await writePortfolio(reopened, sold, 3, "portfolio-split-sale-key"))
+        .statusCode,
+    ).toBe(200);
+    const saved = (await readPortfolio(reopened)).json<{ payload: unknown }>();
+    expect(saved).toMatchObject({ version: 4, payload: sold });
+    expect(projectPersonalPortfolioLedger(saved.payload)).toMatchObject({
+      status: "valid",
+      portfolio: { cashUsd: null, holdings: [] },
+      realized: { sales: 1, totalGainUsd: "1.55" },
+    });
+    expect(reopened.vault.inventory().records).toHaveLength(1);
+  });
+
   it("explicitly converts a manual snapshot to a durable ledger without changing unknown opening amounts", async () => {
     const f = await readyApp();
     const unknown = {
@@ -106,151 +179,173 @@ describe("personal portfolio storage routes", () => {
     expect(reopened.vault.inventory().records).toHaveLength(1);
   });
 
-  it("retains only exact persisted historical identities while admitting current identities for new ledgers", async () => {
-    const f = await readyApp();
-    const identity = { ...f.payload.holdings[0]!.identity, symbol: "OLD" };
-    const manual = {
-      ...f.payload,
-      snapshotSha256: `sha256:${"f".repeat(64)}`,
-      holdings: [{ ...f.payload.holdings[0]!, identity }],
-    };
-    const historical = {
-      ...ledgerPayload(manual),
-      snapshotSha256: f.payload.snapshotSha256,
-    };
-    // An identity that has never been persisted or admitted cannot be introduced.
-    expect(
-      (await writePortfolio(f, historical, 0, "portfolio-unadmitted-key"))
-        .statusCode,
-    ).toBe(400);
-    f.vault.putRecord({
-      kind: "portfolio",
-      id: "main",
-      expectedVersion: 0,
-      idempotencyKey: "portfolio-historical-seed",
-      payload: manual,
-    });
-    expect(
-      (await writePortfolio(f, historical, 1, "portfolio-historical-convert"))
-        .statusCode,
-    ).toBe(200);
-    const loaded = await readPortfolio(f);
-    expect(loaded.statusCode).toBe(200);
-    expect(loaded.json()).toMatchObject({ payload: historical, version: 2 });
-    for (const field of [
-      "issuerId",
-      "issuerName",
-      "securityId",
-      "securityName",
-      "shareClassId",
-      "shareClassName",
-      "listingId",
-      "symbol",
-    ] as const) {
-      const changed = {
-        ...identity,
-        [field]: field === "symbol" ? "OTHER" : "changed-identity",
+  it.each([2, 3] as const)(
+    "retains only exact persisted historical identities in schema %s",
+    async (schemaVersion) => {
+      const f = await readyApp();
+      const identity = { ...f.payload.holdings[0]!.identity, symbol: "OLD" };
+      const manual = {
+        ...f.payload,
+        snapshotSha256: `sha256:${"f".repeat(64)}`,
+        holdings: [{ ...f.payload.holdings[0]!, identity }],
       };
-      const invalid = {
-        ...historical,
-        identities: [changed],
-        opening: {
-          ...historical.opening,
-          holdings: historical.opening.holdings.map((holding) => ({
-            ...holding,
-            listingId: changed.listingId,
-          })),
-        },
+      const historical = {
+        ...ledgerPayload(manual),
+        schemaVersion,
+        snapshotSha256: f.payload.snapshotSha256,
       };
+      // An identity that has never been persisted or admitted cannot be introduced.
       expect(
-        (await writePortfolio(f, invalid, 2, "portfolio-changed-history"))
+        (await writePortfolio(f, historical, 0, "portfolio-unadmitted-key"))
           .statusCode,
-        field,
       ).toBe(400);
-    }
-    for (const changed of [
-      {
-        ...identity,
-        exchangeMic: identity.exchangeMic === "XNYS" ? "XNAS" : "XNYS",
-      },
-      {
-        ...identity,
-        instrumentType:
-          identity.instrumentType === "adr" ? "common_stock" : "adr",
-      },
-    ]) {
+      f.vault.putRecord({
+        kind: "portfolio",
+        id: "main",
+        expectedVersion: 0,
+        idempotencyKey: "portfolio-historical-seed",
+        payload: manual,
+      });
       expect(
-        (
-          await writePortfolio(
-            f,
-            { ...historical, identities: [changed] },
-            2,
-            "portfolio-changed-history",
-          )
-        ).statusCode,
-      ).toBe(400);
-    }
-    const sale: PersonalPortfolioLedgerPayload = {
-      ...historical,
-      transactions: [
+        (await writePortfolio(f, historical, 1, "portfolio-historical-convert"))
+          .statusCode,
+      ).toBe(200);
+      const loaded = await readPortfolio(f);
+      expect(loaded.statusCode).toBe(200);
+      expect(loaded.json()).toMatchObject({ payload: historical, version: 2 });
+      for (const field of [
+        "issuerId",
+        "issuerName",
+        "securityId",
+        "securityName",
+        "shareClassId",
+        "shareClassName",
+        "listingId",
+        "symbol",
+      ] as const) {
+        const changed = {
+          ...identity,
+          [field]: field === "symbol" ? "OTHER" : "changed-identity",
+        };
+        const invalid = {
+          ...historical,
+          identities: [changed],
+          opening: {
+            ...historical.opening,
+            holdings: historical.opening.holdings.map((holding) => ({
+              ...holding,
+              listingId: changed.listingId,
+            })),
+          },
+        };
+        expect(
+          (await writePortfolio(f, invalid, 2, "portfolio-changed-history"))
+            .statusCode,
+          field,
+        ).toBe(400);
+      }
+      for (const changed of [
         {
-          id: "ledger-close-history",
-          date: "2020-01-02",
-          type: "sell",
-          listingId: identity.listingId,
-          shares: manual.holdings[0]!.shares,
-          grossUsd: "150",
-          feeUsd: "0",
+          ...identity,
+          exchangeMic: identity.exchangeMic === "XNYS" ? "XNAS" : "XNYS",
         },
-      ],
-    };
-    expect(
-      (await writePortfolio(f, sale, 2, "portfolio-sold-history-key"))
-        .statusCode,
-    ).toBe(200);
-    expect((await readPortfolio(f)).json()).toMatchObject({
-      version: 3,
-      payload: { identities: [identity], transactions: sale.transactions },
-    });
-    const reconciled = {
-      ...sale,
-      identities: [f.payload.holdings[0]!.identity],
-    };
-    expect(
-      (await writePortfolio(f, reconciled, 3, "portfolio-history-reconcile"))
-        .statusCode,
-    ).toBe(200);
-    const replay = await writePortfolio(
-      f,
-      historical,
-      1,
-      "portfolio-historical-convert",
-    );
-    expect(replay.statusCode).toBe(200);
-    expect(replay.json()).toMatchObject({ version: 2, replayed: true });
-    expect((await readPortfolio(f)).json()).toMatchObject({
-      version: 4,
-      payload: reconciled,
-    });
-    const forged = {
-      ...reconciled,
-      identities: [{ ...identity, issuerId: "new-unadmitted-issuer" }],
-    };
-    expect(
-      (await writePortfolio(f, forged, 3, "portfolio-forged-stale-key"))
-        .statusCode,
-    ).toBe(409);
-    expect((await readPortfolio(f)).json()).toMatchObject({
-      version: 4,
-      payload: reconciled,
-    });
-  });
+        {
+          ...identity,
+          instrumentType:
+            identity.instrumentType === "adr" ? "common_stock" : "adr",
+        },
+      ]) {
+        expect(
+          (
+            await writePortfolio(
+              f,
+              { ...historical, identities: [changed] },
+              2,
+              "portfolio-changed-history",
+            )
+          ).statusCode,
+        ).toBe(400);
+      }
+      const sale: PersonalPortfolioLedgerPayload = {
+        ...historical,
+        transactions: [
+          {
+            id: "ledger-close-history",
+            date: "2020-01-02",
+            type: "sell",
+            listingId: identity.listingId,
+            shares: manual.holdings[0]!.shares,
+            grossUsd: "150",
+            feeUsd: "0",
+          },
+        ],
+      };
+      expect(
+        (await writePortfolio(f, sale, 2, "portfolio-sold-history-key"))
+          .statusCode,
+      ).toBe(200);
+      expect((await readPortfolio(f)).json()).toMatchObject({
+        version: 3,
+        payload: { identities: [identity], transactions: sale.transactions },
+      });
+      const reconciled = {
+        ...sale,
+        identities: [f.payload.holdings[0]!.identity],
+      };
+      expect(
+        (await writePortfolio(f, reconciled, 3, "portfolio-history-reconcile"))
+          .statusCode,
+      ).toBe(200);
+      const replay = await writePortfolio(
+        f,
+        historical,
+        1,
+        "portfolio-historical-convert",
+      );
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json()).toMatchObject({ version: 2, replayed: true });
+      expect((await readPortfolio(f)).json()).toMatchObject({
+        version: 4,
+        payload: reconciled,
+      });
+      const forged = {
+        ...reconciled,
+        identities: [{ ...identity, issuerId: "new-unadmitted-issuer" }],
+      };
+      expect(
+        (await writePortfolio(f, forged, 3, "portfolio-forged-stale-key"))
+          .statusCode,
+      ).toBe(409);
+      expect((await readPortfolio(f)).json()).toMatchObject({
+        version: 4,
+        payload: reconciled,
+      });
+    },
+  );
 
   it("blocks a ledger downgrade without blocking an earlier idempotent manual-save replay", async () => {
     const f = await readyApp();
     await writePortfolio(f, f.payload, 0, "portfolio-original-manual-key");
     const ledger = ledgerPayload(f.payload);
     await writePortfolio(f, ledger, 1, "portfolio-original-convert-key");
+    expect(
+      (await writePortfolio(f, f.payload, 2, "portfolio-v2-downgrade-key"))
+        .statusCode,
+    ).toBe(409);
+    const split = splitLedgerPayload(f.payload);
+    await writePortfolio(f, split, 2, "portfolio-original-split-key");
+    for (const downgrade of [f.payload, ledger]) {
+      expect(
+        (
+          await writePortfolio(
+            f,
+            downgrade,
+            3,
+            "portfolio-schema-downgrade-key",
+          )
+        ).statusCode,
+      ).toBe(409);
+    }
     expect(
       (await writePortfolio(f, f.payload, 2, "portfolio-downgrade-key"))
         .statusCode,
@@ -274,14 +369,91 @@ describe("personal portfolio storage routes", () => {
       version: 2,
       replayed: true,
     });
+    const splitReplay = await writePortfolio(
+      f,
+      split,
+      2,
+      "portfolio-original-split-key",
+    );
+    expect(splitReplay.statusCode).toBe(200);
+    expect(splitReplay.json()).toMatchObject({ version: 3, replayed: true });
+    expect(
+      (
+        await writePortfolio(
+          f,
+          { ...split, transactions: [] },
+          2,
+          "portfolio-original-split-key",
+        )
+      ).statusCode,
+    ).toBe(409);
     expect(
       (await writePortfolio(f, f.payload, 1, "portfolio-stale-new-manual-key"))
         .statusCode,
     ).toBe(409);
     expect((await readPortfolio(f)).json()).toMatchObject({
-      version: 2,
-      payload: ledger,
+      version: 3,
+      payload: split,
     });
+  });
+
+  it("rejects invalid or provider-enriched split events before persistence and refuses corrupt stored projections", async () => {
+    const f = await readyApp();
+    const put = vi.spyOn(f.vault, "putRecord");
+    const ledger = splitLedgerPayload(f.payload);
+    const split = ledger.transactions[0]!;
+    for (const invalid of [
+      { ...ledger, schemaVersion: 2 },
+      { ...ledger, provider: "private-provider-canary" },
+      {
+        ...ledger,
+        opening: {
+          ...ledger.opening,
+          holdings: ledger.opening.holdings.map((holding) => ({
+            ...holding,
+            shares: "1000000000",
+          })),
+        },
+      },
+      ...[
+        { ratioNumerator: "0" },
+        { ratioNumerator: "1000001" },
+        { ratioDenominator: "0.5" },
+        { ratioNumerator: "1", ratioDenominator: "2" },
+        { listingId: "unregistered-listing" },
+        { date: ledger.opening.asOfDate },
+        { date: "9999-12-31" },
+        { source: "private-provider-canary" },
+        { splitFactor: "2" },
+      ].map((change) => ({
+        ...ledger,
+        transactions: [{ ...split, ...change }],
+      })),
+      { ...ledger, transactions: [split, split] },
+    ]) {
+      const result = await writePortfolio(
+        f,
+        invalid,
+        0,
+        "portfolio-invalid-split-key",
+      );
+      expect(result.statusCode, JSON.stringify(invalid)).toBe(400);
+      expect(result.payload).not.toContain("private-provider-canary");
+    }
+    expect(put).not.toHaveBeenCalled();
+    f.vault.putRecord({
+      kind: "portfolio",
+      id: "main",
+      expectedVersion: 0,
+      idempotencyKey: "portfolio-invalid-split-seed",
+      payload: {
+        ...ledger,
+        transactions: [{ ...split, ratioDenominator: "0" }],
+      },
+    });
+    const result = await readPortfolio(f);
+    expect(result.statusCode).toBe(409);
+    expect(result.json()).not.toHaveProperty("payload");
   });
 
   it("rejects invalid ledger projections before any persistent write", async () => {
@@ -701,7 +873,7 @@ describe("personal portfolio storage routes", () => {
 
 function ledgerPayload(
   payload: PersonalPortfolioPayload,
-): PersonalPortfolioLedgerPayload {
+): PersonalPortfolioLedgerPayloadV2 {
   return {
     schemaVersion: 2,
     name: "My Portfolio",
@@ -718,6 +890,26 @@ function ledgerPayload(
       })),
     },
     transactions: [],
+  };
+}
+
+function splitLedgerPayload(
+  payload: PersonalPortfolioPayload,
+): PersonalPortfolioLedgerPayloadV3 {
+  const ledger = ledgerPayload(payload);
+  return {
+    ...ledger,
+    schemaVersion: 3,
+    transactions: [
+      {
+        id: "portfolio-split-event",
+        date: "2020-01-02",
+        type: "split",
+        listingId: ledger.identities[0]!.listingId,
+        ratioNumerator: "2",
+        ratioDenominator: "1",
+      },
+    ],
   };
 }
 

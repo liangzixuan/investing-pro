@@ -150,6 +150,26 @@ export function parsePersonalPortfolioLedgerCsv(
       return invalid("invalid_row", row.line);
     transactions.push(Object.freeze(transaction));
   }
+  const activity =
+    ledger.schemaVersion === 2
+      ? {
+          schemaVersion: 2 as const,
+          transactions: Object.freeze([
+            ...ledger.transactions.map((transaction) =>
+              Object.freeze({ ...transaction }),
+            ),
+            ...transactions,
+          ]),
+        }
+      : {
+          schemaVersion: 3 as const,
+          transactions: Object.freeze([
+            ...ledger.transactions.map((transaction) =>
+              Object.freeze({ ...transaction }),
+            ),
+            ...transactions,
+          ]),
+        };
   const candidate: PersonalPortfolioLedgerPayload = Object.freeze({
     ...ledger,
     identities: Object.freeze(
@@ -161,12 +181,7 @@ export function parsePersonalPortfolioLedgerCsv(
         ledger.opening.holdings.map((holding) => Object.freeze({ ...holding })),
       ),
     }),
-    transactions: Object.freeze([
-      ...ledger.transactions.map((transaction) =>
-        Object.freeze({ ...transaction }),
-      ),
-      ...transactions,
-    ]),
+    ...activity,
   });
   const projection = projectPersonalPortfolioLedger(candidate, today);
   if (projection.status !== "valid") {
@@ -179,7 +194,10 @@ export function parsePersonalPortfolioLedgerCsv(
       projection.error.code,
     );
   }
-  const seen = new Set(ledger.transactions.map(fingerprint));
+  const seen = new Set<string>();
+  for (const transaction of ledger.transactions) {
+    if (transaction.type !== "split") seen.add(fingerprint(transaction));
+  }
   const possibleDuplicateIds: string[] = [];
   for (const transaction of transactions) {
     const key = fingerprint(transaction);

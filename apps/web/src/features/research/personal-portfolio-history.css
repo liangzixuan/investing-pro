@@ -1,0 +1,53 @@
+.portfolio-history {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line, #334155);
+  border-radius: 0.75rem;
+}
+.portfolio-history h3,
+.portfolio-history h4 {
+  margin-top: 0;
+}
+.portfolio-history p {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.portfolio-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+.portfolio-history-controls label {
+  display: grid;
+  gap: 0.35rem;
+}
+.portfolio-history-controls select {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.35rem;
+}
+.portfolio-history-listing {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line, #334155);
+  min-width: 0;
+}
+.portfolio-history-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.portfolio-history table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+.portfolio-history th,
+.portfolio-history td {
+  padding: 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line, #334155);
+}
+.portfolio-history-note {
+  font-size: 0.82rem;
+}

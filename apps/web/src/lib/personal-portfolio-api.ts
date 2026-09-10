@@ -215,7 +215,25 @@ function hasKeys<const Keys extends readonly string[]>(
 function copyPayload(
   payload: PersonalPortfolioStoredPayload,
 ): PersonalPortfolioStoredPayload {
-  if (payload.schemaVersion === 2) {
+  if (payload.schemaVersion !== 1) {
+    const activity =
+      payload.schemaVersion === 2
+        ? {
+            schemaVersion: 2 as const,
+            transactions: Object.freeze(
+              payload.transactions.map((transaction) =>
+                Object.freeze({ ...transaction }),
+              ),
+            ),
+          }
+        : {
+            schemaVersion: 3 as const,
+            transactions: Object.freeze(
+              payload.transactions.map((transaction) =>
+                Object.freeze({ ...transaction }),
+              ),
+            ),
+          };
     return Object.freeze({
       ...payload,
       identities: Object.freeze(
@@ -229,11 +247,7 @@ function copyPayload(
           ),
         ),
       }),
-      transactions: Object.freeze(
-        payload.transactions.map((transaction) =>
-          Object.freeze({ ...transaction }),
-        ),
-      ),
+      ...activity,
     });
   }
   return Object.freeze({

@@ -7,6 +7,8 @@ import {
   type PersonalPortfolioLedgerPayload,
   type PersonalPortfolioLedgerProjection,
   type PersonalPortfolioLedgerTransaction,
+  type PersonalPortfolioLedgerActivity,
+  type PersonalPortfolioLedgerSplit,
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState } from "react";
 
@@ -16,6 +18,7 @@ import {
   parsePersonalPortfolioLedgerCsv,
   type PersonalPortfolioLedgerCsvResult,
 } from "@/lib/personal-portfolio-ledger-csv";
+import { PersonalPortfolioSplitEditor } from "./PersonalPortfolioSplitEditor";
 
 export interface PersonalPortfolioLedgerEditorProps {
   readonly ledger: PersonalPortfolioLedgerPayload;
@@ -60,6 +63,9 @@ export function PersonalPortfolioLedgerEditor({
     emptyForm(ledger),
   );
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSplit, setEditingSplit] =
+    useState<PersonalPortfolioLedgerSplit | null>(null);
+  const [pendingSplitEdits, setPendingSplitEdits] = useState(false);
   const [opening, setOpening] = useState(ledger.opening);
   const [openingListingId, setOpeningListingId] = useState(
     ledger.identities[0]?.listingId ?? "",
@@ -92,6 +98,8 @@ export function PersonalPortfolioLedgerEditor({
     !disabled &&
     (openingChanged ||
       transactionPending ||
+      pendingSplitEdits ||
+      editingSplit !== null ||
       csvText.trim().length > 0 ||
       reading);
 
@@ -121,6 +129,8 @@ export function PersonalPortfolioLedgerEditor({
     setForm(emptyForm(ledger));
     setFormBaseline(emptyForm(ledger));
     setEditingId(null);
+    setEditingSplit(null);
+    setPendingSplitEdits(false);
     setOpening(ledger.opening);
     setOpeningListingId(ledger.identities[0]?.listingId ?? "");
     setPage(0);
@@ -133,7 +143,7 @@ export function PersonalPortfolioLedgerEditor({
   function apply(
     candidate: PersonalPortfolioLedgerPayload,
     successMessage: string,
-    applying?: "opening" | "transaction" | "csv",
+    applying?: "opening" | "transaction" | "csv" | "split",
   ): boolean {
     if (disabled || liveContext.current !== context) return false;
     if (
@@ -157,6 +167,12 @@ export function PersonalPortfolioLedgerEditor({
       );
       return false;
     }
+    if (applying !== "split" && (pendingSplitEdits || editingSplit !== null)) {
+      setMessage(
+        "Apply or clear the split review before making another ledger change. No changes were applied.",
+      );
+      return false;
+    }
     const result = projectPersonalPortfolioLedger(candidate, today());
     if (result.status === "invalid") {
       setMessage(projectionError(result.error));
@@ -165,6 +181,8 @@ export function PersonalPortfolioLedgerEditor({
     clearCsv();
     generatedId.current = null;
     setEditingId(null);
+    setEditingSplit(null);
+    setPendingSplitEdits(false);
     setForm(emptyForm(candidate));
     setFormBaseline(emptyForm(candidate));
     setOpening(candidate.opening);
@@ -194,7 +212,7 @@ export function PersonalPortfolioLedgerEditor({
             entry.id === editingId ? transaction : entry,
           );
     apply(
-      { ...ledger, transactions },
+      withActivities(ledger, transactions),
       editingId === null
         ? "Transaction added to your draft. Save My Portfolio to keep it."
         : "Transaction updated in your draft. Save My Portfolio to keep it.",
@@ -203,7 +221,7 @@ export function PersonalPortfolioLedgerEditor({
   }
 
   function editTransaction(transaction: PersonalPortfolioLedgerTransaction) {
-    if (transactionPending) {
+    if (transactionPending || pendingSplitEdits || editingSplit !== null) {
       setMessage(
         "Apply or reset your transaction form before editing another transaction. No changes were applied.",
       );
@@ -224,6 +242,23 @@ export function PersonalPortfolioLedgerEditor({
     );
   }
 
+  function editSplit(split: PersonalPortfolioLedgerSplit) {
+    if (
+      transactionPending ||
+      openingChanged ||
+      csvText.trim().length > 0 ||
+      reading ||
+      pendingSplitEdits ||
+      editingSplit !== null
+    ) {
+      setMessage(
+        "Apply or reset your pending inputs before editing a split. No changes were applied.",
+      );
+      return;
+    }
+    setEditingSplit(split);
+  }
+
   function moveSameDay(index: number, direction: -1 | 1) {
     const other = index + direction;
     const entry = ledger.transactions[index];
@@ -238,7 +273,7 @@ export function PersonalPortfolioLedgerEditor({
     transactions[index] = neighbor;
     transactions[other] = entry;
     apply(
-      { ...ledger, transactions },
+      withActivities(ledger, transactions),
       "Same-day transaction order updated in your draft. Save My Portfolio to keep it.",
     );
   }
@@ -741,6 +776,49 @@ export function PersonalPortfolioLedgerEditor({
             </div>
           </details>
 
+          {ledger.schemaVersion === 3 ? (
+            <PersonalPortfolioSplitEditor
+              ledger={ledger}
+              disabled={locked}
+              editing={editingSplit}
+              onPendingEditsChange={setPendingSplitEdits}
+              onCancelEdit={() => {
+                setEditingSplit(null);
+                setPendingSplitEdits(false);
+              }}
+              onApply={(candidate) =>
+                apply(
+                  candidate,
+                  "Reviewed split applied to your draft. Save My Portfolio to keep it.",
+                  "split",
+                )
+              }
+            />
+          ) : (
+            <div className="ledger-section">
+              <h4>Enable split and reverse-split records</h4>
+              <p className="ledger-help">
+                Upgrade this draft to support manually reviewed split
+                adjustments. Existing identities, opening balances, transaction
+                IDs and order remain intact. Nothing is saved until you choose
+                Save My Portfolio.
+              </p>
+              <button
+                type="button"
+                className="secondary-action compact-action"
+                disabled={locked}
+                onClick={() =>
+                  apply(
+                    { ...ledger, schemaVersion: 3 },
+                    "Split records enabled in your draft. Existing transactions are preserved. Save My Portfolio to keep the upgrade.",
+                  )
+                }
+              >
+                Enable split records
+              </button>
+            </div>
+          )}
+
           <div className="ledger-section">
             <h4>
               {editingId === null ? "Add a transaction" : "Edit transaction"}
@@ -935,7 +1013,11 @@ export function PersonalPortfolioLedgerEditor({
                         className="text-button"
                         aria-label={`Edit ${transaction.id}`}
                         disabled={locked}
-                        onClick={() => editTransaction(transaction)}
+                        onClick={() =>
+                          transaction.type === "split"
+                            ? editSplit(transaction)
+                            : editTransaction(transaction)
+                        }
                       >
                         Edit
                       </button>
@@ -946,12 +1028,12 @@ export function PersonalPortfolioLedgerEditor({
                         disabled={locked}
                         onClick={() =>
                           apply(
-                            {
-                              ...ledger,
-                              transactions: ledger.transactions.filter(
+                            withActivities(
+                              ledger,
+                              ledger.transactions.filter(
                                 (entry) => entry.id !== transaction.id,
                               ),
-                            },
+                            ),
                             "Transaction removed from your draft. Save My Portfolio to keep the change.",
                           )
                         }
@@ -961,18 +1043,40 @@ export function PersonalPortfolioLedgerEditor({
                     </div>
                   </div>
                   <dl className="ledger-transaction-values">
-                    <div>
-                      <dt>Shares</dt>
-                      <dd>{transaction.shares ?? "Not applicable"}</dd>
-                    </div>
-                    <div>
-                      <dt>Gross amount</dt>
-                      <dd>{usd(transaction.grossUsd)}</dd>
-                    </div>
-                    <div>
-                      <dt>Trade fee</dt>
-                      <dd>{usd(transaction.feeUsd)}</dd>
-                    </div>
+                    {transaction.type === "split" ? (
+                      <>
+                        <div>
+                          <dt>New:old share ratio</dt>
+                          <dd>
+                            {transaction.ratioNumerator}:
+                            {transaction.ratioDenominator}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Record type</dt>
+                          <dd>Manual split adjustment</dd>
+                        </div>
+                        <div>
+                          <dt>Cash effect</dt>
+                          <dd>None</dd>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <dt>Shares</dt>
+                          <dd>{transaction.shares ?? "Not applicable"}</dd>
+                        </div>
+                        <div>
+                          <dt>Gross amount</dt>
+                          <dd>{usd(transaction.grossUsd)}</dd>
+                        </div>
+                        <div>
+                          <dt>Trade fee</dt>
+                          <dd>{usd(transaction.feeUsd)}</dd>
+                        </div>
+                      </>
+                    )}
                   </dl>
                   <div className="ledger-actions">
                     <button
@@ -1187,7 +1291,7 @@ function today() {
 function usd(value: string | null) {
   return value === null ? "Unknown" : `${value} USD`;
 }
-function typeLabel(type: TransactionType) {
+function typeLabel(type: PersonalPortfolioLedgerActivity["type"]) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 function projectionError(
@@ -1212,8 +1316,27 @@ function projectionError(
     cash_limit: "This change exceeds the supported cash limit.",
     shares_limit: "This change exceeds the supported share limit.",
     cost_basis_limit: "This change exceeds the supported cost basis limit.",
+    split_no_position:
+      "A split has no open position at its chosen place in the ledger.",
+    split_fractional_precision:
+      "A split would require fractional shares beyond six decimal places. No rounding or cash-in-lieu is assumed.",
   };
   return `No changes applied. ${labels[error.code]}${error.transactionIndex === null ? "" : ` Affected transaction position: ${String(error.transactionIndex + 1)}.`}`;
+}
+
+function withActivities(
+  ledger: PersonalPortfolioLedgerPayload,
+  transactions: readonly PersonalPortfolioLedgerActivity[],
+): PersonalPortfolioLedgerPayload {
+  if (ledger.schemaVersion === 3) return { ...ledger, transactions };
+  return {
+    ...ledger,
+    transactions: transactions.map((entry) => {
+      if (entry.type === "split")
+        throw new Error("Split records require an explicit ledger upgrade.");
+      return entry;
+    }),
+  };
 }
 function csvError(
   error: Extract<

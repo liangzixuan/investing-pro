@@ -2,6 +2,7 @@ import type {
   PersonalPortfolioIdentity,
   PersonalPortfolioLedgerPayload,
   PersonalPortfolioLedgerTransaction,
+  PersonalPortfolioLedgerPayloadV3,
 } from "@research-cockpit/contracts";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +10,17 @@ import {
   PersonalPortfolioLedgerEditor,
   type PersonalPortfolioLedgerEditorProps,
 } from "./PersonalPortfolioLedgerEditor";
+import type { PersonalPortfolioSplitEditorProps } from "./PersonalPortfolioSplitEditor";
+
+const splitBridge = vi.hoisted(() => ({
+  current: null as PersonalPortfolioSplitEditorProps | null,
+}));
+vi.mock("./PersonalPortfolioSplitEditor", () => ({
+  PersonalPortfolioSplitEditor: (value: PersonalPortfolioSplitEditorProps) => {
+    splitBridge.current = value;
+    return <div>Split review controls</div>;
+  },
+}));
 
 vi.mock("react", async (original) => ({
   ...(await original()),
@@ -30,6 +42,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-09T10:00:00.000Z"));
   harness.reset();
+  splitBridge.current = null;
   props = {
     ledger: ledger(),
     disabled: false,
@@ -45,6 +58,107 @@ afterEach(() => {
 });
 
 describe("PersonalPortfolioLedgerEditor", () => {
+  it("upgrades split support explicitly while preserving existing records and opening balances", async () => {
+    props = { ...props, ledger: ledger([transaction("existing")]) };
+    const before = props.ledger;
+    await mount();
+    expect(props.onChange).not.toHaveBeenCalled();
+    click(render(), "Enable split records");
+    expect(props.ledger).toEqual({ ...before, schemaVersion: 3 });
+    render();
+    render();
+    expect(text(render())).toContain("Split review controls");
+    expect(text(render())).not.toContain("Enable split records");
+  });
+
+  it("preserves split records when editing financial transactions and importing CSV", async () => {
+    props = { ...props, ledger: splitLedger([transaction("existing")]) };
+    await mount();
+    expect(text(render())).toContain("New:old share ratio 2 : 1");
+    click(render(), "Edit existing");
+    change(render(), "Transaction amount", "15");
+    click(render(), "Apply transaction edit");
+    render();
+    render();
+    expect(props.ledger.transactions[0]?.type).toBe("split");
+    change(
+      render(),
+      "Ledger CSV text",
+      csv("new-cash,2026-09-09,deposit,,,,25,0"),
+    );
+    click(render(), "Preview CSV import");
+    click(render(), "Apply reviewed transactions");
+    expect(props.ledger.schemaVersion).toBe(3);
+    expect(props.ledger.transactions.map((entry) => entry.id)).toEqual([
+      "split-one",
+      "existing",
+      "new-cash",
+    ]);
+    expect(props.ledger.transactions[0]).toMatchObject({
+      ratioNumerator: "2",
+      ratioDenominator: "1",
+    });
+  });
+
+  it("aggregates pending split input without allowing another child to overwrite it", async () => {
+    const onPendingEditsChange = vi.fn();
+    props = { ...props, ledger: splitLedger(), onPendingEditsChange };
+    await mount();
+    bridge().onPendingEditsChange(true);
+    render();
+    expect(onPendingEditsChange).toHaveBeenLastCalledWith(true);
+    click(render(), "Register selected listing");
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(text(render())).toContain("Apply or clear the split review");
+    change(render(), "Ledger opening cash", "500");
+    bridge().onPendingEditsChange(false);
+    render();
+    expect(onPendingEditsChange).toHaveBeenLastCalledWith(true);
+    click(render(), "Reset opening edits");
+    render();
+    expect(onPendingEditsChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("blocks applying a reviewed split while other staged transaction inputs remain", async () => {
+    props = { ...props, ledger: splitLedger() };
+    await mount();
+    change(render(), "Transaction amount", "25");
+    const child = bridge();
+    expect(child.onApply({ ...child.ledger, transactions: [] })).toBe(false);
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(input(render(), "Transaction amount").props.value).toBe("25");
+    click(render(), "Reset transaction form");
+    const current = bridge();
+    expect(current.onApply({ ...current.ledger, transactions: [] })).toBe(true);
+    expect(props.ledger.transactions).toEqual([]);
+  });
+
+  it("routes split edits to the split panel and validates split removal against later sales", async () => {
+    props = {
+      ...props,
+      ledger: splitLedger([
+        {
+          id: "sale",
+          date: "2026-09-07",
+          type: "sell",
+          listingId: "listing-one",
+          shares: "15",
+          grossUsd: "150",
+          feeUsd: "0",
+        },
+      ]),
+    };
+    await mount();
+    click(render(), "Remove split-one");
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(text(render())).toContain("more shares than are available");
+    click(render(), "Edit split-one");
+    expect(bridge().editing?.id).toBe("split-one");
+    expect(text(render())).not.toContain("Apply transaction edit");
+    bridge().onCancelEdit();
+    render();
+    expect(bridge().editing).toBeNull();
+  });
   it("records a manual buy with a generated stable ID and derives FIFO basis and cash", async () => {
     await mount();
     expect(props.onChange).not.toHaveBeenCalled();
@@ -616,6 +730,30 @@ function transaction(id: string): PersonalPortfolioLedgerTransaction {
     grossUsd: "10",
     feeUsd: "0",
   };
+}
+function splitLedger(
+  financial: readonly PersonalPortfolioLedgerTransaction[] = [],
+): PersonalPortfolioLedgerPayloadV3 {
+  return {
+    ...ledger(),
+    schemaVersion: 3,
+    transactions: [
+      {
+        id: "split-one",
+        date: "2026-09-05",
+        type: "split",
+        listingId: "listing-one",
+        ratioNumerator: "2",
+        ratioDenominator: "1",
+      },
+      ...financial,
+    ],
+  };
+}
+function bridge(): PersonalPortfolioSplitEditorProps {
+  elements(render());
+  if (splitBridge.current === null) throw new Error("Missing split bridge");
+  return splitBridge.current;
 }
 function ledger(
   transactions: readonly PersonalPortfolioLedgerTransaction[] = [],

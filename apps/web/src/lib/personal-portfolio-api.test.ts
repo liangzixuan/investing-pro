@@ -1,5 +1,7 @@
 import type {
   PersonalPortfolioLedgerPayload,
+  PersonalPortfolioLedgerPayloadV2,
+  PersonalPortfolioLedgerPayloadV3,
   PersonalPortfolioPayload,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,45 +23,104 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("personal portfolio transport", () => {
-  it("reads a ledger without converting it and freezes every copied ledger collection", async () => {
-    const ledger = ledgerPayload();
-    const stored = { ...record(), payload: ledger };
-    fetchMock.mockResolvedValue(json(stored, 200, '"v1"'));
-    const loaded = await fetchPersonalPortfolio();
-    expect(loaded).toEqual(stored);
-    if (loaded?.payload.schemaVersion !== 2) throw new Error("Expected ledger");
-    expect(Object.isFrozen(loaded.payload.identities)).toBe(true);
-    expect(Object.isFrozen(loaded.payload.identities[0])).toBe(true);
-    expect(Object.isFrozen(loaded.payload.opening)).toBe(true);
-    expect(Object.isFrozen(loaded.payload.opening.holdings[0])).toBe(true);
-    expect(Object.isFrozen(loaded.payload.transactions)).toBe(true);
-    expect(Object.isFrozen(loaded.payload.transactions[0])).toBe(true);
-    expect(loaded.payload).not.toHaveProperty("portfolio");
-  });
+  it.each([2, 3] as const)(
+    "reads schema %s without conversion and freezes every copied ledger collection",
+    async (schemaVersion) => {
+      const ledger =
+        schemaVersion === 2 ? ledgerPayload() : splitLedgerPayload();
+      const stored = { ...record(), payload: ledger };
+      fetchMock.mockResolvedValue(json(stored, 200, '"v1"'));
+      const loaded = await fetchPersonalPortfolio();
+      expect(loaded).toEqual(stored);
+      if (loaded === null || loaded.payload.schemaVersion === 1)
+        throw new Error("Expected ledger");
+      expect(loaded.payload.schemaVersion).toBe(schemaVersion);
+      expect(Object.isFrozen(loaded.payload.identities)).toBe(true);
+      expect(Object.isFrozen(loaded.payload.identities[0])).toBe(true);
+      expect(Object.isFrozen(loaded.payload.opening)).toBe(true);
+      expect(Object.isFrozen(loaded.payload.opening.holdings[0])).toBe(true);
+      expect(Object.isFrozen(loaded.payload.transactions)).toBe(true);
+      expect(Object.isFrozen(loaded.payload.transactions[0])).toBe(true);
+      expect(Object.isFrozen(loaded.payload.transactions.at(-1))).toBe(true);
+      expect(loaded.payload).not.toHaveProperty("portfolio");
+    },
+  );
 
-  it("saves the ledger itself with the same optimistic version and caller retry key", async () => {
-    fetchMock.mockResolvedValue(
-      json({ ...receipt(), version: 2 }, 200, '"v2"'),
-    );
-    const ledger = ledgerPayload();
-    const saved = await savePersonalPortfolio(ledger, 1, key);
-    expect(saved.version).toBe(2);
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      expect.any(URL),
-      expect.objectContaining({
-        body: JSON.stringify({ payload: ledger }),
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "If-Match": '"v1"',
-          "X-Research-Cockpit-Idempotency-Key": key,
-          "X-Research-Cockpit-Intent": "personal-vault-update",
+  it.each([2, 3] as const)(
+    "saves schema %s with the same optimistic version and caller retry key",
+    async (schemaVersion) => {
+      fetchMock.mockResolvedValue(
+        json({ ...receipt(), version: 2 }, 200, '"v2"'),
+      );
+      const ledger =
+        schemaVersion === 2 ? ledgerPayload() : splitLedgerPayload();
+      const saved = await savePersonalPortfolio(ledger, 1, key);
+      expect(saved.version).toBe(2);
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        expect.any(URL),
+        expect.objectContaining({
+          body: JSON.stringify({ payload: ledger }),
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "If-Match": '"v1"',
+            "X-Research-Cockpit-Idempotency-Key": key,
+            "X-Research-Cockpit-Intent": "personal-vault-update",
+          },
+        }),
+      );
+      const body = fetchMock.mock.calls[0]?.[1]?.body;
+      expect(body).not.toContain("projectedHoldings");
+      expect(body).not.toContain("realized");
+    },
+  );
+
+  it("rejects malformed splits and schema mismatches before network or rendering", async () => {
+    const ledger = splitLedgerPayload();
+    const split = ledger.transactions.at(-1)!;
+    for (const invalid of [
+      { ...ledger, schemaVersion: 2 },
+      { ...ledger, history: "private-provider-canary" },
+      ...[
+        { ratioDenominator: "0" },
+        { ratioNumerator: "1000001" },
+        { ratioNumerator: "1", ratioDenominator: "2" },
+        { listingId: "unregistered" },
+        { source: "private-provider-canary" },
+      ].map((change) => ({
+        ...ledger,
+        transactions: [ledger.transactions[0]!, { ...split, ...change }],
+      })),
+    ]) {
+      const calls = fetchMock.mock.calls.length;
+      await expect(
+        savePersonalPortfolio(
+          invalid as PersonalPortfolioLedgerPayload,
+          1,
+          key,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(fetchMock).toHaveBeenCalledTimes(calls);
+      fetchMock.mockResolvedValueOnce(
+        json({ ...record(), payload: invalid }, 200, '"v1"'),
+      );
+      await expect(fetchPersonalPortfolio()).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    }
+    await expect(
+      savePersonalPortfolio(
+        {
+          ...ledger,
+          transactions: [
+            ledger.transactions[0]!,
+            { ...split, date: "9999-12-31" },
+          ],
         },
-      }),
-    );
-    const body = fetchMock.mock.calls[0]?.[1]?.body;
-    expect(body).not.toContain("projectedHoldings");
-    expect(body).not.toContain("realized");
+        1,
+        key,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
   });
 
   it("rejects semantically invalid ledgers on both read and write", async () => {
@@ -107,28 +168,32 @@ describe("personal portfolio transport", () => {
     ).rejects.toMatchObject({ code: "invalid_request" });
   });
 
-  it("keeps historical ledger identities and unknown opening amounts readable", async () => {
-    const ledger = ledgerPayload();
-    const historical: PersonalPortfolioLedgerPayload = {
-      ...ledger,
-      snapshotSha256: `sha256:${"b".repeat(64)}`,
-      identities: ledger.identities.map((identity) => ({
-        ...identity,
-        symbol: "OLD",
-      })),
-      opening: {
-        ...ledger.opening,
-        cashUsd: null,
-        holdings: ledger.opening.holdings.map((holding) => ({
-          ...holding,
-          totalCostBasisUsd: null,
+  it.each([2, 3] as const)(
+    "keeps schema %s historical identities and unknown opening amounts readable",
+    async (schemaVersion) => {
+      const ledger =
+        schemaVersion === 2 ? ledgerPayload() : splitLedgerPayload();
+      const historical: PersonalPortfolioLedgerPayload = {
+        ...ledger,
+        snapshotSha256: `sha256:${"b".repeat(64)}`,
+        identities: ledger.identities.map((identity) => ({
+          ...identity,
+          symbol: "OLD",
         })),
-      },
-    };
-    const stored = { ...record(), payload: historical };
-    fetchMock.mockResolvedValue(json(stored, 200, '"v1"'));
-    expect(await fetchPersonalPortfolio()).toEqual(stored);
-  });
+        opening: {
+          ...ledger.opening,
+          cashUsd: null,
+          holdings: ledger.opening.holdings.map((holding) => ({
+            ...holding,
+            totalCostBasisUsd: null,
+          })),
+        },
+      };
+      const stored = { ...record(), payload: historical };
+      fetchMock.mockResolvedValue(json(stored, 200, '"v1"'));
+      expect(await fetchPersonalPortfolio()).toEqual(stored);
+    },
+  );
 
   it("reads the private loopback route and returns an immutable versioned snapshot", async () => {
     fetchMock.mockResolvedValue(json(record(), 200, '"v1"'));
@@ -394,7 +459,7 @@ function record(): PersonalPortfolioRecord {
   };
 }
 
-function ledgerPayload(): PersonalPortfolioLedgerPayload {
+function ledgerPayload(): PersonalPortfolioLedgerPayloadV2 {
   const manual = payload();
   return {
     schemaVersion: 2,
@@ -420,6 +485,25 @@ function ledgerPayload(): PersonalPortfolioLedgerPayload {
         shares: "1",
         grossUsd: "10",
         feeUsd: "1",
+      },
+    ],
+  };
+}
+
+function splitLedgerPayload(): PersonalPortfolioLedgerPayloadV3 {
+  const ledger = ledgerPayload();
+  return {
+    ...ledger,
+    schemaVersion: 3,
+    transactions: [
+      ...ledger.transactions,
+      {
+        id: "ledger-split-one",
+        date: "2020-01-03",
+        type: "split",
+        listingId: ledger.identities[0]!.listingId,
+        ratioNumerator: "2",
+        ratioDenominator: "1",
       },
     ],
   };

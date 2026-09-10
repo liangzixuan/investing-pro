@@ -26,6 +26,7 @@ import {
   searchPersonalSecurities,
 } from "@/lib/personal-workspace-api";
 import { PersonalPortfolioLedgerEditor } from "./PersonalPortfolioLedgerEditor";
+import { PersonalPortfolioHistoryCoverage } from "./PersonalPortfolioHistoryCoverage";
 
 export interface PersonalPortfolioProps {
   readonly catalogSnapshotSha256: `sha256:${string}`;
@@ -73,6 +74,9 @@ export function PersonalPortfolio({
   const [evaluatedAt, setEvaluatedAt] = useState(new Date().toISOString());
   const [preview, setPreview] = useState<Reconciliation | null>(null);
   const [conflicted, setConflicted] = useState(false);
+  const [splitReviews, setSplitReviews] = useState<
+    Readonly<Record<string, readonly string[]>>
+  >({});
   const epoch = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const retry = useRef<Readonly<{
@@ -83,6 +87,14 @@ export function PersonalPortfolio({
   const callback = useRef(onSessionUnavailable);
   callback.current = onSessionUnavailable;
   const context = JSON.stringify([enabled, catalogSnapshotSha256]);
+  const ledgerContext = JSON.stringify([
+    enabled,
+    catalogSnapshotSha256,
+    draft,
+    version,
+  ]);
+  const liveLedgerContext = useRef(ledgerContext);
+  liveLedgerContext.current = ledgerContext;
   const liveContext = useRef(context);
   liveContext.current = context;
   const previousCatalog = useRef(catalogSnapshotSha256);
@@ -105,6 +117,7 @@ export function PersonalPortfolio({
     setOpeningDate(utcDate());
     setPendingLedgerEdits(false);
     setConflicted(false);
+    setSplitReviews({});
     retry.current = null;
   }
 
@@ -304,7 +317,7 @@ export function PersonalPortfolio({
         `Checking ${holding.identity.symbol} (${String(index + 1)} of ${String(holdingsSnapshot.holdings.length)})…`,
       );
       try {
-        if (draft.schemaVersion === 2) {
+        if (draft.schemaVersion !== 1) {
           const admitted = await searchPersonalSecurities(
             holding.identity.symbol,
             request.signal,
@@ -457,7 +470,7 @@ export function PersonalPortfolio({
       setMessage(
         unmatched.length === 0
           ? "All listing identities matched. Review the preview, then apply it and save. Shares, cost basis, and confirmation dates are preserved."
-          : draft.schemaVersion === 2
+          : draft.schemaVersion !== 1
             ? `${String(unmatched.length)} historical identities could not be matched. Their opening balances and transactions are preserved; current pricing remains unavailable for unmatched identities. Review and apply to continue recording the ledger.`
             : `${String(unmatched.length)} listing identities could not be matched. Every holding is preserved. Remove an unmatched holding explicitly only if appropriate, then preview again.`,
       );
@@ -508,7 +521,17 @@ export function PersonalPortfolio({
     edit(candidate);
   }
 
-  const ledgerDraft = enabled && draft?.schemaVersion === 2 ? draft : null;
+  const ledgerDraft =
+    enabled && draft !== null && draft.schemaVersion !== 1 ? draft : null;
+  const presentListingIds =
+    !enabled || draft === null
+      ? []
+      : draft.schemaVersion === 1
+        ? draft.holdings.map((holding) => holding.identity.listingId)
+        : draft.identities.map((identity) => identity.listingId);
+  const splitReviewIds = presentListingIds.filter(
+    (id) => (splitReviews[id]?.length ?? 0) > 0,
+  );
   const visibleDraft = enabled ? snapshotFromStored(draft) : null;
   const dirty =
     enabled &&
@@ -527,7 +550,10 @@ export function PersonalPortfolio({
     visibleDraft !== null && !stale && invalid === null
       ? calculatePersonalPortfolioOverview({
           portfolio: visibleDraft,
-          quotes,
+          quotes: quotes.filter(
+            (observation) =>
+              !splitReviewIds.includes(observation.security.listingId),
+          ),
           evaluatedAt: new Date().toISOString(),
         })
       : null;
@@ -728,6 +754,15 @@ export function PersonalPortfolio({
               Apply or reset the staged transaction, opening balance or CSV
               input before saving. Discard edits and reload clears all staged
               input.
+            </p>
+          )}
+          {splitReviewIds.length > 0 && (
+            <p role="alert">
+              History review found split discrepancies. Prices for affected
+              listings are excluded from complete valuation totals. Check broker
+              or issuer records, correct the ledger if needed, then review the
+              affected dates again. Saving or editing the portfolio does not
+              clear these session warnings.
             </p>
           )}
           <div className="portfolio-overview">
@@ -1044,14 +1079,54 @@ export function PersonalPortfolio({
             </p>
           </div>
           {ledgerDraft !== null ? (
-            <PersonalPortfolioLedgerEditor
-              key={`${context}:${String(version)}`}
-              ledger={ledgerDraft}
-              disabled={locked || stale || conflicted}
-              selectedListing={selectedListing}
-              onChange={edit}
-              onPendingEditsChange={setPendingLedgerEdits}
-            />
+            <>
+              <PersonalPortfolioLedgerEditor
+                key={`${context}:${String(version)}`}
+                ledger={ledgerDraft}
+                disabled={locked || stale || conflicted}
+                selectedListing={selectedListing}
+                onChange={edit}
+                onPendingEditsChange={setPendingLedgerEdits}
+              />
+              <PersonalPortfolioHistoryCoverage
+                key={`${context}:${String(version)}`}
+                ledger={ledgerDraft}
+                ledgerContext={ledgerContext}
+                catalogSnapshotSha256={catalogSnapshotSha256}
+                disabled={
+                  operation !== null ||
+                  stale ||
+                  conflicted ||
+                  pendingLedgerEdits
+                }
+                onSessionUnavailable={() =>
+                  failure(
+                    new PersonalWorkspaceApiError("session_unavailable"),
+                    "",
+                  )
+                }
+                onAssessment={(
+                  assessmentContext,
+                  listingId,
+                  _requiresReview,
+                  assessment,
+                ) => {
+                  if (liveLedgerContext.current !== assessmentContext) return;
+                  setSplitReviews((prior) => {
+                    const oldDates = prior[listingId] ?? [];
+                    const dates = [
+                      ...new Set([
+                        ...oldDates.filter(
+                          (date) => !assessment.observedDates.includes(date),
+                        ),
+                        ...assessment.splitReviewDates,
+                      ]),
+                    ];
+                    return { ...prior, [listingId]: dates };
+                  });
+                }}
+              />
+            </>
           ) : (
             <div className="portfolio-ledger-conversion">
               <h3>Start recording transactions</h3>
@@ -1141,7 +1216,7 @@ function sameIdentity(
 function validationMessage(
   payload: PersonalPortfolioStoredPayload,
 ): string | null {
-  if (payload.schemaVersion === 2) {
+  if (payload.schemaVersion !== 1) {
     const result = projectPersonalPortfolioLedger(payload, utcDate());
     return result.status === "valid"
       ? null

@@ -11,6 +11,7 @@ export const PERSONAL_PORTFOLIO_LEDGER_LIMITS = Object.freeze({
   transactions: 250,
   identities: 20,
   payloadBytes: 256 * 1_024,
+  splitRatioComponent: 1_000_000,
   basisMethod: "fifo_with_opening_pool",
   basisRounding: "cumulative_disposed_lot_cost_round_half_up_to_cents",
 } as const);
@@ -25,6 +26,18 @@ export type PersonalPortfolioLedgerTransaction = Readonly<{
   feeUsd: string;
 }>;
 
+export type PersonalPortfolioLedgerSplit = Readonly<{
+  id: string;
+  date: string;
+  type: "split";
+  listingId: string;
+  ratioNumerator: string;
+  ratioDenominator: string;
+}>;
+
+export type PersonalPortfolioLedgerActivity =
+  PersonalPortfolioLedgerTransaction | PersonalPortfolioLedgerSplit;
+
 export type PersonalPortfolioLedgerOpeningHolding = Readonly<{
   listingId: string;
   shares: string;
@@ -32,8 +45,7 @@ export type PersonalPortfolioLedgerOpeningHolding = Readonly<{
   confirmedOn: string;
 }>;
 
-export type PersonalPortfolioLedgerPayload = Readonly<{
-  schemaVersion: 2;
+type PersonalPortfolioLedgerPayloadBase = Readonly<{
   name: "My Portfolio";
   currency: "USD";
   snapshotSha256: string;
@@ -44,8 +56,24 @@ export type PersonalPortfolioLedgerPayload = Readonly<{
     cashUsd: string | null;
     holdings: readonly PersonalPortfolioLedgerOpeningHolding[];
   }>;
-  transactions: readonly PersonalPortfolioLedgerTransaction[];
 }>;
+
+export type PersonalPortfolioLedgerPayloadV2 =
+  PersonalPortfolioLedgerPayloadBase &
+    Readonly<{
+      schemaVersion: 2;
+      transactions: readonly PersonalPortfolioLedgerTransaction[];
+    }>;
+
+export type PersonalPortfolioLedgerPayloadV3 =
+  PersonalPortfolioLedgerPayloadBase &
+    Readonly<{
+      schemaVersion: 3;
+      transactions: readonly PersonalPortfolioLedgerActivity[];
+    }>;
+
+export type PersonalPortfolioLedgerPayload =
+  PersonalPortfolioLedgerPayloadV2 | PersonalPortfolioLedgerPayloadV3;
 
 export type PersonalPortfolioStoredPayload =
   PersonalPortfolioPayload | PersonalPortfolioLedgerPayload;
@@ -55,11 +83,23 @@ export type PersonalPortfolioLedgerLot = Readonly<{
   listingId: string;
   openedOn: string;
   source: "opening_pool" | "buy";
+  /** Acquisition units, before any subsequent split adjustments. */
   originalShares: string;
   remainingShares: string;
   originalCostBasisUsd: string | null;
   remainingCostBasisUsd: string | null;
   disposedCostBasisUsd: string | null;
+}>;
+
+export type PersonalPortfolioLedgerSplitAdjustment = Readonly<{
+  transactionId: string;
+  date: string;
+  listingId: string;
+  ratioNumerator: string;
+  ratioDenominator: string;
+  beforeShares: string;
+  afterShares: string;
+  affectedLots: number;
 }>;
 
 export type PersonalPortfolioLedgerDisposal = Readonly<{
@@ -82,7 +122,9 @@ export type PersonalPortfolioLedgerProjectionErrorCode =
   | "negative_cash"
   | "cash_limit"
   | "shares_limit"
-  | "cost_basis_limit";
+  | "cost_basis_limit"
+  | "split_no_position"
+  | "split_fractional_precision";
 
 export type PersonalPortfolioLedgerProjection =
   | Readonly<{
@@ -96,6 +138,7 @@ export type PersonalPortfolioLedgerProjection =
       status: "valid";
       portfolio: PersonalPortfolioPayload;
       lots: readonly PersonalPortfolioLedgerLot[];
+      splitAdjustments: readonly PersonalPortfolioLedgerSplitAdjustment[];
       realized: Readonly<{
         sales: number;
         knownSales: number;
@@ -124,6 +167,8 @@ type MutableLot = {
   source: "opening_pool" | "buy";
   originalShares: bigint;
   remainingShares: bigint;
+  basisSharesNumerator: bigint;
+  basisSharesDenominator: bigint;
   originalCost: bigint | null;
   disposedCost: bigint;
 };
@@ -156,6 +201,14 @@ const TRANSACTION_KEYS = [
   "shares",
   "grossUsd",
   "feeUsd",
+] as const;
+const SPLIT_KEYS = [
+  "id",
+  "date",
+  "type",
+  "listingId",
+  "ratioNumerator",
+  "ratioDenominator",
 ] as const;
 
 export function isPersonalPortfolioStoredPayload(
@@ -217,6 +270,25 @@ export function isPersonalPortfolioLedgerTransaction(
   );
 }
 
+/** Validates one financial or split row, before ledger-specific checks. */
+export function isPersonalPortfolioLedgerActivity(
+  value: unknown,
+): value is PersonalPortfolioLedgerActivity {
+  return (
+    isPersonalPortfolioLedgerTransaction(value) ||
+    (exactRecord(value, SPLIT_KEYS) &&
+      value.type === "split" &&
+      typeof value.id === "string" &&
+      IDENTIFIER.test(value.id) &&
+      calendarDate(value.date) &&
+      typeof value.listingId === "string" &&
+      IDENTIFIER.test(value.listingId) &&
+      splitRatioComponent(value.ratioNumerator) &&
+      splitRatioComponent(value.ratioDenominator) &&
+      value.ratioNumerator !== value.ratioDenominator)
+  );
+}
+
 /**
  * Opening amounts are an end-of-day balance. Array order is the execution
  * order for transactions on the same later date. This is a local FIFO
@@ -259,6 +331,8 @@ function projectValidated(
     source: "opening_pool",
     originalShares: scaled(holding.shares, 6),
     remainingShares: scaled(holding.shares, 6),
+    basisSharesNumerator: scaled(holding.shares, 6),
+    basisSharesDenominator: 1n,
     originalCost:
       holding.totalCostBasisUsd === null
         ? null
@@ -279,6 +353,7 @@ function projectValidated(
   let knownGain = 0n;
   let unknownSales = 0;
   const disposals: PersonalPortfolioLedgerDisposal[] = [];
+  const splitAdjustments: PersonalPortfolioLedgerSplitAdjustment[] = [];
 
   for (const [index, transaction] of ledger.transactions.entries()) {
     if (transaction.date <= ledger.opening.asOfDate)
@@ -287,6 +362,47 @@ function projectValidated(
     if (today !== undefined && transaction.date > today)
       return invalid("future_date", index);
     lastDate = transaction.date;
+    if (transaction.type === "split") {
+      const active = lots.filter(
+        (lot) =>
+          lot.listingId === transaction.listingId && lot.remainingShares > 0n,
+      );
+      if (active.length === 0) return invalid("split_no_position", index);
+      const numerator = BigInt(transaction.ratioNumerator);
+      const denominator = BigInt(transaction.ratioDenominator);
+      const before = active.reduce((sum, lot) => sum + lot.remainingShares, 0n);
+      if (
+        active.some(
+          (lot) => (lot.remainingShares * numerator) % denominator !== 0n,
+        )
+      )
+        return invalid("split_fractional_precision", index);
+      const after = (before * numerator) / denominator;
+      if (after > MAXIMUM_SHARES) return invalid("shares_limit", index);
+      for (const lot of active) {
+        lot.remainingShares = (lot.remainingShares * numerator) / denominator;
+        const adjustedNumerator = lot.basisSharesNumerator * numerator;
+        const adjustedDenominator = lot.basisSharesDenominator * denominator;
+        const divisor = greatestCommonDivisor(
+          adjustedNumerator,
+          adjustedDenominator,
+        );
+        lot.basisSharesNumerator = adjustedNumerator / divisor;
+        lot.basisSharesDenominator = adjustedDenominator / divisor;
+      }
+      confirmedDates.set(transaction.listingId, transaction.date);
+      splitAdjustments.push({
+        transactionId: transaction.id,
+        date: transaction.date,
+        listingId: transaction.listingId,
+        ratioNumerator: transaction.ratioNumerator,
+        ratioDenominator: transaction.ratioDenominator,
+        beforeShares: decimal(before, 6),
+        afterShares: decimal(after, 6),
+        affectedLots: active.length,
+      });
+      continue;
+    }
     const gross = scaled(transaction.grossUsd, 2);
     const fee = scaled(transaction.feeUsd, 2);
     let cashChange: bigint;
@@ -299,6 +415,8 @@ function projectValidated(
         source: "buy",
         originalShares: quantity,
         remainingShares: quantity,
+        basisSharesNumerator: quantity,
+        basisSharesDenominator: 1n,
         originalCost: gross + fee,
         disposedCost: 0n,
       });
@@ -328,10 +446,14 @@ function projectValidated(
         remaining -= used;
         if (lot.originalCost === null) basisKnown = false;
         else {
-          const cumulativeSold = lot.originalShares - lot.remainingShares;
+          // Keep the original cumulative cent allocation across splits. A new
+          // remaining-cost anchor would change rounding after a partial sale.
+          const cumulativeSold =
+            lot.basisSharesNumerator -
+            lot.remainingShares * lot.basisSharesDenominator;
           const cumulativeCost = roundHalfUp(
             lot.originalCost * cumulativeSold,
-            lot.originalShares,
+            lot.basisSharesNumerator,
           );
           disposedBasis += cumulativeCost - lot.disposedCost;
           lot.disposedCost = cumulativeCost;
@@ -447,6 +569,7 @@ function projectValidated(
       disposedCostBasisUsd:
         lot.originalCost === null ? null : money(lot.disposedCost),
     })),
+    splitAdjustments,
     realized: {
       sales: disposals.length,
       knownSales: disposals.length - unknownSales,
@@ -472,7 +595,7 @@ function projectValidated(
 function ledgerShape(value: unknown): value is PersonalPortfolioLedgerPayload {
   if (
     !exactRecord(value, PAYLOAD_KEYS) ||
-    value.schemaVersion !== 2 ||
+    (value.schemaVersion !== 2 && value.schemaVersion !== 3) ||
     value.name !== "My Portfolio" ||
     value.currency !== "USD" ||
     typeof value.snapshotSha256 !== "string" ||
@@ -520,7 +643,8 @@ function ledgerShape(value: unknown): value is PersonalPortfolioLedgerPayload {
   const transactionIds = new Set<string>();
   for (const transaction of value.transactions) {
     if (
-      !isPersonalPortfolioLedgerTransaction(transaction) ||
+      !isPersonalPortfolioLedgerActivity(transaction) ||
+      (value.schemaVersion === 2 && transaction.type === "split") ||
       transactionIds.has(transaction.id) ||
       (transaction.listingId !== null && !identities.has(transaction.listingId))
     )
@@ -531,6 +655,24 @@ function ledgerShape(value: unknown): value is PersonalPortfolioLedgerPayload {
     new TextEncoder().encode(JSON.stringify(value)).byteLength <=
     PERSONAL_PORTFOLIO_LEDGER_LIMITS.payloadBytes
   );
+}
+
+function splitRatioComponent(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[1-9][0-9]{0,6}$/u.test(value) &&
+    BigInt(value) <=
+      BigInt(PERSONAL_PORTFOLIO_LEDGER_LIMITS.splitRatioComponent)
+  );
+}
+
+function greatestCommonDivisor(left: bigint, right: bigint): bigint {
+  while (right !== 0n) {
+    const remainder = left % right;
+    left = right;
+    right = remainder;
+  }
+  return left;
 }
 
 function scaled(value: string, places: number): bigint {

@@ -1152,9 +1152,23 @@ registered identities and 250 transactions. Historical identities are retained;
 current catalog admission is checked before pricing each open holding.
 
 Opening holdings are aggregate pools, not reconstructed tax lots. Multiple
-portfolios, actual tax accounting, corporate-action processing, historical
+portfolios, actual tax accounting, broader corporate-action processing, historical
 performance, TWR, XIRR and benchmarks remain open. These bounded deliveries do
 not claim completion of Cycle 3m.
+
+### Third partial Cycle 3m-a delivery
+
+[Split reconciliation and history review](./PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md)
+add an explicit schema 3 ledger with manually entered new:old split ratios,
+exact remaining-share adjustment and rational FIFO basis preservation. Splits
+require dated insertion and projection review; fractional precision failures
+are rejected. Financial CSV imports preserve existing split records.
+
+On-demand Tiingo EOD review checks exact registered identities, reports actual
+observed-date coverage and compares split observations to recorded activities.
+Known discrepancies withhold affected quotes from complete current totals.
+Provider data stays transient and cannot automatically create ledger entries.
+This does not cover all corporate actions or deliver historical performance.
 
 ### Cycle 3n — background alerts and delivery
 

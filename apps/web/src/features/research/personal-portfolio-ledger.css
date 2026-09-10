@@ -134,6 +134,16 @@
 .ledger-file-input {
   max-width: 100%;
 }
+.ledger-split-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 0.6rem;
+}
+.ledger-split-editor h4,
+.ledger-split-preview p {
+  overflow-wrap: anywhere;
+}
 @media (max-width: 720px) {
   .ledger-fields {
     grid-template-columns: 1fr;

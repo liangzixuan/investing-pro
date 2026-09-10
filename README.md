@@ -130,6 +130,11 @@ The optional [transaction ledger and safe CSV import](./docs/PERSONAL_PORTFOLIO_
 records trades and cash movements, derives holdings and cash, and shows FIFO
 estimates from opening pools and buy lots. Imports preview before an explicit
 save; unknown values and historical identities stay visible.
+The optional [split records and history review](./docs/PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md)
+preserve exact FIFO basis through manually recorded splits and reverse splits.
+On-demand EOD observations flag possible missing actions and price-history gaps;
+provider observations are never written into the saved ledger. Historical
+portfolio performance remains a separate milestone.
 
 The stock screener scans the admitted 3,000-plus active U.S.-listed
 common-stock and ADR catalog without contacting Tiingo. One explicit action can

@@ -6,12 +6,16 @@ import {
 } from "./personal-portfolio";
 import {
   PERSONAL_PORTFOLIO_LEDGER_LIMITS,
+  isPersonalPortfolioLedgerActivity,
   isPersonalPortfolioLedgerPayload,
   isPersonalPortfolioLedgerTransaction,
   isPersonalPortfolioStoredPayload,
   projectPersonalPortfolioLedger,
-  type PersonalPortfolioLedgerPayload,
+  type PersonalPortfolioLedgerActivity,
+  type PersonalPortfolioLedgerPayloadV2,
+  type PersonalPortfolioLedgerPayloadV3,
   type PersonalPortfolioLedgerProjection,
+  type PersonalPortfolioLedgerSplit,
   type PersonalPortfolioLedgerTransaction,
 } from "./personal-portfolio-ledger";
 
@@ -34,7 +38,7 @@ function identity(suffix = "a"): PersonalPortfolioIdentity {
 
 function ledger(
   transactions: readonly PersonalPortfolioLedgerTransaction[] = [],
-): PersonalPortfolioLedgerPayload {
+): PersonalPortfolioLedgerPayloadV2 {
   return {
     schemaVersion: 2,
     name: "My Portfolio",
@@ -55,6 +59,28 @@ function ledger(
       ],
     },
     transactions,
+  };
+}
+
+function splitLedger(
+  transactions: readonly PersonalPortfolioLedgerActivity[] = [],
+): PersonalPortfolioLedgerPayloadV3 {
+  return { ...ledger(), schemaVersion: 3, transactions };
+}
+
+function split(
+  id = "split-1",
+  ratioNumerator = "2",
+  ratioDenominator = "1",
+  date = "2026-09-02",
+): PersonalPortfolioLedgerSplit {
+  return {
+    id,
+    date,
+    type: "split",
+    listingId: "listing-a",
+    ratioNumerator,
+    ratioDenominator,
   };
 }
 
@@ -621,7 +647,7 @@ describe("personal portfolio ledger validation", () => {
       null,
       [],
       {},
-      { ...base, schemaVersion: 3 },
+      { ...base, schemaVersion: 4 },
       { ...base, basisMethod: "tax_fifo" },
       { ...base, balance: "10" },
       { ...base, opening: { ...base.opening, extra: true } },
@@ -635,5 +661,386 @@ describe("personal portfolio ledger validation", () => {
     const row = { ...trade("a", "buy", "1", "1") };
     Object.defineProperty(row, "feeUsd", { get: () => "0" });
     expect(isPersonalPortfolioLedgerTransaction(row)).toBe(false);
+  });
+});
+
+describe("personal portfolio ledger split projection", () => {
+  it("keeps V2 projection unchanged and requires explicit V3 for split rows", () => {
+    const transactions = [trade("buy", "buy", "1", "10")];
+    expect(valid(splitLedger(transactions))).toEqual(
+      valid(ledger(transactions)),
+    );
+    expect(valid(ledger()).splitAdjustments).toEqual([]);
+    const upgraded = splitLedger([split()]);
+    expect(isPersonalPortfolioStoredPayload(upgraded, today)).toBe(true);
+    error({ ...upgraded, schemaVersion: 2 }, "invalid_payload");
+    expect(isPersonalPortfolioLedgerActivity(split())).toBe(true);
+    expect(isPersonalPortfolioLedgerTransaction(split())).toBe(false);
+    expect(isPersonalPortfolioLedgerActivity(transactions[0])).toBe(true);
+  });
+
+  it("adjusts every open FIFO lot without moving cash, basis or realized amounts", () => {
+    const buy = trade("buy", "buy", "2", "40", "1");
+    const before = valid(splitLedger([buy]));
+    const after = valid(splitLedger([buy, split()]));
+    expect(after.portfolio.holdings[0]).toMatchObject({
+      shares: "10",
+      totalCostBasisUsd: "71.00",
+      confirmedOn: "2026-09-02",
+    });
+    expect(after.portfolio.cashUsd).toBe(before.portfolio.cashUsd);
+    expect(after.cashFlows).toEqual(before.cashFlows);
+    expect(after.realized).toEqual(before.realized);
+    expect(
+      after.lots.map((lot) => [lot.originalShares, lot.remainingShares]),
+    ).toEqual([
+      ["3", "6"],
+      ["2", "4"],
+    ]);
+    expect(after.lots.map((lot) => lot.remainingCostBasisUsd)).toEqual(
+      before.lots.map((lot) => lot.remainingCostBasisUsd),
+    );
+    expect(after.splitAdjustments).toEqual([
+      {
+        transactionId: "split-1",
+        date: "2026-09-02",
+        listingId: "listing-a",
+        ratioNumerator: "2",
+        ratioDenominator: "1",
+        beforeShares: "5",
+        afterShares: "10",
+        affectedLots: 2,
+      },
+    ]);
+  });
+
+  it("retains representable reverse-split fractions without inventing cash-in-lieu", () => {
+    const base = splitLedger([split("reverse", "1", "4")]);
+    const result = valid({
+      ...base,
+      opening: { ...base.opening, cashUsd: null },
+    });
+    expect(result.portfolio.holdings[0]).toMatchObject({
+      shares: "0.75",
+      totalCostBasisUsd: "30.00",
+    });
+    expect(result.portfolio.cashUsd).toBeNull();
+    expect(result.cashCheck).toBe("unknown_opening_cash");
+    expect(result.cashFlows.netCashChangeUsd).toBe("0.00");
+    expect(result.realized.sales).toBe(0);
+  });
+
+  it("preserves cumulative cent rounding across a partial sale and split", () => {
+    const base = splitLedger([
+      trade("before", "sell", "1", "1"),
+      split(),
+      trade("after", "sell", "1", "1"),
+      trade("finish", "sell", "3", "1"),
+    ]);
+    const result = valid({
+      ...base,
+      opening: {
+        ...base.opening,
+        holdings: [{ ...base.opening.holdings[0]!, totalCostBasisUsd: "0.01" }],
+      },
+    });
+    expect(
+      result.realized.disposals.map((row) => row.allocatedCostBasisUsd),
+    ).toEqual(["0.00", "0.01", "0.00"]);
+    expect(result.portfolio.holdings).toEqual([]);
+    expect(result.lots[0]).toMatchObject({
+      originalShares: "3",
+      originalCostBasisUsd: "0.01",
+      remainingCostBasisUsd: "0.00",
+      disposedCostBasisUsd: "0.01",
+    });
+  });
+
+  it("supports a fractional adjusted original denominator when every remaining lot fits", () => {
+    const base = splitLedger([
+      trade("before", "sell", "0.000001", "1"),
+      split("fractional-denominator", "3", "2"),
+      trade("after", "sell", "0.000001", "1"),
+    ]);
+    const result = valid({
+      ...base,
+      opening: {
+        ...base.opening,
+        holdings: [
+          {
+            ...base.opening.holdings[0]!,
+            shares: "0.000003",
+            totalCostBasisUsd: "0.01",
+          },
+        ],
+      },
+    });
+    expect(
+      result.realized.disposals.map((row) => row.allocatedCostBasisUsd),
+    ).toEqual(["0.00", "0.01"]);
+    expect(result.portfolio.holdings[0]).toMatchObject({
+      shares: "0.000002",
+      totalCostBasisUsd: "0.00",
+    });
+  });
+
+  it("conserves the complete lot basis through repeated splits and partial sales", () => {
+    const base = splitLedger([
+      trade("a", "sell", "1", "1"),
+      split("forward"),
+      trade("b", "sell", "1", "1"),
+      split("reverse", "1", "3"),
+      trade("c", "sell", "0.5", "1"),
+      split("forward-again", "10", "1"),
+      trade("d", "sell", "5", "1"),
+    ]);
+    const result = valid({
+      ...base,
+      opening: {
+        ...base.opening,
+        holdings: [{ ...base.opening.holdings[0]!, totalCostBasisUsd: "0.01" }],
+      },
+    });
+    expect(
+      result.realized.disposals.map((row) => row.allocatedCostBasisUsd),
+    ).toEqual(["0.00", "0.01", "0.00", "0.00"]);
+    expect(result.portfolio.holdings).toEqual([]);
+    expect(result.realized.totalGainUsd).toBe("3.99");
+    expect(result.lots[0]?.disposedCostBasisUsd).toBe("0.01");
+  });
+
+  it("preserves unknown opening basis through a split and recovers known later lots", () => {
+    const base = splitLedger([
+      trade("buy", "buy", "2", "40"),
+      split(),
+      trade("opening-sale", "sell", "6", "60"),
+      trade("known-sale", "sell", "1", "10"),
+    ]);
+    const result = valid({
+      ...base,
+      opening: {
+        ...base.opening,
+        holdings: [{ ...base.opening.holdings[0]!, totalCostBasisUsd: null }],
+      },
+    });
+    expect(result.portfolio.holdings[0]).toMatchObject({
+      shares: "3",
+      totalCostBasisUsd: "30.00",
+    });
+    expect(result.realized).toMatchObject({
+      unknownSales: 1,
+      knownSales: 1,
+      knownGainSubtotalUsd: "0.00",
+      totalGainUsd: null,
+    });
+    expect(
+      result.realized.disposals.map((row) => row.allocatedCostBasisUsd),
+    ).toEqual([null, "10.00"]);
+    expect(result.lots[0]?.originalCostBasisUsd).toBeNull();
+  });
+
+  it("honors same-day activity order and leaves later buys in their own units", () => {
+    const buy = trade("buy", "buy", "1", "10");
+    expect(
+      valid(splitLedger([buy, split()])).portfolio.holdings[0]?.shares,
+    ).toBe("8");
+    const splitThenBuy = valid(splitLedger([split(), buy]));
+    expect(splitThenBuy.portfolio.holdings[0]?.shares).toBe("7");
+    expect(splitThenBuy.lots[1]?.remainingShares).toBe("1");
+    const sale = trade("sell", "sell", "4", "40");
+    error(splitLedger([sale, split()]), "oversell", 0);
+    expect(
+      valid(splitLedger([split(), sale])).portfolio.holdings[0]?.shares,
+    ).toBe("2");
+  });
+
+  it("leaves closed lots and other listings untouched", () => {
+    const base = splitLedger([
+      trade("close-opening", "sell", "3", "30"),
+      trade("reopen", "buy", "1", "10"),
+      split(),
+    ]);
+    const result = valid({
+      ...base,
+      identities: [...base.identities, identity("b")],
+      opening: {
+        ...base.opening,
+        holdings: [
+          ...base.opening.holdings,
+          { ...base.opening.holdings[0]!, listingId: "listing-b" },
+        ],
+      },
+    });
+    expect(result.portfolio.holdings.map((holding) => holding.shares)).toEqual([
+      "2",
+      "3",
+    ]);
+    expect(result.lots[0]).toMatchObject({
+      originalShares: "3",
+      remainingShares: "0",
+      disposedCostBasisUsd: "30.00",
+    });
+    expect(result.splitAdjustments[0]?.affectedLots).toBe(1);
+  });
+
+  it("rejects a split without a position at its ordered location", () => {
+    error(
+      splitLedger([trade("close", "sell", "3", "30"), split()]),
+      "split_no_position",
+      1,
+    );
+  });
+
+  it("rejects unrepresentable per-lot fractions even when the aggregate fits", () => {
+    const base = splitLedger([
+      trade("second-lot", "buy", "0.000001", "1"),
+      split("reverse", "1", "2"),
+    ]);
+    error(
+      {
+        ...base,
+        opening: {
+          ...base.opening,
+          holdings: [{ ...base.opening.holdings[0]!, shares: "0.000001" }],
+        },
+      },
+      "split_fractional_precision",
+      1,
+    );
+    error(
+      splitLedger([split("third", "1", "7")]),
+      "split_fractional_precision",
+      0,
+    );
+  });
+
+  it("checks expanded share bounds before later sales can restore them", () => {
+    const base = splitLedger([split(), trade("later", "sell", "2", "1")]);
+    const opening = {
+      ...base.opening,
+      holdings: [{ ...base.opening.holdings[0]!, shares: "500000000.000001" }],
+    };
+    error({ ...base, opening }, "shares_limit", 0);
+    expect(
+      valid({
+        ...base,
+        transactions: [split()],
+        opening: {
+          ...opening,
+          holdings: [{ ...opening.holdings[0]!, shares: "500000000" }],
+        },
+      }).portfolio.holdings[0]?.shares,
+    ).toBe("1000000000");
+  });
+
+  it("retains exact schema bounds with 250 split activities", () => {
+    const transactions = Array.from({ length: 250 }, (_, index) =>
+      split(
+        `split-${String(index)}`,
+        index % 2 === 0 ? "2" : "1",
+        index % 2 === 0 ? "1" : "2",
+      ),
+    );
+    const result = valid(splitLedger(transactions));
+    expect(result.portfolio.holdings[0]).toMatchObject({
+      shares: "3",
+      totalCostBasisUsd: "30.00",
+    });
+    expect(result.splitAdjustments).toHaveLength(250);
+    error(splitLedger([...transactions, split("extra")]), "invalid_payload");
+  });
+
+  it("returns immutable JSON-safe split results without mutating input", () => {
+    const input = splitLedger([split()]);
+    const before = structuredClone(input);
+    const result = valid(input);
+    expect(input).toEqual(before);
+    expect(Object.isFrozen(input.transactions[0])).toBe(false);
+    expect(Object.isFrozen(result.splitAdjustments[0])).toBe(true);
+    expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+});
+
+describe("personal portfolio split validation", () => {
+  it.each([
+    { ratioNumerator: "0" },
+    { ratioDenominator: "0" },
+    { ratioNumerator: "1000001" },
+    { ratioDenominator: "1000001" },
+    { ratioNumerator: "01" },
+    { ratioDenominator: "01" },
+    { ratioNumerator: "1.5" },
+    { ratioNumerator: "1e2" },
+    { ratioNumerator: "+2" },
+    { ratioNumerator: "-2" },
+    { ratioNumerator: " 2" },
+    { ratioNumerator: 2 },
+    { ratioDenominator: "2" },
+    { listingId: null },
+    { id: "" },
+    { date: "2026-02-30" },
+    { shares: null },
+    { grossUsd: "0" },
+    { feeUsd: "0" },
+  ])("rejects malformed closed split fields %j", (changed) => {
+    const activity = { ...split(), ...changed };
+    expect(isPersonalPortfolioLedgerActivity(activity)).toBe(false);
+    error({ ...splitLedger(), transactions: [activity] }, "invalid_payload");
+  });
+
+  it("accepts inclusive ratio bounds and equivalent unreduced ratios", () => {
+    expect(
+      isPersonalPortfolioLedgerActivity(split("largest", "1000000", "1")),
+    ).toBe(true);
+    expect(
+      isPersonalPortfolioLedgerActivity(split("smallest", "1", "1000000")),
+    ).toBe(true);
+    expect(
+      valid(splitLedger([split("equivalent", "4", "2")])).portfolio.holdings[0]
+        ?.shares,
+    ).toBe("6");
+  });
+
+  it("binds split identity, unique IDs and dates to existing ledger rules", () => {
+    error(
+      splitLedger([{ ...split(), listingId: "listing-unknown" }]),
+      "invalid_payload",
+    );
+    error(
+      splitLedger([split(), trade("split-1", "buy", "1", "10")]),
+      "invalid_payload",
+    );
+    error(
+      splitLedger([split("early", "2", "1", "2026-09-01")]),
+      "transaction_before_opening",
+      0,
+    );
+    error(
+      splitLedger([split("future", "2", "1", "2026-09-10")]),
+      "future_date",
+      0,
+    );
+    error(
+      splitLedger([
+        split("later", "2", "1", "2026-09-03"),
+        split("earlier", "1", "2"),
+      ]),
+      "transaction_order",
+      1,
+    );
+  });
+
+  it("rejects accessor fields before evaluating their values", () => {
+    let reads = 0;
+    const value = { ...split() };
+    Object.defineProperty(value, "ratioNumerator", {
+      get: () => {
+        reads += 1;
+        return "2";
+      },
+    });
+    expect(isPersonalPortfolioLedgerActivity(value)).toBe(false);
+    error({ ...splitLedger(), transactions: [value] }, "invalid_payload");
+    expect(reads).toBe(0);
   });
 });

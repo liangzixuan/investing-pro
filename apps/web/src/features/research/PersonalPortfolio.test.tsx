@@ -12,6 +12,7 @@ import {
   PersonalPortfolio,
   type PersonalPortfolioProps,
 } from "./PersonalPortfolio";
+import type { PersonalPortfolioHistoryCoverageProps } from "./PersonalPortfolioHistoryCoverage";
 
 const api = vi.hoisted(() => ({
   fetchPersonalPortfolio: vi.fn(),
@@ -60,11 +61,45 @@ vi.mock("./PersonalPortfolioLedgerEditor", () => ({
                   feeUsd: "0",
                 },
               ],
-            }),
+            } as PersonalPortfolioLedgerPayload),
         },
         "Test ledger deposit",
       ),
+      React.createElement(
+        "button",
+        {
+          onClick: () =>
+            editorProps.onChange({
+              ...editorProps.ledger,
+              schemaVersion: 3,
+              transactions: [
+                ...editorProps.ledger.transactions,
+                {
+                  id: "test-split-correction",
+                  date: "2026-09-09",
+                  type: "split",
+                  listingId: "listing-one",
+                  ratioNumerator: "2",
+                  ratioDenominator: "1",
+                },
+              ],
+            }),
+        },
+        "Test ledger split correction",
+      ),
     ),
+}));
+vi.mock("./PersonalPortfolioHistoryCoverage", () => ({
+  PersonalPortfolioHistoryCoverage: (
+    historyProps: PersonalPortfolioHistoryCoverageProps,
+  ) => {
+    latestHistoryProps = historyProps;
+    return React.createElement(
+      "div",
+      { "data-history-disabled": historyProps.disabled },
+      "Test history panel",
+    );
+  },
 }));
 vi.mock("react", async (original) => ({
   ...(await original()),
@@ -86,7 +121,9 @@ vi.mock("@/lib/personal-workspace-api", async () => ({
 }));
 
 let props: PersonalPortfolioProps;
+let latestHistoryProps: PersonalPortfolioHistoryCoverageProps | null = null;
 beforeEach(() => {
+  latestHistoryProps = null;
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-09T10:00:00.000Z"));
   harness.reset();
@@ -110,6 +147,167 @@ afterEach(() => {
 });
 
 describe("PersonalPortfolio", () => {
+  it("reopens V3 split holdings and applies current catalog admission before pricing", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(
+      record({
+        ...ledger(),
+        schemaVersion: 3,
+        transactions: [
+          {
+            id: "manual-split",
+            date: "2026-09-09",
+            type: "split",
+            listingId: "listing-one",
+            ratioNumerator: "2",
+            ratioDenominator: "1",
+          },
+        ],
+      }),
+    );
+    await load();
+    expect(input(render(), "Shares for ONE").props.value).toBe("4");
+    expect(input(render(), "Total cost basis for ONE").props.value).toBe(
+      "80.00",
+    );
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(api.searchPersonalSecurities).toHaveBeenCalled();
+    expect(metric(render(), "Total value including cash")).toBe("210.00 USD");
+  });
+
+  it("retains known split warnings outside a shorter review and withholds affected values", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("135.00 USD");
+    reportHistory(["2026-09-09"], ["2026-09-09"]);
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    expect(text(render())).toContain(
+      "History review found split discrepancies",
+    );
+    reportHistory(["2026-09-10"], []);
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    reportHistory(["2026-09-09"], []);
+    expect(metric(render(), "Total value including cash")).toBe("135.00 USD");
+  });
+
+  it("ignores a history callback from an old ledger and clears private history on session loss", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    text(render());
+    const oldHistory = latestHistoryProps;
+    if (!oldHistory) throw new Error("History props unavailable");
+    click(render(), "Test ledger deposit");
+    text(render());
+    reportHistory(["2026-09-09"], ["2026-09-09"], oldHistory);
+    expect(text(render())).not.toContain(
+      "History review found split discrepancies",
+    );
+    latestHistoryProps?.onSessionUnavailable();
+    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    expect(text(render())).not.toContain("Test history panel");
+  });
+
+  it("retains known split warnings across an unrelated deposit and a successful save", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    text(render());
+    reportHistory(["2026-09-09"], ["2026-09-09"]);
+    click(render(), "Test ledger deposit");
+    expect(text(render())).toContain(
+      "History review found split discrepancies",
+    );
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    click(render(), "Save My Portfolio");
+    await flush();
+    expect(text(render())).toContain("Saved version 2");
+    expect(text(render())).toContain(
+      "History review found split discrepancies",
+    );
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    reportHistory(["2026-09-09"], []);
+    expect(metric(render(), "Total value including cash")).toBe("160.00 USD");
+  });
+
+  it("requires a fresh assessment of the affected date after correcting a split", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    text(render());
+    reportHistory(["2026-09-09"], ["2026-09-09"]);
+    click(render(), "Test ledger split correction");
+    expect(input(render(), "Shares for ONE").props.value).toBe("4");
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    reportHistory(["2026-09-10"], []);
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    reportHistory(["2026-09-09"], []);
+    expect(metric(render(), "Total value including cash")).toBe("235.00 USD");
+  });
+
+  it("keeps a visible valuation warning after discarding conversion back to a manual snapshot", async () => {
+    await load();
+    change(render(), "Opening balances as of", "2026-09-08");
+    click(render(), "Start transaction ledger");
+    text(render());
+    reportHistory(["2026-09-09"], ["2026-09-09"]);
+    click(render(), "Discard edits and reload");
+    await flush();
+    expect(text(render())).not.toContain("Test history panel");
+    const rendered = text(render());
+    expect(rendered).toContain("History review found split discrepancies");
+    expect(
+      rendered.indexOf("History review found split discrepancies"),
+    ).toBeLessThan(rendered.indexOf("Portfolio overview"));
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("Unavailable");
+    click(render(), "Remove ONE");
+    expect(text(render())).not.toContain(
+      "History review found split discrepancies",
+    );
+    click(render(), "Add selected holding");
+    expect(text(render())).toContain(
+      "History review found split discrepancies",
+    );
+  });
+
+  it("clears known split warnings only with private session state", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    text(render());
+    reportHistory(["2026-09-09"], ["2026-09-09"]);
+    expect(text(render())).toContain(
+      "History review found split discrepancies",
+    );
+    latestHistoryProps?.onSessionUnavailable();
+    await load();
+    expect(text(render())).not.toContain(
+      "History review found split discrepancies",
+    );
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(metric(render(), "Total value including cash")).toBe("135.00 USD");
+  });
+
+  it("disables history review while ledger inputs are staged", async () => {
+    api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
+    await load();
+    click(render(), "Test stage transaction");
+    text(render());
+    expect(latestHistoryProps?.disabled).toBe(true);
+    click(render(), "Test reset staged transaction");
+    text(render());
+    expect(latestHistoryProps?.disabled).toBe(false);
+  });
   it("requires staged ledger inputs to be applied or reset before save and reload", async () => {
     api.fetchPersonalPortfolio.mockResolvedValue(record(ledger()));
     await load();
@@ -634,6 +832,32 @@ describe("PersonalPortfolio", () => {
 
 function digest(character: string): `sha256:${string}` {
   return `sha256:${character.repeat(64)}`;
+}
+function reportHistory(
+  observedDates: readonly string[],
+  splitReviewDates: readonly string[],
+  historyProps = latestHistoryProps,
+) {
+  if (!historyProps) throw new Error("History props unavailable");
+  historyProps.onAssessment(
+    historyProps.ledgerContext,
+    "listing-one",
+    splitReviewDates.length > 0,
+    {
+      listingId: "listing-one",
+      firstObservedDate: observedDates[0] ?? null,
+      lastObservedDate: observedDates.at(-1) ?? null,
+      observationCount: observedDates.length,
+      openingDateObserved: false,
+      activityDateCount: 0,
+      observedActivityDateCount: 0,
+      manualSplitsOutsideWindow: 0,
+      actions: [],
+      requiresSplitReview: splitReviewDates.length > 0,
+      observedDates,
+      splitReviewDates,
+    },
+  );
 }
 function identity(index = 0): PersonalPortfolioIdentity {
   const suffix = index === 0 ? "one" : String(index);

@@ -1,5 +1,7 @@
 import type {
   PersonalPortfolioLedgerPayload,
+  PersonalPortfolioLedgerPayloadV2,
+  PersonalPortfolioLedgerPayloadV3,
   PersonalPortfolioLedgerTransaction,
 } from "@research-cockpit/contracts";
 import { describe, expect, it } from "vitest";
@@ -14,6 +16,119 @@ const HEADER = "id,date,type,listingId,symbol,shares,grossUsd,feeUsd";
 const TODAY = "2026-09-09";
 
 describe("personal portfolio ledger CSV import", () => {
+  it("preserves schema 3 split history while previewing financial trades and duplicate warnings", () => {
+    const source = splitLedger();
+    const before = JSON.stringify(source);
+    const result = parsePersonalPortfolioLedgerCsv(
+      [
+        HEADER,
+        csvRow({ id: "new-duplicate-buy" }),
+        csvRow({
+          id: "sell-adjusted-shares",
+          type: "sell",
+          shares: "20",
+          grossUsd: "60",
+          feeUsd: "0",
+        }),
+      ].join("\n"),
+      source,
+      TODAY,
+    );
+    expect(result.status).toBe("valid");
+    if (result.status !== "valid") throw new Error("Expected valid CSV");
+    expect(result.candidate.schemaVersion).toBe(3);
+    expect(result.candidate.transactions.slice(0, 2)).toEqual(
+      source.transactions,
+    );
+    expect(result.candidate.transactions[0]).not.toBe(source.transactions[0]);
+    expect(Object.isFrozen(result.candidate.transactions[0])).toBe(true);
+    expect(Object.isFrozen(source.transactions[0])).toBe(false);
+    expect(result.transactions).toHaveLength(2);
+    expect(result.possibleDuplicateIds).toEqual(["new-duplicate-buy"]);
+    expect(result.projection.portfolio).toMatchObject({
+      cashUsd: "138.00",
+      holdings: [{ shares: "2", totalCostBasisUsd: "22.00" }],
+    });
+    expect(result.projection.realized.totalGainUsd).toBe("10.00");
+    expect(JSON.stringify(source)).toBe(before);
+  });
+
+  it("rejects imported split rows and IDs already used by saved splits", () => {
+    const source = splitLedger();
+    expect(
+      parsePersonalPortfolioLedgerCsv(
+        HEADER + "\n" + csvRow({ id: "saved-split" }),
+        source,
+        TODAY,
+      ),
+    ).toMatchObject({ error: { code: "duplicate_id", row: 2 } });
+    expect(
+      parsePersonalPortfolioLedgerCsv(
+        HEADER + "\n" + csvRow({ id: "new-split", type: "split" }),
+        source,
+        TODAY,
+      ),
+    ).toMatchObject({ error: { code: "invalid_row", row: 2 } });
+    expect(
+      parsePersonalPortfolioLedgerCsv(
+        HEADER +
+          ",ratioNumerator,ratioDenominator\n" +
+          csvRow({ id: "new-split", type: "split" }) +
+          ",2,1",
+        source,
+        TODAY,
+      ),
+    ).toMatchObject({ error: { code: "invalid_header", row: 1 } });
+  });
+
+  it("counts split rows toward the shared activity limit and preserves chronological import errors", () => {
+    const source = splitLedger();
+    const maximum: PersonalPortfolioLedgerPayloadV3 = {
+      ...source,
+      transactions: [
+        source.transactions[0]!,
+        ...Array.from(
+          { length: 249 },
+          (_, index): PersonalPortfolioLedgerTransaction => ({
+            id: `saved-deposit-${String(index)}`,
+            date: "2026-01-03",
+            type: "deposit",
+            listingId: null,
+            shares: null,
+            grossUsd: "1",
+            feeUsd: "0",
+          }),
+        ),
+      ],
+    };
+    const result = parsePersonalPortfolioLedgerCsv(
+      HEADER + "\n" + csvRow({ id: "too-many", date: "2026-01-03" }),
+      maximum,
+      TODAY,
+    );
+    expect(result).toMatchObject({
+      error: { code: "ledger_invalid", ledgerCode: "invalid_payload" },
+    });
+    expect(result).not.toHaveProperty("candidate");
+    const laterSplit: PersonalPortfolioLedgerPayloadV3 = {
+      ...source,
+      transactions: [{ ...source.transactions[0]!, date: "2026-01-03" }],
+    };
+    expect(
+      parsePersonalPortfolioLedgerCsv(
+        HEADER + "\n" + csvRow(),
+        laterSplit,
+        TODAY,
+      ),
+    ).toMatchObject({
+      error: {
+        code: "ledger_invalid",
+        row: 2,
+        ledgerCode: "transaction_order",
+      },
+    });
+  });
+
   it("parses the owned template and previews derived balances without mutating the ledger", () => {
     const source = ledger();
     const before = JSON.stringify(source);
@@ -494,7 +609,7 @@ describe("personal portfolio ledger CSV import", () => {
   });
 });
 
-function ledger(): PersonalPortfolioLedgerPayload {
+function ledger(): PersonalPortfolioLedgerPayloadV2 {
   return {
     schemaVersion: 2,
     name: "My Portfolio",
@@ -529,6 +644,24 @@ function ledger(): PersonalPortfolioLedgerPayload {
       ],
     },
     transactions: [],
+  };
+}
+
+function splitLedger(): PersonalPortfolioLedgerPayloadV3 {
+  return {
+    ...ledger(),
+    schemaVersion: 3,
+    transactions: [
+      {
+        id: "saved-split",
+        date: "2026-01-02",
+        type: "split",
+        listingId: "listing-one",
+        ratioNumerator: "2",
+        ratioDenominator: "1",
+      },
+      transaction(),
+    ],
   };
 }
 

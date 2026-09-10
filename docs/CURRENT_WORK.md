@@ -32,25 +32,25 @@ These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: My Portfolio snapshot
+## Last verified release: transaction ledger and safe CSV import
 
-Release `fc9a94e` closed the initial portfolio snapshot, following feature
-`bf5082a`. Full local verification passed (2,929 tests and 9 existing skips);
-all five applicable hosted workflows passed on that exact release, including
-both Ubuntu and Windows CI jobs. See [holdings and valuation](./PERSONAL_PORTFOLIO.md).
+Release `e30cb7b` closed the transaction ledger and safe CSV import, following
+feature `e2bc175`. Full local verification passed (3,081 tests and 9 existing
+skips); all four applicable hosted workflows passed on that exact release,
+including Ubuntu and Windows CI. Windows passed on attempt 2 after an unchanged
+custody test timed out; no timeout or test source was changed. See
+[ledger rules](./PERSONAL_PORTFOLIO_LEDGER.md).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: transaction ledger and safe CSV import
+## Active delivery: split reconciliation and historical-price coverage
 
-The next partial Cycle 3m-a slice explicitly converts the snapshot into opening
-balances plus an ordered ledger. Buys, sells, deposits, withdrawals, cash
-dividends and fees derive holdings and cash, preserve unknown amounts, and
-show FIFO estimates with an aggregate opening pool. CSV imports preview a
-bounded batch, reject repeated IDs and require review of economic duplicates.
-Historical identities remain recorded without receiving mismatched prices.
-See [ledger rules and acceptance](./PERSONAL_PORTFOLIO_LEDGER.md).
+The next partial Cycle 3m-a slice adds manually recorded splits and reverse
+splits with exact share and FIFO basis preservation. On-demand EOD history
+review reports observed-date coverage and flags corporate-action discrepancies;
+provider observations stay in session memory. See
+[split and history rules](./PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md).
 
 Live SEC validation still requires the owner's contact and startup configuration.
 The current shell has neither the SEC contact nor the configured catalog path
@@ -65,9 +65,9 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                |
 | ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| Now              | Deliver and verify the transaction ledger and safe CSV import                                    | Derive holdings and cash from a single encrypted source             |
+| Now              | Deliver and verify split reconciliation and history coverage                                     | Keep recorded shares and basis consistent before performance        |
 | When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration           |
-| Next             | Corporate-action reconciliation and historical-price coverage                                    | Resolve split/basis and price history before performance metrics    |
+| Next             | Historical portfolio valuation and performance methodology                                       | Require reconciled actions, observed prices and explicit gap rules  |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement            |
 | As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions |
 | Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product         |

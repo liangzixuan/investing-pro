@@ -156,17 +156,17 @@ export function registerPersonalWorkspacePortfolioRoutes(
           }
           priorPayload = previous.payload;
         }
-        // Do not erase a ledger through a manual snapshot save. Old requests
-        // with an earlier version may still reach the vault's idempotent replay.
+        // Do not discard ledger capabilities through a schema downgrade. Old
+        // requests may still reach the vault's authenticated idempotent replay.
         if (
           previous?.version === expectedVersion &&
-          priorPayload?.schemaVersion === 2 &&
-          payload.schemaVersion === 1
+          priorPayload !== undefined &&
+          priorPayload.schemaVersion > payload.schemaVersion
         ) {
           return sendPortfolioProblem(reply, request, 409);
         }
         if (
-          payload.schemaVersion === 2 &&
+          payload.schemaVersion !== 1 &&
           expectedVersion === (previous?.version ?? 0) &&
           !ledgerIdentitiesAdmitted(catalog, payload.identities, priorPayload)
         ) {
