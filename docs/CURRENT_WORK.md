@@ -26,31 +26,30 @@ unrelated hardening outside the active personal scope.
 | Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata          |
 | Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth |
 | Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Live validation, upcoming events, alerts and exports                   |
-| Track holdings            | Encrypted My Portfolio snapshot or transaction ledger, valuation, allocation and FIFO estimates                | Corporate actions, historical prices and performance                   |
+| Track holdings            | Encrypted snapshot/ledger, splits, daily historical values, allocation and FIFO estimates                      | Percentage returns, further corporate actions and live coverage        |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: transaction ledger and safe CSV import
+## Last verified release: split reconciliation and history coverage
 
-Release `e30cb7b` closed the transaction ledger and safe CSV import, following
-feature `e2bc175`. Full local verification passed (3,081 tests and 9 existing
-skips); all four applicable hosted workflows passed on that exact release,
-including Ubuntu and Windows CI. Windows passed on attempt 2 after an unchanged
-custody test timed out; no timeout or test source was changed. See
-[ledger rules](./PERSONAL_PORTFOLIO_LEDGER.md).
+Release `4381ee3` closed manual splits and historical-price coverage, following
+feature `2688fdf`. Full local verification passed (3,241 tests and 9 existing
+skips); all four applicable hosted workflows passed on attempt 1 for that exact
+release, including Ubuntu and Windows CI. See
+[split and history rules](./PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md).
 
 The earlier SEC annual screen and watchlist filings slices remain available.
 Their live coverage validation still depends on the owner's configured sources.
 
-## Active delivery: split reconciliation and historical-price coverage
+## Active delivery: historical portfolio valuation
 
-The next partial Cycle 3m-a slice adds manually recorded splits and reverse
-splits with exact share and FIFO basis preservation. On-demand EOD history
-review reports observed-date coverage and flags corporate-action discrepancies;
-provider observations stay in session memory. See
-[split and history rules](./PERSONAL_PORTFOLIO_CORPORATE_ACTIONS.md).
+The next partial Cycle 3m-a slice reuses EOD history to value recorded daily
+holdings and cash. It makes unavailable dates explicit and compares the first
+and last complete observations after recorded deposits and withdrawals.
+Percentage returns remain separate. See
+[historical valuation rules](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md).
 
 Live SEC validation still requires the owner's contact and startup configuration.
 The current shell has neither the SEC contact nor the configured catalog path
@@ -63,14 +62,14 @@ Record actual results in the task handoff; this page does not predict a pass.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| Now              | Deliver and verify split reconciliation and history coverage                                     | Keep recorded shares and basis consistent before performance        |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration           |
-| Next             | Historical portfolio valuation and performance methodology                                       | Require reconciled actions, observed prices and explicit gap rules  |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement            |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product         |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Now              | Deliver and verify historical portfolio valuation                                                | Reuse reconciled activities and exact observations                       |
+| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                |
+| Next             | Endpoint percentage returns for intervals without deposits or withdrawals                        | Require complete endpoints, positive starting value and flow eligibility |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                 |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions      |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product              |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

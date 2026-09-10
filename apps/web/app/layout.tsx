@@ -7,6 +7,7 @@ import "./globals.css";
 import "@/features/research/personal-portfolio.css";
 import "@/features/research/personal-portfolio-ledger.css";
 import "@/features/research/personal-portfolio-history.css";
+import "@/features/research/personal-portfolio-valuation-history.css";
 
 export const metadata: Metadata = {
   title: "Research Cockpit — Synthetic Demo",

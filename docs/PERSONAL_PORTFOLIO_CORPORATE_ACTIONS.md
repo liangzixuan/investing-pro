@@ -3,6 +3,8 @@
 This third partial Cycle 3m-a slice records owner-verified stock splits and
 reverse splits, and reviews the existing Tiingo EOD history on demand. It is a
 prerequisite for historical portfolio performance; it does not calculate it.
+The later [historical valuation slice](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md)
+reuses the same requests to show dated values and a cash-flow dollar bridge.
 
 ## Owner workflow
 

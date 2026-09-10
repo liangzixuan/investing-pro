@@ -186,6 +186,9 @@ describe("PersonalPortfolio", () => {
     expect(text(render())).toContain(
       "History review found split discrepancies",
     );
+    expect(latestHistoryProps?.priorSplitReviewDates).toEqual({
+      "listing-one": ["2026-09-09"],
+    });
     reportHistory(["2026-09-10"], []);
     expect(metric(render(), "Total value including cash")).toBe("Unavailable");
     click(render(), "Refresh portfolio prices");

@@ -1170,6 +1170,16 @@ Known discrepancies withhold affected quotes from complete current totals.
 Provider data stays transient and cannot automatically create ledger entries.
 This does not cover all corporate actions or deliver historical performance.
 
+### Fourth partial Cycle 3m-a delivery
+
+[Historical portfolio valuation](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md)
+reuses the explicit EOD review to calculate end-of-day ledger holdings and cash
+at raw exact-date closes. A dated dot chart and paginated calendar table show
+complete values, missing observations, unknown cash and unresolved splits.
+The first/last complete observations have an explicitly dated dollar bridge
+after recorded deposits and withdrawals. No provider data or derived series is
+persisted. Percentage returns, TWR, XIRR and benchmark comparisons remain open.
+
 ### Cycle 3n — background alerts and delivery
 
 Target: turn immediate local rule evaluation into a reliable monitoring
@@ -1276,21 +1286,30 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-09)
 
-Cycle 3k-a1 and its handover release are closed. Deliver and verify the first
-partial 3k-a2 slice using public SEC annual cross-company Frames and seven
-numerical metrics. Source choice is resolved for this slice; configured live
-coverage and sampled values still require validation. Reuse shared metric
-definitions, keep missing values explicit, and report actual cohort coverage.
-This smaller slice does not close the 30-core-metric/500-security gate.
+The first SEC annual cross-company Frames slice and recent watchlist filing
+loads are delivered. Their configured live coverage and sampled values still
+require validation; the seven-metric screen does not close the broader
+30-core-metric/500-security gate.
 
-Next prioritize corporate-action reconciliation and historical-price coverage
-for portfolio performance, followed by alerts and exports as their inputs and
-source permissions become available.
-If bulk screening is source-blocked, a permitted daily event slice may proceed
-independently. Historical screening, broad filing automation, large filter and
-model counts, and AI stay in the backlog while those everyday workflows are
-missing. Fix correctness, credential, and privacy blockers within the feature;
-unrelated governance and hardening do not become standalone product milestones.
+The current partial 3m-a slice delivers historical portfolio values and a dated
+dollar comparison after recorded external cash flows, following the transaction
+ledger, manual splits and historical-price coverage. Complete the reviewed
+feature and release gates described in the current-work guide.
+
+Next prioritize percentage return between complete observed endpoints for
+intervals with no deposits or withdrawals. Define eligibility, positive starting
+value, rounding and date boundaries explicitly; offsetting external flows must
+still make an interval ineligible. Preserve the dollar comparison for intervals
+with external flows. TWR, XIRR, dividend accruals and other corporate actions
+remain separate work requiring their own timing and coverage rules.
+
+Alerts and exports follow as their inputs and source permissions become
+available. A permitted daily event slice may proceed independently when bulk
+screening is source-blocked. Historical screening, broad filing automation,
+large filter and model counts, and AI stay in the backlog while those everyday
+workflows are missing. Fix correctness, credential, and privacy blockers within
+the feature; unrelated governance and hardening do not become standalone
+product milestones.
 
 See [the current-work guide](./CURRENT_WORK.md) for the next slice's acceptance
 checklist and the focused development/full-release verification loop.

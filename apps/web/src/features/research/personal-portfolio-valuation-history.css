@@ -1,0 +1,140 @@
+.portfolio-valuation-history {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  min-width: 0;
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 0.75rem;
+}
+.portfolio-valuation-history h3,
+.portfolio-valuation-history h4 {
+  margin-top: 0;
+}
+.portfolio-valuation-history p,
+.portfolio-valuation-history dd,
+.portfolio-valuation-history th,
+.portfolio-valuation-history td {
+  overflow-wrap: anywhere;
+}
+.portfolio-valuation-history p {
+  line-height: 1.6;
+}
+.portfolio-valuation-note,
+.portfolio-valuation-coverage,
+.portfolio-valuation-chart figcaption {
+  color: var(--muted, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.portfolio-valuation-comparison {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border, #dce3ed);
+}
+.portfolio-valuation-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.portfolio-valuation-summary > div {
+  min-width: 0;
+}
+.portfolio-valuation-summary dt {
+  color: var(--muted, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.portfolio-valuation-summary dd {
+  margin: 0.4rem 0 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-valuation-chart {
+  margin: 1.25rem 0;
+  min-width: 0;
+}
+.portfolio-valuation-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 640px;
+  overflow: visible;
+}
+.portfolio-valuation-chart text {
+  fill: var(--muted, #64748b);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-valuation-axis {
+  stroke: var(--muted, #64748b);
+  stroke-width: 1;
+}
+.portfolio-valuation-grid {
+  stroke: var(--border, #dce3ed);
+  stroke-dasharray: 3 4;
+}
+.portfolio-valuation-dot {
+  fill: #2563eb;
+}
+.portfolio-valuation-gap {
+  stroke: var(--muted, #64748b);
+  stroke-width: 1;
+  fill: none;
+}
+.portfolio-valuation-chart-scroll,
+.portfolio-valuation-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.portfolio-valuation-chart-scroll:focus-visible,
+.portfolio-valuation-table-scroll:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.portfolio-valuation-history table {
+  width: 100%;
+  min-width: 740px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-valuation-history caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+.portfolio-valuation-history th,
+.portfolio-valuation-history td {
+  padding: 0.65rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border, #dce3ed);
+}
+.portfolio-valuation-history td small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted, #64748b);
+  line-height: 1.4;
+}
+.portfolio-valuation-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+.portfolio-valuation-pagination button {
+  width: auto;
+}
+@media (max-width: 720px) {
+  .portfolio-valuation-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .portfolio-valuation-history {
+    padding: 0.85rem;
+  }
+}
+@media (max-width: 420px) {
+  .portfolio-valuation-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1093,6 +1093,7 @@ export function PersonalPortfolio({
                 ledger={ledgerDraft}
                 ledgerContext={ledgerContext}
                 catalogSnapshotSha256={catalogSnapshotSha256}
+                priorSplitReviewDates={splitReviews}
                 disabled={
                   operation !== null ||
                   stale ||

@@ -1,0 +1,126 @@
+# My Portfolio: historical value and cash-flow reconciliation
+
+This fourth partial Cycle 3m-a delivery reconstructs daily end-of-day holdings
+and cash from the recorded ledger, values them using exact-date raw EOD closes,
+and compares two explicitly dated complete observations. It does not calculate
+percentage returns, TWR, XIRR, benchmark performance or tax results.
+
+## Workflow
+
+Load a schema 2 or 3 ledger, choose the existing history window and select
+**Review history**. The same sequential, identity-admitted Tiingo requests now
+feed both the corporate-action review and portfolio valuation. There is no
+second provider request or new endpoint. A cash-only ledger can be reviewed
+without a provider request.
+
+The value panel shows a dot chart and paginated daily table. It reports calendar
+dates with complete values, missing exact closing prices, unknown cash and
+unresolved split reviews. The chart never joins observations across missing
+dates. Each daily row reports holdings, cash, complete total and the recorded
+external cash flow for that date. Partial loads, cancellation and individual
+listing failures keep missing observations explicit.
+
+The comparison uses the **first and last fully valued dates**, shown by date
+alongside their values. These can differ from the requested window endpoints.
+It does not silently claim that an unpriced endpoint was valued. At least two
+distinct complete dates are required. The net external flow and dollar change
+refer only to that explicitly dated comparison interval.
+
+## Date and value conventions
+
+The review captures its requested UTC end date when the owner starts it. Range
+starts use the existing month/year subtraction with calendar-day clamping;
+year-to-date starts on January 1. Display begins at the later of the requested
+start and the ledger's end-of-day opening date. The engine emits at most 3,660
+calendar dates. Individual provider responses keep their actual window bounds,
+including a batch that crosses midnight.
+
+Opening quantities and cash form the first state. On each later date, apply all
+ledger activities through that date in their existing order, including same-day
+order, before valuation. Purchases subtract gross amount plus fee from cash;
+sales add gross proceeds less fee. Deposits, withdrawals, recorded dividends and
+standalone fees affect cash as recorded. Splits change shares and preserve cash.
+
+For each active position:
+
+`holding value = recorded end-of-day shares * exact-date raw closing price`
+
+`portfolio value = sum(holding values) + recorded end-of-day cash`
+
+Raw price decimals, share millionths and cash cents use exact integer arithmetic.
+Position values are summed before rounding the displayed aggregate to cents,
+half up. No binary floating-point arithmetic determines financial results. The
+chart's coordinates are a display approximation of those calculated values.
+
+Unknown cash leaves the complete portfolio value unavailable, even if all
+positions are priced. Unknown acquisition basis does not prevent market-value
+calculation. A clean position with zero remaining shares needs no later price.
+Missing raw closes are never replaced by current quotes, adjusted prices,
+nearest observations or carried-forward prices. Nontrading calendar dates can
+therefore be unavailable; the product does not infer an exchange calendar or
+claim that every missing date is a provider error.
+
+## Split evidence and limits
+
+The valuation engine reuses split assessments and the session's retained dated
+warnings. A mismatch, unrecorded observed split, or recorded split without an
+exact-date observation blocks affected-date totals from that split onward.
+This remains true after an apparent position closure: an unrecorded split can
+make the ledger's zero-share balance incorrect. The priced subtotal can still
+show unaffected positions, but it is not presented as a complete portfolio.
+
+A warning before the displayed window stays relevant. A shorter window or a
+failed fetch cannot clear it. Exact-date re-observation under the current ledger
+can resolve it. Recorded splits outside the fetched history need a wider review
+before later totals become available. The engine cannot discover an unrecorded
+action outside supplied observations; values remain conditional on the owner’s
+ledger and available evidence, not proof that every corporate action is known.
+
+## Dollar change after external cash flows
+
+For first complete end-of-day value `V0` and last complete end-of-day value `V1`:
+
+`net external flows = deposits - withdrawals, strictly after first date through last date`
+
+`change after external cash flows = V1 - V0 - net external flows`
+
+The bridge uses the displayed, rounded endpoint cents, so its amounts reconcile
+exactly with the two shown values. An external flow on the first date is already
+inside `V0` and is excluded from
+the comparison's flow sum. Buys and sells move value between holdings and cash;
+they are not external flows. Recorded dividends and fees remain in the observed
+change through their cash effects. The ledger is a cash-basis reconstruction:
+provider dividend ex-date observations do not create cash, receivables, accruals
+or reinvestment. Missing intermediate prices do not supply daily return factors.
+This dollar bridge is not a percentage return or an annualized result.
+
+Tiingo describes both raw and adjusted fields in its
+[EOD documentation](https://www.tiingo.com/documentation/end-of-day). Raw closes
+are used here with the ledger's already adjusted share quantities to avoid
+applying splits twice. CFA Institute's
+[GIPS methodology handbook](https://www.gipsstandards.org/standards/gips-standards-for-firms/gips-standards-handbook-for-firms/)
+illustrates why return calculations need explicit valuation and external-flow
+timing policies. These references were checked on 2026-09-10; this personal tool
+makes no GIPS compliance claim.
+
+## Storage, bounds and validation
+
+Stored schemas and the encrypted portfolio/main record remain unchanged. The
+loader retains only admitted identity/history associations in active session
+memory. Provider histories, derived values and comparisons are never saved,
+exported or logged. Ledger, version, catalog, range and session changes clear
+the detailed review; stale callbacks cannot restore it. Dated warning updates
+recompute values without starting another fetch. Existing owner-session and
+catalog admission checks remain in force.
+
+Limits remain 20 identities, 250 ledger activities and 4,096 observations per
+listing. The engine validates the ledger and uses a single chronological activity
+cursor, with work bounded by supplied bars plus daily listing checks. Input
+identity mismatches, duplicate histories, malformed prices/dates and excess
+bounds are rejected. Calculated results are immutable.
+
+Synthetic tests cover exact arithmetic, same-day cash and share events, splits,
+missing dates, unknown cash, closed positions, comparison flow boundaries,
+request/session invalidation and responsive presentation. Live owner Tiingo
+coverage still requires the configured runtime. Percentage-return methods,
+dividend accruals, other corporate actions and benchmarks remain separate work.

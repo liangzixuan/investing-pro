@@ -6,6 +6,7 @@ import type {
 } from "@research-cockpit/contracts";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PersonalPortfolioValuationHistoryResult } from "../../lib/personal-portfolio-valuation-history";
 import { PersonalWorkspaceApiError } from "@/lib/personal-workspace-api";
 import {
   PersonalPortfolioHistoryCoverage,
@@ -21,6 +22,7 @@ vi.mock("react", async (original) => ({
   ...(await original()),
   useState: (initial: unknown) => harness.useState(initial),
   useRef: <T,>(initial: T) => harness.useRef(initial),
+  useMemo: <T,>(factory: () => T) => factory(),
   useEffect: (
     effect: () => (() => void) | void,
     deps: readonly unknown[] | undefined,
@@ -38,9 +40,22 @@ vi.mock(
   "@/lib/personal-portfolio-history",
   () => import("../../lib/personal-portfolio-history"),
 );
+vi.mock(
+  "@/lib/personal-portfolio-valuation-history",
+  () => import("../../lib/personal-portfolio-valuation-history"),
+);
+vi.mock("./PersonalPortfolioValuationHistory", () => ({
+  PersonalPortfolioValuationHistory: (viewProps: { result: unknown }) =>
+    React.createElement("div", {
+      "data-testid": "portfolio-valuation-history",
+      "data-result": viewProps.result,
+    }),
+}));
 
 let props: PersonalPortfolioHistoryCoverageProps;
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-09T10:00:00.000Z"));
   harness.reset();
   api.savePersonalPortfolio.mockReset();
   api.searchPersonalSecurities
@@ -74,10 +89,271 @@ beforeEach(() => {
 });
 afterEach(() => {
   harness.unmount();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("PersonalPortfolioHistoryCoverage", () => {
+  it("reuses loaded raw closes for valuation and leaves unobserved calendar dates incomplete", async () => {
+    const value = market();
+    api.fetchPersonalMarketOverview.mockResolvedValue({
+      ...value,
+      quote: { ...value.quote, price: "999" },
+      history: {
+        ...value.history,
+        bars: value.history.bars.map((entry) => ({
+          ...entry,
+          raw: {
+            open: "15",
+            high: "15",
+            low: "15",
+            close: "15",
+            volume: "100",
+          },
+          adjusted: {
+            open: "99",
+            high: "99",
+            low: "99",
+            close: "99",
+            volume: "100",
+          },
+        })),
+      },
+    });
+    await review();
+    expect(point(render(), "2026-01-01")).toMatchObject({
+      cashUsd: "100.00",
+      holdingsValueUsd: "150.00",
+      totalValueUsd: "250.00",
+    });
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      cashUsd: "100.00",
+      holdingsValueUsd: "300.00",
+      totalValueUsd: "400.00",
+      netExternalFlowUsd: "0.00",
+    });
+    for (const date of ["2026-01-02", "2026-01-05"]) {
+      expect(point(render(), date)).toMatchObject({
+        holdingsValueUsd: null,
+        totalValueUsd: null,
+        missingPriceListingIds: ["listing-one"],
+      });
+    }
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(1);
+    expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
+  });
+
+  it("shows available valuation during a partial batch and keeps unrequested prices missing on cancellation", async () => {
+    props = { ...props, ledger: ledger(2) };
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview
+      .mockResolvedValueOnce(market())
+      .mockReturnValueOnce(pending.promise);
+    await mount();
+    click(render(), "Review history");
+    await flush();
+    expect(point(render(), "2026-01-01")).toMatchObject({
+      activeHoldings: 2,
+      pricedHoldings: 1,
+      pricedHoldingsValueUsd: "100.00",
+      holdingsValueUsd: null,
+      totalValueUsd: null,
+      missingPriceListingIds: ["listing-two"],
+    });
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      activeHoldings: 1,
+      cashUsd: "220.00",
+      holdingsValueUsd: "200.00",
+      totalValueUsd: "420.00",
+    });
+    click(render(), "Cancel history review");
+    pending.resolve(market(1));
+    await flush();
+    expect(point(render(), "2026-01-01")).toMatchObject({
+      pricedHoldings: 1,
+      missingPriceListingIds: ["listing-two"],
+    });
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears all prior-batch prices before a new review and never restores them after failure", async () => {
+    await review();
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      totalValueUsd: "300.00",
+    });
+    props = {
+      ...props,
+      priorSplitReviewDates: { "listing-one": ["2026-01-02"] },
+    };
+    const pending = deferred<ReturnType<typeof search>>();
+    api.searchPersonalSecurities.mockReturnValueOnce(pending.promise);
+    api.fetchPersonalMarketOverview.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("not_covered"),
+    );
+    click(render(), "Review history");
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      pricedHoldings: 0,
+      totalValueUsd: null,
+      missingPriceListingIds: ["listing-one"],
+    });
+    pending.resolve(search([identity()]));
+    await flush();
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      pricedHoldings: 0,
+      totalValueUsd: null,
+      splitReviewListingIds: ["listing-one"],
+    });
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it("recomputes carried split warnings without refetching or aborting an active batch", async () => {
+    props = { ...props, ledger: ledger(2) };
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview
+      .mockResolvedValueOnce(market())
+      .mockReturnValueOnce(pending.promise);
+    await mount();
+    click(render(), "Review history");
+    await flush();
+    const signal = api.fetchPersonalMarketOverview.mock
+      .calls[1]?.[1] as AbortSignal;
+    expect(point(render(), "2026-01-04")).toMatchObject({
+      totalValueUsd: "420.00",
+    });
+    props = {
+      ...props,
+      priorSplitReviewDates: { "listing-one": ["2026-01-02"] },
+    };
+    render();
+    expect(point(render(), "2026-01-04")).toMatchObject({
+      totalValueUsd: null,
+      splitReviewListingIds: ["listing-one"],
+    });
+    expect(signal.aborted).toBe(false);
+    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(2);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+    props = { ...props, priorSplitReviewDates: {} };
+    render();
+    expect(point(render(), "2026-01-04")).toMatchObject({
+      totalValueUsd: "420.00",
+    });
+    pending.resolve(market(1));
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it("applies a newly observed split discrepancy before parent assessment state updates", async () => {
+    const value = market();
+    api.fetchPersonalMarketOverview.mockResolvedValue({
+      ...value,
+      history: {
+        ...value.history,
+        bars: [bar("2026-01-01"), bar("2026-01-03", "3"), bar("2026-01-04")],
+      },
+    });
+    await review();
+    expect(point(render(), "2026-01-01")).toMatchObject({
+      totalValueUsd: "200.00",
+    });
+    for (const date of ["2026-01-03", "2026-01-04"]) {
+      expect(point(render(), date)).toMatchObject({
+        holdingsValueUsd: null,
+        totalValueUsd: null,
+        splitReviewListingIds: ["listing-one"],
+      });
+    }
+    expect(props.priorSplitReviewDates).toBeUndefined();
+    expect(props.onAssessment).toHaveBeenCalledOnce();
+  });
+
+  it("retains prior warning dates outside a shorter review's observed window", async () => {
+    props = {
+      ...props,
+      priorSplitReviewDates: { "listing-one": ["2026-01-03"] },
+    };
+    const value = market();
+    api.fetchPersonalMarketOverview.mockResolvedValue({
+      ...value,
+      history: {
+        range: "1m",
+        startDate: "2026-08-09",
+        endDate: "2026-09-09",
+        bars: [bar("2026-09-08")],
+      },
+    });
+    await mount();
+    changeRange("1m");
+    render();
+    click(render(), "Review history");
+    await flush();
+    expect(point(render(), "2026-09-08")).toMatchObject({
+      totalValueUsd: null,
+      splitReviewListingIds: ["listing-one"],
+    });
+    expect(props.onAssessment).toHaveBeenCalledWith(
+      props.ledgerContext,
+      "listing-one",
+      false,
+      expect.objectContaining({
+        observedDates: ["2026-09-08"],
+        splitReviewDates: [],
+      }),
+    );
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["ledger", "catalog", "disabled", "range"] as const)(
+    "hides previous values on the first render after a %s change",
+    async (kind) => {
+      await review();
+      expect(valuation(render())).not.toBeNull();
+      if (kind === "ledger")
+        props = { ...props, ledgerContext: "new-saved-version" };
+      if (kind === "catalog")
+        props = { ...props, catalogSnapshotSha256: digest("b") };
+      if (kind === "disabled") props = { ...props, disabled: true };
+      if (kind === "range") changeRange("1m");
+      const firstChangedView = render();
+      expect(valuation(firstChangedView)).toBeNull();
+      expect(text(firstChangedView)).not.toContain("Recorded ratio matches");
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("ignores old review and cancel handlers after a newer context starts loading", async () => {
+    const first = deferred<PersonalMarketOverviewDto>();
+    const second = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    await mount();
+    const oldReview = button(render(), "Review history").props.onClick;
+    oldReview?.();
+    await flush();
+    const oldCancel = button(render(), "Cancel history review").props.onClick;
+    props = { ...props, ledgerContext: "new-ledger-version" };
+    render();
+    click(render(), "Review history");
+    await flush();
+    const newSignal = api.fetchPersonalMarketOverview.mock
+      .calls[1]?.[1] as AbortSignal;
+    oldReview?.();
+    oldCancel?.();
+    expect(newSignal.aborted).toBe(false);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+    first.resolve(market());
+    await flush();
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      totalValueUsd: null,
+    });
+    second.resolve(market());
+    await flush();
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      totalValueUsd: "300.00",
+    });
+  });
+
   it("waits for demand, displays observed coverage and matching terms, and never changes or saves the ledger", async () => {
     const setItem = vi.fn();
     vi.stubGlobal("localStorage", { setItem });
@@ -86,6 +362,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     await mount();
     expect(api.searchPersonalSecurities).not.toHaveBeenCalled();
     expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(valuation(render())).toBeNull();
     click(render(), "Review history");
     await flush();
     expect(api.searchPersonalSecurities).toHaveBeenCalledWith(
@@ -115,6 +392,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
     expect(JSON.stringify(props.ledger)).toBe(before);
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      cashUsd: "100.00",
+      holdingsValueUsd: "200.00",
+      totalValueUsd: "300.00",
+    });
   });
 
   it("requests registered identities sequentially, including closed and currently empty positions", async () => {
@@ -169,6 +451,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
       expect(props.onAssessment).not.toHaveBeenCalled();
       expect(text(render())).toContain("Historical identity is unavailable");
+      expect(point(render(), "2026-01-03")).toMatchObject({
+        totalValueUsd: null,
+        missingPriceListingIds: ["listing-one"],
+      });
     },
   );
 
@@ -191,6 +477,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       expect(props.onAssessment).not.toHaveBeenCalled();
       expect(text(render())).toContain("History unavailable for this listing");
       expect(text(render())).not.toContain("Recorded ratio matches");
+      expect(point(render(), "2026-01-03")).toMatchObject({
+        totalValueUsd: null,
+        missingPriceListingIds: ["listing-one"],
+      });
     },
   );
 
@@ -233,6 +523,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       expect(text(render())).toContain("Remaining listings were not requested");
       expect(text(render())).toContain("Recorded ratio matches");
       expect(button(render(), "Review history").props.disabled).toBe(false);
+      expect(point(render(), "2026-01-01")).toMatchObject({
+        pricedHoldings: 1,
+        totalValueUsd: null,
+        missingPriceListingIds: ["listing-two"],
+      });
     },
   );
 
@@ -324,8 +619,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       pending.resolve(market());
       await flush();
       expect(props.onAssessment).not.toHaveBeenCalled();
-      if (kind !== "unmount")
+      if (kind !== "unmount") {
         expect(text(render())).not.toContain("Recorded ratio matches");
+        expect(valuation(render())).toBeNull();
+      }
     },
   );
 
@@ -376,6 +673,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(props.onAssessment).toHaveBeenCalledTimes(1);
     expect(text(render())).not.toContain("Recorded ratio matches");
     expect(text(render())).toContain("Owner session expired");
+    expect(valuation(render())).toBeNull();
     const signal = api.fetchPersonalMarketOverview.mock
       .calls[1]?.[1] as AbortSignal;
     expect(signal.aborted).toBe(true);
@@ -392,6 +690,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     changeRange("1m");
     render();
     expect(text(render())).not.toContain("Recorded ratio matches");
+    expect(valuation(render())).toBeNull();
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
     click(render(), "Review history");
     await flush();
@@ -401,6 +700,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     props = { ...props, ledgerContext: "changed-ledger" };
     render();
     expect(text(render())).not.toContain("Recorded ratio matches");
+    expect(valuation(render())).toBeNull();
     props = { ...props, disabled: true };
     render();
     expect(button(render(), "Review history").props.disabled).toBe(true);
@@ -459,7 +759,122 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps the review disabled when no identities are registered", async () => {
+  it("uses the captured calendar window for a full year of cash-only values and recorded external flows", async () => {
+    props = {
+      ...props,
+      ledger: {
+        ...ledger(),
+        identities: [],
+        opening: { asOfDate: "2025-01-01", cashUsd: "100", holdings: [] },
+        transactions: [
+          {
+            id: "cash-deposit",
+            date: "2026-01-02",
+            type: "deposit",
+            listingId: null,
+            shares: null,
+            grossUsd: "25",
+            feeUsd: "0",
+          },
+          {
+            id: "cash-withdrawal",
+            date: "2026-01-03",
+            type: "withdrawal",
+            listingId: null,
+            shares: null,
+            grossUsd: "5",
+            feeUsd: "0",
+          },
+        ],
+      },
+    };
+    await review();
+    const result = valuation(render());
+    expect(result).toMatchObject({
+      status: "available",
+      startDate: "2025-09-09",
+      effectiveStartDate: "2025-09-09",
+      endDate: "2026-09-09",
+      coverage: {
+        totalDates: 366,
+        completeDates: 366,
+        missingPriceDates: 0,
+        unknownCashDates: 0,
+        splitReviewDates: 0,
+      },
+      comparison: {
+        firstDate: "2025-09-09",
+        lastDate: "2026-09-09",
+        firstValueUsd: "100.00",
+        lastValueUsd: "120.00",
+        netExternalFlowsUsd: "20.00",
+        changeAfterExternalFlowsUsd: "0.00",
+      },
+    });
+    if (result?.status !== "available")
+      throw new Error("Expected available valuation");
+    expect(result.points).toHaveLength(366);
+    expect(new Set(result.points.map((entry) => entry.date)).size).toBe(366);
+    expect(point(render(), "2026-01-02")).toMatchObject({
+      totalValueUsd: "125.00",
+      netExternalFlowUsd: "25.00",
+    });
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      totalValueUsd: "120.00",
+      netExternalFlowUsd: "-5.00",
+    });
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(api.searchPersonalSecurities).not.toHaveBeenCalled();
+  });
+
+  it("keeps unknown opening cash unknown and suppresses complete endpoint comparisons", async () => {
+    props = {
+      ...props,
+      ledger: { ...ledger(), opening: { ...ledger().opening, cashUsd: null } },
+    };
+    await review();
+    expect(point(render(), "2026-01-03")).toMatchObject({
+      cashUsd: null,
+      holdingsValueUsd: "200.00",
+      totalValueUsd: null,
+    });
+    expect(valuation(render())).toMatchObject({
+      coverage: { completeDates: 0, unknownCashDates: 252 },
+      comparison: {
+        firstDate: null,
+        lastDate: null,
+        firstValueUsd: null,
+        lastValueUsd: null,
+        netExternalFlowsUsd: null,
+        changeAfterExternalFlowsUsd: null,
+      },
+    });
+  });
+
+  it("keeps the requested valuation window fixed if the provider batch crosses UTC midnight", async () => {
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview.mockReturnValueOnce(pending.promise);
+    await mount();
+    click(render(), "Review history");
+    await flush();
+    vi.setSystemTime(new Date("2026-09-10T00:00:01.000Z"));
+    pending.resolve(market());
+    await flush();
+    expect(valuation(render())).toMatchObject({
+      startDate: "2025-09-09",
+      endDate: "2026-09-09",
+    });
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    click(render(), "Review history");
+    await flush();
+    expect(valuation(render())).toMatchObject({
+      startDate: "2025-09-10",
+      endDate: "2026-09-10",
+    });
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it("values a cash-only ledger on demand without requesting a catalog or provider", async () => {
     props = {
       ...props,
       ledger: {
@@ -470,8 +885,23 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       },
     };
     await mount();
-    expect(button(render(), "Review history").props.disabled).toBe(true);
+    expect(button(render(), "Review history").props.disabled).toBe(false);
+    expect(valuation(render())).toBeNull();
+    click(render(), "Review history");
+    await flush();
     expect(api.searchPersonalSecurities).not.toHaveBeenCalled();
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(props.onAssessment).not.toHaveBeenCalled();
+    expect(point(render(), "2026-01-01")).toMatchObject({
+      cashUsd: "100.00",
+      holdingsValueUsd: "0.00",
+      totalValueUsd: "100.00",
+      activeHoldings: 0,
+      pricedHoldings: 0,
+    });
+    expect(point(render(), "2026-09-09")).toMatchObject({
+      totalValueUsd: "100.00",
+    });
   });
 });
 
@@ -723,7 +1153,31 @@ function elements(
   if (Array.isArray(value)) return value.flatMap(elements);
   if (!React.isValidElement(value)) return [];
   const element = value as React.ReactElement<Record<string, unknown>>;
-  return [element, ...elements(element.props.children)];
+  return [
+    element,
+    ...elements(
+      typeof element.type === "function"
+        ? (Reflect.apply(element.type, undefined, [element.props]) as unknown)
+        : element.props.children,
+    ),
+  ];
+}
+function valuation(
+  value: unknown,
+): PersonalPortfolioValuationHistoryResult | null {
+  return (elements(value).find(
+    (element) => element.props["data-testid"] === "portfolio-valuation-history",
+  )?.props["data-result"] ??
+    null) as PersonalPortfolioValuationHistoryResult | null;
+}
+function point(value: unknown, date: string): unknown {
+  const result = valuation(value);
+  const found =
+    result?.status === "available"
+      ? result.points.find((entry) => entry.date === date)
+      : undefined;
+  if (!found) throw new Error(`Missing valuation date: ${date}`);
+  return found;
 }
 function button(value: unknown, label: string) {
   const found = elements(value).find(

@@ -2,14 +2,20 @@
 
 import type {
   PersonalMarketDataRangeDto,
+  PersonalMarketOverviewDto,
   PersonalPortfolioIdentity,
   PersonalPortfolioLedgerPayload,
 } from "@research-cockpit/contracts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   assessPortfolioHistory,
   type PortfolioHistoryAssessment,
 } from "@/lib/personal-portfolio-history";
+import {
+  calculatePersonalPortfolioValuationHistory,
+  getPersonalPortfolioValuationWindow,
+} from "@/lib/personal-portfolio-valuation-history";
+import { PersonalPortfolioValuationHistory } from "./PersonalPortfolioValuationHistory";
 import {
   fetchPersonalMarketOverview,
   PersonalWorkspaceApiError,
@@ -21,6 +27,7 @@ export interface PersonalPortfolioHistoryCoverageProps {
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly ledgerContext: string;
   readonly disabled: boolean;
+  readonly priorSplitReviewDates?: Readonly<Record<string, readonly string[]>>;
   readonly onSessionUnavailable: () => void;
   readonly onAssessment: (
     context: string,
@@ -33,6 +40,7 @@ type Observation = Readonly<{
   identity: PersonalPortfolioIdentity;
   assessment: PortfolioHistoryAssessment | null;
   message: string;
+  history: PersonalMarketOverviewDto["history"] | null;
 }>;
 
 export function PersonalPortfolioHistoryCoverage({
@@ -40,6 +48,7 @@ export function PersonalPortfolioHistoryCoverage({
   catalogSnapshotSha256,
   ledgerContext,
   disabled,
+  priorSplitReviewDates,
   onSessionUnavailable,
   onAssessment,
 }: PersonalPortfolioHistoryCoverageProps) {
@@ -47,6 +56,11 @@ export function PersonalPortfolioHistoryCoverage({
   const [rows, setRows] = useState<readonly Observation[]>([]);
   const [limits, setLimits] = useState<Readonly<Record<string, number>>>({});
   const [loading, setLoading] = useState(false);
+  const [window, setWindow] = useState<Readonly<{
+    context: string;
+    startDate: string;
+    endDate: string;
+  }> | null>(null);
   const [message, setMessage] = useState(
     "History has not been checked for this ledger.",
   );
@@ -69,6 +83,7 @@ export function PersonalPortfolioHistoryCoverage({
     setRows([]);
     setLimits({});
     setLoading(false);
+    setWindow(null);
     setMessage("History has not been checked for this ledger and range.");
     return () => {
       request.current?.abort();
@@ -76,10 +91,20 @@ export function PersonalPortfolioHistoryCoverage({
   }, [context]);
 
   async function review() {
-    if (disabled || loading || ledger.snapshotSha256 !== catalogSnapshotSha256)
+    if (
+      disabled ||
+      loading ||
+      liveContext.current !== context ||
+      ledger.snapshotSha256 !== catalogSnapshotSha256
+    )
       return;
     request.current?.abort();
     const active = new AbortController();
+    const requestedWindow = getPersonalPortfolioValuationWindow(
+      range,
+      new Date().toISOString().slice(0, 10),
+    );
+    if (requestedWindow === null) return;
     request.current = active;
     const capturedContext = context;
     const current = () =>
@@ -89,6 +114,7 @@ export function PersonalPortfolioHistoryCoverage({
     setLoading(true);
     setRows([]);
     setLimits({});
+    setWindow({ context, ...requestedWindow });
     const observed: Observation[] = [];
     let stopped = false;
     for (const [index, identity] of ledger.identities.entries()) {
@@ -113,6 +139,7 @@ export function PersonalPortfolioHistoryCoverage({
           observed.push({
             identity,
             assessment: null,
+            history: null,
             message:
               "Historical identity is unavailable in the current catalog; history was not requested.",
           });
@@ -142,6 +169,7 @@ export function PersonalPortfolioHistoryCoverage({
           observed.push({
             identity,
             assessment,
+            history: market.history,
             message: assessment.requiresSplitReview
               ? "Review split differences before using current share-based totals."
               : "No split discrepancy found in these observations; unobserved dates remain unchecked.",
@@ -162,6 +190,7 @@ export function PersonalPortfolioHistoryCoverage({
         if (code === "session_unavailable") {
           active.abort();
           setRows([]);
+          setWindow(null);
           setLoading(false);
           setMessage(
             "Owner session expired. Revalidate it before checking history.",
@@ -188,7 +217,12 @@ export function PersonalPortfolioHistoryCoverage({
                   ].includes(code)
                 ? "Tiingo configuration or access needs attention. Remaining listings were not requested."
                 : "History unavailable for this listing; its dates and actions remain unchecked.";
-        observed.push({ identity, assessment: null, message: explanation });
+        observed.push({
+          identity,
+          assessment: null,
+          history: null,
+          message: explanation,
+        });
         if (stop) {
           stopped = true;
           setMessage(explanation);
@@ -208,6 +242,23 @@ export function PersonalPortfolioHistoryCoverage({
     }
   }
 
+  const showReview = !disabled && !stale && window?.context === context;
+  const valuation = useMemo(() => {
+    if (disabled || stale || window === null || window.context !== context)
+      return null;
+    return calculatePersonalPortfolioValuationHistory({
+      ledger,
+      startDate: window.startDate,
+      endDate: window.endDate,
+      histories: rows.flatMap((row) =>
+        row.history === null
+          ? []
+          : [{ identity: row.identity, history: row.history }],
+      ),
+      ...(priorSplitReviewDates === undefined ? {} : { priorSplitReviewDates }),
+    });
+  }, [ledger, rows, window, context, disabled, stale, priorSplitReviewDates]);
+
   return (
     <section
       className="portfolio-history"
@@ -216,8 +267,9 @@ export function PersonalPortfolioHistoryCoverage({
       <h3>History and corporate-action review</h3>
       <p>
         Check Tiingo EOD observations for the ledger’s registered listings,
-        including closed positions. This does not calculate historical
-        performance or prove every trading day is covered.
+        including closed positions. The same observations value recorded
+        end-of-day holdings and cash. This does not calculate percentage returns
+        or prove every trading day is covered.
       </p>
       <div className="portfolio-history-controls">
         <label>
@@ -241,9 +293,7 @@ export function PersonalPortfolioHistoryCoverage({
         <button
           type="button"
           className="secondary-action compact-action"
-          disabled={
-            disabled || stale || loading || ledger.identities.length === 0
-          }
+          disabled={disabled || stale || loading}
           onClick={() => {
             void review();
           }}
@@ -255,6 +305,7 @@ export function PersonalPortfolioHistoryCoverage({
             type="button"
             className="secondary-action compact-action"
             onClick={() => {
+              if (liveContext.current !== context) return;
               request.current?.abort();
               request.current = null;
               setLoading(false);
@@ -274,7 +325,10 @@ export function PersonalPortfolioHistoryCoverage({
           reviewing history.
         </p>
       )}
-      {!disabled &&
+      {valuation !== null && (
+        <PersonalPortfolioValuationHistory result={valuation} />
+      )}
+      {showReview &&
         rows.map(({ identity, assessment, message: rowMessage }) => (
           <article
             key={identity.listingId}
