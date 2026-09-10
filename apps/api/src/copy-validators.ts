@@ -2,6 +2,7 @@ import { copyFile, mkdir, rename, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { resolveCleanBuildSourceIdentity } from "./build-source-identity";
+import { verifyBuiltApiEntrypoints } from "./verify-built-entrypoints";
 
 const apiDirectory = process.cwd();
 const repositoryDirectory = resolve(apiDirectory, "../..");
@@ -61,3 +62,12 @@ await Promise.all([
     resolve(workerOutputDirectory, workerName),
   ),
 ]);
+
+verifyBuiltApiEntrypoints(apiDirectory);
+if (
+  resolveCleanBuildSourceIdentity(repositoryDirectory) !== expectedSourceCommit
+) {
+  throw new TypeError(
+    "The API build source identity changed during the build.",
+  );
+}

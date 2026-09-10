@@ -19,6 +19,7 @@ export default defineConfig({
   format: ["esm"],
   splitting: false,
   target: "node24",
+  removeNodeProtocol: false,
   sourcemap: true,
   clean: true,
   define: {

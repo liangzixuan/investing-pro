@@ -95,6 +95,78 @@ function parse(
 }
 
 describe("selected SEC filing context real isolated worker", () => {
+  it.each([
+    '<?xml version="1.0" encoding="ASCII"?>',
+    "<?xml version='1.0' encoding='US-ASCII'?>",
+    '<?xml version="1.0" encoding="ascii"?>',
+    "<?xml version = '1.0' encoding = \"us-ascii\" ?>",
+    '<?xml\tversion\r\n=\t"1.0"\nencoding = "UTF-8"?>',
+    "<?xml version='1.0' encoding='utf-8'?>",
+    '<?xml version="1.0"?>',
+  ])("accepts the bounded leading declaration %s", async (declaration) => {
+    expect(await parse(declaration + document())).toEqual(await parse());
+  });
+
+  it.each([
+    '<?xml version="1.0" encoding="ASCII"?>',
+    '<?xml version="1.0" encoding="US-ASCII"?>',
+  ])("requires actual ASCII bytes for %s", async (declaration) => {
+    const nonAscii = document().replace("<body>", "<body>caf\u00e9");
+    expect(await parse(declaration + nonAscii)).toEqual(
+      emptyResult("invalid_document"),
+    );
+    expect(await parse("\ufeff" + declaration + document())).toEqual(
+      emptyResult("invalid_document"),
+    );
+  });
+
+  it("retains UTF-8 and optional UTF-8 BOM support for non-ASCII text", async () => {
+    const html = document().replace("<body>", "<body>caf\u00e9");
+    const declared = '<?xml version="1.0" encoding="UTF-8"?>' + html;
+    expect(await parse(declared)).toEqual(await parse(html));
+    expect(await parse("\ufeff" + declared)).toEqual(await parse(html));
+  });
+
+  it.each([
+    '<?XML version="1.0" encoding="ASCII"?>',
+    '<?xml Version="1.0" encoding="ASCII"?>',
+    '<?xml version="1.0" Encoding="ASCII"?>',
+    '<?xml version="1.1" encoding="ASCII"?>',
+    "<?xml version=\"1.0' encoding='ASCII'?>",
+    "<?xml version='1.0' encoding=\"ASCII'?>",
+    '<?xml version="1.0" encoding="UTF-16"?>',
+    '<?xml version="1.0" encoding="ISO-8859-1"?>',
+    '<?xml version="1.0" encoding="Windows-1252"?>',
+    '<?xml version="1.0" encoding="UTF8"?>',
+    '<?xml version="1.0" encoding="ASC\u0130I"?>',
+    '<?xml version="1.0" encoding="ASC\u0131I"?>',
+    '<?xml version="1.0" encoding="A\u017fCII"?>',
+    '<?xml version="1.0" encoding="ASCII" encoding="UTF-8"?>',
+    '<?xml encoding="ASCII" version="1.0"?>',
+    '<?xml version="1.0" standalone="yes"?>',
+    '<?xml version="1.0" encoding="ASCII">',
+    '<?xml\u00a0version="1.0" encoding="ASCII"?>',
+    '<?xml-stylesheet href="local"?>',
+  ])("rejects unsupported or malformed declaration %s", async (declaration) => {
+    expect(await parse(declaration + document())).toEqual(
+      emptyResult("invalid_document"),
+    );
+  });
+
+  it.each([
+    " ",
+    "\n",
+    "<!-- earlier content -->",
+    "<!DOCTYPE html>",
+    '<?xml version="1.0" encoding="ASCII"?>',
+  ])("rejects a declaration after prior input %s", async (prefix) => {
+    expect(
+      await parse(
+        prefix + '<?xml version="1.0" encoding="ASCII"?>' + document(),
+      ),
+    ).toEqual(emptyResult("invalid_document"));
+  });
+
   it("preserves exact fact/context/entity/unit and locator provenance", async () => {
     const result = await parse(document(fact("100", 'id="revenue-fact"')));
     expect(result.status).toBe("matched");

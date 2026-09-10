@@ -32,54 +32,59 @@ These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Last verified release: SEC primary filing-context inspection
+## Verified baseline and configured runtime
 
-Release `cb83d6a` closed primary-document inspection, following feature
-`80ef20f`. The clean-source native gate passed 4,050 Vitest tests plus 10 Node
-tests, with nine existing skips and zero failures; all 24 build scripts completed.
-All five applicable hosted workflows, including Windows and Ubuntu CI, passed
-on attempt 1. External Chrome desktop/mobile/keyboard QA, packaged-worker smoke
-and independent reviews passed. See [filing-context inspection](./PERSONAL_SEC_FILING_CONTEXT.md).
+Release `e7e1ab6` delivered four filing-declared DEI fields beside selected-fact
+dates. Its clean native gate passed 4,180 tests and all 24 builds; four applicable
+hosted workflows passed. That synthetic acceptance did not establish live coverage.
 
-## Active delivery: filing-declared reporting metadata
+The owner has now configured SEC contact and an admitted local catalog, initialized
+an empty encrypted vault, and signed in. The first real sample made 21 successful
+SEC GETs but all five inspections across three documents returned `invalid_document`.
+A bounded follow-up pinned the original NVDA bytes and identified the first cause:
+an XML declaration specifying ASCII, with an entirely ASCII document. The existing
+worker accepted only UTF-8 declarations. Catalog exact-match gaps, including AAPL
+and MSFT, remain separate from SEC coverage. Tiingo is still not configured.
 
-Partial Cycle 3h-a8 shows `DocumentType`, `DocumentPeriodEndDate`,
-`DocumentFiscalYearFocus` and `DocumentFiscalPeriodFocus` from the same bounded
-primary-document parse. Filing labels appear beside the selected fact's actual
-dates and inclusive duration. A separate comparison preserves agreement,
-difference or missingness between the filing's declared end and current
-Submissions' report date. No extra source request or persisted schema is added.
+## Active delivery: ASCII filing declarations and packaged startup
 
-Each field preserves references and explicit missing, conflicting or unsupported
-states. Namespace and entity checks, direct text semantics and separate metadata
-limits keep an incomplete prefix from becoming an observed value. Numeric
-correspondence remains independently useful when metadata is limited. The
-versioned route and worker projection require the expanded metadata shape.
+Partial Cycle 3h-a9 accepts the observed ASCII declaration only when the document
+bytes satisfy that encoding. The same bounded worker retains existing source,
+namespace, context, numeric and reporting-metadata checks. Unsupported encodings,
+malformed declarations and conflicting byte declarations must remain explicit.
+The change does not infer fiscal calendars, standalone quarters, revisions or TTM.
 
-Acceptance covers comparative periods, three- and nine-month facts, non-calendar
-fiscal focus, amendments, spoofed namespaces, conflicting declarations, scope,
-limits and stale responses. Validate desktop/mobile and keyboard access using
-external Chrome. Preserve the existing annual worker, normalizer and source flow.
+The fixed-worker check preserved all five frozen selections and original document
+digests. Three NVDA selections and GOOGL now reach analysis, exposing three DEI
+labels while dimensional numeric ambiguity and the report-end date transform
+remain unsupported. AVGO still fails globally and remains a separate diagnostic
+case. All 21 verification GETs returned HTTP 200; no amendment was available in
+the retained sample. Preserve these limitations when describing live coverage.
 
-Synthetic acceptance does not establish live SEC/iXBRL coverage. Independent
-configured-source checks remain necessary before fiscal-calendar, standalone/YTD
-flow-basis or revision admission. Reporting focus does not label every fact and
-does not make TTM available.
+The API build also preserves Node's `node:` import prefix. A bundler default had
+rewritten `node:sqlite` into an unresolved package import. Fresh workspace and vault
+artifacts now run an isolated startup smoke after bundling and resource copying;
+missing configuration must produce the application's controlled failure. No vault,
+contact, bootstrap or source request is needed for that check.
 
-Completion requires reviewed code, focused integration tests, the full local
-gate on clean source, and applicable hosted checks on the pushed revision.
-Record actual results in the task handoff; this page does not predict a pass.
+Acceptance includes a minimal ASCII declaration reproducer, encoding-conflict and
+malformed-declaration controls, the original real-document digest, focused worker
+and startup tests, the complete clean-source gate and applicable hosted workflows.
+Report exact numeric/metadata outcomes and any later limits separately from the
+header fix. A passing first declaration alone does not establish parsing coverage.
+Actual release hashes and live outcomes are recorded in the local release handoff;
+this page does not predict the final gate result.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                              |
-| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| Now              | Show filing-declared reporting metadata beside selected-fact dates                               | Explain filing focus while preserving comparative periods and source disagreement |
-| When configured  | Validate live SEC screening coverage and watchlist filing loads                                  | Requires owner contact and existing startup configuration                         |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters        |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                          |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions               |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                       |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Repair observed ASCII filing parsing and packaged API startup                                    | Unblock verified source inspection and ordinary packaged local startup     |
+| Configured next  | Validate live SEC screening coverage and watchlist filing loads                                  | SEC contact and local workspace are ready; retain explicit coverage gaps   |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

@@ -104,6 +104,16 @@ membership against the returned observations before displaying them.
 
 ## Runtime and bounds
 
+Partial Cycle 3h-a9 adds bounded support for `ASCII` and `US-ASCII` XML declarations,
+as observed in the configured NVDA sample. The declaration must agree with the
+actual document bytes, including any byte-order marker. XML 1.0 with optional UTF-8
+remains supported; standalone declarations and other encodings remain unsupported.
+Names, order, paired quotes and XML whitespace follow the supported subset of the
+[XML declaration grammar](https://www.w3.org/TR/xml/#sec-prolog-dtd). Case-insensitive
+encoding matching is restricted to ASCII letters. Malformed declarations and
+encoding conflicts remain global failures. Source requests and numeric/reporting-
+metadata projections are unchanged.
+
 Use the existing owner SEC contact setting and a Python 3 runtime available to
 the API process. Tiingo remains independent. Missing Python produces an explicit
 runtime-unavailable result. The source worker ships with the API build.
@@ -141,5 +151,12 @@ fields, spoofed namespaces, malformed scope and metadata limits without extra
 source requests or changes to numeric eligibility.
 
 These checks establish the bounded engineering behavior. Live parsing coverage
-remains unproven until configured sources and supported filings are independently
-checked. Fiscal-calendar, flow-basis and revision admission remain later work.
+must be reported for the exact independently checked documents. The first configured
+sample retrieved five selections across three documents successfully, but parsing
+failed globally. A subsequent pinned-digest check with the declaration repair
+parsed the three NVDA selections and GOOGL selection. Numeric comparison remained
+unsupported because of dimensions; each filing exposed three DEI labels while its
+report-end date transform remained unsupported. AVGO still returned a global
+`invalid_document`. No eligible amendment was retained in the sample. These are
+specific observed outcomes, not general filing coverage. Fiscal-calendar, flow-
+basis and revision admission remain later work.

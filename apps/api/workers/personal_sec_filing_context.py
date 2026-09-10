@@ -32,6 +32,10 @@ GAAP = re.compile(r"http://fasb\.org/us-gaap/(20[0-9]{2})(?:-([0-9]{2})-([0-9]{2
 ID = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]{0,255}\Z")
 QNAME = re.compile(r"(?:[A-Za-z_][A-Za-z0-9_.-]*:)?[A-Za-z_][A-Za-z0-9_.-]*\Z")
 CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+XML_DECLARATION = re.compile(
+    r"""xml[ \t\r\n]+version[ \t\r\n]*=[ \t\r\n]*(?P<version_quote>['"])1\.0(?P=version_quote)"""
+    r"""(?:[ \t\r\n]+encoding[ \t\r\n]*=[ \t\r\n]*(?P<encoding_quote>['"])(?P<encoding>(?ai:UTF-8|ASCII|US-ASCII))(?P=encoding_quote))?[ \t\r\n]*\?"""
+)
 VOID = frozenset("area base br col embed hr img input link meta param source track wbr".split())
 CONCEPTS = {"RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet", "NetIncomeLoss"}
 SPACES = " \t\r\n\u00a0"
@@ -147,8 +151,8 @@ class Document(HTMLParser):
         fail()
 
     def handle_pi(self, data):
-        # A leading XML declaration is common in XHTML; no other PI is consumed.
-        if self.nodes or self.stack or not re.fullmatch(r'xml\s+version=[\"\']1\.0[\"\'](?:\s+encoding=[\"\']UTF-8[\"\'])?\s*\?', data, re.I):
+        # XML 1.0/UTF-8 or byte-verified ASCII only; no other PI is consumed.
+        if self.getpos() != (1, 0) or self.nodes or self.stack or not XML_DECLARATION.fullmatch(data):
             fail()
 
     def handle_startendtag(self, tag, attrs):
@@ -602,6 +606,11 @@ def read_request():
     if base64.b64encode(document).decode("ascii") != encoded:
         fail()
     text = document.decode("utf-8-sig", "strict")
+    # ASCII is a UTF-8 subset. A declared ASCII document must contain only ASCII
+    # bytes, including the prolog: a UTF-8 BOM or non-ASCII byte contradicts it.
+    declaration = XML_DECLARATION.match(text, 2) if text.startswith("<?") else None
+    if declaration and (declaration.group("encoding") or "").upper() in {"ASCII", "US-ASCII"} and not document.isascii():
+        fail()
     if CONTROL.search(text):
         fail()
     return text, selection, request["cik"]

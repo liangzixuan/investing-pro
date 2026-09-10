@@ -92,6 +92,15 @@ describe("personal workspace startup static graph", () => {
     );
     expect(buildConfig).toContain('"src/workspace-server.ts"');
     expect(buildConfig).toContain("splitting: false");
+    expect(buildConfig).toContain("removeNodeProtocol: false");
+    expect(buildConfig).toContain("tsx src/copy-validators.ts ${sourceCommit}");
+    const buildCompletion = await readFile(
+      resolve(SOURCE_DIRECTORY, "copy-validators.ts"),
+      "utf8",
+    );
+    expect(buildCompletion).toContain(
+      "verifyBuiltApiEntrypoints(apiDirectory)",
+    );
   });
 });
 
