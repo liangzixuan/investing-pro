@@ -34,6 +34,7 @@ statements, and valuation history; partial Cycle 3h-a4 adds quarterly coverage
 and an offline compatibility assessment before source admission and TTM;
 partial Cycle 3h-a5 adds selected-company SEC dated observations and filing joins;
 partial Cycle 3h-a6 adds local same-period observation comparisons;
+partial Cycle 3h-a7 adds primary-filing context inspection;
 Cycles 3i-a1 and 3i-a2 add historical
 multiple bands and forward/reverse DCF; and Cycle 3j-a1 adds the first
 selected-company quality and balance-sheet diagnostic while Cycle 3j-a2 adds a
@@ -862,7 +863,15 @@ values, distinct accession counts and conflicting values within one accession.
 Missing starts, different durations and revenue aliases are not grouped. The
 comparison uses the full loaded response without new requests and keeps source
 coverage limits visible. It does not admit a revision or establish filing-context
-correspondence; that parser/acquisition slice follows independently.
+correspondence.
+
+Partial Cycle 3h-a7 revalidates one selected observation and current filing
+metadata before fetching a single primary document. A bounded asynchronous
+worker preserves exact entity, concept, context/unit identifiers, periods and
+values for inspection. Different amounts, duplicates, scope ambiguity and
+unsupported constructs remain visible. This source correspondence neither
+admits a fiscal calendar nor selects revision operands; live coverage requires
+independent checks. See [filing-context inspection](./PERSONAL_SEC_FILING_CONTEXT.md).
 
 These are independently useful statement-depth slices, not full 3h-a. They do
 not establish verified TTM aggregation, point-in-time/restatement history, the
@@ -887,6 +896,8 @@ Promotable subcycles:
   joins and unresolved fiscal/revision metadata; no TTM aggregation;
 - **3h-a6 (partial):** same-period comparisons of retained SEC observations with
   exact values and accession conflicts; no revision selection or new source load;
+- **3h-a7 (partial):** bounded primary-document inspection of a revalidated SEC
+  observation, with exact correspondence evidence and explicit unresolved cases;
 - **3h-a:** normalized statements plus the 30 core metrics required by the
   initial screenable universe, including the declared breadth gates; and
 - **3h-b:** metric-registry expansion toward at least 120 reported or derived
@@ -1384,9 +1395,10 @@ date under an explicit EOD convention. Missing flow-date values and unsupported
 capital states remain unavailable; no intraday timing is inferred.
 
 Partial 3h-a5 delivered bounded SEC observations and filing joins beside the
-existing quarterly compatibility assessment. The active partial 3h-a6 slice
-compares exact same-period observations using the loaded response.
-Next inspect source filing contexts, then validate fiscal calendars, standalone flow basis and revision selection
+existing quarterly compatibility assessment. Partial 3h-a6 compares exact
+same-period observations using the loaded response. The active partial 3h-a7
+slice inspects one primary filing context. Next validate supported source coverage,
+fiscal calendars, standalone flow basis and revision selection
 against independent filing evidence before calculating trailing-period financials or
 expanding screening metrics. Broader return methods remain in the backlog.
 XIRR, benchmark comparisons, dividend accruals and other corporate actions need

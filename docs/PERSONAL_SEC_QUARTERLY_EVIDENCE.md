@@ -80,7 +80,7 @@ replaced with a fabricated contact. Tiingo configuration is independent.
 
 The server makes at most two fixed-host GETs per load, rejects redirects, and
 limits each response to 8 MiB and 10 seconds after obtaining a shared request
-permit. The three SEC features share a process-wide scheduler with at least
+permit. The SEC features share a process-wide scheduler with at least
 220 ms between dispatches and a bounded queue. Existing annual-screen and
 watchlist-specific spacing remains in place. Source operations require the active
 local owner session and an exact catalog digest/listing/symbol match.
@@ -110,5 +110,6 @@ periods, amendments, missing units and week-based calendars. No live-source or
 Comparison tests additionally cover exact large/negative/zero values, aliases,
 distinct periods, missing starts, metadata variants, same-accession conflicts,
 stable ordering, full-response grouping and lifecycle cleanup. This local
-comparison does not fetch or parse a filing document. Source fact/context
-correspondence remains the next independent source-evidence outcome.
+comparison does not fetch or parse a filing document. Partial Cycle 3h-a7 adds a separate deliberate
+[filing-context inspection](./PERSONAL_SEC_FILING_CONTEXT.md) action for an eligible
+observation. Its source and parser results do not change this comparison.

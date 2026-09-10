@@ -13,6 +13,13 @@ import {
 
 const api = vi.hoisted(() => ({ fetchPersonalSecQuarterlyEvidence: vi.fn() }));
 vi.mock("../../lib/personal-sec-quarterly-evidence-api", () => api);
+vi.mock("./PersonalSecFilingContext", () => ({
+  PersonalSecFilingContext: (props: Record<string, unknown>) =>
+    React.createElement("div", {
+      ...props,
+      "data-testid": "filing-context-child",
+    }),
+}));
 vi.mock("react", async (original) => ({
   ...(await original()),
   useState: (initial: unknown) => harness.useState(initial),
@@ -442,6 +449,111 @@ describe("PersonalSecQuarterlyEvidence", () => {
     await flush();
     compareObservation(oldView, observation());
     expect(hasComparison(render())).toBe(false);
+  });
+
+  it("opens inspection only from an eligible row action and preserves evidence on dismissal", async () => {
+    await mount();
+    expect(filingInspector(render())).toBeUndefined();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    expect(filingInspector(render())).toBeUndefined();
+    const trigger = { isConnected: true, focus: vi.fn() };
+    const action = elements(render()).find(
+      (element) =>
+        element.type === "button" && text(element) === "Inspect filing context",
+    );
+    (action?.props.onClick as (event: { currentTarget: unknown }) => void)({
+      currentTarget: trigger,
+    });
+    const child = filingInspector(render());
+    expect(child?.props).toMatchObject({
+      observation: observation(),
+      selection: props.selection,
+      catalogSnapshotSha256: props.catalogSnapshotSha256,
+      requestToken: 1,
+      enabled: true,
+    });
+    (child?.props.onClose as () => void)();
+    expect(filingInspector(render())).toBeUndefined();
+    expect(trigger.focus).toHaveBeenCalledOnce();
+    expect(text(render())).toContain("$12,345,678,901,234,567,890.12");
+    expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+  });
+
+  it.each(["annual", "unmatched", "unknown start"])(
+    "withholds the inspect action for %s observations",
+    async (kind) => {
+      const row = {
+        ...observation(),
+        ...(kind === "annual" ? { form: "10-K" } : {}),
+        ...(kind === "unknown start"
+          ? { startDate: null, durationDays: null }
+          : {}),
+        ...(kind === "unmatched"
+          ? {
+              filing: {
+                ...observation().filing,
+                status: "metadata_conflict" as const,
+              },
+            }
+          : {}),
+      };
+      api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue(
+        withObservations([row]),
+      );
+      await mount();
+      click(render(), "Load SEC quarterly evidence");
+      await flush();
+      expect(
+        elements(render()).some(
+          (element) =>
+            element.type === "button" &&
+            text(element) === "Inspect filing context",
+        ),
+      ).toBe(false);
+      expect(text(render())).toContain(
+        "Context inspection requires matched 10-Q",
+      );
+    },
+  );
+
+  it.each(["metric", "refresh", "catalog", "session"])(
+    "clears the child inspection when %s changes",
+    async (kind) => {
+      await mount();
+      click(render(), "Load SEC quarterly evidence");
+      await flush();
+      const oldView = render();
+      click(oldView, "Inspect filing context");
+      const child = filingInspector(render());
+      expect(child).toBeDefined();
+      if (kind === "metric")
+        change(render(), "SEC observation metric", "net_income");
+      if (kind === "refresh") click(render(), "Refresh SEC quarterly evidence");
+      if (kind === "catalog")
+        props = { ...props, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` };
+      if (kind === "session") props = { ...props, enabled: false };
+      expect(filingInspector(render())).toBeUndefined();
+      if (kind !== "metric") {
+        (child?.props.onSessionUnavailable as () => void)();
+        expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it("clears all source data on actual child session expiry and supports inspection inside comparison", async () => {
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    compareObservation(render(), observation());
+    click(comparisonRegion(render()), "Inspect filing context");
+    const child = filingInspector(render());
+    expect(child).toBeDefined();
+    (child?.props.onSessionUnavailable as () => void)();
+    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    expect(filingInspector(render())).toBeUndefined();
+    expect(hasComparison(render())).toBe(false);
+    expect(text(render())).not.toContain("$12,345");
   });
 
   it.each(["listing", "catalog", "session", "closed selection"])(
@@ -948,6 +1060,11 @@ function hasComparison(value: unknown): boolean {
     (element) => element.props.id === "sec-quarterly-comparison",
   );
 }
+function filingInspector(value: unknown) {
+  return elements(value).find(
+    (element) => element.props["data-testid"] === "filing-context-child",
+  );
+}
 function comparisonRegion(value: unknown) {
   const region = elements(value).find(
     (element) => element.props.id === "sec-quarterly-comparison",
@@ -967,6 +1084,7 @@ function compareButton(
     (element) =>
       element.type === "button" &&
       typeof element.props["aria-label"] === "string" &&
+      element.props["aria-label"].startsWith("Compare same period") &&
       element.props["aria-label"].includes(
         `accession ${item.accessionNumber}, value ${item.value} USD`,
       ),

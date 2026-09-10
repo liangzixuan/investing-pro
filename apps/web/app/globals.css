@@ -5508,6 +5508,31 @@ thead th {
   font-weight: 600;
 }
 
+.sec-filing-context {
+  min-width: 0;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid var(--navy);
+  border-radius: var(--radius-md);
+  background: #f5f8fb;
+  overflow-wrap: anywhere;
+}
+
+.sec-filing-context-table {
+  min-width: 960px;
+}
+
+.sec-filing-context-outcome {
+  margin: 16px 0 8px;
+  color: var(--navy);
+  font-size: 0.88rem;
+}
+
+.sec-filing-context-raw {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 900px) {
   .sec-quarterly-coverage {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5523,7 +5548,8 @@ thead th {
     width: 100%;
   }
 
-  .sec-quarterly-comparison {
+  .sec-quarterly-comparison,
+  .sec-filing-context {
     padding: 12px;
   }
 

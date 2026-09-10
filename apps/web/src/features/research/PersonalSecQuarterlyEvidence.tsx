@@ -14,6 +14,7 @@ import {
 import { fetchPersonalSecQuarterlyEvidence } from "../../lib/personal-sec-quarterly-evidence-api";
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
+import { PersonalSecFilingContext } from "./PersonalSecFilingContext";
 
 export interface PersonalSecQuarterlyEvidenceProps {
   readonly catalogSnapshotSha256: `sha256:${string}`;
@@ -55,6 +56,9 @@ export function PersonalSecQuarterlyEvidence({
   const [metric, setMetric] = useState("all");
   const [comparisonId, setComparisonId] = useState<string | null>(null);
   const [comparisonPage, setComparisonPage] = useState(0);
+  const [inspectionId, setInspectionId] = useState<string | null>(null);
+  const [inspectionRequest, setInspectionRequest] = useState(0);
+  const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
   const comparisonHeading = useRef<HTMLHeadingElement | null>(null);
   const comparisonTrigger = useRef<HTMLButtonElement | null>(null);
   const observationsRegion = useRef<HTMLDivElement | null>(null);
@@ -79,6 +83,8 @@ export function PersonalSecQuarterlyEvidence({
     setMetric("all");
     setComparisonId(null);
     setComparisonPage(0);
+    setInspectionId(null);
+    inspectionTrigger.current = null;
     comparisonTrigger.current = null;
     setLoadedContext(context);
     return () => {
@@ -86,6 +92,7 @@ export function PersonalSecQuarterlyEvidence({
       controller.current?.abort();
       controller.current = null;
       comparisonTrigger.current = null;
+      inspectionTrigger.current = null;
     };
   }, [context]);
 
@@ -105,6 +112,8 @@ export function PersonalSecQuarterlyEvidence({
     setMetric("all");
     setComparisonId(null);
     setComparisonPage(0);
+    setInspectionId(null);
+    inspectionTrigger.current = null;
     comparisonTrigger.current = null;
   }
 
@@ -203,6 +212,34 @@ export function PersonalSecQuarterlyEvidence({
       ? comparePersonalSecQuarterlyObservations(current.evidence, comparisonId)
       : null;
   const renderEpoch = epoch.current;
+  const inspectedObservation =
+    current?.evidence.observations.find(
+      (item) => item.id === inspectionId && canInspect(item),
+    ) ?? null;
+
+  function openInspection(
+    item: PersonalSecQuarterlyObservationDto,
+    trigger: HTMLButtonElement | null,
+  ) {
+    if (
+      current === null ||
+      renderEpoch !== epoch.current ||
+      activeContext.current !== context ||
+      !canInspect(item)
+    )
+      return;
+    inspectionTrigger.current = trigger;
+    setInspectionId(item.id);
+    setInspectionRequest((value) => value + 1);
+  }
+
+  function closeInspection() {
+    setInspectionId(null);
+    if (inspectionTrigger.current?.isConnected)
+      inspectionTrigger.current.focus();
+    else observationsRegion.current?.focus();
+    inspectionTrigger.current = null;
+  }
 
   function closeComparison() {
     setComparisonId(null);
@@ -373,6 +410,8 @@ export function PersonalSecQuarterlyEvidence({
                   setPage(0);
                   setComparisonId(null);
                   setComparisonPage(0);
+                  setInspectionId(null);
+                  inspectionTrigger.current = null;
                   comparisonTrigger.current = null;
                 }}
               >
@@ -409,6 +448,8 @@ export function PersonalSecQuarterlyEvidence({
                 comparison={comparison}
                 page={comparisonPage}
                 onPageChange={setComparisonPage}
+                onInspect={openInspection}
+                inspectionId={inspectionId}
               />
               <p className="sec-quarterly-message">
                 Uses only the loaded observations; comparison makes no source
@@ -443,6 +484,29 @@ export function PersonalSecQuarterlyEvidence({
                 </p>
               ) : null}
             </section>
+          )}
+          {inspectedObservation === null || selection === null ? null : (
+            <PersonalSecFilingContext
+              key={`${renderEpoch}:${inspectedObservation.id}`}
+              catalogSnapshotSha256={catalogSnapshotSha256}
+              selection={selection}
+              observation={inspectedObservation}
+              responseGeneration={renderEpoch}
+              requestToken={inspectionRequest}
+              enabled={enabled}
+              onClose={closeInspection}
+              onSessionUnavailable={() => {
+                if (
+                  renderEpoch !== epoch.current ||
+                  activeContext.current !== context
+                )
+                  return;
+                invalidate(
+                  "The owner session expired. Revalidate it to load SEC evidence.",
+                );
+                callback.current();
+              }}
+            />
           )}
           {rows.length === 0 ? (
             <p className="discovery-empty-state">
@@ -550,6 +614,11 @@ export function PersonalSecQuarterlyEvidence({
                           </a>
                         ) : null}
                         <ObservationDetails observation={item} />
+                        <InspectionAction
+                          observation={item}
+                          selected={inspectionId === item.id}
+                          onInspect={openInspection}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -595,10 +664,17 @@ function ComparisonResult({
   comparison,
   page,
   onPageChange,
+  onInspect,
+  inspectionId,
 }: {
   readonly comparison: PersonalSecQuarterlyComparison;
   readonly page: number;
   readonly onPageChange: (page: number) => void;
+  readonly onInspect: (
+    item: PersonalSecQuarterlyObservationDto,
+    trigger: HTMLButtonElement | null,
+  ) => void;
+  readonly inspectionId: string | null;
 }) {
   const selected = comparison.selected;
   return (
@@ -730,6 +806,11 @@ function ComparisonResult({
                           </a>
                         ) : null}
                         <ObservationDetails observation={item} />
+                        <InspectionAction
+                          observation={item}
+                          selected={inspectionId === item.id}
+                          onInspect={onInspect}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -767,6 +848,45 @@ function ComparisonResult({
         </>
       )}
     </>
+  );
+}
+
+function InspectionAction({
+  observation,
+  selected,
+  onInspect,
+}: {
+  readonly observation: PersonalSecQuarterlyObservationDto;
+  readonly selected: boolean;
+  readonly onInspect: (
+    item: PersonalSecQuarterlyObservationDto,
+    trigger: HTMLButtonElement | null,
+  ) => void;
+}) {
+  return canInspect(observation) ? (
+    <button
+      type="button"
+      className="sec-quarterly-compare-action"
+      aria-label={`Inspect filing context for ${observation.concept}, accession ${observation.accessionNumber}, value ${observation.value} USD`}
+      aria-expanded={selected}
+      aria-controls={selected ? "sec-filing-context" : undefined}
+      onClick={(event) => onInspect(observation, event?.currentTarget ?? null)}
+    >
+      Inspect filing context
+    </button>
+  ) : (
+    <span className="sec-quarterly-message">
+      Context inspection requires matched 10-Q or 10-Q/A metadata and a known
+      start date.
+    </span>
+  );
+}
+
+function canInspect(observation: PersonalSecQuarterlyObservationDto): boolean {
+  return (
+    observation.filing.status === "matched" &&
+    observation.startDate !== null &&
+    (observation.form === "10-Q" || observation.form === "10-Q/A")
   );
 }
 

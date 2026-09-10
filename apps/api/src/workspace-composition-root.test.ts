@@ -38,6 +38,7 @@ import {
 } from "./workspace-composition-root";
 import { PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH } from "./workspace-watchlist-routes";
 import { PERSONAL_MARKET_DATA_STATUS_PATH } from "./workspace-market-data-routes";
+import { PERSONAL_SEC_FILING_CONTEXT_PATH } from "./workspace-sec-filing-context-routes";
 import { PERSONAL_SEC_QUARTERLY_EVIDENCE_PATH } from "./workspace-sec-quarterly-evidence-routes";
 import {
   PERSONAL_SECURITY_MASTER_SCREEN_PATH,
@@ -118,6 +119,7 @@ describe("personal workspace composition root", () => {
     const configured = await createPersonalWorkspaceConfiguredApp(captured);
     expect(captured[PERSONAL_SEC_USER_AGENT]).toBeUndefined();
     applications.push(configured);
+    expect(source).not.toHaveBeenCalled();
     expect(
       captured[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY],
     ).toBeUndefined();
@@ -163,6 +165,43 @@ describe("personal workspace composition root", () => {
     });
     expect(source).toHaveBeenCalledTimes(2);
     expect(configuredEvidence.payload).not.toContain("test@example.invalid");
+    const contextRequest = {
+      ...evidenceRequest,
+      url: PERSONAL_SEC_FILING_CONTEXT_PATH,
+      payload: {
+        ...evidenceRequest.payload,
+        selection: {
+          id: `sec-fact:${"a".repeat(64)}`,
+          metric: "revenue",
+          taxonomy: "us-gaap",
+          concept: "Revenues",
+          unit: "USD",
+          value: "100",
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+          accessionNumber: "0000000001-26-000001",
+          form: "10-Q",
+          filedDate: "2026-05-01",
+        },
+      },
+    };
+    const context = await configured.inject({
+      ...contextRequest,
+      headers: {
+        ...ownerHeaders(configuredCookie),
+        "content-type": "application/json",
+      },
+    });
+    expect(context.statusCode).toBe(200);
+    expect(context.json()).toMatchObject({
+      inspection: {
+        status: "unavailable",
+        stage: "company_facts",
+        reason: "selection_changed_or_not_retained",
+      },
+    });
+    expect(source).toHaveBeenCalledTimes(3);
+    expect(context.payload).not.toContain("test@example.invalid");
     vi.unstubAllGlobals();
     await closeTracked(configured);
 
@@ -193,6 +232,17 @@ describe("personal workspace composition root", () => {
         ...ownerHeaders(unconfiguredCookie),
         "content-type": "application/json",
       },
+    });
+    const unconfiguredContext = await unconfigured.inject({
+      ...contextRequest,
+      headers: {
+        ...ownerHeaders(unconfiguredCookie),
+        "content-type": "application/json",
+      },
+    });
+    expect(unconfiguredContext.statusCode).toBe(503);
+    expect(unconfiguredContext.json()).toMatchObject({
+      code: "not_configured",
     });
     expect(unconfiguredEvidence.statusCode).toBe(503);
     expect(unconfiguredEvidence.json()).toMatchObject({

@@ -163,12 +163,11 @@ class SecPersonalQuarterlyEvidenceProvider implements PersonalSecQuarterlyEviden
       if (!validClock(fetchedAt)) fail("invalid_request");
       const sourceFacts =
         facts.status === "available" ? facts.value : undefined;
-      const counts = { revenue: 0, net_income: 0 };
-      const observations = (sourceFacts?.observations ?? [])
-        .filter((row) => counts[row.metric]++ < LIMITS.observationsPerMetric)
-        .map((row): PersonalSecQuarterlyObservationDto =>
-          Object.freeze({ ...row, filing: joinFiling(row, submissions) }),
-        );
+      const observations = retainPersonalSecQuarterlyObservations(
+        sourceFacts?.observations ?? [],
+      ).map((row): PersonalSecQuarterlyObservationDto =>
+        Object.freeze({ ...row, filing: joinFiling(row, submissions) }),
+      );
       return Object.freeze({
         cik,
         fetchedAt: fetchedAt.toISOString(),
@@ -214,74 +213,139 @@ class SecPersonalQuarterlyEvidenceProvider implements PersonalSecQuarterlyEviden
     normalize: (value: unknown) => T,
   ): Promise<SourceResult<T>> {
     try {
-      await this.#scheduler.wait(signal);
-    } catch (error) {
-      if (signal.aborted || this.#closed) fail("aborted");
-      if (error instanceof PersonalSecRequestSchedulerError) fail(error.code);
-      fail("busy");
-    }
-    if (signal.aborted) fail("aborted");
-    const controller = new AbortController();
-    const onAbort = (): void => controller.abort();
-    signal.addEventListener("abort", onAbort, { once: true });
-    // Queuing does not consume this per-request transport deadline.
-    const timeout = setTimeout(
-      () => controller.abort(),
-      LIMITS.requestTimeoutMs,
-    );
-    try {
-      const response = await withAbort(
-        this.#fetch(sourceUrl, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "User-Agent": this.#userAgent!,
-          },
-          credentials: "omit",
-          redirect: "error",
-          referrerPolicy: "no-referrer",
-          cache: "no-store",
-          signal: controller.signal,
-        }),
-        controller.signal,
-      );
-      if (
-        !(response instanceof Response) ||
-        response.redirected ||
-        (response.url !== "" && response.url !== sourceUrl)
-      ) {
-        if (response instanceof Response)
-          void response.body?.cancel().catch(() => undefined);
-        throw new SourceError("invalid_response");
-      }
-      if (!response.ok) {
-        void response.body?.cancel().catch(() => undefined);
-        throw new SourceError(
-          response.status === 404
-            ? "not_covered"
-            : response.status === 429
-              ? "rate_limited"
-              : "upstream_unavailable",
-        );
-      }
-      const value = normalize(
-        parseJson(await readBoundedText(response, controller.signal)),
-      );
-      if (controller.signal.aborted)
-        throw new SourceError("upstream_unavailable");
+      const bytes = await fetchPersonalSecSourceBytes({
+        sourceUrl,
+        fetch: this.#fetch,
+        scheduler: this.#scheduler,
+        userAgent: this.#userAgent!,
+        signal,
+        maximumBytes: LIMITS.responseBytes,
+        accept: "application/json",
+      });
+      const value = normalize(parseJson(decodePersonalSecSourceUtf8(bytes)));
       return { status: "available", value };
     } catch (error) {
       if (signal.aborted || this.#closed) fail("aborted");
+      if (error instanceof PersonalSecRequestSchedulerError) fail(error.code);
       return {
         status:
           error instanceof SourceError ? error.status : "upstream_unavailable",
       };
-    } finally {
-      clearTimeout(timeout);
-      signal.removeEventListener("abort", onAbort);
     }
   }
 }
+
+/** Shared bounded transport; callers construct fixed SEC URLs, never browser URLs. */
+export async function fetchPersonalSecSourceBytes(input: {
+  readonly sourceUrl: string;
+  readonly fetch: typeof globalThis.fetch;
+  readonly scheduler: PersonalSecRequestScheduler;
+  readonly userAgent: string;
+  readonly signal: AbortSignal;
+  readonly maximumBytes: number;
+  readonly accept: string;
+  readonly mediaTypes?: readonly string[];
+}): Promise<Uint8Array> {
+  try {
+    await input.scheduler.wait(input.signal);
+  } catch (error) {
+    if (input.signal.aborted)
+      throw new PersonalSecRequestSchedulerError("aborted");
+    if (error instanceof PersonalSecRequestSchedulerError) throw error;
+    throw new PersonalSecRequestSchedulerError("busy");
+  }
+  if (input.signal.aborted)
+    throw new PersonalSecRequestSchedulerError("aborted");
+  const controller = new AbortController();
+  const onAbort = (): void => controller.abort();
+  input.signal.addEventListener("abort", onAbort, { once: true });
+  // Queuing does not consume this per-request transport deadline.
+  const timeout = setTimeout(() => controller.abort(), LIMITS.requestTimeoutMs);
+  try {
+    const response = await withAbort(
+      input.fetch(input.sourceUrl, {
+        method: "GET",
+        headers: { Accept: input.accept, "User-Agent": input.userAgent },
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        cache: "no-store",
+        signal: controller.signal,
+      }),
+      controller.signal,
+    );
+    if (
+      !(response instanceof Response) ||
+      response.redirected ||
+      (response.url !== "" && response.url !== input.sourceUrl)
+    ) {
+      if (response instanceof Response)
+        void response.body?.cancel().catch(() => undefined);
+      throw new SourceError("invalid_response");
+    }
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => undefined);
+      throw new SourceError(
+        response.status === 404
+          ? "not_covered"
+          : response.status === 429
+            ? "rate_limited"
+            : "upstream_unavailable",
+      );
+    }
+    if (input.mediaTypes !== undefined) {
+      const media = response.headers.get("content-type")?.toLowerCase();
+      const match = media?.match(
+        /^([^;\s]+)(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8"))?\s*$/u,
+      );
+      if (
+        match === null ||
+        match === undefined ||
+        !input.mediaTypes.includes(match[1]!)
+      ) {
+        void response.body?.cancel().catch(() => undefined);
+        throw new SourceError("invalid_response");
+      }
+    }
+    const bytes = await readBoundedBytes(
+      response,
+      controller.signal,
+      input.maximumBytes,
+    );
+    if (controller.signal.aborted)
+      throw new SourceError("upstream_unavailable");
+    return bytes;
+  } catch (error) {
+    if (input.signal.aborted)
+      throw new PersonalSecRequestSchedulerError("aborted");
+    if (error instanceof SourceError) throw error;
+    throw new SourceError("upstream_unavailable");
+  } finally {
+    clearTimeout(timeout);
+    input.signal.removeEventListener("abort", onAbort);
+  }
+}
+
+/** The inspector revalidates against the same complete retained row set as the panel. */
+export function retainPersonalSecQuarterlyObservations(
+  observations: readonly RawObservation[],
+): readonly RawObservation[] {
+  const counts = { revenue: 0, net_income: 0 };
+  return Object.freeze(
+    observations.filter(
+      (row) => counts[row.metric]++ < LIMITS.observationsPerMetric,
+    ),
+  );
+}
+
+export {
+  SourceError as PersonalSecSourceError,
+  parseJson as parsePersonalSecSourceJson,
+  normalizeFacts as normalizePersonalSecCompanyFacts,
+  normalizeSubmissions as normalizePersonalSecSubmissions,
+  validClock as isPersonalSecClock,
+  validUserAgent as isPersonalSecUserAgent,
+};
 
 function normalizeFacts(value: unknown, cik: string): Facts {
   if (
@@ -681,10 +745,11 @@ async function withAbort<T>(
   }
 }
 
-async function readBoundedText(
+async function readBoundedBytes(
   response: Response,
   signal: AbortSignal,
-): Promise<string> {
+  maximumBytes: number,
+): Promise<Uint8Array> {
   const length = response.headers.get("content-length");
   if (
     length !== null &&
@@ -693,7 +758,7 @@ async function readBoundedText(
     void response.body?.cancel().catch(() => undefined);
     throw new SourceError("invalid_response");
   }
-  if (length !== null && Number(length) > LIMITS.responseBytes) {
+  if (length !== null && Number(length) > maximumBytes) {
     void response.body?.cancel().catch(() => undefined);
     throw new SourceError("response_too_large");
   }
@@ -708,8 +773,7 @@ async function readBoundedText(
       if (!(result.value instanceof Uint8Array))
         throw new SourceError("invalid_response");
       size += result.value.byteLength;
-      if (size > LIMITS.responseBytes)
-        throw new SourceError("response_too_large");
+      if (size > maximumBytes) throw new SourceError("response_too_large");
       chunks.push(result.value);
     }
   } catch (error) {
@@ -725,6 +789,10 @@ async function readBoundedText(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return bytes;
+}
+
+export function decodePersonalSecSourceUtf8(bytes: Uint8Array): string {
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {

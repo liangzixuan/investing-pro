@@ -5186,6 +5186,8 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     providerPath,
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-sec-filing-context-parser.ts",
+    "apps/api/src/personal-sec-filing-context-provider.ts",
     "apps/api/src/personal-sec-filings-provider.ts",
     "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
     "apps/api/src/personal-sec-request-scheduler.ts",
@@ -5204,6 +5206,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-server.ts",
     "apps/api/src/workspace-watchlist-filings-routes.ts",
     "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
+    "apps/api/src/workspace-sec-filing-context-routes.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
     "apps/api/src/workspace-portfolio-routes.ts",
   ].sort();
@@ -5215,11 +5218,13 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "@research-cockpit/personal-financial-analytics",
     personalSecurityMasterModule,
     "fastify",
+    "node:child_process",
     "node:crypto",
     "node:fs",
     "node:fs/promises",
     "node:path",
     "node:perf_hooks",
+    "node:url",
   ].sort();
   const pending = [entry];
   const visited = new Set<string>();
@@ -5263,9 +5268,15 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       `${entry}: personal workspace external imports must remain the exact reviewed allowlist`,
     );
   }
-  if (JSON.stringify([...processFiles].sort()) !== JSON.stringify([entry])) {
+  if (
+    JSON.stringify([...processFiles].sort()) !==
+    JSON.stringify([
+      "apps/api/src/personal-sec-filing-context-parser.ts",
+      entry,
+    ])
+  ) {
     found.push(
-      `${entry}: only the personal workspace server may read process state`,
+      `${entry}: only the server and isolated filing parser may read their reviewed process state`,
     );
   }
   const marketDataViolation =
@@ -5433,15 +5444,23 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     ),
     quarterlyProvider.replace('redirect: "error"', 'redirect: "follow"'),
     quarterlyProvider.replace(
-      "this.#fetch(sourceUrl,",
-      "this.#fetch(unreviewedUrl,",
+      "input.fetch(input.sourceUrl,",
+      "input.fetch(unreviewedUrl,",
     ),
     quarterlyProvider.replace(
-      "await this.#scheduler.wait(signal)",
+      "await input.scheduler.wait(input.signal)",
       "await Promise.resolve()",
     ),
     quarterlyProvider.replace("normalizeCik(value.cik) !== cik", "false"),
-    quarterlyProvider.replace("size > LIMITS.responseBytes", "false"),
+    quarterlyProvider.replace("size > maximumBytes", "false"),
+    quarterlyProvider.replace(
+      "maximumBytes: LIMITS.responseBytes",
+      "maximumBytes: Number.POSITIVE_INFINITY",
+    ),
+    quarterlyProvider.replace(
+      "const bytes = await fetchPersonalSecSourceBytes({",
+      'void this.#fetch(sourceUrl, { redirect: "follow" });\n      const bytes = await fetchPersonalSecSourceBytes({',
+    ),
   ];
   if (
     personalSecQuarterlyEvidenceProviderViolation(quarterlyProvider) !== null ||
@@ -5454,6 +5473,63 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scripts/verify-boundaries.ts: SEC quarterly evidence provider boundary classifier regressed",
     );
   }
+  const contextParser =
+    runtimeSources.get("apps/api/src/personal-sec-filing-context-parser.ts") ??
+    "";
+  const contextProvider =
+    runtimeSources.get(
+      "apps/api/src/personal-sec-filing-context-provider.ts",
+    ) ?? "";
+  const parserMutations = [
+    contextParser.replace("shell: false", "shell: true"),
+    contextParser.replace("windowsHide: true", "windowsHide: false"),
+    contextParser.replace('"-I"', '"-E"'),
+    contextParser.replace("env: workerEnvironment()", "env: process.env"),
+    contextParser.replace("stdoutBytes > LIMITS.workerOutputBytes", "false"),
+    contextParser.replace("LIMITS.workerTimeoutMs", "100_000"),
+    contextParser.replace('child.kill("SIGKILL")', 'child.kill("SIGTERM")'),
+    `${contextParser}\nvoid process.env.UNREVIEWED;`,
+    contextParser.replace(
+      "spawn, type ChildProcessWithoutNullStreams",
+      "spawn, execFile as launch, type ChildProcessWithoutNullStreams",
+    ) + '\nvoid launch("python", ["-c", "pass"]);',
+  ];
+  const contextMutations = [
+    contextProvider.replace(
+      "SELECTION_FIELDS.every(",
+      "SELECTION_FIELDS.some(",
+    ),
+    contextProvider.replace("filing.form !== selected.form", "false"),
+    contextProvider.replace("filing.filedDate !== selected.filedDate", "false"),
+    contextProvider.replace(
+      "FILING_CONTEXT_LIMITS.documentBytes",
+      "FILING_CONTEXT_LIMITS.workerInputBytes",
+    ),
+    contextProvider.replace(
+      "data.sec.gov/api/xbrl/companyfacts",
+      "unreviewed.example/facts",
+    ),
+    contextProvider.replace("selectedPrimaryDocument(", "unsafeDocument("),
+    `${contextProvider}\nvoid fetch("https://unreviewed.example");`,
+  ];
+  if (
+    personalSecFilingContextParserViolation(contextParser) !== null ||
+    parserMutations.some(
+      (changed) => personalSecFilingContextParserViolation(changed) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: filing-context isolated-worker classifier regressed",
+    );
+  if (
+    personalSecFilingContextProviderViolation(contextProvider) !== null ||
+    contextMutations.some(
+      (changed) => personalSecFilingContextProviderViolation(changed) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: filing-context source binding classifier regressed",
+    );
   return found;
 }
 
@@ -5487,6 +5563,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== secProviderPath &&
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
+        path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
@@ -5509,6 +5586,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       if (
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
+        path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         content.includes("data.sec.gov/submissions")
       ) {
         found.push(
@@ -5521,7 +5599,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       !personalMarketDataIsTestSource(path) &&
       (content.includes("PERSONAL_SEC_USER_AGENT") ||
         collectModuleSpecifiers(content).some((specifier) =>
-          /personal-sec-(?:financial|filings|quarterly-evidence)-provider/u.test(
+          /personal-sec-(?:(?:financial|filings|quarterly-evidence|filing-context)-provider|filing-context-parser)/u.test(
             specifier,
           ),
         ))
@@ -6525,6 +6603,13 @@ function personalMarketDataRuntimeBoundaryViolation(
     if (modules.some(personalMarketDataIsNetworkModule)) {
       return `${path}: personal workspace market data must not import socket, DNS, TLS, or HTTP modules`;
     }
+    if (
+      modules.some((specifier) =>
+        /^(?:node:)?child_process$/u.test(specifier),
+      ) &&
+      path !== "apps/api/src/personal-sec-filing-context-parser.ts"
+    )
+      return `${path}: only the isolated filing-context parser may spawn a process in this graph`;
     const source = ts.createSourceFile(
       path,
       content,
@@ -6540,6 +6625,7 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== secProviderPath &&
       path !== "apps/api/src/personal-sec-filings-provider.ts" &&
       path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
+      path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
       return `${path}: only the reviewed Tiingo and SEC providers may use the API runtime fetch capability`;
@@ -6550,6 +6636,8 @@ function personalMarketDataRuntimeBoundaryViolation(
         path === secProviderPath ||
         path === "apps/api/src/personal-sec-filings-provider.ts" ||
         path === "apps/api/src/personal-sec-quarterly-evidence-provider.ts" ||
+        path === "apps/api/src/personal-sec-filing-context-provider.ts" ||
+        path === "apps/api/src/workspace-sec-filing-context-routes.ts" ||
         path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
         path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
         path === "apps/api/src/workspace-financial-screen-routes.ts") &&
@@ -6581,8 +6669,173 @@ function personalMarketDataRuntimeBoundaryViolation(
       "",
   );
   if (quarterlyViolation !== null) return quarterlyViolation;
+  const parserViolation = personalSecFilingContextParserViolation(
+    sources.get("apps/api/src/personal-sec-filing-context-parser.ts") ?? "",
+  );
+  if (parserViolation !== null) return parserViolation;
+  const contextViolation = personalSecFilingContextProviderViolation(
+    sources.get("apps/api/src/personal-sec-filing-context-provider.ts") ?? "",
+  );
+  if (contextViolation !== null) return contextViolation;
   const routesViolation = personalMarketDataRoutesViolation(routes);
   return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
+}
+
+function personalSecFilingContextParserViolation(
+  content: string,
+): string | null {
+  const message =
+    "SEC filing-context parsing must retain its fixed isolated asynchronous worker and resource limits";
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify([
+      "node:child_process",
+      "node:url",
+      "@research-cockpit/contracts",
+    ])
+  )
+    return message;
+  const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+  const required = [
+    'import{spawn,typeChildProcessWithoutNullStreams}from"node:child_process";',
+    'constWORKER=fileURLToPath(newURL("../workers/personal_sec_filing_context.py",import.meta.url))',
+    'this.#spawn(process.platform==="win32"?"python":"python3",["-I","-S","-B",WORKER],{shell:false,windowsHide:true,stdio:["pipe","pipe","pipe"],env:workerEnvironment(),cwd:fileURLToPath(newURL("../workers/",import.meta.url))})',
+    'setTimeout(()=>fail("timeout"),LIMITS.workerTimeoutMs)',
+    'child.kill("SIGKILL")',
+    "stdoutBytes>LIMITS.workerOutputBytes",
+    "stderrBytes>LIMITS.workerStderrBytes",
+    "stdin.byteLength>LIMITS.workerInputBytes",
+    "input.document.byteLength>LIMITS.documentBytes",
+    "this.#active?.abort()",
+    'signal?.addEventListener("abort",abort,{once:true})',
+    'signal?.removeEventListener("abort",abort)',
+    'child.once("close",',
+    'functionworkerEnvironment():NodeJS.ProcessEnv{return{PATH:process.env.PATH??"",...(process.env.SystemRoot?{SystemRoot:process.env.SystemRoot}:{}),...(process.env.WINDIR?{WINDIR:process.env.WINDIR}:{}),LANG:"C.UTF-8"};}',
+  ];
+  if (required.some((anchor) => !compact.includes(anchor))) return message;
+  const source = ts.createSourceFile(
+    "filing-context-parser.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  let invalid = false;
+  let spawns = 0;
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && node.text === "process") {
+      const access = node.parent;
+      if (
+        !ts.isPropertyAccessExpression(access) ||
+        access.expression !== node ||
+        !["platform", "env"].includes(access.name.text)
+      )
+        invalid = true;
+      else if (access.name.text === "env") {
+        const property = access.parent;
+        if (
+          !ts.isPropertyAccessExpression(property) ||
+          property.expression !== access ||
+          !["PATH", "SystemRoot", "WINDIR"].includes(property.name.text)
+        )
+          invalid = true;
+      }
+    }
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      node.expression.getText(source) === "process.env" &&
+      !["PATH", "SystemRoot", "WINDIR"].includes(node.name.text)
+    )
+      invalid = true;
+    if (
+      ts.isElementAccessExpression(node) &&
+      /^process(?:\.env)?$/u.test(node.expression.getText(source))
+    )
+      invalid = true;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression.getText(source);
+      if (callee === "this.#spawn") spawns++;
+      else if (
+        ts.isIdentifier(node.expression) &&
+        /^(?:spawn|spawnSync|exec|execFile|execFileSync)$/u.test(callee)
+      )
+        invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || spawns !== 1 ? message : null;
+}
+
+function personalSecFilingContextProviderViolation(
+  content: string,
+): string | null {
+  const message =
+    "SEC filing-context acquisition must revalidate the exact observation and metadata before one bounded primary document";
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify([
+      "node:crypto",
+      "@research-cockpit/contracts",
+      "./personal-sec-filing-context-parser",
+      "./personal-sec-quarterly-evidence-provider",
+      "./personal-sec-request-scheduler",
+    ])
+  )
+    return message;
+  const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+  const required = [
+    "SELECTION_FIELDS.every((field)=>row[field]===selection[field])",
+    "retainPersonalSecQuarterlyObservations(",
+    "normalizePersonalSecCompanyFacts(",
+    "normalizePersonalSecSubmissions(rawSubmissions,cik)",
+    "filing.form!==selected.form",
+    "filing.filedDate!==selected.filedDate",
+    "selectedPrimaryDocument(rawSubmissions,selected.accessionNumber)",
+    "PERSONAL_SEC_FILING_CONTEXT_LIMITS.documentBytes",
+    "fetchPersonalSecSourceBytes({sourceUrl,signal,fetch:this.#fetch,scheduler:this.#scheduler,userAgent:this.#userAgent!,",
+    'basename.includes("..")',
+    "this.#active?.abort()",
+    "this.#parser.close()",
+    "this.#parser.parse({document,cik,selection},controller.signal)",
+  ];
+  if (required.some((anchor) => !compact.includes(anchor))) return message;
+  const source = ts.createSourceFile(
+    "filing-context-provider.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const urls = new Set([
+    "`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`",
+    "`https://data.sec.gov/submissions/CIK${cik}.json`",
+    '`https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u,"")}/${selected.accessionNumber.replaceAll("-","")}/${primaryDocument}`',
+  ]);
+  let invalid = false;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isTemplateExpression(node) &&
+      /https?:\/\//iu.test(node.head.text) &&
+      !urls.delete(node.getText(source).replace(/\s+/gu, ""))
+    )
+      invalid = true;
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (
+      ts.isCallExpression(node) &&
+      (node.expression.getText(source) === "fetch" ||
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["fetch", "#fetch"]),
+        ) !== null)
+    )
+      invalid = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || urls.size !== 0 ? message : null;
 }
 
 function personalSecQuarterlyEvidenceProviderViolation(
@@ -6601,15 +6854,16 @@ function personalSecQuarterlyEvidenceProviderViolation(
     return message;
   const compact = content.replace(/\s+/gu, "");
   const required = [
-    "awaitthis.#scheduler.wait(signal)",
-    "setTimeout(()=>controller.abort(),LIMITS.requestTimeoutMs,)",
-    "parseJson(awaitreadBoundedText(response,controller.signal))",
+    "awaitinput.scheduler.wait(input.signal)",
+    "setTimeout(()=>controller.abort(),LIMITS.requestTimeoutMs)",
+    "normalize(parseJson(decodePersonalSecSourceUtf8(bytes)))",
+    'fetchPersonalSecSourceBytes({sourceUrl,fetch:this.#fetch,scheduler:this.#scheduler,userAgent:this.#userAgent!,signal,maximumBytes:LIMITS.responseBytes,accept:"application/json",})',
     "normalizeCik(value.cik)!==cik",
     "inspectedRows>LIMITS.candidateRows",
     "accessions.length>LIMITS.submissionRows",
-    "size>LIMITS.responseBytes",
+    "size>maximumBytes",
     "response.redirected",
-    'response.url!==""&&response.url!==sourceUrl',
+    'response.url!==""&&response.url!==input.sourceUrl',
     "this.#active?.abort()",
     'if(this.#active!==undefined)fail("busy");',
   ];
@@ -6644,16 +6898,22 @@ function personalSecQuarterlyEvidenceProviderViolation(
       const callee = node.expression;
       if (
         (ts.isIdentifier(callee) && callee.text === "fetch") ||
-        namedBoundaryPropertyAccess(callee, new Set(["fetch"])) !== null
+        (namedBoundaryPropertyAccess(callee, new Set(["fetch", "#fetch"])) !==
+          null &&
+          !(
+            ts.isPropertyAccessExpression(callee) &&
+            callee.expression.getText(source) === "input"
+          ))
       )
         invalid = true;
       if (
         ts.isPropertyAccessExpression(callee) &&
-        callee.name.text === "#fetch"
+        callee.name.text === "fetch" &&
+        callee.expression.getText(source) === "input"
       ) {
         fetches += 1;
         const expected =
-          'this.#fetch(sourceUrl,{method:"GET",headers:{Accept:"application/json","User-Agent":this.#userAgent!},credentials:"omit",redirect:"error",referrerPolicy:"no-referrer",cache:"no-store",signal:controller.signal})';
+          'input.fetch(input.sourceUrl,{method:"GET",headers:{Accept:input.accept,"User-Agent":input.userAgent},credentials:"omit",redirect:"error",referrerPolicy:"no-referrer",cache:"no-store",signal:controller.signal})';
         if (
           node
             .getText(source)
@@ -7852,6 +8112,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
+      "apps/api/src/workspace-sec-filing-context-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
       "apps/api/src/workspace-portfolio-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
@@ -7938,6 +8202,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-sec-filing-context-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
@@ -12933,6 +13205,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ],
     [
       "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-sec-filing-context-routes.test.ts",
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     [

@@ -62,6 +62,12 @@ import {
 } from "./personal-sec-quarterly-evidence-provider";
 import { registerPersonalWorkspaceSecQuarterlyEvidenceRoutes } from "./workspace-sec-quarterly-evidence-routes";
 
+import {
+  createSecPersonalFilingContextProvider,
+  type PersonalSecFilingContextProvider,
+} from "./personal-sec-filing-context-provider";
+import { registerPersonalWorkspaceSecFilingContextRoutes } from "./workspace-sec-filing-context-routes";
+
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
 const DEFAULT_LISTEN_OPTIONS: DemoApiListenOptions = Object.freeze({
   host: DEFAULT_DEMO_API_HOST,
@@ -77,6 +83,7 @@ export async function buildPersonalWorkspaceApp(
   financialProvider: PersonalSecFinancialProvider = createSecPersonalFinancialProvider(),
   filingsProvider: PersonalSecFilingsProvider = createSecPersonalFilingsProvider(),
   quarterlyEvidenceProvider: PersonalSecQuarterlyEvidenceProvider = createSecPersonalQuarterlyEvidenceProvider(),
+  filingContextProvider: PersonalSecFilingContextProvider = createSecPersonalFilingContextProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -146,8 +153,12 @@ export async function buildPersonalWorkspaceApp(
             try {
               quarterlyEvidenceProvider.close();
             } finally {
-              ownerSession.close();
-              done();
+              try {
+                filingContextProvider.close();
+              } finally {
+                ownerSession.close();
+                done();
+              }
             }
           }
         }
@@ -216,6 +227,14 @@ export async function buildPersonalWorkspaceApp(
     app,
     catalog,
     quarterlyEvidenceProvider,
+    ownerSession,
+    listenOptions,
+  );
+
+  registerPersonalWorkspaceSecFilingContextRoutes(
+    app,
+    catalog,
+    filingContextProvider,
     ownerSession,
     listenOptions,
   );

@@ -15,6 +15,8 @@ describe("personal workspace startup static graph", () => {
       "personal-market-data-provider.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
+      "personal-sec-filing-context-parser.ts",
+      "personal-sec-filing-context-provider.ts",
       "personal-sec-filings-provider.ts",
       "personal-sec-financial-provider.ts",
       "personal-sec-quarterly-evidence-provider.ts",
@@ -31,6 +33,7 @@ describe("personal workspace startup static graph", () => {
       "workspace-market-data-routes.ts",
       "workspace-portfolio-routes.ts",
       "workspace-screener-routes.ts",
+      "workspace-sec-filing-context-routes.ts",
       "workspace-sec-quarterly-evidence-routes.ts",
       "workspace-server.ts",
       "workspace-watchlist-filings-routes.ts",
@@ -48,11 +51,13 @@ describe("personal workspace startup static graph", () => {
       "@research-cockpit/personal-financial-analytics",
       "@research-cockpit/personal-security-master",
       "fastify",
+      "node:child_process",
       "node:crypto",
       "node:fs",
       "node:fs/promises",
       "node:path",
       "node:perf_hooks",
+      "node:url",
     ]);
     for (const forbiddenFile of [
       "app.ts",
@@ -65,7 +70,10 @@ describe("personal workspace startup static graph", () => {
     ]) {
       expect([...graph.files]).not.toContain(forbiddenFile);
     }
-    expect([...graph.processFiles]).toEqual(["workspace-server.ts"]);
+    expect([...graph.processFiles].sort()).toEqual([
+      "personal-sec-filing-context-parser.ts",
+      "workspace-server.ts",
+    ]);
   });
 
   it("publishes a distinct non-splitting workspace build and start surface", async () => {

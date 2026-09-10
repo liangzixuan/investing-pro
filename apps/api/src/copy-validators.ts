@@ -23,17 +23,25 @@ const validatorNames = [
   "personal_filing_fact_validator.py",
   "personal_filing_raw_fact_extractor.py",
 ];
+const workerSourceDirectory = resolve(apiDirectory, "workers");
+const workerOutputDirectory = resolve(apiDirectory, "dist/workers");
+const workerName = "personal_sec_filing_context.py";
 
 await rm(outputDirectory, { force: true, recursive: true });
 await mkdir(outputDirectory, { recursive: true });
-await Promise.all(
-  validatorNames.map((name) =>
+await mkdir(workerOutputDirectory, { recursive: true });
+await Promise.all([
+  ...validatorNames.map((name) =>
     copyFile(
       resolve(sourceDirectory, name),
       resolve(outputDirectory, `${name}.pending`),
     ),
   ),
-);
+  copyFile(
+    resolve(workerSourceDirectory, workerName),
+    resolve(workerOutputDirectory, `${workerName}.pending`),
+  ),
+]);
 if (
   resolveCleanBuildSourceIdentity(repositoryDirectory) !== expectedSourceCommit
 ) {
@@ -41,11 +49,15 @@ if (
     "The API build source identity changed during the build.",
   );
 }
-await Promise.all(
-  validatorNames.map((name) =>
+await Promise.all([
+  ...validatorNames.map((name) =>
     rename(
       resolve(outputDirectory, `${name}.pending`),
       resolve(outputDirectory, name),
     ),
   ),
-);
+  rename(
+    resolve(workerOutputDirectory, `${workerName}.pending`),
+    resolve(workerOutputDirectory, workerName),
+  ),
+]);

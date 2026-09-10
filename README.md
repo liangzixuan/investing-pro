@@ -67,7 +67,11 @@ slots, revision operands or TTM totals are inferred. It uses the existing SEC
 contact setting independently of Tiingo. **Compare same period** compares exact
 values and filing references across retained observations for the same concept
 and known start/end dates. It makes no additional source requests and keeps
-coverage limits and conflicting values within an accession visible. See
+coverage limits and conflicting values within an accession visible.
+**Inspect filing context** rechecks one selected observation and its filing
+metadata, then compares exact structured facts from one primary SEC document.
+Matching, differing, ambiguous and unsupported outcomes remain explicit; existing
+evidence stays usable on failure. See [filing-context inspection](./docs/PERSONAL_SEC_FILING_CONTEXT.md) and
 [SEC quarterly evidence](./docs/PERSONAL_SEC_QUARTERLY_EVIDENCE.md).
 
 A third explicit fundamentals action loads daily valuation history over the

@@ -36,6 +36,11 @@ import {
   type PersonalSecQuarterlyEvidenceProvider,
 } from "./personal-sec-quarterly-evidence-provider";
 
+import {
+  createSecPersonalFilingContextProvider,
+  type PersonalSecFilingContextProvider,
+} from "./personal-sec-filing-context-provider";
+
 export const PERSONAL_WORKSPACE_API_MODE = "personal_workspace" as const;
 
 export type PersonalWorkspaceApiEnvironment = Readonly<
@@ -196,6 +201,7 @@ async function preparePersonalWorkspaceConfiguredApp(
   let marketDataProvider: PersonalMarketDataProvider | undefined;
   let financialProvider: PersonalSecFinancialProvider | undefined;
   let filingsProvider: PersonalSecFilingsProvider | undefined;
+  let filingContextProvider: PersonalSecFilingContextProvider | undefined;
   let quarterlyEvidenceProvider:
     PersonalSecQuarterlyEvidenceProvider | undefined;
   try {
@@ -214,6 +220,8 @@ async function preparePersonalWorkspaceConfiguredApp(
     filingsProvider = createSecPersonalFilingsProvider(secUserAgent);
     quarterlyEvidenceProvider =
       createSecPersonalQuarterlyEvidenceProvider(secUserAgent);
+    filingContextProvider =
+      createSecPersonalFilingContextProvider(secUserAgent);
     return await buildPersonalWorkspaceApp(
       catalog,
       vault,
@@ -223,8 +231,10 @@ async function preparePersonalWorkspaceConfiguredApp(
       financialProvider,
       filingsProvider,
       quarterlyEvidenceProvider,
+      filingContextProvider,
     );
   } catch (error) {
+    filingContextProvider?.close();
     quarterlyEvidenceProvider?.close();
     filingsProvider?.close();
     financialProvider?.close();
