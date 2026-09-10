@@ -138,7 +138,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Classify exact Cycle 3e-a chain through partial Cycle 3h-a11
+      - name: Classify exact Cycle 3e-a chain through partial Cycle 3h-a12
         id: cycle3e_source
         if: ${{ success() }}
         shell: bash
@@ -223,6 +223,8 @@ jobs:
           cycle3ha10_feature="26a5fea2cca6df4ba6d7ba29f35e4496ac47e086"
           cycle3ha10_routing_closure="4309cf01a1bff8ec3d6a4e086e9888a0e1ef6cd1"
           cycle3ha11_feature="c7924db71eb6f16c0e4fe559a80363258a55cbd7"
+          cycle3ha11_routing_closure="ec9b302f3743f52588f65f9d276b1f357056bc3b"
+          cycle3ha12_feature="53ae441125c99429643b123e97aa02bbd4da46be"
           expected_source=(
             "M" "README.md"
             "M" "apps/api/package.json"
@@ -1356,6 +1358,22 @@ jobs:
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
             "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
           )
+          expected_cycle3ha12_feature=(
+            "M" "apps/web/app/globals.css"
+            "M" "apps/web/src/features/research/PersonalSecFilingContext.test.tsx"
+            "M" "apps/web/src/features/research/PersonalSecFilingContext.tsx"
+            "M" "docs/CURRENT_WORK.md"
+            "M" "docs/PERSONAL_SEC_FILING_CONTEXT.md"
+          )
+          expected_cycle3ha12_routing_closure=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+          )
           protected=()
           for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
             protected+=("${expected_source[$index]}")
@@ -1582,6 +1600,12 @@ jobs:
           for ((index = 1; index < ${#expected_cycle3ha11_routing_closure[@]}; index += 2)); do
             protected+=("${expected_cycle3ha11_routing_closure[$index]}")
           done
+          for ((index = 1; index < ${#expected_cycle3ha12_feature[@]}; index += 2)); do
+            protected+=("${expected_cycle3ha12_feature[$index]}")
+          done
+          for ((index = 1; index < ${#expected_cycle3ha12_routing_closure[@]}; index += 2)); do
+            protected+=("${expected_cycle3ha12_routing_closure[$index]}")
+          done
           matches_exactly() {
             local -n expected_values="$1"
             local -n actual_values="$2"
@@ -1677,7 +1701,9 @@ jobs:
                  git cat-file -e "$cycle3ha9_routing_closure^{commit}" && \
                  git cat-file -e "$cycle3ha10_feature^{commit}" && \
                  git cat-file -e "$cycle3ha10_routing_closure^{commit}" && \
-                 git cat-file -e "$cycle3ha11_feature^{commit}"; then
+                 git cat-file -e "$cycle3ha11_feature^{commit}" && \
+                 git cat-file -e "$cycle3ha11_routing_closure^{commit}" && \
+                 git cat-file -e "$cycle3ha12_feature^{commit}"; then
                 read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
                 read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
                 read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -1755,6 +1781,8 @@ jobs:
                 read -r -a cycle3ha10_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha10_feature")"
                 read -r -a cycle3ha10_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha10_routing_closure")"
                 read -r -a cycle3ha11_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha11_feature")"
+                read -r -a cycle3ha11_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha11_routing_closure")"
+                read -r -a cycle3ha12_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ha12_feature")"
                 merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
                 public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
                 public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -1908,6 +1936,10 @@ jobs:
                 cycle3ha10_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha10_routing_closure")"
                 cycle3ha11_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ha11_feature")"
                 cycle3ha11_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha11_feature")"
+                cycle3ha11_routing_closure_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ha11_routing_closure")"
+                cycle3ha11_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha11_routing_closure")"
+                cycle3ha12_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ha12_feature")"
+                cycle3ha12_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ha12_feature")"
                 head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
                 head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
                 mapfile -d '' -t source_actual < <(
@@ -2188,6 +2220,15 @@ jobs:
                 )
                 mapfile -d '' -t cycle3ha11_routing_closure_actual < <(
                   git diff --name-status --no-renames -z "$cycle3ha11_feature" HEAD --
+                )
+                mapfile -d '' -t pinned_cycle3ha11_routing_closure_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ha11_feature" "$cycle3ha11_routing_closure" --
+                )
+                mapfile -d '' -t cycle3ha12_feature_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ha11_routing_closure" "$cycle3ha12_feature" --
+                )
+                mapfile -d '' -t cycle3ha12_routing_closure_actual < <(
+                  git diff --name-status --no-renames -z "$cycle3ha12_feature" HEAD --
                 )
                 history_exact=false
                 if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -2923,6 +2964,26 @@ jobs:
                    [[ "${cycle3ha11_feature_topology[1]}" == "$cycle3ha10_routing_closure" ]] && \
                    matches_exactly expected_cycle3ha11_feature cycle3ha11_feature_actual; then
                   cycle3ha11_feature_history_exact=true
+                fi
+                cycle3ha11_routing_closure_history_exact=false
+                if [[ "$cycle3ha11_feature_history_exact" == "true" ]] && \
+                   [[ "$cycle3ha11_routing_closure_successor_count" == "100" ]] && \
+                   [[ "$cycle3ha11_routing_closure_first_parent_count" == "100" ]] && \
+                   [[ "${#cycle3ha11_routing_closure_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ha11_routing_closure_topology[0]}" == "$cycle3ha11_routing_closure" ]] && \
+                   [[ "${cycle3ha11_routing_closure_topology[1]}" == "$cycle3ha11_feature" ]] && \
+                   matches_exactly expected_cycle3ha11_routing_closure pinned_cycle3ha11_routing_closure_actual; then
+                  cycle3ha11_routing_closure_history_exact=true
+                fi
+                cycle3ha12_feature_history_exact=false
+                if [[ "$cycle3ha11_routing_closure_history_exact" == "true" ]] && \
+                   [[ "$cycle3ha12_feature_successor_count" == "101" ]] && \
+                   [[ "$cycle3ha12_feature_first_parent_count" == "101" ]] && \
+                   [[ "${#cycle3ha12_feature_topology[@]}" == "2" ]] && \
+                   [[ "${cycle3ha12_feature_topology[0]}" == "$cycle3ha12_feature" ]] && \
+                   [[ "${cycle3ha12_feature_topology[1]}" == "$cycle3ha11_routing_closure" ]] && \
+                   matches_exactly expected_cycle3ha12_feature cycle3ha12_feature_actual; then
+                  cycle3ha12_feature_history_exact=true
                 fi
                 if [[ "$history_exact" == "true" ]] && \
                    [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -3788,6 +3849,26 @@ jobs:
                      [[ "${head_topology[1]}" == "$cycle3ha11_feature" ]] && \
                      matches_exactly expected_cycle3ha11_routing_closure cycle3ha11_routing_closure_actual; then
                    exact=true
+                elif [[ "$cycle3ha11_routing_closure_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" == "$cycle3ha12_feature" ]] && \
+                     [[ "$head_successor_count" == "101" ]] && \
+                     [[ "$head_first_parent_count" == "101" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$cycle3ha12_feature" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ha11_routing_closure" ]] && \
+                     matches_exactly expected_cycle3ha12_feature cycle3ha12_feature_actual; then
+                   exact=true
+                elif [[ "$cycle3ha12_feature_history_exact" == "true" ]] && \
+                     [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+                     [[ "$head_revision" != "$cycle3ha12_feature" ]] && \
+                     [[ "$head_successor_count" == "102" ]] && \
+                     [[ "$head_first_parent_count" == "102" ]] && \
+                     [[ "${#head_topology[@]}" == "2" ]] && \
+                     [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+                     [[ "${head_topology[1]}" == "$cycle3ha12_feature" ]] && \
+                     matches_exactly expected_cycle3ha12_routing_closure cycle3ha12_routing_closure_actual; then
+                   exact=true
                 fi
               fi
             fi
@@ -3795,7 +3876,7 @@ jobs:
           echo "required=$required" >> "$GITHUB_OUTPUT"
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
           if [[ "$required" == "true" && "$exact" != "true" ]]; then
-            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, Cycle 3i-a1 feature and routing closure, Cycle 3i-a2 feature and routing closure, Cycle 3j-a1 feature and routing closure, Cycle 3j-a2 feature and routing closure, Cycle 3k-a1 feature and routing closure, partial Cycle 3k-a2 SEC annual financial-screening feature and routing closure, partial Cycle 3l-a1 SEC recent watchlist-filings feature and routing closure, partial Cycle 3m-a1 manual portfolio holdings feature and routing closure, partial Cycle 3m-a2 portfolio transaction-ledger and CSV-import feature and routing closure, partial Cycle 3m-a3 portfolio split-reconciliation and historical-price-coverage feature and routing closure, partial Cycle 3m-a4 historical portfolio valuation feature and routing closure, partial Cycle 3m-a5 portfolio endpoint percentage-return feature and routing closure, partial Cycle 3m-a6 portfolio Modified Dietz period-estimate feature and routing closure, partial Cycle 3m-a7 portfolio linked period-return feature and routing closure, partial Cycle 3h-a4 quarterly compatibility-assessment feature and routing closure, partial Cycle 3h-a5 SEC quarterly source-evidence feature and routing closure, partial Cycle 3h-a6 browser-local same-period SEC observation-comparison feature and routing closure, partial Cycle 3h-a7 bounded SEC filing-context inspection feature and routing closure, partial Cycle 3h-a8 filing-declared reporting metadata feature and routing closure, partial Cycle 3h-a9 bounded XML declaration and built-entrypoint startup repair feature and routing closure, partial Cycle 3h-a10 scoped inline linking attribute repair feature and routing closure, or partial Cycle 3h-a11 bounded report-end date transformation feature and routing closure; refusing inherited evidence routing." >&2
+            echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, Cycle 3i-a1 feature and routing closure, Cycle 3i-a2 feature and routing closure, Cycle 3j-a1 feature and routing closure, Cycle 3j-a2 feature and routing closure, Cycle 3k-a1 feature and routing closure, partial Cycle 3k-a2 SEC annual financial-screening feature and routing closure, partial Cycle 3l-a1 SEC recent watchlist-filings feature and routing closure, partial Cycle 3m-a1 manual portfolio holdings feature and routing closure, partial Cycle 3m-a2 portfolio transaction-ledger and CSV-import feature and routing closure, partial Cycle 3m-a3 portfolio split-reconciliation and historical-price-coverage feature and routing closure, partial Cycle 3m-a4 historical portfolio valuation feature and routing closure, partial Cycle 3m-a5 portfolio endpoint percentage-return feature and routing closure, partial Cycle 3m-a6 portfolio Modified Dietz period-estimate feature and routing closure, partial Cycle 3m-a7 portfolio linked period-return feature and routing closure, partial Cycle 3h-a4 quarterly compatibility-assessment feature and routing closure, partial Cycle 3h-a5 SEC quarterly source-evidence feature and routing closure, partial Cycle 3h-a6 browser-local same-period SEC observation-comparison feature and routing closure, partial Cycle 3h-a7 bounded SEC filing-context inspection feature and routing closure, partial Cycle 3h-a8 filing-declared reporting metadata feature and routing closure, partial Cycle 3h-a9 bounded XML declaration and built-entrypoint startup repair feature and routing closure, partial Cycle 3h-a10 scoped inline linking attribute repair feature and routing closure, partial Cycle 3h-a11 bounded report-end date transformation feature and routing closure, or partial Cycle 3h-a12 loaded filing-context blocker explanation feature and routing closure; refusing inherited evidence routing." >&2
             exit 1
           fi
       - name: Classify exact Cycle 2x, Cycle 2z, Cycle 3a, Cycle 3b, Cycle 3c, or Cycle 3d personal filing closure
@@ -6437,7 +6518,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"
           if [[ "${{ steps.cycle2x_source.outputs.exact }}" == "true" ]]; then
             if [[ "${{ steps.cycle2x_source.outputs.cycle3e }}" == "true" ]]; then
-              echo "Cycle 3 routing recognizes the exact merge-free, exact-inventory lineage through the Cycle 3e-a coarse public promotion, Cycle 3e-b1 discovery workspace, Cycle 3g-a1 memory-only personal market-data workspace, Cycle 3g-b1 transient aggregate trend-and-risk analytics, Cycle 3h-a1 owner-invoked memory-only annual financial-history workspace, Cycle 3h-a2 owner-invoked memory-only quarterly financial-history workspace with TTM withheld pending a verified aggregation basis, Cycle 3h-a3 owner-invoked memory-only valuation-history workspace, Cycle 3i-a1 browser-local historical P/E/P/B implied-price scenarios, Cycle 3i-a2 browser-local forward DCF, reverse DCF, and sensitivity scenarios, Cycle 3j-a1 browser-local 12-check financial-quality and balance-sheet diagnostic from owner-invoked loaded annual inputs, Cycle 3j-a2 browser-local manual comparison of one selected company and up to three owner-selected peers from explicitly loaded annual and/or same-range valuation inputs, Cycle 3k-a1 catalog identity-only screening with encrypted saved criteria and no provider data, partial Cycle 3k-a2 SEC annual USD facts and matching-period margins with explicit unknown coverage and encrypted saved definitions, partial Cycle 3l-a1 owner-invoked recent SEC watchlist filing metadata with source links and explicit issuer coverage, partial Cycle 3m-a1 encrypted manual holdings with owner-invoked session-only portfolio valuation and explicit pricing coverage, partial Cycle 3m-a2 encrypted transaction-ledger history with explicit opening balances, FIFO estimates, and reviewed CSV imports, partial Cycle 3m-a3 explicit split reconciliation with exact FIFO basis and transient observed historical-price coverage, partial Cycle 3m-a4 transient end-of-day historical portfolio values with explicit observation gaps and displayed-endpoint cash-flow comparisons, partial Cycle 3m-a5 exact displayed-endpoint percentage returns for comparison intervals without external cash-flow activities, partial Cycle 3m-a6 transient Modified Dietz estimates with exact end-of-day cash-flow weights and explicit product eligibility limits, partial Cycle 3m-a7 transient linked period returns with complete external-flow-date values and exact rational chaining under the end-of-day flow convention, partial Cycle 3h-a4 browser-local quarterly compatibility assessment with bounded offline period evidence and field-level reasons while TTM remains unavailable, partial Cycle 3h-a5 selected-company SEC quarterly source observations with exact source values, unresolved period/revision metadata, session-only display and shared SEC pacing, partial Cycle 3h-a6 browser-local same-period SEC observation comparison using explicitly loaded source rows while retaining unresolved period/revision metadata and unavailable TTM, partial Cycle 3h-a7 explicit bounded SEC filing-context inspection with fresh source revalidation, fixed-source acquisition, isolated parsing and session-only correspondence display, partial Cycle 3h-a8 filing-declared reporting metadata from the same bounded primary document without changing selected fact periods or accounting eligibility, partial Cycle 3h-a9 bounded XML declaration handling and fresh-build API entrypoint startup verification without changing selected fact accounting eligibility, partial Cycle 3h-a10 exact namespace-and-element linking attribute casing without resolving links or changing selected fact accounting eligibility, and partial Cycle 3h-a11 exact TRR4 report-end date transformation with coherent worker, Node and browser validation without changing source scope or selected fact accounting eligibility. No third-party page is crawled. The only permitted public private-evidence statement remains: coarse owner-approved private security-master snapshot admission and search-measurement outcome: Pass for the exact personal scope. No private evidence artifacts, private counts, latency, digests, paths, rows, mappings, source bytes, credentials, financial reported fields or values, quarterly values, TTM inputs or outputs, provider responses, provider values, valuation values, valuation series, valuation inputs, valuation results, valuation scenarios, DCF inputs, DCF results, DCF scenarios, financial-quality inputs, financial-quality results, financial-quality checks, manual peer selections, peer-comparison inputs, peer-comparison values, peer-comparison results, peer-comparison metrics, screener criteria, screener results, portfolio holdings, quantities, cash, cost basis, portfolio valuations, ledger entries, CSV import rows, FIFO estimates, split activities, history observations, split-review dates, historical portfolio values, comparison endpoints, cash-flow comparisons, endpoint percentage returns, Modified Dietz estimates, linked period returns, quarterly compatibility inputs, quarterly compatibility assessments, selected-company SEC source observations, same-period observation selections and comparisons, filing-context correspondence inspections, filing-declared reporting metadata, bounded XML declaration and built-entrypoint startup checks, scoped inline linking attribute checks, bounded report-end date transformation checks, analytics inputs, analytics values, analytics outputs, analytics series, market-data values, payloads, or replacement Cycle 2o artifact are published."
+              echo "Cycle 3 routing recognizes the exact merge-free, exact-inventory lineage through the Cycle 3e-a coarse public promotion, Cycle 3e-b1 discovery workspace, Cycle 3g-a1 memory-only personal market-data workspace, Cycle 3g-b1 transient aggregate trend-and-risk analytics, Cycle 3h-a1 owner-invoked memory-only annual financial-history workspace, Cycle 3h-a2 owner-invoked memory-only quarterly financial-history workspace with TTM withheld pending a verified aggregation basis, Cycle 3h-a3 owner-invoked memory-only valuation-history workspace, Cycle 3i-a1 browser-local historical P/E/P/B implied-price scenarios, Cycle 3i-a2 browser-local forward DCF, reverse DCF, and sensitivity scenarios, Cycle 3j-a1 browser-local 12-check financial-quality and balance-sheet diagnostic from owner-invoked loaded annual inputs, Cycle 3j-a2 browser-local manual comparison of one selected company and up to three owner-selected peers from explicitly loaded annual and/or same-range valuation inputs, Cycle 3k-a1 catalog identity-only screening with encrypted saved criteria and no provider data, partial Cycle 3k-a2 SEC annual USD facts and matching-period margins with explicit unknown coverage and encrypted saved definitions, partial Cycle 3l-a1 owner-invoked recent SEC watchlist filing metadata with source links and explicit issuer coverage, partial Cycle 3m-a1 encrypted manual holdings with owner-invoked session-only portfolio valuation and explicit pricing coverage, partial Cycle 3m-a2 encrypted transaction-ledger history with explicit opening balances, FIFO estimates, and reviewed CSV imports, partial Cycle 3m-a3 explicit split reconciliation with exact FIFO basis and transient observed historical-price coverage, partial Cycle 3m-a4 transient end-of-day historical portfolio values with explicit observation gaps and displayed-endpoint cash-flow comparisons, partial Cycle 3m-a5 exact displayed-endpoint percentage returns for comparison intervals without external cash-flow activities, partial Cycle 3m-a6 transient Modified Dietz estimates with exact end-of-day cash-flow weights and explicit product eligibility limits, partial Cycle 3m-a7 transient linked period returns with complete external-flow-date values and exact rational chaining under the end-of-day flow convention, partial Cycle 3h-a4 browser-local quarterly compatibility assessment with bounded offline period evidence and field-level reasons while TTM remains unavailable, partial Cycle 3h-a5 selected-company SEC quarterly source observations with exact source values, unresolved period/revision metadata, session-only display and shared SEC pacing, partial Cycle 3h-a6 browser-local same-period SEC observation comparison using explicitly loaded source rows while retaining unresolved period/revision metadata and unavailable TTM, partial Cycle 3h-a7 explicit bounded SEC filing-context inspection with fresh source revalidation, fixed-source acquisition, isolated parsing and session-only correspondence display, partial Cycle 3h-a8 filing-declared reporting metadata from the same bounded primary document without changing selected fact periods or accounting eligibility, partial Cycle 3h-a9 bounded XML declaration handling and fresh-build API entrypoint startup verification without changing selected fact accounting eligibility, partial Cycle 3h-a10 exact namespace-and-element linking attribute casing without resolving links or changing selected fact accounting eligibility, partial Cycle 3h-a11 exact TRR4 report-end date transformation with coherent worker, Node and browser validation without changing source scope or selected fact accounting eligibility, and partial Cycle 3h-a12 browser-local explanation of retained filing-context blockers without new source requests or changes to numeric admission. No third-party page is crawled. The only permitted public private-evidence statement remains: coarse owner-approved private security-master snapshot admission and search-measurement outcome: Pass for the exact personal scope. No private evidence artifacts, private counts, latency, digests, paths, rows, mappings, source bytes, credentials, financial reported fields or values, quarterly values, TTM inputs or outputs, provider responses, provider values, valuation values, valuation series, valuation inputs, valuation results, valuation scenarios, DCF inputs, DCF results, DCF scenarios, financial-quality inputs, financial-quality results, financial-quality checks, manual peer selections, peer-comparison inputs, peer-comparison values, peer-comparison results, peer-comparison metrics, screener criteria, screener results, portfolio holdings, quantities, cash, cost basis, portfolio valuations, ledger entries, CSV import rows, FIFO estimates, split activities, history observations, split-review dates, historical portfolio values, comparison endpoints, cash-flow comparisons, endpoint percentage returns, Modified Dietz estimates, linked period returns, quarterly compatibility inputs, quarterly compatibility assessments, selected-company SEC source observations, same-period observation selections and comparisons, filing-context correspondence inspections, filing-declared reporting metadata, bounded XML declaration and built-entrypoint startup checks, scoped inline linking attribute checks, bounded report-end date transformation checks, filing-context blocker explanations, analytics inputs, analytics values, analytics outputs, analytics series, market-data values, payloads, or replacement Cycle 2o artifact are published."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3d }}" == "true" ]]; then
               echo "Cycle 3d, including its bounded Windows ACL, CI, API-fixture, parser-timeout, and joint Cycle 3c/3d public-promotion stages, is a durable personal local-vault source route only. No actual personal vault, recovery key, backup, restore, private payload, ACL detail, or replacement Cycle 2o artifact was generated; canonical v5 evidence remains anchored at 472cc10b8df90bee01925b2efd4fbcb614d7590c."
             elif [[ "${{ steps.cycle2x_source.outputs.cycle3c }}" == "true" ]]; then
