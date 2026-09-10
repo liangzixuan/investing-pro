@@ -94,9 +94,7 @@ describe("PersonalPortfolioValuationHistory", () => {
       expect(text(view)).toContain(
         "change in displayed endpoint values divided by the positive starting value",
       );
-      expect(text(view)).toContain(
-        "not annualized, time-weighted or money-weighted",
-      );
+      expect(text(view)).toContain("not annualized");
     },
   );
 
@@ -152,6 +150,101 @@ describe("PersonalPortfolioValuationHistory", () => {
     expect(text(view)).toContain(
       "after the first date through the last, even if they net to zero",
     );
+  });
+
+  it.each(["12.50", "-100.00", "0.00", "999999999999.99"])(
+    "displays the supplied Modified Dietz estimate %s without clamping or recalculating",
+    (percent) => {
+      result = history({
+        comparison: {
+          ...history().comparison,
+          modifiedDietzReturn: { status: "available", percent },
+        },
+      });
+      const view = render();
+      expect(metric(view, "Cash-flow-adjusted return estimate")).toBe(
+        `${percent}%Modified Dietz · end-of-day flows`,
+      );
+      expect(metric(view, "Return between compared dates")).toContain(
+        "Unavailable",
+      );
+      expect(metric(view, "Change after external cash flows")).toBe(
+        "15.00 USD",
+      );
+      expect(text(view)).toContain(
+        "2026-09-02 to 2026-09-04: first and last complete values",
+      );
+    },
+  );
+
+  it.each([
+    [
+      "insufficient_complete_dates",
+      "At least two complete dated values are required.",
+    ],
+    [
+      "non_positive_starting_value",
+      "The displayed starting value must be greater than zero.",
+    ],
+    [
+      "non_positive_weighted_capital",
+      "Starting value plus weighted external flows must be greater than zero.",
+    ],
+    [
+      "estimate_below_total_loss",
+      "Cash-flow timing produces an estimate below -100%; use the dollar comparison or a valuation at each flow.",
+    ],
+  ] as const)(
+    "explains the withheld Modified Dietz estimate for %s",
+    (reason, explanation) => {
+      result = history({
+        comparison: {
+          ...(reason === "insufficient_complete_dates"
+            ? noComparison()
+            : history().comparison),
+          modifiedDietzReturn: { status: "unavailable", reason },
+        },
+      });
+      const view = render();
+      expect(metric(view, "Cash-flow-adjusted return estimate")).toBe(
+        `Unavailable${explanation}Modified Dietz · end-of-day flows`,
+      );
+      if (reason !== "insufficient_complete_dates") {
+        expect(metric(view, "First complete value · 2026-09-02")).toBe(
+          "120.00 USD",
+        );
+        expect(metric(view, "Change after external cash flows")).toBe(
+          "15.00 USD",
+        );
+      }
+    },
+  );
+
+  it("keeps methodology in native expandable details with the timing and estimation limits", () => {
+    const view = render();
+    const details = elements(view, "details")[0];
+    expect(details).toBeDefined();
+    expect(details?.props.open).toBeUndefined();
+    expect(text(elements(details, "summary")[0])).toBe(
+      "How these comparisons are calculated",
+    );
+    expect(text(details)).toContain(
+      "a flow on the last compared date has weight zero",
+    );
+    expect(text(details)).toContain(
+      "The displayed starting value and weighted capital must both be positive",
+    );
+    expect(text(details)).toContain(
+      "Large cash flows and market swings can distort this estimate",
+    );
+    expect(text(details)).toContain("not an exact time-weighted return");
+    expect(text(details)).toContain(
+      "Dates between compared observations may still have unavailable values",
+    );
+    expect(text(view)).toContain(
+      "Percentages cover the compared dates and are not annualized",
+    );
+    expect(elements(view, "dt")).toHaveLength(6);
   });
 
   it("plots only complete dots with separate unavailable markers and an equivalent accessible table", () => {
@@ -435,6 +528,10 @@ function noComparison(): Available["comparison"] {
       status: "unavailable",
       reason: "insufficient_complete_dates",
     },
+    modifiedDietzReturn: {
+      status: "unavailable",
+      reason: "insufficient_complete_dates",
+    },
   };
 }
 function history(overrides: Partial<Available> = {}): Available {
@@ -475,6 +572,7 @@ function history(overrides: Partial<Available> = {}): Available {
       netExternalFlowsUsd: "25.00",
       changeAfterExternalFlowsUsd: "15.00",
       endpointReturn: { status: "unavailable", reason: "external_flows" },
+      modifiedDietzReturn: { status: "available", percent: "12.50" },
     },
     ...overrides,
   };

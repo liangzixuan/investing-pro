@@ -268,8 +268,9 @@ export function PersonalPortfolioHistoryCoverage({
       <p>
         Check Tiingo EOD observations for the ledger’s registered listings,
         including closed positions. The same observations value recorded
-        end-of-day holdings and cash, with an endpoint percentage return when
-        eligible. This does not prove every trading day is covered.
+        end-of-day holdings and cash, with eligible endpoint returns and
+        cash-flow-adjusted period estimates using an end-of-day flow convention.
+        This does not prove every trading day is covered.
       </p>
       <div className="portfolio-history-controls">
         <label>

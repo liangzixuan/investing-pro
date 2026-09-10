@@ -109,20 +109,57 @@ export function PersonalPortfolioValuationHistory({
             <dt>Change after external cash flows</dt>
             <dd>{money(comparison.changeAfterExternalFlowsUsd)}</dd>
           </div>
+          <div>
+            <dt>Cash-flow-adjusted return estimate</dt>
+            <dd>
+              {comparison.modifiedDietzReturn.status === "available" ? (
+                `${comparison.modifiedDietzReturn.percent}%`
+              ) : (
+                <>
+                  Unavailable
+                  <small>
+                    {dietzUnavailableReason(
+                      comparison.modifiedDietzReturn.reason,
+                    )}
+                  </small>
+                </>
+              )}
+              <small>Modified Dietz · end-of-day flows</small>
+            </dd>
+          </div>
         </dl>
         <p className="portfolio-valuation-note">
-          The percentage uses the change in displayed endpoint values divided by
-          the positive starting value. It requires no deposits or withdrawals
-          after the first date through the last, even if they net to zero. It
-          covers only the compared dates and is not annualized, time-weighted or
-          money-weighted.
+          Percentages cover the compared dates and are not annualized. Modified
+          Dietz estimates the effect of recorded cash-flow timing using an
+          end-of-day convention.
         </p>
-        <p className="portfolio-valuation-note">
-          External flows are recorded deposits minus withdrawals strictly after
-          the first compared date through the last. The USD change subtracts
-          those flows from the change in value. Dates between compared
-          observations may still have unavailable values.
-        </p>
+        <details className="portfolio-valuation-methods">
+          <summary>How these comparisons are calculated</summary>
+          <p>
+            The return between compared dates uses the change in displayed
+            endpoint values divided by the positive starting value. It requires
+            no deposits or withdrawals after the first date through the last,
+            even if they net to zero.
+          </p>
+          <p>
+            External flows are recorded deposits minus withdrawals strictly
+            after the first compared date through the last. The USD change
+            subtracts those flows from the change in value.
+          </p>
+          <p>
+            Modified Dietz divides that USD change by the displayed starting
+            value plus weighted external flows. Each signed flow is weighted by
+            the fraction of calendar days remaining after its end-of-day date; a
+            flow on the last compared date has weight zero. The displayed
+            starting value and weighted capital must both be positive.
+          </p>
+          <p>
+            Large cash flows and market swings can distort this estimate.
+            Estimates below -100% are withheld rather than clamped. Modified
+            Dietz is not an exact time-weighted return. Dates between compared
+            observations may still have unavailable values.
+          </p>
+        </details>
       </div>
 
       {result.points.length > 0 ? (
@@ -345,6 +382,24 @@ function returnUnavailableReason(
       "Deposits or withdrawals occurred between the compared endpoints, including any that offset each other.",
     non_positive_starting_value:
       "The displayed starting value must be greater than zero.",
+  }[reason];
+}
+
+function dietzUnavailableReason(
+  reason: Extract<
+    AvailableHistory["comparison"]["modifiedDietzReturn"],
+    { status: "unavailable" }
+  >["reason"],
+) {
+  return {
+    insufficient_complete_dates:
+      "At least two complete dated values are required.",
+    non_positive_starting_value:
+      "The displayed starting value must be greater than zero.",
+    non_positive_weighted_capital:
+      "Starting value plus weighted external flows must be greater than zero.",
+    estimate_below_total_loss:
+      "Cash-flow timing produces an estimate below -100%; use the dollar comparison or a valuation at each flow.",
   }[reason];
 }
 

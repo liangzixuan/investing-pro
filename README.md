@@ -141,6 +141,9 @@ endpoint percentage return is available when the compared starting value is
 positive and no deposits or withdrawals occurred between those dated values.
 Intervals with external flows retain the dollar comparison and show why the
 percentage is unavailable; offsetting deposits and withdrawals still count.
+The same panel also offers a Modified Dietz period-return estimate with explicit
+end-of-day flow weighting. It shows eligibility and approximation limits, keeps
+missing prices visible, and preserves the original dollar comparison.
 
 The stock screener scans the admitted 3,000-plus active U.S.-listed
 common-stock and ADR catalog without contacting Tiingo. One explicit action can

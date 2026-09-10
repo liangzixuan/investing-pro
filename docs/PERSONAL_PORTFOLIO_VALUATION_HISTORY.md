@@ -1,10 +1,12 @@
-# My Portfolio: historical value and endpoint returns
+# My Portfolio: historical value and period returns
 
 The fourth partial Cycle 3m-a delivery reconstructs daily end-of-day holdings
 and cash from the recorded ledger, values them using exact-date raw EOD closes,
 and compares two explicitly dated complete observations. The fifth partial
 delivery adds an endpoint percentage return for intervals without recorded
-deposits or withdrawals. TWR, XIRR, benchmark performance and tax results remain
+deposits or withdrawals. The sixth partial delivery adds a Modified Dietz
+estimate for intervals with recorded cash flows, using an explicit end-of-day
+timing convention. Exact TWR, XIRR, benchmark performance and tax results remain
 separate work.
 
 ## Workflow
@@ -27,7 +29,9 @@ alongside their values. These can differ from the requested window endpoints.
 It does not silently claim that an unpriced endpoint was valued. At least two
 distinct complete dates are required. The net external flow and dollar change
 refer only to that explicitly dated comparison interval. When eligible, the
-endpoint percentage uses the same two dates, not unpriced window boundaries.
+endpoint percentage and Modified Dietz estimate use the same two dates, not
+unpriced window boundaries. The comparison's expandable methodology describes
+their eligibility and timing conventions.
 
 ## Date and value conventions
 
@@ -119,7 +123,8 @@ can materially affect percentages for very small portfolios.
 
 For example, `100.00 USD` to `110.00 USD` with no external activity yields
 `10.00%`. With a `100.00 USD` deposit, `100.00 USD` to `210.00 USD` retains the
-`10.00 USD` dollar change after flows, but the percentage is unavailable.
+`10.00 USD` dollar change after flows, but the endpoint percentage is unavailable.
+The separate Modified Dietz estimate can account for that deposit's date.
 The panel states whether it lacks two complete values, has external flows, or
 has a nonpositive starting value. It never substitutes zero for an unavailable
 return. If multiple conditions apply, insufficient endpoints take precedence,
@@ -134,6 +139,67 @@ corporate-action and raw-price limits still apply; provider dividend observation
 do not add income. The result is not a benchmark comparison or a claim of TWR,
 XIRR or GIPS compliance.
 
+## Cash-flow-adjusted return estimate: Modified Dietz
+
+This estimate uses recorded deposit and withdrawal dates to weight the capital
+available over the compared interval. It assumes every external flow occurs
+at the end of its recorded date. This is a declared convention, not observed
+intraday timing. The existing endpoint return and dollar bridge remain visible.
+
+For displayed first value `V0`, displayed last value `V1`, and `D` UTC calendar
+days between their dates, each signed external flow `C_i` receives weight:
+
+`w_i = (D - days from first date to flow date) / D`
+
+`weighted capital = V0 + sum(w_i * C_i)`
+
+`Modified Dietz estimate (%) = (V1 - V0 - sum(C_i)) / weighted capital * 100`
+
+Only deposits and withdrawals strictly after the first through the last date
+enter either flow sum. First-date flows are already inside the initial EOD
+value. Last-date flows have zero weight but are still subtracted from value
+change. Same-date offsetting flows cancel in this estimate; flows on different
+dates can have zero net amount and still change weighted capital. Neither case
+makes the separate endpoint return eligible.
+
+The two endpoint values use the displayed rounded cents. Flow amounts and date
+weights remain exact: the engine multiplies through by `D`, checks the integer
+capital numerator, and divides only for the final percentage. It never rounds
+weighted capital to cents before eligibility or calculation. Percentages use
+two decimals, with halfway values away from zero and no negative zero, matching
+the endpoint percentage's output convention.
+
+Eligibility requires two distinct complete endpoints, positive displayed
+starting cents, and positive exact weighted capital. The panel reports those
+unavailable reasons in that order. It also withholds an exact, unrounded
+estimate strictly below `-100%`. This last condition is a conservative product
+display policy for this long-only ledger, not a statement that the formula is
+undefined. It is checked before percentage rounding; exactly `-100%` is allowed.
+There is no gain cap and no blanket exclusion for a depleted and re-funded
+portfolio. Unavailable results are never clamped or replaced with zero.
+
+For a ten-day interval starting at `100.00 USD`, a `100.00 USD` deposit on day
+five and ending value `220.00 USD` give weighted capital `150.00 USD`, dollar
+change after flows `20.00 USD`, and estimated return `13.33%`. If the deposit
+occurs on the final day, weighted capital is `100.00 USD` and the estimate is
+`20.00%`. The assumption about timing therefore matters even with equal endpoint
+values and equal net deposits.
+
+The estimate needs no complete intermediate or flow-date valuation. Existing
+missing-price rows remain visible; the tool does not claim daily linked returns
+or fill those gaps. Large flows and market swings can distort this approximation,
+and a small positive weighted capital can amplify the result. For example, a
+ten-day cash portfolio starting at `100.00 USD`, withdrawing `100.00 USD` on day
+one, depositing `100.00 USD` on day nine and paying a `30.00 USD` fee ends at
+`70.00 USD`. Its `20.00 USD` weighted capital implies `-150%`; the product
+withholds that estimate and retains the `-30.00 USD` dollar bridge.
+
+No return is annualized, no period is geometrically linked, and no exact TWR or
+XIRR is claimed. Unknown cash and unresolved split evidence still prevent
+complete affected endpoints. All values remain conditional on recorded ledger
+activities and observed raw prices; fees and recorded dividends retain their
+existing cash effects, while provider dividend observations add no cash.
+
 ## Source and methodology context
 
 Tiingo describes both raw and adjusted fields in its
@@ -141,11 +207,11 @@ Tiingo describes both raw and adjusted fields in its
 are used here with the ledger's already adjusted share quantities to avoid
 applying splits twice. CFA Institute's
 [GIPS methodology handbook](https://www.gipsstandards.org/standards/gips-standards-for-firms/gips-standards-handbook-for-firms/)
-illustrates why return calculations with external cash flows need explicit
-valuation and timing policies. The handbook was rechecked on 2026-09-10. The
-restriction to intervals without recorded external flows and the displayed-cent
-rounding rule above are this product's bounded implementation choices; they do
-not implement the handbook's full methodology or claim compliance.
+describes Modified Dietz, end-of-day flow weighting and the limitations of an
+estimate without valuations at each flow. The handbook was checked on
+2026-09-10. This product chooses EOD timing, displayed-cent endpoints and the
+eligibility rules above; it does not implement the handbook's full performance
+framework or claim GIPS compliance.
 
 ## Storage, bounds and validation
 
@@ -166,9 +232,12 @@ bounds are rejected. Calculated results are immutable.
 Synthetic tests cover exact arithmetic, same-day cash and share events, splits,
 missing dates, unknown cash, closed positions, comparison flow boundaries,
 request/session invalidation and responsive presentation. Live owner Tiingo
-coverage still requires the configured runtime. Returns for intervals with
-external flows, dividend accruals, other corporate actions and benchmarks remain
-separate work. Percentage tests include offsetting flows, dated boundaries,
+coverage still requires the configured runtime. Exact TWR, XIRR, dividend
+accruals, other corporate actions and benchmarks remain separate work.
+Percentage tests include offsetting flows, dated boundaries,
 zero starting values, gains/losses, rounding ties, exact large amounts and raw
 split-adjusted share quantities. Loader tests verify that eligibility updates
-reuse the existing observations and clear with the owner context.
+reuse the existing observations and clear with the owner context. Dietz tests
+also cover different-date weights, missing flow-date prices, zero and negative
+weighted capital, near-zero exact capital, the unrounded loss-range boundary,
+and equality with the endpoint return when no external flows occur.

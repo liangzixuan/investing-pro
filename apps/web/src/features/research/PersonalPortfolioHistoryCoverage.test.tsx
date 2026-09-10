@@ -146,6 +146,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         firstValueUsd: "250.00",
         lastValueUsd: "400.00",
         endpointReturn: { status: "available", percent: "60.00" },
+        modifiedDietzReturn: { status: "available", percent: "60.00" },
       },
     });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
@@ -181,6 +182,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         firstDate: "2026-01-03",
         lastDate: "2026-01-04",
         endpointReturn: { status: "available", percent: "0.00" },
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
       },
     });
     click(render(), "Cancel history review");
@@ -194,6 +196,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       comparison: {
         firstDate: "2026-01-03",
         endpointReturn: { status: "available", percent: "0.00" },
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
       },
     });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
@@ -226,6 +229,14 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       totalValueUsd: null,
       splitReviewListingIds: ["listing-one"],
     });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        modifiedDietzReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
+      },
+    });
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
   });
 
@@ -243,6 +254,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(point(render(), "2026-01-04")).toMatchObject({
       totalValueUsd: "420.00",
     });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
+      },
+    });
     props = {
       ...props,
       priorSplitReviewDates: { "listing-one": ["2026-01-02"] },
@@ -252,6 +268,14 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       totalValueUsd: null,
       splitReviewListingIds: ["listing-one"],
     });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        modifiedDietzReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
+      },
+    });
     expect(signal.aborted).toBe(false);
     expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(2);
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
@@ -259,6 +283,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     render();
     expect(point(render(), "2026-01-04")).toMatchObject({
       totalValueUsd: "420.00",
+    });
+    expect(valuation(render())).toMatchObject({
+      comparison: {
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
+      },
     });
     pending.resolve(market(1));
     await flush();
@@ -329,7 +358,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     "hides previous values on the first render after a %s change",
     async (kind) => {
       await review();
-      expect(valuation(render())).not.toBeNull();
+      expect(valuation(render())).toMatchObject({
+        comparison: {
+          modifiedDietzReturn: { status: "available", percent: "50.00" },
+        },
+      });
       if (kind === "ledger")
         props = { ...props, ledgerContext: "new-saved-version" };
       if (kind === "catalog")
@@ -832,6 +865,7 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         netExternalFlowsUsd: "20.00",
         changeAfterExternalFlowsUsd: "0.00",
         endpointReturn: { status: "unavailable", reason: "external_flows" },
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
       },
     });
     if (result?.status !== "available")
@@ -871,6 +905,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         netExternalFlowsUsd: null,
         changeAfterExternalFlowsUsd: null,
         endpointReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
+        modifiedDietzReturn: {
           status: "unavailable",
           reason: "insufficient_complete_dates",
         },
@@ -932,69 +970,80 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     expect(valuation(render())).toMatchObject({
       comparison: {
         endpointReturn: { status: "available", percent: "0.00" },
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
       },
     });
   });
 
-  it("withholds return for offsetting flows on an unpriced date and clears the comparison across range and session changes", async () => {
-    props = {
-      ...props,
-      ledger: {
-        ...ledger(),
-        transactions: [
-          {
-            id: "offsetting-deposit",
-            date: "2026-01-02",
-            type: "deposit",
-            listingId: null,
-            shares: null,
-            grossUsd: "25",
-            feeUsd: "0",
+  it.each([
+    ["2026-01-02", "50.00", "0.00"],
+    ["2026-01-03", "48.00", "25.00"],
+  ])(
+    "weights offsetting flows ending on %s and clears both returns across range and session changes",
+    async (withdrawalDate, estimatePercent, depositDateNetFlow) => {
+      props = {
+        ...props,
+        ledger: {
+          ...ledger(),
+          transactions: [
+            {
+              id: "offsetting-deposit",
+              date: "2026-01-02",
+              type: "deposit",
+              listingId: null,
+              shares: null,
+              grossUsd: "25",
+              feeUsd: "0",
+            },
+            {
+              id: "offsetting-withdrawal",
+              date: withdrawalDate,
+              type: "withdrawal",
+              listingId: null,
+              shares: null,
+              grossUsd: "25",
+              feeUsd: "0",
+            },
+            ...ledger().transactions,
+          ],
+        },
+      };
+      await review();
+      expect(point(render(), "2026-01-02")).toMatchObject({
+        totalValueUsd: null,
+        netExternalFlowUsd: depositDateNetFlow,
+      });
+      expect(valuation(render())).toMatchObject({
+        comparison: {
+          firstDate: "2026-01-01",
+          lastDate: "2026-01-04",
+          netExternalFlowsUsd: "0.00",
+          changeAfterExternalFlowsUsd: "100.00",
+          endpointReturn: { status: "unavailable", reason: "external_flows" },
+          modifiedDietzReturn: {
+            status: "available",
+            percent: estimatePercent,
           },
-          {
-            id: "offsetting-withdrawal",
-            date: "2026-01-02",
-            type: "withdrawal",
-            listingId: null,
-            shares: null,
-            grossUsd: "25",
-            feeUsd: "0",
-          },
-          ...ledger().transactions,
-        ],
-      },
-    };
-    await review();
-    expect(point(render(), "2026-01-02")).toMatchObject({
-      totalValueUsd: null,
-      netExternalFlowUsd: "0.00",
-    });
-    expect(valuation(render())).toMatchObject({
-      comparison: {
-        firstDate: "2026-01-01",
-        lastDate: "2026-01-04",
-        netExternalFlowsUsd: "0.00",
-        changeAfterExternalFlowsUsd: "100.00",
-        endpointReturn: { status: "unavailable", reason: "external_flows" },
-      },
-    });
-    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
-    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(1);
+        },
+      });
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+      expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(1);
 
-    changeRange("1m");
-    expect(valuation(render())).toBeNull();
-    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
-    api.fetchPersonalMarketOverview.mockRejectedValueOnce(
-      new PersonalWorkspaceApiError("session_unavailable"),
-    );
-    click(render(), "Review history");
-    await flush();
-    expect(valuation(render())).toBeNull();
-    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
-    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
-    expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(2);
-    expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
-  });
+      changeRange("1m");
+      expect(valuation(render())).toBeNull();
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+      api.fetchPersonalMarketOverview.mockRejectedValueOnce(
+        new PersonalWorkspaceApiError("session_unavailable"),
+      );
+      click(render(), "Review history");
+      await flush();
+      expect(valuation(render())).toBeNull();
+      expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+      expect(api.searchPersonalSecurities).toHaveBeenCalledTimes(2);
+      expect(api.savePersonalPortfolio).not.toHaveBeenCalled();
+    },
+  );
 });
 
 function digest(character: string): `sha256:${string}` {

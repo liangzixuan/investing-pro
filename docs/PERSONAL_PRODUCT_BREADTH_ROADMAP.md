@@ -1197,6 +1197,22 @@ request and session invalidation are reused, with no schema or persistence
 change. Flow-adjusted methods, TWR, XIRR, other corporate actions and benchmark
 comparisons remain open.
 
+### Sixth partial Cycle 3m-a delivery
+
+[Modified Dietz period-return estimates](./PERSONAL_PORTFOLIO_VALUATION_HISTORY.md#cash-flow-adjusted-return-estimate-modified-dietz)
+weight recorded deposits and withdrawals by remaining calendar days under a
+declared end-of-day convention. They use the same complete dated endpoints,
+displayed USD cents and exact arithmetic, preserving the endpoint percentage
+and dollar bridge. Positive starting value and exact weighted capital are
+required; estimates strictly below `-100%` are withheld before rounding under
+the product's supported loss-range policy.
+
+The panel labels the result as an estimate and explains timing, large-flow
+distortion and eligibility in an accessible methodology disclosure. Missing
+flow-date prices stay visible; no new data request, schema or persistence is
+introduced. This does not close exact TWR, XIRR, benchmark or broader
+corporate-action requirements.
+
 ### Cycle 3n — background alerts and delivery
 
 Target: turn immediate local rule evaluation into a reliable monitoring
@@ -1308,16 +1324,16 @@ loads are delivered. Their configured live coverage and sampled values still
 require validation; the seven-metric screen does not close the broader
 30-core-metric/500-security gate.
 
-Historical portfolio values and the dated dollar bridge are delivered. The
-current fifth partial 3m-a slice adds percentage return between complete
-observed endpoints for intervals with no deposits or withdrawals. It makes
-positive starting value, rounding and date boundaries explicit; offsetting
-external flows still make the interval ineligible. Complete the reviewed feature
-and release gates described in the current-work guide.
+Historical portfolio values, the dated dollar bridge and eligible endpoint
+percentages are delivered. The current sixth partial 3m-a slice adds a Modified
+Dietz estimate under an explicit end-of-day cash-flow convention, with exact
+weighted-capital eligibility and visible approximation limits. Complete the
+reviewed feature and release gates described in the current-work guide.
 
-Next assess a cash-flow-adjusted period-return estimate with explicit timing
-and coverage rules, retaining the dollar bridge when a percentage is
-unavailable. TWR, XIRR, dividend accruals and other corporate actions remain
+Next assess linked period returns with explicit valuation requirements at each
+external flow and consistent daily timing. Do not infer missing flow-date prices
+or describe a timing approximation as exact intraday performance. XIRR,
+benchmark comparisons, dividend accruals and other corporate actions remain
 separate work requiring their own methodology and evidence.
 
 Alerts and exports follow as their inputs and source permissions become

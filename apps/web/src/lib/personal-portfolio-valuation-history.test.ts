@@ -183,6 +183,7 @@ describe("portfolio end-of-day valuation history", () => {
       netExternalFlowsUsd: "0.00",
       changeAfterExternalFlowsUsd: "9.00",
       endpointReturn: { status: "available", percent: "6.92" },
+      modifiedDietzReturn: { status: "available", percent: "6.92" },
     });
   });
 
@@ -289,6 +290,10 @@ describe("portfolio end-of-day valuation history", () => {
       netExternalFlowsUsd: null,
       changeAfterExternalFlowsUsd: null,
       endpointReturn: {
+        status: "unavailable",
+        reason: "insufficient_complete_dates",
+      },
+      modifiedDietzReturn: {
         status: "unavailable",
         reason: "insufficient_complete_dates",
       },
@@ -434,6 +439,7 @@ describe("portfolio end-of-day valuation history", () => {
       netExternalFlowsUsd: "0.00",
       changeAfterExternalFlowsUsd: "0.00",
       endpointReturn: { status: "available", percent: "0.00" },
+      modifiedDietzReturn: { status: "available", percent: "0.00" },
     });
   });
 
@@ -454,6 +460,7 @@ describe("portfolio end-of-day valuation history", () => {
       netExternalFlowsUsd: "2.00",
       changeAfterExternalFlowsUsd: "6.00",
       endpointReturn: { status: "unavailable", reason: "external_flows" },
+      modifiedDietzReturn: { status: "available", percent: "4.33" },
     });
   });
 
@@ -471,8 +478,13 @@ describe("portfolio end-of-day valuation history", () => {
           status: "unavailable",
           reason: "insufficient_complete_dates",
         },
+        modifiedDietzReturn: {
+          status: "unavailable",
+          reason: "insufficient_complete_dates",
+        },
       });
       expect(Object.isFrozen(comparison.endpointReturn)).toBe(true);
+      expect(Object.isFrozen(comparison.modifiedDietzReturn)).toBe(true);
     }
   });
 
@@ -492,6 +504,10 @@ describe("portfolio end-of-day valuation history", () => {
       netExternalFlowUsd: "0.00",
     });
     expect(result.comparison.endpointReturn).toEqual({
+      status: "available",
+      percent: "0.00",
+    });
+    expect(result.comparison.modifiedDietzReturn).toEqual({
       status: "available",
       percent: "0.00",
     });
@@ -516,6 +532,7 @@ describe("portfolio end-of-day valuation history", () => {
     expect(Object.isFrozen(result.coverage)).toBe(true);
     expect(Object.isFrozen(result.comparison)).toBe(true);
     expect(Object.isFrozen(result.comparison.endpointReturn)).toBe(true);
+    expect(Object.isFrozen(result.comparison.modifiedDietzReturn)).toBe(true);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
   });
 });
@@ -558,6 +575,10 @@ describe("portfolio endpoint percentage returns", () => {
         status: "available",
         percent,
       });
+      expect(result.comparison.modifiedDietzReturn).toEqual({
+        status: "available",
+        percent,
+      });
     },
   );
 
@@ -591,6 +612,10 @@ describe("portfolio endpoint percentage returns", () => {
         status: "available",
         percent,
       });
+      expect(result.comparison.modifiedDietzReturn).toEqual({
+        status: "available",
+        percent,
+      });
     },
   );
 
@@ -603,6 +628,7 @@ describe("portfolio endpoint percentage returns", () => {
       lastValueUsd: "0.00",
       changeAfterExternalFlowsUsd: "-100.00",
       endpointReturn: { status: "available", percent: "-100.00" },
+      modifiedDietzReturn: { status: "available", percent: "-100.00" },
     });
   });
 
@@ -630,6 +656,10 @@ describe("portfolio endpoint percentage returns", () => {
       expect(result.comparison).toMatchObject({
         firstValueUsd: "0.00",
         endpointReturn: {
+          status: "unavailable",
+          reason: "non_positive_starting_value",
+        },
+        modifiedDietzReturn: {
           status: "unavailable",
           reason: "non_positive_starting_value",
         },
@@ -732,6 +762,7 @@ describe("portfolio endpoint percentage returns", () => {
       netExternalFlowsUsd: "0.00",
       changeAfterExternalFlowsUsd: "7.00",
       endpointReturn: { status: "available", percent: "5.38" },
+      modifiedDietzReturn: { status: "available", percent: "5.38" },
     });
   });
 
@@ -751,9 +782,317 @@ describe("portfolio endpoint percentage returns", () => {
         firstValueUsd: "130.00",
         lastValueUsd: "130.00",
         endpointReturn: { status: "available", percent: "0.00" },
+        modifiedDietzReturn: { status: "available", percent: "0.00" },
       });
     },
   );
+});
+
+describe("portfolio Modified Dietz period estimates", () => {
+  function flowPortfolio(
+    transactions: readonly PersonalPortfolioLedgerActivity[],
+  ) {
+    const base = ledger(transactions);
+    return {
+      ...base,
+      opening: {
+        ...base.opening,
+        cashUsd: "90",
+        holdings: [{ ...base.opening.holdings[0]!, shares: "1" }],
+      },
+    };
+  }
+
+  function cashPortfolio(
+    transactions: readonly PersonalPortfolioLedgerActivity[],
+    cashUsd = "100",
+  ) {
+    const base = ledger(transactions);
+    return { ...base, opening: { ...base.opening, cashUsd, holdings: [] } };
+  }
+
+  it.each([
+    ["deposit", "100", "6.00"],
+    ["withdrawal", "50", "15.00"],
+  ] as const)(
+    "weights a %s by the calendar days remaining after its date",
+    (type, amount, percent) => {
+      const result = valid(
+        input(
+          flowPortfolio([cash("flow", type, "2026-09-02", amount)]),
+          history([bar("2026-09-01"), bar("2026-09-04", "20")]),
+        ),
+      );
+      expect(result.comparison).toMatchObject({
+        firstValueUsd: "100.00",
+        changeAfterExternalFlowsUsd: "10.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+        modifiedDietzReturn: { status: "available", percent },
+      });
+      expect(result.coverage.missingPriceDates).toBe(2);
+    },
+  );
+
+  it.each([
+    ["deposit", "withdrawal", "2026-09-02", "10.00"],
+    ["deposit", "withdrawal", "2026-09-03", "8.57"],
+    ["withdrawal", "deposit", "2026-09-03", "12.00"],
+  ] as const)(
+    "retains timing for offsetting %s and %s on %s",
+    (firstType, secondType, secondDate, percent) => {
+      const source = flowPortfolio([
+        cash("first-flow", firstType, "2026-09-02", "50"),
+        cash("second-flow", secondType, secondDate, "50"),
+      ]);
+      const result = valid(
+        input(source, history([bar("2026-09-01"), bar("2026-09-04", "20")])),
+      );
+      expect(result.comparison).toMatchObject({
+        netExternalFlowsUsd: "0.00",
+        changeAfterExternalFlowsUsd: "10.00",
+        endpointReturn: { status: "unavailable", reason: "external_flows" },
+        modifiedDietzReturn: { status: "available", percent },
+      });
+    },
+  );
+
+  it.each(["deposit", "withdrawal"] as const)(
+    "gives a last-date %s zero weight while subtracting it from the gain",
+    (type) => {
+      const result = valid(
+        input(
+          flowPortfolio([cash("last-flow", type, "2026-09-04", "50")]),
+          history([bar("2026-09-01"), bar("2026-09-04", "20")]),
+        ),
+      );
+      expect(result.comparison).toMatchObject({
+        changeAfterExternalFlowsUsd: "10.00",
+        modifiedDietzReturn: { status: "available", percent: "10.00" },
+      });
+    },
+  );
+
+  it("uses actual complete endpoints and excludes first-date and later flows", () => {
+    const source = flowPortfolio([
+      cash("first-flow", "deposit", "2026-09-02", "10"),
+      cash("later-flow", "withdrawal", "2026-09-04", "50"),
+    ]);
+    const result = valid(
+      input(source, history([bar("2026-09-02"), bar("2026-09-03", "21")])),
+    );
+    expect(result.comparison).toMatchObject({
+      firstDate: "2026-09-02",
+      lastDate: "2026-09-03",
+      firstValueUsd: "110.00",
+      lastValueUsd: "121.00",
+      netExternalFlowsUsd: "0.00",
+      modifiedDietzReturn: { status: "available", percent: "10.00" },
+    });
+  });
+
+  it("excludes pre-window flow amounts and weights from the selected comparison", () => {
+    const source = flowPortfolio([
+      cash("deposit", "deposit", "2026-09-02", "20"),
+      cash("withdrawal", "withdrawal", "2026-09-02", "5"),
+    ]);
+    const result = valid({
+      ...input(source, history([bar("2026-09-03"), bar("2026-09-04", "21")])),
+      startDate: "2026-09-03",
+    });
+    expect(result.comparison).toMatchObject({
+      firstValueUsd: "115.00",
+      lastValueUsd: "126.00",
+      netExternalFlowsUsd: "0.00",
+      modifiedDietzReturn: { status: "available", percent: "9.57" },
+    });
+  });
+
+  it("counts leap days and uses end-of-day weights for a cash-only portfolio", () => {
+    const source = cashPortfolio([
+      cash("deposit", "deposit", "2024-02-28", "100"),
+      cash("fee", "fee", "2024-03-01", "10"),
+    ]);
+    const result = valid({
+      ledger: {
+        ...source,
+        opening: { ...source.opening, asOfDate: "2024-02-27" },
+      },
+      startDate: "2024-02-27",
+      endDate: "2024-03-01",
+      histories: [],
+    });
+    expect(result.points).toHaveLength(4);
+    expect(result.comparison).toMatchObject({
+      firstValueUsd: "100.00",
+      lastValueUsd: "190.00",
+      netExternalFlowsUsd: "100.00",
+      changeAfterExternalFlowsUsd: "-10.00",
+      modifiedDietzReturn: { status: "available", percent: "-6.00" },
+    });
+  });
+
+  it.each([
+    ["dividend", "0.75", "0.01"],
+    ["fee", "0.75", "-0.01"],
+    ["fee", "0.74", "0.00"],
+  ] as const)(
+    "rounds the weighted estimate after a %s of %s without negative zero",
+    (type, amount, percent) => {
+      const source = cashPortfolio(
+        [
+          cash("deposit", "deposit", "2026-09-02", "10000"),
+          cash("internal", type, "2026-09-03", amount),
+        ],
+        "10000",
+      );
+      const result = valid({
+        ...input(source),
+        histories: [],
+        endDate: "2026-09-03",
+      });
+      expect(result.comparison.modifiedDietzReturn).toEqual({
+        status: "available",
+        percent,
+      });
+    },
+  );
+
+  it("keeps positive fractional-cent weighted capital exact without rounding it to zero", () => {
+    const source = cashPortfolio(
+      [cash("withdrawal", "withdrawal", "2026-09-02", "0.01")],
+      "0.01",
+    );
+    const result = valid({ ...input(source), histories: [] });
+    expect(result.comparison).toMatchObject({
+      firstValueUsd: "0.01",
+      lastValueUsd: "0.00",
+      netExternalFlowsUsd: "-0.01",
+      modifiedDietzReturn: { status: "available", percent: "0.00" },
+    });
+  });
+
+  it.each([
+    ["50", "150"],
+    ["200", "300"],
+  ])(
+    "withholds zero or negative weighted capital despite a valid ledger (%s gain)",
+    (dividend, withdrawal) => {
+      const source = cashPortfolio([
+        cash("dividend", "dividend", "2026-09-02", dividend),
+        cash("withdrawal", "withdrawal", "2026-09-02", withdrawal),
+      ]);
+      const result = valid({ ...input(source), histories: [] });
+      expect(result.comparison).toMatchObject({
+        firstValueUsd: "100.00",
+        lastValueUsd: "0.00",
+        changeAfterExternalFlowsUsd: `${dividend}.00`,
+        modifiedDietzReturn: {
+          status: "unavailable",
+          reason: "non_positive_weighted_capital",
+        },
+      });
+    },
+  );
+
+  it("uses starting-value eligibility before capital or loss checks", () => {
+    const source = cashPortfolio(
+      [cash("deposit", "deposit", "2026-09-02", "100")],
+      "0",
+    );
+    const result = valid({ ...input(source), histories: [] });
+    expect(result.comparison.modifiedDietzReturn).toEqual({
+      status: "unavailable",
+      reason: "non_positive_starting_value",
+    });
+  });
+
+  it.each([
+    ["20000", { status: "available", percent: "-100.00" }],
+    [
+      "20000.01",
+      { status: "unavailable", reason: "estimate_below_total_loss" },
+    ],
+    ["30000", { status: "unavailable", reason: "estimate_below_total_loss" }],
+  ] as const)(
+    "checks the exact total-loss cutoff before rounding a fee of %s",
+    (fee, expected) => {
+      const source = cashPortfolio(
+        [
+          cash("empty", "withdrawal", "2026-09-02", "100000"),
+          cash("refill", "deposit", "2026-09-10", "100000"),
+          cash("fee", "fee", "2026-09-11", fee),
+        ],
+        "100000",
+      );
+      const result = valid({
+        ...input(source),
+        histories: [],
+        endDate: "2026-09-11",
+      });
+      expect(result.comparison.modifiedDietzReturn).toEqual(expected);
+      expect(result.comparison.changeAfterExternalFlowsUsd).toBe(
+        `-${fee.includes(".") ? fee : `${fee}.00`}`,
+      );
+    },
+  );
+
+  it.each([
+    [[], "0.00"],
+    [[cash("gain", "dividend", "2026-09-11", "100")], "500.00"],
+  ] as const)(
+    "supports emptied and refilled periods without a blanket exclusion or gain cap %#",
+    (ending, percent) => {
+      const source = cashPortfolio([
+        cash("empty", "withdrawal", "2026-09-02", "100"),
+        cash("refill", "deposit", "2026-09-10", "100"),
+        ...ending,
+      ]);
+      const result = valid({
+        ...input(source),
+        histories: [],
+        endDate: "2026-09-11",
+      });
+      expect(result.points[1]?.totalValueUsd).toBe("0.00");
+      expect(result.comparison.modifiedDietzReturn).toEqual({
+        status: "available",
+        percent,
+      });
+    },
+  );
+
+  it("cancels large early flow weights exactly without changing the comparison", () => {
+    const currentFlows = [cash("current", "deposit", "2026-09-02", "50")];
+    const base = flowPortfolio(currentFlows);
+    const source = {
+      ...base,
+      opening: {
+        ...base.opening,
+        asOfDate: "2000-01-01",
+        cashUsd: "999999999900",
+        holdings: [{ ...base.opening.holdings[0]!, confirmedOn: "2000-01-01" }],
+      },
+    };
+    // A large withdrawal/deposit pair years before the selected window leaves
+    // the baseline unchanged but contributes large, unequal historical weights.
+    const historical = {
+      ...source,
+      transactions: [
+        cash("old-out", "withdrawal", "2000-01-02", "999999999900"),
+        cash("old-in", "deposit", "2000-01-03", "999999999900"),
+        ...currentFlows,
+      ],
+    };
+    const observations = history([
+      bar("2026-09-01"),
+      bar("2026-09-04", "100000000010"),
+    ]);
+    const result = valid(input(historical, observations));
+    expect(result.comparison.modifiedDietzReturn).toEqual({
+      status: "available",
+      percent: "10.00",
+    });
+    expect(result).toEqual(valid(input(source, observations)));
+  });
 });
 
 describe("portfolio valuation split lineage", () => {

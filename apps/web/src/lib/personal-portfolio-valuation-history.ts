@@ -43,6 +43,17 @@ export type PersonalPortfolioEndpointReturn =
         | "non_positive_starting_value";
     }>;
 
+export type PersonalPortfolioModifiedDietzReturn =
+  | Readonly<{ status: "available"; percent: string }>
+  | Readonly<{
+      status: "unavailable";
+      reason:
+        | "insufficient_complete_dates"
+        | "non_positive_starting_value"
+        | "non_positive_weighted_capital"
+        | "estimate_below_total_loss";
+    }>;
+
 export type PersonalPortfolioValuationHistoryResult =
   | Readonly<{ status: "invalid"; reason: string }>
   | Readonly<{
@@ -66,15 +77,18 @@ export type PersonalPortfolioValuationHistoryResult =
         netExternalFlowsUsd: string | null;
         changeAfterExternalFlowsUsd: string | null;
         endpointReturn: PersonalPortfolioEndpointReturn;
+        modifiedDietzReturn: PersonalPortfolioModifiedDietzReturn;
       }>;
     }>;
 
 type Price = Readonly<{ coefficient: bigint; places: number }>;
 type Endpoint = Readonly<{
   date: string;
+  day: bigint;
   value: bigint;
   externalFlows: bigint;
   externalFlowCount: number;
+  externalFlowDaySum: bigint;
 }>;
 const DAY_MS = 86_400_000;
 const MAX_DAYS = 3_660;
@@ -250,6 +264,7 @@ function calculate(
   let activityIndex = 0;
   let externalFlows = 0n;
   let externalFlowCount = 0;
+  let externalFlowDaySum = 0n;
   let first: Endpoint | null = null;
   let last: Endpoint | null = null;
   const points: PersonalPortfolioValuationHistoryPoint[] = [];
@@ -312,6 +327,12 @@ function calculate(
             cashChange = -gross;
             break;
         }
+        if (activity.type === "deposit" || activity.type === "withdrawal") {
+          const flowDay = BigInt(
+            (Date.parse(`${activity.date}T00:00:00.000Z`) - startTime) / DAY_MS,
+          );
+          externalFlowDaySum += cashChange * flowDay;
+        }
         if (cash !== null) cash += cashChange;
       }
       activityIndex += 1;
@@ -344,7 +365,14 @@ function calculate(
         ? pricedValue + cash * priceScale
         : null;
     if (value !== null) {
-      const endpoint = { date, value, externalFlows, externalFlowCount };
+      const endpoint = {
+        date,
+        day: BigInt((instant - startTime) / DAY_MS),
+        value,
+        externalFlows,
+        externalFlowCount,
+        externalFlowDaySum,
+      };
       first ??= endpoint;
       last = endpoint;
       coverage.completeDates += 1;
@@ -371,6 +399,11 @@ function calculate(
     );
   }
   const endpointReturn = calculateEndpointReturn(first, last, priceScale);
+  const modifiedDietzReturn = calculateModifiedDietzReturn(
+    first,
+    last,
+    priceScale,
+  );
   const comparison =
     first !== null && last !== null && first.date !== last.date
       ? {
@@ -387,6 +420,7 @@ function calculate(
               (last.externalFlows - first.externalFlows),
           ),
           endpointReturn,
+          modifiedDietzReturn,
         }
       : {
           firstDate: null,
@@ -396,6 +430,7 @@ function calculate(
           netExternalFlowsUsd: null,
           changeAfterExternalFlowsUsd: null,
           endpointReturn,
+          modifiedDietzReturn,
         };
   return Object.freeze({
     status: "available",
@@ -434,6 +469,51 @@ function calculateEndpointReturn(
   return Object.freeze({
     status: "available",
     percent: cents(roundScaledCents(changeCents * 10_000n, startingCents)),
+  });
+}
+
+function calculateModifiedDietzReturn(
+  first: Endpoint | null,
+  last: Endpoint | null,
+  scale: bigint,
+): PersonalPortfolioModifiedDietzReturn {
+  if (first === null || last === null || first.date === last.date)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "insufficient_complete_dates",
+    });
+  const startingCents = roundScaledCents(first.value, scale);
+  if (startingCents <= 0n)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "non_positive_starting_value",
+    });
+  const days = last.day - first.day;
+  const netFlows = last.externalFlows - first.externalFlows;
+  // Signed flows receive (last day - flow day) / days end-of-day weights.
+  // Endpoint differences discard first-date and earlier flows exactly. Day
+  // indices are relative to the requested start; every term remains an integer.
+  const capitalDays =
+    startingCents * days +
+    last.day * netFlows -
+    (last.externalFlowDaySum - first.externalFlowDaySum);
+  if (capitalDays <= 0n)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "non_positive_weighted_capital",
+    });
+  const gainDays =
+    (roundScaledCents(last.value, scale) - startingCents - netFlows) * days;
+  // Product eligibility for this long-only estimate, checked before rounding;
+  // this cutoff is not a restriction in the Modified Dietz formula itself.
+  if (gainDays < -capitalDays)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "estimate_below_total_loss",
+    });
+  return Object.freeze({
+    status: "available",
+    percent: cents(roundScaledCents(gainDays * 10_000n, capitalDays)),
   });
 }
 
