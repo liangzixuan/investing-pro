@@ -12530,7 +12530,7 @@ async function localResearchVaultBoundaryViolations(): Promise<string[]> {
     scripts: {
       build: "tsc --noEmit",
       typecheck: "tsc --noEmit",
-      test: "vitest run",
+      test: "vitest run --no-file-parallelism",
     },
   };
   if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest))
