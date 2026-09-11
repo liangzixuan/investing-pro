@@ -2103,6 +2103,69 @@ jobs:
           fi
           echo "exact=$exact" >> "$GITHUB_OUTPUT"
 
+      - name: Classify exact partial Cycle 3k-a9 non-evidence routing closure
+        id: cycle3ka9_route
+        shell: bash
+        run: |
+          exact=false
+          cycle2z_baseline="62c01dafe305ddd43c75688e0225163b3abdf6df"
+          prior_closure="1e8f83086a6e5277b2ac3fec80988d9e92b13f3d"
+          feature="5912e63402c660ebd5a6856aebe8d0dbcf08f611"
+          expected=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+            "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+            "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+            "M" "scripts/classify-filing-parser-cross-engine-source.sh"
+          )
+          expected_feature=(
+            "M" ".github/workflows/filing-parser-acceptance.yml"
+            "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+            "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+            "A" "scripts/classify-filing-parser-cross-engine-source.sh"
+            "M" "scripts/verify-boundaries.ts"
+          )
+          matches_exactly() {
+            local -n expected_values="$1"
+            local -n actual_values="$2"
+            if [[ "${#actual_values[@]}" != "${#expected_values[@]}" ]]; then return 1; fi
+            for index in "${!expected_values[@]}"; do
+              if [[ "${actual_values[$index]}" != "${expected_values[$index]}" ]]; then return 1; fi
+            done
+          }
+          if git cat-file -e "$cycle2z_baseline^{commit}" && \
+             git cat-file -e "$prior_closure^{commit}" && \
+             git cat-file -e "$feature^{commit}"; then
+            read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
+            read -r -a feature_topology <<< "$(git rev-list --parents -n 1 "$feature")"
+            mapfile -d '' -t actual < <(
+              git diff --name-status --no-renames -z "$feature" HEAD --
+            )
+            mapfile -d '' -t feature_actual < <(
+              git diff --name-status --no-renames -z "$prior_closure" "$feature" --
+            )
+            if [[ "$(git merge-base "$cycle2z_baseline" HEAD)" == "$cycle2z_baseline" ]] && \
+               [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline".."$feature")" == "119" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline".."$feature")" == "119" ]] && \
+               [[ "$(git rev-list --count "$cycle2z_baseline"..HEAD)" == "120" ]] && \
+               [[ "$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)" == "120" ]] && \
+               [[ "${#feature_topology[@]}" == "2" ]] && \
+               [[ "${feature_topology[0]}" == "$feature" ]] && \
+               [[ "${feature_topology[1]}" == "$prior_closure" ]] && \
+               [[ "${#head_topology[@]}" == "2" ]] && \
+               [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+               [[ "${head_topology[1]}" == "$feature" ]] && \
+               matches_exactly expected actual && \
+               matches_exactly expected_feature feature_actual; then
+              exact=true
+            fi
+          fi
+          echo "exact=$exact" >> "$GITHUB_OUTPUT"
+
       - name: Install pinned pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -2129,11 +2192,11 @@ jobs:
         env:
           CI: "true"
           FILING_PAYLOAD_CUSTODY_EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
-        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' && steps.cycle3ha6_route.outputs.exact != 'true' && steps.cycle3ha7_route.outputs.exact != 'true' && steps.cycle3ha8_route.outputs.exact != 'true' && steps.cycle3ha9_route.outputs.exact != 'true' && steps.cycle3ha10_route.outputs.exact != 'true' && steps.cycle3ha11_route.outputs.exact != 'true' && steps.cycle3ha12_route.outputs.exact != 'true' && steps.cycle3ha13_route.outputs.exact != 'true' && steps.cycle3ha14_route.outputs.exact != 'true' && steps.cycle3ka3_route.outputs.exact != 'true' && steps.cycle3ka4_route.outputs.exact != 'true' && steps.cycle3ka5_route.outputs.exact != 'true' && steps.cycle3ka6_route.outputs.exact != 'true' && steps.cycle3ka7_route.outputs.exact != 'true' && steps.cycle3ka8_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' && steps.cycle3ha6_route.outputs.exact != 'true' && steps.cycle3ha7_route.outputs.exact != 'true' && steps.cycle3ha8_route.outputs.exact != 'true' && steps.cycle3ha9_route.outputs.exact != 'true' && steps.cycle3ha10_route.outputs.exact != 'true' && steps.cycle3ha11_route.outputs.exact != 'true' && steps.cycle3ha12_route.outputs.exact != 'true' && steps.cycle3ha13_route.outputs.exact != 'true' && steps.cycle3ha14_route.outputs.exact != 'true' && steps.cycle3ka3_route.outputs.exact != 'true' && steps.cycle3ka4_route.outputs.exact != 'true' && steps.cycle3ka5_route.outputs.exact != 'true' && steps.cycle3ka6_route.outputs.exact != 'true' && steps.cycle3ka7_route.outputs.exact != 'true' && steps.cycle3ka8_route.outputs.exact != 'true' && steps.cycle3ka9_route.outputs.exact != 'true' }}
         run: pnpm filing-payload-custody:acceptance
 
       - name: Verify canonical evidence against the exact commit
-        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' && steps.cycle3ha6_route.outputs.exact != 'true' && steps.cycle3ha7_route.outputs.exact != 'true' && steps.cycle3ha8_route.outputs.exact != 'true' && steps.cycle3ha9_route.outputs.exact != 'true' && steps.cycle3ha10_route.outputs.exact != 'true' && steps.cycle3ha11_route.outputs.exact != 'true' && steps.cycle3ha12_route.outputs.exact != 'true' && steps.cycle3ha13_route.outputs.exact != 'true' && steps.cycle3ha14_route.outputs.exact != 'true' && steps.cycle3ka3_route.outputs.exact != 'true' && steps.cycle3ka4_route.outputs.exact != 'true' && steps.cycle3ka5_route.outputs.exact != 'true' && steps.cycle3ka6_route.outputs.exact != 'true' && steps.cycle3ka7_route.outputs.exact != 'true' && steps.cycle3ka8_route.outputs.exact != 'true' }}
+        if: ${{ steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' && steps.cycle3ha6_route.outputs.exact != 'true' && steps.cycle3ha7_route.outputs.exact != 'true' && steps.cycle3ha8_route.outputs.exact != 'true' && steps.cycle3ha9_route.outputs.exact != 'true' && steps.cycle3ha10_route.outputs.exact != 'true' && steps.cycle3ha11_route.outputs.exact != 'true' && steps.cycle3ha12_route.outputs.exact != 'true' && steps.cycle3ha13_route.outputs.exact != 'true' && steps.cycle3ha14_route.outputs.exact != 'true' && steps.cycle3ka3_route.outputs.exact != 'true' && steps.cycle3ka4_route.outputs.exact != 'true' && steps.cycle3ka5_route.outputs.exact != 'true' && steps.cycle3ka6_route.outputs.exact != 'true' && steps.cycle3ka7_route.outputs.exact != 'true' && steps.cycle3ka8_route.outputs.exact != 'true' && steps.cycle3ka9_route.outputs.exact != 'true' }}
         shell: bash
         env:
           EVIDENCE_PATH: ${{ runner.temp }}/research-cockpit-filing-payload-custody-v1.json
@@ -2149,7 +2212,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID"
 
       - name: Upload filing payload custody evidence
-        if: ${{ success() && steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' && steps.cycle3ha6_route.outputs.exact != 'true' && steps.cycle3ha7_route.outputs.exact != 'true' && steps.cycle3ha8_route.outputs.exact != 'true' && steps.cycle3ha9_route.outputs.exact != 'true' && steps.cycle3ha10_route.outputs.exact != 'true' && steps.cycle3ha11_route.outputs.exact != 'true' && steps.cycle3ha12_route.outputs.exact != 'true' && steps.cycle3ha13_route.outputs.exact != 'true' && steps.cycle3ha14_route.outputs.exact != 'true' && steps.cycle3ka3_route.outputs.exact != 'true' && steps.cycle3ka4_route.outputs.exact != 'true' && steps.cycle3ka5_route.outputs.exact != 'true' && steps.cycle3ka6_route.outputs.exact != 'true' && steps.cycle3ka7_route.outputs.exact != 'true' && steps.cycle3ka8_route.outputs.exact != 'true' }}
+        if: ${{ success() && steps.cycle3ka1_route.outputs.exact != 'true' && steps.cycle3ka2_route.outputs.exact != 'true' && steps.cycle3la1_route.outputs.exact != 'true' && steps.cycle3ma1_route.outputs.exact != 'true' && steps.cycle3ma2_route.outputs.exact != 'true' && steps.cycle3ma3_route.outputs.exact != 'true' && steps.cycle3ma4_route.outputs.exact != 'true' && steps.cycle3ma5_route.outputs.exact != 'true' && steps.cycle3ma6_route.outputs.exact != 'true' && steps.cycle3ma7_route.outputs.exact != 'true' && steps.cycle3ha4_route.outputs.exact != 'true' && steps.cycle3ha5_route.outputs.exact != 'true' && steps.cycle3ha6_route.outputs.exact != 'true' && steps.cycle3ha7_route.outputs.exact != 'true' && steps.cycle3ha8_route.outputs.exact != 'true' && steps.cycle3ha9_route.outputs.exact != 'true' && steps.cycle3ha10_route.outputs.exact != 'true' && steps.cycle3ha11_route.outputs.exact != 'true' && steps.cycle3ha12_route.outputs.exact != 'true' && steps.cycle3ha13_route.outputs.exact != 'true' && steps.cycle3ha14_route.outputs.exact != 'true' && steps.cycle3ka3_route.outputs.exact != 'true' && steps.cycle3ka4_route.outputs.exact != 'true' && steps.cycle3ka5_route.outputs.exact != 'true' && steps.cycle3ka6_route.outputs.exact != 'true' && steps.cycle3ka7_route.outputs.exact != 'true' && steps.cycle3ka8_route.outputs.exact != 'true' && steps.cycle3ka9_route.outputs.exact != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filing-payload-custody-evidence-v1-${{ github.sha }}-${{ github.run_attempt }}

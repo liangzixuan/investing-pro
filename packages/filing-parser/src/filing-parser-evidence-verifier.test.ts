@@ -309,6 +309,10 @@ import {
   isCycle3ka8FeatureTopologyAllowed,
   isCycle3ka8RoutingClosureCommitDiffSetAllowed,
   isCycle3ka8RoutingClosureTopologyAllowed,
+  isCycle3ka9FeatureCommitDiffSetAllowed,
+  isCycle3ka9FeatureTopologyAllowed,
+  isCycle3ka9RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka9RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -1156,6 +1160,10 @@ const CYCLE_3K_A7_ROUTING_CLOSURE_REVISION =
   "0b271f93352f655018d76c8b163d512b6badf344" as const;
 const CYCLE_3K_A8_FEATURE_REVISION =
   "61fa1480d765e4117ba8e95cb854814888ab0e0c" as const;
+const CYCLE_3K_A8_ROUTING_CLOSURE_REVISION =
+  "1e8f83086a6e5277b2ac3fec80988d9e92b13f3d" as const;
+const CYCLE_3K_A9_FEATURE_REVISION =
+  "5912e63402c660ebd5a6856aebe8d0dbcf08f611" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -4520,6 +4528,53 @@ const CYCLE_3K_A8_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3K_A9_FEATURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "A",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3K_A9_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
     status: "M",
   },
 ];
@@ -12417,6 +12472,118 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedOwnerScreenActivityClosure = [
+      "118",
+      "118",
+      CYCLE_3K_A8_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A8_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A8_FEATURE_REVISION}`,
+      ownerScreenActivityFeature,
+    ] as const;
+    expect(
+      isCycle3ka8RoutingClosureTopologyAllowed(
+        ...pinnedOwnerScreenActivityClosure,
+      ),
+    ).toBe(true);
+    const crossEngineScriptFeature = [
+      "119",
+      "119",
+      CYCLE_3K_A9_FEATURE_REVISION,
+      `${CYCLE_3K_A9_FEATURE_REVISION} ${CYCLE_3K_A8_ROUTING_CLOSURE_REVISION}`,
+      pinnedOwnerScreenActivityClosure,
+    ] as const;
+    expect(isCycle3ka9FeatureTopologyAllowed(...crossEngineScriptFeature)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "118"],
+      [1, "120"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A9_FEATURE_REVISION} ${CYCLE_3K_A8_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A9_FEATURE_REVISION} ${CYCLE_3K_A8_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...crossEngineScriptFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka9FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka9FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedOwnerScreenActivityClosure: unknown[] = [
+      ...pinnedOwnerScreenActivityClosure,
+    ];
+    tamperedPinnedOwnerScreenActivityClosure[4] =
+      tamperedOwnerScreenActivityFeature;
+    expect(
+      isCycle3ka9FeatureTopologyAllowed(
+        "119",
+        "119",
+        CYCLE_3K_A9_FEATURE_REVISION,
+        `${CYCLE_3K_A9_FEATURE_REVISION} ${CYCLE_3K_A8_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedOwnerScreenActivityClosure as unknown as Parameters<
+          typeof isCycle3ka9FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const crossEngineScriptClosureRevision = "e".repeat(40);
+    const crossEngineScriptClosure = [
+      "120",
+      "120",
+      crossEngineScriptClosureRevision,
+      `${crossEngineScriptClosureRevision} ${CYCLE_3K_A9_FEATURE_REVISION}`,
+      crossEngineScriptFeature,
+    ] as const;
+    expect(
+      isCycle3ka9RoutingClosureTopologyAllowed(...crossEngineScriptClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "119"],
+      [1, "121"],
+      [2, CYCLE_3K_A9_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${crossEngineScriptClosureRevision} ${CYCLE_3K_A8_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${crossEngineScriptClosureRevision} ${CYCLE_3K_A9_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...crossEngineScriptClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka9RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka9RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedCrossEngineScriptFeature: unknown[] = [
+      ...crossEngineScriptFeature,
+    ];
+    tamperedCrossEngineScriptFeature[4] =
+      tamperedPinnedOwnerScreenActivityClosure;
+    expect(
+      isCycle3ka9RoutingClosureTopologyAllowed(
+        "120",
+        "120",
+        crossEngineScriptClosureRevision,
+        `${crossEngineScriptClosureRevision} ${CYCLE_3K_A9_FEATURE_REVISION}`,
+        tamperedCrossEngineScriptFeature as unknown as Parameters<
+          typeof isCycle3ka9RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes the exact source, evidence, promotion, alias, and routing transitions", () => {
@@ -12981,6 +13148,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A8_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expectExactTransition(
+      isCycle3ka9FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A9_FEATURE_TRANSITION,
+      5,
+    );
+    expectExactTransition(
+      isCycle3ka9RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A9_ROUTING_CLOSURE_TRANSITION,
+      8,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -13104,6 +13281,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A7_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A8_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A8_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A9_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A9_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
