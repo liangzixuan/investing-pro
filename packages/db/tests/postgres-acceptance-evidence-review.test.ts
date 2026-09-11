@@ -841,24 +841,22 @@ function evidenceAdapterTests(): void {
     ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
-  it("rejects changed v10 platform, renderer, and application-body sources at the anchored commit", async () => {
-    for (const path of [
-      "packages/db/migration-plans/v2/platform-bootstrap.sql",
-      "packages/db/src/authenticated-migration-plan.ts",
-      "packages/db/migration-plans/v2/application/0001_request_context_and_ledger.sql",
-    ]) {
-      const fixture = await createFixture();
-      await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
-      git(fixture.repositoryPath, ["add", "--all"]);
-      git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
-      const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
+  it.each([
+    "packages/db/migration-plans/v2/platform-bootstrap.sql",
+    "packages/db/src/authenticated-migration-plan.ts",
+    "packages/db/migration-plans/v2/application/0001_request_context_and_ledger.sql",
+  ])("rejects changed v10 source %s at the anchored commit", async (path) => {
+    const fixture = await createFixture();
+    await writeFile(join(fixture.repositoryPath, path), "SELECT 1;\n");
+    git(fixture.repositoryPath, ["add", "--all"]);
+    git(fixture.repositoryPath, ["commit", "-m", "changed v10 source"]);
+    const changedCommit = git(fixture.repositoryPath, ["rev-parse", "HEAD"]);
 
-      await expect(
-        reviewPostgresAcceptanceEvidence(
-          await inputAtCommit(fixture, changedCommit),
-        ),
-      ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
-    }
+    await expect(
+      reviewPostgresAcceptanceEvidence(
+        await inputAtCommit(fixture, changedCommit),
+      ),
+    ).rejects.toBeInstanceOf(PostgresAcceptanceEvidenceReviewError);
   });
 
   it("rejects changed v10 backup/restore plan sources at the anchored commit", async () => {
