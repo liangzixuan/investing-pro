@@ -140,6 +140,199 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it("filters, sorts, pages and explicitly saves gross profit without rewriting legacy criteria", async () => {
+    const legacy = {
+      id: "screen-legacy",
+      name: "Legacy agreement",
+      criteria: {
+        calendarYear: 2024,
+        identityText: "",
+        clauses: [
+          { field: "netIncome" as const, operator: "gte" as const, value: "0" },
+        ],
+        sort: { field: "symbol" as const, direction: "asc" as const },
+      },
+      createdAgainstCatalogSnapshotSha256: sha("c"),
+      createdAgainstFinancialSnapshotSha256: sha("d"),
+    };
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 4,
+      payload: { schemaVersion: 1, views: [legacy] },
+    });
+    await mount();
+    change(render(), "Saved financial screen", legacy.id);
+    click(render(), "Load financial criteria");
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        schemaVersion: "2.0.0",
+        financialSnapshotSha256: null,
+        criteria: legacy.criteria,
+      }),
+    );
+    change(render(), "Financial metric 1", "grossProfit");
+    change(render(), "Financial threshold 1", "-10.00001");
+    change(render(), "Financial sort field", "grossProfit");
+    expect(text(render())).not.toContain("Open ONE");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(0, 26));
+    submit(render());
+    await flush();
+    const grossRequest = api.screenPersonalFinancials.mock
+      .calls[1]?.[0] as PersonalFinancialScreenRequestDto;
+    expect(grossRequest.criteria).toEqual({
+      ...legacy.criteria,
+      clauses: [{ field: "grossProfit", operator: "gte", value: "-10.00001" }],
+      sort: { field: "grossProfit", direction: "asc" },
+    });
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(25, 26));
+    click(render(), "Next financial page");
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls[2]?.[0]).toEqual(
+      expect.objectContaining({
+        schemaVersion: "2.0.0",
+        criteria: grossRequest.criteria,
+        financialSnapshotSha256: sha("b"),
+        page: { offset: 25, limit: 25 },
+      }),
+    );
+    change(render(), "Financial screen name", "Reported gross profit");
+    click(render(), "Save financial screen as new");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(api.savePersonalFinancialSavedViews.mock.calls[0]?.[0]).toBe(4);
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.views[1]?.criteria).toEqual(grossRequest.criteria);
+    click(render(), "Reset financial criteria");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Financial metric 1").props.value).toBe(
+      "grossProfit",
+    );
+    expect(input(render(), "Financial sort field").props.value).toBe(
+      "grossProfit",
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(3);
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls[3]?.[0]).toEqual(
+      expect.objectContaining({
+        schemaVersion: "2.0.0",
+        financialSnapshotSha256: null,
+        page: { offset: 0, limit: 25 },
+        criteria: grossRequest.criteria,
+      }),
+    );
+  });
+
+  it("shows signed gross profit and accessible exact source details independently of unresolved revenue", async () => {
+    const result = response();
+    const row = result.rows[0]!;
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...result,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            revenue: {
+              status: "unavailable",
+              unit: "USD",
+              reason: "conflicting",
+              sources: [],
+            },
+            grossProfit: {
+              status: "available",
+              unit: "USD",
+              value: "-123.00001",
+              sources: [
+                {
+                  concept: "GrossProfit",
+                  accessionNumber: "0000000001-25-000001",
+                  startDate: "2024-01-01",
+                  endDate: "2024-12-31",
+                  value: "-123.00001",
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
+    await mount();
+    submit(render());
+    await flush();
+    const view = render();
+    expect(text(view)).toContain("Gross profit (USD)");
+    expect(text(view)).toContain("Exact value: -123.00001 USD");
+    expect(text(view)).toContain(
+      "Reported GrossProfit in USD, independent of the revenue basis",
+    );
+    expect(text(view)).not.toContain("Gross margin");
+    expect(
+      elements(view).some(
+        (element) =>
+          element.type === "summary" &&
+          element.props["aria-label"] ===
+            "ONE Gross profit: -$123. Show source details",
+      ),
+    ).toBe(true);
+    expect(
+      elements(view).some(
+        (element) =>
+          element.type === "a" &&
+          text(element) === "SEC GrossProfit" &&
+          element.props.href ===
+            "https://data.sec.gov/api/xbrl/frames/us-gaap/GrossProfit/USD/CY2025.json",
+      ),
+    ).toBe(true);
+  });
+
+  it("shows missing gross profit as unknown and spans all eight metrics when no rows match", async () => {
+    const result = response();
+    const row = result.rows[0]!;
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...result,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            grossProfit: {
+              status: "unavailable",
+              unit: "USD",
+              reason: "missing",
+              sources: [],
+            },
+          },
+        },
+      ],
+    });
+    await mount();
+    submit(render());
+    await flush();
+    expect(
+      elements(render()).some(
+        (element) =>
+          element.props["aria-label"] ===
+          "ONE Gross profit: Unknown. Show source details",
+      ),
+    ).toBe(true);
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(0, 0));
+    submit(render());
+    await flush();
+    expect(
+      elements(render()).find(
+        (element) =>
+          element.type === "td" &&
+          text(element) === "No matching financial results.",
+      )?.props.colSpan,
+    ).toBe(10);
+  });
+
   it("requires an explicit run, defaults to the last completed year, and explains annual scope", async () => {
     const view = await mount();
     expect(input(view, "Financial calendar year").props.value).toBe(
@@ -422,7 +615,7 @@ describe("PersonalFinancialScreener", () => {
             element.type === "a" &&
             String(element.props.href).startsWith("https://data.sec.gov/"),
         ),
-      ).toHaveLength(6);
+      ).toHaveLength(7);
     },
   );
 
@@ -873,7 +1066,7 @@ function submit(value: unknown) {
 }
 function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: new Date().getUTCFullYear() - 1,
@@ -911,7 +1104,8 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
               unit: metric.endsWith("Margin") ? "percent" : "USD",
               sources: [
                 {
-                  concept: "Revenues",
+                  concept:
+                    metric === "grossProfit" ? "GrossProfit" : "Revenues",
                   accessionNumber: "0000000001-25-000001",
                   startDate: "2024-01-01",
                   endDate: "2024-12-31",

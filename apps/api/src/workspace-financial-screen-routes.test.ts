@@ -66,6 +66,7 @@ describe("personal annual financial screen routes", () => {
     expect(response.headers["cache-control"]).toBe("private, no-store");
     const body = response.json<PersonalFinancialScreenResponseDto>();
     expect(body).toMatchObject({
+      schemaVersion: "2.0.0",
       totalUniverse: 2,
       identityMatches: 2,
       totalMatches: 2,
@@ -76,6 +77,7 @@ describe("personal annual financial screen routes", () => {
           identity: { symbol: "S00000" },
           metrics: {
             revenue: { status: "available", value: "1000" },
+            grossProfit: { status: "available", value: "100" },
             netMargin: { status: "available", value: "10.00" },
           },
         },
@@ -83,7 +85,51 @@ describe("personal annual financial screen routes", () => {
     });
     expect(f.vault.record).toBeUndefined();
     expect(body).not.toHaveProperty("revenueBasis");
+    const metricKeys = [
+      "revenue",
+      "grossProfit",
+      "netIncome",
+      "operatingIncome",
+      "operatingCashFlow",
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+    ];
+    expect(Object.keys(body.rows[0]!.metrics)).toEqual(metricKeys);
+    expect(Object.keys(body.metricCoverage)).toEqual(metricKeys);
+    expect(body.sources.map((source) => source.concept)).toEqual([
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "SalesRevenueNet",
+      "NetIncomeLoss",
+      "OperatingIncomeLoss",
+      "NetCashProvidedByUsedInOperatingActivities",
+      "GrossProfit",
+    ]);
   });
+  it.each(["1.0.0", "3.0.0", 1, undefined])(
+    "rejects transport version %s before source acquisition",
+    async (schemaVersion) => {
+      const f = await readyApp();
+      // Literal historical criteria remain valid; only the HTTP version changes.
+      const response = await screen(f.app, f.cookie, {
+        schemaVersion,
+        catalogSnapshotSha256: f.snapshotSha256,
+        financialSnapshotSha256: null,
+        criteria: {
+          calendarYear: 2025,
+          identityText: "",
+          clauses: [{ field: "revenue", operator: "gte", value: "0" }],
+          sort: { field: "symbol", direction: "asc" },
+        },
+        page: { offset: 0, limit: 1 },
+        refresh: false,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+      expect(f.vault.record).toBeUndefined();
+    },
+  );
   it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
     "accepts and echoes explicit revenue basis %s without changing source acquisition",
     async (revenueBasis) => {
@@ -117,6 +163,10 @@ describe("personal annual financial screen routes", () => {
         false,
       );
       expect(f.vault.record).toBeUndefined();
+      expect(
+        response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
+          .grossProfit,
+      ).toMatchObject({ status: "available", value: "100" });
     },
   );
   it("rejects stale catalogs before fetching, malformed filters, and mixed snapshot pages", async () => {
@@ -235,6 +285,58 @@ describe("personal annual financial screen routes", () => {
     );
     expect(failed.statusCode).toBe(502);
     expect(failed.payload).not.toContain("private-contact-canary");
+  });
+  it("isolates a missing GrossProfit frame while preserving old metric results and the seven-clause limit", async () => {
+    const provider = testProvider();
+    provider.loadSnapshot.mockResolvedValue({
+      ...snapshot(),
+      frames: snapshot().frames.map((frame) =>
+        frame.concept === "GrossProfit"
+          ? { ...frame, status: "not_covered" as const, facts: [] }
+          : frame,
+      ),
+    });
+    const f = await readyApp(provider);
+    const base = screenRequest(f.snapshotSha256);
+    const clauses = Array.from({ length: 7 }, () => ({
+      field: "grossProfit" as const,
+      operator: "gte" as const,
+      value: "0",
+    }));
+    const response = await screen(f.app, f.cookie, {
+      ...base,
+      criteria: { ...base.criteria, clauses },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      totalMatches: 0,
+      totalUnknown: 2,
+      metricCoverage: {
+        grossProfit: { known: 0, unknown: 2 },
+        revenue: { known: 2, unknown: 0 },
+        netMargin: { known: 2, unknown: 0 },
+      },
+    });
+    provider.loadSnapshot.mockClear();
+    const invalid = { ...base.criteria, clauses: [...clauses, clauses[0]] };
+    expect(
+      (await screen(f.app, f.cookie, { ...base, criteria: invalid }))
+        .statusCode,
+    ).toBe(400);
+    const saved = savedViewsPayload(f.snapshotSha256);
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          { ...saved, views: [{ ...saved.views[0], criteria: invalid }] },
+          0,
+          "gross-profit-eight-clauses",
+        )
+      ).statusCode,
+    ).toBe(400);
+    expect(provider.loadSnapshot).not.toHaveBeenCalled();
+    expect(f.vault.record).toBeUndefined();
   });
   it("creates, reads, and updates only the bounded saved-view definition record", async () => {
     const fixture = await readyApp();
@@ -365,6 +467,98 @@ describe("personal annual financial screen routes", () => {
     );
     expect(updated.statusCode).toBe(200);
     expect(f.vault.record?.payload).toEqual(original);
+  });
+  it("preserves a literal saved-v1 definition and creation digests while adding GrossProfit criteria through the existing CAS record", async () => {
+    const f = await readyApp();
+    const legacy: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 1,
+      views: [
+        {
+          id: "original-screen",
+          name: "Original revenue screen",
+          criteria: {
+            calendarYear: 2025,
+            identityText: "",
+            clauses: [{ field: "revenue", operator: "gte", value: "1" }],
+            sort: { field: "netMargin", direction: "desc" },
+          },
+          createdAgainstCatalogSnapshotSha256: `sha256:${"d".repeat(64)}`,
+          createdAgainstFinancialSnapshotSha256: `sha256:${"e".repeat(64)}`,
+        },
+      ],
+    };
+    f.vault.putRecord({
+      kind: "settings",
+      id: PERSONAL_FINANCIAL_SAVED_VIEWS_RECORD_ID,
+      expectedVersion: 0,
+      idempotencyKey: "seed-original-saved-definition",
+      payload: legacy as unknown as PutLocalResearchRecordCommand["payload"],
+    });
+    const mutation = vi.spyOn(f.vault, "putRecord");
+    const loaded = await f.app.inject({
+      headers: ownerHeaders(f.cookie),
+      method: "GET",
+      remoteAddress: "127.0.0.1",
+      url: PERSONAL_FINANCIAL_SAVED_VIEWS_PATH,
+    });
+    expect(loaded.json()).toMatchObject({ payload: legacy, version: 1 });
+    expect(mutation).not.toHaveBeenCalled();
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+    const replay = await screen(f.app, f.cookie, {
+      ...screenRequest(f.snapshotSha256),
+      criteria: legacy.views[0]!.criteria,
+    });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toMatchObject({
+      schemaVersion: "2.0.0",
+      totalMatches: 2,
+    });
+    expect(replay.json()).not.toHaveProperty("revenueBasis");
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 1,
+      views: [
+        legacy.views[0]!,
+        {
+          ...legacy.views[0]!,
+          id: "gross-profit-screen",
+          name: "Gross profit screen",
+          criteria: {
+            ...legacy.views[0]!.criteria,
+            clauses: [{ field: "grossProfit", operator: "gte", value: "50" }],
+            sort: { field: "grossProfit", direction: "desc" },
+          },
+          createdAgainstCatalogSnapshotSha256: f.snapshotSha256,
+          createdAgainstFinancialSnapshotSha256: FINANCIAL_DIGEST,
+        },
+      ],
+    };
+    const saved = await putSavedViews(
+      f.app,
+      f.cookie,
+      payload,
+      1,
+      "add-gross-profit-definition",
+    );
+    expect(saved.statusCode).toBe(200);
+    expect(saved.headers.etag).toBe('"v2"');
+    expect(mutation).toHaveBeenCalledExactlyOnceWith({
+      kind: "settings",
+      id: PERSONAL_FINANCIAL_SAVED_VIEWS_RECORD_ID,
+      expectedVersion: 1,
+      idempotencyKey: "add-gross-profit-definition",
+      payload,
+    });
+    expect(f.vault.record?.payload).toEqual(payload);
+    expect(payload.views[0]).toEqual(legacy.views[0]);
+    expect(payload.views[0]!.criteria).not.toHaveProperty("revenueBasis");
+    expect(
+      (
+        await screen(f.app, f.cookie, {
+          ...screenRequest(f.snapshotSha256),
+          criteria: payload.views[1]!.criteria,
+        })
+      ).json(),
+    ).toMatchObject({ schemaVersion: "2.0.0", totalMatches: 2 });
   });
 
   it.each([null, "auto", "revenues", "NetIncomeLoss", 1])(
@@ -581,7 +775,7 @@ function screenRequest(
   catalogSnapshotSha256: string,
 ): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: catalogSnapshotSha256 as `sha256:${string}`,
     financialSnapshotSha256: null,
     criteria: {

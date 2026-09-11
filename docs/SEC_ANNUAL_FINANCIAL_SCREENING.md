@@ -22,7 +22,7 @@ named definition to reuse criteria, then explicitly rerun it when loaded.
 Refresh requests a new source read. Page navigation remains bound to both
 catalog and financial content digests; changed content requires a rerun.
 
-The six public endpoint templates are
+The seven public endpoint templates are
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}.json`.
 Concept and unit are fixed in code; the only selection is a completed year
 from 2009 onward. No API key or commercial subscription is needed for these
@@ -39,12 +39,33 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Metric                     | Input or formula                                                                | Unit    |
 | -------------------------- | ------------------------------------------------------------------------------- | ------- |
 | Revenue                    | Selected revenue basis; the default requires agreement among available concepts | USD     |
+| Gross profit               | `GrossProfit`, as reported; no calculation from revenue and costs               | USD     |
 | Net income                 | `NetIncomeLoss`                                                                 | USD     |
 | Operating income           | `OperatingIncomeLoss`                                                           | USD     |
 | Operating cash flow        | `NetCashProvidedByUsedInOperatingActivities`                                    | USD     |
 | Net margin                 | Net income / revenue × 100                                                      | percent |
 | Operating margin           | Operating income / revenue × 100                                                | percent |
 | Operating cash flow margin | Operating cash flow / revenue × 100                                             | percent |
+
+### Reported gross profit
+
+Gross profit uses only valid `us-gaap:GrossProfit` observations retained in the
+selected annual frame that agree on amount and actual dates. FASB's [2026 taxonomy schema](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-2026.xsd)
+defines it as a monetary duration item. Its [revenue presentation guide, Example 6](https://xbrl.fasb.org/impdocs/Rev2_TIG/Revenue.htm)
+illustrates the concept as the difference between revenue and cost of revenue.
+These taxonomy references establish the concept; they do not establish a
+company's coverage or make the guide authoritative accounting guidance.
+
+The screen preserves the reported amount, including a negative amount. A missing,
+invalid, conflicting or failed-source fact remains unknown. It does not calculate
+a replacement from revenue minus costs or substitute another concept. Changing
+Revenue basis does not change gross profit. A failed GrossProfit source affects
+only that field, and a failed revenue source does not hide a valid gross-profit
+amount. Exact source dates and filing accession remain visible.
+
+No gross-margin ratio is added. Matching dates alone would not establish that
+gross profit uses the selected revenue definition. This amount can be filtered
+and sorted like other USD fields; it is not a comparable sector-neutral score.
 
 ### Revenue basis
 
@@ -88,10 +109,28 @@ amounts retain normalized decimal precision. Source references expose concept,
 filing accession and actual dates for each cell.
 
 Existing four-field saved criteria remain valid and retain the agreement rule.
-The optional `revenueBasis` stores an explicit choice. Omitted-basis requests keep
-the original response shape; explicit requests echo the basis, which the strict
-browser client checks against the request. Unedited saved definitions are not
-rewritten. This adds no source endpoints or requests to the six-frame load.
+The optional `revenueBasis` stores an explicit choice. Omitted-basis requests omit
+the corresponding response property; explicit requests echo the basis, which the
+strict browser client checks against the request. Unedited saved definitions are
+not rewritten. Choosing a revenue basis adds no source reads to the seven-frame
+load.
+
+### Screening and saved-definition compatibility
+
+Financial-screen requests and responses use `schemaVersion: "2.0.0"` at the
+existing route. The response contains exactly eight metric and coverage keys and
+seven distinct source concepts. Deploy the API and browser together: old browser
+requests are rejected before SEC acquisition, and the new browser rejects old or
+partially expanded responses. Reload an older open browser after deployment.
+
+Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
+record ID, existing view IDs, names, creation digests and version/conflict behavior
+are unchanged. Existing criteria load with their original meanings and make a
+fresh v2 request only when explicitly run. The seven-clause limit is unchanged;
+Gross profit is an additional field/sort choice. Older application versions cannot
+execute newly saved GrossProfit criteria and reject them rather than drop a filter.
+Formula version stays 1.0.0 because the existing ratios are unchanged and gross
+profit is a reported amount.
 
 A selected CY label denotes the SEC's calendar-aligned annual frame, not a
 common fiscal year across issuers. Annual durations are checked within the
@@ -113,7 +152,7 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches six fixed cross-company frames sequentially, at
+- One operation fetches seven fixed cross-company frames sequentially, at
   fewer than five requests per second. Each request has a 10-second deadline,
   an 8 MiB response cap and 50,000-row bound. Redirects and arbitrary URLs
   are rejected. Same-year concurrent requests share an operation; another
@@ -135,6 +174,14 @@ values, thresholds, coverage arithmetic, ordering, snapshot-bound pages,
 bounded transport, cancellation, authentication, and saved-definition
 conflicts. UI tests cover explicit run/refresh, filters, paging, save/load,
 open/watchlist actions and session cleanup.
+
+GrossProfit acceptance also covers exact reported precision and negative values,
+unknown reasons, independence from revenue basis, source-failure isolation,
+filter/count/page consistency, seven-source cache reuse and strict transport
+versioning while preserving historical saved criteria. Source coverage for the
+new field must be measured on a fresh seven-frame snapshot; the older six-frame
+results below do not establish it. Actual observations and independently checked
+filing samples belong in the local release handoff.
 
 The original agreement mode was measured on 2026-09-11 against an admitted
 3,227-listing catalog and verified through authenticated Chrome. Known coverage

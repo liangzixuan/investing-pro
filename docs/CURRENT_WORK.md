@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                         | Important remaining gap                                                    |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                               | Catalog refresh and broader discovery data                                 |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                   | Wider reconciliation and benchmark-relative analysis                       |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                    | Verified TTM and the shared 30-core-metric screening registry              |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models                 |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata              |
-| Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Explicit revenue definitions, growth/value inputs and wider metric breadth |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Broader live samples, upcoming events, alerts and exports                  |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                 | Further corporate actions, benchmarks and live coverage                    |
+| User job                  | Implemented capability                                                                                                                 | Important remaining gap                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                       | Catalog refresh and broader discovery data                    |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                           | Wider reconciliation and benchmark-relative analysis          |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                            | Verified TTM and the shared 30-core-metric screening registry |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                | Direct normalized FCFF inputs and further justified models    |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                   | Compatible multi-company coverage and automatic peer metadata |
+| Screen for ideas          | Catalog filters plus eight SEC annual size/profitability metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                           | Broader live samples, upcoming events, alerts and exports     |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                         | Further corporate actions, benchmarks and live coverage       |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -34,11 +34,11 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `d86d952` delivers the filing-reference explanation and Windows test
-scheduling repair. Its clean native gate passed 4,416 tests and all 24 builds;
-five hosted workflows and both platforms passed. Desktop, mobile and keyboard
-acceptance is recorded in the release handoff. These are baseline results, not
-validation of later changes.
+Release `b9a2d1d` delivers explicit revenue selection and the bounded Windows
+verifier-test repair. Its clean native gate passed 4,487 tests and all 24 builds;
+four hosted workflows and both platforms passed. Desktop, mobile, keyboard and
+live Walmart acceptance are recorded in the release handoff. These are baseline
+results, not validation of later changes.
 
 The configured catalog now contains 3,227 listings, including the six repaired
 AAPL, MSFT, AMZN, META, WMT and ORCL entries. Live annual coverage, authenticated
@@ -54,28 +54,29 @@ are unchanged; all five numeric results remain unsupported because of dimensions
 These results describe only that retained sample. Actual acceptance/runtime
 details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: choose the revenue definition
+## Active delivery: screen on reported gross profit
 
-Live screening exposed a semantic limitation: the three revenue concepts can
-represent different legitimate definitions. Walmart's customer-contract/net-sales
-amount and broader revenues differ even for the same period. Treating them as
-interchangeable aliases leaves revenue and all three dependent margins unknown.
-The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) records the
-source evidence and selected semantics.
+Add reported `us-gaap:GrossProfit` as the eighth screening metric and seventh
+fixed annual source concept. Preserve exact amounts, negative values and explicit
+unknowns; do not derive a missing fact from revenue and costs. Revenue-basis
+selection and the existing seven fields retain their meanings. The
+[annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) records the source
+definition, compatibility decision and limits.
 
-Add an explicit revenue-basis choice for the entire screen and its margin
-denominators. Omitted-basis saved criteria retain the original agreement rule.
-Explicit choices use one concept consistently, without per-company fallback;
-missing or conflicting selected facts remain unknown. The response binds the
-choice to the request. Existing source limits, six-frame cache, period checks,
-decimal arithmetic and saved-view version handling remain in force.
+The request/response transport moves to schema 2.0.0 with exactly eight metrics
+and seven sources. Saved payload schema 1, existing criteria, creation digests,
+record versions, seven-clause cap and formula version remain unchanged. Old
+screening requests must fail before source acquisition; older saved definitions
+must still load unchanged and run through the new envelope. API and browser
+deployment is coordinated.
 
-Acceptance covers legacy saved definitions, explicit-basis save/load and response
-binding, differing legitimate definitions, same-concept conflicts, selected-source
-failure and missingness, denominator/date checks, coverage/filtering/paging and
-stale-result cleanup. Complete focused tests, source review, the native gate and
-applicable hosted checks. Use dedicated external Chrome for bounded UI acceptance;
-record actual results without extrapolating new full-universe coverage.
+Acceptance covers reported-fact/source binding, failure isolation, amount/filter/
+coverage/page consistency, revenue-basis independence, old saved definitions and
+closed transport decoding. Measure new coverage and reconcile a bounded sample
+to exact filings. Complete focused tests, the native gate, applicable hosted
+checks and dedicated external Chrome acceptance. Record actual source batches,
+snapshots and limits. Defer a gross-margin ratio until its revenue basis is
+supported; a matching date alone is insufficient.
 
 Numeric admission, fiscal calendars, standalone quarters, revisions and TTM remain
 separate evidence-dependent work. Keep catalog refresh and broader source coverage
@@ -85,8 +86,8 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Choose an explicit revenue basis while preserving saved-screen meanings                          | Resolve legitimate definition differences without silent substitution      |
-| Next independent | Broaden financial screening beyond seven metrics as verified sources allow                       | Build on measured coverage and retain explicit source gaps                 |
+| Now              | Add reported gross-profit screening while preserving saved-screen meanings                       | Broaden useful screening with one fixed annual source concept              |
+| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
 | As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
@@ -135,6 +136,9 @@ where the next feature exposes concrete duplication or makes changes risky.
    and detailed acceptance history in its existing records. Finish with a
    short user-perspective TLDR, what was verified, remaining limits, and the
    next product outcome.
+
+The 30 reported-field definitions support selected-company financials; they are
+not the shared 30-core screener metric registry or evidence of source coverage.
 
 The repeated feature-specific CI routing edits are a known maintenance cost.
 After this feature closure, a bounded follow-up may replace duplicated

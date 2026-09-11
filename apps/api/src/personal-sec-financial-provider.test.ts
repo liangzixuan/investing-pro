@@ -110,7 +110,7 @@ describe("SEC annual financial provider", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("loads only six fixed USD annual routes, preserves facts, and spaces requests below five per second", async () => {
+  it("loads only seven fixed USD annual routes, preserves the original six in order, and spaces requests below five per second", async () => {
     const starts: number[] = [];
     const fetch = mockedFetch((url) => {
       starts.push(Date.now());
@@ -123,10 +123,19 @@ describe("SEC annual financial provider", () => {
       now: () => NOW,
     });
     const snapshot = await finish(provider.loadSnapshot(2025));
-    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(fetch).toHaveBeenCalledTimes(7);
     expect(snapshot.frames.map((frame) => frame.concept)).toEqual(
       PERSONAL_SEC_ANNUAL_CONCEPTS,
     );
+    expect(snapshot.frames.map((frame) => frame.concept)).toEqual([
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "SalesRevenueNet",
+      "NetIncomeLoss",
+      "OperatingIncomeLoss",
+      "NetCashProvidedByUsedInOperatingActivities",
+      "GrossProfit",
+    ]);
     for (const [index, [url, init]] of fetch.mock.calls.entries()) {
       expect(url).toBe(
         `https://data.sec.gov/api/xbrl/frames/us-gaap/${PERSONAL_SEC_ANNUAL_CONCEPTS[index]}/USD/CY2025.json`,
@@ -227,6 +236,99 @@ describe("SEC annual financial provider", () => {
     expect(first.snapshotSha256).toBe(second.snapshotSha256);
   });
 
+  it("applies annual-duration and exact-value eligibility to GrossProfit without borrowing another frame", async () => {
+    const fetch = mockedFetch((url) =>
+      Response.json(
+        payload(
+          url,
+          url.includes("/GrossProfit/")
+            ? [
+                fact({ cik: 1, end: "2025-12-01", val: "-50.125000" }), // 335 days.
+                fact({ cik: 2, end: "2026-01-30", val: "0" }), // 395 days.
+                fact({ cik: 3, end: "2025-11-30" }), // 334 days.
+                fact({ cik: 4, end: "2026-01-31" }), // 396 days.
+                fact({ cik: 5, start: undefined }),
+                fact({ cik: 6, start: "2025-10-01" }),
+                fact({ cik: 7, val: "NaN" }),
+                fact({ cik: 8 }),
+                fact({ cik: 8 }),
+                fact({ cik: 9 }),
+                fact({ cik: 9, val: 3 }),
+                fact({ cik: 10, val: "100.250000" }),
+              ]
+            : [fact({ cik: 3, val: 999 })],
+        ),
+      ),
+    );
+    const result = await finish(
+      createSecPersonalFinancialProvider(USER_AGENT, { fetch }).loadSnapshot(
+        2025,
+      ),
+    );
+    const gross = result.frames.find(
+      (frame) => frame.concept === "GrossProfit",
+    )!;
+    expect(gross.status).toBe("available");
+    expect(
+      gross.facts.map((row) => [
+        row.cik,
+        row.value,
+        row.startDate,
+        row.endDate,
+      ]),
+    ).toEqual([
+      ["0000000001", "-50.125", "2025-01-01", "2025-12-01"],
+      ["0000000002", "0", "2025-01-01", "2026-01-30"],
+      ["0000000010", "100.25", "2025-01-01", "2025-12-31"],
+    ]);
+    expect(gross.unknownCiks).toEqual([
+      "0000000003",
+      "0000000004",
+      "0000000005",
+      "0000000006",
+      "0000000007",
+      "0000000008",
+      "0000000009",
+    ]);
+    expect(result.frames[0]?.facts[0]).toMatchObject({
+      cik: "0000000003",
+      value: "999",
+    });
+    expect(fetch).toHaveBeenCalledTimes(7);
+  });
+
+  it.each([
+    { status: 404, outcome: "not_covered" },
+    { status: 429, outcome: "rate_limited" },
+    { status: 503, outcome: "upstream_unavailable" },
+    { status: 200, outcome: "invalid_response" },
+  ])(
+    "retains GrossProfit $outcome independently and caches the complete seven-frame outcome",
+    async ({ status, outcome }) => {
+      const fetch = mockedFetch((url) =>
+        url.includes("/GrossProfit/")
+          ? new Response("private-provider-canary", { status })
+          : Response.json(payload(url)),
+      );
+      const provider = createSecPersonalFinancialProvider(USER_AGENT, {
+        fetch,
+      });
+      const first = await finish(provider.loadSnapshot(2025));
+      expect(
+        first.frames.slice(0, 6).every((frame) => frame.status === "available"),
+      ).toBe(true);
+      expect(first.frames[6]).toMatchObject({
+        concept: "GrossProfit",
+        status: outcome,
+        facts: [],
+        unknownCiks: [],
+      });
+      expect(JSON.stringify(first)).not.toContain("private-provider-canary");
+      expect(await provider.loadSnapshot(2025)).toBe(first);
+      expect(fetch).toHaveBeenCalledTimes(7);
+    },
+  );
+
   it("preserves JSON number precision before validation and rejects unsafe or unsupported decimals", async () => {
     const rows = [
       fact({ cik: 1, val: "RAW_UNSAFE" }),
@@ -287,6 +389,7 @@ describe("SEC annual financial provider", () => {
       "invalid_response",
       "available",
       "available",
+      "available",
     ]);
     expect(
       snapshot.frames
@@ -320,6 +423,7 @@ describe("SEC annual financial provider", () => {
         { ccp: "CY2024" },
         { pts: 2 },
         { data: [fact({ cik: "unknown-secret" })] },
+        { tag: "NetIncomeLoss" },
       ][index];
       return Response.json({ ...payload(url), ...overrides });
     });
@@ -404,11 +508,15 @@ describe("SEC annual financial provider", () => {
     ).toBe(true);
   });
 
-  it("reuses one snapshot for thirty minutes, refreshes explicitly, and gives changed facts a changed digest", async () => {
+  it("reuses all seven frames for thirty minutes, refreshes explicitly, and includes GrossProfit-only changes in the digest", async () => {
     let now = NOW;
     let amount = 1;
     const fetch = mockedFetch((url) =>
-      Response.json(payload(url, [fact({ val: amount })])),
+      Response.json(
+        payload(url, [
+          fact({ val: url.includes("/GrossProfit/") ? amount : 1 }),
+        ]),
+      ),
     );
     const provider = createSecPersonalFinancialProvider(USER_AGENT, {
       fetch,
@@ -416,20 +524,22 @@ describe("SEC annual financial provider", () => {
     });
     const first = await finish(provider.loadSnapshot(2025));
     expect(await provider.loadSnapshot(2025)).toBe(first);
-    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(fetch).toHaveBeenCalledTimes(7);
     const refreshed = await finish(
       provider.loadSnapshot(2025, undefined, true),
     );
     expect(refreshed.snapshotSha256).toBe(first.snapshotSha256);
-    expect(fetch).toHaveBeenCalledTimes(12);
+    expect(fetch).toHaveBeenCalledTimes(14);
     now = new Date("2026-09-09T18:30:00.000Z");
     amount = 2;
     const changed = await finish(provider.loadSnapshot(2025));
     expect(changed.snapshotSha256).not.toBe(first.snapshotSha256);
-    expect(fetch).toHaveBeenCalledTimes(18);
+    expect(changed.frames.slice(0, 6)).toEqual(first.frames.slice(0, 6));
+    expect(changed.frames[6]?.facts[0]?.value).toBe("2");
+    expect(fetch).toHaveBeenCalledTimes(21);
     await finish(provider.loadSnapshot(2024));
     await finish(provider.loadSnapshot(2025));
-    expect(fetch).toHaveBeenCalledTimes(30);
+    expect(fetch).toHaveBeenCalledTimes(35);
   });
 
   it("coalesces simultaneous same-year refreshes and bounds different-year concurrency", async () => {
@@ -442,7 +552,7 @@ describe("SEC annual financial provider", () => {
     });
     const snapshots = await finish(Promise.all([first, second]));
     expect(snapshots[0]).toBe(snapshots[1]);
-    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(fetch).toHaveBeenCalledTimes(7);
   });
 
   it("rejects invalid years and refresh flags before requests", async () => {
@@ -481,7 +591,7 @@ describe("SEC annual financial provider", () => {
     expect(snapshot.frames.every((frame) => frame.status === "available")).toBe(
       true,
     );
-    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(fetch).toHaveBeenCalledTimes(7);
     expect(
       fetch.mock.calls.every(([, init]) => init?.signal?.aborted === false),
     ).toBe(true);

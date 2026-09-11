@@ -30,6 +30,321 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("financial screen transport", () => {
+  it.each([
+    ["9007199254740993.000", "9007199254740993", true],
+    ["9007199254740993", "9007199254740992", false],
+    ["-0.000", "0", true],
+    ["-0.00000000000000001", "0", false],
+  ] as const)(
+    "compares gross-profit source %s and display %s without numeric precision loss",
+    async (reported, displayed, accepted) => {
+      const result = response();
+      const row = result.rows[0]!;
+      fetchMock.mockResolvedValue(
+        json({
+          ...result,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                grossProfit: {
+                  status: "available",
+                  unit: "USD",
+                  value: displayed,
+                  sources: [
+                    { ...source(), concept: "GrossProfit", value: reported },
+                  ],
+                },
+              },
+            },
+          ],
+        }),
+      );
+      if (accepted)
+        expect(
+          (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+            .grossProfit,
+        ).toMatchObject({ value: displayed });
+      else
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(["agreeing", "different amount", "different period"])(
+    "validates multiple GrossProfit references: %s",
+    async (kind) => {
+      const result = response();
+      const row = result.rows[0]!;
+      const first = { ...source(), concept: "GrossProfit", value: "123.000" };
+      const second = {
+        ...first,
+        accessionNumber: "0000000001-25-000002",
+        value: kind === "different amount" ? "124" : "123",
+        startDate: kind === "different period" ? "2024-01-02" : first.startDate,
+      };
+      fetchMock.mockResolvedValue(
+        json({
+          ...result,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                grossProfit: {
+                  status: "available",
+                  unit: "USD",
+                  value: "123",
+                  sources: [first, second],
+                },
+              },
+            },
+          ],
+        }),
+      );
+      if (kind === "agreeing")
+        expect(
+          (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+            .grossProfit.sources,
+        ).toHaveLength(2);
+      else
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each([
+    "missing",
+    "conflicting",
+    "source_unavailable",
+    "invalid_value",
+    "period_mismatch",
+    "nonpositive_revenue",
+  ])(
+    "accepts only reported-fact gross-profit unknown reason %s",
+    async (reason) => {
+      const result = response();
+      const row = result.rows[0]!;
+      fetchMock.mockResolvedValue(
+        json({
+          ...result,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                grossProfit: {
+                  status: "unavailable",
+                  unit: "USD",
+                  reason,
+                  sources: [],
+                },
+              },
+            },
+          ],
+        }),
+      );
+      if (["period_mismatch", "nonpositive_revenue"].includes(reason))
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      else
+        expect(
+          (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+            .grossProfit,
+        ).toMatchObject({ reason });
+    },
+  );
+
+  it("sends v2 criteria and retains the complete eight-metric, seven-source response", async () => {
+    const result = response();
+    fetchMock.mockResolvedValue(json(result));
+    const input = {
+      ...request(),
+      criteria: {
+        ...request().criteria,
+        clauses: [{ field: "grossProfit", operator: "gte", value: "-0.00001" }],
+        sort: { field: "grossProfit", direction: "asc" },
+      },
+    } as const;
+    const decoded = await screenPersonalFinancials(input, signal());
+    expect(decoded.schemaVersion).toBe("2.0.0");
+    expect(decoded.formulaVersion).toBe("1.0.0");
+    expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
+      "revenue",
+      "grossProfit",
+      "netIncome",
+      "operatingIncome",
+      "operatingCashFlow",
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+    ]);
+    expect(Object.keys(decoded.metricCoverage)).toEqual(
+      Object.keys(decoded.rows[0]!.metrics),
+    );
+    expect(decoded.sources.map((frame) => frame.concept)).toEqual([
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "SalesRevenueNet",
+      "NetIncomeLoss",
+      "OperatingIncomeLoss",
+      "NetCashProvidedByUsedInOperatingActivities",
+      "GrossProfit",
+    ]);
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
+  });
+
+  it("rejects historical v1 requests before transport", async () => {
+    await expect(
+      screenPersonalFinancials(
+        {
+          ...request(),
+          schemaVersion: "1.0.0",
+        } as unknown as PersonalFinancialScreenRequestDto,
+        signal(),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "historical v1",
+    "expanded v1",
+    "historical shape relabeled v2",
+    "missing metric",
+    "missing coverage",
+    "duplicate source",
+    "ninth metric",
+  ])("rejects incompatible response: %s", async (kind) => {
+    const result = response();
+    const row = result.rows[0]!;
+    const metrics = { ...row.metrics } as Record<string, unknown>;
+    const coverage = { ...result.metricCoverage } as Record<string, unknown>;
+    let invalid: unknown = result;
+    if (kind === "historical v1") invalid = historicalResponse();
+    if (kind === "expanded v1") invalid = { ...result, schemaVersion: "1.0.0" };
+    if (kind === "historical shape relabeled v2")
+      invalid = { ...historicalResponse(), schemaVersion: "2.0.0" };
+    if (kind === "missing metric") {
+      delete metrics.grossProfit;
+      invalid = { ...result, rows: [{ ...row, metrics }] };
+    }
+    if (kind === "missing coverage") {
+      delete coverage.grossProfit;
+      invalid = { ...result, metricCoverage: coverage };
+    }
+    if (kind === "duplicate source")
+      invalid = {
+        ...result,
+        sources: [...result.sources.slice(0, 6), result.sources[0]],
+      };
+    if (kind === "ninth metric")
+      invalid = {
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: { ...metrics, grossMargin: row.metrics.netMargin },
+          },
+        ],
+        metricCoverage: { ...coverage, grossMargin: { known: 1, unknown: 0 } },
+      };
+    fetchMock.mockResolvedValue(json(invalid));
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each(["available", "unavailable"] as const)(
+    "binds %s gross profit only to GrossProfit references",
+    async (status) => {
+      const result = response();
+      const row = result.rows[0]!;
+      const grossProfit =
+        status === "available"
+          ? {
+              status,
+              unit: "USD",
+              value: "-123.00001",
+              sources: [
+                { ...source(), concept: "GrossProfit", value: "-123.00001" },
+              ],
+            }
+          : {
+              status,
+              unit: "USD",
+              reason: "conflicting",
+              sources: [{ ...source(), concept: "GrossProfit" }],
+            };
+      const valid = {
+        ...result,
+        rows: [{ ...row, metrics: { ...row.metrics, grossProfit } }],
+      };
+      fetchMock.mockResolvedValueOnce(json(valid));
+      expect(
+        (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+          .grossProfit,
+      ).toEqual(grossProfit);
+      fetchMock.mockResolvedValueOnce(
+        json({
+          ...valid,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                grossProfit: { ...grossProfit, sources: [source()] },
+              },
+            },
+          ],
+        }),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each([
+    "revenue",
+    "netIncome",
+    "operatingIncome",
+    "operatingCashFlow",
+    "netMargin",
+    "operatingMargin",
+    "operatingCashFlowMargin",
+  ] as const)(
+    "does not admit GrossProfit as a reference for existing %s",
+    async (metric) => {
+      const result = response();
+      const row = result.rows[0]!;
+      fetchMock.mockResolvedValue(
+        json({
+          ...result,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                [metric]: {
+                  ...row.metrics[metric],
+                  sources: [{ ...source(), concept: "GrossProfit" }],
+                },
+              },
+            },
+          ],
+        }),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
   it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
     "binds explicit %s criteria to the echoed basis and selected sources",
     async (basis) => {
@@ -494,6 +809,40 @@ describe("financial screen transport", () => {
 });
 
 describe("saved financial criteria", () => {
+  it("preserves old saved definitions and numeric schema 1 beside an explicit gross-profit screen", async () => {
+    const legacy = savedPayload().views[0]!;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 1,
+      views: [
+        legacy,
+        {
+          ...legacy,
+          id: "screen-gross-profit",
+          name: "Reported gross profit",
+          criteria: {
+            ...legacy.criteria,
+            clauses: [
+              { field: "grossProfit", operator: "gte", value: "-10.001" },
+            ],
+            sort: { field: "grossProfit", direction: "desc" },
+          },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      payload,
+    );
+    fetchMock.mockResolvedValueOnce(json(receipt(2)));
+    const saved = await savePersonalFinancialSavedViews(1, payload, signal());
+    expect(saved).toEqual({ version: 2, payload });
+    expect(saved.payload.views[0]).toEqual(legacy);
+    expect(saved.payload.views[0]?.criteria).not.toHaveProperty("revenueBasis");
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+      JSON.stringify({ payload }),
+    );
+  });
+
   it("round-trips mixed legacy and explicit-basis views without adding defaults", async () => {
     const legacy = savedPayload().views[0]!;
     const payload = {
@@ -646,7 +995,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -670,7 +1019,7 @@ function source() {
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -704,7 +1053,13 @@ function response(): PersonalFinancialScreenResponseDto {
               status: "available",
               value: "2000000000",
               unit: metric.endsWith("Margin") ? "percent" : "USD",
-              sources: [source()],
+              sources: [
+                {
+                  ...source(),
+                  concept:
+                    metric === "grossProfit" ? "GrossProfit" : "Revenues",
+                },
+              ],
             },
           ]),
         ) as unknown as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
@@ -743,6 +1098,7 @@ function responseWithBasis(
       ...row,
       metrics: {
         revenue: { ...row.metrics.revenue, sources: [ref(basis)] },
+        grossProfit: row.metrics.grossProfit,
         netIncome: {
           ...row.metrics.netIncome,
           sources: [ref("NetIncomeLoss")],
@@ -772,6 +1128,50 @@ function responseWithBasis(
         },
       },
     })),
+  };
+}
+// Keep the pre-GrossProfit transport shape literal; current enums must not widen it.
+function historicalResponse() {
+  const result = response();
+  const row = result.rows[0]!;
+  return {
+    ...result,
+    schemaVersion: "1.0.0",
+    sources: [
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "SalesRevenueNet",
+      "NetIncomeLoss",
+      "OperatingIncomeLoss",
+      "NetCashProvidedByUsedInOperatingActivities",
+    ].map((concept) => ({
+      concept,
+      status: "available",
+      sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2024.json`,
+    })),
+    rows: [
+      {
+        ...row,
+        metrics: {
+          revenue: row.metrics.revenue,
+          netIncome: row.metrics.netIncome,
+          operatingIncome: row.metrics.operatingIncome,
+          operatingCashFlow: row.metrics.operatingCashFlow,
+          netMargin: row.metrics.netMargin,
+          operatingMargin: row.metrics.operatingMargin,
+          operatingCashFlowMargin: row.metrics.operatingCashFlowMargin,
+        },
+      },
+    ],
+    metricCoverage: {
+      revenue: { known: 1, unknown: 0 },
+      netIncome: { known: 1, unknown: 0 },
+      operatingIncome: { known: 1, unknown: 0 },
+      operatingCashFlow: { known: 1, unknown: 0 },
+      netMargin: { known: 1, unknown: 0 },
+      operatingMargin: { known: 1, unknown: 0 },
+      operatingCashFlowMargin: { known: 1, unknown: 0 },
+    },
   };
 }
 function savedPayload(): PersonalFinancialSavedViewsPayloadDto {

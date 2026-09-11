@@ -266,7 +266,7 @@ function isScreenRequest(
       "page",
       "refresh",
     ]) &&
-    value.schemaVersion === "1.0.0" &&
+    value.schemaVersion === "2.0.0" &&
     isSnapshotDigest(value.catalogSnapshotSha256) &&
     (value.financialSnapshotSha256 === null ||
       isSnapshotDigest(value.financialSnapshotSha256)) &&

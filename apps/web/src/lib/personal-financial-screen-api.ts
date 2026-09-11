@@ -3,7 +3,9 @@ import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
   type PersonalFinancialRevenueBasisDto,
+  type PersonalFinancialScreenCellDto,
   type PersonalFinancialScreenCriteriaDto,
+  type PersonalFinancialScreenMetricDto,
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialSavedViewsPayloadDto,
@@ -97,7 +99,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "1.0.0" ||
+    input.schemaVersion !== "2.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -299,7 +301,7 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "1.0.0" ||
+    value.schemaVersion !== "2.0.0" ||
     value.formulaVersion !== "1.0.0" ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
@@ -359,10 +361,7 @@ function isResponse(
         identity(row.identity) &&
         keys(row.metrics, metrics) &&
         metrics.every((metric) =>
-          cell(
-            (row.metrics as Record<string, unknown>)[metric],
-            metric.endsWith("Margin") ? "percent" : "USD",
-          ),
+          cell((row.metrics as Record<string, unknown>)[metric], metric),
         ) &&
         selectedRevenueSources(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
@@ -459,7 +458,11 @@ function identity(value: unknown): boolean {
   );
 }
 
-function cell(value: unknown, unit: "USD" | "percent"): boolean {
+function cell(
+  value: unknown,
+  metric: PersonalFinancialScreenMetricDto,
+): boolean {
+  const unit = metric.endsWith("Margin") ? "percent" : "USD";
   if (
     !keys(value, ["status", "value", "unit", "sources"]) &&
     !keys(value, ["status", "reason", "unit", "sources"])
@@ -479,6 +482,9 @@ function cell(value: unknown, unit: "USD" | "percent"): boolean {
           "value",
         ]) &&
         member(concepts, source.concept) &&
+        (metric === "grossProfit"
+          ? source.concept === "GrossProfit"
+          : source.concept !== "GrossProfit") &&
         matches(source.accessionNumber, /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u) &&
         date(source.startDate) &&
         date(source.endDate) &&
@@ -487,15 +493,41 @@ function cell(value: unknown, unit: "USD" | "percent"): boolean {
     )
   )
     return false;
-  return (
+  const valid =
     (value.status === "available" &&
       "value" in value &&
       decimal(value.value, 130) &&
       value.sources.length >= 1) ||
     (value.status === "unavailable" &&
       "reason" in value &&
-      member(unavailableReasons, value.reason))
+      member(unavailableReasons, value.reason));
+  if (!valid || metric !== "grossProfit") return valid;
+  const grossProfit = value as unknown as PersonalFinancialScreenCellDto;
+  if (grossProfit.status === "unavailable")
+    return [
+      "missing",
+      "conflicting",
+      "source_unavailable",
+      "invalid_value",
+    ].includes(grossProfit.reason);
+  const first = grossProfit.sources[0]!;
+  return grossProfit.sources.every(
+    (source) =>
+      normalizedDecimal(source.value) ===
+        normalizedDecimal(grossProfit.value) &&
+      source.startDate === first.startDate &&
+      source.endDate === first.endDate,
   );
+}
+
+function normalizedDecimal(value: string): string {
+  const [integerPart, fraction = ""] = value.split(".");
+  const significantFraction = fraction.replace(/0+$/u, "");
+  return significantFraction.length > 0
+    ? `${integerPart}.${significantFraction}`
+    : integerPart === "-0"
+      ? "0"
+      : integerPart!;
 }
 
 async function readJson(response: Response): Promise<unknown> {

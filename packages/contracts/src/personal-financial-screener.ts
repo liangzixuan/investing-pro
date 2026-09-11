@@ -2,6 +2,7 @@ import type { PersonalSecurityMasterScreenRowDto } from "./index";
 
 export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
   "revenue",
+  "grossProfit",
   "netIncome",
   "operatingIncome",
   "operatingCashFlow",
@@ -18,6 +19,7 @@ export const PERSONAL_SEC_ANNUAL_CONCEPTS = [
   "NetIncomeLoss",
   "OperatingIncomeLoss",
   "NetCashProvidedByUsedInOperatingActivities",
+  "GrossProfit",
 ] as const;
 export type PersonalSecAnnualConceptDto =
   (typeof PERSONAL_SEC_ANNUAL_CONCEPTS)[number];
@@ -98,7 +100,7 @@ export interface PersonalFinancialScreenCriteriaDto {
   };
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "2.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -112,7 +114,7 @@ export interface PersonalFinancialScreenRowDto {
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "1.0.0";
+  readonly schemaVersion: "2.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
   readonly calendarYear: number;

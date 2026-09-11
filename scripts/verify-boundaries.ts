@@ -5348,10 +5348,20 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const conceptsViolation = personalSecFinancialConceptsViolation(secConcepts);
   if (conceptsViolation !== null)
     found.push(`${secConceptsPath}: ${conceptsViolation}`);
+  const invalidSecConceptRegistries = [
+    secConcepts.replace('"SalesRevenueNet"', '"UnreviewedConcept"'),
+    secConcepts.replace('"GrossProfit",', ""),
+    secConcepts.replace('"GrossProfit"', '"NetIncomeLoss"'),
+    secConcepts.replace('"GrossProfit"', '"GrossProfit", "Assets"'),
+    secConcepts.replace(
+      /"RevenueFromContractWithCustomerExcludingAssessedTax",\s*"Revenues"/u,
+      '"Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"',
+    ),
+  ];
   if (
-    personalSecFinancialConceptsViolation(
-      secConcepts.replace('"SalesRevenueNet"', '"UnreviewedConcept"'),
-    ) === null
+    invalidSecConceptRegistries.some(
+      (source) => personalSecFinancialConceptsViolation(source) === null,
+    )
   ) {
     found.push(
       "scripts/verify-boundaries.ts: SEC financial concept registry classifier regressed",
@@ -7289,9 +7299,10 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "NetIncomeLoss",
       "OperatingIncomeLoss",
       "NetCashProvidedByUsedInOperatingActivities",
+      "GrossProfit",
     ])
     ? null
-    : "SEC annual frames must remain the exact reviewed six-concept registry";
+    : "SEC annual frames must remain the exact reviewed seven-concept registry";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

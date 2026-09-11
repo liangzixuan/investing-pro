@@ -39,6 +39,7 @@ export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
 
 const METRICS = [
   "revenue",
+  "grossProfit",
   "netIncome",
   "operatingIncome",
   "operatingCashFlow",
@@ -57,6 +58,7 @@ const CONCEPTS = [
   "NetIncomeLoss",
   "OperatingIncomeLoss",
   "NetCashProvidedByUsedInOperatingActivities",
+  "GrossProfit",
 ] as const satisfies readonly PersonalSecAnnualConceptDto[];
 const FAILED_SOURCE_STATUSES = new Set([
   "rate_limited",
@@ -217,7 +219,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
@@ -268,6 +270,7 @@ function buildMetrics(
   );
   return {
     revenue,
+    grossProfit: resolveReported(cik, ["GrossProfit"], frames),
     netIncome,
     operatingIncome,
     operatingCashFlow,

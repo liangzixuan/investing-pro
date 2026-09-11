@@ -40,6 +40,7 @@ const revenueBasisLabels: Readonly<
 };
 const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue: "Revenue",
+  grossProfit: "Gross profit",
   netIncome: "Net income",
   operatingIncome: "Operating income",
   operatingCashFlow: "Operating cash flow",
@@ -50,6 +51,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
     "Reported revenue. Available revenue concepts must agree on value and reporting period.",
+  grossProfit:
+    "Reported GrossProfit in USD, independent of the revenue basis. Missing or unresolved reported amounts stay unknown.",
   netIncome: "Reported net income (loss).",
   operatingIncome: "Reported operating income (loss).",
   operatingCashFlow:
@@ -237,7 +240,7 @@ export function PersonalFinancialScreener({
     try {
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -536,7 +539,9 @@ export function PersonalFinancialScreener({
                 <option value="symbol">Symbol</option>
                 {metrics.map((metric) => (
                   <option value={metric} key={metric}>
-                    {labels[metric]}
+                    {metric === "grossProfit"
+                      ? "Gross profit (USD)"
+                      : labels[metric]}
                   </option>
                 ))}
               </select>
@@ -583,7 +588,9 @@ export function PersonalFinancialScreener({
                   >
                     {metrics.map((metric) => (
                       <option value={metric} key={metric}>
-                        {labels[metric]}
+                        {metric === "grossProfit"
+                          ? "Gross profit (USD)"
+                          : labels[metric]}
                       </option>
                     ))}
                   </select>
@@ -994,7 +1001,9 @@ function FinancialResults({
             ))}
             {response.rows.length === 0 && (
               <tr>
-                <td colSpan={9}>No matching financial results.</td>
+                <td colSpan={metrics.length + 2}>
+                  No matching financial results.
+                </td>
               </tr>
             )}
           </tbody>
