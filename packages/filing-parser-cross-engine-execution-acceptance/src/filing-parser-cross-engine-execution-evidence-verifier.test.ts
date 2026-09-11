@@ -93,7 +93,7 @@ describe("offline cross-engine evidence verifier hardening", () => {
       );
   });
 
-  it("reviews a canonical v3 direct-child artifact end to end and rejects local drift", async () => {
+  it("reviews a canonical v3 direct-child artifact end to end", async () => {
     const fixture = await v3RepositoryFixture();
     await expect(
       verifyFilingParserCrossEngineExecutionEvidenceOffline(fixture.options),
@@ -103,6 +103,10 @@ describe("offline cross-engine evidence verifier hardening", () => {
       historicalV2: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
       verdict: "offline_consistent",
     });
+  }, 30_000);
+
+  it("rejects local source drift for a canonical v3 direct-child artifact", async () => {
+    const fixture = await v3RepositoryFixture();
     await writeFile(
       join(
         fixture.repository,
