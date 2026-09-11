@@ -1,6 +1,8 @@
 import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
+  PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenCriteriaDto,
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
@@ -17,6 +19,7 @@ export const PERSONAL_FINANCIAL_SCREEN_PATH =
 export const PERSONAL_FINANCIAL_SAVED_VIEWS_PATH = `${PERSONAL_FINANCIAL_SCREEN_PATH}/saved-views`;
 const savedId = "financial-screener-saved-views";
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
+const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
 const frameStatuses = [
   "available",
@@ -55,7 +58,12 @@ export function isPersonalFinancialScreenCriteria(
   value: unknown,
 ): value is PersonalFinancialScreenCriteriaDto {
   return (
-    keys(value, ["calendarYear", "identityText", "clauses", "sort"]) &&
+    keysWithRevenueBasis(value, [
+      "calendarYear",
+      "identityText",
+      "clauses",
+      "sort",
+    ]) &&
     integer(value.calendarYear, 2009, new Date().getUTCFullYear() - 1) &&
     typeof value.identityText === "string" &&
     value.identityText === value.identityText.trim().normalize("NFC") &&
@@ -122,6 +130,8 @@ export async function screenPersonalFinancials(
     !isResponse(value) ||
     value.catalogSnapshotSha256 !== input.catalogSnapshotSha256 ||
     value.calendarYear !== input.criteria.calendarYear ||
+    (value.revenueBasis ?? "agreement") !==
+      (input.criteria.revenueBasis ?? "agreement") ||
     value.offset !== input.page.offset ||
     value.limitApplied !== input.page.limit ||
     (input.financialSnapshotSha256 !== null &&
@@ -269,7 +279,7 @@ function isResponse(
   value: unknown,
 ): value is PersonalFinancialScreenResponseDto {
   if (
-    !keys(value, [
+    !keysWithRevenueBasis(value, [
       "schemaVersion",
       "catalogSnapshotSha256",
       "financialSnapshotSha256",
@@ -315,6 +325,8 @@ function isResponse(
     return false;
   const year = value.calendarYear;
   const count = value.identityMatches;
+  const revenueBasis = (value.revenueBasis ??
+    "agreement") as PersonalFinancialRevenueBasisDto;
   if (
     !value.sources.every(
       (source) =>
@@ -351,6 +363,10 @@ function isResponse(
             (row.metrics as Record<string, unknown>)[metric],
             metric.endsWith("Margin") ? "percent" : "USD",
           ),
+        ) &&
+        selectedRevenueSources(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+          revenueBasis,
         ),
     ) ||
     new Set(
@@ -361,6 +377,49 @@ function isResponse(
   )
     return false;
   return true;
+}
+
+function keysWithRevenueBasis(
+  value: unknown,
+  required: readonly string[],
+): value is Record<string, unknown> {
+  return (
+    (keys(value, required) || keys(value, [...required, "revenueBasis"])) &&
+    (!Object.hasOwn(value, "revenueBasis") ||
+      member(revenueBases, value.revenueBasis))
+  );
+}
+
+function selectedRevenueSources(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+  basis: PersonalFinancialRevenueBasisDto,
+): boolean {
+  if (basis === "agreement") return true;
+  if (!cells.revenue.sources.every((source) => source.concept === basis))
+    return false;
+  return (
+    [
+      ["netMargin", "NetIncomeLoss", "netIncome"],
+      ["operatingMargin", "OperatingIncomeLoss", "operatingIncome"],
+      [
+        "operatingCashFlowMargin",
+        "NetCashProvidedByUsedInOperatingActivities",
+        "operatingCashFlow",
+      ],
+    ] as const
+  ).every(([metric, numerator, numeratorMetric]) => {
+    const cell = cells[metric];
+    return (
+      cell.sources.every(
+        (source) => source.concept === basis || source.concept === numerator,
+      ) &&
+      (cell.status !== "available" ||
+        (cells.revenue.status === "available" &&
+          cells[numeratorMetric].status === "available" &&
+          cell.sources.some((source) => source.concept === basis) &&
+          cell.sources.some((source) => source.concept === numerator)))
+    );
+  });
 }
 
 function identity(value: unknown): boolean {

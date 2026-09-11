@@ -2,6 +2,8 @@
 
 import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
+  PERSONAL_FINANCIAL_REVENUE_BASES,
+  type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenCellDto,
   type PersonalFinancialScreenClauseDto,
   type PersonalFinancialScreenCriteriaDto,
@@ -27,6 +29,15 @@ import {
 
 export const PERSONAL_FINANCIAL_SCREENER_PAGE_SIZE = 25;
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
+const revenueBasisLabels: Readonly<
+  Record<PersonalFinancialRevenueBasisDto, string>
+> = {
+  agreement: "Require agreement",
+  Revenues: "Revenues (broad concept)",
+  RevenueFromContractWithCustomerExcludingAssessedTax:
+    "Customer-contract revenue, excluding tax",
+  SalesRevenueNet: "Net sales and services (legacy)",
+};
 const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue: "Revenue",
   netIncome: "Net income",
@@ -50,6 +61,19 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   operatingCashFlowMargin:
     "Operating cash flow / revenue × 100. Requires positive revenue and identical source periods.",
 };
+function revenueExplanation(basis: PersonalFinancialRevenueBasisDto): string {
+  return basis === "agreement"
+    ? "All available revenue concepts must agree on value and reporting period. Different definitions can produce different amounts."
+    : "Uses this one concept for every company and all three margin denominators, without substituting another revenue concept.";
+}
+function formulaFor(
+  metric: PersonalFinancialScreenMetricDto,
+  basis: PersonalFinancialRevenueBasisDto,
+): string {
+  return metric === "revenue" && basis !== "agreement"
+    ? `Reported ${revenueBasisLabels[basis]}. Missing or unresolved selected facts stay unknown.`
+    : formulas[metric];
+}
 const emptySaved: PersonalFinancialSavedViewsPayloadDto = {
   schemaVersion: 1,
   views: [],
@@ -473,6 +497,27 @@ export function PersonalFinancialScreener({
               />
             </label>
             <label>
+              <span>Revenue basis</span>
+              <select
+                aria-label="Revenue basis"
+                aria-describedby="financial-revenue-basis-help"
+                value={criteria.revenueBasis ?? "agreement"}
+                onChange={(event) =>
+                  changeCriteria({
+                    ...criteria,
+                    revenueBasis: event.target
+                      .value as PersonalFinancialRevenueBasisDto,
+                  })
+                }
+              >
+                {PERSONAL_FINANCIAL_REVENUE_BASES.map((basis) => (
+                  <option key={basis} value={basis}>
+                    {revenueBasisLabels[basis]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               <span>Sort financial results by</span>
               <select
                 aria-label="Financial sort field"
@@ -516,6 +561,11 @@ export function PersonalFinancialScreener({
               </select>
             </label>
           </div>
+          <p id="financial-revenue-basis-help" className="market-scope-note">
+            {revenueExplanation(criteria.revenueBasis ?? "agreement")} Revenue
+            definitions are not interchangeable. This choice applies to revenue
+            and all three margins. Run the screen to apply it.
+          </p>
           <div className="financial-screen-clauses">
             {criteria.clauses.map((clause, index) => (
               <div className="financial-screen-clause" key={index}>
@@ -781,8 +831,13 @@ function FinancialResults({
   readonly running: boolean;
   readonly onPage: (offset: number) => void;
 }) {
+  const revenueBasis = response.revenueBasis ?? "agreement";
   return (
     <div className="financial-screen-results">
+      <p className="market-scope-note">
+        <strong>Revenue basis: {revenueBasisLabels[revenueBasis]}.</strong>{" "}
+        {revenueExplanation(revenueBasis)}
+      </p>
       <dl className="financial-screen-counts">
         <div>
           <dt>Matches · all filters pass</dt>
@@ -818,7 +873,7 @@ function FinancialResults({
               {response.metricCoverage[metric].known.toLocaleString("en-US")}{" "}
               known /{" "}
               {response.metricCoverage[metric].unknown.toLocaleString("en-US")}{" "}
-              unknown. {formulas[metric]}
+              unknown. {formulaFor(metric, revenueBasis)}
             </li>
           ))}
         </ul>
@@ -840,9 +895,9 @@ function FinancialResults({
           ))}
         </ul>
         <p>
-          Revenue considers revenue from contracts excluding assessed tax,
-          Revenues, and SalesRevenueNet. All available aliases must agree on
-          value and period; a failed alias request leaves revenue unavailable.
+          {revenueBasis === "agreement"
+            ? "Revenue considers customer-contract revenue excluding tax, Revenues, and SalesRevenueNet. All available concepts must agree on value and period; a failed concept request leaves agreement unresolved."
+            : `Revenue uses only ${revenueBasis}. Other concept statuses remain visible here; they do not replace missing or unresolved selected facts.`}{" "}
           Unresolved facts and mismatched periods do not become zero. Source
           signs are preserved; positive cash flow is provided by operations and
           negative cash flow is used in operations.
@@ -902,6 +957,10 @@ function FinancialResults({
                       metric={metric}
                       cik={row.identity.cik}
                       symbol={row.identity.symbol}
+                      revenueBasis={revenueBasis}
+                      revenueUnresolved={
+                        row.metrics.revenue.status === "unavailable"
+                      }
                     />
                   </td>
                 ))}
@@ -979,11 +1038,15 @@ function FinancialCell({
   metric,
   cik,
   symbol,
+  revenueBasis,
+  revenueUnresolved,
 }: {
   readonly cell: PersonalFinancialScreenCellDto;
   readonly metric: PersonalFinancialScreenMetricDto;
   readonly cik: string;
   readonly symbol: string;
+  readonly revenueBasis: PersonalFinancialRevenueBasisDto;
+  readonly revenueUnresolved: boolean;
 }) {
   const display =
     cell.status === "available"
@@ -1009,7 +1072,24 @@ function FinancialCell({
             ? `Exact value: ${cell.value} ${cell.unit}`
             : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
         </p>
-        <p>{formulas[metric]}</p>
+        <p>{formulaFor(metric, revenueBasis)}</p>
+        {metric === "revenue" &&
+          cell.status === "unavailable" &&
+          cell.reason === "conflicting" && (
+            <p>
+              {revenueBasis === "agreement" &&
+              new Set(cell.sources.map((source) => source.concept)).size > 1
+                ? "Revenue inputs remain unresolved. Retained concepts can describe different definitions; compare their amounts and reporting periods below. This screen does not select a value from conflicting inputs."
+                : "Revenue inputs remain unresolved. Any retained source references are shown below; this screen does not select a value from ambiguous or conflicting inputs."}
+            </p>
+          )}
+        {metric.endsWith("Margin") && (
+          <p>
+            Revenue denominator: {revenueBasisLabels[revenueBasis]}.
+            {revenueUnresolved &&
+              " This margin remains unknown because revenue is unresolved."}
+          </p>
+        )}
         {cell.sources.map((source, index) => (
           <p key={`${source.concept}-${String(index)}`}>
             {source.concept}

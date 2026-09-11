@@ -14,7 +14,9 @@ invalid, the screen gives an actionable configuration error.
 
 Open Discover, start the owner session, and use **Annual financial screen**.
 Choose a completed calendar year, add numerical thresholds, and explicitly run
-the screen. Amount thresholds use USD; margin thresholds use percent points.
+the screen. Choose a **Revenue basis** when you want one reported concept to
+drive revenue and all three margin denominators. Amount thresholds use USD;
+margin thresholds use percent points.
 Open or watchlist a result using its exact catalog listing identity. Save a
 named definition to reuse criteria, then explicitly rerun it when loaded.
 Refresh requests a new source read. Page navigation remains bound to both
@@ -34,23 +36,62 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 
 ## Metrics and comparability
 
-| Metric                     | Input or formula                                                                                                     | Unit    |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- |
-| Revenue                    | Agreement among available `RevenueFromContractWithCustomerExcludingAssessedTax`, `Revenues`, `SalesRevenueNet` facts | USD     |
-| Net income                 | `NetIncomeLoss`                                                                                                      | USD     |
-| Operating income           | `OperatingIncomeLoss`                                                                                                | USD     |
-| Operating cash flow        | `NetCashProvidedByUsedInOperatingActivities`                                                                         | USD     |
-| Net margin                 | Net income / revenue × 100                                                                                           | percent |
-| Operating margin           | Operating income / revenue × 100                                                                                     | percent |
-| Operating cash flow margin | Operating cash flow / revenue × 100                                                                                  | percent |
+| Metric                     | Input or formula                                                                | Unit    |
+| -------------------------- | ------------------------------------------------------------------------------- | ------- |
+| Revenue                    | Selected revenue basis; the default requires agreement among available concepts | USD     |
+| Net income                 | `NetIncomeLoss`                                                                 | USD     |
+| Operating income           | `OperatingIncomeLoss`                                                           | USD     |
+| Operating cash flow        | `NetCashProvidedByUsedInOperatingActivities`                                    | USD     |
+| Net margin                 | Net income / revenue × 100                                                      | percent |
+| Operating margin           | Operating income / revenue × 100                                                | percent |
+| Operating cash flow margin | Operating cash flow / revenue × 100                                             | percent |
 
-An absent revenue alias is not zero. Present aliases must agree on value and
-actual start/end dates; disagreement is unknown. A failed alias source prevents
-a false claim of agreement. Revenue must be positive and numerator/denominator
+### Revenue basis
+
+The three source concepts describe different scopes. The selector applies one
+rule consistently to every listing in the screen:
+
+| Choice                                   | Rule                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Require agreement                        | Preserve the original rule: all available observations across the three revenue concepts must agree on amount and actual dates. |
+| Revenues (broad concept)                 | Use only `Revenues`, which can include earning activities beyond customer contracts.                                            |
+| Customer-contract revenue, excluding tax | Use only `RevenueFromContractWithCustomerExcludingAssessedTax`.                                                                 |
+| Net sales and services (legacy)          | Use only `SalesRevenueNet`, a legacy concept that can lack current-year coverage.                                               |
+
+An explicit choice never falls back to a different concept for another company.
+An absent selected concept remains missing; a failed selected source remains
+unavailable. Conflicting observations within the chosen concept stay unknown.
+Failures in other concepts remain visible in source coverage but do not replace
+the selected definition. Changing the basis clears results and resets pagination;
+the next explicit run can reuse the same cached SEC snapshot.
+
+The chosen basis also supplies the denominator of net margin, operating margin
+and operating cash flow margin. Their arithmetic is unchanged. Equal reported
+amounts do not establish equivalent business definitions, and choosing the same
+concept does not establish sector or fiscal comparability.
+
+Walmart demonstrates why the choice matters: its fiscal 2026 statement reports
+$706.413 billion of net sales and $713.163 billion of total revenue, including
+$6.750 billion of membership and other income. Both amounts can be valid for the
+same period. [Walmart consolidated statement](https://www.sec.gov/Archives/edgar/data/104169/000010416926000055/R3.htm).
+FASB's taxonomy implementation guide likewise illustrates broader revenue
+combining customer-contract revenue with other revenue sources; the guide is
+taxonomy guidance, not authoritative accounting guidance.
+[FASB guide, Examples 10–12](https://xbrl.fasb.org/impguidance/Rev2_TIG/revenue_2.pdf).
+
+For default agreement screens, an absent concept is not zero. Present concepts
+must agree on amount and actual dates, and a failed source prevents a claim of
+agreement. In every basis, revenue must be positive and numerator/denominator
 periods must match exactly for a margin. Ratios reuse shared formula version
 1.0.0, Decimal arithmetic and two-decimal half-up rounding. Raw reported
 amounts retain normalized decimal precision. Source references expose concept,
 filing accession and actual dates for each cell.
+
+Existing four-field saved criteria remain valid and retain the agreement rule.
+The optional `revenueBasis` stores an explicit choice. Omitted-basis requests keep
+the original response shape; explicit requests echo the basis, which the strict
+browser client checks against the request. Unedited saved definitions are not
+rewritten. This adds no source endpoints or requests to the six-frame load.
 
 A selected CY label denotes the SEC's calendar-aligned annual frame, not a
 common fiscal year across issuers. Annual durations are checked within the
@@ -89,15 +130,19 @@ IFRS concepts or unsupported custom extensions.
 
 ## Acceptance and remaining work
 
-Engineering tests cover precision, alias conflicts, date alignment, missing
+Engineering tests cover precision, concept conflicts, date alignment, missing
 values, thresholds, coverage arithmetic, ordering, snapshot-bound pages,
 bounded transport, cancellation, authentication, and saved-definition
 conflicts. UI tests cover explicit run/refresh, filters, paging, save/load,
 open/watchlist actions and session cleanup.
 
-No actual SEC request or measurement against the owner's admitted catalog
-has been recorded for this release. First deployment must check configured
-source success, sampled issuer values and actual per-field coverage. Synthetic
+The original agreement mode was measured on 2026-09-11 against an admitted
+3,227-listing catalog and verified through authenticated Chrome. Known coverage
+ranged from 1,887 listings for operating margin to 2,847 for operating cash flow.
+The live source set had five available concepts and SalesRevenueNet not covered.
+These observations describe that snapshot and the original basis only; they do
+not establish coverage for every explicit basis or a later source observation.
+Actual release and live acceptance results belong in the local handoff. Synthetic
 fixtures establish behavior, not real-market completeness. Full Cycle 3k-a2
 remains open until the roadmap's 30-core-metric, 500-security, coverage,
 independent validation and performance requirements are met. Growth, price,

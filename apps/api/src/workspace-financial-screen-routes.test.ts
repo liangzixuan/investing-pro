@@ -38,6 +38,7 @@ afterEach(async () => {
 });
 
 import {
+  PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
   type PersonalSecAnnualFinancialSnapshotDto,
 } from "@research-cockpit/contracts";
@@ -81,7 +82,43 @@ describe("personal annual financial screen routes", () => {
       ],
     });
     expect(f.vault.record).toBeUndefined();
+    expect(body).not.toHaveProperty("revenueBasis");
   });
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "accepts and echoes explicit revenue basis %s without changing source acquisition",
+    async (revenueBasis) => {
+      const f = await readyApp();
+      const base = screenRequest(f.snapshotSha256);
+      const response = await screen(f.app, f.cookie, {
+        ...base,
+        criteria: { ...base.criteria, revenueBasis },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        revenueBasis,
+        formulaVersion: "1.0.0",
+      });
+      const cell =
+        response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
+          .revenue;
+      if (
+        revenueBasis === "agreement" ||
+        revenueBasis === "RevenueFromContractWithCustomerExcludingAssessedTax"
+      )
+        expect(cell).toMatchObject({ status: "available", value: "1000" });
+      else
+        expect(cell).toMatchObject({
+          status: "unavailable",
+          reason: "missing",
+        });
+      expect(f.provider.loadSnapshot).toHaveBeenCalledExactlyOnceWith(
+        2025,
+        expect.any(AbortSignal),
+        false,
+      );
+      expect(f.vault.record).toBeUndefined();
+    },
+  );
   it("rejects stale catalogs before fetching, malformed filters, and mixed snapshot pages", async () => {
     const f = await readyApp();
     const req = screenRequest(f.snapshotSha256);
@@ -268,6 +305,101 @@ describe("personal annual financial screen routes", () => {
     expect(staleUpdate.statusCode).toBe(409);
     expect(fixture.vault.record?.payload).toEqual(updatedPayload);
   });
+
+  it("round-trips mixed legacy and explicit saved bases without filling omitted criteria", async () => {
+    const f = await readyApp();
+    const original = savedViewsPayload(f.snapshotSha256);
+    const legacy = original.views[0]!;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      ...original,
+      views: [
+        legacy,
+        ...PERSONAL_FINANCIAL_REVENUE_BASES.map((revenueBasis, index) => ({
+          ...legacy,
+          id: `basis-${index}`,
+          name: `Basis ${index}`,
+          criteria: { ...legacy.criteria, revenueBasis },
+        })),
+      ],
+    };
+    const created = await putSavedViews(
+      f.app,
+      f.cookie,
+      payload,
+      0,
+      "revenue-bases-save",
+    );
+    expect(created.statusCode).toBe(201);
+    const loaded = await f.app.inject({
+      headers: ownerHeaders(f.cookie),
+      method: "GET",
+      remoteAddress: "127.0.0.1",
+      url: PERSONAL_FINANCIAL_SAVED_VIEWS_PATH,
+    });
+    expect(loaded.statusCode).toBe(200);
+    const stored = loaded.json<{
+      payload: PersonalFinancialSavedViewsPayloadDto;
+    }>().payload;
+    expect(stored).toEqual(payload);
+    expect(stored.views[0]!.criteria).not.toHaveProperty("revenueBasis");
+    for (const view of stored.views) {
+      const response = await screen(f.app, f.cookie, {
+        ...screenRequest(f.snapshotSha256),
+        criteria: view.criteria,
+      });
+      expect(response.statusCode).toBe(200);
+      if (view.criteria.revenueBasis === undefined)
+        expect(response.json()).not.toHaveProperty("revenueBasis");
+      else
+        expect(response.json()).toHaveProperty(
+          "revenueBasis",
+          view.criteria.revenueBasis,
+        );
+    }
+    const updated = await putSavedViews(
+      f.app,
+      f.cookie,
+      original,
+      1,
+      "revenue-bases-restore-legacy",
+    );
+    expect(updated.statusCode).toBe(200);
+    expect(f.vault.record?.payload).toEqual(original);
+  });
+
+  it.each([null, "auto", "revenues", "NetIncomeLoss", 1])(
+    "rejects invalid revenue basis %j before source acquisition or saved mutation",
+    async (revenueBasis) => {
+      const f = await readyApp();
+      const request = screenRequest(f.snapshotSha256);
+      const invalidCriteria = { ...request.criteria, revenueBasis };
+      expect(
+        (
+          await screen(f.app, f.cookie, {
+            ...request,
+            criteria: invalidCriteria,
+          })
+        ).statusCode,
+      ).toBe(400);
+      const saved = savedViewsPayload(f.snapshotSha256);
+      expect(
+        (
+          await putSavedViews(
+            f.app,
+            f.cookie,
+            {
+              ...saved,
+              views: [{ ...saved.views[0], criteria: invalidCriteria }],
+            },
+            0,
+            "invalid-revenue-basis-save",
+          )
+        ).statusCode,
+      ).toBe(400);
+      expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+      expect(f.vault.record).toBeUndefined();
+    },
+  );
 
   it("requires exact mutation carriers and rejects unsafe saved definitions", async () => {
     const fixture = await readyApp();

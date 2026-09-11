@@ -1,14 +1,16 @@
-import type {
-  PersonalFinancialScreenCellDto,
-  PersonalFinancialScreenCriteriaDto,
-  PersonalFinancialScreenMetricDto,
-  PersonalFinancialScreenResponseDto,
-  PersonalFinancialScreenRowDto,
-  PersonalFinancialScreenSourceRefDto,
-  PersonalSecAnnualConceptDto,
-  PersonalSecAnnualFinancialSnapshotDto,
-  PersonalSecAnnualFrameDto,
-  PersonalSecurityMasterScreenRowDto,
+import {
+  PERSONAL_FINANCIAL_REVENUE_BASES,
+  type PersonalFinancialRevenueBasisDto,
+  type PersonalFinancialScreenCellDto,
+  type PersonalFinancialScreenCriteriaDto,
+  type PersonalFinancialScreenMetricDto,
+  type PersonalFinancialScreenResponseDto,
+  type PersonalFinancialScreenRowDto,
+  type PersonalFinancialScreenSourceRefDto,
+  type PersonalSecAnnualConceptDto,
+  type PersonalSecAnnualFinancialSnapshotDto,
+  type PersonalSecAnnualFrameDto,
+  type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
 
@@ -95,11 +97,27 @@ export function validatePersonalFinancialScreenCriteria(
 ): value is PersonalFinancialScreenCriteriaDto {
   try {
     if (
-      !exactRecord(value, ["calendarYear", "identityText", "clauses", "sort"])
+      !exactRecord(value, [
+        "calendarYear",
+        "identityText",
+        "clauses",
+        "sort",
+      ]) &&
+      !exactRecord(value, [
+        "calendarYear",
+        "identityText",
+        "clauses",
+        "sort",
+        "revenueBasis",
+      ])
     )
       return false;
     if (
       !isCalendarYear(value.calendarYear) ||
+      (Object.hasOwn(value, "revenueBasis") &&
+        !PERSONAL_FINANCIAL_REVENUE_BASES.some(
+          (basis) => basis === value.revenueBasis,
+        )) ||
       typeof value.identityText !== "string" ||
       [...value.identityText].length >
         PERSONAL_FINANCIAL_SCREEN_LIMITS.identityTextCodePoints ||
@@ -180,7 +198,11 @@ export function evaluatePersonalFinancialScreen(
       identityMatches += 1;
       let metrics = metricsByCik.get(identity.cik);
       if (metrics === undefined) {
-        metrics = buildMetrics(identity.cik, index);
+        metrics = buildMetrics(
+          identity.cik,
+          index,
+          criteria.revenueBasis ?? "agreement",
+        );
         metricsByCik.set(identity.cik, metrics);
       }
       for (const metric of METRICS) {
@@ -199,6 +221,9 @@ export function evaluatePersonalFinancialScreen(
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
+      ...(criteria.revenueBasis === undefined
+        ? {}
+        : { revenueBasis: criteria.revenueBasis }),
       fetchedAt: snapshot.fetchedAt,
       expiresAt: snapshot.expiresAt,
       sources: CONCEPTS.map((concept) => {
@@ -227,8 +252,13 @@ export function evaluatePersonalFinancialScreen(
 function buildMetrics(
   cik: string,
   frames: FrameIndex,
+  revenueBasis: PersonalFinancialRevenueBasisDto,
 ): PersonalFinancialScreenRowDto["metrics"] {
-  const revenue = resolveReported(cik, REVENUE_CONCEPTS, frames);
+  const revenue = resolveReported(
+    cik,
+    revenueBasis === "agreement" ? REVENUE_CONCEPTS : [revenueBasis],
+    frames,
+  );
   const netIncome = resolveReported(cik, ["NetIncomeLoss"], frames);
   const operatingIncome = resolveReported(cik, ["OperatingIncomeLoss"], frames);
   const operatingCashFlow = resolveReported(

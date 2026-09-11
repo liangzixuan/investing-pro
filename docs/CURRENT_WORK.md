@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-10 following the handover from **Investing Pro+** to
+Updated 2026-09-11 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                         | Important remaining gap                                                |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                               | Catalog refresh and broader discovery data                             |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                   | Wider reconciliation and benchmark-relative analysis                   |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                    | Verified TTM and the shared 30-core-metric screening registry          |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models             |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata          |
-| Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Live coverage validation, growth/value inputs and wider metric breadth |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Live validation, upcoming events, alerts and exports                   |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                 | Further corporate actions, benchmarks and live coverage                |
+| User job                  | Implemented capability                                                                                         | Important remaining gap                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                               | Catalog refresh and broader discovery data                                 |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                   | Wider reconciliation and benchmark-relative analysis                       |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                    | Verified TTM and the shared 30-core-metric screening registry              |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                        | Direct normalized FCFF inputs and further justified models                 |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                           | Compatible multi-company coverage and automatic peer metadata              |
+| Screen for ideas          | Catalog filters plus seven SEC annual size/profitability metrics, stable pages and encrypted saved definitions | Explicit revenue definitions, growth/value inputs and wider metric breadth |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                   | Broader live samples, upcoming events, alerts and exports                  |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                 | Further corporate actions, benchmarks and live coverage                    |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -34,11 +34,17 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `ec9b302` supports the observed filing report-end date transform, following
-the declaration, linking-attribute and packaged-startup repairs. Its clean native
-gate passed 4,400 tests and all 24 builds. Four hosted workflows and both platforms
-passed on the first attempt. External Chrome desktop, mobile and keyboard checks
-passed. The configured workspace is running; sign-in remains a separate user step.
+Release `d86d952` delivers the filing-reference explanation and Windows test
+scheduling repair. Its clean native gate passed 4,416 tests and all 24 builds;
+five hosted workflows and both platforms passed. Desktop, mobile and keyboard
+acceptance is recorded in the release handoff. These are baseline results, not
+validation of later changes.
+
+The configured catalog now contains 3,227 listings, including the six repaired
+AAPL, MSFT, AMZN, META, WMT and ORCL entries. Live annual coverage, authenticated
+searches, screening/filtering/paging and a bounded AAPL watchlist filing load
+were verified on 2026-09-11. The user completed owner sign-in. Actual current
+runtime status and acceptance limits remain in the local checkpoint.
 
 The final pinned live comparison completed 21 successful SEC GETs across the
 original five selections and three documents. Report ends resolve for NVDA,
@@ -48,33 +54,28 @@ are unchanged; all five numeric results remain unsupported because of dimensions
 These results describe only that retained sample. Actual acceptance/runtime
 details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: explain unresolved filing references
+## Active delivery: choose the revenue definition
 
-Partial Cycle 3h-a12 adds a “Why this value remains unresolved” explanation to
-the existing filing inspector. It groups retained blocking references by their
-complete issue sets and whether explicit, typed or unknown scope is retained.
-Individual references show the dimension details in the validated response.
-Each reference opens its exact candidate context, including candidates
-on later pages, without another source request. Repeated jumps, paging and focus
-remain local interactions; refresh, cancellation and selection changes discard
-the prior inspection and its navigation state.
+Live screening exposed a semantic limitation: the three revenue concepts can
+represent different legitimate definitions. Walmart's customer-contract/net-sales
+amount and broader revenues differ even for the same period. Treating them as
+interchangeable aliases leaves revenue and all three dependent margins unknown.
+The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) records the
+source evidence and selected semantics.
 
-The explanation preserves the parser's numeric decision. Rows the current
-comparison excludes for issuer/period mismatch remain visible with every issue;
-that classification is not proof that a mixed-issue context is well formed.
-An unsupported dimension reason with no projected members remains unknown scope.
-Projected axis/member names do not establish consolidated scope, taxonomy
-defaults or container grammar. Typed content is inspected only in the existing
-candidate disclosure. Filing metadata and selected values remain unchanged.
+Add an explicit revenue-basis choice for the entire screen and its margin
+denominators. Omitted-basis saved criteria retain the original agreement rule.
+Explicit choices use one concept consistently, without per-company fallback;
+missing or conflicting selected facts remain unknown. The response binds the
+choice to the request. Existing source limits, six-frame cache, period checks,
+decimal arithmetic and saved-view version handling remain in force.
 
-Acceptance covers supported and unresolved outcomes, complete issue grouping,
-explicit/typed/unknown dimension details, mixed mismatch exclusions, retained
-clean siblings, reference multiplicity, cross-page open/focus and no additional
-fetches. Use the actual strict client for desktop/mobile/keyboard browser QA.
-Freeze the reviewed source before the complete native gate and hosted checks.
-A bounded live diagnostic may describe only its declared, pinned selection and
-document; raw documents and numerical fact values stay in memory. Record actual
-coverage and any limits in the local handoff, without predicting a live pass.
+Acceptance covers legacy saved definitions, explicit-basis save/load and response
+binding, differing legitimate definitions, same-concept conflicts, selected-source
+failure and missingness, denominator/date checks, coverage/filtering/paging and
+stale-result cleanup. Complete focused tests, source review, the native gate and
+applicable hosted checks. Use dedicated external Chrome for bounded UI acceptance;
+record actual results without extrapolating new full-universe coverage.
 
 Numeric admission, fiscal calendars, standalone quarters, revisions and TTM remain
 separate evidence-dependent work. Keep catalog refresh and broader source coverage
@@ -84,8 +85,8 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Explain unresolved filing references and open their exact candidate contexts                     | Make existing scope uncertainty actionable without changing numeric rules  |
-| Configured next  | Validate live SEC screening coverage and watchlist filing loads                                  | SEC contact and local workspace are ready; retain explicit coverage gaps   |
+| Now              | Choose an explicit revenue basis while preserving saved-screen meanings                          | Resolve legitimate definition differences without silent substitution      |
+| Next independent | Broaden financial screening beyond seven metrics as verified sources allow                       | Build on measured coverage and retain explicit source gaps                 |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
 | As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
@@ -107,8 +108,9 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/api exec vitest run src/personal-sec-filing-context-parser.test.ts src/personal-sec-filing-context-provider.test.ts src/workspace-sec-filing-context-routes.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-sec-filing-context-api.test.ts src/features/research/PersonalSecFilingContext.test.tsx src/features/research/PersonalSecQuarterlyEvidence.test.tsx
+   pnpm --filter @research-cockpit/personal-financial-analytics exec vitest run src/personal-financial-screener.test.ts
+   pnpm --filter @research-cockpit/api exec vitest run src/workspace-financial-screen-routes.test.ts
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-financial-screen-api.test.ts src/features/research/PersonalFinancialScreener.test.tsx
    pnpm --filter @research-cockpit/web typecheck
    ```
 

@@ -1,6 +1,7 @@
 import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialSavedViewsPayloadDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
@@ -144,6 +145,7 @@ describe("PersonalFinancialScreener", () => {
     expect(input(view, "Financial calendar year").props.value).toBe(
       new Date().getUTCFullYear() - 1,
     );
+    expect(input(view, "Revenue basis").props.value).toBe("agreement");
     expect(text(view)).toContain("calendar-aligned annual SEC facts");
     expect(text(view)).toContain("Missing or conflicting facts stay unknown");
     expect(text(view)).toContain("Run a financial screen to see results");
@@ -198,7 +200,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(view)).toContain("2024-01-01 through 2024-12-31");
     expect(text(view)).toContain("known / 0 unknown");
     expect(text(view)).toContain("Net income / revenue × 100");
-    expect(text(view)).toContain("All available aliases must agree");
+    expect(text(view)).toContain("All available concepts must agree");
     const links = elements(view).filter((element) => element.type === "a");
     expect(links.length).toBeGreaterThan(6);
     expect(
@@ -232,6 +234,197 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
   });
+
+  it("changes revenue basis locally, binds paging, and aborts stale basis results", async () => {
+    await mount();
+    change(render(), "Revenue basis", "Revenues");
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...response(0, 26),
+      revenueBasis: "Revenues",
+    });
+    submit(render());
+    await flush();
+    expect(text(render())).toContain("Revenue basis: Revenues (broad concept)");
+    expect(text(render())).toContain(
+      "without substituting another revenue concept",
+    );
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...response(25, 26),
+      revenueBasis: "Revenues",
+    });
+    click(render(), "Next financial page");
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls.at(-1)?.[0]).toMatchObject({
+      criteria: { revenueBasis: "Revenues" },
+      financialSnapshotSha256: sha("b"),
+      page: { offset: 25, limit: 25 },
+    });
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    click(render(), "Previous financial page");
+    const signal = api.screenPersonalFinancials.mock.calls.at(
+      -1,
+    )?.[1] as AbortSignal;
+    change(
+      render(),
+      "Revenue basis",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+    );
+    expect(signal.aborted).toBe(true);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(3);
+    pending.resolve({ ...response(), revenueBasis: "Revenues" });
+    await flush();
+    expect(text(render())).not.toContain("Open ONE");
+    expect(text(render())).toContain("Criteria changed");
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...response(),
+      revenueBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+    });
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls.at(-1)?.[0]).toMatchObject({
+      criteria: {
+        revenueBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+      },
+      financialSnapshotSha256: null,
+      page: { offset: 0, limit: 25 },
+      refresh: false,
+    });
+  });
+
+  it("saves and loads an explicit basis while preserving an untouched legacy definition", async () => {
+    const legacy = {
+      id: "screen-legacy",
+      name: "Legacy agreement",
+      criteria: {
+        calendarYear: new Date().getUTCFullYear() - 1,
+        identityText: "",
+        clauses: [],
+        sort: { field: "symbol" as const, direction: "asc" as const },
+      },
+      createdAgainstCatalogSnapshotSha256: sha("a"),
+      createdAgainstFinancialSnapshotSha256: sha("b"),
+    };
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 1,
+      payload: { schemaVersion: 1, views: [legacy] },
+    });
+    await mount();
+    change(render(), "Saved financial screen", legacy.id);
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Revenue basis").props.value).toBe("agreement");
+    change(render(), "Revenue basis", "Revenues");
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...response(),
+      revenueBasis: "Revenues",
+    });
+    submit(render());
+    await flush();
+    change(render(), "Financial screen name", "Broad revenue");
+    click(render(), "Save financial screen as new");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.views[0]?.criteria).not.toHaveProperty("revenueBasis");
+    expect(payload.views[1]?.criteria.revenueBasis).toBe("Revenues");
+    click(render(), "Reset financial criteria");
+    expect(input(render(), "Revenue basis").props.value).toBe("agreement");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Revenue basis").props.value).toBe("Revenues");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    change(render(), "Saved financial screen", legacy.id);
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Revenue basis").props.value).toBe("agreement");
+    submit(render());
+    await flush();
+    const legacyRequest = api.screenPersonalFinancials.mock.calls.at(
+      -1,
+    )?.[0] as PersonalFinancialScreenRequestDto;
+    expect(legacyRequest.criteria).not.toHaveProperty("revenueBasis");
+  });
+
+  it.each(["agreement", "SalesRevenueNet", "Revenues"] as const)(
+    "explains unresolved %s revenue and each dependent margin while retaining sources",
+    async (basis) => {
+      await mount();
+      const result = response();
+      const original = result.rows[0]!;
+      const reason = basis === "SalesRevenueNet" ? "missing" : "conflicting";
+      const metrics = { ...original.metrics };
+      const references =
+        basis === "agreement"
+          ? [
+              {
+                ...original.metrics.revenue.sources[0]!,
+                concept: "Revenues" as const,
+                value: "110",
+              },
+              {
+                ...original.metrics.revenue.sources[0]!,
+                concept:
+                  "RevenueFromContractWithCustomerExcludingAssessedTax" as const,
+                value: "100",
+              },
+            ]
+          : [];
+      for (const metric of [
+        "revenue",
+        "netMargin",
+        "operatingMargin",
+        "operatingCashFlowMargin",
+      ] as const)
+        metrics[metric] = {
+          status: "unavailable",
+          reason,
+          unit: metric === "revenue" ? "USD" : "percent",
+          sources: references,
+        };
+      change(render(), "Revenue basis", basis);
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...result,
+        revenueBasis: basis,
+        rows: [{ ...original, metrics }],
+      });
+      submit(render());
+      await flush();
+      const rendered = text(render());
+      expect(rendered).toContain(`Unavailable: ${reason}`);
+      expect(
+        rendered.match(
+          /This margin remains unknown because revenue is unresolved\./gu,
+        ),
+      ).toHaveLength(3);
+      if (basis === "agreement") {
+        expect(rendered).toContain(
+          "Retained concepts can describe different definitions",
+        );
+        expect(rendered).toContain("Reported: 110 USD");
+        expect(rendered).toContain("Reported: 100 USD");
+      } else {
+        expect(rendered).toContain(`Revenue uses only ${basis}`);
+        expect(rendered).toContain(
+          "Missing or unresolved selected facts stay unknown",
+        );
+        if (basis === "Revenues") {
+          expect(rendered).toContain(
+            "Any retained source references are shown below",
+          );
+          expect(rendered).not.toContain(
+            "Retained concepts can describe different definitions",
+          );
+        }
+      }
+      expect(
+        elements(render()).filter(
+          (element) =>
+            element.type === "a" &&
+            String(element.props.href).startsWith("https://data.sec.gov/"),
+        ),
+      ).toHaveLength(6);
+    },
+  );
 
   it("pins every page including the return to page one and resets the digest only for a new run or refresh", async () => {
     await mount();
@@ -377,6 +570,7 @@ describe("PersonalFinancialScreener", () => {
       },
       createdAgainstFinancialSnapshotSha256: sha("b"),
     });
+    expect(payload.views[0]?.criteria).not.toHaveProperty("revenueBasis");
     click(render(), "Reset financial criteria");
     click(render(), "Load financial criteria");
     view = render();

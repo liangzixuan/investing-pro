@@ -1,6 +1,8 @@
 import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
+  PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialSavedViewsPayloadDto,
@@ -28,6 +30,205 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("financial screen transport", () => {
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "binds explicit %s criteria to the echoed basis and selected sources",
+    async (basis) => {
+      const result = responseWithBasis(basis);
+      fetchMock.mockResolvedValue(json(result));
+      const input = {
+        ...request(),
+        criteria: { ...request().criteria, revenueBasis: basis },
+      };
+      expect(await screenPersonalFinancials(input, signal())).toEqual(result);
+      expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
+    },
+  );
+
+  it.each([undefined, "agreement", "Revenues", null, "totalRevenue"])(
+    "rejects a missing, different or invalid single-concept response basis: %s",
+    async (basis) => {
+      const result = responseWithBasis(
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+      );
+      const legacyShape = { ...result };
+      delete legacyShape.revenueBasis;
+      fetchMock.mockResolvedValue(
+        json(
+          basis === undefined
+            ? legacyShape
+            : { ...result, revenueBasis: basis },
+        ),
+      );
+      await expect(
+        screenPersonalFinancials(
+          {
+            ...request(),
+            criteria: {
+              ...request().criteria,
+              revenueBasis:
+                "RevenueFromContractWithCustomerExcludingAssessedTax",
+            },
+          },
+          signal(),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("keeps omitted and explicit agreement compatible but rejects silently selected legacy results", async () => {
+    fetchMock.mockResolvedValueOnce(json(response()));
+    expect(
+      await screenPersonalFinancials(
+        {
+          ...request(),
+          criteria: { ...request().criteria, revenueBasis: "agreement" },
+        },
+        signal(),
+      ),
+    ).not.toHaveProperty("revenueBasis");
+    fetchMock.mockResolvedValueOnce(json(responseWithBasis("agreement")));
+    expect(
+      (await screenPersonalFinancials(request(), signal())).revenueBasis,
+    ).toBe("agreement");
+    fetchMock.mockResolvedValueOnce(json(responseWithBasis("Revenues")));
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    "revenue",
+    "netMargin",
+    "operatingMargin",
+    "operatingCashFlowMargin",
+  ] as const)(
+    "rejects a substituted revenue concept in selected %s sources",
+    async (metric) => {
+      const result = responseWithBasis("Revenues");
+      const row = result.rows[0]!;
+      fetchMock.mockResolvedValue(
+        json({
+          ...result,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                [metric]: {
+                  ...row.metrics[metric],
+                  sources: row.metrics[metric].sources.map((ref) =>
+                    ref.concept === "Revenues"
+                      ? { ...ref, concept: "SalesRevenueNet" }
+                      : ref,
+                  ),
+                },
+              },
+            },
+          ],
+        }),
+      );
+      await expect(
+        screenPersonalFinancials(
+          {
+            ...request(),
+            criteria: { ...request().criteria, revenueBasis: "Revenues" },
+          },
+          signal(),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("retains missing selected revenue and margins despite available alternative frames", async () => {
+    const result = responseWithBasis("SalesRevenueNet");
+    const row = result.rows[0]!;
+    const affected = [
+      "revenue",
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+    ] as const;
+    const metrics = { ...row.metrics };
+    const coverage = { ...result.metricCoverage };
+    for (const metric of affected) {
+      metrics[metric] = {
+        status: "unavailable",
+        reason: "missing",
+        unit: metrics[metric].unit,
+        sources: metrics[metric].sources.filter(
+          (ref) => ref.concept !== "SalesRevenueNet",
+        ),
+      };
+      coverage[metric] = { known: 0, unknown: 1 };
+    }
+    const missing = {
+      ...result,
+      rows: [{ ...row, metrics }],
+      metricCoverage: coverage,
+      sources: result.sources.map((frame) =>
+        frame.concept === "SalesRevenueNet"
+          ? { ...frame, status: "not_covered" as const }
+          : frame,
+      ),
+    };
+    fetchMock.mockResolvedValue(json(missing));
+    const input = {
+      ...request(),
+      criteria: {
+        ...request().criteria,
+        revenueBasis: "SalesRevenueNet" as const,
+      },
+    };
+    expect(await screenPersonalFinancials(input, signal())).toEqual(missing);
+    fetchMock.mockResolvedValue(
+      json({
+        ...missing,
+        rows: [
+          { ...row, metrics: { ...metrics, netMargin: row.metrics.netMargin } },
+        ],
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(input, signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("keeps a selected basis on subsequent pages and rejects rollover", async () => {
+    const input = {
+      ...request(),
+      criteria: { ...request().criteria, revenueBasis: "Revenues" as const },
+      financialSnapshotSha256: sha("b"),
+      page: { offset: 25, limit: 25 },
+    };
+    const result = { ...responseWithBasis("Revenues"), offset: 25, rows: [] };
+    fetchMock.mockResolvedValueOnce(json(result));
+    expect(await screenPersonalFinancials(input, signal())).toEqual(result);
+    fetchMock.mockResolvedValueOnce(
+      json({ ...result, revenueBasis: "agreement" }),
+    );
+    await expect(
+      screenPersonalFinancials(input, signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([undefined, null, "totalRevenue", 1])(
+    "rejects an explicit invalid criteria basis %s without fetching",
+    async (basis) => {
+      const input = {
+        ...request(),
+        criteria: { ...request().criteria, revenueBasis: basis },
+      };
+      expect(isPersonalFinancialScreenCriteria(input.criteria)).toBe(false);
+      await expect(
+        screenPersonalFinancials(
+          input as PersonalFinancialScreenRequestDto,
+          signal(),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("uses only the loopback private request with exact decimal criteria", async () => {
     fetchMock.mockResolvedValue(json(response()));
     const input = request();
@@ -293,6 +494,54 @@ describe("financial screen transport", () => {
 });
 
 describe("saved financial criteria", () => {
+  it("round-trips mixed legacy and explicit-basis views without adding defaults", async () => {
+    const legacy = savedPayload().views[0]!;
+    const payload = {
+      ...savedPayload(),
+      views: [
+        legacy,
+        {
+          ...legacy,
+          id: "screen-broad",
+          name: "Broad revenue",
+          criteria: { ...legacy.criteria, revenueBasis: "Revenues" as const },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    const loaded = await fetchPersonalFinancialSavedViews(signal());
+    expect(loaded?.payload).toEqual(payload);
+    expect(loaded?.payload.views[0]?.criteria).not.toHaveProperty(
+      "revenueBasis",
+    );
+    fetchMock.mockResolvedValueOnce(json(receipt(2)));
+    expect(
+      (await savePersonalFinancialSavedViews(1, payload, signal())).payload,
+    ).toEqual(payload);
+    const corrupt = {
+      ...payload,
+      views: [
+        {
+          ...legacy,
+          criteria: { ...legacy.criteria, revenueBasis: "automatic" },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload: corrupt }));
+    await expect(
+      fetchPersonalFinancialSavedViews(signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    fetchMock.mockClear();
+    await expect(
+      savePersonalFinancialSavedViews(
+        1,
+        corrupt as PersonalFinancialSavedViewsPayloadDto,
+        signal(),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("loads only the admitted settings record and treats missing records as empty", async () => {
     fetchMock
       .mockResolvedValueOnce(json({}, 404))
@@ -476,6 +725,53 @@ function response(): PersonalFinancialScreenResponseDto {
     limitApplied: 25,
     hasMore: false,
     formulaVersion: "1.0.0",
+  };
+}
+function responseWithBasis(
+  basis: PersonalFinancialRevenueBasisDto,
+): PersonalFinancialScreenResponseDto {
+  const result = response();
+  if (basis === "agreement") return { ...result, revenueBasis: basis };
+  const ref = (concept: (typeof PERSONAL_SEC_ANNUAL_CONCEPTS)[number]) => ({
+    ...source(),
+    concept,
+  });
+  return {
+    ...result,
+    revenueBasis: basis,
+    rows: result.rows.map((row) => ({
+      ...row,
+      metrics: {
+        revenue: { ...row.metrics.revenue, sources: [ref(basis)] },
+        netIncome: {
+          ...row.metrics.netIncome,
+          sources: [ref("NetIncomeLoss")],
+        },
+        operatingIncome: {
+          ...row.metrics.operatingIncome,
+          sources: [ref("OperatingIncomeLoss")],
+        },
+        operatingCashFlow: {
+          ...row.metrics.operatingCashFlow,
+          sources: [ref("NetCashProvidedByUsedInOperatingActivities")],
+        },
+        netMargin: {
+          ...row.metrics.netMargin,
+          sources: [ref("NetIncomeLoss"), ref(basis)],
+        },
+        operatingMargin: {
+          ...row.metrics.operatingMargin,
+          sources: [ref("OperatingIncomeLoss"), ref(basis)],
+        },
+        operatingCashFlowMargin: {
+          ...row.metrics.operatingCashFlowMargin,
+          sources: [
+            ref("NetCashProvidedByUsedInOperatingActivities"),
+            ref(basis),
+          ],
+        },
+      },
+    })),
   };
 }
 function savedPayload(): PersonalFinancialSavedViewsPayloadDto {

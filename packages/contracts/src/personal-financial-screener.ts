@@ -21,6 +21,14 @@ export const PERSONAL_SEC_ANNUAL_CONCEPTS = [
 ] as const;
 export type PersonalSecAnnualConceptDto =
   (typeof PERSONAL_SEC_ANNUAL_CONCEPTS)[number];
+export const PERSONAL_FINANCIAL_REVENUE_BASES = [
+  "agreement",
+  "Revenues",
+  "RevenueFromContractWithCustomerExcludingAssessedTax",
+  "SalesRevenueNet",
+] as const;
+export type PersonalFinancialRevenueBasisDto =
+  (typeof PERSONAL_FINANCIAL_REVENUE_BASES)[number];
 export interface PersonalSecAnnualFactDto {
   readonly cik: string;
   readonly accessionNumber: string;
@@ -80,6 +88,8 @@ export interface PersonalFinancialScreenClauseDto {
 }
 export interface PersonalFinancialScreenCriteriaDto {
   readonly calendarYear: number;
+  /** Omission always retains the original agreement policy. */
+  readonly revenueBasis?: PersonalFinancialRevenueBasisDto;
   readonly identityText: string;
   readonly clauses: readonly PersonalFinancialScreenClauseDto[];
   readonly sort: {
@@ -106,6 +116,8 @@ export interface PersonalFinancialScreenResponseDto {
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
   readonly calendarYear: number;
+  /** Present exactly when the request explicitly supplies a revenue basis. */
+  readonly revenueBasis?: PersonalFinancialRevenueBasisDto;
   readonly fetchedAt: string;
   readonly expiresAt: string;
   readonly sources: readonly {

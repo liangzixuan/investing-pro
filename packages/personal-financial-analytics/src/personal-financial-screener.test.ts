@@ -1,12 +1,13 @@
-import type {
-  PersonalFinancialScreenClauseDto,
-  PersonalFinancialScreenCriteriaDto,
-  PersonalFinancialScreenMetricDto,
-  PersonalSecAnnualConceptDto,
-  PersonalSecAnnualFactDto,
-  PersonalSecAnnualFinancialSnapshotDto,
-  PersonalSecAnnualFrameDto,
-  PersonalSecurityMasterScreenRowDto,
+import {
+  PERSONAL_FINANCIAL_REVENUE_BASES,
+  type PersonalFinancialScreenClauseDto,
+  type PersonalFinancialScreenCriteriaDto,
+  type PersonalFinancialScreenMetricDto,
+  type PersonalSecAnnualConceptDto,
+  type PersonalSecAnnualFactDto,
+  type PersonalSecAnnualFinancialSnapshotDto,
+  type PersonalSecAnnualFrameDto,
+  type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import { describe, expect, it } from "vitest";
 
@@ -111,7 +112,7 @@ describe("SEC annual financial screener", () => {
     { startDate: "2024-12-31" },
     { endDate: "2025-12-30" },
   ])(
-    "makes conflicting revenue aliases unknown when %j differs",
+    "keeps the original agreement check unavailable when revenue observations differ by %j",
     (difference) => {
       const input = snapshot({
         [REVENUE]: [fact(1, "100")],
@@ -135,7 +136,7 @@ describe("SEC annual financial screener", () => {
     },
   );
 
-  it("does not hide ambiguous CIK entries or failed revenue aliases behind a usable alias", () => {
+  it("keeps ambiguous CIK entries and failed revenue concepts unavailable under the original agreement check", () => {
     const base = snapshot({ [REVENUE]: [fact(1, "100")] });
     const ambiguous = replaceFrame(base, "Revenues", { unknownCiks: [cik(1)] });
     expect(
@@ -408,8 +409,310 @@ describe("SEC annual financial screener", () => {
   });
 });
 
-describe("financial-screen grammar and boundary validation", () => {
+describe("explicit financial-screen revenue basis", () => {
+  it.each([false, true])(
+    "preserves every legacy response property with explicit agreement (different bases: %s)",
+    (different) => {
+      const data = snapshot({
+        [REVENUE]: [fact(1, "100")],
+        Revenues: [fact(1, different ? "110" : "100")],
+        NetIncomeLoss: [fact(1, "10")],
+      });
+      const legacy = run([identity("LEGACY", 1)], data);
+      const explicit = run([identity("LEGACY", 1)], data, {
+        ...criteria(),
+        revenueBasis: "agreement",
+      });
+      expect(legacy).not.toHaveProperty("revenueBasis");
+      const { revenueBasis, ...withoutEcho } = explicit;
+      expect(revenueBasis).toBe("agreement");
+      expect(JSON.stringify(withoutEcho)).toBe(JSON.stringify(legacy));
+    },
+  );
+
   it.each([
+    { basis: "Revenues", revenue: "110", margins: ["10.00", "20.00", "30.00"] },
+    { basis: REVENUE, revenue: "100", margins: ["11.00", "22.00", "33.00"] },
+    {
+      basis: "SalesRevenueNet",
+      revenue: "90",
+      margins: ["12.22", "24.44", "36.67"],
+    },
+  ] as const)(
+    "uses $basis for revenue and every margin while preserving distinct reported bases",
+    ({ basis, revenue, margins }) => {
+      // Retail-like fixture: net sales and broader revenue legitimately differ.
+      const data = snapshot({
+        [REVENUE]: [fact(1, "100")],
+        Revenues: [fact(1, "110")],
+        SalesRevenueNet: [fact(1, "90")],
+        NetIncomeLoss: [fact(1, "11")],
+        OperatingIncomeLoss: [fact(1, "22")],
+        NetCashProvidedByUsedInOperatingActivities: [fact(1, "33")],
+      });
+      const before = JSON.stringify(data);
+      const selected = { ...criteria(), revenueBasis: basis };
+      const result = run([identity("RETAIL", 1)], data, selected);
+      const metrics = result.rows[0]!.metrics;
+      expect(result).toMatchObject({
+        revenueBasis: basis,
+        formulaVersion: "1.0.0",
+      });
+      expect(metrics.revenue).toMatchObject({
+        status: "available",
+        value: revenue,
+        sources: [{ concept: basis }],
+      });
+      expect(metrics.revenue.sources).toHaveLength(1);
+      expect(
+        [
+          metrics.netMargin,
+          metrics.operatingMargin,
+          metrics.operatingCashFlowMargin,
+        ].map((cell) => (cell.status === "available" ? cell.value : null)),
+      ).toEqual(margins);
+      for (const metric of [
+        "netMargin",
+        "operatingMargin",
+        "operatingCashFlowMargin",
+      ] as const) {
+        expect(metrics[metric].sources).toHaveLength(2);
+        expect(metrics[metric].sources[1]!.concept).toBe(basis);
+      }
+      expect(metrics.netIncome).toMatchObject({ value: "11" });
+      expect(metrics.operatingIncome).toMatchObject({ value: "22" });
+      expect(metrics.operatingCashFlow).toMatchObject({ value: "33" });
+      expect(result.sources).toHaveLength(6);
+      expect(JSON.stringify(data)).toBe(before);
+      expect(selected.revenueBasis).toBe(basis);
+    },
+  );
+
+  it("applies one basis across companies and recomputes filter/coverage counts without fallback", () => {
+    const companies = [
+      identity("BROAD", 1),
+      identity("CONTRACTONLY", 2),
+      identity("SMALL", 3),
+    ];
+    const data = snapshot({
+      [REVENUE]: [fact(1, "100"), fact(2, "1000"), fact(3, "40")],
+      Revenues: [fact(1, "110"), fact(3, "50")],
+      NetIncomeLoss: [fact(1, "11"), fact(2, "100"), fact(3, "10")],
+    });
+    const broad = run(companies, data, {
+      ...criteria([clause("revenue", "gte", "105")]),
+      revenueBasis: "Revenues",
+    });
+    expect(broad).toMatchObject({
+      totalMatches: 1,
+      totalNonMatches: 1,
+      totalUnknown: 1,
+      rows: [{ identity: { symbol: "BROAD" } }],
+    });
+    expect(broad.metricCoverage.revenue).toEqual({ known: 2, unknown: 1 });
+    const displayed = run(companies, data, {
+      ...criteria(),
+      revenueBasis: "Revenues",
+    });
+    expect(displayed.rows[1]!.metrics.revenue).toMatchObject({
+      status: "unavailable",
+      reason: "missing",
+      sources: [],
+    });
+    expect(displayed.rows[1]!.metrics.netMargin).toMatchObject({
+      status: "unavailable",
+      reason: "missing",
+    });
+    const contract = run(companies, data, {
+      ...criteria([clause("revenue", "gte", "105")]),
+      revenueBasis: REVENUE,
+    });
+    expect(contract).toMatchObject({
+      totalMatches: 1,
+      totalNonMatches: 2,
+      totalUnknown: 0,
+      rows: [{ identity: { symbol: "CONTRACTONLY" } }],
+    });
+    const margin = run(companies, data, {
+      ...criteria([clause("netMargin", "gte", "10.5")]),
+      revenueBasis: "Revenues",
+    });
+    expect(margin).toMatchObject({
+      totalMatches: 1,
+      totalNonMatches: 1,
+      totalUnknown: 1,
+      rows: [{ identity: { symbol: "SMALL" } }],
+    });
+  });
+
+  it.each([
+    "rate_limited",
+    "upstream_unavailable",
+    "invalid_response",
+  ] as const)(
+    "does not let an unused %s source invalidate selected revenue",
+    (status) => {
+      const data = replaceFrame(
+        snapshot({
+          Revenues: [fact(1, "100")],
+          NetIncomeLoss: [fact(1, "10")],
+        }),
+        REVENUE,
+        { status },
+      );
+      const result = run([identity("SELECTED", 1)], data, {
+        ...criteria(),
+        revenueBasis: "Revenues",
+      });
+      expect(result.rows[0]!.metrics.revenue).toMatchObject({
+        status: "available",
+        value: "100",
+      });
+      expect(result.rows[0]!.metrics.netMargin).toMatchObject({
+        status: "available",
+        value: "10.00",
+      });
+      expect(result.sources).toContainEqual(
+        expect.objectContaining({ concept: REVENUE, status }),
+      );
+      expect(
+        run([identity("LEGACY", 1)], data).rows[0]!.metrics.revenue,
+      ).toMatchObject({ status: "unavailable", reason: "source_unavailable" });
+    },
+  );
+
+  it.each([
+    { status: "rate_limited", reason: "source_unavailable" },
+    { status: "upstream_unavailable", reason: "source_unavailable" },
+    { status: "invalid_response", reason: "source_unavailable" },
+    { status: "not_covered", reason: "missing" },
+    { status: "available", reason: "missing" },
+  ] as const)(
+    "preserves selected $status without substituting another concept",
+    ({ status, reason }) => {
+      const data = replaceFrame(
+        snapshot({
+          [REVENUE]: [fact(1, "100")],
+          NetIncomeLoss: [fact(1, "10")],
+        }),
+        "Revenues",
+        { status },
+      );
+      const metrics = run([identity("UNAVAILABLE", 1)], data, {
+        ...criteria(),
+        revenueBasis: "Revenues",
+      }).rows[0]!.metrics;
+      expect(metrics.revenue).toMatchObject({
+        status: "unavailable",
+        reason,
+        sources: [],
+      });
+      expect(metrics.netMargin).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+      expect(metrics.netIncome).toMatchObject({
+        status: "available",
+        value: "10",
+      });
+    },
+  );
+
+  it.each([
+    { facts: [fact(1, "100"), fact(1, "101")] },
+    { facts: [fact(1, "100"), fact(1, "100", { startDate: "2024-12-31" })] },
+    { unknownCiks: [cik(1)] },
+  ])("retains selected same-concept conflict %j", (conflict) => {
+    const data = replaceFrame(
+      snapshot({ [REVENUE]: [fact(1, "100")], Revenues: [fact(1, "100")] }),
+      "Revenues",
+      conflict,
+    );
+    expect(
+      run([identity("CONFLICT", 1)], data, {
+        ...criteria(),
+        revenueBasis: "Revenues",
+      }).rows[0]!.metrics.revenue,
+    ).toMatchObject({ status: "unavailable", reason: "conflicting" });
+  });
+
+  it.each(["0", "-100"])(
+    "keeps nonpositive selected revenue %s but blocks all margin denominators",
+    (value) => {
+      const data = snapshot({
+        [REVENUE]: [fact(1, "100")],
+        Revenues: [fact(1, value)],
+        NetIncomeLoss: [fact(1, "10")],
+        OperatingIncomeLoss: [fact(1, "20")],
+        NetCashProvidedByUsedInOperatingActivities: [fact(1, "30")],
+      });
+      const metrics = run([identity("NONPOS", 1)], data, {
+        ...criteria(),
+        revenueBasis: "Revenues",
+      }).rows[0]!.metrics;
+      expect(metrics.revenue).toMatchObject({ status: "available", value });
+      for (const metric of [
+        "netMargin",
+        "operatingMargin",
+        "operatingCashFlowMargin",
+      ] as const)
+        expect(metrics[metric]).toMatchObject({
+          status: "unavailable",
+          reason: "nonpositive_revenue",
+        });
+    },
+  );
+
+  it("does not replace a selected period to make its margin compatible", () => {
+    const data = snapshot({
+      [REVENUE]: [fact(1, "100")],
+      Revenues: [fact(1, "110", { startDate: "2024-12-31" })],
+      NetIncomeLoss: [fact(1, "11")],
+    });
+    const metrics = run([identity("PERIOD", 1)], data, {
+      ...criteria(),
+      revenueBasis: "Revenues",
+    }).rows[0]!.metrics;
+    expect(metrics.revenue).toMatchObject({
+      status: "available",
+      value: "110",
+    });
+    expect(metrics.netMargin).toMatchObject({
+      status: "unavailable",
+      reason: "period_mismatch",
+    });
+  });
+});
+
+describe("financial-screen grammar and boundary validation", () => {
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "accepts the explicit closed basis %s",
+    (revenueBasis) => {
+      expect(
+        validatePersonalFinancialScreenCriteria({
+          ...criteria(),
+          revenueBasis,
+        }),
+      ).toBe(true);
+      expect(
+        run([], snapshot(), { ...criteria(), revenueBasis }).revenueBasis,
+      ).toBe(revenueBasis);
+    },
+  );
+
+  it.each([
+    ...[
+      undefined,
+      null,
+      "",
+      "revenues",
+      "Revenues ",
+      "NetIncomeLoss",
+      "auto",
+      0,
+      {},
+      [],
+    ].map((revenueBasis) => ({ ...criteria(), revenueBasis })),
     { ...criteria(), calendarYear: 2008 },
     { ...criteria(), calendarYear: 2101 },
     { ...criteria(), calendarYear: 2025.5 },
@@ -472,6 +775,15 @@ describe("financial-screen grammar and boundary validation", () => {
       },
     };
     expect(validatePersonalFinancialScreenCriteria(unsafe)).toBe(false);
+    expect(invoked).toBe(false);
+    const unsafeBasis = {
+      ...criteria(),
+      get revenueBasis() {
+        invoked = true;
+        return "agreement";
+      },
+    };
+    expect(validatePersonalFinancialScreenCriteria(unsafeBasis)).toBe(false);
     expect(invoked).toBe(false);
   });
 
