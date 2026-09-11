@@ -26,6 +26,7 @@ import {
   normalizePersonalScreenerSavedViewName,
   PersonalWorkspaceApiError,
 } from "@/lib/personal-workspace-api";
+import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 
 export const PERSONAL_FINANCIAL_SCREENER_PAGE_SIZE = 25;
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
@@ -96,6 +97,7 @@ export interface PersonalFinancialScreenerProps {
   readonly onAddToWatchlist: (row: PersonalSecurityMasterScreenRowDto) => void;
   readonly onOpenResearch: (row: PersonalSecurityMasterScreenRowDto) => void;
   readonly onSessionUnavailable: () => void;
+  readonly onActivityStart: OwnerSessionActivityStart;
   readonly savedListingIds: ReadonlySet<string>;
   readonly disabled?: boolean;
   readonly workspaceReady?: boolean;
@@ -107,6 +109,7 @@ export function PersonalFinancialScreener({
   onAddToWatchlist,
   onOpenResearch,
   onSessionUnavailable,
+  onActivityStart,
   savedListingIds,
   disabled = false,
   workspaceReady = true,
@@ -238,6 +241,11 @@ export function PersonalFinancialScreener({
         : "Screening SEC annual financials…",
     );
     try {
+      const completeActivity = onActivityStart();
+      if (completeActivity === undefined) {
+        clearSession();
+        return;
+      }
       const result = await screenPersonalFinancials(
         {
           schemaVersion: "2.0.0",
@@ -255,6 +263,10 @@ export function PersonalFinancialScreener({
         operation !== screenEpoch.current
       )
         return;
+      if (!completeActivity()) {
+        clearSession();
+        return;
+      }
       setCriteria(normalized);
       setResponse(result);
       setMessage(

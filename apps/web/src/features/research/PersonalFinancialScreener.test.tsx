@@ -107,13 +107,18 @@ import {
   PersonalFinancialScreener,
   type PersonalFinancialScreenerProps,
 } from "./PersonalFinancialScreener";
+import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 
 const sha = (letter: string): `sha256:${string}` =>
   `sha256:${letter.repeat(64)}`;
 let props: PersonalFinancialScreenerProps;
+const activityCompletion = vi.fn<() => boolean>();
+const activityStart = vi.fn<OwnerSessionActivityStart>();
 beforeEach(() => {
   harness.reset();
   Object.values(api).forEach((mock) => mock.mockReset());
+  activityCompletion.mockReset().mockReturnValue(true);
+  activityStart.mockReset().mockReturnValue(activityCompletion);
   api.fetchPersonalFinancialSavedViews.mockResolvedValue(null);
   api.screenPersonalFinancials.mockResolvedValue(response());
   api.savePersonalFinancialSavedViews.mockImplementation(
@@ -128,6 +133,7 @@ beforeEach(() => {
     onAddToWatchlist: vi.fn(),
     onOpenResearch: vi.fn(),
     onSessionUnavailable: vi.fn(),
+    onActivityStart: activityStart,
     savedListingIds: new Set(),
   };
   vi.stubGlobal("crypto", {
@@ -140,6 +146,127 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it("captures activity before dispatch and credits the original callback only after a current unknown-only result", async () => {
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    const originalCompletion = vi.fn(() => true);
+    const replacementCompletion = vi.fn(() => true);
+    activityStart.mockReturnValueOnce(originalCompletion);
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    await mount();
+    expect(activityStart).not.toHaveBeenCalled();
+    submit(render());
+    expect(activityStart).toHaveBeenCalledOnce();
+    expect(activityStart.mock.invocationCallOrder[0]).toBeLessThan(
+      api.screenPersonalFinancials.mock.invocationCallOrder[0]!,
+    );
+    expect(originalCompletion).not.toHaveBeenCalled();
+    props = { ...props, onActivityStart: vi.fn(() => replacementCompletion) };
+    render();
+    const result = response();
+    pending.resolve({
+      ...result,
+      sources: result.sources.map((source) => ({
+        ...source,
+        status: "not_covered",
+      })),
+      rows: result.rows.map((row) => ({
+        ...row,
+        metrics: Object.fromEntries(
+          PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => [
+            metric,
+            {
+              status: "unavailable",
+              reason: "missing",
+              unit: metric.endsWith("Margin") ? "percent" : "USD",
+              sources: [],
+            },
+          ]),
+        ) as unknown as typeof row.metrics,
+      })),
+      metricCoverage: Object.fromEntries(
+        PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => [
+          metric,
+          { known: 0, unknown: 1 },
+        ]),
+      ) as PersonalFinancialScreenResponseDto["metricCoverage"],
+    });
+    await flush();
+    expect(originalCompletion).toHaveBeenCalledOnce();
+    expect(replacementCompletion).not.toHaveBeenCalled();
+    expect(props.onActivityStart).not.toHaveBeenCalled();
+    expect(text(render())).toContain("Open ONE");
+    expect(text(render())).toContain("0 known / 1 unknown");
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+  });
+
+  it("clears the session and makes no screen request when activity cannot start", async () => {
+    activityStart.mockReturnValue(undefined);
+    await mount();
+    submit(render());
+    await flush();
+    expect(activityStart).toHaveBeenCalledOnce();
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    expect(activityCompletion).not.toHaveBeenCalled();
+    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    expect(text(render())).not.toContain("Open ONE");
+  });
+
+  it("discards a decoded response when its captured activity completion rejects the session", async () => {
+    activityCompletion.mockReturnValue(false);
+    await mount();
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(activityCompletion).toHaveBeenCalledOnce();
+    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    expect(text(render())).not.toContain("Open ONE");
+    expect(text(render())).toContain("owner session expired");
+  });
+
+  it.each(["invalid_response", "unavailable", "session_unavailable"] as const)(
+    "does not credit rejected %s requests",
+    async (code) => {
+      api.screenPersonalFinancials.mockRejectedValueOnce(
+        new PersonalWorkspaceApiError(code),
+      );
+      await mount();
+      submit(render());
+      await flush();
+      expect(activityStart).toHaveBeenCalledOnce();
+      expect(activityCompletion).not.toHaveBeenCalled();
+      expect(text(render())).not.toContain("Open ONE");
+    },
+  );
+
+  it.each(["superseded", "disabled", "unmounted"] as const)(
+    "does not credit a pending request after it is %s",
+    async (ending) => {
+      const pending = deferred<PersonalFinancialScreenResponseDto>();
+      const staleCompletion = vi.fn(() => true);
+      activityStart.mockReturnValueOnce(staleCompletion);
+      api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+      await mount();
+      submit(render());
+      const signal = api.screenPersonalFinancials.mock
+        .calls[0]?.[1] as AbortSignal;
+      if (ending === "superseded") {
+        submit(render());
+        await flush();
+        expect(activityCompletion).toHaveBeenCalledOnce();
+      } else if (ending === "disabled") {
+        props = { ...props, disabled: true };
+        render();
+      } else harness.unmount();
+      expect(signal.aborted).toBe(true);
+      pending.resolve(response());
+      await flush();
+      expect(staleCompletion).not.toHaveBeenCalled();
+      expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+      if (ending === "disabled")
+        expect(text(render())).not.toContain("Open ONE");
+    },
+  );
+
   it("filters, sorts, pages and explicitly saves gross profit without rewriting legacy criteria", async () => {
     const legacy = {
       id: "screen-legacy",
@@ -426,6 +553,7 @@ describe("PersonalFinancialScreener", () => {
     );
     submit(render());
     expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    expect(activityStart).not.toHaveBeenCalled();
   });
 
   it("changes revenue basis locally, binds paging, and aborts stale basis results", async () => {
@@ -470,6 +598,8 @@ describe("PersonalFinancialScreener", () => {
     await flush();
     expect(text(render())).not.toContain("Open ONE");
     expect(text(render())).toContain("Criteria changed");
+    expect(activityStart).toHaveBeenCalledTimes(3);
+    expect(activityCompletion).toHaveBeenCalledTimes(2);
     api.screenPersonalFinancials.mockResolvedValueOnce({
       ...response(),
       revenueBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
@@ -651,6 +781,16 @@ describe("PersonalFinancialScreener", () => {
       financialSnapshotSha256: null,
       refresh: false,
     });
+    expect(activityStart).toHaveBeenCalledTimes(5);
+    expect(activityCompletion).toHaveBeenCalledTimes(5);
+    for (let index = 0; index < 5; index++) {
+      expect(activityStart.mock.invocationCallOrder[index]).toBeLessThan(
+        api.screenPersonalFinancials.mock.invocationCallOrder[index]!,
+      );
+      expect(
+        api.screenPersonalFinancials.mock.invocationCallOrder[index],
+      ).toBeLessThan(activityCompletion.mock.invocationCallOrder[index]!);
+    }
   });
 
   it("clears old results on criteria edits and ignores an aborted response", async () => {
@@ -670,6 +810,8 @@ describe("PersonalFinancialScreener", () => {
     await flush();
     expect(text(render())).not.toContain("Open ONE");
     expect(text(render())).toContain("Criteria changed");
+    expect(activityStart).toHaveBeenCalledTimes(2);
+    expect(activityCompletion).toHaveBeenCalledOnce();
   });
 
   it("clears results after snapshot conflicts and waits for an explicit rerun", async () => {
@@ -913,6 +1055,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(render())).not.toContain("Private saved criteria");
     expect(text(render())).not.toContain("Open ONE");
     expect(input(render(), "Financial screen name").props.value).toBe("");
+    expect(activityCompletion).toHaveBeenCalledOnce();
   });
 
   it("aborts requests on snapshot change and does not restore old session results", async () => {
@@ -933,6 +1076,7 @@ describe("PersonalFinancialScreener", () => {
     await flush();
     expect(text(render())).not.toContain("Open ONE");
     expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledTimes(2);
+    expect(activityCompletion).not.toHaveBeenCalled();
   });
 
   it("aborts pending saved writes on unmount and suppresses the completion", async () => {
@@ -962,6 +1106,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
     expect(api.fetchPersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(activityStart).not.toHaveBeenCalled();
     props = { ...props, workspaceReady: true };
     render();
     await flush();

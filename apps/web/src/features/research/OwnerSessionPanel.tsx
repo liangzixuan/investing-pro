@@ -11,7 +11,10 @@ import {
   rotateOwnerSession,
 } from "@/lib/personal-api";
 
-import { OwnerSessionLifecycle } from "./owner-session-lifecycle";
+import {
+  OwnerSessionLifecycle,
+  type OwnerSessionActivityStart,
+} from "./owner-session-lifecycle";
 
 type OwnerSessionState = "active" | "checking" | "inactive";
 type SessionAction = "bootstrap" | "logout" | "revoke" | "rotate";
@@ -38,13 +41,19 @@ type BroadcastTransportState = "available" | "checking" | "unavailable";
 type PrivateDataLoadResult = "accepted" | "deferred" | "rejected";
 
 export interface OwnerSessionPanelProps {
+  readonly onActivityHandlerChange?: (
+    start: OwnerSessionActivityStart | null,
+  ) => void;
   readonly onSessionChange: (
     active: boolean,
     signal: AbortSignal,
   ) => Promise<boolean> | boolean;
 }
 
-export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
+export function OwnerSessionPanel({
+  onActivityHandlerChange,
+  onSessionChange,
+}: OwnerSessionPanelProps) {
   const [sessionState, setSessionState] =
     useState<OwnerSessionState>("checking");
   const [bootstrapSecret, setBootstrapSecret] = useState("");
@@ -58,6 +67,9 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
   const [broadcastTransport, setBroadcastTransport] =
     useState<BroadcastTransportState>("checking");
   const lifecycleRef = useRef<OwnerSessionLifecycle | null>(null);
+  const activityHandlerRef = useRef<OwnerSessionActivityStart | null>(null);
+  const activityHandlerChangeRef = useRef(onActivityHandlerChange);
+  activityHandlerChangeRef.current = onActivityHandlerChange;
   const channelRef = useRef<BroadcastChannel | null>(null);
   const broadcastReadyRef = useRef(false);
   const requestRef = useRef<SessionRequest | null>(null);
@@ -72,6 +84,49 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
   const invalidateRef = useRef<(options: InvalidationOptions) => void>(() => {
     // Installed below before the mount effect can receive an event.
   });
+
+  function clearActivityHandler() {
+    activityHandlerRef.current = null;
+    activityHandlerChangeRef.current?.(null);
+  }
+
+  function publishActivityHandler(request: SessionRequest) {
+    const lifecycle = lifecycleRef.current;
+    if (
+      lifecycle === null ||
+      !isCurrentRequest(request) ||
+      !lifecycle.check()
+    ) {
+      return;
+    }
+    const usable = () =>
+      activityHandlerRef.current === start &&
+      isCurrentRequest(request) &&
+      lifecycleRef.current === lifecycle &&
+      broadcastReadyRef.current &&
+      !presentationSuspendedRef.current &&
+      !deferredWakeRevalidationRef.current &&
+      pendingActionRef.current === null &&
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible";
+    const start: OwnerSessionActivityStart = () => {
+      if (!usable()) return undefined;
+      const complete = lifecycle.captureAuthorizedActivity();
+      if (complete === undefined) return undefined;
+      let completed = false;
+      return () => {
+        if (completed) return false;
+        completed = true;
+        return usable() && complete();
+      };
+    };
+    activityHandlerRef.current = start;
+    if (!usable()) {
+      clearActivityHandler();
+      return;
+    }
+    activityHandlerChangeRef.current?.(start);
+  }
 
   function publish(messageType: string): boolean {
     const channel = channelRef.current;
@@ -108,11 +163,13 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
   }
 
   function setPending(action: SessionAction | null) {
+    if (action !== null) clearActivityHandler();
     pendingActionRef.current = action;
     setPendingAction(action);
   }
 
   function beginRequest(): SessionRequest {
+    clearActivityHandler();
     requestRef.current?.controller.abort();
     const request = {
       controller: new AbortController(),
@@ -135,6 +192,7 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
   }
 
   function clearRenderedPrivateData() {
+    clearActivityHandler();
     const controller = new AbortController();
     void Promise.resolve(onSessionChange(false, controller.signal)).catch(
       () => {
@@ -262,6 +320,7 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
         return;
       }
       finishRequest(request);
+      publishActivityHandler(request);
     }
 
     revalidateRef.current = (clearBeforeRequest) => {
@@ -445,6 +504,7 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
       text: "Local owner session established.",
     });
     settleAction(request, false);
+    publishActivityHandler(request);
   }
 
   async function handleLogout() {
@@ -509,6 +569,7 @@ export function OwnerSessionPanel({ onSessionChange }: OwnerSessionPanelProps) {
     }
     setMessage({ kind: "status", text: "Local owner session rotated." });
     settleAction(request, false);
+    publishActivityHandler(request);
   }
 
   async function handleRevoke() {

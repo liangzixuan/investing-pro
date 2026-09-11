@@ -22,6 +22,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
+import type { OwnerSessionPanelProps } from "./OwnerSessionPanel";
 import type { PersonalFcffDcfValuationProps } from "./PersonalFcffDcfValuation";
 import type { PersonalFinancialQualityScorecardProps } from "./PersonalFinancialQualityScorecard";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
@@ -263,6 +264,74 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("credits financial activity without reloading the workspace or its selected company", async () => {
+    await activateWorkspace();
+    const owner = requireOwnerSession(renderWorkspace());
+    const complete = vi.fn(() => true);
+    const start = vi.fn(() => complete);
+    owner.props.onActivityHandlerChange?.(start);
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    );
+    financial?.props.onOpenResearch(screenRow());
+    const activity = financial?.props.onActivityStart();
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
+    expect(activity?.()).toBe(true);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalSecurityMasterStatus).toHaveBeenCalledTimes(1);
+    expect(
+      requireMarketOverview(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-screen");
+  });
+
+  it("rejects activity captured before workspace loss even after the same handler is registered again", async () => {
+    await activateWorkspace();
+    const complete = vi.fn(() => true);
+    const start = vi.fn(() => complete);
+    requireOwnerSession(renderWorkspace()).props.onActivityHandlerChange?.(
+      start,
+    );
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    );
+    const obsoleteActivity = financial?.props.onActivityStart();
+    financial?.props.onSessionUnavailable();
+    expect(financial?.props.onActivityStart()).toBeUndefined();
+    await activateWorkspace();
+    requireOwnerSession(renderWorkspace()).props.onActivityHandlerChange?.(
+      start,
+    );
+    expect(obsoleteActivity?.()).toBe(false);
+    expect(complete).not.toHaveBeenCalled();
+    const current = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    );
+    expect(current?.props.onActivityStart()?.()).toBe(true);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed while the owner activity handler is absent or replaced", async () => {
+    await activateWorkspace();
+    const owner = requireOwnerSession(renderWorkspace());
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    );
+    expect(financial?.props.onActivityStart()).toBeUndefined();
+    const complete = vi.fn(() => true);
+    owner.props.onActivityHandlerChange?.(() => complete);
+    const oldActivity = financial?.props.onActivityStart();
+    owner.props.onActivityHandlerChange?.(null);
+    expect(financial?.props.onActivityStart()).toBeUndefined();
+    owner.props.onActivityHandlerChange?.(() => () => true);
+    expect(oldActivity?.()).toBe(false);
+    expect(complete).not.toHaveBeenCalled();
+  });
+
   it("starts locked and makes no private request before owner confirmation", () => {
     const rendered = renderWorkspace();
 
@@ -1849,9 +1918,10 @@ function renderWorkspace(): React.ReactNode {
 }
 
 function findOwnerSession(value: unknown) {
-  return findElement<{
-    onSessionChange: (active: boolean, signal: AbortSignal) => Promise<boolean>;
-  }>(value, componentMocks.OwnerSession);
+  return findElement<OwnerSessionPanelProps>(
+    value,
+    componentMocks.OwnerSession,
+  );
 }
 
 function findMarketOverview(value: unknown) {

@@ -84,6 +84,7 @@ import {
   OwnerSessionPanel,
   type OwnerSessionPanelProps,
 } from "./OwnerSessionPanel";
+import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 
 class TestBroadcastChannel {
   static instances: TestBroadcastChannel[] = [];
@@ -189,6 +190,203 @@ afterEach(() => {
 });
 
 describe("OwnerSessionPanel", () => {
+  it("publishes activity only after private data is accepted and preserves the workspace on completion", async () => {
+    installBrowserHarness();
+    apiMocks.fetchOwnerSession.mockResolvedValueOnce(true);
+    const privateRead = deferred<boolean>();
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockReturnValue(privateRead.promise);
+    const activity = vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+    const options = { onActivityHandlerChange: activity };
+    await renderAfterSessionCheck(onSessionChange, options);
+    expect(activity.mock.calls.every(([start]) => start === null)).toBe(true);
+    privateRead.resolve(true);
+    await flushPromises();
+    const start = requiredActivityStart(activity);
+    const complete = start();
+    const notificationCount = activity.mock.calls.length;
+    rerender(onSessionChange, options);
+    expect(requiredActivityStart(activity)).toBe(start);
+    expect(complete?.()).toBe(true);
+    expect(complete?.()).toBe(false);
+    expect(activity).toHaveBeenCalledTimes(notificationCount);
+    expect(onSessionChange).toHaveBeenCalledOnce();
+    expect(apiMocks.fetchOwnerSession).toHaveBeenCalledOnce();
+    expect(apiMocks.rotateOwnerSession).not.toHaveBeenCalled();
+  });
+
+  it("keeps a fresh private workspace through minute ten after a minute-nine screen success", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    installBrowserHarness();
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockResolvedValue(true);
+    const activity = vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+    const options = { onActivityHandlerChange: activity };
+    let rendered = await renderAfterSessionCheck(onSessionChange, options);
+    apiMocks.bootstrapOwnerSession.mockResolvedValueOnce(true);
+    const input = requiredElement(rendered, "input").props as {
+      onChange: (event: { target: { value: string } }) => void;
+    };
+    input.onChange({ target: { value: "a".repeat(64) } });
+    rendered = rerender(onSessionChange, options);
+    const form = requiredElement(rendered, "form").props as {
+      onSubmit: (event: { preventDefault: () => void }) => void;
+    };
+    form.onSubmit({ preventDefault: vi.fn() });
+    await flushPromises();
+    const start = requiredActivityStart(activity);
+    onSessionChange.mockClear();
+    vi.advanceTimersByTime(9 * 60_000);
+    const complete = start();
+    vi.advanceTimersByTime(30_000);
+    expect(complete?.()).toBe(true);
+    vi.advanceTimersByTime(30_000);
+    expect(textContent(rerender(onSessionChange, options))).toContain("Active");
+    expect(onSessionChange).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(9 * 60_000);
+    expect(textContent(rerender(onSessionChange, options))).toContain("Locked");
+    expect(activity).toHaveBeenLastCalledWith(null);
+    expect(start()).toBeUndefined();
+    expect(complete?.()).toBe(false);
+    expect(onSessionChange).toHaveBeenCalledWith(
+      false,
+      expect.any(AbortSignal),
+    );
+  });
+
+  it.each([
+    ["Rotate session", "rotateOwnerSession"],
+    ["Log out", "logoutOwnerSession"],
+    ["Revoke authority", "revokeOwnerSession"],
+  ] as const)(
+    "withdraws activity before pending %s and rejects its old completion",
+    async (label, api) => {
+      installBrowserHarness();
+      apiMocks.fetchOwnerSession.mockResolvedValueOnce(true);
+      const onSessionChange = vi
+        .fn<OwnerSessionPanelProps["onSessionChange"]>()
+        .mockResolvedValue(true);
+      const activity =
+        vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+      const options = { onActivityHandlerChange: activity };
+      const rendered = await renderAfterSessionCheck(onSessionChange, options);
+      const start = requiredActivityStart(activity);
+      const complete = start();
+      const pending = deferred<boolean>();
+      apiMocks[api].mockReturnValueOnce(pending.promise);
+      const button = requiredButton(rendered, label).props as {
+        onClick: () => void;
+      };
+      button.onClick();
+      expect(activity).toHaveBeenLastCalledWith(null);
+      expect(start()).toBeUndefined();
+      expect(complete?.()).toBe(false);
+      pending.resolve(true);
+      await flushPromises();
+      expect(start()).toBeUndefined();
+      expect(complete?.()).toBe(false);
+      if (api === "rotateOwnerSession") {
+        const replacement = requiredActivityStart(activity);
+        expect(replacement).not.toBe(start);
+        expect(replacement()?.()).toBe(true);
+      } else expect(activity).toHaveBeenLastCalledWith(null);
+    },
+  );
+
+  it("rejects old activity across hidden presentation and visible revalidation", async () => {
+    const browser = installBrowserHarness();
+    apiMocks.fetchOwnerSession.mockResolvedValue(true);
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockResolvedValue(true);
+    const activity = vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+    const options = { onActivityHandlerChange: activity };
+    await renderAfterSessionCheck(onSessionChange, options);
+    const start = requiredActivityStart(activity);
+    const complete = start();
+    browser.setVisibility("hidden");
+    expect(activity).toHaveBeenLastCalledWith(null);
+    expect(start()).toBeUndefined();
+    expect(complete?.()).toBe(false);
+    browser.setVisibility("visible");
+    await flushPromises();
+    const replacement = requiredActivityStart(activity);
+    expect(replacement).not.toBe(start);
+    expect(start()).toBeUndefined();
+    expect(replacement()?.()).toBe(true);
+  });
+
+  it("rejects activity from a replaced session and after unmount", async () => {
+    const browser = installBrowserHarness();
+    apiMocks.fetchOwnerSession.mockResolvedValue(true);
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockResolvedValue(true);
+    const activity = vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+    const options = { onActivityHandlerChange: activity };
+    await renderAfterSessionCheck(onSessionChange, options);
+    const start = requiredActivityStart(activity);
+    const complete = start();
+    browser.channel().emit(OWNER_SESSION_REFRESH_MESSAGE);
+    expect(activity).toHaveBeenLastCalledWith(null);
+    await flushPromises();
+    const replacement = requiredActivityStart(activity);
+    expect(start()).toBeUndefined();
+    expect(complete?.()).toBe(false);
+    const replacementComplete = replacement();
+    hookHarness.cleanupEffects();
+    expect(activity).toHaveBeenLastCalledWith(null);
+    expect(replacement()).toBeUndefined();
+    expect(replacementComplete?.()).toBe(false);
+  });
+
+  it("uses the latest activity listener without revalidating or restarting the lease", async () => {
+    const browser = installBrowserHarness();
+    apiMocks.fetchOwnerSession.mockResolvedValueOnce(true);
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockResolvedValue(true);
+    const original = vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+    const replacement =
+      vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+    await renderAfterSessionCheck(onSessionChange, {
+      onActivityHandlerChange: original,
+    });
+    const start = requiredActivityStart(original);
+    const originalCalls = original.mock.calls.length;
+    rerender(onSessionChange, { onActivityHandlerChange: replacement });
+    expect(start()?.()).toBe(true);
+    expect(apiMocks.fetchOwnerSession).toHaveBeenCalledOnce();
+    browser.setVisibility("hidden");
+    expect(replacement).toHaveBeenLastCalledWith(null);
+    expect(original).toHaveBeenCalledTimes(originalCalls);
+    expect(start()).toBeUndefined();
+  });
+
+  it.each(["private_read", "hidden", "broadcast"] as const)(
+    "does not publish activity when %s prevents a usable private workspace",
+    async (failure) => {
+      installBrowserHarness({
+        initialVisibility: failure === "hidden" ? "hidden" : "visible",
+        failConstruction: failure === "broadcast",
+      });
+      apiMocks.fetchOwnerSession.mockResolvedValueOnce(true);
+      const onSessionChange = vi
+        .fn<OwnerSessionPanelProps["onSessionChange"]>()
+        .mockResolvedValue(failure !== "private_read");
+      const activity =
+        vi.fn<(start: OwnerSessionActivityStart | null) => void>();
+      await renderAfterSessionCheck(onSessionChange, {
+        onActivityHandlerChange: activity,
+      });
+      expect(activity).toHaveBeenLastCalledWith(null);
+      expect(activity.mock.calls.every(([start]) => start === null)).toBe(true);
+    },
+  );
+
   it("checks the existing credentialed session and exposes all active controls", async () => {
     installBrowserHarness();
     apiMocks.fetchOwnerSession.mockResolvedValueOnce(true);
@@ -706,19 +904,32 @@ describe("OwnerSessionPanel", () => {
 
 async function renderAfterSessionCheck(
   onSessionChange: OwnerSessionPanelProps["onSessionChange"],
+  activityOptions: Pick<OwnerSessionPanelProps, "onActivityHandlerChange"> = {},
 ): Promise<React.ReactElement> {
   hookHarness.beginRender();
-  OwnerSessionPanel({ onSessionChange });
+  OwnerSessionPanel({ onSessionChange, ...activityOptions });
   hookHarness.runEffects();
   await flushPromises();
-  return rerender(onSessionChange);
+  return rerender(onSessionChange, activityOptions);
 }
 
 function rerender(
   onSessionChange: OwnerSessionPanelProps["onSessionChange"],
+  activityOptions: Pick<OwnerSessionPanelProps, "onActivityHandlerChange"> = {},
 ): React.ReactElement {
   hookHarness.beginRender();
-  return OwnerSessionPanel({ onSessionChange });
+  return OwnerSessionPanel({ onSessionChange, ...activityOptions });
+}
+
+function requiredActivityStart(
+  listener: ReturnType<
+    typeof vi.fn<(start: OwnerSessionActivityStart | null) => void>
+  >,
+): OwnerSessionActivityStart {
+  const start = listener.mock.lastCall?.[0];
+  if (typeof start !== "function")
+    throw new Error("Expected a usable activity starter.");
+  return start;
 }
 
 async function flushPromises() {

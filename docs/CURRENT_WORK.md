@@ -34,11 +34,13 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `b9a2d1d` delivers explicit revenue selection and the bounded Windows
-verifier-test repair. Its clean native gate passed 4,487 tests and all 24 builds;
-four hosted workflows and both platforms passed. Desktop, mobile, keyboard and
-live Walmart acceptance are recorded in the release handoff. These are baseline
-results, not validation of later changes.
+Release `0b271f9` delivers reported gross-profit screening and preserves explicit
+revenue selection. Its clean native gate passed 4,557 tests and all 24 builds;
+five hosted workflows passed, including Windows on its single unchanged-code
+retry. Configured Chrome acceptance covered exact Apple source details, Walmart
+missingness, filtering, page return and revenue-basis independence. These are
+baseline results, not validation of later changes; detailed receipts and limits
+remain in the local release handoff.
 
 The configured catalog now contains 3,227 listings, including the six repaired
 AAPL, MSFT, AMZN, META, WMT and ORCL entries. Live annual coverage, authenticated
@@ -54,29 +56,28 @@ are unchanged; all five numeric results remain unsupported because of dimensions
 These results describe only that retained sample. Actual acceptance/runtime
 details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: screen on reported gross profit
+## Active delivery: retain the session during successful financial screening
 
-Add reported `us-gaap:GrossProfit` as the eighth screening metric and seventh
-fixed annual source concept. Preserve exact amounts, negative values and explicit
-unknowns; do not derive a missing fact from revenue and costs. Revenue-basis
-selection and the existing seven fields retain their meanings. The
-[annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) records the source
-definition, compatibility decision and limits.
+Financial-screen requests already renew the server's idle activity, but the
+separate browser lease was not informed. Connect successful Run, Refresh and
+page requests to that lease so a fresh session does not clear useful results
+after ten minutes while the owner is actively screening.
 
-The request/response transport moves to schema 2.0.0 with exactly eight metrics
-and seven sources. Saved payload schema 1, existing criteria, creation digests,
-record versions, seven-clause cap and formula version remain unchanged. Old
-screening requests must fail before source acquisition; older saved definitions
-must still load unchanged and run through the new envelope. API and browser
-deployment is coordinated.
+Capture the activity time before request dispatch and credit it only after a
+current, un-aborted response passes strict validation. Keep the existing idle
+and absolute deadlines, the conservative observed-cookie lease, cross-tab
+clearing and stale-response guards. Failed or superseded requests and local
+criteria edits do not renew activity. This slice does not change server authority,
+add polling or source reads, or extend activity integration to saved definitions
+and other standalone private-data flows.
 
-Acceptance covers reported-fact/source binding, failure isolation, amount/filter/
-coverage/page consistency, revenue-basis independence, old saved definitions and
-closed transport decoding. Measure new coverage and reconcile a bounded sample
-to exact filings. Complete focused tests, the native gate, applicable hosted
-checks and dedicated external Chrome acceptance. Record actual source batches,
-snapshots and limits. Defer a gross-margin ratio until its revenue basis is
-supported; a matching date alone is insufficient.
+Acceptance must demonstrate a minute-nine successful screen surviving minute ten,
+expiry after actual idle time, unchanged absolute limits, and rejection of late
+responses after session loss. Verify the production React wiring as well as the
+clock arithmetic, then complete the native and applicable hosted release gates.
+The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) records behavior
+and limits. Gross-profit acceptance is complete; new live SEC coverage is not
+required for this browser-only activity repair.
 
 Numeric admission, fiscal calendars, standalone quarters, revisions and TTM remain
 separate evidence-dependent work. Keep catalog refresh and broader source coverage
@@ -86,7 +87,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Add reported gross-profit screening while preserving saved-screen meanings                       | Broaden useful screening with one fixed annual source concept              |
+| Now              | Credit successful financial screening to browser session activity                                | Prevent avoidable loss of results while retaining expiry protections       |
 | Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -109,9 +110,7 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/personal-financial-analytics exec vitest run src/personal-financial-screener.test.ts
-   pnpm --filter @research-cockpit/api exec vitest run src/workspace-financial-screen-routes.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-financial-screen-api.test.ts src/features/research/PersonalFinancialScreener.test.tsx
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/owner-session-lifecycle.test.ts src/features/research/OwnerSessionPanel.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalFinancialScreener.test.tsx src/lib/personal-financial-screen-api.test.ts
    pnpm --filter @research-cockpit/web typecheck
    ```
 

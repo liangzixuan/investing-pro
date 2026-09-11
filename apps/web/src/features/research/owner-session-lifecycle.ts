@@ -3,6 +3,8 @@ export const PERSONAL_OWNER_SESSION_ABSOLUTE_TTL_MS = 60 * 60 * 1_000;
 
 type TimerHandle = ReturnType<typeof globalThis.setTimeout>;
 
+export type OwnerSessionActivityStart = () => (() => boolean) | undefined;
+
 export type OwnerSessionExpiryReason =
   "absolute_timeout" | "clock_invalid" | "idle_timeout";
 
@@ -37,6 +39,7 @@ export class OwnerSessionLifecycle {
   #idleDeadline: number | undefined;
   #lastObservedAt: number | undefined;
   #timer: TimerHandle | undefined;
+  #generation = Symbol();
 
   constructor(
     onExpiry: (reason: OwnerSessionExpiryReason) => void,
@@ -92,12 +95,39 @@ export class OwnerSessionLifecycle {
     return true;
   }
 
+  captureAuthorizedActivity(): (() => boolean) | undefined {
+    const capturedAt = this.#readCurrentTime();
+    if (capturedAt === undefined || !this.#checkAt(capturedAt))
+      return undefined;
+    const generation = this.#generation;
+    let completed = false;
+
+    return () => {
+      if (completed) return false;
+      completed = true;
+      if (generation !== this.#generation || !this.active) return false;
+      const now = this.#readCurrentTime();
+      if (now === undefined || !this.#checkAt(now)) return false;
+
+      this.#idleDeadline = Math.max(
+        this.#idleDeadline as number,
+        Math.min(
+          capturedAt + this.#idleTtlMs,
+          this.#absoluteDeadline as number,
+        ),
+      );
+      this.#schedule(now);
+      return true;
+    };
+  }
+
   check(): boolean {
     const now = this.#readCurrentTime();
     return now !== undefined && this.#checkAt(now);
   }
 
   deactivate(): void {
+    this.#generation = Symbol();
     this.#cancelTimer();
     this.#absoluteDeadline = undefined;
     this.#idleDeadline = undefined;
@@ -111,6 +141,7 @@ export class OwnerSessionLifecycle {
       return false;
     }
 
+    this.#generation = Symbol();
     this.#cancelTimer();
     this.#lastObservedAt = now;
     this.#absoluteDeadline = now + leaseMs;

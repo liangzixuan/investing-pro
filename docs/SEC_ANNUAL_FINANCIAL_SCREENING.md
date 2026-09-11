@@ -169,6 +169,26 @@ IFRS concepts or unsupported custom extensions.
 
 ## Acceptance and remaining work
 
+### Session activity while screening
+
+A successful Run, Refresh or page request refreshes the browser's idle activity
+without clearing the screen. Its activity time is captured before the request;
+a delayed reply does not earn extra time for its delay. The response must pass
+validation and still belong to the current screen and owner session. Missing
+source data in an otherwise valid response does not prevent activity credit.
+Failed, cancelled, superseded or malformed requests and local criteria edits do
+not count. Saving or loading definitions and other private-data flows are outside
+this activity integration.
+
+The ten-minute idle limit and sixty-minute absolute limit remain unchanged.
+A browser that discovers an existing session cookie still has its conservative
+ten-minute maximum local lease, because it cannot know that cookie's creation
+time. Activity cannot extend that ceiling or revive an expired session. Hidden
+tabs, session replacement and session loss continue to clear private results.
+No polling, automatic source refresh, extra request or credential storage is added.
+
+### Financial acceptance
+
 Engineering tests cover precision, concept conflicts, date alignment, missing
 values, thresholds, coverage arithmetic, ordering, snapshot-bound pages,
 bounded transport, cancellation, authentication, and saved-definition

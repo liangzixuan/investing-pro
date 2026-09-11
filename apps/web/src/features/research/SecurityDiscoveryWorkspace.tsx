@@ -36,6 +36,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
+import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
 import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
@@ -157,9 +158,34 @@ export function SecurityDiscoveryWorkspace() {
   const valuationHistoryEpoch = useRef(0);
   const valuationHistoryController = useRef<AbortController | null>(null);
   const manualPeerControllers = useRef(new Map<string, ManualPeerRequest>());
+  const ownerActivityStart = useRef<OwnerSessionActivityStart | null>(null);
+  const workspaceActivityReady = useRef(false);
+
+  const handleOwnerActivityChange = useCallback(
+    (start: OwnerSessionActivityStart | null) => {
+      ownerActivityStart.current = start;
+    },
+    [],
+  );
+
+  const handleFinancialActivityStart =
+    useCallback<OwnerSessionActivityStart>(() => {
+      const epoch = workspaceEpoch.current;
+      const start = ownerActivityStart.current;
+      if (!workspaceActivityReady.current || start === null) return undefined;
+      const complete = start();
+      if (complete === undefined) return undefined;
+      return () =>
+        workspaceActivityReady.current &&
+        epoch === workspaceEpoch.current &&
+        start === ownerActivityStart.current &&
+        complete();
+    }, []);
 
   const handleOwnerSessionChange = useCallback(
     async (active: boolean, signal: AbortSignal) => {
+      workspaceActivityReady.current = false;
+      ownerActivityStart.current = null;
       const epoch = ++workspaceEpoch.current;
       searchEpoch.current += 1;
       setWorkspace(null);
@@ -229,6 +255,7 @@ export function SecurityDiscoveryWorkspace() {
             : null,
         );
         setWorkspaceMessage(null);
+        workspaceActivityReady.current = true;
         return true;
       } catch (error) {
         if (signal.aborted || epoch !== workspaceEpoch.current) return false;
@@ -243,6 +270,8 @@ export function SecurityDiscoveryWorkspace() {
   );
 
   function clearWorkspaceForSessionLoss() {
+    workspaceActivityReady.current = false;
+    ownerActivityStart.current = null;
     workspaceEpoch.current += 1;
     searchEpoch.current += 1;
     setWorkspace(null);
@@ -1271,7 +1300,10 @@ export function SecurityDiscoveryWorkspace() {
         machine. No browser storage or synthetic fallback is used.
       </div>
       <main className="research-shell discovery-shell" id="main-content">
-        <OwnerSessionPanel onSessionChange={handleOwnerSessionChange} />
+        <OwnerSessionPanel
+          onActivityHandlerChange={handleOwnerActivityChange}
+          onSessionChange={handleOwnerSessionChange}
+        />
         {workspace === null ? (
           <section className="personal-locked-state" aria-live="polite">
             <p className="eyebrow">Security discovery locked</p>
@@ -1431,6 +1463,7 @@ export function SecurityDiscoveryWorkspace() {
 
             <PersonalFinancialScreener
               key={`financial-${workspace.snapshot.snapshotSha256}`}
+              onActivityStart={handleFinancialActivityStart}
               canAddToWatchlist={
                 workspace.watchlistAvailable &&
                 watchlistState !== "saving" &&
