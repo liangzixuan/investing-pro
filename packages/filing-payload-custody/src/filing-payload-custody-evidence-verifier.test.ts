@@ -280,6 +280,10 @@ import {
   isCycle3ka5FeatureTopologyAllowed,
   isCycle3ka5RoutingClosureCommitDiffSetAllowed,
   isCycle3ka5RoutingClosureTopologyAllowed,
+  isCycle3ka6FeatureCommitDiffSetAllowed,
+  isCycle3ka6FeatureTopologyAllowed,
+  isCycle3ka6RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka6RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -1100,6 +1104,10 @@ const CYCLE_3K_A4_ROUTING_CLOSURE_REVISION =
   "b9a2d1d2168092b31636bbb2a9f5a510da928f5e" as const;
 const CYCLE_3K_A5_FEATURE_REVISION =
   "bd0bbd9f7074b0a032d6095fb5cfb8dbbefb1432" as const;
+const CYCLE_3K_A5_ROUTING_CLOSURE_REVISION =
+  "170feab23f1eb4be3653ccd7523fbd4e5f8bd71a" as const;
+const CYCLE_3K_A6_FEATURE_REVISION =
+  "d71ff75f00384bf244a73350d23b6bd25085bf6e" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -4488,6 +4496,36 @@ const CYCLE_3K_A5_FEATURE_TRANSITION = [
   { path: "scripts/verify-boundaries.ts", status: "M" },
 ];
 const CYCLE_3K_A5_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+];
+const CYCLE_3K_A6_FEATURE_TRANSITION = [
+  { path: "apps/api/src/personal-sec-request-scheduler.test.ts", status: "M" },
+];
+const CYCLE_3K_A6_ROUTING_CLOSURE_TRANSITION = [
   { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
   {
     path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -12676,6 +12714,114 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedGrossProfitClosure = [
+      "112",
+      "112",
+      CYCLE_3K_A5_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A5_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A5_FEATURE_REVISION}`,
+      grossProfitFeature,
+    ] as const;
+    expect(
+      isCycle3ka5RoutingClosureTopologyAllowed(...pinnedGrossProfitClosure),
+    ).toBe(true);
+    const grossProfitSchedulerFeature = [
+      "113",
+      "113",
+      CYCLE_3K_A6_FEATURE_REVISION,
+      `${CYCLE_3K_A6_FEATURE_REVISION} ${CYCLE_3K_A5_ROUTING_CLOSURE_REVISION}`,
+      pinnedGrossProfitClosure,
+    ] as const;
+    expect(
+      isCycle3ka6FeatureTopologyAllowed(...grossProfitSchedulerFeature),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "112"],
+      [1, "114"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A6_FEATURE_REVISION} ${CYCLE_3K_A5_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A6_FEATURE_REVISION} ${CYCLE_3K_A5_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...grossProfitSchedulerFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka6FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka6FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedGrossProfitClosure: unknown[] = [
+      ...pinnedGrossProfitClosure,
+    ];
+    tamperedPinnedGrossProfitClosure[4] = tamperedGrossProfitFeature;
+    expect(
+      isCycle3ka6FeatureTopologyAllowed(
+        "113",
+        "113",
+        CYCLE_3K_A6_FEATURE_REVISION,
+        `${CYCLE_3K_A6_FEATURE_REVISION} ${CYCLE_3K_A5_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedGrossProfitClosure as unknown as Parameters<
+          typeof isCycle3ka6FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const grossProfitSchedulerClosureRevision = "e".repeat(40);
+    const grossProfitSchedulerClosure = [
+      "114",
+      "114",
+      grossProfitSchedulerClosureRevision,
+      `${grossProfitSchedulerClosureRevision} ${CYCLE_3K_A6_FEATURE_REVISION}`,
+      grossProfitSchedulerFeature,
+    ] as const;
+    expect(
+      isCycle3ka6RoutingClosureTopologyAllowed(...grossProfitSchedulerClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "113"],
+      [1, "115"],
+      [2, CYCLE_3K_A6_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${grossProfitSchedulerClosureRevision} ${CYCLE_3K_A5_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${grossProfitSchedulerClosureRevision} ${CYCLE_3K_A6_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...grossProfitSchedulerClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka6RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka6RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedGrossProfitSchedulerFeature: unknown[] = [
+      ...grossProfitSchedulerFeature,
+    ];
+    tamperedGrossProfitSchedulerFeature[4] = tamperedPinnedGrossProfitClosure;
+    expect(
+      isCycle3ka6RoutingClosureTopologyAllowed(
+        "114",
+        "114",
+        grossProfitSchedulerClosureRevision,
+        `${grossProfitSchedulerClosureRevision} ${CYCLE_3K_A6_FEATURE_REVISION}`,
+        tamperedGrossProfitSchedulerFeature as unknown as Parameters<
+          typeof isCycle3ka6RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -13167,6 +13313,35 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A5_ROUTING_CLOSURE_TRANSITION,
       7,
     );
+    expect(CYCLE_3K_A6_FEATURE_TRANSITION).toHaveLength(1);
+    expect(
+      isCycle3ka6FeatureCommitDiffSetAllowed(CYCLE_3K_A6_FEATURE_TRANSITION),
+    ).toBe(true);
+    for (const entries of [
+      [],
+      [
+        {
+          path: "apps/api/src/personal-sec-request-scheduler.test.ts",
+          status: "A",
+        },
+      ],
+      [
+        {
+          path: "apps/api/src/personal-sec-request-scheduler.test.ts",
+          status: "D",
+        },
+      ],
+      [{ path: "apps/api/src/personal-sec-request-scheduler.ts", status: "M" }],
+      [...CYCLE_3K_A6_FEATURE_TRANSITION, ...CYCLE_3K_A6_FEATURE_TRANSITION],
+      [...CYCLE_3K_A6_FEATURE_TRANSITION, { path: "unreviewed", status: "M" }],
+    ]) {
+      expect(isCycle3ka6FeatureCommitDiffSetAllowed(entries)).toBe(false);
+    }
+    expectExactTransition(
+      isCycle3ka6RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A6_ROUTING_CLOSURE_TRANSITION,
+      7,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -13284,6 +13459,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A4_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A5_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A5_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A6_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A6_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -13453,6 +13630,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A4_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A5_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A5_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A6_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A6_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
