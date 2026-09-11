@@ -103,6 +103,7 @@ on:
       - packages/connected-source-policy/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - scripts/classify-filing-parser-cross-engine-source.sh
       - scripts/verify-boundaries.ts
       - scripts/verify-filing-payload-custody-fixtures.ts
       - tsconfig.base.json
@@ -208,6 +209,7 @@ on:
       - packages/connected-source-policy/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - scripts/classify-filing-parser-cross-engine-source.sh
       - scripts/verify-boundaries.ts
       - scripts/verify-filing-payload-custody-fixtures.ts
       - tsconfig.base.json

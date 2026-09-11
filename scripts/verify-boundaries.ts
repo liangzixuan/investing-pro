@@ -70,6 +70,9 @@ const commandSurfaceExtensions = new Set([
   ".yaml",
   ".yml",
 ]);
+const filingParserCrossEngineSourceClassifierPath =
+  "scripts/classify-filing-parser-cross-engine-source.sh";
+const filingParserCrossEngineSourceClassifierCommand = `bash --noprofile --norc -e -o pipefail ${filingParserCrossEngineSourceClassifierPath}`;
 const forbiddenText = [
   /investing\.com/i,
   /investing[_ -]?pro/i,
@@ -12222,6 +12225,68 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
     found,
   );
+  const sourceClassifierViolation =
+    filingParserCrossEngineSourceClassifierWorkflowViolation(workflow);
+  if (sourceClassifierViolation !== null) found.push(sourceClassifierViolation);
+  const classifierFixture = [
+    "jobs:",
+    "  acceptance:",
+    "    steps:",
+    "      - name: Classify source",
+    "        id: cycle3e_source",
+    "        if: ${{ success() }}",
+    "        shell: bash",
+    `        run: ${filingParserCrossEngineSourceClassifierCommand}`,
+    "",
+    "      - name: Continue",
+    "        run: echo complete",
+    "",
+  ].join("\n");
+  const atWorkflowLimit =
+    classifierFixture +
+    "#".repeat(500_000 - Buffer.byteLength(classifierFixture, "utf8"));
+  if (
+    filingParserCrossEngineSourceClassifierWorkflowViolation(
+      classifierFixture,
+    ) !== null ||
+    filingParserCrossEngineSourceClassifierWorkflowViolation(
+      atWorkflowLimit,
+    ) !== null ||
+    [
+      atWorkflowLimit + "#",
+      atWorkflowLimit.slice(0, -1) + "é",
+      classifierFixture.replace("-e -o pipefail ", ""),
+      classifierFixture.replace("shell: bash", "shell: sh"),
+      classifierFixture.replace("${{ success() }}", "${{ always() }}"),
+      classifierFixture.replace(
+        filingParserCrossEngineSourceClassifierPath,
+        "scripts/unreviewed.sh",
+      ),
+      classifierFixture.replace(
+        "        run:",
+        "        working-directory: packages\n        run:",
+      ),
+      classifierFixture.replace(
+        "    steps:",
+        "    defaults:\n      run:\n        working-directory: packages\n    steps:",
+      ),
+      classifierFixture.replace(
+        "        run:",
+        "        env:\n          BASH_ENV: unreviewed.sh\n        run:",
+      ),
+      classifierFixture.replace(
+        filingParserCrossEngineSourceClassifierCommand,
+        `${filingParserCrossEngineSourceClassifierCommand} || true`,
+      ),
+      classifierFixture.replace("        id: cycle3e_source\n", ""),
+      classifierFixture + classifierFixture,
+    ].some(
+      (candidate) =>
+        filingParserCrossEngineSourceClassifierWorkflowViolation(candidate) ===
+        null,
+    )
+  )
+    throw new Error("Cross-engine source-classifier workflow guard regressed");
   const cycle2oVerifier = await cycle2kText(
     `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier.ts`,
     found,
@@ -12339,6 +12404,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     ...core,
     ...acceptance,
     ...filingParserQualityCompositionPackagePaths,
+    filingParserCrossEngineSourceClassifierPath,
     "scripts/verify-boundaries.ts",
     "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -15389,6 +15455,7 @@ async function filingParserCustodyQualityCompositionBoundaryViolations(): Promis
 
   const externalAllow = new Set([
     ...filingParserCustodyQualityCompositionPackagePaths,
+    filingParserCrossEngineSourceClassifierPath,
     "scripts/verify-boundaries.ts",
     "scripts/verify-filing-parser-cross-engine-execution-fixtures.ts",
     ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
@@ -15522,6 +15589,47 @@ function cycle2kExactTree(
   return (
     JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort())
   );
+}
+
+function filingParserCrossEngineSourceClassifierWorkflowViolation(
+  workflow: string,
+): string | null {
+  if (Buffer.byteLength(workflow, "utf8") > 500_000)
+    return "Cross-engine acceptance workflow must remain at most 500000 UTF-8 bytes";
+  const lines = workflow.replaceAll("\r\n", "\n").split("\n");
+  const entries = githubWorkflowYamlEntries(lines);
+  const ids = entries.filter(
+    (entry) => entry.key === "id" && entry.value === "cycle3e_source",
+  );
+  const id = ids[0];
+  if (ids.length !== 1 || id === undefined || id.keyIndent !== 8)
+    return "Cross-engine source classifier must have one exact step id";
+  const nextStep = entries.find(
+    (entry) =>
+      entry.lineIndex > id.lineIndex && entry.sequence && entry.indent === 6,
+  );
+  const step = lines
+    .slice(id.lineIndex, nextStep?.lineIndex)
+    .join("\n")
+    .trimEnd();
+  const expected = [
+    "        id: cycle3e_source",
+    "        if: ${{ success() }}",
+    "        shell: bash",
+    `        run: ${filingParserCrossEngineSourceClassifierCommand}`,
+  ].join("\n");
+  if (
+    !/^ {6}- name: .+$/u.test(lines[id.lineIndex - 1] ?? "") ||
+    step !== expected ||
+    entries.some(
+      (entry) =>
+        entry.lineIndex < id.lineIndex &&
+        entry.keyIndent <= 4 &&
+        entry.key === "defaults",
+    )
+  )
+    return "Cross-engine source classifier must retain its exact Bash caller and repository working directory";
+  return null;
 }
 
 function cycle2kExternalCompositionViolation(
@@ -21740,6 +21848,7 @@ function filingParserNormalizationHandoffExternalCompositionViolation(
     path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix) ||
     path === filingParserNormalizationExecutionProductionPath ||
     path === filingParserNormalizationExecutionWorkflowPath ||
+    path === filingParserCrossEngineSourceClassifierPath ||
     path ===
       ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml" ||
     path ===
@@ -21786,6 +21895,7 @@ function filingParserNormalizationExecutionExternalCompositionViolation(
     path.startsWith(filingParserCrossEngineExecutionPackagePrefix) ||
     path.startsWith(filingParserCrossEngineExecutionAcceptancePackagePrefix) ||
     path === filingParserNormalizationExecutionWorkflowPath ||
+    path === filingParserCrossEngineSourceClassifierPath ||
     path ===
       ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml" ||
     path ===
