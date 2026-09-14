@@ -255,6 +255,8 @@ $accountPath = $env:RESEARCH_COCKPIT_ACCOUNT_ACL_PATH
 $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
 if ($env:RESEARCH_COCKPIT_ACCOUNT_ACL_APPLY -eq '1') {
   $security = [System.Security.AccessControl.FileSecurity]::new()
+  $currentOwner = [System.IO.File]::GetAccessControl($accountPath).GetOwner([System.Security.Principal.SecurityIdentifier])
+  if ($currentOwner.Value -ne $identity.Value) { $security.SetOwner($identity) }
   $security.SetAccessRuleProtection($true, $false)
   $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($identity, 'FullControl', 'Allow')
   $security.AddAccessRule($rule)
