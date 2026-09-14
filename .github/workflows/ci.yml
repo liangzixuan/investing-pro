@@ -16,15 +16,17 @@ jobs:
   verify:
     name: Verify (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             python: "3.12.13"
+            timeout: 15
           - os: windows-latest
             python: "3.12.10"
+            timeout: 20
 
     steps:
       - name: Check out source
