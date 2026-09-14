@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "caseNumber": 18,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "a625b71b2bc0cdbb2d20202f677c82f628f2b3ca",
+  "featureRevision": "046782a34776b67672c08e62de9bd541c8ce6c60",
+  "featureCount": 137,
+  "closureCount": 138,
+  "featureChanges": [
+    { "path": "scripts/release-classification.test.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka18.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka18.json",
+  "presentation": {
+    "featureDescription": "canonical graft test directory identity",
+    "closureDescription": "canonical graft test directory identity",
+    "inventoryDescription": "canonical graft test directory identity",
+    "testBinding": "canonicalGraftTestPath",
+    "routingDescription": "canonical graft test directory identity",
+    "summaryDescription": "canonical graft test directory identity"
+  }
+}
