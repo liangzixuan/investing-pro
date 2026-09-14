@@ -104,6 +104,8 @@ cycle3ka10_routing_closure="8810d9923283efa534fa69ea3cb6da3d4136f97e"
 cycle3ka11_feature="3410cba575fa548b7ac1a0697bba0690f5aa3bdd"
 cycle3ka11_routing_closure="7f9301f7f556443bddc7fe2dd49975862a67dc1d"
 cycle3ka12_feature="6351ae8e0502c05a2051c9dccc65265dd5b2b020"
+cycle3ka12_routing_closure="4b948cf3b36e7f8889cc87b158b397c399c799f9"
+cycle3ka13_feature="8b99c6747ef5a2e62240d433fff7432d6d1e39b2"
 expected_source=(
   "M" "README.md"
   "M" "apps/api/package.json"
@@ -1484,6 +1486,19 @@ expected_cycle3ka12_routing_closure=(
   "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
   "M" "scripts/classify-filing-parser-cross-engine-source.sh"
 )
+expected_cycle3ka13_feature=(
+  "M" "packages/db/tests/postgres-acceptance-evidence-review.test.ts"
+)
+expected_cycle3ka13_routing_closure=(
+  "M" ".github/workflows/filing-parser-acceptance.yml"
+  "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+  "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+  "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+  "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+  "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+  "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+  "M" "scripts/classify-filing-parser-cross-engine-source.sh"
+)
 protected=()
 for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
   protected+=("${expected_source[$index]}")
@@ -1788,6 +1803,12 @@ done
 for ((index = 1; index < ${#expected_cycle3ka12_routing_closure[@]}; index += 2)); do
   protected+=("${expected_cycle3ka12_routing_closure[$index]}")
 done
+for ((index = 1; index < ${#expected_cycle3ka13_feature[@]}; index += 2)); do
+  protected+=("${expected_cycle3ka13_feature[$index]}")
+done
+for ((index = 1; index < ${#expected_cycle3ka13_routing_closure[@]}; index += 2)); do
+  protected+=("${expected_cycle3ka13_routing_closure[$index]}")
+done
 matches_exactly() {
   local -n expected_values="$1"
   local -n actual_values="$2"
@@ -1909,7 +1930,9 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
        git cat-file -e "$cycle3ka10_routing_closure^{commit}" && \
        git cat-file -e "$cycle3ka11_feature^{commit}" && \
        git cat-file -e "$cycle3ka11_routing_closure^{commit}" && \
-       git cat-file -e "$cycle3ka12_feature^{commit}"; then
+       git cat-file -e "$cycle3ka12_feature^{commit}" && \
+       git cat-file -e "$cycle3ka12_routing_closure^{commit}" && \
+       git cat-file -e "$cycle3ka13_feature^{commit}"; then
       read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
       read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
       read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -2013,6 +2036,8 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
       read -r -a cycle3ka11_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka11_feature")"
       read -r -a cycle3ka11_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka11_routing_closure")"
       read -r -a cycle3ka12_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka12_feature")"
+      read -r -a cycle3ka12_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka12_routing_closure")"
+      read -r -a cycle3ka13_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka13_feature")"
       merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
       public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
       public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -2218,6 +2243,10 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
       cycle3ka11_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka11_routing_closure")"
       cycle3ka12_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ka12_feature")"
       cycle3ka12_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka12_feature")"
+      cycle3ka12_routing_closure_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ka12_routing_closure")"
+      cycle3ka12_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka12_routing_closure")"
+      cycle3ka13_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ka13_feature")"
+      cycle3ka13_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka13_feature")"
       head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
       head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
       mapfile -d '' -t source_actual < <(
@@ -2615,6 +2644,15 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
       )
       mapfile -d '' -t cycle3ka12_routing_closure_actual < <(
         git diff --name-status --no-renames -z "$cycle3ka12_feature" HEAD --
+      )
+      mapfile -d '' -t pinned_cycle3ka12_routing_closure_actual < <(
+        git diff --name-status --no-renames -z "$cycle3ka12_feature" "$cycle3ka12_routing_closure" --
+      )
+      mapfile -d '' -t cycle3ka13_feature_actual < <(
+        git diff --name-status --no-renames -z "$cycle3ka12_routing_closure" "$cycle3ka13_feature" --
+      )
+      mapfile -d '' -t cycle3ka13_routing_closure_actual < <(
+        git diff --name-status --no-renames -z "$cycle3ka13_feature" HEAD --
       )
       history_exact=false
       if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -3610,6 +3648,26 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
          [[ "${cycle3ka12_feature_topology[1]}" == "$cycle3ka11_routing_closure" ]] && \
          matches_exactly expected_cycle3ka12_feature cycle3ka12_feature_actual; then
         cycle3ka12_feature_history_exact=true
+      fi
+      cycle3ka12_routing_closure_history_exact=false
+      if [[ "$cycle3ka12_feature_history_exact" == "true" ]] && \
+         [[ "$cycle3ka12_routing_closure_successor_count" == "126" ]] && \
+         [[ "$cycle3ka12_routing_closure_first_parent_count" == "126" ]] && \
+         [[ "${#cycle3ka12_routing_closure_topology[@]}" == "2" ]] && \
+         [[ "${cycle3ka12_routing_closure_topology[0]}" == "$cycle3ka12_routing_closure" ]] && \
+         [[ "${cycle3ka12_routing_closure_topology[1]}" == "$cycle3ka12_feature" ]] && \
+         matches_exactly expected_cycle3ka12_routing_closure pinned_cycle3ka12_routing_closure_actual; then
+        cycle3ka12_routing_closure_history_exact=true
+      fi
+      cycle3ka13_feature_history_exact=false
+      if [[ "$cycle3ka12_routing_closure_history_exact" == "true" ]] && \
+         [[ "$cycle3ka13_feature_successor_count" == "127" ]] && \
+         [[ "$cycle3ka13_feature_first_parent_count" == "127" ]] && \
+         [[ "${#cycle3ka13_feature_topology[@]}" == "2" ]] && \
+         [[ "${cycle3ka13_feature_topology[0]}" == "$cycle3ka13_feature" ]] && \
+         [[ "${cycle3ka13_feature_topology[1]}" == "$cycle3ka12_routing_closure" ]] && \
+         matches_exactly expected_cycle3ka13_feature cycle3ka13_feature_actual; then
+        cycle3ka13_feature_history_exact=true
       fi
       if [[ "$history_exact" == "true" ]] && \
          [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -4735,6 +4793,26 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
            [[ "${head_topology[1]}" == "$cycle3ka12_feature" ]] && \
            matches_exactly expected_cycle3ka12_routing_closure cycle3ka12_routing_closure_actual; then
          exact=true
+      elif [[ "$cycle3ka12_routing_closure_history_exact" == "true" ]] && \
+           [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+           [[ "$head_revision" == "$cycle3ka13_feature" ]] && \
+           [[ "$head_successor_count" == "127" ]] && \
+           [[ "$head_first_parent_count" == "127" ]] && \
+           [[ "${#head_topology[@]}" == "2" ]] && \
+           [[ "${head_topology[0]}" == "$cycle3ka13_feature" ]] && \
+           [[ "${head_topology[1]}" == "$cycle3ka12_routing_closure" ]] && \
+           matches_exactly expected_cycle3ka13_feature cycle3ka13_feature_actual; then
+         exact=true
+      elif [[ "$cycle3ka13_feature_history_exact" == "true" ]] && \
+           [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+           [[ "$head_revision" != "$cycle3ka13_feature" ]] && \
+           [[ "$head_successor_count" == "128" ]] && \
+           [[ "$head_first_parent_count" == "128" ]] && \
+           [[ "${#head_topology[@]}" == "2" ]] && \
+           [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+           [[ "${head_topology[1]}" == "$cycle3ka13_feature" ]] && \
+           matches_exactly expected_cycle3ka13_routing_closure cycle3ka13_routing_closure_actual; then
+         exact=true
       fi
     fi
   fi
@@ -4742,6 +4820,6 @@ fi
 echo "required=$required" >> "$GITHUB_OUTPUT"
 echo "exact=$exact" >> "$GITHUB_OUTPUT"
 if [[ "$required" == "true" && "$exact" != "true" ]]; then
-  echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, Cycle 3i-a1 feature and routing closure, Cycle 3i-a2 feature and routing closure, Cycle 3j-a1 feature and routing closure, Cycle 3j-a2 feature and routing closure, Cycle 3k-a1 feature and routing closure, partial Cycle 3k-a2 SEC annual financial-screening feature and routing closure, partial Cycle 3l-a1 SEC recent watchlist-filings feature and routing closure, partial Cycle 3m-a1 manual portfolio holdings feature and routing closure, partial Cycle 3m-a2 portfolio transaction-ledger and CSV-import feature and routing closure, partial Cycle 3m-a3 portfolio split-reconciliation and historical-price-coverage feature and routing closure, partial Cycle 3m-a4 historical portfolio valuation feature and routing closure, partial Cycle 3m-a5 portfolio endpoint percentage-return feature and routing closure, partial Cycle 3m-a6 portfolio Modified Dietz period-estimate feature and routing closure, partial Cycle 3m-a7 portfolio linked period-return feature and routing closure, partial Cycle 3h-a4 quarterly compatibility-assessment feature and routing closure, partial Cycle 3h-a5 SEC quarterly source-evidence feature and routing closure, partial Cycle 3h-a6 browser-local same-period SEC observation-comparison feature and routing closure, partial Cycle 3h-a7 bounded SEC filing-context inspection feature and routing closure, partial Cycle 3h-a8 filing-declared reporting metadata feature and routing closure, partial Cycle 3h-a9 bounded XML declaration and built-entrypoint startup repair feature and routing closure, partial Cycle 3h-a10 scoped inline linking attribute repair feature and routing closure, partial Cycle 3h-a11 bounded report-end date transformation feature and routing closure, partial Cycle 3h-a12 loaded filing-context blocker explanation feature and routing closure, bounded Cycle 3h-a13 database evidence test-case isolation and routing closure, bounded Cycle 3h-a14 native vault test-file serialization and routing closure, partial Cycle 3k-a3 annual revenue-basis selection and routing closure, bounded Cycle 3k-a4 cross-engine canonical and drift test-case isolation and routing closure, partial Cycle 3k-a5 reported annual gross-profit screening and routing closure, bounded Cycle 3k-a6 seven-source scheduler test expectations and routing closure, bounded Cycle 3k-a7 PostgreSQL source-case isolation and routing closure, partial Cycle 3k-a8 browser owner-session financial activity integration and routing closure, bounded Cycle 3k-a9 cross-engine classifier script extraction and routing closure, partial Cycle 3k-a10 PP&E purchases and operating cash flow subtraction and routing closure, partial Cycle 3k-a11 reusable local owner login and routing closure, or partial Cycle 3k-a12 local owner account ACL initialization and routing closure; refusing inherited evidence routing." >&2
+  echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, Cycle 3i-a1 feature and routing closure, Cycle 3i-a2 feature and routing closure, Cycle 3j-a1 feature and routing closure, Cycle 3j-a2 feature and routing closure, Cycle 3k-a1 feature and routing closure, partial Cycle 3k-a2 SEC annual financial-screening feature and routing closure, partial Cycle 3l-a1 SEC recent watchlist-filings feature and routing closure, partial Cycle 3m-a1 manual portfolio holdings feature and routing closure, partial Cycle 3m-a2 portfolio transaction-ledger and CSV-import feature and routing closure, partial Cycle 3m-a3 portfolio split-reconciliation and historical-price-coverage feature and routing closure, partial Cycle 3m-a4 historical portfolio valuation feature and routing closure, partial Cycle 3m-a5 portfolio endpoint percentage-return feature and routing closure, partial Cycle 3m-a6 portfolio Modified Dietz period-estimate feature and routing closure, partial Cycle 3m-a7 portfolio linked period-return feature and routing closure, partial Cycle 3h-a4 quarterly compatibility-assessment feature and routing closure, partial Cycle 3h-a5 SEC quarterly source-evidence feature and routing closure, partial Cycle 3h-a6 browser-local same-period SEC observation-comparison feature and routing closure, partial Cycle 3h-a7 bounded SEC filing-context inspection feature and routing closure, partial Cycle 3h-a8 filing-declared reporting metadata feature and routing closure, partial Cycle 3h-a9 bounded XML declaration and built-entrypoint startup repair feature and routing closure, partial Cycle 3h-a10 scoped inline linking attribute repair feature and routing closure, partial Cycle 3h-a11 bounded report-end date transformation feature and routing closure, partial Cycle 3h-a12 loaded filing-context blocker explanation feature and routing closure, bounded Cycle 3h-a13 database evidence test-case isolation and routing closure, bounded Cycle 3h-a14 native vault test-file serialization and routing closure, partial Cycle 3k-a3 annual revenue-basis selection and routing closure, bounded Cycle 3k-a4 cross-engine canonical and drift test-case isolation and routing closure, partial Cycle 3k-a5 reported annual gross-profit screening and routing closure, bounded Cycle 3k-a6 seven-source scheduler test expectations and routing closure, bounded Cycle 3k-a7 PostgreSQL source-case isolation and routing closure, partial Cycle 3k-a8 browser owner-session financial activity integration and routing closure, bounded Cycle 3k-a9 cross-engine classifier script extraction and routing closure, partial Cycle 3k-a10 PP&E purchases and operating cash flow subtraction and routing closure, partial Cycle 3k-a11 reusable local owner login and routing closure, partial Cycle 3k-a12 local owner account ACL initialization and routing closure, or partial Cycle 3k-a13 PostgreSQL source-rejection test-case isolation and routing closure; refusing inherited evidence routing." >&2
   exit 1
 fi
