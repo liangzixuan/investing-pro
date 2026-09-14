@@ -6,10 +6,11 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   assertClosure,
@@ -537,6 +538,130 @@ describe("bounded checking and writing", () => {
 });
 
 describe("real bounded Git reader", () => {
+  function graftRepository() {
+    const directory = temporary();
+    const root = join(directory, "repository");
+    mkdirSync(root);
+    const env = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => !/^(?:GIT_|NODE_OPTIONS$)/iu.test(key),
+      ),
+    );
+    Object.assign(env, {
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+      GIT_NO_REPLACE_OBJECTS: "1",
+      GIT_TERMINAL_PROMPT: "0",
+    });
+    function git(...args: string[]): string {
+      return execFileSync(
+        "git",
+        [
+          "--no-replace-objects",
+          "-c",
+          `safe.directory=${root.replaceAll("\\", "/")}`,
+          "-c",
+          "user.name=Release Graft Test",
+          "-c",
+          "user.email=release-graft-test@example.invalid",
+          "-C",
+          root,
+          ...args,
+        ],
+        {
+          encoding: "utf8",
+          windowsHide: true,
+          env,
+          maxBuffer: 64_000,
+          timeout: 10_000,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      ).trim();
+    }
+    git("init", "--quiet");
+    const tree = git("write-tree");
+    const base = git("commit-tree", tree, "-m", "baseline");
+    const parent = git("commit-tree", tree, "-p", base, "-m", "middle");
+    const head = git("commit-tree", tree, "-p", parent, "-m", "feature");
+    git("update-ref", "refs/heads/graft-test", head);
+    git("symbolic-ref", "HEAD", "refs/heads/graft-test");
+    const graftPath = git(
+      "rev-parse",
+      "--path-format=absolute",
+      "--git-path",
+      "info/grafts",
+    );
+    return { directory, root, git, base, parent, head, graftPath };
+  }
+
+  it("rejects on-disk grafts even when replacement objects are disabled", () => {
+    const { root, git, base, parent, head, graftPath } = graftRepository();
+    const reader = createReleaseGitReader(root);
+    expect(reader.parents(head)).toEqual([parent]);
+    expect(reader.count(base, head, false)).toBe(2);
+    expect(reader.count(base, head, true)).toBe(2);
+    const raw = git("cat-file", "commit", head);
+    expect(
+      raw.split("\n").filter((line) => line.startsWith("parent ")),
+    ).toEqual([`parent ${parent}`]);
+    writeFileSync(graftPath, `${head} ${base}\n`);
+    expect(git("cat-file", "commit", head)).toBe(raw);
+    expect(git("rev-list", "--parents", "-n", "1", head)).toBe(
+      `${head} ${base}`,
+    );
+    expect(git("rev-list", "--count", `${base}..${head}`)).toBe("1");
+    expect(() => createReleaseGitReader(root)).toThrow(/Git graft/u);
+  });
+
+  it.each(["empty file", "directory", "dangling link"])(
+    "rejects an existing graft path containing an %s",
+    (kind) => {
+      const { directory, root, graftPath } = graftRepository();
+      if (kind === "empty file") writeFileSync(graftPath, "");
+      else if (kind === "directory") mkdirSync(graftPath);
+      else
+        symlinkSync(
+          join(directory, "missing-graft-target"),
+          graftPath,
+          process.platform === "win32" ? "junction" : "file",
+        );
+      expect(() => createReleaseGitReader(root)).toThrow(/Git graft/u);
+    },
+  );
+
+  it("rejects shared common-directory grafts from a linked worktree", () => {
+    const { directory, root, git, base, parent, head, graftPath } =
+      graftRepository();
+    const linked = join(directory, "linked");
+    git("worktree", "add", "--quiet", "--detach", linked, head);
+    expect(
+      resolve(
+        git(
+          "-C",
+          linked,
+          "rev-parse",
+          "--path-format=absolute",
+          "--git-path",
+          "info/grafts",
+        ),
+      ),
+    ).toBe(resolve(graftPath));
+    expect(createReleaseGitReader(linked).parents(head)).toEqual([parent]);
+    writeFileSync(graftPath, `${head} ${base}\n`);
+    expect(() => createReleaseGitReader(root)).toThrow(/Git graft/u);
+    expect(() => createReleaseGitReader(linked)).toThrow(/Git graft/u);
+  });
+
+  it("rejects graft metadata introduced after the reader was created", () => {
+    const { root, base, head, graftPath } = graftRepository();
+    const reader = createReleaseGitReader(root);
+    writeFileSync(graftPath, `${head} ${base}\n`);
+    expect(() => reader.parents(head)).toThrow(/Git graft/u);
+    expect(() => reader.count(base, head, false)).toThrow(/Git graft/u);
+    expect(() => reader.count(base, head, true)).toThrow(/Git graft/u);
+    expect(() => reader.ancestor(base, head)).toThrow(/Git graft/u);
+  });
+
   it("reads NUL inventories and exact parents/counts/status using a fresh local repository", () => {
     const root = temporary();
     const env = Object.fromEntries(

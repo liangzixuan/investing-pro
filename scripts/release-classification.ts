@@ -322,7 +322,7 @@ export function createReleaseGitReader(repository: string): ReleaseGitReader {
     GIT_OPTIONAL_LOCKS: "0",
     LC_ALL: "C",
   });
-  function git(args: string[]): string {
+  function rawGit(args: string[]): string {
     return execFileSync(
       "git",
       [
@@ -346,6 +346,22 @@ export function createReleaseGitReader(repository: string): ReleaseGitReader {
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
+  }
+  // Grafts still rewrite ancestry with replacement objects disabled. Git resolves
+  // this path to the shared common directory for linked worktrees.
+  const graftPath = rawGit([
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-path",
+    "info/grafts",
+  ]).trim();
+  requireCondition(isAbsolute(graftPath), "Expected absolute Git graft path");
+  function git(args: string[]): string {
+    requireCondition(
+      lstatSync(graftPath, { throwIfNoEntry: false }) === undefined,
+      "Release checks reject Git graft files or links",
+    );
+    return rawGit(args);
   }
   requireCondition(
     git(["rev-parse", "--is-shallow-repository"]).trim() === "false",
