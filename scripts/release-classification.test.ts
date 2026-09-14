@@ -5,13 +5,14 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   assertClosure,
@@ -640,8 +641,9 @@ describe("real bounded Git reader", () => {
         graftRepository();
       const linked = join(directory, "linked");
       git("worktree", "add", "--quiet", "--detach", linked, head);
+      // Native resolution expands Windows 8.3 aliases on existing directories.
       expect(
-        resolve(
+        realpathSync.native(
           git(
             "-C",
             linked,
@@ -650,8 +652,11 @@ describe("real bounded Git reader", () => {
             "--git-common-dir",
           ),
         ),
-      ).toBe(resolve(root, ".git"));
-      expect(resolve(graftPath)).toBe(resolve(root, ".git", "info", "grafts"));
+      ).toBe(realpathSync.native(join(root, ".git")));
+      expect(realpathSync.native(dirname(graftPath))).toBe(
+        realpathSync.native(join(root, ".git", "info")),
+      );
+      expect(basename(graftPath)).toBe("grafts");
       expect(createReleaseGitReader(linked).parents(head)).toEqual([parent]);
       if (kind === "file") writeFileSync(graftPath, `${head} ${base}\n`);
       else {
