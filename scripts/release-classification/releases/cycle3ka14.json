@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "caseNumber": 14,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "9edb8cbe47b9847ff1264a1e04507738dfaf3d3c",
+  "featureRevision": "1c9db94204989a0797c50c98d8d691404ef4b920",
+  "featureCount": 129,
+  "closureCount": 130,
+  "featureChanges": [
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/RELEASE_CLASSIFICATION.md", "status": "A" },
+    { "path": "package.json", "status": "M" },
+    { "path": "scripts/release-classification-golden.test.ts", "status": "A" },
+    { "path": "scripts/release-classification-history.test.ts", "status": "A" },
+    { "path": "scripts/release-classification-render.ts", "status": "A" },
+    { "path": "scripts/release-classification.test.ts", "status": "A" },
+    { "path": "scripts/release-classification.ts", "status": "A" },
+    {
+      "path": "scripts/release-classification/fixtures/ppe-golden.json",
+      "status": "A"
+    },
+    {
+      "path": "scripts/release-classification/vitest.config.ts",
+      "status": "A"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka14.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka14.json",
+  "presentation": {
+    "featureDescription": "release classification descriptor generation",
+    "closureDescription": "release classification descriptor generation",
+    "inventoryDescription": "release classification descriptor generation",
+    "testBinding": "releaseClassification",
+    "routingDescription": "release classification descriptor generation",
+    "summaryDescription": "release classification descriptor generation with unchanged historical classification and evidence gates"
+  }
+}
