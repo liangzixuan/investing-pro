@@ -9,6 +9,8 @@ export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
   "netMargin",
   "operatingMargin",
   "operatingCashFlowMargin",
+  "ppePurchases",
+  "operatingCashFlowLessPpePurchases",
 ] as const;
 export type PersonalFinancialScreenMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_METRICS)[number];
@@ -20,6 +22,7 @@ export const PERSONAL_SEC_ANNUAL_CONCEPTS = [
   "OperatingIncomeLoss",
   "NetCashProvidedByUsedInOperatingActivities",
   "GrossProfit",
+  "PaymentsToAcquirePropertyPlantAndEquipment",
 ] as const;
 export type PersonalSecAnnualConceptDto =
   (typeof PERSONAL_SEC_ANNUAL_CONCEPTS)[number];
@@ -77,6 +80,8 @@ export type PersonalFinancialScreenCellDto =
         | "missing"
         | "conflicting"
         | "period_mismatch"
+        | "filing_mismatch"
+        | "unsupported_sign"
         | "nonpositive_revenue"
         | "source_unavailable"
         | "invalid_value";
@@ -100,7 +105,7 @@ export interface PersonalFinancialScreenCriteriaDto {
   };
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -114,7 +119,7 @@ export interface PersonalFinancialScreenRowDto {
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "3.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
   readonly calendarYear: number;
@@ -142,7 +147,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly offset: number;
   readonly limitApplied: number;
   readonly hasMore: boolean;
-  readonly formulaVersion: "1.0.0";
+  readonly formulaVersion: "1.1.0";
 }
 export interface PersonalFinancialSavedViewDto {
   readonly id: string;

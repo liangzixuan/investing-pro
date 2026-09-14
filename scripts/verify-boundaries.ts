@@ -5356,6 +5356,19 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     secConcepts.replace('"GrossProfit",', ""),
     secConcepts.replace('"GrossProfit"', '"NetIncomeLoss"'),
     secConcepts.replace('"GrossProfit"', '"GrossProfit", "Assets"'),
+    secConcepts.replace('"PaymentsToAcquirePropertyPlantAndEquipment",', ""),
+    secConcepts.replace(
+      '"PaymentsToAcquirePropertyPlantAndEquipment"',
+      '"NetCashProvidedByUsedInOperatingActivities"',
+    ),
+    secConcepts.replace(
+      '"PaymentsToAcquirePropertyPlantAndEquipment"',
+      '"PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"',
+    ),
+    secConcepts.replace(
+      /"GrossProfit",\s*"PaymentsToAcquirePropertyPlantAndEquipment"/u,
+      '"PaymentsToAcquirePropertyPlantAndEquipment", "GrossProfit"',
+    ),
     secConcepts.replace(
       /"RevenueFromContractWithCustomerExcludingAssessedTax",\s*"Revenues"/u,
       '"Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"',
@@ -7303,9 +7316,10 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "OperatingIncomeLoss",
       "NetCashProvidedByUsedInOperatingActivities",
       "GrossProfit",
+      "PaymentsToAcquirePropertyPlantAndEquipment",
     ])
     ? null
-    : "SEC annual frames must remain the exact reviewed seven-concept registry";
+    : "SEC annual frames must remain the exact reviewed eight-concept registry";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

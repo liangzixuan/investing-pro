@@ -8,6 +8,7 @@ import {
   type PersonalFinancialScreenMetricDto,
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
+  type PersonalFinancialScreenSourceRefDto,
   type PersonalFinancialSavedViewsPayloadDto,
 } from "@research-cockpit/contracts";
 
@@ -37,6 +38,8 @@ const unavailableReasons = [
   "nonpositive_revenue",
   "source_unavailable",
   "invalid_value",
+  "filing_mismatch",
+  "unsupported_sign",
 ];
 const digest = /^sha256:[a-f0-9]{64}$/u;
 const bareDigest = /^[a-f0-9]{64}$/u;
@@ -99,7 +102,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "2.0.0" ||
+    input.schemaVersion !== "3.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -301,8 +304,8 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "2.0.0" ||
-    value.formulaVersion !== "1.0.0" ||
+    value.schemaVersion !== "3.0.0" ||
+    value.formulaVersion !== "1.1.0" ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
     !integer(value.calendarYear, 2009, new Date().getUTCFullYear() - 1) ||
@@ -362,6 +365,9 @@ function isResponse(
         keys(row.metrics, metrics) &&
         metrics.every((metric) =>
           cell((row.metrics as Record<string, unknown>)[metric], metric),
+        ) &&
+        cashFlowLessPpe(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         selectedRevenueSources(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
@@ -482,9 +488,7 @@ function cell(
           "value",
         ]) &&
         member(concepts, source.concept) &&
-        (metric === "grossProfit"
-          ? source.concept === "GrossProfit"
-          : source.concept !== "GrossProfit") &&
+        admittedSource(metric, source.concept) &&
         matches(source.accessionNumber, /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u) &&
         date(source.startDate) &&
         date(source.endDate) &&
@@ -500,24 +504,119 @@ function cell(
       value.sources.length >= 1) ||
     (value.status === "unavailable" &&
       "reason" in value &&
-      member(unavailableReasons, value.reason));
-  if (!valid || metric !== "grossProfit") return valid;
-  const grossProfit = value as unknown as PersonalFinancialScreenCellDto;
-  if (grossProfit.status === "unavailable")
+      member(unavailableReasons, value.reason) &&
+      (metric === "operatingCashFlowLessPpePurchases" ||
+        !["filing_mismatch", "unsupported_sign"].includes(value.reason)));
+  if (
+    !valid ||
+    !["grossProfit", "ppePurchases", "operatingCashFlow"].includes(metric)
+  )
+    return valid;
+  const reported = value as unknown as PersonalFinancialScreenCellDto;
+  if (reported.status === "unavailable")
     return [
       "missing",
       "conflicting",
       "source_unavailable",
       "invalid_value",
-    ].includes(grossProfit.reason);
-  const first = grossProfit.sources[0]!;
-  return grossProfit.sources.every(
+    ].includes(reported.reason);
+  const first = reported.sources[0]!;
+  return reported.sources.every(
     (source) =>
-      normalizedDecimal(source.value) ===
-        normalizedDecimal(grossProfit.value) &&
+      normalizedDecimal(source.value) === normalizedDecimal(reported.value) &&
       source.startDate === first.startDate &&
       source.endDate === first.endDate,
   );
+}
+
+function admittedSource(
+  metric: PersonalFinancialScreenMetricDto,
+  concept: (typeof concepts)[number],
+): boolean {
+  if (metric === "grossProfit") return concept === "GrossProfit";
+  if (metric === "ppePurchases")
+    return concept === "PaymentsToAcquirePropertyPlantAndEquipment";
+  if (metric === "operatingCashFlow")
+    return concept === "NetCashProvidedByUsedInOperatingActivities";
+  if (metric === "operatingCashFlowLessPpePurchases")
+    return (
+      concept === "NetCashProvidedByUsedInOperatingActivities" ||
+      concept === "PaymentsToAcquirePropertyPlantAndEquipment"
+    );
+  return (
+    concept !== "GrossProfit" &&
+    concept !== "PaymentsToAcquirePropertyPlantAndEquipment"
+  );
+}
+
+/** Verify the new derived cell against its reported operands, including unknown precedence. */
+function cashFlowLessPpe(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  const operating = cells.operatingCashFlow;
+  const purchases = cells.ppePurchases;
+  const derived = cells.operatingCashFlowLessPpePurchases;
+  const expectedSources = [...operating.sources, ...purchases.sources];
+  const sourceKey = (source: PersonalFinancialScreenSourceRefDto) =>
+    JSON.stringify([
+      source.concept,
+      source.accessionNumber,
+      source.startDate,
+      source.endDate,
+      source.value,
+    ]);
+  const actualKeys = derived.sources.map(sourceKey).sort();
+  const expectedKeys = expectedSources.map(sourceKey).sort();
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, index) => key !== expectedKeys[index])
+  )
+    return false;
+  const unknown = (reason: string) =>
+    derived.status === "unavailable" && derived.reason === reason;
+  if (operating.status === "unavailable") return unknown(operating.reason);
+  if (purchases.status === "unavailable") return unknown(purchases.reason);
+  const first = expectedSources[0]!;
+  if (
+    expectedSources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unknown("period_mismatch");
+  if (
+    expectedSources.some(
+      (source) => source.accessionNumber !== first.accessionNumber,
+    )
+  )
+    return unknown("filing_mismatch");
+  if (scaledDecimal(purchases.value).coefficient < 0n)
+    return unknown("unsupported_sign");
+  if (derived.status !== "available") return false;
+  const operands = [operating.value, purchases.value, derived.value].map(
+    scaledDecimal,
+  );
+  const scale = Math.max(...operands.map((operand) => operand.scale));
+  const [left, right, result] = operands.map(
+    (operand) => operand.coefficient * 10n ** BigInt(scale - operand.scale),
+  );
+  return left! - right! === result;
+}
+
+function scaledDecimal(value: string): { coefficient: bigint; scale: number } {
+  const [whole, fraction = ""] = value.split(".");
+  return {
+    coefficient: BigInt(`${whole}${fraction}`),
+    scale: fraction.length,
+  };
 }
 
 function normalizedDecimal(value: string): string {

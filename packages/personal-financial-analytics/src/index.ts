@@ -94,6 +94,7 @@ export {
 
 export {
   PERSONAL_FINANCIAL_SCREEN_FORMULAS,
+  PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION,
   PERSONAL_FINANCIAL_SCREEN_LIMITS,
   evaluatePersonalFinancialScreen,
   validatePersonalFinancialScreenCriteria,

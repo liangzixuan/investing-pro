@@ -36,16 +36,54 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 
 ## Metrics and comparability
 
-| Metric                     | Input or formula                                                                | Unit    |
-| -------------------------- | ------------------------------------------------------------------------------- | ------- |
-| Revenue                    | Selected revenue basis; the default requires agreement among available concepts | USD     |
-| Gross profit               | `GrossProfit`, as reported; no calculation from revenue and costs               | USD     |
-| Net income                 | `NetIncomeLoss`                                                                 | USD     |
-| Operating income           | `OperatingIncomeLoss`                                                           | USD     |
-| Operating cash flow        | `NetCashProvidedByUsedInOperatingActivities`                                    | USD     |
-| Net margin                 | Net income / revenue × 100                                                      | percent |
-| Operating margin           | Operating income / revenue × 100                                                | percent |
-| Operating cash flow margin | Operating cash flow / revenue × 100                                             | percent |
+| Metric                                  | Input or formula                                                                | Unit    |
+| --------------------------------------- | ------------------------------------------------------------------------------- | ------- |
+| Revenue                                 | Selected revenue basis; the default requires agreement among available concepts | USD     |
+| Gross profit                            | `GrossProfit`, as reported; no calculation from revenue and costs               | USD     |
+| Net income                              | `NetIncomeLoss`                                                                 | USD     |
+| Operating income                        | `OperatingIncomeLoss`                                                           | USD     |
+| Operating cash flow                     | `NetCashProvidedByUsedInOperatingActivities`                                    | USD     |
+| Net margin                              | Net income / revenue × 100                                                      | percent |
+| Operating margin                        | Operating income / revenue × 100                                                | percent |
+| Operating cash flow margin              | Operating cash flow / revenue × 100                                             | percent |
+| PP&E purchases                          | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                       | USD     |
+| Operating cash flow less PP&E purchases | Operating cash flow − PP&E purchases                                            | USD     |
+
+### PP&E purchases and cash generation
+
+PP&E purchases use only valid `us-gaap:PaymentsToAcquirePropertyPlantAndEquipment`
+observations. The [FASB 2026 taxonomy](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-2026.xsd)
+defines a monetary duration item; its [documentation](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-doc-2026.xml)
+describes cash spent acquiring physical operating assets, including self-construction.
+The USD frame is the app's currency boundary. A different or custom expenditure
+concept, balance-sheet PP&E change, or missing fact is not a substitute.
+
+**Operating cash flow less PP&E purchases** subtracts the exact reported purchase
+amount from operating cash flow. Both inputs must be available for the same issuer,
+have the same actual start and end dates within the supported 335–395-day inclusive
+annual window, and share one filing accession across every retained reference.
+The source details show both inputs even when the subtraction is unavailable.
+The selected CY label alone does not establish compatible dates or filing vintage.
+
+Reported signs are preserved. Zero purchases and negative operating cash flow or
+negative results are valid. A negative reported PP&E value remains visible but
+makes the subtraction unknown (`unsupported_sign`); the app never takes an
+absolute value or reverses the input sign. Different periods produce
+`period_mismatch`, and different filings produce `filing_mismatch`. An unavailable
+operating-cash-flow input takes precedence over an unavailable PP&E input, followed
+by period, filing and sign checks. Missing or failed inputs never become zero.
+
+Both fields are independent of revenue basis. A PP&E source failure preserves all
+eight existing metrics; an operating-cash-flow failure preserves reported PP&E.
+Use **Operating cash flow less PP&E purchases ≥ 0** to find nonnegative results;
+negative thresholds are also supported. Coverage and unknown counts describe
+listing rows, so multiple listings of one issuer count separately.
+
+The derived amount is an app calculation with its exact inputs displayed. It is
+not a reported subtotal or a uniform company-defined free-cash-flow measure.
+Other cash commitments and companies' alternative definitions are outside this
+calculation. [SEC staff guidance, Question 102.07](https://www.sec.gov/rules-regulations/staff-guidance/corporation-finance-interpretations/non-gaap-financial-measures)
+explains why free-cash-flow labels can describe different calculations.
 
 ### Reported gross profit
 
@@ -112,25 +150,26 @@ Existing four-field saved criteria remain valid and retain the agreement rule.
 The optional `revenueBasis` stores an explicit choice. Omitted-basis requests omit
 the corresponding response property; explicit requests echo the basis, which the
 strict browser client checks against the request. Unedited saved definitions are
-not rewritten. Choosing a revenue basis adds no source reads to the seven-frame
+not rewritten. Choosing a revenue basis adds no source reads to the eight-frame
 load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "2.0.0"` at the
-existing route. The response contains exactly eight metric and coverage keys and
-seven distinct source concepts. Deploy the API and browser together: old browser
+Financial-screen requests and responses use `schemaVersion: "3.0.0"` at the
+existing route. The response contains exactly ten metric and coverage keys and
+eight distinct source concepts. Deploy the API and browser together: old browser
 requests are rejected before SEC acquisition, and the new browser rejects old or
 partially expanded responses. Reload an older open browser after deployment.
 
 Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are unchanged. Existing criteria load with their original meanings and make a
-fresh v2 request only when explicitly run. The seven-clause limit is unchanged;
-Gross profit is an additional field/sort choice. Older application versions cannot
-execute newly saved GrossProfit criteria and reject them rather than drop a filter.
-Formula version stays 1.0.0 because the existing ratios are unchanged and gross
-profit is a reported amount.
+fresh v3 request only when explicitly run. The seven-clause limit is unchanged;
+the two PP&E fields are additional filter/sort choices. Older application versions
+cannot execute newly saved criteria containing these fields and reject them rather
+than drop a filter. Screen formula-set version 1.1.0 registers the exact subtraction.
+Existing margin formulas retain version 1.0.0 and their rounding; subtraction keeps
+exact decimal precision. Other selected-company analytics versions are unchanged.
 
 A selected CY label denotes the SEC's calendar-aligned annual frame, not a
 common fiscal year across issuers. Annual durations are checked within the
@@ -152,7 +191,7 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches seven fixed cross-company frames sequentially, at
+- One operation fetches eight fixed cross-company frames sequentially, at
   fewer than five requests per second. Each request has a 10-second deadline,
   an 8 MiB response cap and 50,000-row bound. Redirects and arbitrary URLs
   are rejected. Same-year concurrent requests share an operation; another
@@ -195,13 +234,15 @@ bounded transport, cancellation, authentication, and saved-definition
 conflicts. UI tests cover explicit run/refresh, filters, paging, save/load,
 open/watchlist actions and session cleanup.
 
-GrossProfit acceptance also covers exact reported precision and negative values,
-unknown reasons, independence from revenue basis, source-failure isolation,
-filter/count/page consistency, seven-source cache reuse and strict transport
-versioning while preserving historical saved criteria. Source coverage for the
-new field must be measured on a fresh seven-frame snapshot; the older six-frame
-results below do not establish it. Actual observations and independently checked
-filing samples belong in the local release handoff.
+PP&E acceptance covers exact subtraction, reported signs, zero and negative
+results, all-reference period/filing compatibility, unavailable-input precedence,
+source-failure isolation, signed filters, coverage and stable pages. The strict
+browser decoder checks the result and its exact source references against both
+reported operands. Existing saved definitions remain intact through the original
+conflict/version behavior. Measure final production coverage on a fresh eight-frame
+snapshot; preliminary two-frame feasibility and historical results below do not
+establish release acceptance. Actual observations and independently checked filing
+samples belong in the local release handoff.
 
 The original agreement mode was measured on 2026-09-11 against an admitted
 3,227-listing catalog and verified through authenticated Chrome. Known coverage

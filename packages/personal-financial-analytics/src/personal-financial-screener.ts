@@ -16,7 +16,6 @@ import Decimal from "decimal.js";
 
 import {
   PERSONAL_FINANCIAL_ANALYTICS_FORMULAS,
-  PERSONAL_FINANCIAL_ANALYTICS_FORMULA_SET_VERSION,
   PERSONAL_FINANCIAL_ANALYTICS_ROUNDING,
 } from "./personal-financial-analytics";
 
@@ -30,11 +29,18 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.1.0" as const;
+
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   netMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.netMargin,
   operatingMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.operatingMargin,
   operatingCashFlowMargin:
     PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.operatingCashFlowMargin,
+  operatingCashFlowLessPpePurchases: Object.freeze({
+    formulaId: "operating_cash_flow_less_ppe_purchases",
+    formulaVersion: PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION,
+    expression: "operating_cash_flow - ppe_purchases",
+  }),
 });
 
 const METRICS = [
@@ -46,6 +52,8 @@ const METRICS = [
   "netMargin",
   "operatingMargin",
   "operatingCashFlowMargin",
+  "ppePurchases",
+  "operatingCashFlowLessPpePurchases",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
 const REVENUE_CONCEPTS = [
@@ -59,6 +67,7 @@ const CONCEPTS = [
   "OperatingIncomeLoss",
   "NetCashProvidedByUsedInOperatingActivities",
   "GrossProfit",
+  "PaymentsToAcquirePropertyPlantAndEquipment",
 ] as const satisfies readonly PersonalSecAnnualConceptDto[];
 const FAILED_SOURCE_STATUSES = new Set([
   "rate_limited",
@@ -219,7 +228,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "2.0.0",
+      schemaVersion: "3.0.0",
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
@@ -244,7 +253,7 @@ export function evaluatePersonalFinancialScreen(
       offset: page.offset,
       limitApplied: page.limit,
       hasMore: page.offset + page.limit < matches.length,
-      formulaVersion: PERSONAL_FINANCIAL_ANALYTICS_FORMULA_SET_VERSION,
+      formulaVersion: PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION,
     };
   } catch {
     return fail();
@@ -268,6 +277,11 @@ function buildMetrics(
     ["NetCashProvidedByUsedInOperatingActivities"],
     frames,
   );
+  const ppePurchases = resolveReported(
+    cik,
+    ["PaymentsToAcquirePropertyPlantAndEquipment"],
+    frames,
+  );
   return {
     revenue,
     grossProfit: resolveReported(cik, ["GrossProfit"], frames),
@@ -277,6 +291,54 @@ function buildMetrics(
     netMargin: margin(netIncome, revenue),
     operatingMargin: margin(operatingIncome, revenue),
     operatingCashFlowMargin: margin(operatingCashFlow, revenue),
+    ppePurchases,
+    operatingCashFlowLessPpePurchases: cashFlowLessPpePurchases(
+      operatingCashFlow,
+      ppePurchases,
+    ),
+  };
+}
+
+function cashFlowLessPpePurchases(
+  operatingCashFlow: PersonalFinancialScreenCellDto,
+  ppePurchases: PersonalFinancialScreenCellDto,
+): PersonalFinancialScreenCellDto {
+  const sources = [...operatingCashFlow.sources, ...ppePurchases.sources];
+  if (operatingCashFlow.status === "unavailable")
+    return unavailable("USD", operatingCashFlow.reason, sources);
+  if (ppePurchases.status === "unavailable")
+    return unavailable("USD", ppePurchases.reason, sources);
+  const first = sources[0]!;
+  // Each Frame chooses its own latest fitting observation. Inspect every
+  // retained reference before combining the reported amounts.
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unavailable("USD", "period_mismatch", sources);
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unavailable("USD", "filing_mismatch", sources);
+  if (new ScreenDecimal(ppePurchases.value).lt(0))
+    return unavailable("USD", "unsupported_sign", sources);
+  return {
+    status: "available",
+    unit: "USD",
+    value: canonicalDecimal(
+      new ScreenDecimal(operatingCashFlow.value).minus(ppePurchases.value),
+    ),
+    sources,
   };
 }
 

@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-11 following the handover from **Investing Pro+** to
+Updated 2026-09-13 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                 | Important remaining gap                                       |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                       | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                           | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                            | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                   | Compatible multi-company coverage and automatic peer metadata |
-| Screen for ideas          | Catalog filters plus eight SEC annual size/profitability metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                           | Broader live samples, upcoming events, alerts and exports     |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                         | Further corporate actions, benchmarks and live coverage       |
+| User job                  | Implemented capability                                                                                                      | Important remaining gap                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                            | Catalog refresh and broader discovery data                    |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                | Wider reconciliation and benchmark-relative analysis          |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                 | Verified TTM and the shared 30-core-metric screening registry |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                     | Direct normalized FCFF inputs and further justified models    |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                        | Compatible multi-company coverage and automatic peer metadata |
+| Screen for ideas          | Catalog filters plus ten SEC annual financial metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                | Broader live samples, upcoming events, alerts and exports     |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                              | Further corporate actions, benchmarks and live coverage       |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -56,28 +56,32 @@ are unchanged; all five numeric results remain unsupported because of dimensions
 These results describe only that retained sample. Actual acceptance/runtime
 details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: retain the session during successful financial screening
+## Active delivery: screen cash generation after PP&E purchases
 
-Financial-screen requests already renew the server's idle activity, but the
-separate browser lease was not informed. Connect successful Run, Refresh and
-page requests to that lease so a fresh session does not clear useful results
-after ten minutes while the owner is actively screening.
+Release `08e72eb` completes browser session activity for successful Run, Refresh
+and page requests. Its native gate passed 4,592 tests and 24 builds, synthetic
+React browser acceptance passed, and all five applicable hosted workflows passed.
+The existing idle and absolute deadlines remain unchanged. These are completed
+baseline results; do not repeat their release checks for the next feature.
 
-Capture the activity time before request dispatch and credit it only after a
-current, un-aborted response passes strict validation. Keep the existing idle
-and absolute deadlines, the conservative observed-cookie lease, cross-tab
-clearing and stale-response guards. Failed or superseded requests and local
-criteria edits do not renew activity. This slice does not change server authority,
-add polling or source reads, or extend activity integration to saved definitions
-and other standalone private-data flows.
+Add **PP&E purchases (USD)** and **Operating cash flow less PP&E purchases (USD)**
+to annual filters, sorting and saved definitions. Use only the standard
+`PaymentsToAcquirePropertyPlantAndEquipment` source, adding one fixed request to
+the existing seven-frame load. Verify current full-catalog coverage and a small
+primary-filing sample before accepting the feature.
 
-Acceptance must demonstrate a minute-nine successful screen surviving minute ten,
-expiry after actual idle time, unchanged absolute limits, and rejection of late
-responses after session loss. Verify the production React wiring as well as the
-clock arithmetic, then complete the native and applicable hosted release gates.
-The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) records behavior
-and limits. Gross-profit acceptance is complete; new live SEC coverage is not
-required for this browser-only activity repair.
+Subtract exact decimal amounts only when both inputs are available and their
+actual annual dates and filing accession match. Keep reported signs: a negative
+PP&E amount remains inspectable but leaves the derived amount unknown. Negative
+operating cash flow and negative results are supported. Preserve missingness,
+source-failure isolation, revenue-basis independence and all input references.
+
+Coordinate the expanded metric/source sets through strict transport version 3.0.0
+and screen formula-set version 1.1.0. Existing saved-definition payloads remain
+numeric version 1, preserving identities, creation digests and conflict handling.
+The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) owns the final
+behavior and limits. Complete focused arithmetic, transport and UI checks,
+configured browser acceptance, then native and applicable hosted release gates.
 
 Numeric admission, fiscal calendars, standalone quarters, revisions and TTM remain
 separate evidence-dependent work. Keep catalog refresh and broader source coverage
@@ -87,7 +91,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Credit successful financial screening to browser session activity                                | Prevent avoidable loss of results while retaining expiry protections       |
+| Now              | Add PP&E purchases and operating cash flow less PP&E purchases                                   | Verify exact source coverage, compatible dates and filing provenance       |
 | Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -110,7 +114,9 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/owner-session-lifecycle.test.ts src/features/research/OwnerSessionPanel.test.tsx src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalFinancialScreener.test.tsx src/lib/personal-financial-screen-api.test.ts
+   pnpm --filter @research-cockpit/personal-financial-analytics exec vitest run src/personal-financial-screener.test.ts
+   pnpm --filter @research-cockpit/api exec vitest run src/personal-sec-financial-provider.test.ts src/personal-sec-request-scheduler.test.ts src/workspace-financial-screen-routes.test.ts
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/PersonalFinancialScreener.test.tsx src/lib/personal-financial-screen-api.test.ts
    pnpm --filter @research-cockpit/web typecheck
    ```
 

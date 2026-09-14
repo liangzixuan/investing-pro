@@ -48,6 +48,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   netMargin: "Net margin",
   operatingMargin: "Operating margin",
   operatingCashFlowMargin: "Operating cash flow margin",
+  ppePurchases: "PP&E purchases",
+  operatingCashFlowLessPpePurchases: "Operating cash flow less PP&E purchases",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
@@ -64,6 +66,10 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Operating income / revenue × 100. Requires positive revenue and identical source periods.",
   operatingCashFlowMargin:
     "Operating cash flow / revenue × 100. Requires positive revenue and identical source periods.",
+  ppePurchases:
+    "Reported cash payments to acquire property, plant and equipment in USD. Independent of the revenue basis; includes only this reported purchase concept.",
+  operatingCashFlowLessPpePurchases:
+    "Operating cash flow − PP&E purchases. Exact subtraction requires the same supported annual period and filing accession, with nonnegative PP&E purchases. Independent of the revenue basis; this measure does not include every investing cash flow.",
 };
 function revenueExplanation(basis: PersonalFinancialRevenueBasisDto): string {
   return basis === "agreement"
@@ -77,6 +83,28 @@ function formulaFor(
   return metric === "revenue" && basis !== "agreement"
     ? `Reported ${revenueBasisLabels[basis]}. Missing or unresolved selected facts stay unknown.`
     : formulas[metric];
+}
+function metricOptionLabel(metric: PersonalFinancialScreenMetricDto): string {
+  return [
+    "grossProfit",
+    "ppePurchases",
+    "operatingCashFlowLessPpePurchases",
+  ].includes(metric)
+    ? `${labels[metric]} (USD)`
+    : labels[metric];
+}
+
+function cashFlowUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+): string | null {
+  if (cell.status === "available") return null;
+  if (cell.reason === "period_mismatch")
+    return "The inputs do not share the same supported annual period (335–395 inclusive days). Compare the source dates below.";
+  if (cell.reason === "filing_mismatch")
+    return "The inputs come from different filing accessions. Combining those filing versions could mix restated and earlier amounts.";
+  if (cell.reason === "unsupported_sign")
+    return "Reported PP&E purchases are negative. The reported sign is preserved; the subtraction remains unknown instead of reversing the sign.";
+  return "An operating cash flow or PP&E purchase input is unresolved. The subtraction remains unknown; retained source references are shown below.";
 }
 const emptySaved: PersonalFinancialSavedViewsPayloadDto = {
   schemaVersion: 1,
@@ -248,7 +276,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "2.0.0",
+          schemaVersion: "3.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -551,9 +579,7 @@ export function PersonalFinancialScreener({
                 <option value="symbol">Symbol</option>
                 {metrics.map((metric) => (
                   <option value={metric} key={metric}>
-                    {metric === "grossProfit"
-                      ? "Gross profit (USD)"
-                      : labels[metric]}
+                    {metricOptionLabel(metric)}
                   </option>
                 ))}
               </select>
@@ -600,9 +626,7 @@ export function PersonalFinancialScreener({
                   >
                     {metrics.map((metric) => (
                       <option value={metric} key={metric}>
-                        {metric === "grossProfit"
-                          ? "Gross profit (USD)"
-                          : labels[metric]}
+                        {metricOptionLabel(metric)}
                       </option>
                     ))}
                   </select>
@@ -1094,6 +1118,10 @@ function FinancialCell({
             : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
         </p>
         <p>{formulaFor(metric, revenueBasis)}</p>
+        {metric === "operatingCashFlowLessPpePurchases" &&
+          cell.status === "unavailable" && (
+            <p>{cashFlowUnknownExplanation(cell)}</p>
+          )}
         {metric === "revenue" &&
           cell.status === "unavailable" &&
           cell.reason === "conflicting" && (
@@ -1113,6 +1141,14 @@ function FinancialCell({
         )}
         {cell.sources.map((source, index) => (
           <p key={`${source.concept}-${String(index)}`}>
+            {metric === "operatingCashFlowLessPpePurchases" && (
+              <>
+                {source.concept === "NetCashProvidedByUsedInOperatingActivities"
+                  ? "Operating cash flow input"
+                  : "PP&E purchases input (subtracted)"}
+                <br />
+              </>
+            )}
             {source.concept}
             <br />
             {source.startDate} through {source.endDate}
