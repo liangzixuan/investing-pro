@@ -4,7 +4,17 @@ import {
   isPersonalDossierWebMode,
   isPersonalWebMode,
   isPersonalWorkspaceWebMode,
+  resolveOwnerAuthMode,
 } from "./web-mode";
+
+describe("owner authentication mode", () => {
+  it("selects account login explicitly and preserves legacy defaults", () => {
+    expect(resolveOwnerAuthMode("account")).toBe("account");
+    expect(resolveOwnerAuthMode(undefined)).toBe("bootstrap");
+    expect(resolveOwnerAuthMode("bootstrap")).toBe("bootstrap");
+    expect(() => resolveOwnerAuthMode("passwordless")).toThrow("configuration");
+  });
+});
 
 describe("personal web mode", () => {
   it.each([

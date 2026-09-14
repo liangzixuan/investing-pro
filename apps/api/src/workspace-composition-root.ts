@@ -3,6 +3,11 @@ import { LocalResearchVault } from "@research-cockpit/local-research-vault";
 
 import { resolveDemoApiListenOptions } from "./listen-options";
 import {
+  PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY,
+  PersonalOwnerAccountConfigurationError,
+  readPersonalOwnerAccountFile,
+} from "./personal-owner-account";
+import {
   PersonalOwnerSessionAuthority,
   PersonalOwnerSessionConfigurationError,
   PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY,
@@ -66,6 +71,7 @@ const FORBIDDEN_PRIVATE_CONFIGURATION_KEYS = [
   "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
 ] as const;
 const PERSONAL_WORKSPACE_PRIVATE_ENVIRONMENT_KEYS = [
+  PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY,
   PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH_ENVIRONMENT_KEY,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256_ENVIRONMENT_KEY,
@@ -176,10 +182,11 @@ async function preparePersonalWorkspaceConfiguredApp(
     );
   }
   const bootstrapSecret = environment[PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY];
+  const accountFile = environment[PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY];
   const marketDataToken =
     environment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY];
   const secUserAgent = environment[PERSONAL_SEC_USER_AGENT];
-  if (bootstrapSecret === undefined) {
+  if (bootstrapSecret === undefined && accountFile === undefined) {
     throw new PersonalWorkspaceApiCompositionError(
       "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED",
     );
@@ -187,9 +194,20 @@ async function preparePersonalWorkspaceConfiguredApp(
 
   let ownerSession: PersonalOwnerSessionAuthority;
   try {
-    ownerSession = PersonalOwnerSessionAuthority.create(bootstrapSecret);
+    if (accountFile !== undefined && bootstrapSecret !== undefined) {
+      throw new PersonalOwnerSessionConfigurationError();
+    }
+    ownerSession =
+      accountFile !== undefined
+        ? PersonalOwnerSessionAuthority.createWithAccount(
+            readPersonalOwnerAccountFile(accountFile),
+          )
+        : PersonalOwnerSessionAuthority.create(bootstrapSecret!);
   } catch (error) {
-    if (error instanceof PersonalOwnerSessionConfigurationError) {
+    if (
+      error instanceof PersonalOwnerSessionConfigurationError ||
+      error instanceof PersonalOwnerAccountConfigurationError
+    ) {
       throw new PersonalWorkspaceApiCompositionError(
         "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID",
       );

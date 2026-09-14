@@ -12,6 +12,7 @@ describe("personal vault startup static graph", () => {
     const graph = await staticGraph(VAULT_ENTRY);
     expect([...graph.files].sort()).toEqual([
       "listen-options.ts",
+      "personal-owner-account-credentials.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
       "personal-vault-routes.ts",
@@ -32,6 +33,8 @@ describe("personal vault startup static graph", () => {
     }
     for (const forbiddenFile of [
       "app.ts",
+      "personal-owner-account.ts",
+      "owner-account-cli.ts",
       "connected-app.ts",
       "connected-composition-root.ts",
       "demo-research-state.ts",

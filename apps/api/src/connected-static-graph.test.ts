@@ -17,6 +17,7 @@ describe("connected startup static graph", () => {
       "connected-source-policy-composition.ts",
       "connected-source-policy-routes.ts",
       "listen-options.ts",
+      "personal-owner-account-credentials.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
     ]);
@@ -30,6 +31,8 @@ describe("connected startup static graph", () => {
     }
     for (const forbiddenFile of [
       "app.ts",
+      "personal-owner-account.ts",
+      "owner-account-cli.ts",
       "composition-root.ts",
       "demo-research-state.ts",
       "personal-dossier-release.ts",

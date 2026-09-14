@@ -12,3 +12,5 @@ test-results/
 apps/api/tsup.config.bundled_*.mjs
 .DS_Store
 Thumbs.db
+.owner-local/
+owner-account.json

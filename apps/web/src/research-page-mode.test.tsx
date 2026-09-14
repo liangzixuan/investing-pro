@@ -38,14 +38,7 @@ vi.mock("@research-cockpit/research-core", () => {
   return { DEFAULT_KNOWN_AT: "2025-03-01T12:00:00.000Z" };
 });
 vi.mock("next/navigation", () => navigation);
-vi.mock("@/lib/web-mode", () => ({
-  isPersonalDossierWebMode: (value: string | undefined) =>
-    value === "personal_dossier",
-  isPersonalWebMode: (value: string | undefined) =>
-    value === "personal_single_user_local",
-  isPersonalWorkspaceWebMode: (value: string | undefined) =>
-    value === "personal_workspace",
-}));
+vi.mock("@/lib/web-mode", () => import("./lib/web-mode"));
 
 afterEach(() => vi.unstubAllEnvs());
 beforeEach(() => {
@@ -149,11 +142,13 @@ describe("research page data-mode isolation", () => {
 
   it("loads discovery only on its explicit workspace route", async () => {
     vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
+    vi.stubEnv("RESEARCH_COCKPIT_WEB_AUTH", "account");
     const { default: DiscoveryPage } = await import("../app/discover/page");
 
     const rendered = DiscoveryPage();
 
     expect(rendered.type).toBe(components.Discovery);
+    expect(rendered.props).toEqual({ authMode: "account" });
     expect(navigation.notFound).not.toHaveBeenCalled();
     expect(moduleLoads).toEqual({
       discovery: 1,

@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-13 following the handover from **Investing Pro+** to
+Updated 2026-09-14 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -56,7 +56,35 @@ are unchanged; all five numeric results remain unsupported because of dimensions
 These results describe only that retained sample. Actual acceptance/runtime
 details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: screen cash generation after PP&E purchases
+## Active delivery: normal local owner login
+
+The owner requested replacing the repeated one-time bootstrap with a persistent
+username and password. This takes priority over isolated build validation and
+release-generator work. Account mode now has offline initial setup/reset, a
+salted password verifier separate from the vault, a standard browser sign-in
+form and repeatable login after logout, expiry or API restart. Existing session
+lifetimes, request boundaries and private-data clearing remain in place.
+
+The combined workspace selects `RESEARCH_COCKPIT_OWNER_ACCOUNT_FILE` in the API
+and `RESEARCH_COCKPIT_WEB_AUTH=account` in the web process. Legacy bootstrap
+profiles remain explicit compatibility paths; normal account login never
+requires a new bootstrap. See [local owner login](./LOCAL_OWNER_LOGIN.md) for
+setup/reset and [ADR 0058](./adr/0058-reusable-local-owner-login.md) for scope.
+The local handoff records actual acceptance and whether the owner has completed
+the one-time account setup; do not claim configured sign-in before that occurs.
+
+Acceptance covers real password hashing and file permissions, malformed login
+boundaries, wrong credentials, throttling, concurrent requests, logout/expiry
+and restart, preserved existing vault data, masked CLI input, and browser
+autofill semantics. Complete focused checks, source review, the clean native
+gate and applicable hosted checks. Do not rerun historical SEC loads.
+
+## Latest financial delivery: screen cash generation after PP&E purchases
+
+The PP&E release is accepted at `8810d99`: 4,695 native tests passed with nine
+existing skips and 24 builds; five hosted workflows/six jobs passed. Configured
+browser and source coverage checks are recorded in the local PP&E handoff.
+The following describes that completed product slice, not another pending gate.
 
 Release `08e72eb` completes browser session activity for successful Run, Refresh
 and page requests. Its native gate passed 4,592 tests and 24 builds, synthetic

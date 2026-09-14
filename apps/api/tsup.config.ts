@@ -14,6 +14,7 @@ export default defineConfig({
     "src/security-master-server.ts",
     "src/vault-server.ts",
     "src/workspace-server.ts",
+    "src/owner-account-cli.ts",
   ],
   outDir: "dist/src",
   format: ["esm"],

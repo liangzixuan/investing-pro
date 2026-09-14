@@ -1833,12 +1833,19 @@ fundamentals are a separate add-on; its documentation currently describes a
 three-year Dow 30 evaluation, so price access may work while another listing's
 fundamentals request reports `not entitled` only after the fixed Tiingo
 credential test confirms the token itself remains valid. These
-values, the provider token, and the owner bootstrap secret must remain outside
-Git and logs.
+values, the provider token, and the local owner account file must remain outside
+Git and logs. The workspace supports a reusable local username and password;
+see [local owner login](./docs/LOCAL_OWNER_LOGIN.md) for setup and password reset.
 
-In the API terminal, set the private values without printing them, generate a
-fresh owner bootstrap secret using the CSPRNG procedure below, and start the
-combined entrypoint:
+With the API stopped, create the owner login once in an interactive terminal.
+The parent directory must already exist. Password input is hidden:
+
+```powershell
+pnpm --filter @research-cockpit/api owner-account --file "C:\absolute\owner-local\owner-account.json"
+```
+
+In the API terminal, set the private values without printing them and start the
+combined entrypoint. Do not set the legacy bootstrap variable in account mode:
 
 ```powershell
 $env:RESEARCH_COCKPIT_MODE = "personal_workspace"
@@ -1846,31 +1853,16 @@ $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH = "C:\absolute\owner-local\personal-
 $env:PERSONAL_SECURITY_MASTER_SNAPSHOT_SHA256 = "sha256:<64 lowercase hex characters>"
 $env:RESEARCH_COCKPIT_VAULT_ROOT = "C:\absolute\owner-local\research-cockpit-vault"
 $env:RESEARCH_COCKPIT_VAULT_STARTUP = "initialize" # change to "open" after first start
+$env:RESEARCH_COCKPIT_OWNER_ACCOUNT_FILE = "C:\absolute\owner-local\owner-account.json"
 $env:PERSONAL_MARKET_DATA_TIINGO_TOKEN = "<owner Tiingo token>" # optional
 $env:PERSONAL_SEC_USER_AGENT = "<application name and real owner contact email>" # optional SEC screen, filings and quarterly evidence
 
 try {
-  $workspaceBootstrapBytes = New-Object byte[] 32
-  $workspaceBootstrapRng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-  try {
-    $workspaceBootstrapRng.GetBytes($workspaceBootstrapBytes)
-    $workspaceBootstrapSecret = -join ($workspaceBootstrapBytes | ForEach-Object { $_.ToString("x2") })
-  } finally {
-    $workspaceBootstrapRng.Dispose()
-    [Array]::Clear($workspaceBootstrapBytes, 0, $workspaceBootstrapBytes.Length)
-    $workspaceBootstrapBytes = $null
-  }
-
-  $env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET = $workspaceBootstrapSecret
-  Set-Clipboard -Value $workspaceBootstrapSecret
-  $workspaceBootstrapSecret = $null
   pnpm --filter @research-cockpit/api dev:workspace
 } finally {
-  $workspaceBootstrapSecret = $null
-  Remove-Item Env:RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET -ErrorAction SilentlyContinue
+  Remove-Item Env:RESEARCH_COCKPIT_OWNER_ACCOUNT_FILE -ErrorAction SilentlyContinue
   Remove-Item Env:PERSONAL_MARKET_DATA_TIINGO_TOKEN -ErrorAction SilentlyContinue
   Remove-Item Env:PERSONAL_SEC_USER_AGENT -ErrorAction SilentlyContinue
-  Set-Clipboard -Value ([string]::Empty)
 }
 ```
 
@@ -1881,12 +1873,14 @@ In the web terminal:
 
 ```powershell
 $env:RESEARCH_COCKPIT_WEB_MODE = "personal_workspace"
+$env:RESEARCH_COCKPIT_WEB_AUTH = "account"
 $env:NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:3100"
 pnpm --filter @research-cockpit/web exec next dev -p 3000 -H 127.0.0.1
 ```
 
-Open `http://127.0.0.1:3000/discover`, paste the fresh bootstrap value into the
-owner-session panel, and select **Start session**. The combined process gives
+Open `http://127.0.0.1:3000/discover`, enter your username and password, and
+select **Sign in**. The same login works after logout, expiry and API restarts.
+The combined process gives
 search, watchlist, and explicit market-data or financial-statement requests one
 cookie authority. The
 API sends a configured Tiingo token only in the provider Authorization header,

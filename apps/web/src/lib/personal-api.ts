@@ -264,6 +264,60 @@ export function fetchOwnerSession(signal: AbortSignal): Promise<boolean> {
   return requestOwnerSession(ownerSessionPath, { method: "GET", signal });
 }
 
+export type OwnerLoginResult =
+  | { readonly status: "active" | "invalid_credentials" | "unavailable" }
+  | {
+      readonly status: "rate_limited";
+      readonly retryAfterSeconds: number | null;
+    };
+
+export async function loginOwnerSession(
+  username: string,
+  password: string,
+  signal: AbortSignal,
+): Promise<OwnerLoginResult> {
+  if (username.length === 0 || password.length === 0) {
+    return { status: "invalid_credentials" };
+  }
+  const personalBaseUrl = getPersonalApiBaseUrl();
+  if (personalBaseUrl === null) return { status: "unavailable" };
+  try {
+    const response = await fetch(
+      new URL(`${ownerSessionPath}/login`, personalBaseUrl),
+      {
+        ...ownerSessionRequestOptions,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Research-Cockpit-Intent": "login",
+        },
+        body: JSON.stringify({ username, password }),
+        signal,
+      },
+    );
+    if (response.status === 204) return { status: "active" };
+    if (response.status === 401) return { status: "invalid_credentials" };
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("Retry-After");
+      const seconds =
+        retryAfter !== null && /^[1-9][0-9]{0,3}$/u.test(retryAfter)
+          ? Number(retryAfter)
+          : null;
+      return {
+        status: "rate_limited",
+        retryAfterSeconds:
+          seconds !== null && seconds <= 3_600 ? seconds : null,
+      };
+    }
+    return { status: "unavailable" };
+  } catch {
+    if (signal.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    return { status: "unavailable" };
+  }
+}
+
 export function bootstrapOwnerSession(
   bootstrapSecret: string,
   signal: AbortSignal,

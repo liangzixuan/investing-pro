@@ -6,6 +6,12 @@ import {
 } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
+import {
+  type PersonalOwnerAccountRecord,
+  validatePersonalOwnerAccountRecord,
+  verifyPersonalOwnerAccountPassword,
+} from "./personal-owner-account-credentials";
+
 export const PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY =
   "RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET" as const;
 export const PERSONAL_OWNER_SESSION_COOKIE_NAME =
@@ -16,6 +22,8 @@ export const PERSONAL_OWNER_SESSION_ABSOLUTE_TTL_MS = 60 * 60 * 1_000;
 const BOOTSTRAP_SECRET_PATTERN = /^[0-9a-f]{64}$/u;
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const TOKEN_BYTES = 32;
+const LOGIN_WINDOW_MS = 60 * 1_000;
+const LOGIN_MAX_ATTEMPTS = 5;
 const ownerSessionAuthorities = new WeakSet<PersonalOwnerSessionAuthority>();
 
 export interface PersonalOwnerSessionBinding {
@@ -29,6 +37,11 @@ export interface PersonalOwnerSessionOptions {
   readonly now?: () => number;
   readonly randomBytes?: (size: number) => Uint8Array;
 }
+
+export type PersonalOwnerLoginResult =
+  | { readonly kind: "accepted"; readonly token: string }
+  | { readonly kind: "denied" }
+  | { readonly kind: "rate-limited"; readonly retryAfterSeconds: number };
 
 interface ActiveSession {
   absoluteExpiresAt: number;
@@ -48,18 +61,23 @@ export class PersonalOwnerSessionConfigurationError extends Error {
 }
 
 export class PersonalOwnerSessionAuthority {
+  #account: PersonalOwnerAccountRecord | undefined;
   readonly #absoluteTtlMs: number;
   #activeSession: ActiveSession | undefined;
   #bootstrapDigest: Uint8Array | undefined;
   #closed = false;
   readonly #digestKey: Uint8Array;
   readonly #idleTtlMs: number;
+  #loginAttemptTimes: number[] = [];
+  #loginBusy = false;
+  #lastLoginObservation = 0;
   readonly #now: () => number;
   readonly #randomBytes: (size: number) => Uint8Array;
 
   private constructor(
-    bootstrapSecret: string,
+    bootstrapSecret: string | undefined,
     options: PersonalOwnerSessionOptions,
+    account?: PersonalOwnerAccountRecord,
   ) {
     this.#absoluteTtlMs =
       options.absoluteTtlMs ?? PERSONAL_OWNER_SESSION_ABSOLUTE_TTL_MS;
@@ -76,7 +94,11 @@ export class PersonalOwnerSessionAuthority {
       throw new PersonalOwnerSessionConfigurationError();
     }
     this.#digestKey = copyExactRandomBytes(this.#randomBytes, TOKEN_BYTES);
-    this.#bootstrapDigest = bootstrapDigest(bootstrapSecret);
+    this.#bootstrapDigest =
+      bootstrapSecret === undefined
+        ? undefined
+        : bootstrapDigest(bootstrapSecret);
+    this.#account = account;
     ownerSessionAuthorities.add(this);
   }
 
@@ -88,6 +110,85 @@ export class PersonalOwnerSessionAuthority {
       throw new PersonalOwnerSessionConfigurationError();
     }
     return new PersonalOwnerSessionAuthority(bootstrapSecret, options);
+  }
+
+  static createWithAccount(
+    account: PersonalOwnerAccountRecord,
+    options: PersonalOwnerSessionOptions = {},
+  ): PersonalOwnerSessionAuthority {
+    return new PersonalOwnerSessionAuthority(
+      undefined,
+      options,
+      validatePersonalOwnerAccountRecord(account),
+    );
+  }
+
+  async login(
+    username: string,
+    password: string,
+    binding: PersonalOwnerSessionBinding,
+  ): Promise<PersonalOwnerLoginResult> {
+    const account = this.#account;
+    if (this.#closed || account === undefined) return { kind: "denied" };
+    const startedAt = this.#readClock();
+    if (startedAt === undefined || startedAt < this.#lastLoginObservation) {
+      this.#invalidateActiveSession();
+      return { kind: "denied" };
+    }
+    this.#lastLoginObservation = startedAt;
+    this.#loginAttemptTimes = this.#loginAttemptTimes.filter(
+      (attempt) => startedAt - attempt < LOGIN_WINDOW_MS,
+    );
+    if (this.#loginAttemptTimes.length >= LOGIN_MAX_ATTEMPTS) {
+      return {
+        kind: "rate-limited",
+        retryAfterSeconds: Math.max(
+          1,
+          Math.ceil(
+            (LOGIN_WINDOW_MS -
+              (startedAt - (this.#loginAttemptTimes[0] ?? startedAt))) /
+              1_000,
+          ),
+        ),
+      };
+    }
+    if (this.#loginBusy) {
+      return { kind: "rate-limited", retryAfterSeconds: 1 };
+    }
+    this.#loginBusy = true;
+    this.#loginAttemptTimes.push(startedAt);
+    try {
+      const accepted = await verifyPersonalOwnerAccountPassword(
+        account,
+        username,
+        password,
+      );
+      if (!accepted || this.#closed) return { kind: "denied" };
+      const now = this.#readClock();
+      const token = this.#newToken();
+      if (
+        now === undefined ||
+        now < this.#lastLoginObservation ||
+        token === undefined
+      ) {
+        this.#invalidateActiveSession();
+        return { kind: "denied" };
+      }
+      this.#lastLoginObservation = now;
+      this.#invalidateActiveSession();
+      this.#activeSession = {
+        absoluteExpiresAt: now + this.#absoluteTtlMs,
+        authority: binding.authority,
+        digest: this.#tokenDigest(token),
+        lastSeenAt: now,
+        origin: binding.origin,
+      };
+      return { kind: "accepted", token };
+    } catch {
+      return { kind: "denied" };
+    } finally {
+      this.#loginBusy = false;
+    }
   }
 
   bootstrap(
@@ -168,6 +269,8 @@ export class PersonalOwnerSessionAuthority {
   close(): void {
     if (this.#closed) return;
     this.#closed = true;
+    this.#account = undefined;
+    this.#loginAttemptTimes = [];
     this.#bootstrapDigest?.fill(0);
     this.#bootstrapDigest = undefined;
     this.#invalidateActiveSession();

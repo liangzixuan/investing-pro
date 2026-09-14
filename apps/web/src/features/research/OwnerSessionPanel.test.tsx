@@ -63,6 +63,7 @@ const hookHarness = vi.hoisted(() => {
 const apiMocks = vi.hoisted(() => ({
   bootstrapOwnerSession: vi.fn(),
   fetchOwnerSession: vi.fn(),
+  loginOwnerSession: vi.fn(),
   logoutOwnerSession: vi.fn(),
   revokeOwnerSession: vi.fn(),
   rotateOwnerSession: vi.fn(),
@@ -178,6 +179,9 @@ beforeEach(() => {
   for (const mock of Object.values(apiMocks)) mock.mockReset();
   apiMocks.fetchOwnerSession.mockResolvedValue(false);
   apiMocks.bootstrapOwnerSession.mockResolvedValue(false);
+  apiMocks.loginOwnerSession.mockResolvedValue({
+    status: "invalid_credentials",
+  });
   apiMocks.logoutOwnerSession.mockResolvedValue(false);
   apiMocks.revokeOwnerSession.mockResolvedValue(false);
   apiMocks.rotateOwnerSession.mockResolvedValue(false);
@@ -902,9 +906,227 @@ describe("OwnerSessionPanel", () => {
   });
 });
 
+describe("owner account sign-in", () => {
+  const options = { authMode: "account" } as const;
+  const password = "Synthetic test password!";
+
+  it("renders a real sign-in form with password-manager field semantics", async () => {
+    installBrowserHarness();
+    const rendered = await renderAfterSessionCheck(vi.fn(), options);
+    const inputs = findAll(rendered, "input");
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]?.props).toMatchObject({
+      id: "owner-username",
+      name: "username",
+      type: "text",
+      autoComplete: "username",
+      required: true,
+    });
+    expect(inputs[1]?.props).toMatchObject({
+      id: "owner-password",
+      name: "password",
+      type: "password",
+      autoComplete: "current-password",
+      required: true,
+    });
+    expect(findAll(rendered, "label").map((label) => label.props)).toEqual([
+      expect.objectContaining({ htmlFor: "owner-username" }),
+      expect.objectContaining({ htmlFor: "owner-password" }),
+    ]);
+    expect(requiredElement(rendered, "form").props).toMatchObject({
+      method: "post",
+    });
+    expect(
+      (requiredElement(rendered, "form").props as { onSubmit: unknown })
+        .onSubmit,
+    ).toBeTypeOf("function");
+    expect(requiredButton(rendered, "Sign in").props).toMatchObject({
+      type: "submit",
+    });
+    expect(textContent(rendered)).not.toContain("bootstrap");
+  });
+
+  it("accepts autofill without change events and clears the password before dispatch", async () => {
+    const browser = installBrowserHarness();
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockResolvedValue(true);
+    let rendered = await renderAfterSessionCheck(onSessionChange, options);
+    const usernameNode = { value: "owner" };
+    const passwordNode = { value: password };
+    const inputs = findAll(rendered, "input");
+    (inputs[0]?.props as { ref: { current: unknown } }).ref.current =
+      usernameNode;
+    (inputs[1]?.props as { ref: { current: unknown } }).ref.current =
+      passwordNode;
+    const response = deferred<{ status: "active" }>();
+    apiMocks.loginOwnerSession.mockImplementationOnce(() => {
+      expect(passwordNode.value).toBe("");
+      expect(hookHarness.stateAt(1)).toBe("");
+      return response.promise;
+    });
+    browser.channel().messages.splice(0);
+    submitForm(rendered);
+    expect(apiMocks.loginOwnerSession).toHaveBeenCalledWith(
+      "owner",
+      password,
+      expect.any(AbortSignal),
+    );
+    expect(apiMocks.bootstrapOwnerSession).not.toHaveBeenCalled();
+    expect(textContent(rerender(onSessionChange, options))).toContain(
+      "Signing in…",
+    );
+    response.resolve({ status: "active" });
+    await flushPromises();
+    rendered = rerender(onSessionChange, options);
+    expect(textContent(rendered)).toContain("Signed in.");
+    expect(requiredButton(rendered, "Sign out")).toBeDefined();
+    expect(findAll(rendered, "input")).toHaveLength(0);
+    expect(browser.channel().messages).toEqual([OWNER_SESSION_REFRESH_MESSAGE]);
+    expect(JSON.stringify(browser.channel().messages)).not.toContain(password);
+  });
+
+  it.each([
+    [
+      { status: "invalid_credentials" },
+      "The username or password was not accepted. Try again.",
+    ],
+    [
+      { status: "rate_limited", retryAfterSeconds: 30 },
+      "Too many sign-in attempts. Try again in 30 seconds.",
+    ],
+    [
+      { status: "rate_limited", retryAfterSeconds: null },
+      "Too many sign-in attempts. Wait a moment, then try again.",
+    ],
+    [{ status: "unavailable" }, "Sign-in is unavailable."],
+  ])(
+    "keeps failed sign-in private and offers a retry for %j",
+    async (result, expectedMessage) => {
+      installBrowserHarness();
+      const onSessionChange = vi
+        .fn<OwnerSessionPanelProps["onSessionChange"]>()
+        .mockResolvedValue(true);
+      let rendered = await renderAfterSessionCheck(onSessionChange, options);
+      onSessionChange.mockClear();
+      fillAccountForm(rendered, "owner", password);
+      rendered = rerender(onSessionChange, options);
+      apiMocks.loginOwnerSession.mockResolvedValueOnce(result);
+      submitForm(rendered);
+      await flushPromises();
+      rendered = rerender(onSessionChange, options);
+      expect(textContent(rendered)).toContain(expectedMessage);
+      expect(textContent(rendered)).not.toContain(password);
+      expect(findAll(rendered, "input")[1]?.props).toMatchObject({ value: "" });
+      expect(requiredButton(rendered, "Sign in").props).toMatchObject({
+        disabled: false,
+      });
+      expect(onSessionChange.mock.calls.some(([active]) => active)).toBe(false);
+    },
+  );
+
+  it.each(["expiry", "sign-out"] as const)(
+    "signs in again after %s with the same account and no bootstrap",
+    async (endSession) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(0);
+      installBrowserHarness();
+      const onSessionChange = vi
+        .fn<OwnerSessionPanelProps["onSessionChange"]>()
+        .mockResolvedValue(true);
+      let rendered = await renderAfterSessionCheck(onSessionChange, options);
+      apiMocks.loginOwnerSession.mockResolvedValue({ status: "active" });
+      fillAccountForm(rendered, "owner", password);
+      submitForm(rerender(onSessionChange, options));
+      await flushPromises();
+      rendered = rerender(onSessionChange, options);
+      expect(textContent(rendered)).toContain("Active");
+      if (endSession === "expiry") {
+        vi.advanceTimersByTime(10 * 60 * 1_000);
+      } else {
+        apiMocks.logoutOwnerSession.mockResolvedValueOnce(true);
+        (
+          requiredButton(rendered, "Sign out").props as { onClick: () => void }
+        ).onClick();
+        await flushPromises();
+      }
+      rendered = rerender(onSessionChange, options);
+      expect(textContent(rendered)).toContain("Locked");
+      expect(onSessionChange).toHaveBeenLastCalledWith(
+        false,
+        expect.any(AbortSignal),
+      );
+      fillAccountForm(rendered, "owner", password);
+      submitForm(rerender(onSessionChange, options));
+      await flushPromises();
+      expect(textContent(rerender(onSessionChange, options))).toContain(
+        "Active",
+      );
+      expect(apiMocks.loginOwnerSession).toHaveBeenCalledTimes(2);
+      expect(apiMocks.bootstrapOwnerSession).not.toHaveBeenCalled();
+    },
+  );
+
+  it("clears an unsubmitted password on unmount", async () => {
+    installBrowserHarness();
+    const onSessionChange = vi.fn();
+    let rendered = await renderAfterSessionCheck(onSessionChange, options);
+    fillAccountForm(rendered, "owner", password);
+    rendered = rerender(onSessionChange, options);
+    const passwordNode = { value: password };
+    (
+      findAll(rendered, "input")[1]?.props as { ref: { current: unknown } }
+    ).ref.current = passwordNode;
+    hookHarness.cleanupEffects();
+    expect(passwordNode.value).toBe("");
+    expect(hookHarness.stateAt(1)).toBe("");
+    expect(apiMocks.loginOwnerSession).not.toHaveBeenCalled();
+  });
+
+  it("aborts pending login on unmount and never renders its late success", async () => {
+    installBrowserHarness();
+    const onSessionChange = vi
+      .fn<OwnerSessionPanelProps["onSessionChange"]>()
+      .mockResolvedValue(true);
+    const rendered = await renderAfterSessionCheck(onSessionChange, options);
+    fillAccountForm(rendered, "owner", password);
+    const response = deferred<{ status: "active" }>();
+    apiMocks.loginOwnerSession.mockReturnValueOnce(response.promise);
+    submitForm(rerender(onSessionChange, options));
+    const signal = apiMocks.loginOwnerSession.mock.lastCall?.[2] as AbortSignal;
+    hookHarness.cleanupEffects();
+    expect(signal.aborted).toBe(true);
+    response.resolve({ status: "active" });
+    await flushPromises();
+    expect(onSessionChange.mock.calls.some(([active]) => active)).toBe(false);
+  });
+});
+
+function fillAccountForm(value: unknown, username: string, password: string) {
+  const inputs = findAll(value, "input");
+  for (const [index, inputValue] of [username, password].entries()) {
+    (
+      inputs[index]?.props as {
+        onChange: (event: { target: { value: string } }) => void;
+      }
+    ).onChange({ target: { value: inputValue } });
+  }
+}
+
+function submitForm(value: unknown) {
+  (
+    requiredElement(value, "form").props as {
+      onSubmit: (event: { preventDefault: () => void }) => void;
+    }
+  ).onSubmit({ preventDefault: vi.fn() });
+}
+
 async function renderAfterSessionCheck(
   onSessionChange: OwnerSessionPanelProps["onSessionChange"],
-  activityOptions: Pick<OwnerSessionPanelProps, "onActivityHandlerChange"> = {},
+  activityOptions: Pick<
+    OwnerSessionPanelProps,
+    "authMode" | "onActivityHandlerChange"
+  > = {},
 ): Promise<React.ReactElement> {
   hookHarness.beginRender();
   OwnerSessionPanel({ onSessionChange, ...activityOptions });
@@ -915,7 +1137,10 @@ async function renderAfterSessionCheck(
 
 function rerender(
   onSessionChange: OwnerSessionPanelProps["onSessionChange"],
-  activityOptions: Pick<OwnerSessionPanelProps, "onActivityHandlerChange"> = {},
+  activityOptions: Pick<
+    OwnerSessionPanelProps,
+    "authMode" | "onActivityHandlerChange"
+  > = {},
 ): React.ReactElement {
   hookHarness.beginRender();
   return OwnerSessionPanel({ onSessionChange, ...activityOptions });

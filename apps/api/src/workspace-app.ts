@@ -123,7 +123,7 @@ export async function buildPersonalWorkspaceApp(
       PERSONAL_OWNER_INTENT_HEADER_NAME,
     ],
     credentials: true,
-    exposedHeaders: ["ETag", "X-Trace-Id"],
+    exposedHeaders: ["ETag", "X-Trace-Id", "Retry-After"],
   });
   await app.register(helmet, {
     contentSecurityPolicy: false,

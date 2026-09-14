@@ -21,6 +21,11 @@ import {
   VAULT_API_MODE,
 } from "./vault-composition-root";
 import { PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY } from "./personal-owner-session";
+import {
+  createPersonalOwnerAccountRecord,
+  PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY,
+  writePersonalOwnerAccountFile,
+} from "./personal-owner-account";
 import { PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY } from "./personal-market-data-provider";
 import { PERSONAL_SEC_USER_AGENT } from "./personal-sec-financial-provider";
 import {
@@ -67,6 +72,119 @@ afterEach(async () => {
 });
 
 describe("personal workspace composition root", () => {
+  it("migrates an existing vault to reusable account login and retains it across restart", async () => {
+    const fixture = await createWorkspaceFixture();
+    const bootstrap = randomBytes(32).toString("hex");
+    const original = await createPersonalWorkspaceConfiguredApp(
+      capturePersonalWorkspaceApiEnvironment(
+        workspaceEnvironment(fixture, "initialize", bootstrap),
+      ),
+    );
+    applications.push(original);
+    const originalCookie = await bootstrapTestPersonalOwnerSession(
+      original,
+      bootstrap,
+    );
+    const created = await putMainWatchlist(
+      original,
+      originalCookie,
+      productionWatchlistPayload(fixture.expectedSnapshotSha256),
+      0,
+      "owner-login-migration-watchlist",
+    );
+    expect(created.statusCode).toBe(201);
+    const before = await original.inject({
+      method: "GET",
+      url: PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH,
+      headers: ownerHeaders(originalCookie),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(before.statusCode).toBe(200);
+    await closeTracked(original);
+
+    const accountFile = join(fixture.parent, "owner-account.json");
+    writePersonalOwnerAccountFile(
+      accountFile,
+      await createPersonalOwnerAccountRecord(
+        "owner",
+        "Synthetic owner password 2026!",
+      ),
+    );
+    const environment = {
+      ...workspaceEnvironment(fixture, "open", bootstrap),
+      [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: undefined,
+      [PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY]: accountFile,
+    };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const raw = { ...environment };
+      const captured = capturePersonalWorkspaceApiEnvironment(raw);
+      expect(raw[PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY]).toBeUndefined();
+      const app = await createPersonalWorkspaceConfiguredApp(captured);
+      applications.push(app);
+      expect(
+        captured[PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY],
+      ).toBeUndefined();
+      const login = await app.inject({
+        method: "POST",
+        url: "/v1/personal-filing/session/login",
+        remoteAddress: "127.0.0.1",
+        headers: {
+          host: "127.0.0.1:3100",
+          origin: "http://127.0.0.1:3000",
+          "content-type": "application/json",
+          "x-research-cockpit-intent": "login",
+        },
+        payload: {
+          username: "owner",
+          password: "Synthetic owner password 2026!",
+        },
+      });
+      expect(login.statusCode).toBe(204);
+      const cookie = String(login.headers["set-cookie"]).split(";")[0]!;
+      const after = await app.inject({
+        method: "GET",
+        url: PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH,
+        headers: ownerHeaders(cookie),
+        remoteAddress: "127.0.0.1",
+      });
+      expect(after.statusCode).toBe(200);
+      expect(after.json()).toEqual(before.json());
+      await closeTracked(app);
+    }
+  }, 30_000);
+
+  it("rejects mixed authentication configuration and a missing account file before opening a vault", async () => {
+    const fixture = await createWorkspaceFixture();
+    const environment = {
+      ...workspaceEnvironment(
+        fixture,
+        "initialize",
+        randomBytes(32).toString("hex"),
+      ),
+      [PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY]: join(
+        fixture.parent,
+        "missing-account.json",
+      ),
+    };
+    await expect(
+      createPersonalWorkspaceConfiguredApp(
+        capturePersonalWorkspaceApiEnvironment({ ...environment }),
+      ),
+    ).rejects.toMatchObject({
+      code: "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID",
+    });
+    await expect(
+      createPersonalWorkspaceConfiguredApp(
+        capturePersonalWorkspaceApiEnvironment({
+          ...environment,
+          [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: undefined,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID",
+    });
+  });
+
   it("captures an optional market-data token without requiring or exposing it", async () => {
     const fixture = await createWorkspaceFixture();
     const firstSecret = randomBytes(32).toString("hex");

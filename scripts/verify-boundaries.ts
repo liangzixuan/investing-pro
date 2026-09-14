@@ -5173,7 +5173,7 @@ function doubleQuotedShellArray(
 }
 
 function hasExactApiBuildEntries(content: string): boolean {
-  return /\bentry:\s*\[\s*"src\/server\.ts",\s*"src\/connected-server\.ts",\s*"src\/security-master-server\.ts",\s*"src\/vault-server\.ts",\s*"src\/workspace-server\.ts",?\s*\]/u.test(
+  return /\bentry:\s*\[\s*"src\/server\.ts",\s*"src\/connected-server\.ts",\s*"src\/security-master-server\.ts",\s*"src\/vault-server\.ts",\s*"src\/workspace-server\.ts",\s*"src\/owner-account-cli\.ts",?\s*\]/u.test(
     content,
   );
 }
@@ -5187,6 +5187,8 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const expectedFiles = [
     "apps/api/src/listen-options.ts",
     providerPath,
+    "apps/api/src/personal-owner-account-credentials.ts",
+    "apps/api/src/personal-owner-account.ts",
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
     "apps/api/src/personal-sec-filing-context-parser.ts",
@@ -5274,12 +5276,13 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   if (
     JSON.stringify([...processFiles].sort()) !==
     JSON.stringify([
+      "apps/api/src/personal-owner-account.ts",
       "apps/api/src/personal-sec-filing-context-parser.ts",
       entry,
     ])
   ) {
     found.push(
-      `${entry}: only the server and isolated filing parser may read their reviewed process state`,
+      `${entry}: only the server, owner-account file adapter, and isolated filing parser may read their reviewed process state`,
     );
   }
   const marketDataViolation =
@@ -5296,6 +5299,58 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const routes = runtimeSources.get(marketRoutesPath) ?? "";
   const classifierRegressions = [
     marketDataViolation !== null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        "apps/api/src/personal-owner-account-credentials.ts",
+        (source) => `${source}\nimport "node:fs";`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        "apps/api/src/personal-owner-account-credentials.ts",
+        (source) => `${source}\nvoid process.env;`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        "apps/api/src/personal-owner-session.ts",
+        (source) => `${source}\nimport "./personal-owner-account";`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        marketRoutesPath,
+        (source) =>
+          `${source}\nimport { execFileSync } from "node:child_process"; void execFileSync;`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        "apps/api/src/personal-owner-account.ts",
+        (source) => `${source}\nvoid process.env.SECRET;`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate(
+        "apps/api/src/personal-owner-account.ts",
+        (source) => `${source}\nexecFileSync("other-command");`,
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate("apps/api/src/personal-owner-account.ts", (source) =>
+        source.replace("windowsHide: true", "windowsHide: false"),
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate("apps/api/src/personal-owner-account.ts", (source) =>
+        source.replace("env: environment", "env: process.env"),
+      ),
+    ) === null,
+    personalMarketDataRuntimeBoundaryViolation(
+      mutate("apps/api/src/personal-owner-account.ts", (source) =>
+        source.replace('"powershell.exe"', '"cmd.exe"'),
+      ),
+    ) === null,
     personalMarketDataRuntimeBoundaryViolation(
       mutate(marketRoutesPath, (source) => `${source}\nvoid fetch("/");`),
     ) === null,
@@ -6633,9 +6688,26 @@ function personalMarketDataRuntimeBoundaryViolation(
       modules.some((specifier) =>
         /^(?:node:)?child_process$/u.test(specifier),
       ) &&
-      path !== "apps/api/src/personal-sec-filing-context-parser.ts"
+      path !== "apps/api/src/personal-sec-filing-context-parser.ts" &&
+      path !== "apps/api/src/personal-owner-account.ts"
     )
-      return `${path}: only the isolated filing-context parser may spawn a process in this graph`;
+      return `${path}: only the isolated filing-context parser and fixed owner-account ACL adapter may spawn a process in this graph`;
+    if (
+      modules.includes("./personal-owner-account") &&
+      path !== "apps/api/src/workspace-composition-root.ts"
+    )
+      return `${path}: only workspace startup may import the owner-account file adapter`;
+    if (path === "apps/api/src/personal-owner-account-credentials.ts") {
+      const credentialViolation =
+        personalOwnerAccountCredentialsViolation(content);
+      if (credentialViolation !== null)
+        return `${path}: ${credentialViolation}`;
+    }
+    if (path === "apps/api/src/personal-owner-account.ts") {
+      const accountViolation =
+        personalOwnerAccountFileBoundaryViolation(content);
+      if (accountViolation !== null) return `${path}: ${accountViolation}`;
+    }
     const source = ts.createSourceFile(
       path,
       content,
@@ -6705,6 +6777,99 @@ function personalMarketDataRuntimeBoundaryViolation(
   if (contextViolation !== null) return contextViolation;
   const routesViolation = personalMarketDataRoutesViolation(routes);
   return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
+}
+
+function personalOwnerAccountCredentialsViolation(
+  content: string,
+): string | null {
+  const source = ts.createSourceFile(
+    "owner-account-credentials.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+      JSON.stringify(["node:crypto"]) ||
+    hasRuntimeDynamicImport(content) ||
+    hasForbiddenDynamicCodeCapability(content) ||
+    hasUnresolvedRuntimeModuleLoad(content) ||
+    hasIndirectRuntimeModuleLoad(content) ||
+    findIdentifiers(source, connectedSourcePolicyForbiddenGlobals()).length > 0
+  )
+    return "shared owner credentials must remain a pure crypto module without process, file, network, or logging capabilities";
+  return null;
+}
+
+function personalOwnerAccountFileBoundaryViolation(
+  content: string,
+): string | null {
+  const message =
+    "owner-account OS access must retain the exact bounded ACL helpers and no process or child execution outside them";
+  // These source-reviewed helpers bind the fixed system PowerShell executable,
+  // literal ACL script, current-user ACL, minimal environment, hidden window,
+  // discarded output and ten-second timeout. The shared verifier has no OS access.
+  const helperDigests = new Map([
+    [
+      "assertOwnerOnly",
+      "9a1e3f2323225382b112aea4c1b6a820becd5edeb6f4f147a48cc8123227d6c3",
+    ],
+    [
+      "setOwnerOnly",
+      "b489e9fe123380dd90b12211846fe5f66270df86d4aa5dc7f67c14e2ec147eb6",
+    ],
+    [
+      "windowsOwnerOnly",
+      "220e166091f3d937986a6910c0e66b71bb2af0816bf5fd19a2e8a19233896b37",
+    ],
+  ]);
+  if (
+    connectedSourcePolicyImportSurfaceDigest(
+      content.replaceAll("\r\n", "\n"),
+    ) !== "d7d67e69bcf63156540b858db1702ba7fb5b11942fd50d6203e51a8b32f307fb"
+  )
+    return message;
+  const source = ts.createSourceFile(
+    "owner-account.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const helpers: ts.FunctionDeclaration[] = [];
+  for (const statement of source.statements) {
+    if (!ts.isFunctionDeclaration(statement) || statement.name === undefined)
+      continue;
+    const expected = helperDigests.get(statement.name.text);
+    if (expected === undefined) continue;
+    if (
+      createHash("sha256")
+        .update(statement.getText(source).replaceAll("\r\n", "\n"))
+        .digest("hex") !== expected
+    )
+      return message;
+    helpers.push(statement);
+  }
+  if (helpers.length !== helperDigests.size) return message;
+  const restricted = findIdentifiers(
+    source,
+    new Set(["process", "execFileSync"]),
+  );
+  if (
+    restricted.some(
+      (node) =>
+        !isImportBindingIdentifier(node) &&
+        !helpers.some((helper) => nodeIsWithin(node, helper)),
+    )
+  )
+    return message;
+  if (
+    findIdentifiers(
+      source,
+      new Set(["global", "globalThis", "self", "window", "console", "fetch"]),
+    ).length > 0
+  )
+    return message;
+  return null;
 }
 
 function personalSecFilingContextParserViolation(
@@ -12759,6 +12924,10 @@ async function localResearchVaultBoundaryViolations(): Promise<string[]> {
   }
   const apiGraphViolation = localResearchVaultApiGraphViolation(apiSources);
   if (apiGraphViolation !== null) found.push(apiGraphViolation);
+  const credentialViolation = personalOwnerAccountCredentialsViolation(
+    apiSources.get("apps/api/src/personal-owner-account-credentials.ts") ?? "",
+  );
+  if (credentialViolation !== null) found.push(credentialViolation);
 
   const apiConfigurationViolation = localResearchVaultApiConfigurationViolation(
     apiManifest,
@@ -13459,6 +13628,7 @@ function localResearchVaultApiModulesByPath(): ReadonlyMap<
 > {
   return new Map([
     ["apps/api/src/listen-options.ts", []],
+    ["apps/api/src/personal-owner-account-credentials.ts", ["node:crypto"]],
     [
       "apps/api/src/personal-owner-session-routes.ts",
       [
@@ -13470,7 +13640,11 @@ function localResearchVaultApiModulesByPath(): ReadonlyMap<
     ],
     [
       "apps/api/src/personal-owner-session.ts",
-      ["node:crypto", "node:perf_hooks"],
+      [
+        "node:crypto",
+        "node:perf_hooks",
+        "./personal-owner-account-credentials",
+      ],
     ],
     [
       "apps/api/src/personal-vault-routes.ts",
@@ -13537,7 +13711,7 @@ function localResearchVaultApiGraphViolation(
   }
   return JSON.stringify([...visited].sort()) === JSON.stringify(expected)
     ? null
-    : "apps/api/src/vault-server.ts: Cycle 3d vault runtime graph must remain the exact seven-file isolated composition";
+    : "apps/api/src/vault-server.ts: vault runtime graph must retain its isolated composition with only the shared credential verifier added";
 }
 
 function localResearchVaultApiRequiredAnchors(): ReadonlyMap<
@@ -13621,7 +13795,7 @@ function localResearchVaultApiConfigurationViolation(
     !hasExactApiBuildEntries(tsupConfig) ||
     !tsupConfig.includes("splitting: false")
   )
-    return "apps/api/tsup.config.ts: ordinary, connected, security-master, and vault APIs require exact separate non-splitting build entries";
+    return "apps/api/tsup.config.ts: APIs and the offline owner-account CLI require exact separate non-splitting build entries";
   for (const [path, anchors] of localResearchVaultApiRequiredAnchors()) {
     const content = sources.get(path);
     if (
@@ -14205,7 +14379,7 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
     import "node:path";
     import "tsup";
     import "./src/build-source-identity";
-    entry: ["src/server.ts", "src/connected-server.ts", "src/security-master-server.ts", "src/vault-server.ts", "src/workspace-server.ts"];
+    entry: ["src/server.ts", "src/connected-server.ts", "src/security-master-server.ts", "src/vault-server.ts", "src/workspace-server.ts", "src/owner-account-cli.ts"];
     splitting: false;
   `;
 
@@ -14345,6 +14519,15 @@ function verifyLocalResearchVaultBoundaryClassifiers(): void {
       configurationTsup,
       configurationSources,
     ) !== null,
+    hasExactApiBuildEntries(
+      configurationTsup.replace(', "src/owner-account-cli.ts"', ""),
+    ),
+    hasExactApiBuildEntries(
+      configurationTsup.replace(
+        '"src/owner-account-cli.ts"',
+        '"src/owner-account-cli.ts", "src/extra-server.ts"',
+      ),
+    ),
     localResearchVaultApiConfigurationViolation(
       configurationManifest,
       configurationTsup,
@@ -14666,7 +14849,7 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
     !tsupConfig.includes("splitting: false")
   )
     found.push(
-      `${tsupConfigPath}: Cycle 3c, Cycle 3d, and Cycle 3e-a require exact separate non-splitting ordinary, connected, security-master, and vault build entries`,
+      `${tsupConfigPath}: APIs and the offline owner-account CLI require exact separate non-splitting build entries`,
     );
 
   const apiPaths = [
@@ -14678,6 +14861,7 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
     "apps/api/src/connected-source-policy-composition.ts",
     "apps/api/src/connected-source-policy-routes.ts",
     "apps/api/src/listen-options.ts",
+    "apps/api/src/personal-owner-account-credentials.ts",
     "apps/api/src/personal-owner-session.ts",
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/server.ts",
@@ -14762,9 +14946,14 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
       ],
     ],
     ["apps/api/src/listen-options.ts", []],
+    ["apps/api/src/personal-owner-account-credentials.ts", ["node:crypto"]],
     [
       "apps/api/src/personal-owner-session.ts",
-      ["node:crypto", "node:perf_hooks"],
+      [
+        "node:crypto",
+        "node:perf_hooks",
+        "./personal-owner-account-credentials",
+      ],
     ],
     ["apps/api/src/server.ts", ["./composition-root", "./listen-options"]],
   ]);
@@ -14785,10 +14974,15 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
     "apps/api/src/connected-source-policy-composition.ts",
     "apps/api/src/connected-source-policy-routes.ts",
     "apps/api/src/listen-options.ts",
+    "apps/api/src/personal-owner-account-credentials.ts",
     "apps/api/src/personal-owner-session.ts",
     "apps/api/src/personal-owner-session-routes.ts",
   ] as const;
   const connectedApiImportSurfaceDigests = new Map<string, string>([
+    [
+      "apps/api/src/personal-owner-account-credentials.ts",
+      "34d66052a355cf2a6714045ed59bfd8e86d8c792a4eb5fe10e67cd23a93504e6",
+    ],
     [
       "apps/api/src/connected-app.ts",
       "2d1da15dafa0f00aab0948a63fc3f30e602d7ac988051b852bd5b55ddc4a128a",
@@ -14819,7 +15013,7 @@ async function connectedSourcePolicyBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/personal-owner-session.ts",
-      "5179c3c22049380bf3ba893e1b98eafb501d27f59b1c9879eaeaec6da85f7d32",
+      "552dbaee2ae99eb81c2c48557f104562066c2cfcdfd96c3d97ffa23e146bbead",
     ],
   ]);
   const connectedApiSources = new Map(

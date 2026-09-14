@@ -9,6 +9,7 @@
     "dev:security-master": "tsx watch src/security-master-server.ts",
     "dev:vault": "tsx watch src/vault-server.ts",
     "dev:workspace": "tsx watch src/workspace-server.ts",
+    "owner-account": "tsx src/owner-account-cli.ts",
     "build": "tsup --config tsup.config.ts",
     "start": "node dist/src/server.js",
     "start:connected": "node dist/src/connected-server.js",

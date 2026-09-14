@@ -13,6 +13,8 @@ describe("personal workspace startup static graph", () => {
     expect([...graph.files].sort()).toEqual([
       "listen-options.ts",
       "personal-market-data-provider.ts",
+      "personal-owner-account-credentials.ts",
+      "personal-owner-account.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
       "personal-sec-filing-context-parser.ts",
@@ -61,6 +63,7 @@ describe("personal workspace startup static graph", () => {
     ]);
     for (const forbiddenFile of [
       "app.ts",
+      "owner-account-cli.ts",
       "connected-app.ts",
       "connected-composition-root.ts",
       "demo-research-state.ts",
@@ -71,6 +74,7 @@ describe("personal workspace startup static graph", () => {
       expect([...graph.files]).not.toContain(forbiddenFile);
     }
     expect([...graph.processFiles].sort()).toEqual([
+      "personal-owner-account.ts",
       "personal-sec-filing-context-parser.ts",
       "workspace-server.ts",
     ]);

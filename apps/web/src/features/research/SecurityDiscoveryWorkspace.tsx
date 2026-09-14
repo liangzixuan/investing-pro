@@ -89,7 +89,9 @@ const MANUAL_PEER_PICKER_MAXIMUM_CANDIDATES = 250;
 
 class WorkspaceSnapshotChangedError extends Error {}
 
-export function SecurityDiscoveryWorkspace() {
+export function SecurityDiscoveryWorkspace({
+  authMode = "bootstrap",
+}: { authMode?: "account" | "bootstrap" } = {}) {
   const [workspace, setWorkspace] = useState<LoadedWorkspace | null>(null);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -1301,13 +1303,18 @@ export function SecurityDiscoveryWorkspace() {
       </div>
       <main className="research-shell discovery-shell" id="main-content">
         <OwnerSessionPanel
+          authMode={authMode}
           onActivityHandlerChange={handleOwnerActivityChange}
           onSessionChange={handleOwnerSessionChange}
         />
         {workspace === null ? (
           <section className="personal-locked-state" aria-live="polite">
             <p className="eyebrow">Security discovery locked</p>
-            <h1>Start or revalidate the owner session to search companies.</h1>
+            <h1>
+              {authMode === "account"
+                ? "Sign in to search companies."
+                : "Start or revalidate the owner session to search companies."}
+            </h1>
             <p>
               {workspaceMessage ??
                 "Your local universe and durable watchlist load only after owner access is confirmed."}

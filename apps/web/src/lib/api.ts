@@ -9,6 +9,7 @@ export {
   fetchPersonalFilingDossier,
   fetchPersonalFilingReadiness,
   fetchPersonalFilingSelectedFacts,
+  loginOwnerSession,
   logoutOwnerSession,
   parsePersonalFilingDossier,
   revokeOwnerSession,

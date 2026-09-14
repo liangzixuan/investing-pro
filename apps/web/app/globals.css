@@ -331,6 +331,11 @@ h4,
   background: var(--surface);
 }
 
+.owner-session-form > input {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
 .owner-session-form p,
 .owner-session-actions p,
 .owner-session-message {

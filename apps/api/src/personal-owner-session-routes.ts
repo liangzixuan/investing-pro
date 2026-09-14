@@ -14,6 +14,8 @@ export const PERSONAL_OWNER_SESSION_PATH =
   "/v1/personal-filing/session" as const;
 export const PERSONAL_OWNER_SESSION_BOOTSTRAP_PATH =
   "/v1/personal-filing/session/bootstrap" as const;
+export const PERSONAL_OWNER_SESSION_LOGIN_PATH =
+  "/v1/personal-filing/session/login" as const;
 export const PERSONAL_OWNER_SESSION_ROTATE_PATH =
   "/v1/personal-filing/session/rotate" as const;
 export const PERSONAL_OWNER_SESSION_LOGOUT_PATH =
@@ -50,7 +52,8 @@ const FORBIDDEN_NEGOTIATION_HEADERS = new Set([
 ]);
 const PERSONAL_JSON_BODY_LIMIT_BYTES = 4 * 1_024;
 
-type PersonalOwnerIntent = "bootstrap" | "logout" | "revoke" | "rotate";
+type PersonalOwnerIntent =
+  "bootstrap" | "login" | "logout" | "revoke" | "rotate";
 export type PersonalOwnerMutationIntent = "connected-source-policy-kill";
 export type PersonalVaultMutationIntent =
   "personal-vault-create" | "personal-vault-delete" | "personal-vault-update";
@@ -74,6 +77,67 @@ export async function registerPersonalOwnerSessionRoutes(
   }
 
   await app.register((routes, _options, done) => {
+    const loginBindings = new WeakMap<
+      FastifyRequest,
+      PersonalOwnerSessionBinding
+    >();
+    routes.post(
+      PERSONAL_OWNER_SESSION_LOGIN_PATH,
+      {
+        bodyLimit: PERSONAL_JSON_BODY_LIMIT_BYTES,
+        onRequest: async (request, reply) => {
+          const boundary = inspectPersonalRequest(
+            request,
+            listenOptions,
+            PERSONAL_OWNER_SESSION_LOGIN_PATH,
+            "POST",
+            "login",
+            "read-json",
+          );
+          if (
+            boundary === undefined ||
+            boundary.cookie.kind === "invalid" ||
+            readSingleHeader(request, "content-encoding").kind !== "missing"
+          ) {
+            return sendOwnerSessionProblem(reply, request);
+          }
+          loginBindings.set(request, boundary.sessionBinding);
+        },
+        errorHandler: (_error, request, reply) => {
+          void sendOwnerSessionProblem(reply, request);
+        },
+      },
+      async (request, reply) => {
+        const binding = loginBindings.get(request);
+        const body = request.body;
+        if (
+          binding === undefined ||
+          typeof body !== "object" ||
+          body === null ||
+          Array.isArray(body) ||
+          Object.keys(body).sort().join(",") !== "password,username" ||
+          !("username" in body) ||
+          typeof body.username !== "string" ||
+          !("password" in body) ||
+          typeof body.password !== "string"
+        ) {
+          return sendOwnerSessionProblem(reply, request);
+        }
+        const result = await authority.login(
+          body.username,
+          body.password,
+          binding,
+        );
+        if (result.kind === "rate-limited") {
+          void reply.header("Retry-After", String(result.retryAfterSeconds));
+          return sendOwnerSessionProblem(reply, request, 429);
+        }
+        if (result.kind === "denied")
+          return sendOwnerSessionProblem(reply, request, 401);
+        return sendNoContent(reply, activeCookie(result.token));
+      },
+    );
+
     routes.get(
       PERSONAL_OWNER_SESSION_PATH,
       { exposeHeadRoute: false },
@@ -527,17 +591,26 @@ function sendNoContent(reply: FastifyReply, cookie?: string) {
   return reply.status(204).send();
 }
 
-function sendOwnerSessionProblem(reply: FastifyReply, request: FastifyRequest) {
+function sendOwnerSessionProblem(
+  reply: FastifyReply,
+  request: FastifyRequest,
+  status: 401 | 403 | 429 = 403,
+) {
   const problem: ProblemDetailsDto = {
-    type: "https://research-cockpit.local/problems/403",
-    title: "Request forbidden",
-    status: 403,
+    type: `https://research-cockpit.local/problems/${String(status)}`,
+    title:
+      status === 429
+        ? "Try again later"
+        : status === 401
+          ? "Sign-in not accepted"
+          : "Request forbidden",
+    status,
     detail: "The local owner-session request was not accepted.",
     instance: request.url.split("?", 1)[0] ?? PERSONAL_OWNER_SESSION_PATH,
     traceId: request.id,
   };
   return reply
-    .status(403)
+    .status(status)
     .header("Cache-Control", "private, no-store")
     .header("Pragma", "no-cache")
     .header("Vary", "Origin")

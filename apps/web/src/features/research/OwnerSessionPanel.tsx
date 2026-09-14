@@ -6,9 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   bootstrapOwnerSession,
   fetchOwnerSession,
+  loginOwnerSession,
   logoutOwnerSession,
   revokeOwnerSession,
   rotateOwnerSession,
+  type OwnerLoginResult,
 } from "@/lib/personal-api";
 
 import {
@@ -17,7 +19,7 @@ import {
 } from "./owner-session-lifecycle";
 
 type OwnerSessionState = "active" | "checking" | "inactive";
-type SessionAction = "bootstrap" | "logout" | "revoke" | "rotate";
+type SessionAction = "bootstrap" | "login" | "logout" | "revoke" | "rotate";
 
 export const OWNER_SESSION_BROADCAST_CHANNEL =
   "research-cockpit-owner-session-v1";
@@ -41,6 +43,7 @@ type BroadcastTransportState = "available" | "checking" | "unavailable";
 type PrivateDataLoadResult = "accepted" | "deferred" | "rejected";
 
 export interface OwnerSessionPanelProps {
+  readonly authMode?: "account" | "bootstrap";
   readonly onActivityHandlerChange?: (
     start: OwnerSessionActivityStart | null,
   ) => void;
@@ -51,12 +54,13 @@ export interface OwnerSessionPanelProps {
 }
 
 export function OwnerSessionPanel({
+  authMode = "bootstrap",
   onActivityHandlerChange,
   onSessionChange,
 }: OwnerSessionPanelProps) {
   const [sessionState, setSessionState] =
     useState<OwnerSessionState>("checking");
-  const [bootstrapSecret, setBootstrapSecret] = useState("");
+  const [secretInput, setSecretInput] = useState("");
   const [pendingAction, setPendingAction] = useState<SessionAction | null>(
     null,
   );
@@ -66,6 +70,9 @@ export function OwnerSessionPanel({
   } | null>(null);
   const [broadcastTransport, setBroadcastTransport] =
     useState<BroadcastTransportState>("checking");
+  const [username, setUsername] = useState("");
+  const secretInputRef = useRef<HTMLInputElement | null>(null);
+  const usernameInputRef = useRef<HTMLInputElement | null>(null);
   const lifecycleRef = useRef<OwnerSessionLifecycle | null>(null);
   const activityHandlerRef = useRef<OwnerSessionActivityStart | null>(null);
   const activityHandlerChangeRef = useRef(onActivityHandlerChange);
@@ -84,6 +91,11 @@ export function OwnerSessionPanel({
   const invalidateRef = useRef<(options: InvalidationOptions) => void>(() => {
     // Installed below before the mount effect can receive an event.
   });
+
+  function clearSecretInput() {
+    if (secretInputRef.current !== null) secretInputRef.current.value = "";
+    setSecretInput("");
+  }
 
   function clearActivityHandler() {
     activityHandlerRef.current = null;
@@ -203,6 +215,7 @@ export function OwnerSessionPanel({
   }
 
   function invalidateLocal(options: InvalidationOptions) {
+    clearSecretInput();
     deferredWakeRevalidationRef.current = false;
     requestEpochRef.current += 1;
     requestRef.current?.controller.abort();
@@ -412,6 +425,7 @@ export function OwnerSessionPanel({
     }
 
     return () => {
+      clearSecretInput();
       mountedRef.current = false;
       requestEpochRef.current += 1;
       requestRef.current?.controller.abort();
@@ -440,8 +454,14 @@ export function OwnerSessionPanel({
     };
   }, [onSessionChange]);
 
-  async function handleBootstrap(event: FormEvent<HTMLFormElement>) {
+  async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Read the inputs as well as React state so password-manager autofill is
+    // accepted even when it does not dispatch an input event.
+    const secret = secretInputRef.current?.value ?? secretInput;
+    const loginUsername = usernameInputRef.current?.value ?? username;
+    clearSecretInput();
+    if (pendingActionRef.current !== null) return;
     if (!broadcastReadyRef.current) {
       invalidateLocal({
         broadcast: false,
@@ -451,35 +471,60 @@ export function OwnerSessionPanel({
       });
       return;
     }
-    const secret = bootstrapSecret;
-    setBootstrapSecret("");
     setMessage(null);
-    if (secret.length === 0) {
+    if (
+      secret.length === 0 ||
+      (authMode === "account" && loginUsername.length === 0)
+    ) {
       setMessage({
         kind: "error",
-        text: "Enter the one-time bootstrap secret.",
+        text:
+          authMode === "account"
+            ? "Enter your username and password."
+            : "Enter the one-time bootstrap secret.",
       });
       return;
     }
 
-    setPending("bootstrap");
+    setPending(authMode === "account" ? "login" : "bootstrap");
     const request = beginRequest();
     const lifecycle = lifecycleRef.current;
     if (lifecycle?.beginFresh() !== true || !isCurrentRequest(request)) {
       return;
     }
-    const active = await bootstrapOwnerSession(
-      secret,
-      request.controller.signal,
-    ).catch(() => false);
+    const result: OwnerLoginResult =
+      authMode === "account"
+        ? await loginOwnerSession(
+            loginUsername,
+            secret,
+            request.controller.signal,
+          ).catch(() => ({ status: "unavailable" }) as const)
+        : {
+            status: (await bootstrapOwnerSession(
+              secret,
+              request.controller.signal,
+            ).catch(() => false))
+              ? "active"
+              : "invalid_credentials",
+          };
     if (!isCurrentRequest(request)) return;
-    if (!active) {
+    if (result.status !== "active") {
+      clearSecretInput();
       lifecycle.deactivate();
       setSessionState("inactive");
       clearRenderedPrivateData();
       setMessage({
         kind: "error",
-        text: "The one-time bootstrap was not accepted.",
+        text:
+          authMode === "bootstrap"
+            ? "The one-time bootstrap was not accepted."
+            : result.status === "invalid_credentials"
+              ? "The username or password was not accepted. Try again."
+              : result.status === "rate_limited"
+                ? result.retryAfterSeconds === null
+                  ? "Too many sign-in attempts. Wait a moment, then try again."
+                  : `Too many sign-in attempts. Try again in ${result.retryAfterSeconds} seconds.`
+                : "Sign-in is unavailable. Check that the local app is running, then try again.",
       });
       settleAction(request, false);
       return;
@@ -501,7 +546,10 @@ export function OwnerSessionPanel({
     }
     setMessage({
       kind: "status",
-      text: "Local owner session established.",
+      text:
+        authMode === "account"
+          ? "Signed in."
+          : "Local owner session established.",
     });
     settleAction(request, false);
     publishActivityHandler(request);
@@ -519,7 +567,13 @@ export function OwnerSessionPanel({
     if (!isCurrentRequest(request)) return;
     setMessage(
       accepted
-        ? { kind: "status", text: "Local owner session ended." }
+        ? {
+            kind: "status",
+            text:
+              authMode === "account"
+                ? "Signed out."
+                : "Local owner session ended.",
+          }
         : {
             kind: "error",
             text: "The session was cleared locally, but logout was not confirmed.",
@@ -604,7 +658,9 @@ export function OwnerSessionPanel({
       <div className="owner-session-heading">
         <div>
           <p className="eyebrow">Personal local mode</p>
-          <h2 id="owner-session-title">Owner session</h2>
+          <h2 id="owner-session-title">
+            {authMode === "account" ? "Owner account" : "Owner session"}
+          </h2>
         </div>
         <span
           className={`owner-session-state ${browserSessionAvailable ? sessionState : "inactive"}`}
@@ -630,53 +686,116 @@ export function OwnerSessionPanel({
         </p>
       ) : sessionState === "active" ? (
         <div className="owner-session-actions">
-          <p>Private personal routes are available to this browser session.</p>
+          <p>
+            {authMode === "account"
+              ? "Your personal workspace is available."
+              : "Private personal routes are available to this browser session."}
+          </p>
           <div>
-            <button
-              className="secondary-action compact-action"
-              type="button"
-              disabled={pending}
-              onClick={() => void handleRotate()}
-            >
-              {pendingAction === "rotate" ? "Rotating…" : "Rotate session"}
-            </button>
+            {authMode === "bootstrap" ? (
+              <button
+                className="secondary-action compact-action"
+                type="button"
+                disabled={pending}
+                onClick={() => void handleRotate()}
+              >
+                {pendingAction === "rotate" ? "Rotating…" : "Rotate session"}
+              </button>
+            ) : null}
             <button
               className="secondary-action compact-action"
               type="button"
               disabled={pending}
               onClick={() => void handleLogout()}
             >
-              {pendingAction === "logout" ? "Logging out…" : "Log out"}
+              {authMode === "account"
+                ? pendingAction === "logout"
+                  ? "Signing out…"
+                  : "Sign out"
+                : pendingAction === "logout"
+                  ? "Logging out…"
+                  : "Log out"}
             </button>
-            <button
-              className="secondary-action compact-action danger-action"
-              type="button"
-              disabled={pending}
-              onClick={() => void handleRevoke()}
-            >
-              {pendingAction === "revoke" ? "Revoking…" : "Revoke authority"}
-            </button>
+            {authMode === "bootstrap" ? (
+              <button
+                className="secondary-action compact-action danger-action"
+                type="button"
+                disabled={pending}
+                onClick={() => void handleRevoke()}
+              >
+                {pendingAction === "revoke" ? "Revoking…" : "Revoke authority"}
+              </button>
+            ) : null}
           </div>
         </div>
+      ) : authMode === "account" ? (
+        <form
+          className="owner-session-form"
+          method="post"
+          onSubmit={(event) => void handleSignIn(event)}
+          aria-label="Owner sign-in"
+        >
+          <label htmlFor="owner-username">Username</label>
+          <input
+            ref={usernameInputRef}
+            id="owner-username"
+            name="username"
+            type="text"
+            value={username}
+            autoCapitalize="none"
+            autoComplete="username"
+            maxLength={64}
+            disabled={pending}
+            required
+            spellCheck={false}
+            onChange={(event) => setUsername(event.target.value)}
+          />
+          <label htmlFor="owner-password">Password</label>
+          <div>
+            <input
+              ref={secretInputRef}
+              id="owner-password"
+              name="password"
+              type="password"
+              value={secretInput}
+              autoCapitalize="none"
+              autoComplete="current-password"
+              maxLength={256}
+              disabled={pending}
+              required
+              spellCheck={false}
+              onChange={(event) => setSecretInput(event.target.value)}
+            />
+            <button
+              className="primary-action compact-action"
+              type="submit"
+              disabled={pending}
+            >
+              {pendingAction === "login" ? "Signing in…" : "Sign in"}
+            </button>
+          </div>
+          <p>Use the owner account you set up on this computer.</p>
+        </form>
       ) : (
         <form
           className="owner-session-form"
-          onSubmit={(event) => void handleBootstrap(event)}
+          onSubmit={(event) => void handleSignIn(event)}
         >
           <label htmlFor="owner-bootstrap-secret">
             One-time bootstrap secret
           </label>
           <div>
             <input
+              ref={secretInputRef}
               id="owner-bootstrap-secret"
               name="owner-bootstrap-secret"
               type="password"
-              value={bootstrapSecret}
+              value={secretInput}
               autoCapitalize="none"
               autoComplete="off"
               disabled={pending}
               spellCheck={false}
-              onChange={(event) => setBootstrapSecret(event.target.value)}
+              onChange={(event) => setSecretInput(event.target.value)}
             />
             <button
               className="primary-action compact-action"

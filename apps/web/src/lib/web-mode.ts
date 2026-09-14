@@ -9,3 +9,11 @@ export function isPersonalDossierWebMode(value: string | undefined): boolean {
 export function isPersonalWorkspaceWebMode(value: string | undefined): boolean {
   return value === "personal_workspace";
 }
+
+export function resolveOwnerAuthMode(
+  value: string | undefined,
+): "account" | "bootstrap" {
+  if (value === "account") return "account";
+  if (value === undefined || value === "bootstrap") return "bootstrap";
+  throw new Error("The owner sign-in configuration is invalid.");
+}
