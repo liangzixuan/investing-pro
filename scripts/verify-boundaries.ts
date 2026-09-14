@@ -2095,6 +2095,33 @@ const MAX_TYPESCRIPT_CONFIG_BYTES = 1_048_576;
 const MAX_TYPESCRIPT_CONFIG_CHAIN_DEPTH = 32;
 const MAX_TYPESCRIPT_CONFIG_FILES = 128;
 const violations: string[] = [];
+const releaseRootManifest: unknown = JSON.parse(
+  await readFile(join(root, "package.json"), "utf8"),
+);
+const releaseRootScripts =
+  isRecord(releaseRootManifest) && isRecord(releaseRootManifest.scripts)
+    ? releaseRootManifest.scripts
+    : {};
+for (const [name, command] of Object.entries({
+  "release:classify": "tsx scripts/release-classification.ts",
+  "guardrails:release-classification": "tsx scripts/release-classification.ts",
+  "test:release-classification":
+    "vitest run --config scripts/release-classification/vitest.config.ts",
+  test: "pnpm test:release-classification && pnpm -r --workspace-concurrency=1 --if-present test",
+}))
+  if (releaseRootScripts[name] !== command)
+    violations.push(
+      `package.json: exact release-classification script ${name} is required`,
+    );
+if (
+  typeof releaseRootScripts.guardrails !== "string" ||
+  !releaseRootScripts.guardrails.startsWith(
+    "pnpm guardrails:release-classification && pnpm guardrails:boundaries && ",
+  )
+)
+  violations.push(
+    "package.json: release-classification drift checks must precede the existing guardrails",
+  );
 const filesToInspect = new Set<string>();
 const externalCompositionFilesToInspect = new Set<string>();
 const explicitTypeScriptConfigSelectorFiles = new Set<string>();
@@ -21366,7 +21393,7 @@ function filingParserNormalizationExecutionManifestCompositionViolation(
   const approvedRootScripts = new Map([
     [
       "guardrails",
-      "pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:filing-parser-fixtures && pnpm guardrails:filing-parser-normalization-execution-fixtures && pnpm guardrails:filing-parser-cross-engine-execution-fixtures && pnpm guardrails:filing-payload-custody-fixtures && pnpm guardrails:migrations && pnpm guardrails:postgres-acceptance && pnpm guardrails:licenses",
+      "pnpm guardrails:release-classification && pnpm guardrails:boundaries && pnpm guardrails:fixtures && pnpm guardrails:filing-parser-fixtures && pnpm guardrails:filing-parser-normalization-execution-fixtures && pnpm guardrails:filing-parser-cross-engine-execution-fixtures && pnpm guardrails:filing-payload-custody-fixtures && pnpm guardrails:migrations && pnpm guardrails:postgres-acceptance && pnpm guardrails:licenses",
     ],
     [
       "guardrails:filing-parser-normalization-execution-fixtures",

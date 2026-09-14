@@ -1,0 +1,212 @@
+{
+  "schemaVersion": "1.0.0",
+  "caseIdentifier": "cycle3ka10",
+  "constantPrefix": "CYCLE_3K_A10",
+  "displayName": "Cycle 3k-a10",
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "08e72ebe253e3ab366769b6bffef93eb35d48091",
+  "featureRevision": "662ba389ed467667e00273ff9614f423ac70e48a",
+  "closureRevision": "8810d9923283efa534fa69ea3cb6da3d4136f97e",
+  "counts": {
+    "predecessor": {
+      "total": 120,
+      "firstParent": 120
+    },
+    "feature": {
+      "total": 121,
+      "firstParent": 121
+    },
+    "closure": {
+      "total": 122,
+      "firstParent": 122
+    }
+  },
+  "normalization": "UTF-8 text; CRLF replaced with LF; final newline preserved",
+  "provenance": "Expected identities and SHA256 values were read solely from immutable Git objects for the accepted PP&E feature and closure; no generator or current adapter content supplied expected results.",
+  "presentation": {
+    "featureDescription": "PP&E purchases and operating cash flow subtraction",
+    "closureDescription": "PP&E cash generation",
+    "inventoryDescription": "PP&E cash generation",
+    "testBinding": "ppeCashGeneration",
+    "routingDescription": "PP&E purchases and operating cash flow subtraction",
+    "summaryDescription": "reported PP&E purchases and exact operating cash flow subtraction with bounded annual SEC source acquisition"
+  },
+  "featureInventory": [
+    {
+      "path": "apps/api/src/personal-sec-financial-provider.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-sec-request-scheduler.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.ts",
+      "status": "M"
+    },
+    {
+      "path": "docs/CURRENT_WORK.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/SEC_ANNUAL_FINANCIAL_SCREENING.md",
+      "status": "M"
+    },
+    {
+      "path": "packages/contracts/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/index.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/verify-boundaries.ts",
+      "status": "M"
+    }
+  ],
+  "closureInventory": [
+    {
+      "path": ".github/workflows/filing-parser-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    }
+  ],
+  "outputs": [
+    {
+      "path": ".github/workflows/filing-parser-acceptance.yml",
+      "status": "M",
+      "predecessorBlob": "f62127d2651d38252e5571a4f3cdb4a07d26edc7",
+      "predecessorSha256": "02218470aaa891fd859cec5a79501582ad5953c158e945a32002db82600f18c8",
+      "beforeBlob": "f62127d2651d38252e5571a4f3cdb4a07d26edc7",
+      "beforeSha256": "02218470aaa891fd859cec5a79501582ad5953c158e945a32002db82600f18c8",
+      "afterBlob": "b2cec851da5cc6d876eeb3ee19081181804a4bcd",
+      "afterSha256": "e5c7e20b8512ddbfb1421b4a35c5b99af1039c2d85e480454b52f8c1d2a9f08e"
+    },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M",
+      "predecessorBlob": "78019cf2e0f75536254315097787fcc75519a566",
+      "predecessorSha256": "aa1bc49fb2e73617f45b4df3de4c8b31511b2f5d47f0053783d7c98ddd7e5d28",
+      "beforeBlob": "78019cf2e0f75536254315097787fcc75519a566",
+      "beforeSha256": "aa1bc49fb2e73617f45b4df3de4c8b31511b2f5d47f0053783d7c98ddd7e5d28",
+      "afterBlob": "3fe6b11efa56e56a669afa3a26978b7ae7344789",
+      "afterSha256": "8380bd2711cb6a158166adf25ac73680531c7d24a56468eda08d4866189b9a01"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M",
+      "predecessorBlob": "07f059135ecebd85e2174cc33fdc8fd4936e67f6",
+      "predecessorSha256": "80148de5df7503fe29cd0c846d27f009774050a519a0dd53a2d45139092ac1f1",
+      "beforeBlob": "07f059135ecebd85e2174cc33fdc8fd4936e67f6",
+      "beforeSha256": "80148de5df7503fe29cd0c846d27f009774050a519a0dd53a2d45139092ac1f1",
+      "afterBlob": "80cb40f2f102fa65fea7320c36a2025a4efe8f5f",
+      "afterSha256": "e70d8508217b3c286fd63068441a977cbcd71e54ceaa16c9bd36bcbbf2d1a6e7"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M",
+      "predecessorBlob": "0ca9f8df4220f3a54a40d6dd5f7760bc6d16350b",
+      "predecessorSha256": "6a9ce16d95d78535cad56cb08badd96b842f8ced7fd8fd2e812febcd7a9a3fd3",
+      "beforeBlob": "0ca9f8df4220f3a54a40d6dd5f7760bc6d16350b",
+      "beforeSha256": "6a9ce16d95d78535cad56cb08badd96b842f8ced7fd8fd2e812febcd7a9a3fd3",
+      "afterBlob": "6133e974b1de793a063733ff2557cc76db6aa1ef",
+      "afterSha256": "b98ca5df711134508298178be0dadcbc7e6ac81b6271b5abb578c7e6be8fafe7"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M",
+      "predecessorBlob": "bdd5f1ca3c4a539e20daceecb2c17cea6879ea2e",
+      "predecessorSha256": "85dede0a31981129b5b04cdbe835b7493d9b556edcffb48361e5cbfde0890f2f",
+      "beforeBlob": "bdd5f1ca3c4a539e20daceecb2c17cea6879ea2e",
+      "beforeSha256": "85dede0a31981129b5b04cdbe835b7493d9b556edcffb48361e5cbfde0890f2f",
+      "afterBlob": "922483964d34428a89c1e136f7724f137679f68b",
+      "afterSha256": "d22ed54a62623dd84340b5f0046ad078b8b985e5ba599bc5077512f56d728d36"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M",
+      "predecessorBlob": "80b1951a19247c43c0d6b99aad3d80245d3e5582",
+      "predecessorSha256": "c87b629be2c3b96be08d0e82833e2724e9028b4fa5a5a391e33c9ed7cd696ea6",
+      "beforeBlob": "80b1951a19247c43c0d6b99aad3d80245d3e5582",
+      "beforeSha256": "c87b629be2c3b96be08d0e82833e2724e9028b4fa5a5a391e33c9ed7cd696ea6",
+      "afterBlob": "b3c78fc0a52e8b959273fde97090fd9ac120b46f",
+      "afterSha256": "32b9618f424810a7a18774fb4eaaa3c66cf85299e6413059e888624fbc10d88e"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M",
+      "predecessorBlob": "4d7cd0fbcba4f7cb7c2c114396466062f81263b1",
+      "predecessorSha256": "8fad3b380afe95f970e15af40ad465a19d6ed34460f9a50627b758e1ef47f55f",
+      "beforeBlob": "4d7cd0fbcba4f7cb7c2c114396466062f81263b1",
+      "beforeSha256": "8fad3b380afe95f970e15af40ad465a19d6ed34460f9a50627b758e1ef47f55f",
+      "afterBlob": "09991063409b5585fe6298142b3720ea1517b6b2",
+      "afterSha256": "64a98224c656f355757edcd4273a95ec6c59abf701f13a66f04a32c4a528b345"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M",
+      "predecessorBlob": "a0a39f265e264d630da45ece1c556f4b075432af",
+      "predecessorSha256": "d3b19f32a5ccb93c69720d26b6466081c59e6472d73bc9877f5cdb49107f9578",
+      "beforeBlob": "a0a39f265e264d630da45ece1c556f4b075432af",
+      "beforeSha256": "d3b19f32a5ccb93c69720d26b6466081c59e6472d73bc9877f5cdb49107f9578",
+      "afterBlob": "c8acf34769edf8aad78f0efc45044e17875df94b",
+      "afterSha256": "a3fba41336d09571953025bc6056e5516017d6ec8eddd330486ee1487d762c45"
+    }
+  ]
+}

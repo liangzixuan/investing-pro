@@ -56,28 +56,45 @@ are unchanged; all five numeric results remain unsupported because of dimensions
 These results describe only that retained sample. Actual acceptance/runtime
 details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
 
-## Active delivery: normal local owner login
+## Completed local login and runtime isolation
 
-The owner requested replacing the repeated one-time bootstrap with a persistent
-username and password. This takes priority over isolated build validation and
-release-generator work. Account mode now has offline initial setup/reset, a
-salted password verifier separate from the vault, a standard browser sign-in
-form and repeatable login after logout, expiry or API restart. Existing session
-lifetimes, request boundaries and private-data clearing remain in place.
+Normal username/password login is accepted and activated at `9edb8cb`. Account
+mode has offline initial setup/reset, a salted password verifier separate from
+the vault, a standard browser sign-in form and repeatable login after logout,
+expiry or API restart. Existing session lifetimes, request boundaries and
+private-data clearing remain in place.
 
 The combined workspace selects `RESEARCH_COCKPIT_OWNER_ACCOUNT_FILE` in the API
 and `RESEARCH_COCKPIT_WEB_AUTH=account` in the web process. Legacy bootstrap
 profiles remain explicit compatibility paths; normal account login never
 requires a new bootstrap. See [local owner login](./LOCAL_OWNER_LOGIN.md) for
 setup/reset and [ADR 0058](./adr/0058-reusable-local-owner-login.md) for scope.
-The local handoff records actual acceptance and whether the owner has completed
-the one-time account setup; do not claim configured sign-in before that occurs.
+The configured account setup and Chrome sign-in are complete. The local handoff
+retains the login acceptance details and actual runtime state.
 
-Acceptance covers real password hashing and file permissions, malformed login
-boundaries, wrong credentials, throttling, concurrent requests, logout/expiry
-and restart, preserved existing vault data, masked CLI input, and browser
-autofill semantics. Complete focused checks, source review, the clean native
-gate and applicable hosted checks. Do not rerun historical SEC loads.
+Local verification and serving isolation are also complete on that same source
+release. The unchanged isolated native gate passed 4,751 tests with nine existing
+skips and 24 builds while the serving app stayed available. Five hosted
+workflows/six jobs passed for the accepted source. The isolation acceptance is a
+local workflow result, not another source release. Edit the main checkout, keep
+the serving clone independent, and use a fresh independent clone for full-gate
+verification. The local checkpoint owns launcher, selection and rollback details.
+
+## Active delivery: release-classification generator
+
+Replace repeated feature-specific routing edits with one reviewed descriptor
+and deterministic generator. Preserve the exact historical evidence checks,
+source identities, change inventories and explicit non-evidence routes. The
+bounded output is eight existing adapters plus one release registry entry;
+writing requires an explicit flag and the clean committed feature HEAD.
+
+The [release-classification guide](./RELEASE_CLASSIFICATION.md) owns the
+descriptor contract, a14 manual bootstrap, a15-and-later generation, and
+check/write sequence. Acceptance requires an independent historical PP&E golden
+fixture, rejection tests, generated-output drift checks, and the normal native
+and hosted release checks. The local checkpoint records their actual results;
+earlier passing releases do not validate this change. Resume financial-screening breadth
+after this bounded workflow improvement is accepted.
 
 ## Latest financial delivery: screen cash generation after PP&E purchases
 
@@ -92,24 +109,24 @@ React browser acceptance passed, and all five applicable hosted workflows passed
 The existing idle and absolute deadlines remain unchanged. These are completed
 baseline results; do not repeat their release checks for the next feature.
 
-Add **PP&E purchases (USD)** and **Operating cash flow less PP&E purchases (USD)**
-to annual filters, sorting and saved definitions. Use only the standard
-`PaymentsToAcquirePropertyPlantAndEquipment` source, adding one fixed request to
-the existing seven-frame load. Verify current full-catalog coverage and a small
-primary-filing sample before accepting the feature.
+**PP&E purchases (USD)** and **Operating cash flow less PP&E purchases (USD)**
+are available in annual filters, sorting and saved definitions. The PP&E input
+uses only the standard `PaymentsToAcquirePropertyPlantAndEquipment` source,
+bringing the load to eight fixed frames. Accepted full-catalog coverage and
+bounded primary-filing checks remain in the local PP&E handoff.
 
-Subtract exact decimal amounts only when both inputs are available and their
-actual annual dates and filing accession match. Keep reported signs: a negative
-PP&E amount remains inspectable but leaves the derived amount unknown. Negative
-operating cash flow and negative results are supported. Preserve missingness,
-source-failure isolation, revenue-basis independence and all input references.
+Exact decimal subtraction requires both inputs to be available and their actual
+annual dates and filing accession to match. A negative reported PP&E amount
+remains inspectable but leaves the derived amount unknown. Negative operating
+cash flow and negative results are supported. Missingness, source-failure
+isolation, revenue-basis independence and all input references are preserved.
 
-Coordinate the expanded metric/source sets through strict transport version 3.0.0
-and screen formula-set version 1.1.0. Existing saved-definition payloads remain
+The expanded metric/source sets use strict transport version 3.0.0 and screen
+formula-set version 1.1.0. Existing saved-definition payloads remain
 numeric version 1, preserving identities, creation digests and conflict handling.
 The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) owns the final
-behavior and limits. Complete focused arithmetic, transport and UI checks,
-configured browser acceptance, then native and applicable hosted release gates.
+behavior and limits. Do not repeat the accepted PP&E gates or historical SEC
+loads as part of the release-classification work.
 
 Numeric admission, fiscal calendars, standalone quarters, revisions and TTM remain
 separate evidence-dependent work. Keep catalog refresh and broader source coverage
@@ -119,7 +136,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Add PP&E purchases and operating cash flow less PP&E purchases                                   | Verify exact source coverage, compatible dates and filing provenance       |
+| Now              | Generate release-classification adapters from one reviewed descriptor                            | Reduce repeated routing edits while preserving historical acceptance       |
 | Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -142,10 +159,8 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature are:
 
    ```powershell
-   pnpm --filter @research-cockpit/personal-financial-analytics exec vitest run src/personal-financial-screener.test.ts
-   pnpm --filter @research-cockpit/api exec vitest run src/personal-sec-financial-provider.test.ts src/personal-sec-request-scheduler.test.ts src/workspace-financial-screen-routes.test.ts
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/PersonalFinancialScreener.test.tsx src/lib/personal-financial-screen-api.test.ts
-   pnpm --filter @research-cockpit/web typecheck
+   pnpm test:release-classification
+   pnpm guardrails:release-classification
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed
@@ -157,10 +172,12 @@ where the next feature exposes concrete duplication or makes changes risky.
    package installation while agents run tests.
 
 4. Review the final diff, format touched files, and run applicable guardrails.
-   Freeze the reviewed source in a clean commit before the full `pnpm verify`:
-   the API build deliberately rejects a dirty tree. If any earlier gate fails,
-   fix it and rerun the affected checks before the final clean-source gate.
-   Do not bypass source identity or remove the full gate to save time.
+   Use the release-classification guide for the separate feature and routing
+   closure commits. Freeze the reviewed candidate before the full `pnpm verify`
+   in a fresh independent verification clone; the API build deliberately rejects
+   a dirty tree. Keep the serving clone running separately. If an earlier gate
+   fails, fix it and rerun the affected checks before the final clean-source
+   gate. Do not bypass source identity or remove the full gate to save time.
 5. Push only the verified candidate and wait for applicable hosted checks.
    Recheck only changed or failed work during iteration; broaden verification
    when new evidence warrants it. Report actual local and hosted outcomes
@@ -173,11 +190,9 @@ where the next feature exposes concrete duplication or makes changes risky.
 The 30 reported-field definitions support selected-company financials; they are
 not the shared 30-core screener metric registry or evidence of source coverage.
 
-The repeated feature-specific CI routing edits are a known maintenance cost.
-After this feature closure, a bounded follow-up may replace duplicated
-classification with one tested source of truth. Preserve exact historical
-evidence checks and explicit non-evidence routes. Do not turn that refactor
-into a prerequisite for product delivery unless it blocks its release.
+The active generator reduces a demonstrated release-maintenance cost. Keep its
+scope to the existing classification adapters and return to visible financial
+capability after acceptance; do not expand it into a general CI redesign.
 
 For runtime setup use [the personal workspace instructions](../README.md#personal-discovery-workspace).
 No owner secret, provider credential, or private payload belongs in this guide.
