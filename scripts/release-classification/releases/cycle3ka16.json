@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "caseNumber": 16,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "efbbd94b98fa8ae816d6aeacf287f1f803354cb0",
+  "featureRevision": "b37b86140d802a75b8346baaa7c7ba4d938f9884",
+  "featureCount": 133,
+  "closureCount": 134,
+  "featureChanges": [{ "path": ".github/workflows/ci.yml", "status": "M" }],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka16.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka16.json",
+  "presentation": {
+    "featureDescription": "Windows release job budget",
+    "closureDescription": "Windows release job budget",
+    "inventoryDescription": "Windows release job budget",
+    "testBinding": "windowsReleaseBudget",
+    "routingDescription": "Windows release job budget",
+    "summaryDescription": "Windows release job budget with unchanged release commands and test deadlines"
+  }
+}
