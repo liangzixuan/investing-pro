@@ -324,6 +324,10 @@ import {
   isCycle3ka16FeatureTopologyAllowed,
   isCycle3ka16RoutingClosureCommitDiffSetAllowed,
   isCycle3ka16RoutingClosureTopologyAllowed,
+  isCycle3ka17FeatureCommitDiffSetAllowed,
+  isCycle3ka17FeatureTopologyAllowed,
+  isCycle3ka17RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka17RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -1188,6 +1192,10 @@ const CYCLE_3K_A15_ROUTING_CLOSURE_REVISION =
   "efbbd94b98fa8ae816d6aeacf287f1f803354cb0" as const;
 const CYCLE_3K_A16_FEATURE_REVISION =
   "b37b86140d802a75b8346baaa7c7ba4d938f9884" as const;
+const CYCLE_3K_A16_ROUTING_CLOSURE_REVISION =
+  "1b89f9a25c1dc11742a74c1abe84e552de561015" as const;
+const CYCLE_3K_A17_FEATURE_REVISION =
+  "d0f1ff88706dcf04a81069ffb935ca59bcafc165" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -5111,6 +5119,45 @@ const CYCLE_3K_A16_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka16.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A17_FEATURE_TRANSITION = [
+  { path: "scripts/release-classification.test.ts", status: "M" },
+  { path: "scripts/release-classification.ts", status: "M" },
+];
+const CYCLE_3K_A17_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka17.json",
     status: "A",
   },
 ];
@@ -14476,6 +14523,118 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedWindowsReleaseBudgetClosure = [
+      "134",
+      "134",
+      CYCLE_3K_A16_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A16_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A16_FEATURE_REVISION}`,
+      windowsReleaseBudgetFeature,
+    ] as const;
+    expect(
+      isCycle3ka16RoutingClosureTopologyAllowed(
+        ...pinnedWindowsReleaseBudgetClosure,
+      ),
+    ).toBe(true);
+    const literalGraftPathFeature = [
+      "135",
+      "135",
+      CYCLE_3K_A17_FEATURE_REVISION,
+      `${CYCLE_3K_A17_FEATURE_REVISION} ${CYCLE_3K_A16_ROUTING_CLOSURE_REVISION}`,
+      pinnedWindowsReleaseBudgetClosure,
+    ] as const;
+    expect(isCycle3ka17FeatureTopologyAllowed(...literalGraftPathFeature)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "134"],
+      [1, "136"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A17_FEATURE_REVISION} ${CYCLE_3K_A16_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A17_FEATURE_REVISION} ${CYCLE_3K_A16_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...literalGraftPathFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka17FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka17FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedWindowsReleaseBudgetClosure: unknown[] = [
+      ...pinnedWindowsReleaseBudgetClosure,
+    ];
+    tamperedPinnedWindowsReleaseBudgetClosure[4] =
+      tamperedWindowsReleaseBudgetFeature;
+    expect(
+      isCycle3ka17FeatureTopologyAllowed(
+        "135",
+        "135",
+        CYCLE_3K_A17_FEATURE_REVISION,
+        `${CYCLE_3K_A17_FEATURE_REVISION} ${CYCLE_3K_A16_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedWindowsReleaseBudgetClosure as unknown as Parameters<
+          typeof isCycle3ka17FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const literalGraftPathClosureRevision = "e".repeat(40);
+    const literalGraftPathClosure = [
+      "136",
+      "136",
+      literalGraftPathClosureRevision,
+      `${literalGraftPathClosureRevision} ${CYCLE_3K_A17_FEATURE_REVISION}`,
+      literalGraftPathFeature,
+    ] as const;
+    expect(
+      isCycle3ka17RoutingClosureTopologyAllowed(...literalGraftPathClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "135"],
+      [1, "137"],
+      [2, CYCLE_3K_A17_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${literalGraftPathClosureRevision} ${CYCLE_3K_A16_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${literalGraftPathClosureRevision} ${CYCLE_3K_A17_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...literalGraftPathClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka17RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka17RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedLiteralGraftPathFeature: unknown[] = [
+      ...literalGraftPathFeature,
+    ];
+    tamperedLiteralGraftPathFeature[4] =
+      tamperedPinnedWindowsReleaseBudgetClosure;
+    expect(
+      isCycle3ka17RoutingClosureTopologyAllowed(
+        "136",
+        "136",
+        literalGraftPathClosureRevision,
+        `${literalGraftPathClosureRevision} ${CYCLE_3K_A17_FEATURE_REVISION}`,
+        tamperedLiteralGraftPathFeature as unknown as Parameters<
+          typeof isCycle3ka17RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -15153,6 +15312,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A16_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka17FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A17_FEATURE_TRANSITION,
+      2,
+    );
+    expectExactTransition(
+      isCycle3ka17RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A17_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -15292,6 +15461,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A15_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A16_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A16_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A17_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A17_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -15483,6 +15654,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A15_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A16_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A16_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A17_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A17_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
