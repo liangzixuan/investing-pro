@@ -347,15 +347,19 @@ export function createReleaseGitReader(repository: string): ReleaseGitReader {
       },
     );
   }
-  // Grafts still rewrite ancestry with replacement objects disabled. Git resolves
-  // this path to the shared common directory for linked worktrees.
-  const graftPath = rawGit([
+  // Grafts still rewrite ancestry with replacement objects disabled. Resolve only
+  // the shared directory: Git's absolute --git-path can dereference a dangling
+  // graft symlink, hiding the link from the lstat check below.
+  const commonGitDirectory = rawGit([
     "rev-parse",
     "--path-format=absolute",
-    "--git-path",
-    "info/grafts",
+    "--git-common-dir",
   ]).trim();
-  requireCondition(isAbsolute(graftPath), "Expected absolute Git graft path");
+  requireCondition(
+    isAbsolute(commonGitDirectory),
+    "Expected absolute common Git directory",
+  );
+  const graftPath = resolve(commonGitDirectory, "info", "grafts");
   function git(args: string[]): string {
     requireCondition(
       lstatSync(graftPath, { throwIfNoEntry: false }) === undefined,
