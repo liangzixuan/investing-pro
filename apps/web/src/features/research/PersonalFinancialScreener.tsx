@@ -78,6 +78,53 @@ const columnViews = {
 function orderedMetrics(selected: readonly PersonalFinancialScreenMetricDto[]) {
   return metrics.filter((metric) => selected.includes(metric));
 }
+const starterScreens = [
+  {
+    name: "Growth with cash after PP&E",
+    description:
+      "Selected revenue YoY change ≥ 5% and operating cash flow less PP&E purchases ≥ 0 USD. Growth uses the selected revenue basis and requires positive prior revenue. The cash measure subtracts only reported PP&E purchases.",
+    clauses: [
+      { field: "revenueGrowth", operator: "gte", value: "5" },
+      {
+        field: "operatingCashFlowLessPpePurchases",
+        operator: "gte",
+        value: "0",
+      },
+    ],
+    sort: { field: "revenueGrowth", direction: "desc" },
+    metrics: [
+      "revenue",
+      "operatingCashFlow",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "revenueGrowth",
+    ],
+  },
+  {
+    name: "Cash flow relative to income",
+    description:
+      "Operating cash flow / net income ≥ 100%. Requires positive net income and matching source periods and filing. Independent of the revenue basis; a higher ratio is not a quality score.",
+    clauses: [
+      { field: "operatingCashFlowToNetIncome", operator: "gte", value: "100" },
+    ],
+    sort: { field: "operatingCashFlowToNetIncome", direction: "desc" },
+    metrics: ["netIncome", "operatingCashFlow", "operatingCashFlowToNetIncome"],
+  },
+  {
+    name: "Q4 liquidity cover",
+    description:
+      "Current assets / current liabilities ≥ 1.00×. Requires nonnegative assets, positive liabilities, and matching actual Q4 balance dates and filing. Independent of the revenue basis.",
+    clauses: [{ field: "currentRatio", operator: "gte", value: "1" }],
+    sort: { field: "currentRatio", direction: "desc" },
+    metrics: ["currentAssets", "currentLiabilities", "currentRatio"],
+  },
+] as const satisfies readonly {
+  readonly name: string;
+  readonly description: string;
+  readonly clauses: readonly PersonalFinancialScreenClauseDto[];
+  readonly sort: PersonalFinancialScreenCriteriaDto["sort"];
+  readonly metrics: readonly PersonalFinancialScreenMetricDto[];
+}[];
 interface FinancialSourceSelection {
   readonly response: PersonalFinancialScreenResponseDto;
   readonly listingId: string;
@@ -472,6 +519,24 @@ export function PersonalFinancialScreener({
     });
   }
 
+  function applyStarter(starter: (typeof starterScreens)[number]) {
+    if (!enabled || savedBusy) return;
+    changeCriteria({
+      ...criteria,
+      clauses: starter.clauses.map((clause) => ({ ...clause })),
+      sort: { ...starter.sort },
+    });
+    setVisibleMetrics(orderedMetrics(starter.metrics));
+    setSelectedId("");
+    setSavedName("");
+    setMessage(
+      `${starter.name} applied. Edit the criteria, then Run financial screen.`,
+    );
+    setSavedMessage(
+      "New financial screen selected; draft name cleared. Existing saved screens are unchanged. Name and save after running.",
+    );
+  }
+
   async function runScreen(offset = 0, refresh = false, paginate = false) {
     if (!enabled) return;
     const normalized = {
@@ -741,6 +806,44 @@ export function PersonalFinancialScreener({
         {`Balance sheet: CY${String(criteria.calendarYear)} Q4 instant frame; inspect actual balance date.`}{" "}
         The screen uses balances dated October 1–December 31 of that year.
       </p>
+      <fieldset
+        className="financial-screen-controls"
+        disabled={!enabled || savedBusy}
+      >
+        <legend>Editable starter screens</legend>
+        <p className="market-scope-note">
+          Sparse, illustrative starting points, not recommendations. You can
+          edit every threshold. Each metric retains its own actual source
+          periods; combining filters does not establish a common period.
+        </p>
+        <div className="personal-stock-screener-filters">
+          {starterScreens.map((starter, index) => (
+            <div key={starter.name}>
+              <button
+                className="secondary-action compact-action"
+                type="button"
+                disabled={!enabled || savedBusy}
+                aria-describedby={`financial-starter-description-${String(index)}`}
+                onClick={() => applyStarter(starter)}
+              >
+                Apply {starter.name}
+              </button>
+              <p
+                className="market-scope-note"
+                id={`financial-starter-description-${String(index)}`}
+              >
+                {starter.description}
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="market-scope-note">
+          Applying replaces numeric filters, sort and visible columns, while
+          keeping the year, revenue basis and company filter. It selects New
+          financial screen and clears the draft name to protect saved screens.
+          No data is fetched or saved until you explicitly run or save.
+        </p>
+      </fieldset>
       <form
         className="personal-stock-screener-form"
         onSubmit={(event) => {

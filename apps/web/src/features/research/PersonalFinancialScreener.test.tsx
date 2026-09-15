@@ -164,6 +164,346 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it.each([
+    {
+      name: "Growth with cash after PP&E",
+      clauses: [
+        { field: "revenueGrowth", operator: "gte", value: "5" },
+        {
+          field: "operatingCashFlowLessPpePurchases",
+          operator: "gte",
+          value: "0",
+        },
+      ],
+      sort: "revenueGrowth",
+      columns: [
+        "Revenue USD",
+        "Operating cash flow USD",
+        "PP&E purchases USD",
+        "Operating cash flow less PP&E purchases USD",
+        "Selected revenue YoY change (%)",
+      ],
+    },
+    {
+      name: "Cash flow relative to income",
+      clauses: [
+        {
+          field: "operatingCashFlowToNetIncome",
+          operator: "gte",
+          value: "100",
+        },
+      ],
+      sort: "operatingCashFlowToNetIncome",
+      columns: [
+        "Net income USD",
+        "Operating cash flow USD",
+        "Operating cash flow / net income (%)",
+      ],
+    },
+    {
+      name: "Q4 liquidity cover",
+      clauses: [{ field: "currentRatio", operator: "gte", value: "1" }],
+      sort: "currentRatio",
+      columns: [
+        "Current assets USD",
+        "Current liabilities USD",
+        "Current assets / current liabilities (×)",
+      ],
+    },
+  ])(
+    "applies $name as editable ordinary criteria without fetching or saving",
+    async ({ name, clauses, sort, columns }) => {
+      await mount();
+      change(render(), "Financial calendar year", "2009");
+      change(render(), "Revenue basis", "Revenues");
+      change(render(), "Financial company filter", "  Scoped company  ");
+      click(render(), "Add financial filter");
+      change(render(), "Financial threshold 1", "999");
+      change(render(), "Financial column view", "all");
+      click(render(), `Apply ${name}`);
+      const applied = render();
+      expect(input(applied, "Financial calendar year").props.value).toBe(2009);
+      expect(input(applied, "Revenue basis").props.value).toBe("Revenues");
+      expect(input(applied, "Financial company filter").props.value).toBe(
+        "  Scoped company  ",
+      );
+      expect(input(applied, "Financial sort field").props.value).toBe(sort);
+      expect(input(applied, "Financial sort direction").props.value).toBe(
+        "desc",
+      );
+      for (const [index, clause] of clauses.entries()) {
+        expect(
+          input(applied, `Financial metric ${String(index + 1)}`).props.value,
+        ).toBe(clause.field);
+        expect(
+          input(applied, `Financial comparison ${String(index + 1)}`).props
+            .value,
+        ).toBe(clause.operator);
+        expect(
+          input(applied, `Financial threshold ${String(index + 1)}`).props
+            .value,
+        ).toBe(clause.value);
+      }
+      expect(
+        elements(applied).filter((item) =>
+          /^Financial metric \d+$/u.test(String(item.props["aria-label"])),
+        ),
+      ).toHaveLength(clauses.length);
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledOnce();
+      expect(activityStart).not.toHaveBeenCalled();
+      expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+      expect(text(applied)).toContain("Sparse, illustrative starting points");
+      expect(text(applied)).toContain(
+        "combining filters does not establish a common period",
+      );
+      expect(text(applied)).toContain("requires positive prior revenue");
+      expect(text(applied)).toContain("Requires positive net income");
+      expect(text(applied)).toContain("positive liabilities");
+      submit(applied);
+      await flush();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual({
+        schemaVersion: "7.0.0",
+        catalogSnapshotSha256: sha("a"),
+        financialSnapshotSha256: null,
+        criteria: {
+          calendarYear: 2009,
+          revenueBasis: "Revenues",
+          identityText: "Scoped company",
+          clauses,
+          sort: { field: sort, direction: "desc" },
+        },
+        page: { offset: 0, limit: 25 },
+        refresh: false,
+      });
+      expect(columnHeaders(render())).toEqual([
+        "Company",
+        ...columns,
+        "Actions",
+      ]);
+      change(render(), "Financial threshold 1", "7.5");
+      change(render(), "Financial comparison 1", "lte");
+      change(render(), "Financial sort direction", "asc");
+      expect(input(render(), "Financial threshold 1").props.value).toBe("7.5");
+      expect(input(render(), "Financial comparison 1").props.value).toBe("lte");
+      expect(input(render(), "Financial sort direction").props.value).toBe(
+        "asc",
+      );
+      expect(text(render())).not.toContain("Open ONE");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("clears a result and source inspector when applying a starter without restoring focus or crediting activity", async () => {
+    await mount();
+    submit(render());
+    await flush();
+    const focus = vi.fn();
+    const trigger = {
+      isConnected: true,
+      focus,
+    } as unknown as HTMLButtonElement;
+    inspectCell(render(), "Net income", "ONE", trigger);
+    const oldButton = ratioCell(render(), "Net income")!;
+    expect(inspector(render())).toBeDefined();
+    click(render(), "Apply Growth with cash after PP&E");
+    expect(inspector(render())).toBeUndefined();
+    expect(text(render())).not.toContain("Open ONE");
+    (
+      oldButton.props.onClick as (event: {
+        currentTarget: HTMLButtonElement;
+      }) => void
+    )({ currentTarget: trigger });
+    expect(inspector(render())).toBeUndefined();
+    expect(focus).not.toHaveBeenCalled();
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(activityStart).toHaveBeenCalledOnce();
+    expect(activityCompletion).toHaveBeenCalledOnce();
+  });
+
+  it.each(["success", "session rejection"])(
+    "ignores a prior in-flight %s after applying a starter",
+    async (outcome) => {
+      await mount();
+      let resolve!: (value: PersonalFinancialScreenResponseDto) => void;
+      let reject!: (reason: Error) => void;
+      api.screenPersonalFinancials.mockReturnValueOnce(
+        new Promise<PersonalFinancialScreenResponseDto>((done, fail) => {
+          resolve = done;
+          reject = fail;
+        }),
+      );
+      submit(render());
+      const signal = api.screenPersonalFinancials.mock
+        .calls[0]?.[1] as AbortSignal;
+      click(render(), "Apply Q4 liquidity cover");
+      expect(signal.aborted).toBe(true);
+      if (outcome === "success") resolve(response());
+      else reject(new PersonalWorkspaceApiError("session_unavailable"));
+      await flush();
+      expect(text(render())).not.toContain("Open ONE");
+      expect(text(render())).toContain("Q4 liquidity cover applied");
+      expect(input(render(), "Financial metric 1").props.value).toBe(
+        "currentRatio",
+      );
+      expect(button(render(), "Run financial screen").props.disabled).toBe(
+        false,
+      );
+      expect(activityCompletion).not.toHaveBeenCalled();
+      expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
+  it("detaches a starter from the selected saved screen and round-trips edited criteria using saved v1", async () => {
+    const legacy = {
+      id: "financial-screen-original",
+      name: "Original financial screen",
+      criteria: {
+        calendarYear: 2009,
+        identityText: "Retained company",
+        clauses: [],
+        sort: { field: "symbol" as const, direction: "asc" as const },
+      },
+      createdAgainstCatalogSnapshotSha256: sha("a"),
+      createdAgainstFinancialSnapshotSha256: sha("c"),
+    };
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 3,
+      payload: { schemaVersion: 1, views: [structuredClone(legacy)] },
+    });
+    await mount();
+    change(render(), "Saved financial screen", legacy.id);
+    click(render(), "Load financial criteria");
+    change(render(), "Financial screen name", "Unsaved rename");
+    click(render(), "Apply Growth with cash after PP&E");
+    expect(input(render(), "Saved financial screen").props.value).toBe("");
+    expect(input(render(), "Financial screen name").props.value).toBe("");
+    expect(button(render(), "Load financial criteria").props.disabled).toBe(
+      true,
+    );
+    expect(button(render(), "Delete financial screen").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Save financial screen");
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    change(render(), "Financial threshold 1", "7.5");
+    submit(render());
+    await flush();
+    change(render(), "Financial screen name", "Edited growth starter");
+    click(render(), "Save financial screen");
+    await flush();
+    const [version, payload] = api.savePersonalFinancialSavedViews.mock
+      .calls[0] as [number, PersonalFinancialSavedViewsPayloadDto];
+    expect(version).toBe(3);
+    expect(Object.keys(payload).sort()).toEqual(["schemaVersion", "views"]);
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.views).toHaveLength(2);
+    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.views[1]?.id).not.toBe(legacy.id);
+    expect(Object.keys(payload.views[1]!).sort()).toEqual([
+      "createdAgainstCatalogSnapshotSha256",
+      "createdAgainstFinancialSnapshotSha256",
+      "criteria",
+      "id",
+      "name",
+    ]);
+    expect(payload.views[1]?.criteria).toEqual({
+      calendarYear: 2009,
+      identityText: "Retained company",
+      clauses: [
+        { field: "revenueGrowth", operator: "gte", value: "7.5" },
+        {
+          field: "operatingCashFlowLessPpePurchases",
+          operator: "gte",
+          value: "0",
+        },
+      ],
+      sort: { field: "revenueGrowth", direction: "desc" },
+    });
+    click(render(), "Reset financial criteria");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Financial threshold 1").props.value).toBe("7.5");
+    expect(input(render(), "Financial calendar year").props.value).toBe(2009);
+    expect(input(render(), "Financial company filter").props.value).toBe(
+      "Retained company",
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    change(render(), "Saved financial screen", legacy.id);
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Financial sort field").props.value).toBe("symbol");
+    expect(input(render(), "Financial screen name").props.value).toBe(
+      legacy.name,
+    );
+    expect(
+      elements(render()).some(
+        (item) => item.props["aria-label"] === "Financial metric 1",
+      ),
+    ).toBe(false);
+  });
+
+  it("blocks starter application while saved screens load", async () => {
+    const loading = deferred<null>();
+    api.fetchPersonalFinancialSavedViews.mockReturnValueOnce(loading.promise);
+    await mount();
+    expect(button(render(), "Apply Q4 liquidity cover").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Apply Q4 liquidity cover");
+    expect(input(render(), "Financial sort field").props.value).toBe("symbol");
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    loading.resolve(null);
+    await flush();
+    expect(button(render(), "Apply Q4 liquidity cover").props.disabled).toBe(
+      false,
+    );
+    click(render(), "Apply Q4 liquidity cover");
+    expect(input(render(), "Financial metric 1").props.value).toBe(
+      "currentRatio",
+    );
+  });
+
+  it("blocks starter application during a saved write so its completion cannot reattach an older selection", async () => {
+    await mount();
+    submit(render());
+    await flush();
+    change(render(), "Financial screen name", "In-flight saved screen");
+    const saving = deferred<{
+      version: number;
+      payload: PersonalFinancialSavedViewsPayloadDto;
+    }>();
+    api.savePersonalFinancialSavedViews.mockReturnValueOnce(saving.promise);
+    click(render(), "Save financial screen");
+    const pendingPayload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(
+      button(render(), "Apply Cash flow relative to income").props.disabled,
+    ).toBe(true);
+    click(render(), "Apply Cash flow relative to income");
+    expect(input(render(), "Financial sort field").props.value).toBe("symbol");
+    expect(input(render(), "Financial screen name").props.value).toBe(
+      "In-flight saved screen",
+    );
+    saving.resolve({ version: 1, payload: pendingPayload });
+    await flush();
+    expect(input(render(), "Saved financial screen").props.value).toBe(
+      pendingPayload.views[0]?.id,
+    );
+    click(render(), "Apply Cash flow relative to income");
+    expect(input(render(), "Saved financial screen").props.value).toBe("");
+    expect(input(render(), "Financial screen name").props.value).toBe("");
+    expect(input(render(), "Financial metric 1").props.value).toBe(
+      "operatingCashFlowToNetIncome",
+    );
+    expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledOnce();
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(activityStart).toHaveBeenCalledOnce();
+  });
+
   it("filters and saves selected revenue change while showing both annual operands and filing roles", async () => {
     api.screenPersonalFinancials.mockResolvedValueOnce(growthResponse());
     await mount();

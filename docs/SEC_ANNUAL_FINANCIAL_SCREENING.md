@@ -55,6 +55,41 @@ keyboard accessible. Changing columns, criteria or results closes old inspection
 owner/session loss clears private results. Display preferences do not count as
 owner-session activity or modify provider cache expiry.
 
+### Start from editable examples
+
+**Editable starter screens** offers three sparse starting points using the
+existing metrics. Apply one to replace numeric filters, sort and visible columns.
+Your selected calendar year, revenue basis and company filter stay in place.
+Review or edit the ordinary criteria, then choose **Run financial screen**.
+Applying an example neither requests SEC data nor saves anything; it clears old
+results and source inspection, and cancels any older screen request.
+
+| Starter                      | Initial criteria                                                                  | Initial sort                   | Displayed financial fields                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Growth with cash after PP&E  | Selected revenue YoY change ≥ 5%; operating cash flow less PP&E purchases ≥ USD 0 | Revenue change, descending     | Revenue, operating cash flow, PP&E purchases, operating cash flow less PP&E purchases, revenue change |
+| Cash flow relative to income | Operating cash flow / net income ≥ 100%                                           | Cash flow / income, descending | Net income, operating cash flow, cash flow / income                                                   |
+| Q4 liquidity cover           | Current assets / current liabilities ≥ 1.00×                                      | Current ratio, descending      | Current assets, current liabilities, current ratio                                                    |
+
+These literal thresholds are illustrative and editable, not recommendations,
+grades or universal industry tests. Cash flow / income needs positive income
+and compatible annual sources; current ratio needs nonnegative assets, positive
+liabilities and compatible balances inside the selected year's Q4 date window.
+Revenue change keeps the selected revenue basis and its adjacent-period rules.
+The growth-and-cash conjunction does not require both metrics to share a common
+annual period; inspect each value's actual sources before comparing them.
+
+The examples are labelled sparse because broad joint eligibility has not been
+established. Existing per-field known/unknown coverage and query counts retain
+their meanings. A failing criterion excludes a listing even when another input
+is unknown, so neither zero query-unknown results nor marginal coverage proves
+all required fields are known throughout the cohort.
+
+Applying a starter selects **New financial screen** and clears the draft name,
+preserving any existing saved record. Applying is unavailable while saved-screen
+I/O is pending. After running, name and save the ordinary criteria through the
+existing saved-definition flow. Saved payload v1 stores no starter identifier
+or column preference. The financial source set and formulas are unchanged.
+
 The eight annual concepts use the public endpoint template
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}.json`.
 Two balance-sheet concepts use

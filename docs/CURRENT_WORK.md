@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                | Important remaining gap                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                      | Catalog refresh and broader discovery data                              |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                          | Wider reconciliation and benchmark-relative analysis                    |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                           | Verified TTM and the shared 30-core-metric screening registry           |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                               | Direct normalized FCFF inputs and further justified models              |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                  | Compatible multi-company coverage and automatic peer metadata           |
-| Screen for ideas          | Sixteen SEC financial fields, readable column views and source inspection, explicit revenue basis, stable pages and saved definitions | Finish mobile inspector focus correction, then editable starter screens |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                          | Broader live samples, upcoming events, alerts and exports               |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                        | Further corporate actions, benchmarks and live coverage                 |
+| User job                  | Implemented capability                                                                                                                      | Important remaining gap                                               |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                            | Catalog refresh and broader discovery data                            |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                | Wider reconciliation and benchmark-relative analysis                  |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                 | Verified TTM and the shared 30-core-metric screening registry         |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                     | Direct normalized FCFF inputs and further justified models            |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                        | Compatible multi-company coverage and automatic peer metadata         |
+| Screen for ideas          | Sixteen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Validate starter-screen interaction; broader verified metric coverage |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                | Broader live samples, upcoming events, alerts and exports             |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                              | Further corporate actions, benchmarks and live coverage               |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -34,12 +34,14 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Accepted baseline `9405f38` adds readable column views and source inspection
-to the twelve annual and three Q4 fields. Native acceptance passed 5,240 tests
-with nine existing skips and 24 builds; all four applicable hosted workflows/
-five jobs passed on attempt 1. Configured desktop/mobile Chrome QA is complete.
-Financial sources are unchanged from accepted `30c788b`; its ten-Frame coverage
-and primary-filing evidence keep their historical dates and limits.
+Accepted baseline `37ad3d7` includes selected revenue YoY and correct mobile
+focus restoration after closing source details. Native acceptance passed 5,385
+checks with nine existing skips and 24 builds. Four applicable hosted workflows/
+five distinct jobs passed, with one unchanged Windows retry after two vault-route
+timeouts; the original failure remains recorded. Configured desktop/mobile
+Chrome QA is complete. Financial sources inherit `41d9994`'s thirteen-Frame
+coverage and primary-filing evidence with their original dates and limits.
+Future browser work uses external Brave, as selected by the owner.
 
 The configured catalog contains **3,227 listings**. Normal account login is
 accepted, and the serving app runs from an isolated release checkout while
@@ -84,7 +86,44 @@ owns the contract and check/write sequence. Use it for ordinary feature releases
 the local handoff records actual verification and the separately attributed
 historical failures.
 
-## Active delivery: selected revenue YoY change
+## Active delivery: three editable financial starter screens
+
+The next partial Cycle 3k-c delivery turns existing fields into three sparse,
+illustrative starting points. Applying a starter replaces numeric filters, sort
+and visible financial columns, while preserving the selected calendar year,
+revenue basis and company identity filter. The user edits ordinary criteria and
+explicitly chooses Run; applying a starter performs no fetch, save or owner
+activity refresh. It clears old results/source inspection and invalidates any
+older in-flight screen response.
+
+- **Growth with cash after PP&E:** selected revenue YoY change at least 5%, and
+  operating cash flow less PP&E purchases at least USD 0. Sort growth descending;
+  show revenue, operating cash flow, PP&E purchases, their cash difference and
+  revenue change. Each metric retains its own admitted actual periods; the
+  conjunction does not prove a common period across both metrics.
+- **Cash flow relative to income:** operating cash flow / net income at least
+  100%, using the existing positive-income and same-period/filing requirements.
+  Sort that ratio descending and show both operands and the ratio.
+- **Q4 liquidity cover:** current assets / current liabilities at least 1.00×,
+  with the existing nonnegative-asset, positive-liability, same-date/filing and
+  Q4 date rules. Sort that ratio descending and show both balances and the ratio.
+
+These are editable examples, not recommendations or universal industry tests.
+Label them sparse: per-field coverage and three-valued query counts do not
+establish joint input eligibility or the roadmap's full coverage threshold.
+Selecting a starter detaches any selected saved view and clears the draft name;
+an existing record remains unchanged. Saving uses ordinary criteria payload v1
+after an explicit Run, without a template ID or persisted column preference.
+
+Acceptance covers each example's literal clauses/sort/columns; preserved context;
+editable thresholds; no fetch/write on Apply; stale result/inspection/request
+invalidation; saved-view isolation and a saved-v1 round trip; and keyboard/mobile
+interaction. Financial engine, provider, decoder, contracts and formula versions
+stay unchanged. Keep prior source observations attributed to their original
+release rather than rerunning acquisition for this presentation change. The
+workspace checkpoint owns actual release verification and configured Brave QA.
+
+## Completed delivery: selected revenue YoY change
 
 Implemented **Selected revenue YoY change (%)** as the sixteenth metric, with signed
 filters, sorting, saved criteria and exact current/prior source inspection.
@@ -113,9 +152,10 @@ The 390px check found that closing the tall source inspector could focus a value
 above the viewport: focus ran before React removed the panel. The follow-up
 commits panel removal before returning focus and rechecks the target afterward.
 Automatic result, criteria and session invalidation still clears inspection
-without restoring stale focus. The fix requires its own native/hosted gates and
-configured Chrome acceptance. Financial semantics and source receipts are
-inherited unchanged; the workspace checkpoint owns actual progress and pins.
+without restoring stale focus. The correction passed its native/hosted gates and
+all four configured 390px Close/Escape cases at `37ad3d7`. Financial semantics
+and source receipts are inherited unchanged; the workspace checkpoint retains
+actual observations, the Windows retry and source/runtime pins.
 
 ## Completed delivery: readable financial screen results
 
@@ -234,14 +274,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Now              | Deliver selected-revenue YoY filtering, sorting and source inspection                            | Verified adjacent periods, unchanged concepts and consistent filings per year |
-| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                    |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters    |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                      |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions           |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                   |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Now              | Deliver three editable starter screens using existing financial fields                           | Reuse verified metrics, explicit Run and saved-v1 semantics; label sparse coverage |
+| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                         |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters         |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                           |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions                |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                        |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

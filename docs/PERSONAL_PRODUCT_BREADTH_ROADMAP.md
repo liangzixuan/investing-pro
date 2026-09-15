@@ -1085,6 +1085,18 @@ Historical screens must be snapshot-reproducible and look-ahead safe. Unless a
 starter screen is explicitly labelled sparse, its required fields must be
 known for at least 90% of its eligible denominator and at least 500 securities.
 
+The first partial 3k-c delivery adds three explicitly sparse, editable starting
+points using existing SEC metrics: revenue growth with nonnegative cash after
+PP&E purchases, operating cash flow relative to positive income, and Q4 current
+asset/liability cover. Each displays literal criteria, applies ordinary editable
+filters/sort/columns, preserves the selected year/revenue basis/company scope,
+and requires an explicit Run. Applying does not fetch or save data and detaches
+any selected saved view; saving later uses existing criteria payload v1. These
+three examples do not complete the 24-screen target, establish joint input
+coverage, or imply universal industry applicability. The financial-screen guide
+owns exact thresholds and source eligibility; the current-work guide and local
+handoff own actual release acceptance.
+
 Cycle 3k-a1 is the usable catalog-screener foundation. One explicit local
 operation evaluates a closed, AND-only query AST over the already admitted
 active U.S.-listed common-stock and ADR identities. The initial predicates are
@@ -1391,12 +1403,17 @@ This program does not imply that every benchmark feature is obtainable:
 
 ## Release order and stopping rules
 
-### Active delivery priority (2026-09-10)
+### Active delivery priority (2026-09-15)
 
-The first SEC annual cross-company Frames slice and recent watchlist filing
-loads are delivered. Their configured live coverage and sampled values still
-require validation; the seven-metric screen does not close the broader
-30-core-metric/500-security gate.
+The SEC cross-company screen now has sixteen annual/Q4 fields, including
+selected revenue YoY, readable column views and source inspection. Its dated
+thirteen-Frame coverage, sampled filing operands and configured browser checks
+are recorded for the accepted source releases. It still does not close the
+shared 30-core-metric/500-security gate. The active delivery is three editable,
+explicitly sparse starter screens using those existing fields in one release;
+no additional financial source, formula or schema is needed for that UI work.
+Recent watchlist filing loads are also delivered; their broader source coverage
+remains a separate validation task.
 
 Historical portfolio values, the dated dollar bridge, eligible endpoint
 percentages and Modified Dietz estimates are delivered. The seventh partial
@@ -1407,10 +1424,12 @@ capital states remain unavailable; no intraday timing is inferred.
 Partial 3h-a5 delivered bounded SEC observations and filing joins beside the
 existing quarterly compatibility assessment. Partial 3h-a6 compares exact
 same-period observations using the loaded response. The active partial 3h-a7
-slice inspects one primary filing context. Next validate supported source coverage,
-fiscal calendars, standalone flow basis and revision selection
-against independent filing evidence before calculating trailing-period financials or
-expanding screening metrics. Broader return methods remain in the backlog.
+slice inspects one primary filing context. Validate supported source coverage,
+fiscal calendars, standalone flow basis and revision selection against independent
+filing evidence before calculating trailing-period financials. Further screening
+metrics depend on their own compatible inputs and measured coverage; this does
+not block the independent starter-screen UI slice. Broader return methods remain
+in the backlog.
 XIRR, benchmark comparisons, dividend accruals and other corporate actions need
 their own methodology and evidence.
 
