@@ -42,7 +42,7 @@ nonzero, full lowercase Git commit hashes; paths are repository-relative.
 | `version`             | Exactly `1`.                                                                                        |
 | `caseNumber`          | Integer suffix in `cycle3kaN`, from `14` through `64`; generated writes start at `15`.              |
 | `baselineRevision`    | Fixed historical baseline `62c01dafe305ddd43c75688e0225163b3abdf6df`.                               |
-| `predecessorRevision` | The preceding accepted routing closure.                                                             |
+| `predecessorRevision` | The preceding committed routing closure; its validation outcome is recorded separately.             |
 | `featureRevision`     | The committed feature whose routing closure is being prepared.                                      |
 | `featureCount`        | The feature's commit count after the fixed baseline: `101 + 2 * caseNumber`.                        |
 | `closureCount`        | The next routing closure's commit count after the baseline: `featureCount + 1`.                     |

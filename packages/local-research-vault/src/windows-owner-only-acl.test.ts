@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,9 +17,7 @@ describe("Windows owner-only ACL adapter", () => {
     const executor: WindowsAclCommandExecutor = {
       execute(encoded) {
         requests.push(
-          JSON.parse(
-            Buffer.from(encoded, "base64").toString("utf8"),
-          ) as unknown,
+          Buffer.from(encoded, "base64").toString("utf8").split("\0"),
         );
         return Promise.resolve("S-1-5-21-1000\r\n");
       },
@@ -37,9 +36,7 @@ describe("Windows owner-only ACL adapter", () => {
       inheritanceProtected: true,
       verifiedPaths: target.targetPaths,
     });
-    expect(requests).toEqual([
-      { mode: "provision", targetPaths: target.targetPaths },
-    ]);
+    expect(requests).toEqual([["provision", ...target.targetPaths]]);
   });
 
   it("rejects a command success that does not prove a Windows owner SID", async () => {
@@ -53,6 +50,23 @@ describe("Windows owner-only ACL adapter", () => {
       }),
     ).rejects.toMatchObject({ code: "VAULT_SECURITY_BOUNDARY_REJECTED" });
   });
+
+  it.each([[], [""], ["C:\\vault\0C:\\other"], ["C:\\vault\ud800"]])(
+    "rejects empty or delimiter-bearing targets before starting a child: %j",
+    async (...targetPaths) => {
+      let calls = 0;
+      const port = createNativeWindowsOwnerOnlyAclPort({
+        execute: () => {
+          calls += 1;
+          return Promise.resolve("S-1-5-21-1000");
+        },
+      });
+      await expect(
+        port.verifyOwnerOnly({ canonicalRootPath: "C:\\vault", targetPaths }),
+      ).rejects.toMatchObject({ code: "VAULT_SECURITY_BOUNDARY_REJECTED" });
+      expect(calls).toBe(0);
+    },
+  );
 
   const windowsIt = process.platform === "win32" ? it : it.skip;
   windowsIt(
@@ -87,7 +101,7 @@ describe("Windows owner-only ACL adapter", () => {
           inheritanceProtected: true,
         });
 
-        const file = join(root, "vault.sqlite3");
+        const file = join(root, "vault 汉字 [brackets] ' & ;.sqlite3");
         await writeFile(file, "test-only");
         const rootAndFileTarget: WindowsOwnerOnlyAclTarget = {
           canonicalRootPath: root,
@@ -111,6 +125,23 @@ describe("Windows owner-only ACL adapter", () => {
           ownerOnly: true,
           inheritanceProtected: true,
         });
+
+        // A valid first target must not produce a partial receipt when a later
+        // target fails. Verification also must not repair a changed ACL.
+        await expect(
+          port.verifyOwnerOnly({
+            canonicalRootPath: root,
+            targetPaths: [root, join(root, "missing.sqlite3")],
+          }),
+        ).rejects.toMatchObject({
+          code: "VAULT_SECURITY_BOUNDARY_REJECTED",
+          cause: { stage: "target_started", killed: false },
+        });
+        const tamperedSecurity = inspectSyntheticAcl(file, true);
+        await expect(
+          port.verifyOwnerOnly(rootAndFileTarget),
+        ).rejects.toMatchObject({ code: "VAULT_SECURITY_BOUNDARY_REJECTED" });
+        expect(inspectSyntheticAcl(file, false)).toBe(tamperedSecurity);
       } finally {
         await rm(root, { force: true, recursive: true });
       }
@@ -118,3 +149,46 @@ describe("Windows owner-only ACL adapter", () => {
     40_000,
   );
 });
+
+function inspectSyntheticAcl(path: string, tamper: boolean): string {
+  const systemRoot = process.env["SystemRoot"];
+  if (systemRoot === undefined) throw new Error("Windows root is required");
+  const script = String.raw`
+$ErrorActionPreference = 'Stop'
+$PSModuleAutoLoadingPreference = 'None'
+$path = [Environment]::GetEnvironmentVariable('SYNTHETIC_ACL_TEST_PATH', 'Process')
+$security = [IO.File]::GetAccessControl($path)
+if ([Environment]::GetEnvironmentVariable('SYNTHETIC_ACL_TEST_TAMPER', 'Process') -eq 'yes') {
+  $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+    [Security.Principal.SecurityIdentifier]::new('S-1-5-32-545'),
+    [Security.AccessControl.FileSystemRights]::Read,
+    [Security.AccessControl.AccessControlType]::Allow
+  )
+  [void]$security.AddAccessRule($rule)
+  [IO.File]::SetAccessControl($path, $security)
+  $security = [IO.File]::GetAccessControl($path)
+}
+[Console]::Out.Write($security.GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access))
+`;
+  return execFileSync(
+    join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
+    [
+      "-NoLogo",
+      "-NoProfile",
+      "-NonInteractive",
+      "-EncodedCommand",
+      Buffer.from(script, "utf16le").toString("base64"),
+    ],
+    {
+      env: {
+        ...process.env,
+        SYNTHETIC_ACL_TEST_PATH: path,
+        SYNTHETIC_ACL_TEST_TAMPER: tamper ? "yes" : "no",
+      },
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 15_000,
+      maxBuffer: 16 * 1024,
+    },
+  );
+}

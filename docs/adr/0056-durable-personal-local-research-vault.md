@@ -121,6 +121,21 @@ owner-only result. The TypeScript boundary validates that receipt contract;
 the correctness of the native Windows ACL inspection remains a trusted-adapter
 boundary.
 
+The fixed Windows PowerShell child uses only language features and .NET APIs;
+module auto-loading is disabled only in that child. Its base64 UTF-8 request
+contains a fixed mode and NUL-delimited paths, never interpolated executable
+code. Empty targets, NULs and lossy Unicode conversions are rejected. It still
+enforces protected inheritance, the exact current owner, one explicit owner
+FullControl rule, and the existing token-owner narrowing and readback sequence.
+One child has a 15-second deadline and a 16-KiB output bound, with no automatic
+retry. Failure diagnostics retain only fixed execution stages and bounded
+process metadata; native command, request, paths, SID and raw output are omitted.
+
+This removes unnecessary first-use module discovery after repeated hosted
+Windows child timeouts. Those failures did not identify the stalled phase, so
+this is not evidence of their exact cause. Native synthetic permission and
+backup tests remain required; release acceptance is recorded separately.
+
 ## Encryption, backup, and recovery boundary
 
 Initialization creates a fresh 32-byte recovery key in the separate owner-only

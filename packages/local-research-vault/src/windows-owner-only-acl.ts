@@ -14,6 +14,8 @@ const REQUEST_ENVIRONMENT_KEY =
 
 const ACL_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
+$PSModuleAutoLoadingPreference = 'None'
+[Console]::Error.WriteLine('acl:script_started')
 function Assert-OwnerOnlyAcl {
   param(
     [Security.AccessControl.FileSystemSecurity]$Security,
@@ -41,16 +43,23 @@ function Assert-OwnerOnlyAcl {
 }
 $encoded = [Environment]::GetEnvironmentVariable('RESEARCH_COCKPIT_WINDOWS_ACL_REQUEST_BASE64', 'Process')
 if ([String]::IsNullOrWhiteSpace($encoded)) { throw 'missing request' }
-$json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded))
-$request = $json | ConvertFrom-Json
+$parts = [Text.UTF8Encoding]::new($false, $true).GetString([Convert]::FromBase64String($encoded)).Split([char]0)
+if ($parts.Length -lt 2 -or ($parts[0] -cne 'provision' -and $parts[0] -cne 'verify')) { throw 'invalid request' }
+$mode = $parts[0]
+foreach ($path in $parts[1..($parts.Length - 1)]) {
+  if ([String]::IsNullOrWhiteSpace($path)) { throw 'missing target' }
+}
+[Console]::Error.WriteLine('acl:request_decoded')
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $owner = $identity.User
 $tokenOwner = $identity.Owner
 if ($null -eq $owner -or $null -eq $tokenOwner) { throw 'missing owner' }
-foreach ($targetPath in @($request.targetPaths)) {
-  $item = Get-Item -LiteralPath $targetPath -Force
-  if ($request.mode -eq 'provision') {
-    if ($item.PSIsContainer) {
+[Console]::Error.WriteLine('acl:identity_resolved')
+foreach ($targetPath in $parts[1..($parts.Length - 1)]) {
+  [Console]::Error.WriteLine('acl:target_started')
+  $isContainer = ([IO.File]::GetAttributes($targetPath) -band [IO.FileAttributes]::Directory) -ne 0
+  if ($mode -eq 'provision') {
+    if ($isContainer) {
       $security = [IO.Directory]::GetAccessControl($targetPath)
       $inheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
     } else {
@@ -66,7 +75,7 @@ foreach ($targetPath in @($request.targetPaths)) {
     foreach ($existingRule in $existingRules) {
       [void]$security.RemoveAccessRuleSpecific($existingRule)
     }
-    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+    $rule = [Security.AccessControl.FileSystemAccessRule]::new(
       $owner,
       [Security.AccessControl.FileSystemRights]::FullControl,
       $inheritance,
@@ -74,32 +83,33 @@ foreach ($targetPath in @($request.targetPaths)) {
       [Security.AccessControl.AccessControlType]::Allow
     )
     [void]$security.AddAccessRule($rule)
-    if ($item.PSIsContainer) {
+    if ($isContainer) {
       [IO.Directory]::SetAccessControl($targetPath, $security)
     } else {
       [IO.File]::SetAccessControl($targetPath, $security)
     }
     if ($existingOwner.Value -ne $owner.Value) {
-      if ($item.PSIsContainer) {
+      if ($isContainer) {
         $narrowed = [IO.Directory]::GetAccessControl($targetPath)
       } else {
         $narrowed = [IO.File]::GetAccessControl($targetPath)
       }
-      Assert-OwnerOnlyAcl $narrowed ([bool]$item.PSIsContainer) $tokenOwner $owner
+      Assert-OwnerOnlyAcl $narrowed ([bool]$isContainer) $tokenOwner $owner
       $narrowed.SetOwner($owner)
-      if ($item.PSIsContainer) {
+      if ($isContainer) {
         [IO.Directory]::SetAccessControl($targetPath, $narrowed)
       } else {
         [IO.File]::SetAccessControl($targetPath, $narrowed)
       }
     }
   }
-  if ($item.PSIsContainer) {
+  if ($isContainer) {
     $verified = [IO.Directory]::GetAccessControl($targetPath)
   } else {
     $verified = [IO.File]::GetAccessControl($targetPath)
   }
-  Assert-OwnerOnlyAcl $verified ([bool]$item.PSIsContainer) $owner $owner
+  Assert-OwnerOnlyAcl $verified ([bool]$isContainer) $owner $owner
+  [Console]::Error.WriteLine('acl:target_verified')
 }
 [Console]::Out.Write($owner.Value)
 `;
@@ -159,9 +169,31 @@ function nativeWindowsAclExecutor(): WindowsAclCommandExecutor {
             windowsHide: true,
             timeout: 15_000,
           },
-          (error, stdout) => {
+          (error, stdout, stderr) => {
             if (error !== null) {
-              reject(vaultError("VAULT_SECURITY_BOUNDARY_REJECTED", error));
+              // Native error text can contain a private target path. Retain only
+              // bounded process metadata and fixed script stages, never the
+              // command, request, SID, stdout, or arbitrary PowerShell stderr.
+              const stages = stderr.match(
+                /^acl:(?:script_started|request_decoded|identity_resolved|target_started|target_verified)\r?$/gmu,
+              );
+              reject(
+                vaultError("VAULT_SECURITY_BOUNDARY_REJECTED", {
+                  stage: stages?.at(-1)?.trim().slice(4) ?? "process_start",
+                  code:
+                    typeof error.code === "number" ||
+                    (typeof error.code === "string" &&
+                      /^[A-Z][A-Z0-9_]{0,63}$/u.test(error.code))
+                      ? error.code
+                      : null,
+                  killed: error.killed === true,
+                  signal:
+                    typeof error.signal === "string" &&
+                    /^SIG[A-Z0-9]{1,16}$/u.test(error.signal)
+                      ? error.signal
+                      : null,
+                }),
+              );
               return;
             }
             resolve(stdout);
@@ -177,8 +209,21 @@ async function runAclOperation(
   mode: "provision" | "verify",
   target: WindowsOwnerOnlyAclTarget,
 ): Promise<WindowsOwnerOnlyAclVerificationReceipt> {
+  // Windows paths cannot contain NUL. A fixed delimiter avoids PowerShell's
+  // JSON cmdlet/module discovery while keeping paths out of executable code.
+  if (
+    target.targetPaths.length === 0 ||
+    target.targetPaths.some(
+      (path) =>
+        path.trim() === "" ||
+        path.includes("\0") ||
+        Buffer.from(path, "utf8").toString("utf8") !== path,
+    )
+  ) {
+    throw vaultError("VAULT_SECURITY_BOUNDARY_REJECTED");
+  }
   const requestBase64 = Buffer.from(
-    JSON.stringify({ mode, targetPaths: target.targetPaths }),
+    [mode, ...target.targetPaths].join("\0"),
     "utf8",
   ).toString("base64");
   let ownerIdentity: string;
