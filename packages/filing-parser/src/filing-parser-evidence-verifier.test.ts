@@ -361,6 +361,10 @@ import {
   isCycle3ka21FeatureTopologyAllowed,
   isCycle3ka21RoutingClosureCommitDiffSetAllowed,
   isCycle3ka21RoutingClosureTopologyAllowed,
+  isCycle3ka22FeatureCommitDiffSetAllowed,
+  isCycle3ka22FeatureTopologyAllowed,
+  isCycle3ka22RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka22RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -1260,6 +1264,10 @@ const CYCLE_3K_A20_ROUTING_CLOSURE_REVISION =
   "163abc39bb4a4e6bfa348b0444c0b95a4dc1c7cf" as const;
 const CYCLE_3K_A21_FEATURE_REVISION =
   "18d047797da625b1db7454bcd541649a509d8959" as const;
+const CYCLE_3K_A21_ROUTING_CLOSURE_REVISION =
+  "448d9b81a5baa09880bb269a7fa4fbd19fb4c484" as const;
+const CYCLE_3K_A22_FEATURE_REVISION =
+  "33cdce69e8b54c0ef66aba68b01652ee8b4b904e" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -5284,6 +5292,44 @@ const CYCLE_3K_A21_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka21.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A22_FEATURE_TRANSITION = [
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3K_A22_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka22.json",
     status: "A",
   },
 ];
@@ -14622,6 +14668,120 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedModuleFreeWindowsVaultAclClosure = [
+      "144",
+      "144",
+      CYCLE_3K_A21_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A21_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A21_FEATURE_REVISION}`,
+      moduleFreeWindowsVaultAclFeature,
+    ] as const;
+    expect(
+      isCycle3ka21RoutingClosureTopologyAllowed(
+        ...pinnedModuleFreeWindowsVaultAclClosure,
+      ),
+    ).toBe(true);
+    const windowsVaultAclTestBoundaryFeature = [
+      "145",
+      "145",
+      CYCLE_3K_A22_FEATURE_REVISION,
+      `${CYCLE_3K_A22_FEATURE_REVISION} ${CYCLE_3K_A21_ROUTING_CLOSURE_REVISION}`,
+      pinnedModuleFreeWindowsVaultAclClosure,
+    ] as const;
+    expect(
+      isCycle3ka22FeatureTopologyAllowed(...windowsVaultAclTestBoundaryFeature),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "144"],
+      [1, "146"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A22_FEATURE_REVISION} ${CYCLE_3K_A21_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A22_FEATURE_REVISION} ${CYCLE_3K_A21_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...windowsVaultAclTestBoundaryFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka22FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka22FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedModuleFreeWindowsVaultAclClosure: unknown[] = [
+      ...pinnedModuleFreeWindowsVaultAclClosure,
+    ];
+    tamperedPinnedModuleFreeWindowsVaultAclClosure[4] =
+      tamperedModuleFreeWindowsVaultAclFeature;
+    expect(
+      isCycle3ka22FeatureTopologyAllowed(
+        "145",
+        "145",
+        CYCLE_3K_A22_FEATURE_REVISION,
+        `${CYCLE_3K_A22_FEATURE_REVISION} ${CYCLE_3K_A21_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedModuleFreeWindowsVaultAclClosure as unknown as Parameters<
+          typeof isCycle3ka22FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const windowsVaultAclTestBoundaryClosureRevision = "e".repeat(40);
+    const windowsVaultAclTestBoundaryClosure = [
+      "146",
+      "146",
+      windowsVaultAclTestBoundaryClosureRevision,
+      `${windowsVaultAclTestBoundaryClosureRevision} ${CYCLE_3K_A22_FEATURE_REVISION}`,
+      windowsVaultAclTestBoundaryFeature,
+    ] as const;
+    expect(
+      isCycle3ka22RoutingClosureTopologyAllowed(
+        ...windowsVaultAclTestBoundaryClosure,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "145"],
+      [1, "147"],
+      [2, CYCLE_3K_A22_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${windowsVaultAclTestBoundaryClosureRevision} ${CYCLE_3K_A21_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${windowsVaultAclTestBoundaryClosureRevision} ${CYCLE_3K_A22_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...windowsVaultAclTestBoundaryClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka22RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka22RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedWindowsVaultAclTestBoundaryFeature: unknown[] = [
+      ...windowsVaultAclTestBoundaryFeature,
+    ];
+    tamperedWindowsVaultAclTestBoundaryFeature[4] =
+      tamperedPinnedModuleFreeWindowsVaultAclClosure;
+    expect(
+      isCycle3ka22RoutingClosureTopologyAllowed(
+        "146",
+        "146",
+        windowsVaultAclTestBoundaryClosureRevision,
+        `${windowsVaultAclTestBoundaryClosureRevision} ${CYCLE_3K_A22_FEATURE_REVISION}`,
+        tamperedWindowsVaultAclTestBoundaryFeature as unknown as Parameters<
+          typeof isCycle3ka22RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes the exact source, evidence, promotion, alias, and routing transitions", () => {
@@ -15358,6 +15518,25 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A21_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expect(CYCLE_3K_A22_FEATURE_TRANSITION).toHaveLength(1);
+    expect(
+      isCycle3ka22FeatureCommitDiffSetAllowed(CYCLE_3K_A22_FEATURE_TRANSITION),
+    ).toBe(true);
+    for (const entries of [
+      [],
+      [{ path: "scripts/verify-boundaries.ts", status: "A" }],
+      [{ path: "scripts/verify-boundaries.ts", status: "D" }],
+      [{ path: "unreviewed", status: "M" }],
+      [...CYCLE_3K_A22_FEATURE_TRANSITION, ...CYCLE_3K_A22_FEATURE_TRANSITION],
+      [...CYCLE_3K_A22_FEATURE_TRANSITION, { path: "unreviewed", status: "M" }],
+    ]) {
+      expect(isCycle3ka22FeatureCommitDiffSetAllowed(entries)).toBe(false);
+    }
+    expectExactTransition(
+      isCycle3ka22RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A22_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -15507,6 +15686,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A20_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A21_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A21_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A22_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A22_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);

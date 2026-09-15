@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "caseNumber": 22,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "448d9b81a5baa09880bb269a7fa4fbd19fb4c484",
+  "featureRevision": "33cdce69e8b54c0ef66aba68b01652ee8b4b904e",
+  "featureCount": 145,
+  "closureCount": 146,
+  "featureChanges": [{ "path": "scripts/verify-boundaries.ts", "status": "M" }],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka22.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka22.json",
+  "presentation": {
+    "featureDescription": "exact Windows vault ACL test boundary registration",
+    "closureDescription": "exact Windows vault ACL test boundary registration",
+    "inventoryDescription": "exact Windows vault ACL test boundary registration",
+    "testBinding": "windowsVaultAclTestBoundary",
+    "routingDescription": "exact Windows vault ACL test boundary registration",
+    "summaryDescription": "exact Windows vault ACL test boundary registration"
+  }
+}
