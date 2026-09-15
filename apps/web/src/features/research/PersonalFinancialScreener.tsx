@@ -50,6 +50,7 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   operatingCashFlowMargin: "Operating cash flow margin",
   ppePurchases: "PP&E purchases",
   operatingCashFlowLessPpePurchases: "Operating cash flow less PP&E purchases",
+  grossMargin: "Gross profit / selected revenue (%)",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
@@ -70,11 +71,13 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported cash payments to acquire property, plant and equipment in USD. Independent of the revenue basis; includes only this reported purchase concept.",
   operatingCashFlowLessPpePurchases:
     "Operating cash flow − PP&E purchases. Exact subtraction requires the same supported annual period and filing accession, with nonnegative PP&E purchases. Independent of the revenue basis; this measure does not include every investing cash flow.",
+  grossMargin:
+    "Reported GrossProfit / selected revenue × 100. Requires positive selected revenue and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; negative results and results above 100% are retained.",
 };
 function revenueExplanation(basis: PersonalFinancialRevenueBasisDto): string {
   return basis === "agreement"
     ? "All available revenue concepts must agree on value and reporting period. Different definitions can produce different amounts."
-    : "Uses this one concept for every company and all three margin denominators, without substituting another revenue concept.";
+    : "Uses this one concept for every company and all revenue-based percentage calculations, without substituting another revenue concept.";
 }
 function formulaFor(
   metric: PersonalFinancialScreenMetricDto,
@@ -105,6 +108,24 @@ function cashFlowUnknownExplanation(
   if (cell.reason === "unsupported_sign")
     return "Reported PP&E purchases are negative. The reported sign is preserved; the subtraction remains unknown instead of reversing the sign.";
   return "An operating cash flow or PP&E purchase input is unresolved. The subtraction remains unknown; retained source references are shown below.";
+}
+
+function grossMarginUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+): string | null {
+  if (cell.status === "available") return null;
+  if (cell.reason === "period_mismatch")
+    return "The numerator and denominator references do not share the same supported annual period (335–395 inclusive days). Compare every source date below.";
+  if (cell.reason === "filing_mismatch")
+    return "The numerator and denominator references come from different filing accessions. The ratio remains unknown to avoid mixing filing versions.";
+  if (cell.reason === "nonpositive_revenue")
+    return "Selected revenue is zero or negative. A positive denominator is required; the reported operands keep their values below.";
+  return "Reported gross profit or selected revenue is unresolved. The ratio remains unknown; retained source references are shown below.";
+}
+
+function exactPercentage(value: string): string {
+  const [integer = "", fraction] = value.split(".");
+  return `${integer.replace(/\B(?=(\d{3})+(?!\d))/gu, ",")}${fraction === undefined ? "" : `.${fraction}`}%`;
 }
 const emptySaved: PersonalFinancialSavedViewsPayloadDto = {
   schemaVersion: 1,
@@ -276,7 +297,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -607,7 +628,8 @@ export function PersonalFinancialScreener({
           <p id="financial-revenue-basis-help" className="market-scope-note">
             {revenueExplanation(criteria.revenueBasis ?? "agreement")} Revenue
             definitions are not interchangeable. This choice applies to revenue
-            and all three margins. Run the screen to apply it.
+            and all revenue-based percentage calculations. Run the screen to
+            apply it.
           </p>
           <div className="financial-screen-clauses">
             {criteria.clauses.map((clause, index) => (
@@ -736,7 +758,7 @@ export function PersonalFinancialScreener({
               : "Run a financial screen to see results."}
           </strong>
           <span>
-            Amounts use USD; a margin threshold of 15 means 15%. Negative
+            Amounts use USD; a percentage threshold of 15 means 15%. Negative
             profits and cash flows keep their reported sign.
           </span>
         </div>
@@ -974,8 +996,12 @@ function FinancialResults({
               {metrics.map((metric) => (
                 <th scope="col" key={metric}>
                   {labels[metric]}
-                  <br />
-                  <small>{metric.endsWith("Margin") ? "%" : "USD"}</small>
+                  {metric !== "grossMargin" && (
+                    <>
+                      <br />
+                      <small>{metric.endsWith("Margin") ? "%" : "USD"}</small>
+                    </>
+                  )}
                 </th>
               ))}
               <th scope="col">Actions</th>
@@ -1096,7 +1122,9 @@ function FinancialCell({
   const display =
     cell.status === "available"
       ? cell.unit === "percent"
-        ? `${Number(cell.value).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`
+        ? metric === "grossMargin"
+          ? exactPercentage(cell.value)
+          : `${Number(cell.value).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`
         : Number(cell.value).toLocaleString("en-US", {
             style: "currency",
             currency: "USD",
@@ -1118,6 +1146,20 @@ function FinancialCell({
             : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
         </p>
         <p>{formulaFor(metric, revenueBasis)}</p>
+        {metric === "grossMargin" && (
+          <>
+            <p>
+              This app ratio uses the selected revenue definition. Matching
+              dates and filing accessions establish period and filing vintage;
+              they do not establish that the company defines gross profit using
+              this revenue concept. Comparability depends on the company’s
+              accounting and the chosen denominator.
+            </p>
+            {cell.status === "unavailable" && (
+              <p>{grossMarginUnknownExplanation(cell)}</p>
+            )}
+          </>
+        )}
         {metric === "operatingCashFlowLessPpePurchases" &&
           cell.status === "unavailable" && (
             <p>{cashFlowUnknownExplanation(cell)}</p>
@@ -1136,7 +1178,9 @@ function FinancialCell({
           <p>
             Revenue denominator: {revenueBasisLabels[revenueBasis]}.
             {revenueUnresolved &&
-              " This margin remains unknown because revenue is unresolved."}
+              (metric === "grossMargin"
+                ? " This ratio remains unknown because selected revenue is unresolved."
+                : " This margin remains unknown because revenue is unresolved.")}
           </p>
         )}
         {cell.sources.map((source, index) => (
@@ -1146,6 +1190,14 @@ function FinancialCell({
                 {source.concept === "NetCashProvidedByUsedInOperatingActivities"
                   ? "Operating cash flow input"
                   : "PP&E purchases input (subtracted)"}
+                <br />
+              </>
+            )}
+            {metric === "grossMargin" && (
+              <>
+                {source.concept === "GrossProfit"
+                  ? "Gross profit numerator"
+                  : "Selected revenue denominator"}
                 <br />
               </>
             )}

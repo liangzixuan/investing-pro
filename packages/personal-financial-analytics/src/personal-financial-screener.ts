@@ -29,7 +29,7 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.1.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.2.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   netMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.netMargin,
@@ -38,9 +38,10 @@ export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
     PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.operatingCashFlowMargin,
   operatingCashFlowLessPpePurchases: Object.freeze({
     formulaId: "operating_cash_flow_less_ppe_purchases",
-    formulaVersion: PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION,
+    formulaVersion: "1.1.0",
     expression: "operating_cash_flow - ppe_purchases",
   }),
+  grossMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.grossMargin,
 });
 
 const METRICS = [
@@ -54,6 +55,7 @@ const METRICS = [
   "operatingCashFlowMargin",
   "ppePurchases",
   "operatingCashFlowLessPpePurchases",
+  "grossMargin",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
 const REVENUE_CONCEPTS = [
@@ -228,7 +230,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "3.0.0",
+      schemaVersion: "4.0.0",
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
@@ -271,6 +273,7 @@ function buildMetrics(
     frames,
   );
   const netIncome = resolveReported(cik, ["NetIncomeLoss"], frames);
+  const grossProfit = resolveReported(cik, ["GrossProfit"], frames);
   const operatingIncome = resolveReported(cik, ["OperatingIncomeLoss"], frames);
   const operatingCashFlow = resolveReported(
     cik,
@@ -284,7 +287,7 @@ function buildMetrics(
   );
   return {
     revenue,
-    grossProfit: resolveReported(cik, ["GrossProfit"], frames),
+    grossProfit,
     netIncome,
     operatingIncome,
     operatingCashFlow,
@@ -296,7 +299,42 @@ function buildMetrics(
       operatingCashFlow,
       ppePurchases,
     ),
+    grossMargin: grossProfitMargin(grossProfit, revenue),
   };
+}
+
+function grossProfitMargin(
+  grossProfit: PersonalFinancialScreenCellDto,
+  revenue: PersonalFinancialScreenCellDto,
+): PersonalFinancialScreenCellDto {
+  const sources = [...grossProfit.sources, ...revenue.sources];
+  if (revenue.status === "unavailable")
+    return unavailable("percent", revenue.reason, sources);
+  if (grossProfit.status === "unavailable")
+    return unavailable("percent", grossProfit.reason, sources);
+  const first = sources[0]!;
+  // Reported operands are indexed by the same CIK. Every retained reference,
+  // including agreeing revenue concepts, must match actual period and filing.
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unavailable("percent", "period_mismatch", sources);
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unavailable("percent", "filing_mismatch", sources);
+  return margin(grossProfit, revenue);
 }
 
 function cashFlowLessPpePurchases(

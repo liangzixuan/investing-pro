@@ -11,6 +11,7 @@ export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
   "operatingCashFlowMargin",
   "ppePurchases",
   "operatingCashFlowLessPpePurchases",
+  "grossMargin",
 ] as const;
 export type PersonalFinancialScreenMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_METRICS)[number];
@@ -105,7 +106,7 @@ export interface PersonalFinancialScreenCriteriaDto {
   };
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "3.0.0";
+  readonly schemaVersion: "4.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -119,7 +120,7 @@ export interface PersonalFinancialScreenRowDto {
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "3.0.0";
+  readonly schemaVersion: "4.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
   readonly calendarYear: number;
@@ -147,7 +148,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly offset: number;
   readonly limitApplied: number;
   readonly hasMore: boolean;
-  readonly formulaVersion: "1.1.0";
+  readonly formulaVersion: "1.2.0";
 }
 export interface PersonalFinancialSavedViewDto {
   readonly id: string;

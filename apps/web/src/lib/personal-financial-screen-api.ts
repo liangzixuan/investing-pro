@@ -23,6 +23,7 @@ export const PERSONAL_FINANCIAL_SAVED_VIEWS_PATH = `${PERSONAL_FINANCIAL_SCREEN_
 const savedId = "financial-screener-saved-views";
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
 const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
+const revenueConcepts = revenueBases.filter((basis) => basis !== "agreement");
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
 const frameStatuses = [
   "available",
@@ -102,7 +103,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "3.0.0" ||
+    input.schemaVersion !== "4.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -304,8 +305,8 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "3.0.0" ||
-    value.formulaVersion !== "1.1.0" ||
+    value.schemaVersion !== "4.0.0" ||
+    value.formulaVersion !== "1.2.0" ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
     !integer(value.calendarYear, 2009, new Date().getUTCFullYear() - 1) ||
@@ -367,6 +368,9 @@ function isResponse(
           cell((row.metrics as Record<string, unknown>)[metric], metric),
         ) &&
         cashFlowLessPpe(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+        ) &&
+        grossProfitRatio(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         selectedRevenueSources(
@@ -477,7 +481,7 @@ function cell(
   if (
     value.unit !== unit ||
     !Array.isArray(value.sources) ||
-    value.sources.length > 6 ||
+    value.sources.length > (metric === "grossMargin" ? 12 : 6) ||
     !value.sources.every(
       (source) =>
         keys(source, [
@@ -500,12 +504,13 @@ function cell(
   const valid =
     (value.status === "available" &&
       "value" in value &&
-      decimal(value.value, 130) &&
+      decimal(value.value, metric === "grossMargin" ? 131 : 130) &&
       value.sources.length >= 1) ||
     (value.status === "unavailable" &&
       "reason" in value &&
       member(unavailableReasons, value.reason) &&
       (metric === "operatingCashFlowLessPpePurchases" ||
+        (metric === "grossMargin" && value.reason === "filing_mismatch") ||
         !["filing_mismatch", "unsupported_sign"].includes(value.reason)));
   if (
     !valid ||
@@ -534,6 +539,8 @@ function admittedSource(
   concept: (typeof concepts)[number],
 ): boolean {
   if (metric === "grossProfit") return concept === "GrossProfit";
+  if (metric === "grossMargin")
+    return concept === "GrossProfit" || member(revenueConcepts, concept);
   if (metric === "ppePurchases")
     return concept === "PaymentsToAcquirePropertyPlantAndEquipment";
   if (metric === "operatingCashFlow")
@@ -609,6 +616,89 @@ function cashFlowLessPpe(
     (operand) => operand.coefficient * 10n ** BigInt(scale - operand.scale),
   );
   return left! - right! === result;
+}
+
+/** Check the qualified ratio against both complete operands without floating-point arithmetic. */
+function grossProfitRatio(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  const revenue = cells.revenue;
+  const profit = cells.grossProfit;
+  const ratio = cells.grossMargin;
+  const sources = [...profit.sources, ...revenue.sources];
+  const sourceKey = (source: PersonalFinancialScreenSourceRefDto) =>
+    JSON.stringify([
+      source.concept,
+      source.accessionNumber,
+      source.startDate,
+      source.endDate,
+      source.value,
+    ]);
+  const expected = sources.map(sourceKey).sort();
+  const actual = ratio.sources.map(sourceKey).sort();
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index]) ||
+    !revenue.sources.every((source) => member(revenueConcepts, source.concept))
+  )
+    return false;
+  const unknown = (reason: string) =>
+    ratio.status === "unavailable" && ratio.reason === reason;
+  if (revenue.status === "unavailable")
+    return (
+      [
+        "missing",
+        "conflicting",
+        "source_unavailable",
+        "invalid_value",
+      ].includes(revenue.reason) && unknown(revenue.reason)
+    );
+  const firstRevenue = revenue.sources[0]!;
+  if (
+    !revenue.sources.every(
+      (source) =>
+        normalizedDecimal(source.value) === normalizedDecimal(revenue.value) &&
+        source.startDate === firstRevenue.startDate &&
+        source.endDate === firstRevenue.endDate,
+    )
+  )
+    return false;
+  if (profit.status === "unavailable") return unknown(profit.reason);
+  const first = sources[0]!;
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unknown("period_mismatch");
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unknown("filing_mismatch");
+  const denominator = scaledDecimal(revenue.value);
+  if (denominator.coefficient <= 0n) return unknown("nonpositive_revenue");
+  if (ratio.status !== "available") return false;
+  const numerator = scaledDecimal(profit.value);
+  const negative = numerator.coefficient < 0n;
+  const magnitude = negative ? -numerator.coefficient : numerator.coefficient;
+  // Percentage hundredths = profit / revenue * 10,000. Round ties away from zero.
+  const dividend = magnitude * 10n ** BigInt(denominator.scale) * 10_000n;
+  const divisor = denominator.coefficient * 10n ** BigInt(numerator.scale);
+  const rounded =
+    dividend / divisor + (2n * (dividend % divisor) >= divisor ? 1n : 0n);
+  const expectedValue = `${negative && rounded !== 0n ? "-" : ""}${String(
+    rounded / 100n,
+  )}.${String(rounded % 100n).padStart(2, "0")}`;
+  return ratio.value === expectedValue;
 }
 
 function scaledDecimal(value: string): { coefficient: bigint; scale: number } {

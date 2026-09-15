@@ -66,7 +66,7 @@ describe("personal annual financial screen routes", () => {
     expect(response.headers["cache-control"]).toBe("private, no-store");
     const body = response.json<PersonalFinancialScreenResponseDto>();
     expect(body).toMatchObject({
-      schemaVersion: "3.0.0",
+      schemaVersion: "4.0.0",
       totalUniverse: 2,
       identityMatches: 2,
       totalMatches: 2,
@@ -78,6 +78,7 @@ describe("personal annual financial screen routes", () => {
           metrics: {
             revenue: { status: "available", value: "1000" },
             grossProfit: { status: "available", value: "100" },
+            grossMargin: { status: "available", value: "10.00" },
             ppePurchases: { status: "available", value: "100" },
             operatingCashFlowLessPpePurchases: {
               status: "available",
@@ -101,6 +102,7 @@ describe("personal annual financial screen routes", () => {
       "operatingCashFlowMargin",
       "ppePurchases",
       "operatingCashFlowLessPpePurchases",
+      "grossMargin",
     ];
     expect(Object.keys(body.rows[0]!.metrics)).toEqual(metricKeys);
     expect(Object.keys(body.metricCoverage)).toEqual(metricKeys);
@@ -115,7 +117,7 @@ describe("personal annual financial screen routes", () => {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]);
   });
-  it.each(["1.0.0", "2.0.0", "4.0.0", 1, undefined])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "5.0.0", 1, undefined])(
     "rejects transport version %s before source acquisition",
     async (schemaVersion) => {
       const f = await readyApp();
@@ -150,7 +152,7 @@ describe("personal annual financial screen routes", () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({
         revenueBasis,
-        formulaVersion: "1.1.0",
+        formulaVersion: "1.2.0",
       });
       const cell =
         response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
@@ -175,6 +177,15 @@ describe("personal annual financial screen routes", () => {
         response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
           .grossProfit,
       ).toMatchObject({ status: "available", value: "100" });
+      expect(
+        response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
+          .grossMargin,
+      ).toMatchObject(
+        revenueBasis === "agreement" ||
+          revenueBasis === "RevenueFromContractWithCustomerExcludingAssessedTax"
+          ? { status: "available", value: "10.00" }
+          : { status: "unavailable", reason: "missing" },
+      );
     },
   );
   it("rejects stale catalogs before fetching, malformed filters, and mixed snapshot pages", async () => {
@@ -518,7 +529,7 @@ describe("personal annual financial screen routes", () => {
     });
     expect(replay.statusCode).toBe(200);
     expect(replay.json()).toMatchObject({
-      schemaVersion: "3.0.0",
+      schemaVersion: "4.0.0",
       totalMatches: 2,
     });
     expect(replay.json()).not.toHaveProperty("revenueBasis");
@@ -560,6 +571,19 @@ describe("personal annual financial screen routes", () => {
           createdAgainstCatalogSnapshotSha256: f.snapshotSha256,
           createdAgainstFinancialSnapshotSha256: FINANCIAL_DIGEST,
         },
+        {
+          ...legacy.views[0]!,
+          id: "gross-profit-ratio-screen",
+          name: "Gross profit / selected revenue",
+          criteria: {
+            ...legacy.views[0]!.criteria,
+            revenueBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+            clauses: [{ field: "grossMargin", operator: "gte", value: "10" }],
+            sort: { field: "grossMargin", direction: "desc" },
+          },
+          createdAgainstCatalogSnapshotSha256: f.snapshotSha256,
+          createdAgainstFinancialSnapshotSha256: FINANCIAL_DIGEST,
+        },
       ],
     };
     const saved = await putSavedViews(
@@ -588,15 +612,26 @@ describe("personal annual financial screen routes", () => {
           criteria: payload.views[1]!.criteria,
         })
       ).json(),
-    ).toMatchObject({ schemaVersion: "3.0.0", totalMatches: 2 });
+    ).toMatchObject({ schemaVersion: "4.0.0", totalMatches: 2 });
     const cashScreen = await screen(f.app, f.cookie, {
       ...screenRequest(f.snapshotSha256),
       criteria: payload.views[2]!.criteria,
     });
     expect(cashScreen.json()).toMatchObject({
-      schemaVersion: "3.0.0",
-      formulaVersion: "1.1.0",
+      schemaVersion: "4.0.0",
+      formulaVersion: "1.2.0",
       totalMatches: 2,
+    });
+    const ratioScreen = await screen(f.app, f.cookie, {
+      ...screenRequest(f.snapshotSha256),
+      criteria: payload.views[3]!.criteria,
+    });
+    expect(ratioScreen.json()).toMatchObject({
+      schemaVersion: "4.0.0",
+      formulaVersion: "1.2.0",
+      totalMatches: 2,
+      metricCoverage: { grossMargin: { known: 2, unknown: 0 } },
+      rows: [{ metrics: { grossMargin: { value: "10.00", unit: "percent" } } }],
     });
     const staleSave = await putSavedViews(
       f.app,
@@ -893,7 +928,7 @@ function screenRequest(
   catalogSnapshotSha256: string,
 ): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: catalogSnapshotSha256 as `sha256:${string}`,
     financialSnapshotSha256: null,
     criteria: {

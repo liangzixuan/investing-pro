@@ -31,6 +31,443 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("gross profit / selected revenue decoding", () => {
+  it.each([
+    ["1", "3", "33.33"],
+    ["1.005", "100", "1.01"],
+    ["-1.005", "100", "-1.01"],
+    ["0", "100", "0.00"],
+    ["-0.0049", "100", "0.00"],
+    ["250", "100", "250.00"],
+    ["9007199254740993", "100", "9007199254740993.00"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(64)}${"0".repeat(64)}.00`,
+    ],
+  ])(
+    "independently verifies %s / %s percent as %s",
+    async (profit, revenue, expected) => {
+      const result = ratioResponse(
+        ratioOperand("Revenues", revenue),
+        ratioOperand("GrossProfit", profit),
+        expected,
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      for (const value of [
+        `${expected.slice(0, -1)}${expected.endsWith("1") ? "2" : "1"}`,
+        expected === "0.00" ? "-0.00" : expected.replace(".", ".0"),
+      ]) {
+        const row = result.rows[0]!;
+        fetchMock.mockResolvedValueOnce(
+          json({
+            ...result,
+            rows: [
+              {
+                ...row,
+                metrics: {
+                  ...row.metrics,
+                  grossMargin: { ...row.metrics.grossMargin, value },
+                },
+              },
+            ],
+          }),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+      if (profit.length === 64) expect(expected).toHaveLength(131);
+    },
+  );
+
+  it.each(["0", "-100"])(
+    "keeps nonpositive revenue %s unknown without rejecting negative profit",
+    async (revenue) => {
+      const result = ratioResponse(
+        ratioOperand("Revenues", revenue),
+        ratioOperand("GrossProfit", "-1"),
+        { reason: "nonpositive_revenue" },
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+    },
+  );
+
+  it.each([
+    ["RevenueFromContractWithCustomerExcludingAssessedTax", "100", "30.00"],
+    ["Revenues", "120", "25.00"],
+    ["SalesRevenueNet", "150", "20.00"],
+  ] as const)(
+    "binds the ratio to selected %s",
+    async (basis, revenue, expected) => {
+      const result = ratioResponse(
+        ratioOperand(basis, revenue),
+        ratioOperand("GrossProfit", "30"),
+        expected,
+        basis,
+      );
+      const input = {
+        ...request(),
+        criteria: { ...request().criteria, revenueBasis: basis },
+      };
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(input, signal())).toEqual(result);
+      const alternate = basis === "Revenues" ? "SalesRevenueNet" : "Revenues";
+      const forged = ratioResponse(
+        ratioOperand(alternate, revenue),
+        ratioOperand("GrossProfit", "30"),
+        expected,
+        basis,
+      );
+      fetchMock.mockResolvedValueOnce(json(forged));
+      await expect(
+        screenPersonalFinancials(input, signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("retains agreement references and does not invent a fallback for conflicting revenue", async () => {
+    const revenue: PersonalFinancialScreenCellDto = {
+      status: "unavailable",
+      unit: "USD",
+      reason: "conflicting",
+      sources: [
+        { ...source(), value: "100" },
+        { ...source(), concept: "SalesRevenueNet", value: "120" },
+      ],
+    };
+    const result = ratioResponse(revenue, ratioOperand("GrossProfit", "30"), {
+      reason: "conflicting",
+    });
+    fetchMock.mockResolvedValueOnce(json(result));
+    expect(await screenPersonalFinancials(request(), signal())).toEqual(result);
+    const row = result.rows[0]!;
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              grossMargin: {
+                status: "available",
+                unit: "percent",
+                value: "30.00",
+                sources: row.metrics.grossMargin.sources,
+              },
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    "missing",
+    "conflicting",
+    "invalid_value",
+    "source_unavailable",
+  ] as const)(
+    "propagates %s with revenue before profit and exact source retention",
+    async (reason) => {
+      for (const operand of ["revenue", "profit", "both"] as const) {
+        const knownRevenue = ratioOperand("Revenues", "0");
+        const knownProfit = ratioOperand("GrossProfit", "-1");
+        const revenue: PersonalFinancialScreenCellDto =
+          operand === "profit"
+            ? knownRevenue
+            : {
+                status: "unavailable",
+                unit: "USD",
+                reason,
+                sources: knownRevenue.sources,
+              };
+        const profit: PersonalFinancialScreenCellDto =
+          operand === "revenue"
+            ? knownProfit
+            : {
+                status: "unavailable",
+                unit: "USD",
+                reason: operand === "both" ? "source_unavailable" : reason,
+                sources: knownProfit.sources,
+              };
+        const result = ratioResponse(revenue, profit, { reason });
+        fetchMock.mockResolvedValueOnce(json(result));
+        expect(await screenPersonalFinancials(request(), signal())).toEqual(
+          result,
+        );
+        const row = result.rows[0]!;
+        for (const wrongReason of [
+          "nonpositive_revenue",
+          "period_mismatch",
+          "filing_mismatch",
+          "unsupported_sign",
+        ]) {
+          fetchMock.mockResolvedValueOnce(
+            json({
+              ...result,
+              rows: [
+                {
+                  ...row,
+                  metrics: {
+                    ...row.metrics,
+                    grossMargin: {
+                      ...row.metrics.grossMargin,
+                      reason: wrongReason,
+                    },
+                  },
+                },
+              ],
+            }),
+          );
+          await expect(
+            screenPersonalFinancials(request(), signal()),
+          ).rejects.toMatchObject({ code: "invalid_response" });
+        }
+      }
+    },
+  );
+
+  it.each([
+    ["2024-11-29", false],
+    ["2024-11-30", true],
+    ["2025-01-29", true],
+    ["2025-01-30", false],
+  ] as const)(
+    "checks inclusive annual duration ending %s",
+    async (endDate, available) => {
+      const operand = (concept: "Revenues" | "GrossProfit") => ({
+        ...ratioOperand(concept, "100"),
+        sources: [{ ...source(), concept, value: "100", endDate }],
+      });
+      const result = ratioResponse(
+        operand("Revenues"),
+        operand("GrossProfit"),
+        available ? "100.00" : { reason: "period_mismatch" },
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(
+          ratioResponse(
+            operand("Revenues"),
+            operand("GrossProfit"),
+            available ? { reason: "period_mismatch" } : "100.00",
+          ),
+        ),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(["period", "filing", "period and filing"])(
+    "checks %s before the revenue sign",
+    async (kind) => {
+      const revenue = ratioOperand("Revenues", "0");
+      const profit = {
+        ...ratioOperand("GrossProfit", "-1"),
+        sources: [
+          {
+            ...source(),
+            concept: "GrossProfit" as const,
+            value: "-1",
+            ...(kind.includes("period") ? { startDate: "2024-01-02" } : {}),
+            ...(kind.includes("filing")
+              ? { accessionNumber: "0000000001-25-000002" }
+              : {}),
+          },
+        ],
+      };
+      const reason = kind.includes("period")
+        ? "period_mismatch"
+        : "filing_mismatch";
+      const result = ratioResponse(revenue, profit, { reason });
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(ratioResponse(revenue, profit, { reason: "nonpositive_revenue" })),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(["profit", "revenue", "last agreement concept"])(
+    "checks a later filing reference in %s",
+    async (kind) => {
+      let revenue = ratioOperand("Revenues", "100");
+      let profit = ratioOperand("GrossProfit", "30");
+      const differentFiling = { accessionNumber: "0000000001-25-000002" };
+      if (kind === "profit")
+        profit = {
+          ...profit,
+          sources: [
+            ...profit.sources,
+            { ...profit.sources[0]!, ...differentFiling },
+          ],
+        };
+      else
+        revenue = {
+          ...revenue,
+          sources: [
+            ...revenue.sources,
+            {
+              ...revenue.sources[0]!,
+              ...(kind === "last agreement concept"
+                ? { concept: "SalesRevenueNet" as const }
+                : {}),
+              ...differentFiling,
+            },
+          ],
+        };
+      fetchMock.mockResolvedValueOnce(
+        json(ratioResponse(revenue, profit, { reason: "filing_mismatch" })),
+      );
+      expect(
+        (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+          .grossMargin,
+      ).toMatchObject({ reason: "filing_mismatch" });
+      fetchMock.mockResolvedValueOnce(
+        json(ratioResponse(revenue, profit, "30.00")),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("preserves the full multiset of both six-reference operands in any order", async () => {
+    const revenue = {
+      ...ratioOperand("Revenues", "100"),
+      sources: Array.from({ length: 6 }, () => ({ ...source(), value: "100" })),
+    };
+    const profit = {
+      ...ratioOperand("GrossProfit", "30"),
+      sources: Array.from({ length: 6 }, () => ({
+        ...source(),
+        concept: "GrossProfit" as const,
+        value: "30",
+      })),
+    };
+    const result = ratioResponse(revenue, profit, "30.00");
+    const row = result.rows[0]!;
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              grossMargin: {
+                ...row.metrics.grossMargin,
+                sources: [...row.metrics.grossMargin.sources].reverse(),
+              },
+            },
+          },
+        ],
+      }),
+    );
+    expect(
+      (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+        .grossMargin.sources,
+    ).toHaveLength(12);
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              grossMargin: {
+                ...row.metrics.grossMargin,
+                sources: row.metrics.grossMargin.sources.slice(1),
+              },
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    "missing",
+    "duplicate",
+    "extra",
+    "representation",
+    "concept",
+    "denominator value",
+    "denominator conflict",
+    "denominator period",
+    "unknown reason",
+  ])("rejects ratio forgery: %s", async (kind) => {
+    const result = ratioResponse(
+      ratioOperand("Revenues", "100"),
+      ratioOperand("GrossProfit", "30"),
+      "30.00",
+    );
+    const row = result.rows[0]!;
+    const cells = structuredClone(row.metrics) as Record<string, unknown>;
+    const ratio = row.metrics.grossMargin;
+    let refs = [...ratio.sources];
+    if (kind === "missing") refs = refs.slice(1);
+    if (kind === "duplicate") refs = [refs[0]!, refs[0]!];
+    if (kind === "extra") refs.push(refs[1]!);
+    if (kind === "representation") refs[0] = { ...refs[0]!, value: "30.0" };
+    if (kind === "concept") refs[0] = { ...refs[0]!, concept: "NetIncomeLoss" };
+    cells.grossMargin = { ...ratio, sources: refs };
+    if (kind === "denominator value")
+      cells.revenue = { ...row.metrics.revenue, value: "101" };
+    if (kind === "denominator conflict" || kind === "denominator period") {
+      const second = {
+        ...row.metrics.revenue.sources[0]!,
+        ...(kind === "denominator conflict"
+          ? { value: "101" }
+          : { startDate: "2024-01-02" }),
+      };
+      cells.revenue = {
+        ...row.metrics.revenue,
+        sources: [...row.metrics.revenue.sources, second],
+      };
+      cells.grossMargin = { ...ratio, sources: [...ratio.sources, second] };
+    }
+    if (kind === "unknown reason")
+      cells.grossMargin = {
+        status: "unavailable",
+        unit: "percent",
+        reason: "missing",
+        sources: refs,
+      };
+    fetchMock.mockResolvedValueOnce(
+      json({ ...result, rows: [{ ...row, metrics: cells }] }),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+});
+
 describe("financial screen transport", () => {
   it.each([
     ["12.125", "2.00001", "10.12499"],
@@ -454,6 +891,12 @@ describe("financial screen transport", () => {
               reason: "missing",
               sources: [],
             },
+            grossMargin: {
+              status: "unavailable",
+              unit: "percent",
+              reason: "missing",
+              sources: row.metrics.grossProfit.sources,
+            },
             ...Object.fromEntries(
               ["netMargin", "operatingMargin", "operatingCashFlowMargin"].map(
                 (metric) => [
@@ -521,13 +964,13 @@ describe("financial screen transport", () => {
   );
 
   it.each([
-    ["9007199254740993.000", "9007199254740993", true],
-    ["9007199254740993", "9007199254740992", false],
-    ["-0.000", "0", true],
-    ["-0.00000000000000001", "0", false],
+    ["9007199254740993.000", "9007199254740993", true, "450359962.74"],
+    ["9007199254740993", "9007199254740992", false, "450359962.74"],
+    ["-0.000", "0", true, "0.00"],
+    ["-0.00000000000000001", "0", false, "0.00"],
   ] as const)(
     "compares gross-profit source %s and display %s without numeric precision loss",
-    async (reported, displayed, accepted) => {
+    async (reported, displayed, accepted, percentage) => {
       const result = response();
       const row = result.rows[0]!;
       fetchMock.mockResolvedValue(
@@ -544,6 +987,15 @@ describe("financial screen transport", () => {
                   value: displayed,
                   sources: [
                     { ...source(), concept: "GrossProfit", value: reported },
+                  ],
+                },
+                grossMargin: {
+                  status: "available",
+                  unit: "percent",
+                  value: percentage,
+                  sources: [
+                    { ...source(), concept: "GrossProfit", value: reported },
+                    ...row.metrics.revenue.sources,
                   ],
                 },
               },
@@ -589,6 +1041,12 @@ describe("financial screen transport", () => {
                   value: "123",
                   sources: [first, second],
                 },
+                grossMargin: {
+                  status: "unavailable",
+                  unit: "percent",
+                  reason: "filing_mismatch",
+                  sources: [first, second, ...row.metrics.revenue.sources],
+                },
               },
             },
           ],
@@ -632,6 +1090,12 @@ describe("financial screen transport", () => {
                   reason,
                   sources: [],
                 },
+                grossMargin: {
+                  status: "unavailable",
+                  unit: "percent",
+                  reason,
+                  sources: row.metrics.revenue.sources,
+                },
               },
             },
           ],
@@ -649,7 +1113,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v3 criteria and retains the complete ten-metric, eight-source response", async () => {
+  it("sends v4 criteria and retains the complete eleven-metric, eight-source response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -661,8 +1125,8 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("3.0.0");
-    expect(decoded.formulaVersion).toBe("1.1.0");
+    expect(decoded.schemaVersion).toBe("4.0.0");
+    expect(decoded.formulaVersion).toBe("1.2.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -674,6 +1138,7 @@ describe("financial screen transport", () => {
       "operatingCashFlowMargin",
       "ppePurchases",
       "operatingCashFlowLessPpePurchases",
+      "grossMargin",
     ]);
     expect(Object.keys(decoded.metricCoverage)).toEqual(
       Object.keys(decoded.rows[0]!.metrics),
@@ -691,7 +1156,7 @@ describe("financial screen transport", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
 
-  it.each(["1.0.0", "2.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0"])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
       await expect(
@@ -712,12 +1177,13 @@ describe("financial screen transport", () => {
     "historical v2",
     "expanded v1",
     "expanded v2",
-    "historical v1 shape relabeled v3",
-    "historical v2 shape relabeled v3",
+    "expanded v3",
+    "historical v1 shape relabeled v4",
+    "historical v2 shape relabeled v4",
     "missing metric",
     "missing coverage",
     "duplicate source",
-    "eleventh metric",
+    "twelfth metric",
     "old formula version",
   ])("rejects incompatible response: %s", async (kind) => {
     const result = response();
@@ -729,17 +1195,18 @@ describe("financial screen transport", () => {
     if (kind === "historical v2") invalid = historicalResponse("2.0.0");
     if (kind === "expanded v1") invalid = { ...result, schemaVersion: "1.0.0" };
     if (kind === "expanded v2") invalid = { ...result, schemaVersion: "2.0.0" };
-    if (kind === "historical v1 shape relabeled v3")
+    if (kind === "expanded v3") invalid = { ...result, schemaVersion: "3.0.0" };
+    if (kind === "historical v1 shape relabeled v4")
       invalid = {
         ...historicalResponse(),
-        schemaVersion: "3.0.0",
-        formulaVersion: "1.1.0",
+        schemaVersion: "4.0.0",
+        formulaVersion: "1.2.0",
       };
-    if (kind === "historical v2 shape relabeled v3")
+    if (kind === "historical v2 shape relabeled v4")
       invalid = {
         ...historicalResponse("2.0.0"),
-        schemaVersion: "3.0.0",
-        formulaVersion: "1.1.0",
+        schemaVersion: "4.0.0",
+        formulaVersion: "1.2.0",
       };
     if (kind === "old formula version")
       invalid = { ...result, formulaVersion: "1.0.0" };
@@ -756,16 +1223,19 @@ describe("financial screen transport", () => {
         ...result,
         sources: [...result.sources.slice(0, 7), result.sources[0]],
       };
-    if (kind === "eleventh metric")
+    if (kind === "twelfth metric")
       invalid = {
         ...result,
         rows: [
           {
             ...row,
-            metrics: { ...metrics, grossMargin: row.metrics.netMargin },
+            metrics: { ...metrics, inventedMargin: row.metrics.netMargin },
           },
         ],
-        metricCoverage: { ...coverage, grossMargin: { known: 1, unknown: 0 } },
+        metricCoverage: {
+          ...coverage,
+          inventedMargin: { known: 1, unknown: 0 },
+        },
       };
     fetchMock.mockResolvedValue(json(invalid));
     await expect(
@@ -796,7 +1266,25 @@ describe("financial screen transport", () => {
             };
       const valid = {
         ...result,
-        rows: [{ ...row, metrics: { ...row.metrics, grossProfit } }],
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              grossProfit,
+              grossMargin: {
+                ...(status === "available"
+                  ? { status, value: "0.00" }
+                  : { status, reason: "conflicting" }),
+                unit: "percent",
+                sources: [
+                  ...grossProfit.sources,
+                  ...row.metrics.revenue.sources,
+                ],
+              },
+            },
+          },
+        ],
       };
       fetchMock.mockResolvedValueOnce(json(valid));
       expect(
@@ -973,6 +1461,7 @@ describe("financial screen transport", () => {
     const row = result.rows[0]!;
     const affected = [
       "revenue",
+      "grossMargin",
       "netMargin",
       "operatingMargin",
       "operatingCashFlowMargin",
@@ -1510,7 +1999,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -1530,6 +2019,53 @@ function source() {
     startDate: "2024-01-01",
     endDate: "2024-12-31",
     value: "2000000000",
+  };
+}
+function ratioOperand(
+  concept:
+    "GrossProfit" | Exclude<PersonalFinancialRevenueBasisDto, "agreement">,
+  value: string,
+): PersonalFinancialScreenCellDto {
+  return {
+    status: "available",
+    unit: "USD",
+    value,
+    sources: [{ ...source(), concept, value }],
+  };
+}
+function ratioResponse(
+  revenue: PersonalFinancialScreenCellDto,
+  profit: PersonalFinancialScreenCellDto,
+  expected:
+    | string
+    | {
+        reason: Extract<
+          PersonalFinancialScreenCellDto,
+          { status: "unavailable" }
+        >["reason"];
+      },
+  basis?: PersonalFinancialRevenueBasisDto,
+): PersonalFinancialScreenResponseDto {
+  const result = basis === undefined ? response() : responseWithBasis(basis);
+  const row = result.rows[0]!;
+  const sources = [...profit.sources, ...revenue.sources];
+  const grossMargin: PersonalFinancialScreenCellDto =
+    typeof expected === "string"
+      ? { status: "available", unit: "percent", value: expected, sources }
+      : {
+          status: "unavailable",
+          unit: "percent",
+          reason: expected.reason,
+          sources,
+        };
+  return {
+    ...result,
+    rows: [
+      {
+        ...row,
+        metrics: { ...row.metrics, revenue, grossProfit: profit, grossMargin },
+      },
+    ],
   };
 }
 function cashRef(
@@ -1589,7 +2125,7 @@ function cashResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -1618,6 +2154,16 @@ function response(): PersonalFinancialScreenResponseDto {
         },
         metrics: Object.fromEntries(
           PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => {
+            if (metric === "grossMargin")
+              return [
+                metric,
+                {
+                  status: "available",
+                  unit: "percent",
+                  value: "100.00",
+                  sources: [{ ...source(), concept: "GrossProfit" }, source()],
+                },
+              ];
             if (metric === "ppePurchases")
               return [
                 metric,
@@ -1682,7 +2228,7 @@ function response(): PersonalFinancialScreenResponseDto {
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.1.0",
+    formulaVersion: "1.2.0",
   };
 }
 function responseWithBasis(
@@ -1703,6 +2249,10 @@ function responseWithBasis(
         ...row.metrics,
         revenue: { ...row.metrics.revenue, sources: [ref(basis)] },
         grossProfit: row.metrics.grossProfit,
+        grossMargin: {
+          ...row.metrics.grossMargin,
+          sources: [...row.metrics.grossProfit.sources, ref(basis)],
+        },
         netIncome: {
           ...row.metrics.netIncome,
           sources: [ref("NetIncomeLoss")],

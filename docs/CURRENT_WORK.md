@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                      | Important remaining gap                                       |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                            | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                 | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                     | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                        | Compatible multi-company coverage and automatic peer metadata |
-| Screen for ideas          | Catalog filters plus ten SEC annual financial metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                | Broader live samples, upcoming events, alerts and exports     |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                              | Further corporate actions, benchmarks and live coverage       |
+| User job                  | Implemented capability                                                                                                         | Important remaining gap                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                               | Catalog refresh and broader discovery data                    |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                   | Wider reconciliation and benchmark-relative analysis          |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                    | Verified TTM and the shared 30-core-metric screening registry |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                        | Direct normalized FCFF inputs and further justified models    |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                           | Compatible multi-company coverage and automatic peer metadata |
+| Screen for ideas          | Catalog filters plus eleven SEC annual financial metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                   | Broader live samples, upcoming events, alerts and exports     |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                 | Further corporate actions, benchmarks and live coverage       |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -80,21 +80,32 @@ local workflow result, not another source release. Edit the main checkout, keep
 the serving clone independent, and use a fresh independent clone for full-gate
 verification. The local checkpoint owns launcher, selection and rollback details.
 
-## Active delivery: release-classification generator
+## Completed release-classification automation
 
-Replace repeated feature-specific routing edits with one reviewed descriptor
-and deterministic generator. Preserve the exact historical evidence checks,
-source identities, change inventories and explicit non-evidence routes. The
-bounded output is eight existing adapters plus one release registry entry;
-writing requires an explicit flag and the clean committed feature HEAD.
+The generator is accepted at `84e0c0d`: 4,837 native tests passed with nine
+existing skips and 24 builds; four applicable hosted workflows/five jobs passed,
+including Windows and Ubuntu, on attempt 1. One reviewed descriptor prepares
+eight routing adapters plus a registry entry, preserving exact historical
+identities and inventories. The [release-classification guide](./RELEASE_CLASSIFICATION.md)
+owns the contract and check/write sequence. Use it for ordinary feature releases;
+the local handoff records actual verification and the separately attributed
+historical failures.
 
-The [release-classification guide](./RELEASE_CLASSIFICATION.md) owns the
-descriptor contract, a14 manual bootstrap, a15-and-later generation, and
-check/write sequence. Acceptance requires an independent historical PP&E golden
-fixture, rejection tests, generated-output drift checks, and the normal native
-and hosted release checks. The local checkpoint records their actual results;
-earlier passing releases do not validate this change. Resume financial-screening breadth
-after this bounded workflow improvement is accepted.
+## Active delivery: Gross profit / selected revenue (%)
+
+Add the eleventh annual metric using the existing eight-frame SEC snapshot.
+Filter, sort, inspect and save the ratio against the explicitly chosen revenue
+basis; omission retains agreement. Preserve reported gross profit independently.
+All operand references must share annual dates and filing accession. The visible
+label identifies the app calculation and does not claim a company-reported or
+sector-comparable gross margin.
+
+Acceptance covers exact decimal arithmetic and browser verification, source and
+reason integrity, unchanged old metrics/saved definitions, and eight reads with
+cache reuse across basis choices. Deploy the coordinated v4 API/browser after
+native and hosted gates, then verify live coverage and bounded filing samples.
+Actual release and runtime results remain in the local checkpoint; see
+[annual financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md) for semantics.
 
 ## Latest financial delivery: screen cash generation after PP&E purchases
 
@@ -121,8 +132,9 @@ remains inspectable but leaves the derived amount unknown. Negative operating
 cash flow and negative results are supported. Missingness, source-failure
 isolation, revenue-basis independence and all input references are preserved.
 
-The expanded metric/source sets use strict transport version 3.0.0 and screen
-formula-set version 1.1.0. Existing saved-definition payloads remain
+That PP&E release used transport version 3.0.0 and screen formula-set version
+1.1.0; the current ratio slice advances the screen transport and formula set as
+described above. Existing saved-definition payloads remain
 numeric version 1, preserving identities, creation digests and conflict handling.
 The [annual screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) owns the final
 behavior and limits. Do not repeat the accepted PP&E gates or historical SEC
@@ -134,14 +146,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Generate release-classification adapters from one reviewed descriptor                            | Reduce repeated routing edits while preserving historical acceptance       |
-| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Now              | Screen Gross profit / selected revenue (%) from the existing annual snapshot                     | Add useful ratio breadth with explicit denominator and filing compatibility |
+| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                  |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters  |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                    |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions         |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                 |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -156,11 +168,12 @@ where the next feature exposes concrete duplication or makes changes risky.
    API/UI, and review where useful. Agree on the shared contract first. One
    owner integrates changes and controls the release candidate.
 3. During editing, run focused tests and typechecks. From the repository root,
-   focused checks for this feature are:
+   focused checks for this feature include:
 
    ```powershell
-   pnpm test:release-classification
-   pnpm guardrails:release-classification
+   pnpm --filter @research-cockpit/personal-financial-analytics test -- personal-financial-screener
+   pnpm --filter @research-cockpit/api test -- workspace-financial-screen-routes personal-sec-financial-provider
+   pnpm --filter @research-cockpit/web test -- personal-financial-screen-api PersonalFinancialScreener
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed
@@ -190,9 +203,8 @@ where the next feature exposes concrete duplication or makes changes risky.
 The 30 reported-field definitions support selected-company financials; they are
 not the shared 30-core screener metric registry or evidence of source coverage.
 
-The active generator reduces a demonstrated release-maintenance cost. Keep its
-scope to the existing classification adapters and return to visible financial
-capability after acceptance; do not expand it into a general CI redesign.
+The accepted generator reduces release-maintenance duplication. Keep its scope
+to the existing classification adapters while delivering visible financial capability.
 
 For runtime setup use [the personal workspace instructions](../README.md#personal-discovery-workspace).
 No owner secret, provider credential, or private payload belongs in this guide.

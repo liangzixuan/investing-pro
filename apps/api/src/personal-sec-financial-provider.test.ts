@@ -1,4 +1,9 @@
-import { PERSONAL_SEC_ANNUAL_CONCEPTS } from "@research-cockpit/contracts";
+import {
+  PERSONAL_FINANCIAL_REVENUE_BASES,
+  PERSONAL_SEC_ANNUAL_CONCEPTS,
+  type PersonalSecurityMasterScreenRowDto,
+} from "@research-cockpit/contracts";
+import { evaluatePersonalFinancialScreen } from "@research-cockpit/personal-financial-analytics";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -707,6 +712,53 @@ describe("SEC annual financial provider", () => {
     const first = await finish(provider.loadSnapshot(2025));
     expect(await provider.loadSnapshot(2025)).toBe(first);
     expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch.mock.calls.map(([url]) => requestUrl(url))).toEqual(
+      PERSONAL_SEC_ANNUAL_CONCEPTS.map(
+        (concept) =>
+          `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025.json`,
+      ),
+    );
+    const listing: PersonalSecurityMasterScreenRowDto = {
+      cik: "0000000042",
+      country: "US",
+      exchangeMic: "XNAS",
+      instrumentType: "common_stock",
+      issuerId: "issuer-42",
+      issuerName: "Synthetic issuer",
+      listingId: "listing-42",
+      securityId: "security-42",
+      securityName: "Synthetic common stock",
+      shareClassId: "share-class-42",
+      shareClassName: "Common Stock",
+      symbol: "SYNTH",
+    };
+    for (const revenueBasis of PERSONAL_FINANCIAL_REVENUE_BASES) {
+      const cached = await provider.loadSnapshot(2025);
+      expect(cached).toBe(first);
+      const result = evaluatePersonalFinancialScreen(
+        [listing],
+        cached,
+        {
+          calendarYear: 2025,
+          revenueBasis,
+          identityText: "",
+          clauses: [{ field: "grossMargin", operator: "gte", value: "100" }],
+          sort: { field: "grossMargin", direction: "desc" },
+        },
+        { offset: 0, limit: 250 },
+        `sha256:${"a".repeat(64)}`,
+      );
+      expect(result.rows[0]?.metrics.grossMargin).toMatchObject({
+        status: "available",
+        unit: "percent",
+        value: "100.00",
+      });
+      expect(result.metricCoverage.grossMargin).toEqual({
+        known: 1,
+        unknown: 0,
+      });
+      expect(fetch).toHaveBeenCalledTimes(8);
+    }
     const refreshed = await finish(
       provider.loadSnapshot(2025, undefined, true),
     );

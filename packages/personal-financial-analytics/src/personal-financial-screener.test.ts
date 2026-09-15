@@ -2,6 +2,7 @@ import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenClauseDto,
   type PersonalFinancialScreenCriteriaDto,
   type PersonalFinancialScreenMetricDto,
@@ -86,7 +87,7 @@ describe("SEC annual financial screener", () => {
     );
     expect(result).toMatchObject({
       calendarYear: 2025,
-      formulaVersion: "1.1.0",
+      formulaVersion: "1.2.0",
       catalogSnapshotSha256: CATALOG_DIGEST,
       financialSnapshotSha256: FINANCIAL_DIGEST,
     });
@@ -428,6 +429,7 @@ describe("reported gross profit screening", () => {
       "operatingCashFlowMargin",
       "ppePurchases",
       "operatingCashFlowLessPpePurchases",
+      "grossMargin",
     ];
     expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toEqual(metrics);
     expect(Object.keys(result.rows[0]!.metrics)).toEqual(metrics);
@@ -443,8 +445,8 @@ describe("reported gross profit screening", () => {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]);
     expect(result).toMatchObject({
-      schemaVersion: "3.0.0",
-      formulaVersion: "1.1.0",
+      schemaVersion: "4.0.0",
+      formulaVersion: "1.2.0",
     });
     expect(() =>
       run([], { ...snapshot(), frames: snapshot().frames.slice(0, 7) }),
@@ -485,7 +487,10 @@ describe("reported gross profit screening", () => {
         known: 1,
         unknown: 0,
       });
-      expect(result.rows[0]!.metrics).not.toHaveProperty("grossMargin");
+      expect(result.rows[0]!.metrics.grossMargin).toMatchObject({
+        status: "unavailable",
+        reason: "period_mismatch",
+      });
     },
   );
 
@@ -547,7 +552,8 @@ describe("reported gross profit screening", () => {
         unknown: 1,
       });
       for (const [metric, cell] of Object.entries(result.rows[0]!.metrics))
-        if (metric !== "grossProfit") expect(cell.status).toBe("available");
+        if (metric !== "grossProfit" && metric !== "grossMargin")
+          expect(cell.status).toBe("available");
     },
   );
 
@@ -731,7 +737,7 @@ describe("reported gross profit screening", () => {
       expect(result.totalMatches).toBe(1);
       const oldMetrics = Object.fromEntries(
         Object.entries(result.rows[0]!.metrics).filter(
-          ([metric]) => metric !== "grossProfit",
+          ([metric]) => metric !== "grossProfit" && metric !== "grossMargin",
         ),
       );
       if (original === undefined) original = oldMetrics;
@@ -758,7 +764,7 @@ describe("reported gross profit screening", () => {
     expect(
       validatePersonalFinancialScreenCriteria({
         ...legacy,
-        sort: { field: "grossMargin", direction: "asc" },
+        sort: { field: "unregisteredMargin", direction: "asc" },
       }),
     ).toBe(false);
   });
@@ -770,7 +776,7 @@ describe("PP&E purchases and operating cash flow less PP&E purchases", () => {
   const derived = "operatingCashFlowLessPpePurchases";
 
   it("versions only the screen formula set and keeps existing ratio metadata", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.1.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.2.0");
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[derived]).toEqual({
       formulaId: "operating_cash_flow_less_ppe_purchases",
       formulaVersion: "1.1.0",
@@ -1144,7 +1150,7 @@ describe("explicit financial-screen revenue basis", () => {
       const metrics = result.rows[0]!.metrics;
       expect(result).toMatchObject({
         revenueBasis: basis,
-        formulaVersion: "1.1.0",
+        formulaVersion: "1.2.0",
       });
       expect(metrics.revenue).toMatchObject({
         status: "available",
@@ -1369,6 +1375,535 @@ describe("explicit financial-screen revenue basis", () => {
       status: "unavailable",
       reason: "period_mismatch",
     });
+  });
+});
+
+describe("gross profit / selected revenue", () => {
+  function cells(
+    input: PersonalSecAnnualFinancialSnapshotDto,
+    revenueBasis: PersonalFinancialRevenueBasisDto = REVENUE,
+  ) {
+    return run([identity("GROSS", 1)], input, {
+      ...criteria(),
+      revenueBasis,
+    }).rows[0]!.metrics;
+  }
+
+  it("registers the existing gross-margin formula without reversioning earlier formulas", () => {
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.grossMargin).toEqual({
+      formulaId: "gross_margin_percent",
+      formulaVersion: "1.0.0",
+      expression: "gross_profit / revenue * 100",
+    });
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.grossMargin).toEqual(
+      PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.grossMargin,
+    );
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.2.0");
+    for (const metric of [
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+    ] as const)
+      expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[metric].formulaVersion).toBe(
+        "1.0.0",
+      );
+    expect(
+      PERSONAL_FINANCIAL_SCREEN_FORMULAS.operatingCashFlowLessPpePurchases
+        .formulaVersion,
+    ).toBe("1.1.0");
+    expect(
+      validatePersonalFinancialScreenCriteria({
+        ...criteria([clause("grossMargin", "gte", "-1.01")]),
+        sort: { field: "grossMargin", direction: "desc" },
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["1", "3", "33.33"],
+    ["1.005", "100", "1.01"],
+    ["-1.005", "100", "-1.01"],
+    ["0", "100", "0.00"],
+    ["-0", "100", "0.00"],
+    ["-0.0049", "100", "0.00"],
+    ["250", "100", "250.00"],
+    ["-250", "100", "-250.00"],
+    ["9007199254740993", "100", "9007199254740993.00"],
+    ["1", "9007199254740993", "0.00"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(64)}${"0".repeat(64)}.00`,
+    ],
+  ])("rounds %s / %s × 100 exactly to %s", (grossProfit, revenue, expected) => {
+    const result = cells(
+      snapshot({
+        [REVENUE]: [fact(1, revenue)],
+        GrossProfit: [fact(1, grossProfit)],
+      }),
+    );
+    expect(result.grossMargin).toEqual({
+      status: "available",
+      value: expected,
+      unit: "percent",
+      sources: [...result.grossProfit.sources, ...result.revenue.sources],
+    });
+    if (grossProfit.length === 64) {
+      expect(revenue).toHaveLength(64);
+      expect(expected).toHaveLength(131);
+    }
+  });
+
+  it.each(["0", "-100"])(
+    "preserves nonpositive revenue %s as a reported operand",
+    (revenue) => {
+      const result = cells(
+        snapshot({
+          [REVENUE]: [fact(1, revenue)],
+          GrossProfit: [fact(1, "-10")],
+        }),
+      );
+      expect(result.revenue).toMatchObject({
+        status: "available",
+        value: revenue,
+      });
+      expect(result.grossProfit).toMatchObject({
+        status: "available",
+        value: "-10",
+      });
+      expect(result.grossMargin).toEqual({
+        status: "unavailable",
+        unit: "percent",
+        reason: "nonpositive_revenue",
+        sources: [...result.grossProfit.sources, ...result.revenue.sources],
+      });
+    },
+  );
+
+  it.each([
+    [{ startDate: "2025-01-02" }, "period_mismatch"],
+    [{ endDate: "2025-12-30" }, "period_mismatch"],
+    [{ accessionNumber: "0000000001-26-000002" }, "filing_mismatch"],
+  ] as const)(
+    "rejects incompatible reported periods or filings %j",
+    (difference, reason) => {
+      const result = cells(
+        snapshot({
+          [REVENUE]: [fact(1, "100")],
+          GrossProfit: [fact(1, "30", difference)],
+        }),
+      );
+      expect(result.revenue.status).toBe("available");
+      expect(result.grossProfit.status).toBe("available");
+      expect(result.grossMargin).toEqual({
+        status: "unavailable",
+        unit: "percent",
+        reason,
+        sources: [...result.grossProfit.sources, ...result.revenue.sources],
+      });
+    },
+  );
+
+  it.each([
+    ["2025-11-30", false],
+    ["2025-12-01", true],
+    ["2026-01-30", true],
+    ["2026-01-31", false],
+  ] as const)(
+    "admits exactly 335–395 inclusive days, ending %s",
+    (endDate, available) => {
+      const result = cells(
+        snapshot({
+          [REVENUE]: [fact(1, "100", { endDate })],
+          GrossProfit: [fact(1, "30", { endDate })],
+          NetIncomeLoss: [fact(1, "10", { endDate })],
+        }),
+      );
+      expect(result.grossMargin).toMatchObject(
+        available
+          ? { status: "available", value: "30.00" }
+          : { status: "unavailable", reason: "period_mismatch" },
+      );
+      // The new annual guard does not change the existing net-margin eligibility.
+      expect(result.netMargin).toMatchObject({
+        status: "available",
+        value: "10.00",
+      });
+    },
+  );
+
+  it.each([REVENUE, "GrossProfit"] as const)(
+    "checks later retained filings in %s",
+    (concept) => {
+      const input = snapshot({
+        [REVENUE]: [fact(1, "100")],
+        GrossProfit: [fact(1, "30")],
+      });
+      const first = input.frames.find((frame) => frame.concept === concept)!
+        .facts[0]!;
+      const result = cells(
+        replaceFrame(input, concept, {
+          facts: [first, { ...first, accessionNumber: "0000000001-26-000002" }],
+        }),
+      );
+      expect(result.revenue.status).toBe("available");
+      expect(result.grossProfit.status).toBe("available");
+      expect(result.grossMargin).toEqual({
+        status: "unavailable",
+        unit: "percent",
+        reason: "filing_mismatch",
+        sources: [...result.grossProfit.sources, ...result.revenue.sources],
+      });
+      expect(result.grossMargin.sources).toHaveLength(3);
+    },
+  );
+
+  it("checks the last agreeing revenue concept and preserves the entire source multiset", () => {
+    const input = snapshot({
+      [REVENUE]: [fact(1, "100")],
+      Revenues: [fact(1, "100.0")],
+      SalesRevenueNet: [
+        fact(1, "100.00", { accessionNumber: "0000000001-26-000002" }),
+      ],
+      GrossProfit: [fact(1, "30"), fact(1, "30.0")],
+    });
+    const before = JSON.stringify(input);
+    const result = cells(input, "agreement");
+    expect(result.revenue).toMatchObject({ status: "available", value: "100" });
+    expect(result.grossMargin).toEqual({
+      status: "unavailable",
+      unit: "percent",
+      reason: "filing_mismatch",
+      sources: [...result.grossProfit.sources, ...result.revenue.sources],
+    });
+    expect(result.grossMargin.sources).toHaveLength(5);
+    expect(JSON.stringify(input)).toBe(before);
+  });
+
+  const unknownOperands = [
+    ["missing", { facts: [] }, "missing"],
+    ["not covered", { status: "not_covered", facts: [] }, "missing"],
+    [
+      "rate limited",
+      { status: "rate_limited", facts: [] },
+      "source_unavailable",
+    ],
+    [
+      "failed source",
+      { status: "upstream_unavailable", facts: [] },
+      "source_unavailable",
+    ],
+    [
+      "invalid source",
+      { status: "invalid_response", facts: [] },
+      "source_unavailable",
+    ],
+    ["ambiguous issuer", { unknownCiks: [cik(1)] }, "conflicting"],
+    ["invalid number", { facts: [fact(1, "1e2")] }, "invalid_value"],
+    [
+      "different amounts",
+      { facts: [fact(1, "30"), fact(1, "31")] },
+      "conflicting",
+    ],
+    [
+      "different later dates",
+      { facts: [fact(1, "30"), fact(1, "30", { startDate: "2025-01-02" })] },
+      "conflicting",
+    ],
+  ] satisfies readonly (readonly [
+    string,
+    Partial<PersonalSecAnnualFrameDto>,
+    string,
+  ])[];
+  for (const concept of [REVENUE, "GrossProfit"] as const) {
+    it.each(unknownOperands)(
+      `propagates %s in ${concept}, retaining both operand reference lists`,
+      (_label, changes, reason) => {
+        const result = cells(
+          replaceFrame(
+            snapshot({
+              [REVENUE]: [fact(1, "100")],
+              GrossProfit: [fact(1, "30")],
+            }),
+            concept,
+            changes,
+          ),
+        );
+        const other = concept === REVENUE ? result.grossProfit : result.revenue;
+        expect(other.status).toBe("available");
+        expect(result.grossMargin).toEqual({
+          status: "unavailable",
+          unit: "percent",
+          reason,
+          sources: [...result.grossProfit.sources, ...result.revenue.sources],
+        });
+      },
+    );
+  }
+
+  it("applies revenue, gross-profit, period, filing and sign precedence to simultaneous defects", () => {
+    const base = snapshot({
+      [REVENUE]: [fact(1, "0")],
+      GrossProfit: [
+        fact(1, "30", {
+          startDate: "2025-01-02",
+          accessionNumber: "0000000001-26-000002",
+        }),
+      ],
+    });
+    expect(cells(base).grossMargin).toMatchObject({
+      reason: "period_mismatch",
+    });
+    const matchingPeriod = replaceFrame(base, "GrossProfit", {
+      facts: [fact(1, "30", { accessionNumber: "0000000001-26-000002" })],
+    });
+    expect(cells(matchingPeriod).grossMargin).toMatchObject({
+      reason: "filing_mismatch",
+    });
+    expect(
+      cells(replaceFrame(base, "GrossProfit", { facts: [fact(1, "30")] }))
+        .grossMargin,
+    ).toMatchObject({ reason: "nonpositive_revenue" });
+    expect(
+      cells(replaceFrame(base, "GrossProfit", { unknownCiks: [cik(1)] }))
+        .grossMargin,
+    ).toMatchObject({ reason: "conflicting" });
+    const invalidNumerator = replaceFrame(base, "GrossProfit", {
+      facts: [fact(1, "NaN")],
+    });
+    expect(cells(invalidNumerator).grossMargin).toMatchObject({
+      reason: "invalid_value",
+    });
+    expect(
+      cells(replaceFrame(invalidNumerator, REVENUE, { facts: [] })).grossMargin,
+    ).toMatchObject({ reason: "missing" });
+    expect(
+      cells(
+        replaceFrame(invalidNumerator, REVENUE, {
+          status: "upstream_unavailable",
+          facts: [],
+        }),
+      ).grossMargin,
+    ).toMatchObject({ reason: "source_unavailable" });
+  });
+
+  it("combines only observations indexed by the same CIK", () => {
+    const input = snapshot({
+      [REVENUE]: [fact(1, "100")],
+      GrossProfit: [fact(2, "30")],
+    });
+    const result = run([identity("FIRST", 1), identity("SECOND", 2)], input);
+    expect(result.metricCoverage.grossMargin).toEqual({ known: 0, unknown: 2 });
+    for (const row of result.rows) {
+      expect(row.metrics.grossMargin).toMatchObject({
+        status: "unavailable",
+        reason: "missing",
+      });
+      expect(row.metrics.grossMargin.sources).toHaveLength(1);
+    }
+  });
+
+  it("uses each explicit denominator and retains omitted agreement without modifying the snapshot", () => {
+    const input = snapshot({
+      [REVENUE]: [fact(1, "100")],
+      Revenues: [fact(1, "120")],
+      SalesRevenueNet: [fact(1, "150")],
+      GrossProfit: [fact(1, "30")],
+    });
+    const before = JSON.stringify(input);
+    for (const [basis, expected] of [
+      [REVENUE, "30.00"],
+      ["Revenues", "25.00"],
+      ["SalesRevenueNet", "20.00"],
+    ] as const) {
+      const result = cells(input, basis);
+      expect(result.grossMargin).toMatchObject({
+        status: "available",
+        value: expected,
+      });
+      expect(
+        result.grossMargin.sources.map((source) => source.concept),
+      ).toEqual(["GrossProfit", basis]);
+    }
+    expect(cells(input, "agreement").grossMargin).toMatchObject({
+      reason: "conflicting",
+    });
+    const agreeing = replaceFrame(
+      replaceFrame(input, "Revenues", { facts: [fact(1, "100")] }),
+      "SalesRevenueNet",
+      { facts: [fact(1, "100")] },
+    );
+    const omitted = run([identity("GROSS", 1)], agreeing);
+    expect(omitted.rows[0]!.metrics.grossMargin).toMatchObject({
+      value: "30.00",
+    });
+    expect(omitted.rows[0]!.metrics.grossMargin).toEqual(
+      cells(agreeing, "agreement").grossMargin,
+    );
+    expect(omitted).not.toHaveProperty("revenueBasis");
+    expect(JSON.stringify(input)).toBe(before);
+  });
+
+  it.each([
+    "rate_limited",
+    "upstream_unavailable",
+    "invalid_response",
+  ] as const)(
+    "isolates an unselected %s source, while agreement and selected failure remain unknown",
+    (status) => {
+      const input = replaceFrame(
+        snapshot({
+          Revenues: [fact(1, "100")],
+          GrossProfit: [fact(1, "30")],
+        }),
+        REVENUE,
+        { status },
+      );
+      expect(cells(input, "Revenues").grossMargin).toMatchObject({
+        status: "available",
+        value: "30.00",
+      });
+      expect(cells(input, "agreement").grossMargin).toMatchObject({
+        reason: "source_unavailable",
+      });
+      expect(cells(input, REVENUE).grossMargin).toMatchObject({
+        reason: "source_unavailable",
+      });
+      expect(cells(input, "SalesRevenueNet").grossMargin).toMatchObject({
+        reason: "missing",
+      });
+    },
+  );
+
+  it("keeps the ten prior metric values and coverage, and isolates operand failures", () => {
+    const input = snapshot({
+      [REVENUE]: [fact(1, "100")],
+      GrossProfit: [fact(1, "40")],
+      NetIncomeLoss: [fact(1, "10")],
+      OperatingIncomeLoss: [fact(1, "20")],
+      NetCashProvidedByUsedInOperatingActivities: [fact(1, "30")],
+      PaymentsToAcquirePropertyPlantAndEquipment: [fact(1, "5")],
+    });
+    const baseline = run([identity("OLD", 1)], input);
+    const oldValues = {
+      revenue: "100",
+      grossProfit: "40",
+      netIncome: "10",
+      operatingIncome: "20",
+      operatingCashFlow: "30",
+      netMargin: "10.00",
+      operatingMargin: "20.00",
+      operatingCashFlowMargin: "30.00",
+      ppePurchases: "5",
+      operatingCashFlowLessPpePurchases: "25",
+    } as const;
+    for (const metric of Object.keys(oldValues) as (keyof typeof oldValues)[]) {
+      expect(baseline.rows[0]!.metrics[metric]).toMatchObject({
+        status: "available",
+        value: oldValues[metric],
+      });
+      expect(baseline.metricCoverage[metric]).toEqual({ known: 1, unknown: 0 });
+    }
+    const failedGross = run(
+      [identity("OLD", 1)],
+      replaceFrame(input, "GrossProfit", {
+        status: "upstream_unavailable",
+        facts: [],
+      }),
+    );
+    for (const metric of Object.keys(oldValues) as (keyof typeof oldValues)[]) {
+      if (metric === "grossProfit") continue;
+      expect(failedGross.rows[0]!.metrics[metric]).toEqual(
+        baseline.rows[0]!.metrics[metric],
+      );
+      expect(failedGross.metricCoverage[metric]).toEqual(
+        baseline.metricCoverage[metric],
+      );
+    }
+    expect(failedGross.metricCoverage.grossProfit).toEqual({
+      known: 0,
+      unknown: 1,
+    });
+    expect(failedGross.metricCoverage.grossMargin).toEqual({
+      known: 0,
+      unknown: 1,
+    });
+    const failedRevenue = cells(
+      replaceFrame(input, REVENUE, { status: "rate_limited", facts: [] }),
+    );
+    for (const metric of [
+      "grossProfit",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+    ] as const)
+      expect(failedRevenue[metric]).toEqual(baseline.rows[0]!.metrics[metric]);
+  });
+
+  it("filters displayed half-up percentages inclusively and keeps stable security ordering across pages", () => {
+    const companies = [
+      identity("BETA", 2),
+      identity("UNKNOWN", 4),
+      identity("HIGH", 3),
+      { ...identity("ALPHA.B", 1), listingId: "listing-0000000001-b" },
+      identity("ALPHA", 1),
+    ];
+    const input = snapshot({
+      [REVENUE]: [fact(1, "3"), fact(2, "100"), fact(3, "2"), fact(4, "100")],
+      GrossProfit: [fact(1, "1"), fact(2, "33.334"), fact(3, "1")],
+    });
+    const inclusive = run(
+      companies,
+      input,
+      criteria([
+        clause("grossMargin", "gte", "33.33"),
+        clause("grossMargin", "lte", "33.33"),
+      ]),
+    );
+    expect(inclusive.rows.map((row) => row.identity.symbol)).toEqual([
+      "ALPHA",
+      "ALPHA.B",
+      "BETA",
+    ]);
+    expect(inclusive).toMatchObject({
+      totalMatches: 3,
+      totalNonMatches: 1,
+      totalUnknown: 1,
+    });
+    expect(inclusive.metricCoverage.grossMargin).toEqual({
+      known: 4,
+      unknown: 1,
+    });
+    expect(
+      run(
+        companies,
+        input,
+        criteria([clause("grossMargin", "gte", "33.33001")]),
+      ).rows.map((row) => row.identity.symbol),
+    ).toEqual(["HIGH"]);
+    for (const direction of ["asc", "desc"] as const) {
+      const filters = {
+        ...criteria(),
+        sort: { field: "grossMargin", direction } as const,
+      };
+      const full = run(companies, input, filters);
+      const pages = [0, 2, 4].map((offset) =>
+        run([...companies].reverse(), input, filters, { offset, limit: 2 }),
+      );
+      expect(pages.flatMap((page) => page.rows)).toEqual(full.rows);
+      expect(full.rows.map((row) => row.identity.symbol)).toEqual(
+        direction === "asc"
+          ? ["ALPHA", "ALPHA.B", "BETA", "HIGH", "UNKNOWN"]
+          : ["HIGH", "ALPHA", "ALPHA.B", "BETA", "UNKNOWN"],
+      );
+      for (const page of pages) {
+        expect(page.metricCoverage.grossMargin).toEqual({
+          known: 4,
+          unknown: 1,
+        });
+        expect(page.financialSnapshotSha256).toBe(FINANCIAL_DIGEST);
+      }
+      expect(pages.map((page) => page.hasMore)).toEqual([true, true, false]);
+    }
   });
 });
 

@@ -206,7 +206,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(view)).toContain("Operating cash flow input");
     expect(text(view)).toContain("PP&E purchases input (subtracted)");
     expect(text(view)).toContain("Reported: 23.00002 USD");
-    expect(text(view)).toContain("Formula version 1.1.0");
+    expect(text(view)).toContain("Formula version 1.2.0");
     expect(
       elements(view).some(
         (element) =>
@@ -419,6 +419,7 @@ describe("PersonalFinancialScreener", () => {
     "grossProfit",
     "ppePurchases",
     "operatingCashFlowLessPpePurchases",
+    "grossMargin",
   ] as const)(
     "filters, sorts, pages and explicitly saves %s without rewriting legacy criteria",
     async (metric) => {
@@ -452,7 +453,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           financialSnapshotSha256: null,
           criteria: legacy.criteria,
         }),
@@ -477,7 +478,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[2]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           criteria: grossRequest.criteria,
           financialSnapshotSha256: sha("b"),
           page: { offset: 25, limit: 25 },
@@ -501,7 +502,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[3]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "3.0.0",
+          schemaVersion: "4.0.0",
           financialSnapshotSha256: null,
           page: { offset: 0, limit: 25 },
           criteria: grossRequest.criteria,
@@ -573,7 +574,180 @@ describe("PersonalFinancialScreener", () => {
     ).toBe(true);
   });
 
-  it("shows missing gross profit as unknown and spans all ten metrics when no rows match", async () => {
+  it("explains the qualified gross-profit ratio, both operands, and its selected denominator", async () => {
+    await mount();
+    change(render(), "Revenue basis", "Revenues");
+    click(render(), "Add financial filter");
+    change(render(), "Financial metric 1", "grossMargin");
+    change(render(), "Financial threshold 1", "25");
+    change(render(), "Financial sort field", "grossMargin");
+    change(render(), "Financial sort direction", "desc");
+    expect(text(render())).toContain("Gross profit / selected revenue (%)");
+    expect(text(render())).toContain("Threshold ( % )");
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    api.screenPersonalFinancials.mockResolvedValueOnce(ratioResponse());
+    submit(render());
+    await flush();
+    const cell = ratioCell(render());
+    expect(text(cell)).toContain("Exact value: 25.00 percent");
+    expect(text(cell)).toContain(
+      "Reported GrossProfit / selected revenue × 100",
+    );
+    expect(text(cell)).toContain("335–395 inclusive days");
+    expect(text(cell)).toContain("Rounded half-up to two decimal places");
+    expect(text(cell)).toContain(
+      "Revenue denominator: Revenues (broad concept)",
+    );
+    expect(text(cell)).toContain("Gross profit numerator GrossProfit");
+    expect(text(cell)).toContain("Selected revenue denominator Revenues");
+    expect(text(cell)).toContain("Reported: 30 USD");
+    expect(text(cell)).toContain("Reported: 120 USD");
+    expect(text(cell)).toContain(
+      "they do not establish that the company defines gross profit using this revenue concept",
+    );
+    expect(
+      elements(cell).filter((element) => element.type === "a"),
+    ).toHaveLength(2);
+    change(
+      render(),
+      "Financial screen name",
+      "Gross profit over broad revenue",
+    );
+    click(render(), "Save financial screen as new");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(payload.views[0]?.criteria).toMatchObject({
+      revenueBasis: "Revenues",
+      clauses: [{ field: "grossMargin", operator: "gte", value: "25" }],
+      sort: { field: "grossMargin", direction: "desc" },
+    });
+    click(render(), "Reset financial criteria");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Revenue basis").props.value).toBe("Revenues");
+    expect(input(render(), "Financial metric 1").props.value).toBe(
+      "grossMargin",
+    );
+    expect(input(render(), "Financial sort field").props.value).toBe(
+      "grossMargin",
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    expect(ratioCell(render())).toBeUndefined();
+  });
+
+  it.each([
+    ["-1.01", "-1.01%", "-1.005", "100"],
+    ["0.00", "0.00%", "0", "120"],
+    ["250.00", "250.00%", "300", "120"],
+    [
+      `${"9".repeat(64)}${"0".repeat(64)}.00`,
+      `${`${"9".repeat(64)}${"0".repeat(64)}`.replace(/\B(?=(\d{3})+(?!\d))/gu, ",")}.00%`,
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+    ],
+  ])(
+    "preserves the exact percentage display for %s",
+    async (value, display, grossProfit, revenue) => {
+      api.screenPersonalFinancials.mockResolvedValueOnce(
+        ratioResponse(value, grossProfit, revenue),
+      );
+      await mount();
+      submit(render());
+      await flush();
+      const cell = ratioCell(render());
+      expect(
+        elements(cell).find((element) => element.type === "summary")?.props[
+          "aria-label"
+        ],
+      ).toBe(
+        `ONE Gross profit / selected revenue (%): ${display}. Show source details`,
+      );
+      expect(text(cell)).toContain(`Exact value: ${value} percent`);
+      expect(text(cell)).toContain(`Reported: ${grossProfit} USD`);
+      expect(text(cell)).toContain(`Reported: ${revenue} USD`);
+    },
+  );
+
+  it.each([
+    ["period_mismatch", "Compare every source date below."],
+    ["filing_mismatch", "avoid mixing filing versions"],
+    ["nonpositive_revenue", "Selected revenue is zero or negative"],
+    ["missing", "Reported gross profit or selected revenue is unresolved"],
+  ] as const)(
+    "shows the gross-profit ratio's %s reason and retained operands",
+    async (reason, explanation) => {
+      const result = ratioResponse(
+        "25.00",
+        "30",
+        reason === "nonpositive_revenue" ? "0" : "120",
+      );
+      const row = result.rows[0]!;
+      const sources = row.metrics.grossMargin.sources
+        .map((source, index) => ({
+          ...source,
+          ...(reason === "period_mismatch" && index === 1
+            ? { startDate: "2024-02-01" }
+            : {}),
+          ...(reason === "filing_mismatch" && index === 1
+            ? { accessionNumber: "0000000001-25-000002" }
+            : {}),
+        }))
+        .filter(
+          (source) => reason !== "missing" || source.concept !== "GrossProfit",
+        );
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              ...(reason === "missing"
+                ? {
+                    grossProfit: {
+                      status: "unavailable" as const,
+                      reason: "missing" as const,
+                      unit: "USD" as const,
+                      sources: [],
+                    },
+                  }
+                : {}),
+              grossMargin: {
+                status: "unavailable",
+                reason,
+                unit: "percent",
+                sources,
+              },
+            },
+          },
+        ],
+      });
+      await mount();
+      submit(render());
+      await flush();
+      const cell = ratioCell(render());
+      expect(text(cell)).toContain(
+        `Unavailable: ${reason.replaceAll("_", " ")}.`,
+      );
+      expect(text(cell)).toContain(explanation);
+      expect(text(cell)).toContain("Selected revenue denominator");
+      if (reason !== "missing") {
+        expect(text(cell)).toContain("Gross profit numerator");
+        expect(text(cell)).toContain("Reported: 30 USD");
+      }
+      expect(
+        elements(cell).find((element) => element.type === "summary")?.props[
+          "aria-label"
+        ],
+      ).toBe(
+        "ONE Gross profit / selected revenue (%): Unknown. Show source details",
+      );
+      if (reason !== "missing")
+        expect(text(render())).toContain("Exact value: 30 USD");
+    },
+  );
+
+  it("shows missing gross profit as unknown and spans all eleven metrics when no rows match", async () => {
     const result = response();
     const row = result.rows[0]!;
     api.screenPersonalFinancials.mockResolvedValueOnce({
@@ -612,7 +786,7 @@ describe("PersonalFinancialScreener", () => {
           element.type === "td" &&
           text(element) === "No matching financial results.",
       )?.props.colSpan,
-    ).toBe(12);
+    ).toBe(13);
   });
 
   it("requires an explicit run, defaults to the last completed year, and explains annual scope", async () => {
@@ -714,6 +888,10 @@ describe("PersonalFinancialScreener", () => {
   it("changes revenue basis locally, binds paging, and aborts stale basis results", async () => {
     await mount();
     change(render(), "Revenue basis", "Revenues");
+    click(render(), "Add financial filter");
+    change(render(), "Financial metric 1", "grossMargin");
+    change(render(), "Financial threshold 1", "25");
+    change(render(), "Financial sort field", "grossMargin");
     expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
     api.screenPersonalFinancials.mockResolvedValueOnce({
       ...response(0, 26),
@@ -722,6 +900,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("Revenue basis: Revenues (broad concept)");
+    expect(ratioCell(render())).toBeDefined();
     expect(text(render())).toContain(
       "without substituting another revenue concept",
     );
@@ -752,23 +931,34 @@ describe("PersonalFinancialScreener", () => {
     pending.resolve({ ...response(), revenueBasis: "Revenues" });
     await flush();
     expect(text(render())).not.toContain("Open ONE");
+    expect(ratioCell(render())).toBeUndefined();
     expect(text(render())).toContain("Criteria changed");
     expect(activityStart).toHaveBeenCalledTimes(3);
     expect(activityCompletion).toHaveBeenCalledTimes(2);
-    api.screenPersonalFinancials.mockResolvedValueOnce({
-      ...response(),
-      revenueBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
-    });
+    api.screenPersonalFinancials.mockResolvedValueOnce(
+      ratioResponse(
+        "30.00",
+        "30",
+        "100",
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+      ),
+    );
     submit(render());
     await flush();
     expect(api.screenPersonalFinancials.mock.calls.at(-1)?.[0]).toMatchObject({
       criteria: {
         revenueBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        clauses: [{ field: "grossMargin", operator: "gte", value: "25" }],
+        sort: { field: "grossMargin", direction: "asc" },
       },
       financialSnapshotSha256: null,
       page: { offset: 0, limit: 25 },
       refresh: false,
     });
+    expect(text(ratioCell(render()))).toContain("Exact value: 30.00 percent");
+    expect(text(ratioCell(render()))).toContain(
+      "Revenue denominator: Customer-contract revenue, excluding tax",
+    );
   });
 
   it("saves and loads an explicit basis while preserving an untouched legacy definition", async () => {
@@ -852,12 +1042,16 @@ describe("PersonalFinancialScreener", () => {
         "netMargin",
         "operatingMargin",
         "operatingCashFlowMargin",
+        "grossMargin",
       ] as const)
         metrics[metric] = {
           status: "unavailable",
           reason,
           unit: metric === "revenue" ? "USD" : "percent",
-          sources: references,
+          sources:
+            metric === "grossMargin"
+              ? [...original.metrics.grossProfit.sources, ...references]
+              : references,
         };
       change(render(), "Revenue basis", basis);
       api.screenPersonalFinancials.mockResolvedValueOnce({
@@ -874,6 +1068,9 @@ describe("PersonalFinancialScreener", () => {
           /This margin remains unknown because revenue is unresolved\./gu,
         ),
       ).toHaveLength(3);
+      expect(rendered).toContain(
+        "This ratio remains unknown because selected revenue is unresolved.",
+      );
       if (basis === "agreement") {
         expect(rendered).toContain(
           "Retained concepts can describe different definitions",
@@ -1268,9 +1465,11 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("Open ONE");
+    expect(ratioCell(render())).toBeDefined();
     props = { ...props, disabled: true };
     render();
     expect(text(render())).not.toContain("Open ONE");
+    expect(ratioCell(render())).toBeUndefined();
   });
 });
 
@@ -1364,15 +1563,79 @@ function submit(value: unknown) {
     preventDefault: () => undefined,
   });
 }
+function ratioCell(value: unknown) {
+  return elements(value).find(
+    (element) =>
+      element.type === "details" &&
+      element.props.className === "financial-screen-cell" &&
+      elements(element).some(
+        (child) =>
+          child.type === "summary" &&
+          String(child.props["aria-label"]).startsWith(
+            "ONE Gross profit / selected revenue (%):",
+          ),
+      ),
+  );
+}
+function ratioResponse(
+  value = "25.00",
+  grossProfit = "30",
+  revenue = "120",
+  basis:
+    | "Revenues"
+    | "RevenueFromContractWithCustomerExcludingAssessedTax" = "Revenues",
+): PersonalFinancialScreenResponseDto {
+  const result = response();
+  const row = result.rows[0]!;
+  const numerator = {
+    ...row.metrics.grossProfit.sources[0]!,
+    value: grossProfit,
+  };
+  const denominator = {
+    ...row.metrics.revenue.sources[0]!,
+    concept: basis,
+    value: revenue,
+  };
+  return {
+    ...result,
+    revenueBasis: basis,
+    rows: [
+      {
+        ...row,
+        metrics: {
+          ...row.metrics,
+          grossProfit: {
+            status: "available",
+            unit: "USD",
+            value: grossProfit,
+            sources: [numerator],
+          },
+          revenue: {
+            status: "available",
+            unit: "USD",
+            value: revenue,
+            sources: [denominator],
+          },
+          grossMargin: {
+            status: "available",
+            unit: "percent",
+            value,
+            sources: [numerator, denominator],
+          },
+        },
+      },
+    ],
+  };
+}
 function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: new Date().getUTCFullYear() - 1,
     fetchedAt: "2026-09-01T00:00:00.000Z",
     expiresAt: "2026-09-01T00:30:00.000Z",
-    formulaVersion: "1.1.0",
+    formulaVersion: "1.2.0",
     sources: PERSONAL_SEC_ANNUAL_CONCEPTS.map((concept) => ({
       concept,
       status: "available",
@@ -1405,22 +1668,26 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
                   ? "-123456789.12"
                   : metric === "operatingCashFlowLessPpePurchases"
                     ? "-123456804.12"
-                    : "15",
+                    : metric === "grossMargin"
+                      ? "100.00"
+                      : "15",
               unit: metric.endsWith("Margin") ? "percent" : "USD",
               sources: (metric === "operatingCashFlowLessPpePurchases"
                 ? [
                     "NetCashProvidedByUsedInOperatingActivities",
                     "PaymentsToAcquirePropertyPlantAndEquipment",
                   ]
-                : [
-                    metric === "grossProfit"
-                      ? "GrossProfit"
-                      : metric === "ppePurchases"
-                        ? "PaymentsToAcquirePropertyPlantAndEquipment"
-                        : metric === "operatingCashFlow"
-                          ? "NetCashProvidedByUsedInOperatingActivities"
-                          : "Revenues",
-                  ]
+                : metric === "grossMargin"
+                  ? ["GrossProfit", "Revenues"]
+                  : [
+                      metric === "grossProfit"
+                        ? "GrossProfit"
+                        : metric === "ppePurchases"
+                          ? "PaymentsToAcquirePropertyPlantAndEquipment"
+                          : metric === "operatingCashFlow"
+                            ? "NetCashProvidedByUsedInOperatingActivities"
+                            : "Revenues",
+                    ]
               ).map((concept) => ({
                 concept,
                 accessionNumber: "0000000001-25-000001",

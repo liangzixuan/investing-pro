@@ -15,14 +15,14 @@ invalid, the screen gives an actionable configuration error.
 Open Discover, start the owner session, and use **Annual financial screen**.
 Choose a completed calendar year, add numerical thresholds, and explicitly run
 the screen. Choose a **Revenue basis** when you want one reported concept to
-drive revenue and all three margin denominators. Amount thresholds use USD;
+drive revenue and the four ratio denominators. Amount thresholds use USD;
 margin thresholds use percent points.
 Open or watchlist a result using its exact catalog listing identity. Save a
 named definition to reuse criteria, then explicitly rerun it when loaded.
 Refresh requests a new source read. Page navigation remains bound to both
 catalog and financial content digests; changed content requires a rerun.
 
-The seven public endpoint templates are
+The eight fixed concepts use the public endpoint template
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}.json`.
 Concept and unit are fixed in code; the only selection is a completed year
 from 2009 onward. No API key or commercial subscription is needed for these
@@ -48,6 +48,7 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Operating cash flow margin              | Operating cash flow / revenue × 100                                             | percent |
 | PP&E purchases                          | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                       | USD     |
 | Operating cash flow less PP&E purchases | Operating cash flow − PP&E purchases                                            | USD     |
+| Gross profit / selected revenue (%)     | Reported gross profit / selected revenue × 100                                  | percent |
 
 ### PP&E purchases and cash generation
 
@@ -73,8 +74,8 @@ absolute value or reverses the input sign. Different periods produce
 operating-cash-flow input takes precedence over an unavailable PP&E input, followed
 by period, filing and sign checks. Missing or failed inputs never become zero.
 
-Both fields are independent of revenue basis. A PP&E source failure preserves all
-eight existing metrics; an operating-cash-flow failure preserves reported PP&E.
+Both fields are independent of revenue basis. A PP&E source failure preserves the
+other nine metrics; an operating-cash-flow failure preserves reported PP&E.
 Use **Operating cash flow less PP&E purchases ≥ 0** to find nonnegative results;
 negative thresholds are also supported. Coverage and unknown counts describe
 listing rows, so multiple listings of one issuer count separately.
@@ -98,12 +99,35 @@ The screen preserves the reported amount, including a negative amount. A missing
 invalid, conflicting or failed-source fact remains unknown. It does not calculate
 a replacement from revenue minus costs or substitute another concept. Changing
 Revenue basis does not change gross profit. A failed GrossProfit source affects
-only that field, and a failed revenue source does not hide a valid gross-profit
+that field and its ratio, and a failed revenue source does not hide a valid gross-profit
 amount. Exact source dates and filing accession remain visible.
 
-No gross-margin ratio is added. Matching dates alone would not establish that
-gross profit uses the selected revenue definition. This amount can be filtered
-and sorted like other USD fields; it is not a comparable sector-neutral score.
+This amount can be filtered and sorted like other USD fields.
+
+### Gross profit / selected revenue (%)
+
+This ratio divides the reported gross-profit amount by the selected revenue
+amount and multiplies by 100. It is an app calculation, not a company's reported
+gross-margin measure or a comparable sector-neutral score. Matching dates and
+filing accession establish period and filing vintage; they do not establish that
+the company defines gross profit using the chosen revenue concept. The source
+details identify the selected denominator and retain both reported operands.
+
+Every retained reference from both operands must share the same actual annual
+start/end dates within the inclusive 335–395-day window, and one filing accession.
+The operands are resolved for the same issuer. One agreeing revenue concept from
+a different filing makes the ratio unknown even when the reported amounts agree.
+Unavailable revenue takes precedence over unavailable gross profit, followed by
+`period_mismatch`, `filing_mismatch`, then `nonpositive_revenue`. Unknown results
+retain available operand references; missing or failed facts never become zero.
+
+Revenue must be positive. Zero or negative gross profit is valid, and negative
+ratios or ratios above 100 are preserved. Decimal arithmetic divides before
+multiplying, rounds half-up to two decimal places, and normalizes rounded negative
+zero to `0.00`. Filters use percent points and compare that displayed rounded
+value. The strict browser independently checks the arithmetic, rounding, source
+reference multiset and unknown reason using integer arithmetic. This adds no
+source concept or provider request to the eight-frame snapshot.
 
 ### Revenue basis
 
@@ -125,7 +149,8 @@ the selected definition. Changing the basis clears results and resets pagination
 the next explicit run can reuse the same cached SEC snapshot.
 
 The chosen basis also supplies the denominator of net margin, operating margin
-and operating cash flow margin. Their arithmetic is unchanged. Equal reported
+and operating cash flow margin, plus Gross profit / selected revenue (%).
+The original three margins' arithmetic and eligibility are unchanged. Equal reported
 amounts do not establish equivalent business definitions, and choosing the same
 concept does not establish sector or fiscal comparability.
 
@@ -155,8 +180,8 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "3.0.0"` at the
-existing route. The response contains exactly ten metric and coverage keys and
+Financial-screen requests and responses use `schemaVersion: "4.0.0"` at the
+existing route. The response contains exactly eleven metric and coverage keys and
 eight distinct source concepts. Deploy the API and browser together: old browser
 requests are rejected before SEC acquisition, and the new browser rejects old or
 partially expanded responses. Reload an older open browser after deployment.
@@ -164,12 +189,13 @@ partially expanded responses. Reload an older open browser after deployment.
 Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are unchanged. Existing criteria load with their original meanings and make a
-fresh v3 request only when explicitly run. The seven-clause limit is unchanged;
-the two PP&E fields are additional filter/sort choices. Older application versions
+fresh v4 request only when explicitly run. The seven-clause limit is unchanged;
+the PP&E fields and gross-profit ratio are additional filter/sort choices. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. Screen formula-set version 1.1.0 registers the exact subtraction.
-Existing margin formulas retain version 1.0.0 and their rounding; subtraction keeps
-exact decimal precision. Other selected-company analytics versions are unchanged.
+than drop a filter. Screen formula-set version 1.2.0 adds the existing gross-margin
+arithmetic at formula version 1.0.0. The original three margin formulas retain
+version 1.0.0 and their rounding; PP&E subtraction retains version 1.1.0 and exact
+decimal precision. Other selected-company analytics versions are unchanged.
 
 A selected CY label denotes the SEC's calendar-aligned annual frame, not a
 common fiscal year across issuers. Annual durations are checked within the
@@ -243,6 +269,16 @@ conflict/version behavior. Measure final production coverage on a fresh eight-fr
 snapshot; preliminary two-frame feasibility and historical results below do not
 establish release acceptance. Actual observations and independently checked filing
 samples belong in the local release handoff.
+
+Gross-profit ratio acceptance covers all four revenue policies, all-reference
+period/filing eligibility, deterministic unknown reasons, signed and extreme
+decimal inputs, half-up boundaries, rounded thresholds, source-failure isolation,
+stable pages and saved-definition compatibility. Browser cases reject forged
+values, references and reasons, including maximum-length results. Cache tests
+verify eight initial reads, no additional reads when changing revenue basis, and
+eight reads on explicit refresh. Actual live ratio coverage and bounded primary
+filing comparisons belong in the local release handoff; synthetic cases and the
+historical observations below do not establish coverage of this new ratio.
 
 The original agreement mode was measured on 2026-09-11 against an admitted
 3,227-listing catalog and verified through authenticated Chrome. Known coverage
