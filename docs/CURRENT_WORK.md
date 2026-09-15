@@ -24,7 +24,7 @@ unrelated hardening outside the active personal scope.
 | Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                    | Verified TTM and the shared 30-core-metric screening registry |
 | Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                        | Direct normalized FCFF inputs and further justified models    |
 | Compare businesses        | Twelve financial checks and up to three manual peers                                                                           | Compatible multi-company coverage and automatic peer metadata |
-| Screen for ideas          | Catalog filters plus eleven SEC annual financial metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
+| Screen for ideas          | Catalog filters plus twelve SEC annual financial metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
 | Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                   | Broader live samples, upcoming events, alerts and exports     |
 | Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                 | Further corporate actions, benchmarks and live coverage       |
 
@@ -91,21 +91,30 @@ owns the contract and check/write sequence. Use it for ordinary feature releases
 the local handoff records actual verification and the separately attributed
 historical failures.
 
-## Active delivery: Gross profit / selected revenue (%)
+## Active delivery: Operating cash flow / net income (%)
 
-Add the eleventh annual metric using the existing eight-frame SEC snapshot.
-Filter, sort, inspect and save the ratio against the explicitly chosen revenue
-basis; omission retains agreement. Preserve reported gross profit independently.
-All operand references must share annual dates and filing accession. The visible
-label identifies the app calculation and does not claim a company-reported or
-sector-comparable gross margin.
+Add the twelfth annual metric using the existing eight-frame SEC snapshot.
+Filter, sort, inspect and save operating cash flow relative to positive reported
+net income. Every operand reference must share actual supported annual dates and
+one filing accession. Preserve signed operating cash flow and both reported
+inputs; zero or negative net income leaves the ratio unknown. Revenue-basis
+selection does not change this calculation. The explicit label identifies an
+app calculation, not a company-reported cash-conversion measure or quality score.
 
 Acceptance covers exact decimal arithmetic and browser verification, source and
 reason integrity, unchanged old metrics/saved definitions, and eight reads with
-cache reuse across basis choices. Deploy the coordinated v4 API/browser after
+cache reuse across basis choices. Deploy the coordinated v5 API/browser after
 native and hosted gates, then verify live coverage and bounded filing samples.
 Actual release and runtime results remain in the local checkpoint; see
 [annual financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md) for semantics.
+
+Gross profit / selected revenue (%) is accepted at `12ef061`: 4,938 native tests,
+nine existing skips, 24 builds and all four applicable hosted workflows/five jobs
+passed. Fresh eight-frame coverage and bounded filing comparisons passed, followed
+by configured Chrome acceptance and coordinated activation. The ratio was known
+for 1,188 of 3,227 listings under the default agreement policy. These historical
+results do not establish coverage or validation of the new net-income ratio;
+the local release handoff retains the exact source, basis and observation limits.
 
 ## Latest financial delivery: screen cash generation after PP&E purchases
 
@@ -146,14 +155,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Now              | Screen Gross profit / selected revenue (%) from the existing annual snapshot                     | Add useful ratio breadth with explicit denominator and filing compatibility |
-| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                  |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters  |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                    |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions         |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                 |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Now              | Screen Operating cash flow / net income (%) from the existing annual snapshot                    | Compare reported cash generation with positive earnings using compatible inputs |
+| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                      |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters      |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                        |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions             |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                     |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

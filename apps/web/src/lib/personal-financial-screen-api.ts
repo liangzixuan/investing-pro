@@ -25,6 +25,13 @@ const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
 const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
 const revenueConcepts = revenueBases.filter((basis) => basis !== "agreement");
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
+const percentMetrics: readonly PersonalFinancialScreenMetricDto[] = [
+  "netMargin",
+  "operatingMargin",
+  "operatingCashFlowMargin",
+  "grossMargin",
+  "operatingCashFlowToNetIncome",
+];
 const frameStatuses = [
   "available",
   "not_covered",
@@ -37,6 +44,7 @@ const unavailableReasons = [
   "conflicting",
   "period_mismatch",
   "nonpositive_revenue",
+  "nonpositive_net_income",
   "source_unavailable",
   "invalid_value",
   "filing_mismatch",
@@ -103,7 +111,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "4.0.0" ||
+    input.schemaVersion !== "5.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -305,8 +313,8 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "4.0.0" ||
-    value.formulaVersion !== "1.2.0" ||
+    value.schemaVersion !== "5.0.0" ||
+    value.formulaVersion !== "1.3.0" ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
     !integer(value.calendarYear, 2009, new Date().getUTCFullYear() - 1) ||
@@ -371,6 +379,9 @@ function isResponse(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         grossProfitRatio(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+        ) &&
+        operatingCashFlowToNetIncome(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         selectedRevenueSources(
@@ -472,7 +483,9 @@ function cell(
   value: unknown,
   metric: PersonalFinancialScreenMetricDto,
 ): boolean {
-  const unit = metric.endsWith("Margin") ? "percent" : "USD";
+  const unit = percentMetrics.includes(metric) ? "percent" : "USD";
+  const exactRatio =
+    metric === "grossMargin" || metric === "operatingCashFlowToNetIncome";
   if (
     !keys(value, ["status", "value", "unit", "sources"]) &&
     !keys(value, ["status", "reason", "unit", "sources"])
@@ -481,7 +494,7 @@ function cell(
   if (
     value.unit !== unit ||
     !Array.isArray(value.sources) ||
-    value.sources.length > (metric === "grossMargin" ? 12 : 6) ||
+    value.sources.length > (exactRatio ? 12 : 6) ||
     !value.sources.every(
       (source) =>
         keys(source, [
@@ -504,13 +517,15 @@ function cell(
   const valid =
     (value.status === "available" &&
       "value" in value &&
-      decimal(value.value, metric === "grossMargin" ? 131 : 130) &&
+      decimal(value.value, exactRatio ? 131 : 130) &&
       value.sources.length >= 1) ||
     (value.status === "unavailable" &&
       "reason" in value &&
       member(unavailableReasons, value.reason) &&
+      (value.reason !== "nonpositive_net_income" ||
+        metric === "operatingCashFlowToNetIncome") &&
       (metric === "operatingCashFlowLessPpePurchases" ||
-        (metric === "grossMargin" && value.reason === "filing_mismatch") ||
+        (exactRatio && value.reason === "filing_mismatch") ||
         !["filing_mismatch", "unsupported_sign"].includes(value.reason)));
   if (
     !valid ||
@@ -541,6 +556,11 @@ function admittedSource(
   if (metric === "grossProfit") return concept === "GrossProfit";
   if (metric === "grossMargin")
     return concept === "GrossProfit" || member(revenueConcepts, concept);
+  if (metric === "operatingCashFlowToNetIncome")
+    return (
+      concept === "NetCashProvidedByUsedInOperatingActivities" ||
+      concept === "NetIncomeLoss"
+    );
   if (metric === "ppePurchases")
     return concept === "PaymentsToAcquirePropertyPlantAndEquipment";
   if (metric === "operatingCashFlow")
@@ -687,18 +707,98 @@ function grossProfitRatio(
   const denominator = scaledDecimal(revenue.value);
   if (denominator.coefficient <= 0n) return unknown("nonpositive_revenue");
   if (ratio.status !== "available") return false;
-  const numerator = scaledDecimal(profit.value);
+  return ratio.value === percentageValue(profit.value, denominator);
+}
+
+/** Net income supplies this denominator independently of the revenue-basis policy. */
+function operatingCashFlowToNetIncome(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  const income = cells.netIncome;
+  const operating = cells.operatingCashFlow;
+  const ratio = cells.operatingCashFlowToNetIncome;
+  const sources = [...operating.sources, ...income.sources];
+  const sourceKey = (source: PersonalFinancialScreenSourceRefDto) =>
+    JSON.stringify([
+      source.concept,
+      source.accessionNumber,
+      source.startDate,
+      source.endDate,
+      source.value,
+    ]);
+  const expected = sources.map(sourceKey).sort();
+  const actual = ratio.sources.map(sourceKey).sort();
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index]) ||
+    !income.sources.every((source) => source.concept === "NetIncomeLoss")
+  )
+    return false;
+  const unknown = (reason: string) =>
+    ratio.status === "unavailable" && ratio.reason === reason;
+  if (income.status === "unavailable")
+    return (
+      [
+        "missing",
+        "conflicting",
+        "source_unavailable",
+        "invalid_value",
+      ].includes(income.reason) && unknown(income.reason)
+    );
+  const firstIncome = income.sources[0]!;
+  if (
+    !income.sources.every(
+      (source) =>
+        normalizedDecimal(source.value) === normalizedDecimal(income.value) &&
+        source.startDate === firstIncome.startDate &&
+        source.endDate === firstIncome.endDate,
+    )
+  )
+    return false;
+  if (operating.status === "unavailable") return unknown(operating.reason);
+  const first = sources[0]!;
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unknown("period_mismatch");
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unknown("filing_mismatch");
+  const denominator = scaledDecimal(income.value);
+  if (denominator.coefficient <= 0n) return unknown("nonpositive_net_income");
+  return (
+    ratio.status === "available" &&
+    ratio.value === percentageValue(operating.value, denominator)
+  );
+}
+
+function percentageValue(
+  numeratorValue: string,
+  denominator: ReturnType<typeof scaledDecimal>,
+): string {
+  const numerator = scaledDecimal(numeratorValue);
   const negative = numerator.coefficient < 0n;
   const magnitude = negative ? -numerator.coefficient : numerator.coefficient;
-  // Percentage hundredths = profit / revenue * 10,000. Round ties away from zero.
+  // Percentage hundredths = numerator / denominator * 10,000. Round ties away from zero.
   const dividend = magnitude * 10n ** BigInt(denominator.scale) * 10_000n;
   const divisor = denominator.coefficient * 10n ** BigInt(numerator.scale);
   const rounded =
     dividend / divisor + (2n * (dividend % divisor) >= divisor ? 1n : 0n);
-  const expectedValue = `${negative && rounded !== 0n ? "-" : ""}${String(
+  return `${negative && rounded !== 0n ? "-" : ""}${String(
     rounded / 100n,
   )}.${String(rounded % 100n).padStart(2, "0")}`;
-  return ratio.value === expectedValue;
 }
 
 function scaledDecimal(value: string): { coefficient: bigint; scale: number } {

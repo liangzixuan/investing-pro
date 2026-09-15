@@ -16,7 +16,8 @@ Open Discover, start the owner session, and use **Annual financial screen**.
 Choose a completed calendar year, add numerical thresholds, and explicitly run
 the screen. Choose a **Revenue basis** when you want one reported concept to
 drive revenue and the four ratio denominators. Amount thresholds use USD;
-margin thresholds use percent points.
+percentage thresholds use percent points. Operating cash flow / net income (%)
+is independent of Revenue basis and requires positive reported net income.
 Open or watchlist a result using its exact catalog listing identity. Save a
 named definition to reuse criteria, then explicitly rerun it when loaded.
 Refresh requests a new source read. Page navigation remains bound to both
@@ -49,6 +50,7 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | PP&E purchases                          | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                       | USD     |
 | Operating cash flow less PP&E purchases | Operating cash flow − PP&E purchases                                            | USD     |
 | Gross profit / selected revenue (%)     | Reported gross profit / selected revenue × 100                                  | percent |
+| Operating cash flow / net income (%)    | Reported operating cash flow / positive reported net income × 100               | percent |
 
 ### PP&E purchases and cash generation
 
@@ -74,8 +76,8 @@ absolute value or reverses the input sign. Different periods produce
 operating-cash-flow input takes precedence over an unavailable PP&E input, followed
 by period, filing and sign checks. Missing or failed inputs never become zero.
 
-Both fields are independent of revenue basis. A PP&E source failure preserves the
-other nine metrics; an operating-cash-flow failure preserves reported PP&E.
+Both fields are independent of revenue basis. A PP&E source failure preserves
+metrics that do not use PP&E; an operating-cash-flow failure preserves reported PP&E.
 Use **Operating cash flow less PP&E purchases ≥ 0** to find nonnegative results;
 negative thresholds are also supported. Coverage and unknown counts describe
 listing rows, so multiple listings of one issuer count separately.
@@ -129,6 +131,36 @@ value. The strict browser independently checks the arithmetic, rounding, source
 reference multiset and unknown reason using integer arithmetic. This adds no
 source concept or provider request to the eight-frame snapshot.
 
+### Operating cash flow / net income (%)
+
+This app calculation divides reported `NetCashProvidedByUsedInOperatingActivities`
+by positive reported `NetIncomeLoss` and multiplies by 100. It compares operating
+cash generation with reported net income. It is not a company-reported cash-conversion
+measure, a quality score or an industry-adjusted comparison. Working-capital timing
+and noncash items can affect the relationship. The source details identify both
+operand roles, exact amounts, actual dates and filing accession.
+
+The inputs must belong to the same issuer. Every retained operand reference must
+share identical actual start/end dates within the inclusive 335–395-day annual
+window and one filing accession. Unavailable net income takes precedence over
+unavailable operating cash flow, then `period_mismatch`, `filing_mismatch` and
+`nonpositive_net_income`. All available operand references remain inspectable
+when the ratio is unknown. No missing value becomes zero and no other earnings
+or cash-flow concept is substituted.
+
+Net income must be positive. Zero and negative reported net income remain visible
+but cannot serve as this ratio's denominator. Operating cash flow may be zero or
+negative; negative ratios and ratios above 100% are retained. Decimal arithmetic
+divides before multiplying and rounds half-up to two decimal places, normalizing
+rounded negative zero to `0.00`. Inclusive filters compare the displayed rounded
+percentage. The browser independently verifies the result, complete source
+reference multiset and unknown reason using integer arithmetic.
+
+Revenue-basis changes leave this metric and its reported inputs unchanged. A
+revenue or PP&E source failure does not hide it. A failed net-income or operating-
+cash-flow source leaves it unknown and preserves the other available reported
+operand. No new source concept or request is added to the eight-frame snapshot.
+
 ### Revenue basis
 
 The three source concepts describe different scopes. The selector applies one
@@ -180,8 +212,8 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "4.0.0"` at the
-existing route. The response contains exactly eleven metric and coverage keys and
+Financial-screen requests and responses use `schemaVersion: "5.0.0"` at the
+existing route. The response contains exactly twelve metric and coverage keys and
 eight distinct source concepts. Deploy the API and browser together: old browser
 requests are rejected before SEC acquisition, and the new browser rejects old or
 partially expanded responses. Reload an older open browser after deployment.
@@ -189,11 +221,11 @@ partially expanded responses. Reload an older open browser after deployment.
 Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are unchanged. Existing criteria load with their original meanings and make a
-fresh v4 request only when explicitly run. The seven-clause limit is unchanged;
-the PP&E fields and gross-profit ratio are additional filter/sort choices. Older application versions
+fresh v5 request only when explicitly run. The seven-clause limit is unchanged;
+the PP&E fields and both new ratios are additional filter/sort choices. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. Screen formula-set version 1.2.0 adds the existing gross-margin
-arithmetic at formula version 1.0.0. The original three margin formulas retain
+than drop a filter. Screen formula-set version 1.3.0 adds operating cash flow / net
+income at formula version 1.0.0. All four revenue-based margin formulas retain
 version 1.0.0 and their rounding; PP&E subtraction retains version 1.1.0 and exact
 decimal precision. Other selected-company analytics versions are unchanged.
 
@@ -279,6 +311,15 @@ verify eight initial reads, no additional reads when changing revenue basis, and
 eight reads on explicit refresh. Actual live ratio coverage and bounded primary
 filing comparisons belong in the local release handoff; synthetic cases and the
 historical observations below do not establish coverage of this new ratio.
+
+Operating-cash-flow-to-net-income acceptance additionally checks positive-income
+eligibility, unavailable-input precedence, independence from all revenue choices,
+signed ratios and the exact maximum-length result. Saved-v1 definitions, source
+caps and request counts are unchanged. Measure fresh joint eligible coverage,
+including unknown reasons and nonpositive-income exclusions, and inspect bounded
+primary filing samples for both operands. Existing individual net-income and
+operating-cash-flow coverage counts do not establish joint eligibility. Actual
+release and configured-browser acceptance belong in the local handoff.
 
 The original agreement mode was measured on 2026-09-11 against an admitted
 3,227-listing catalog and verified through authenticated Chrome. Known coverage

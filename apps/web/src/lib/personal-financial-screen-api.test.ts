@@ -31,6 +31,600 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("operating cash flow / net income decoding", () => {
+  it.each([
+    ["1", "3", "33.33"],
+    ["1.005", "100", "1.01"],
+    ["-1.005", "100", "-1.01"],
+    ["0", "100", "0.00"],
+    ["-0", "100", "0.00"],
+    ["-0.0049", "100", "0.00"],
+    ["250", "100", "250.00"],
+    ["-250", "100", "-250.00"],
+    ["9007199254740993", "100", "9007199254740993.00"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(64)}${"0".repeat(64)}.00`,
+    ],
+  ])(
+    "independently verifies %s / %s percent as %s",
+    async (operating, income, expected) => {
+      const result = incomeRatioResponse(
+        incomeRatioOperand(
+          "NetCashProvidedByUsedInOperatingActivities",
+          operating,
+        ),
+        incomeRatioOperand("NetIncomeLoss", income),
+        expected,
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      const row = result.rows[0]!;
+      for (const value of [
+        `${expected.slice(0, -1)}${expected.endsWith("1") ? "2" : "1"}`,
+        expected === "0.00" ? "-0.00" : expected.replace(".", ".0"),
+      ]) {
+        fetchMock.mockResolvedValueOnce(
+          json({
+            ...result,
+            rows: [
+              {
+                ...row,
+                metrics: {
+                  ...row.metrics,
+                  operatingCashFlowToNetIncome: {
+                    ...row.metrics.operatingCashFlowToNetIncome,
+                    value,
+                  },
+                },
+              },
+            ],
+          }),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+      if (operating.length === 64) expect(expected).toHaveLength(131);
+    },
+  );
+
+  it.each(["0", "-0.00", "-100"])(
+    "keeps denominator %s unknown with the dedicated reason",
+    async (income) => {
+      const operating = incomeRatioOperand(
+        "NetCashProvidedByUsedInOperatingActivities",
+        "-1",
+      );
+      const denominator = incomeRatioOperand("NetIncomeLoss", income);
+      const result = incomeRatioResponse(operating, denominator, {
+        reason: "nonpositive_net_income",
+      });
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      for (const reason of [
+        "nonpositive_revenue",
+        "unsupported_sign",
+        "missing",
+      ] as const) {
+        fetchMock.mockResolvedValueOnce(
+          json(incomeRatioResponse(operating, denominator, { reason })),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+
+  it.each([
+    "missing",
+    "conflicting",
+    "invalid_value",
+    "source_unavailable",
+  ] as const)(
+    "propagates %s with net income before operating cash flow and preserves references",
+    async (reason) => {
+      for (const unavailable of ["income", "operating", "both"] as const) {
+        const knownIncome = incomeRatioOperand("NetIncomeLoss", "0");
+        const knownOperating = {
+          ...incomeRatioOperand(
+            "NetCashProvidedByUsedInOperatingActivities",
+            "-1",
+          ),
+          sources: [
+            {
+              ...source(),
+              concept: "NetCashProvidedByUsedInOperatingActivities" as const,
+              value: "-1",
+              startDate: "2024-01-02",
+              accessionNumber: "0000000001-25-000002",
+            },
+          ],
+        };
+        const income: PersonalFinancialScreenCellDto =
+          unavailable === "operating"
+            ? knownIncome
+            : {
+                status: "unavailable",
+                unit: "USD",
+                reason,
+                sources: knownIncome.sources,
+              };
+        const operating: PersonalFinancialScreenCellDto =
+          unavailable === "income"
+            ? knownOperating
+            : {
+                status: "unavailable",
+                unit: "USD",
+                reason:
+                  unavailable === "both"
+                    ? reason === "missing"
+                      ? "source_unavailable"
+                      : "missing"
+                    : reason,
+                sources: knownOperating.sources,
+              };
+        const result = incomeRatioResponse(operating, income, { reason });
+        fetchMock.mockResolvedValueOnce(json(result));
+        expect(await screenPersonalFinancials(request(), signal())).toEqual(
+          result,
+        );
+        for (const wrong of [
+          "nonpositive_net_income",
+          "period_mismatch",
+          "filing_mismatch",
+          ...(unavailable === "both" && operating.status === "unavailable"
+            ? [operating.reason]
+            : []),
+        ] as const) {
+          fetchMock.mockResolvedValueOnce(
+            json(incomeRatioResponse(operating, income, { reason: wrong })),
+          );
+          await expect(
+            screenPersonalFinancials(request(), signal()),
+          ).rejects.toMatchObject({ code: "invalid_response" });
+        }
+      }
+    },
+  );
+
+  it.each([
+    ["2024-11-29", false],
+    ["2024-11-30", true],
+    ["2025-01-29", true],
+    ["2025-01-30", false],
+  ] as const)(
+    "checks inclusive annual duration ending %s",
+    async (endDate, available) => {
+      const operand = (
+        concept: "NetIncomeLoss" | "NetCashProvidedByUsedInOperatingActivities",
+      ) => ({
+        ...incomeRatioOperand(concept, "100"),
+        sources: [{ ...source(), concept, value: "100", endDate }],
+      });
+      const operating = operand("NetCashProvidedByUsedInOperatingActivities");
+      const income = operand("NetIncomeLoss");
+      const result = incomeRatioResponse(
+        operating,
+        income,
+        available ? "100.00" : { reason: "period_mismatch" },
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(
+          incomeRatioResponse(
+            operating,
+            income,
+            available ? { reason: "period_mismatch" } : "100.00",
+          ),
+        ),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(["period", "filing", "period and filing"])(
+    "checks %s before the net-income sign",
+    async (kind) => {
+      const operating = {
+        ...incomeRatioOperand(
+          "NetCashProvidedByUsedInOperatingActivities",
+          "-1",
+        ),
+        sources: [
+          {
+            ...source(),
+            concept: "NetCashProvidedByUsedInOperatingActivities" as const,
+            value: "-1",
+            ...(kind.includes("period") ? { startDate: "2024-01-02" } : {}),
+            ...(kind.includes("filing")
+              ? { accessionNumber: "0000000001-25-000002" }
+              : {}),
+          },
+        ],
+      };
+      const income = incomeRatioOperand("NetIncomeLoss", "0");
+      const reason = kind.includes("period")
+        ? "period_mismatch"
+        : "filing_mismatch";
+      const result = incomeRatioResponse(operating, income, { reason });
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(
+          incomeRatioResponse(operating, income, {
+            reason: "nonpositive_net_income",
+          }),
+        ),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+      if (kind === "period and filing") {
+        fetchMock.mockResolvedValueOnce(
+          json(
+            incomeRatioResponse(operating, income, {
+              reason: "filing_mismatch",
+            }),
+          ),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+
+  it.each(["income", "operating"])(
+    "checks the last retained filing in %s",
+    async (operand) => {
+      let income = incomeRatioOperand("NetIncomeLoss", "100");
+      let operating = incomeRatioOperand(
+        "NetCashProvidedByUsedInOperatingActivities",
+        "30",
+      );
+      const original = operand === "income" ? income : operating;
+      const extra = {
+        ...original.sources[0]!,
+        accessionNumber: "0000000001-25-000002",
+      };
+      if (operand === "income")
+        income = { ...income, sources: [...income.sources, extra] };
+      else operating = { ...operating, sources: [...operating.sources, extra] };
+      const result = incomeRatioResponse(operating, income, {
+        reason: "filing_mismatch",
+      });
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(incomeRatioResponse(operating, income, "30.00")),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("accepts all twelve operand references in any order without losing multiplicity", async () => {
+    const operand = (
+      concept: "NetIncomeLoss" | "NetCashProvidedByUsedInOperatingActivities",
+      value: string,
+    ) => ({
+      ...incomeRatioOperand(concept, value),
+      sources: Array.from({ length: 6 }, (_, index) => ({
+        ...source(),
+        concept,
+        value: `${value}.${"0".repeat(index + 1)}`,
+      })),
+    });
+    const result = incomeRatioResponse(
+      operand("NetCashProvidedByUsedInOperatingActivities", "30"),
+      operand("NetIncomeLoss", "100"),
+      "30.00",
+    );
+    const row = result.rows[0]!;
+    const ratio = row.metrics.operatingCashFlowToNetIncome;
+    const reversed = {
+      ...result,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            operatingCashFlowToNetIncome: {
+              ...ratio,
+              sources: [...ratio.sources].reverse(),
+            },
+          },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json(reversed));
+    expect(
+      (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+        .operatingCashFlowToNetIncome.sources,
+    ).toHaveLength(12);
+    for (const sources of [
+      ratio.sources.slice(1),
+      [...ratio.sources.slice(0, 11), ratio.sources[0]!],
+    ]) {
+      fetchMock.mockResolvedValueOnce(
+        json({
+          ...result,
+          rows: [
+            {
+              ...row,
+              metrics: {
+                ...row.metrics,
+                operatingCashFlowToNetIncome: { ...ratio, sources },
+              },
+            },
+          ],
+        }),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it.each([
+    "missing reference",
+    "duplicate reference",
+    "extra reference",
+    "reference representation",
+    "reference concept",
+    "reference filing",
+    "reference period",
+    "income value",
+    "income concept",
+    "income conflict",
+    "income period",
+    "cash flow value",
+    "USD unit",
+    "unknown reason",
+    "missing metric",
+    "missing coverage",
+  ])("rejects forged ratio evidence: %s", async (kind) => {
+    const result = incomeRatioResponse(
+      incomeRatioOperand("NetCashProvidedByUsedInOperatingActivities", "30"),
+      incomeRatioOperand("NetIncomeLoss", "100"),
+      "30.00",
+    );
+    const row = result.rows[0]!;
+    const cells = structuredClone(row.metrics) as Record<string, unknown>;
+    const ratio = row.metrics.operatingCashFlowToNetIncome;
+    let refs = [...ratio.sources];
+    if (kind === "missing reference") refs = refs.slice(1);
+    if (kind === "duplicate reference") refs = [refs[0]!, refs[0]!];
+    if (kind === "extra reference") refs.push(refs[1]!);
+    if (kind === "reference representation")
+      refs[0] = { ...refs[0]!, value: "30.0" };
+    if (kind === "reference concept")
+      refs[0] = { ...refs[0]!, concept: "Revenues" };
+    if (kind === "reference filing")
+      refs[0] = { ...refs[0]!, accessionNumber: "0000000001-25-000002" };
+    if (kind === "reference period")
+      refs[0] = { ...refs[0]!, startDate: "2024-01-02" };
+    cells.operatingCashFlowToNetIncome = { ...ratio, sources: refs };
+    if (kind === "income value")
+      cells.netIncome = { ...row.metrics.netIncome, value: "101" };
+    if (kind === "cash flow value")
+      cells.operatingCashFlow = {
+        ...row.metrics.operatingCashFlow,
+        value: "31",
+      };
+    if (kind === "income concept") {
+      const forged = {
+        ...row.metrics.netIncome.sources[0]!,
+        concept: "OperatingIncomeLoss",
+      };
+      cells.netIncome = { ...row.metrics.netIncome, sources: [forged] };
+      cells.operatingCashFlowToNetIncome = {
+        ...ratio,
+        sources: [refs[0], forged],
+      };
+    }
+    if (kind === "income conflict" || kind === "income period") {
+      const extra = {
+        ...row.metrics.netIncome.sources[0]!,
+        ...(kind === "income conflict"
+          ? { value: "101" }
+          : { startDate: "2024-01-02" }),
+      };
+      cells.netIncome = {
+        ...row.metrics.netIncome,
+        sources: [...row.metrics.netIncome.sources, extra],
+      };
+      cells.operatingCashFlowToNetIncome = {
+        ...ratio,
+        sources: [...ratio.sources, extra],
+      };
+    }
+    if (kind === "USD unit")
+      cells.operatingCashFlowToNetIncome = { ...ratio, unit: "USD" };
+    if (kind === "unknown reason")
+      cells.operatingCashFlowToNetIncome = {
+        status: "unavailable",
+        unit: "percent",
+        reason: "missing",
+        sources: refs,
+      };
+    if (kind === "missing metric") delete cells.operatingCashFlowToNetIncome;
+    const coverage = { ...result.metricCoverage } as Record<string, unknown>;
+    if (kind === "missing coverage")
+      delete coverage.operatingCashFlowToNetIncome;
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        metricCoverage: coverage,
+        rows: [{ ...row, metrics: cells }],
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "does not use the %s revenue basis or missing PP&E as a denominator",
+    async (basis) => {
+      const result = incomeRatioResponse(
+        incomeRatioOperand("NetCashProvidedByUsedInOperatingActivities", "30"),
+        incomeRatioOperand("NetIncomeLoss", "100"),
+        "30.00",
+        basis,
+      );
+      const input = {
+        ...request(),
+        criteria: { ...request().criteria, revenueBasis: basis },
+      };
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(input, signal())).toEqual(result);
+      expect(result.rows[0]?.metrics.ppePurchases).toMatchObject({
+        reason: "missing",
+      });
+    },
+  );
+
+  it("keeps the ratio available when every revenue concept is unavailable", async () => {
+    const result = incomeRatioResponse(
+      incomeRatioOperand("NetCashProvidedByUsedInOperatingActivities", "30"),
+      incomeRatioOperand("NetIncomeLoss", "100"),
+      "30.00",
+    );
+    const row = result.rows[0]!;
+    const unknown: PersonalFinancialScreenCellDto = {
+      status: "unavailable",
+      unit: "USD",
+      reason: "source_unavailable",
+      sources: [],
+    };
+    const payload = {
+      ...result,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            revenue: unknown,
+            grossMargin: {
+              ...unknown,
+              unit: "percent",
+              sources: row.metrics.grossProfit.sources,
+            },
+          },
+        },
+      ],
+      sources: result.sources.map((ref) =>
+        PERSONAL_FINANCIAL_REVENUE_BASES.some((basis) => basis === ref.concept)
+          ? { ...ref, status: "upstream_unavailable" }
+          : ref,
+      ),
+    };
+    fetchMock.mockResolvedValueOnce(json(payload));
+    expect(
+      (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
+        .operatingCashFlowToNetIncome,
+    ).toMatchObject({ status: "available", value: "30.00" });
+  });
+
+  it.each([
+    "NetIncomeLoss",
+    "NetCashProvidedByUsedInOperatingActivities",
+  ] as const)(
+    "retains source failure for %s without synthesizing a ratio",
+    async (concept) => {
+      const missing: PersonalFinancialScreenCellDto = {
+        status: "unavailable",
+        unit: "USD",
+        reason: "source_unavailable",
+        sources: [],
+      };
+      const operating =
+        concept === "NetCashProvidedByUsedInOperatingActivities"
+          ? missing
+          : incomeRatioOperand(
+              "NetCashProvidedByUsedInOperatingActivities",
+              "30",
+            );
+      const income =
+        concept === "NetIncomeLoss"
+          ? missing
+          : incomeRatioOperand("NetIncomeLoss", "100");
+      const result = incomeRatioResponse(operating, income, {
+        reason: "source_unavailable",
+      });
+      const payload = {
+        ...result,
+        sources: result.sources.map((ref) =>
+          ref.concept === concept
+            ? { ...ref, status: "upstream_unavailable" }
+            : ref,
+        ),
+      };
+      fetchMock.mockResolvedValueOnce(json(payload));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        payload,
+      );
+      const forged = incomeRatioResponse(operating, income, "30.00");
+      fetchMock.mockResolvedValueOnce(
+        json({ ...forged, sources: payload.sources }),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(
+    PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
+      (metric) => metric !== "operatingCashFlowToNetIncome",
+    ),
+  )("rejects nonpositive_net_income on prior metric %s", async (metric) => {
+    const result = response();
+    const row = result.rows[0]!;
+    const original = row.metrics[metric];
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              [metric]: {
+                status: "unavailable",
+                unit: original.unit,
+                reason: "nonpositive_net_income",
+                sources: original.sources,
+              },
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+});
+
 describe("gross profit / selected revenue decoding", () => {
   it.each([
     ["1", "3", "33.33"],
@@ -1113,7 +1707,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v4 criteria and retains the complete eleven-metric, eight-source response", async () => {
+  it("sends v5 criteria and retains the complete twelve-metric, eight-source response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -1125,8 +1719,8 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("4.0.0");
-    expect(decoded.formulaVersion).toBe("1.2.0");
+    expect(decoded.schemaVersion).toBe("5.0.0");
+    expect(decoded.formulaVersion).toBe("1.3.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -1139,6 +1733,7 @@ describe("financial screen transport", () => {
       "ppePurchases",
       "operatingCashFlowLessPpePurchases",
       "grossMargin",
+      "operatingCashFlowToNetIncome",
     ]);
     expect(Object.keys(decoded.metricCoverage)).toEqual(
       Object.keys(decoded.rows[0]!.metrics),
@@ -1156,7 +1751,7 @@ describe("financial screen transport", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0"])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
       await expect(
@@ -1178,12 +1773,13 @@ describe("financial screen transport", () => {
     "expanded v1",
     "expanded v2",
     "expanded v3",
-    "historical v1 shape relabeled v4",
-    "historical v2 shape relabeled v4",
+    "expanded v4",
+    "historical v1 shape relabeled v5",
+    "historical v2 shape relabeled v5",
     "missing metric",
     "missing coverage",
     "duplicate source",
-    "twelfth metric",
+    "thirteenth metric",
     "old formula version",
   ])("rejects incompatible response: %s", async (kind) => {
     const result = response();
@@ -1196,17 +1792,18 @@ describe("financial screen transport", () => {
     if (kind === "expanded v1") invalid = { ...result, schemaVersion: "1.0.0" };
     if (kind === "expanded v2") invalid = { ...result, schemaVersion: "2.0.0" };
     if (kind === "expanded v3") invalid = { ...result, schemaVersion: "3.0.0" };
-    if (kind === "historical v1 shape relabeled v4")
+    if (kind === "expanded v4") invalid = { ...result, schemaVersion: "4.0.0" };
+    if (kind === "historical v1 shape relabeled v5")
       invalid = {
         ...historicalResponse(),
-        schemaVersion: "4.0.0",
-        formulaVersion: "1.2.0",
+        schemaVersion: "5.0.0",
+        formulaVersion: "1.3.0",
       };
-    if (kind === "historical v2 shape relabeled v4")
+    if (kind === "historical v2 shape relabeled v5")
       invalid = {
         ...historicalResponse("2.0.0"),
-        schemaVersion: "4.0.0",
-        formulaVersion: "1.2.0",
+        schemaVersion: "5.0.0",
+        formulaVersion: "1.3.0",
       };
     if (kind === "old formula version")
       invalid = { ...result, formulaVersion: "1.0.0" };
@@ -1223,7 +1820,7 @@ describe("financial screen transport", () => {
         ...result,
         sources: [...result.sources.slice(0, 7), result.sources[0]],
       };
-    if (kind === "twelfth metric")
+    if (kind === "thirteenth metric")
       invalid = {
         ...result,
         rows: [
@@ -1813,6 +2410,50 @@ describe("financial screen transport", () => {
 });
 
 describe("saved financial criteria", () => {
+  it("round-trips the new ratio beside untouched legacy criteria in saved schema 1", async () => {
+    const legacy = savedPayload().views[0]!;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 1,
+      views: [
+        legacy,
+        {
+          ...legacy,
+          id: "screen-operating-income-ratio",
+          name: "Operating cash flow / net income",
+          criteria: {
+            ...legacy.criteria,
+            clauses: [
+              {
+                field: "operatingCashFlowToNetIncome",
+                operator: "gte",
+                value: "-10.005",
+              },
+            ],
+            sort: { field: "operatingCashFlowToNetIncome", direction: "desc" },
+          },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      payload,
+    );
+    fetchMock.mockResolvedValueOnce(json(receipt(2)));
+    const saved = await savePersonalFinancialSavedViews(1, payload, signal());
+    expect(saved).toEqual({ version: 2, payload });
+    expect(saved.payload.views[0]).toEqual(legacy);
+    expect(saved.payload.views[1]?.criteria).not.toHaveProperty("revenueBasis");
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+      JSON.stringify({ payload }),
+    );
+    fetchMock.mockResolvedValueOnce(json(response()));
+    const input = { ...request(), criteria: payload.views[1]!.criteria };
+    await expect(screenPersonalFinancials(input, signal())).resolves.toEqual(
+      response(),
+    );
+    expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify(input));
+  });
+
   it("preserves old saved definitions and numeric schema 1 beside an explicit gross-profit screen", async () => {
     const legacy = savedPayload().views[0]!;
     const payload: PersonalFinancialSavedViewsPayloadDto = {
@@ -1999,7 +2640,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -2031,6 +2672,73 @@ function ratioOperand(
     unit: "USD",
     value,
     sources: [{ ...source(), concept, value }],
+  };
+}
+function incomeRatioOperand(
+  concept: "NetIncomeLoss" | "NetCashProvidedByUsedInOperatingActivities",
+  value: string,
+): PersonalFinancialScreenCellDto {
+  return {
+    status: "available",
+    unit: "USD",
+    value,
+    sources: [{ ...source(), concept, value }],
+  };
+}
+function incomeRatioResponse(
+  operating: PersonalFinancialScreenCellDto,
+  income: PersonalFinancialScreenCellDto,
+  expected:
+    | string
+    | {
+        reason: Extract<
+          PersonalFinancialScreenCellDto,
+          { status: "unavailable" }
+        >["reason"];
+      },
+  basis?: PersonalFinancialRevenueBasisDto,
+): PersonalFinancialScreenResponseDto {
+  const result = basis === undefined ? response() : responseWithBasis(basis);
+  const row = result.rows[0]!;
+  const sources = [...operating.sources, ...income.sources];
+  const operatingCashFlowToNetIncome: PersonalFinancialScreenCellDto =
+    typeof expected === "string"
+      ? { status: "available", unit: "percent", value: expected, sources }
+      : {
+          status: "unavailable",
+          unit: "percent",
+          reason: expected.reason,
+          sources,
+        };
+  // Keep unrelated subtraction/margins unknown so this fixture only specifies the ratio under test.
+  const missing: PersonalFinancialScreenCellDto = {
+    status: "unavailable",
+    unit: "USD",
+    reason: "missing",
+    sources: [],
+  };
+  return {
+    ...result,
+    rows: [
+      {
+        ...row,
+        metrics: {
+          ...row.metrics,
+          operatingCashFlow: operating,
+          netIncome: income,
+          operatingCashFlowToNetIncome,
+          ppePurchases: missing,
+          operatingCashFlowLessPpePurchases: {
+            ...missing,
+            reason:
+              operating.status === "unavailable" ? operating.reason : "missing",
+            sources: operating.sources,
+          },
+          netMargin: { ...missing, unit: "percent" },
+          operatingCashFlowMargin: { ...missing, unit: "percent" },
+        },
+      },
+    ],
   };
 }
 function ratioResponse(
@@ -2118,6 +2826,18 @@ function cashResponse(
           operatingCashFlow: operating,
           ppePurchases: purchases,
           operatingCashFlowLessPpePurchases: cell,
+          netIncome: {
+            status: "unavailable",
+            unit: "USD",
+            reason: "missing",
+            sources: [],
+          },
+          operatingCashFlowToNetIncome: {
+            status: "unavailable",
+            unit: "percent",
+            reason: "missing",
+            sources: operating.sources,
+          },
         },
       },
     ],
@@ -2125,7 +2845,7 @@ function cashResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -2154,6 +2874,22 @@ function response(): PersonalFinancialScreenResponseDto {
         },
         metrics: Object.fromEntries(
           PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => {
+            if (metric === "operatingCashFlowToNetIncome")
+              return [
+                metric,
+                {
+                  status: "available",
+                  unit: "percent",
+                  value: "100.00",
+                  sources: [
+                    {
+                      ...source(),
+                      concept: "NetCashProvidedByUsedInOperatingActivities",
+                    },
+                    { ...source(), concept: "NetIncomeLoss" },
+                  ],
+                },
+              ];
             if (metric === "grossMargin")
               return [
                 metric,
@@ -2203,9 +2939,11 @@ function response(): PersonalFinancialScreenResponseDto {
                     concept:
                       metric === "grossProfit"
                         ? "GrossProfit"
-                        : metric === "operatingCashFlow"
-                          ? "NetCashProvidedByUsedInOperatingActivities"
-                          : "Revenues",
+                        : metric === "netIncome"
+                          ? "NetIncomeLoss"
+                          : metric === "operatingCashFlow"
+                            ? "NetCashProvidedByUsedInOperatingActivities"
+                            : "Revenues",
                   },
                 ],
               },
@@ -2228,7 +2966,7 @@ function response(): PersonalFinancialScreenResponseDto {
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.2.0",
+    formulaVersion: "1.3.0",
   };
 }
 function responseWithBasis(

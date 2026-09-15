@@ -742,8 +742,15 @@ describe("SEC annual financial provider", () => {
           calendarYear: 2025,
           revenueBasis,
           identityText: "",
-          clauses: [{ field: "grossMargin", operator: "gte", value: "100" }],
-          sort: { field: "grossMargin", direction: "desc" },
+          clauses: [
+            { field: "grossMargin", operator: "gte", value: "100" },
+            {
+              field: "operatingCashFlowToNetIncome",
+              operator: "gte",
+              value: "100",
+            },
+          ],
+          sort: { field: "operatingCashFlowToNetIncome", direction: "desc" },
         },
         { offset: 0, limit: 250 },
         `sha256:${"a".repeat(64)}`,
@@ -754,6 +761,17 @@ describe("SEC annual financial provider", () => {
         value: "100.00",
       });
       expect(result.metricCoverage.grossMargin).toEqual({
+        known: 1,
+        unknown: 0,
+      });
+      expect(
+        result.rows[0]?.metrics.operatingCashFlowToNetIncome,
+      ).toMatchObject({
+        status: "available",
+        unit: "percent",
+        value: "100.00",
+      });
+      expect(result.metricCoverage.operatingCashFlowToNetIncome).toEqual({
         known: 1,
         unknown: 0,
       });

@@ -206,7 +206,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(view)).toContain("Operating cash flow input");
     expect(text(view)).toContain("PP&E purchases input (subtracted)");
     expect(text(view)).toContain("Reported: 23.00002 USD");
-    expect(text(view)).toContain("Formula version 1.2.0");
+    expect(text(view)).toContain("Formula version 1.3.0");
     expect(
       elements(view).some(
         (element) =>
@@ -325,7 +325,11 @@ describe("PersonalFinancialScreener", () => {
             {
               status: "unavailable",
               reason: "missing",
-              unit: metric.endsWith("Margin") ? "percent" : "USD",
+              unit:
+                metric.endsWith("Margin") ||
+                metric === "operatingCashFlowToNetIncome"
+                  ? "percent"
+                  : "USD",
               sources: [],
             },
           ]),
@@ -420,6 +424,7 @@ describe("PersonalFinancialScreener", () => {
     "ppePurchases",
     "operatingCashFlowLessPpePurchases",
     "grossMargin",
+    "operatingCashFlowToNetIncome",
   ] as const)(
     "filters, sorts, pages and explicitly saves %s without rewriting legacy criteria",
     async (metric) => {
@@ -453,7 +458,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "4.0.0",
+          schemaVersion: "5.0.0",
           financialSnapshotSha256: null,
           criteria: legacy.criteria,
         }),
@@ -478,7 +483,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[2]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "4.0.0",
+          schemaVersion: "5.0.0",
           criteria: grossRequest.criteria,
           financialSnapshotSha256: sha("b"),
           page: { offset: 25, limit: 25 },
@@ -502,7 +507,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[3]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "4.0.0",
+          schemaVersion: "5.0.0",
           financialSnapshotSha256: null,
           page: { offset: 0, limit: 25 },
           criteria: grossRequest.criteria,
@@ -747,7 +752,7 @@ describe("PersonalFinancialScreener", () => {
     },
   );
 
-  it("shows missing gross profit as unknown and spans all eleven metrics when no rows match", async () => {
+  it("shows missing gross profit as unknown and spans all twelve metrics when no rows match", async () => {
     const result = response();
     const row = result.rows[0]!;
     api.screenPersonalFinancials.mockResolvedValueOnce({
@@ -786,8 +791,237 @@ describe("PersonalFinancialScreener", () => {
           element.type === "td" &&
           text(element) === "No matching financial results.",
       )?.props.colSpan,
-    ).toBe(13);
+    ).toBe(14);
   });
+
+  it("uses percent controls and explains both cash-flow-to-income operands independently of revenue", async () => {
+    await mount();
+    change(render(), "Revenue basis", "SalesRevenueNet");
+    click(render(), "Add financial filter");
+    change(render(), "Financial metric 1", "operatingCashFlowToNetIncome");
+    change(render(), "Financial threshold 1", "150");
+    change(render(), "Financial sort field", "operatingCashFlowToNetIncome");
+    change(render(), "Financial sort direction", "desc");
+    expect(text(render())).toContain("Operating cash flow / net income (%)");
+    expect(text(render())).toContain("Threshold ( % )");
+    expect(
+      elements(render()).find(
+        (element) => element.props["aria-label"] === "Financial threshold 1",
+      )?.props.placeholder,
+    ).toBe("15 = 15%");
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    const result = cashIncomeResponse("150.00", "150", "100");
+    const row = result.rows[0]!;
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...result,
+      revenueBasis: "SalesRevenueNet",
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            revenue: {
+              status: "unavailable",
+              unit: "USD",
+              reason: "missing",
+              sources: [],
+            },
+          },
+        },
+      ],
+    });
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
+      schemaVersion: "5.0.0",
+      criteria: {
+        revenueBasis: "SalesRevenueNet",
+        clauses: [
+          {
+            field: "operatingCashFlowToNetIncome",
+            operator: "gte",
+            value: "150",
+          },
+        ],
+        sort: { field: "operatingCashFlowToNetIncome", direction: "desc" },
+      },
+    });
+    const cell = cashIncomeCell(render());
+    expect(text(cell)).toContain("Exact value: 150.00 percent");
+    expect(text(cell)).toContain("Requires positive reported net income");
+    expect(text(cell)).toContain("335–395 inclusive days");
+    expect(text(cell)).toContain("Rounded half-up to two decimal places");
+    expect(text(cell)).toContain("Independent of the revenue basis");
+    expect(text(cell)).toContain(
+      "Operating cash flow numerator NetCashProvidedByUsedInOperatingActivities",
+    );
+    expect(text(cell)).toContain("Net income denominator NetIncomeLoss");
+    expect(text(cell)).toContain("Reported: 150 USD");
+    expect(text(cell)).toContain("Reported: 100 USD");
+    expect(text(cell)).toContain("2024-01-01 through 2024-12-31");
+    expect(text(cell)).toContain(
+      "not a company-reported cash-conversion measure or a quality score",
+    );
+    expect(text(cell)).not.toContain("Revenue denominator:");
+    expect(text(cell)).not.toContain("selected revenue");
+    const links = elements(cell).filter((element) => element.type === "a");
+    expect(links).toHaveLength(2);
+    expect(
+      links.every(
+        (element) =>
+          element.props.href ===
+          "https://www.sec.gov/Archives/edgar/data/1/000000000125000001/0000000001-25-000001-index.html",
+      ),
+    ).toBe(true);
+    expect(
+      elements(render()).find(
+        (element) =>
+          element.type === "th" &&
+          text(element).trim() === "Operating cash flow / net income (%)",
+      ),
+    ).toBeDefined();
+    click(render(), "Reset financial criteria");
+    expect(cashIncomeCell(render())).toBeUndefined();
+    expect(input(render(), "Financial sort field").props.value).toBe("symbol");
+    expect(input(render(), "Revenue basis").props.value).toBe("agreement");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["-50.00", "-50.00%", "-50", "100"],
+    ["0.00", "0.00%", "0", "100"],
+    ["150.00", "150.00%", "150", "100"],
+    ["-1.01", "-1.01%", "-1.005", "100"],
+    [
+      `${"9".repeat(64)}${"0".repeat(64)}.00`,
+      `${`${"9".repeat(64)}${"0".repeat(64)}`.replace(/\B(?=(\d{3})+(?!\d))/gu, ",")}.00%`,
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+    ],
+  ])(
+    "retains the cash-flow-to-income percentage %s without Number conversion",
+    async (value, display, operatingCashFlow, netIncome) => {
+      api.screenPersonalFinancials.mockResolvedValueOnce(
+        cashIncomeResponse(value, operatingCashFlow, netIncome),
+      );
+      await mount();
+      submit(render());
+      await flush();
+      const cell = cashIncomeCell(render());
+      expect(
+        elements(cell).find((element) => element.type === "summary")?.props[
+          "aria-label"
+        ],
+      ).toBe(
+        `ONE Operating cash flow / net income (%): ${display}. Show source details`,
+      );
+      expect(text(cell)).toContain(`Exact value: ${value} percent`);
+      expect(text(cell)).toContain(`Reported: ${operatingCashFlow} USD`);
+      expect(text(cell)).toContain(`Reported: ${netIncome} USD`);
+    },
+  );
+
+  it.each([
+    ["period_mismatch", "100", "Compare every source date below"],
+    ["filing_mismatch", "100", "avoid mixing filing versions"],
+    ["nonpositive_net_income", "0", "Reported net income is zero or negative"],
+    [
+      "nonpositive_net_income",
+      "-100",
+      "A positive net income denominator is required",
+    ],
+    [
+      "missing",
+      "100",
+      "Reported net income or operating cash flow is unresolved",
+    ],
+    ["source_unavailable", "100", "retained source references are shown below"],
+  ] as const)(
+    "explains cash-flow-to-income %s with denominator %s and retains available operands",
+    async (reason, netIncome, explanation) => {
+      const result = cashIncomeResponse("150.00", "150", netIncome);
+      const row = result.rows[0]!;
+      const sources = row.metrics.operatingCashFlowToNetIncome.sources
+        .map((source, index) => ({
+          ...source,
+          ...(reason === "period_mismatch" && index === 1
+            ? { startDate: "2024-02-01" }
+            : {}),
+          ...(reason === "filing_mismatch" && index === 1
+            ? { accessionNumber: "0000000001-25-000002" }
+            : {}),
+        }))
+        .filter((source) =>
+          reason === "missing"
+            ? source.concept !== "NetIncomeLoss"
+            : reason === "source_unavailable"
+              ? source.concept !== "NetCashProvidedByUsedInOperatingActivities"
+              : true,
+        );
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              ...(reason === "missing"
+                ? {
+                    netIncome: {
+                      status: "unavailable" as const,
+                      unit: "USD" as const,
+                      reason,
+                      sources: [],
+                    },
+                  }
+                : {}),
+              ...(reason === "source_unavailable"
+                ? {
+                    operatingCashFlow: {
+                      status: "unavailable" as const,
+                      unit: "USD" as const,
+                      reason,
+                      sources: [],
+                    },
+                  }
+                : {}),
+              operatingCashFlowToNetIncome: {
+                status: "unavailable",
+                unit: "percent",
+                reason,
+                sources,
+              },
+            },
+          },
+        ],
+      });
+      await mount();
+      submit(render());
+      await flush();
+      const cell = cashIncomeCell(render());
+      expect(text(cell)).toContain(
+        `Unavailable: ${reason.replaceAll("_", " ")}.`,
+      );
+      expect(text(cell)).toContain(explanation);
+      expect(text(cell)).not.toContain("Revenue denominator:");
+      expect(text(cell)).not.toContain("nonpositive revenue");
+      if (reason !== "missing") {
+        expect(text(cell)).toContain("Net income denominator NetIncomeLoss");
+        expect(text(cell)).toContain(`Reported: ${netIncome} USD`);
+      }
+      if (reason !== "source_unavailable") {
+        expect(text(cell)).toContain("Operating cash flow numerator");
+        expect(text(cell)).toContain("Reported: 150 USD");
+      }
+      expect(
+        elements(cell).find((element) => element.type === "summary")?.props[
+          "aria-label"
+        ],
+      ).toBe(
+        "ONE Operating cash flow / net income (%): Unknown. Show source details",
+      );
+    },
+  );
 
   it("requires an explicit run, defaults to the last completed year, and explains annual scope", async () => {
     const view = await mount();
@@ -1013,7 +1247,12 @@ describe("PersonalFinancialScreener", () => {
     expect(legacyRequest.criteria).not.toHaveProperty("revenueBasis");
   });
 
-  it.each(["agreement", "SalesRevenueNet", "Revenues"] as const)(
+  it.each([
+    "agreement",
+    "SalesRevenueNet",
+    "Revenues",
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+  ] as const)(
     "explains unresolved %s revenue and each dependent margin while retaining sources",
     async (basis) => {
       await mount();
@@ -1071,6 +1310,16 @@ describe("PersonalFinancialScreener", () => {
       expect(rendered).toContain(
         "This ratio remains unknown because selected revenue is unresolved.",
       );
+      expect(text(cashIncomeCell(render()))).toContain(
+        "Exact value: -823045260.80 percent",
+      );
+      expect(text(cashIncomeCell(render()))).toContain(
+        "Net income denominator NetIncomeLoss",
+      );
+      expect(text(cashIncomeCell(render()))).not.toContain(
+        "Revenue denominator:",
+      );
+      expect(text(cashIncomeCell(render()))).not.toContain("Unavailable:");
       if (basis === "agreement") {
         expect(rendered).toContain(
           "Retained concepts can describe different definitions",
@@ -1389,6 +1638,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("Private saved criteria");
+    expect(cashIncomeCell(render())).toBeDefined();
     const pending = deferred<PersonalFinancialScreenResponseDto>();
     api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
     submit(render());
@@ -1405,6 +1655,7 @@ describe("PersonalFinancialScreener", () => {
     pending.resolve(response());
     await flush();
     expect(text(render())).not.toContain("Private saved criteria");
+    expect(cashIncomeCell(render())).toBeUndefined();
     expect(text(render())).not.toContain("Open ONE");
     expect(input(render(), "Financial screen name").props.value).toBe("");
     expect(activityCompletion).toHaveBeenCalledOnce();
@@ -1466,10 +1717,12 @@ describe("PersonalFinancialScreener", () => {
     await flush();
     expect(text(render())).toContain("Open ONE");
     expect(ratioCell(render())).toBeDefined();
+    expect(cashIncomeCell(render())).toBeDefined();
     props = { ...props, disabled: true };
     render();
     expect(text(render())).not.toContain("Open ONE");
     expect(ratioCell(render())).toBeUndefined();
+    expect(cashIncomeCell(render())).toBeUndefined();
   });
 });
 
@@ -1563,7 +1816,10 @@ function submit(value: unknown) {
     preventDefault: () => undefined,
   });
 }
-function ratioCell(value: unknown) {
+function ratioCell(
+  value: unknown,
+  label = "Gross profit / selected revenue (%)",
+) {
   return elements(value).find(
     (element) =>
       element.type === "details" &&
@@ -1571,11 +1827,57 @@ function ratioCell(value: unknown) {
       elements(element).some(
         (child) =>
           child.type === "summary" &&
-          String(child.props["aria-label"]).startsWith(
-            "ONE Gross profit / selected revenue (%):",
-          ),
+          String(child.props["aria-label"]).startsWith(`ONE ${label}:`),
       ),
   );
+}
+function cashIncomeCell(value: unknown) {
+  return ratioCell(value, "Operating cash flow / net income (%)");
+}
+function cashIncomeResponse(
+  value = "-50.00",
+  operatingCashFlow = "-50",
+  netIncome = "100",
+): PersonalFinancialScreenResponseDto {
+  const result = response();
+  const row = result.rows[0]!;
+  const numerator = {
+    ...row.metrics.operatingCashFlow.sources[0]!,
+    value: operatingCashFlow,
+  };
+  const denominator = {
+    ...row.metrics.netIncome.sources[0]!,
+    value: netIncome,
+  };
+  return {
+    ...result,
+    rows: [
+      {
+        ...row,
+        metrics: {
+          ...row.metrics,
+          operatingCashFlow: {
+            status: "available",
+            unit: "USD",
+            value: operatingCashFlow,
+            sources: [numerator],
+          },
+          netIncome: {
+            status: "available",
+            unit: "USD",
+            value: netIncome,
+            sources: [denominator],
+          },
+          operatingCashFlowToNetIncome: {
+            status: "available",
+            unit: "percent",
+            value,
+            sources: [numerator, denominator],
+          },
+        },
+      },
+    ],
+  };
 }
 function ratioResponse(
   value = "25.00",
@@ -1629,13 +1931,13 @@ function ratioResponse(
 }
 function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "4.0.0",
+    schemaVersion: "5.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: new Date().getUTCFullYear() - 1,
     fetchedAt: "2026-09-01T00:00:00.000Z",
     expiresAt: "2026-09-01T00:30:00.000Z",
-    formulaVersion: "1.2.0",
+    formulaVersion: "1.3.0",
     sources: PERSONAL_SEC_ANNUAL_CONCEPTS.map((concept) => ({
       concept,
       status: "available",
@@ -1670,8 +1972,14 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
                     ? "-123456804.12"
                     : metric === "grossMargin"
                       ? "100.00"
-                      : "15",
-              unit: metric.endsWith("Margin") ? "percent" : "USD",
+                      : metric === "operatingCashFlowToNetIncome"
+                        ? "-823045260.80"
+                        : "15",
+              unit:
+                metric.endsWith("Margin") ||
+                metric === "operatingCashFlowToNetIncome"
+                  ? "percent"
+                  : "USD",
               sources: (metric === "operatingCashFlowLessPpePurchases"
                 ? [
                     "NetCashProvidedByUsedInOperatingActivities",
@@ -1679,15 +1987,22 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
                   ]
                 : metric === "grossMargin"
                   ? ["GrossProfit", "Revenues"]
-                  : [
-                      metric === "grossProfit"
-                        ? "GrossProfit"
-                        : metric === "ppePurchases"
-                          ? "PaymentsToAcquirePropertyPlantAndEquipment"
-                          : metric === "operatingCashFlow"
-                            ? "NetCashProvidedByUsedInOperatingActivities"
-                            : "Revenues",
-                    ]
+                  : metric === "operatingCashFlowToNetIncome"
+                    ? [
+                        "NetCashProvidedByUsedInOperatingActivities",
+                        "NetIncomeLoss",
+                      ]
+                    : [
+                        metric === "grossProfit"
+                          ? "GrossProfit"
+                          : metric === "ppePurchases"
+                            ? "PaymentsToAcquirePropertyPlantAndEquipment"
+                            : metric === "operatingCashFlow"
+                              ? "NetCashProvidedByUsedInOperatingActivities"
+                              : metric === "netIncome"
+                                ? "NetIncomeLoss"
+                                : "Revenues",
+                      ]
               ).map((concept) => ({
                 concept,
                 accessionNumber: "0000000001-25-000001",

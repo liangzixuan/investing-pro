@@ -51,6 +51,7 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   ppePurchases: "PP&E purchases",
   operatingCashFlowLessPpePurchases: "Operating cash flow less PP&E purchases",
   grossMargin: "Gross profit / selected revenue (%)",
+  operatingCashFlowToNetIncome: "Operating cash flow / net income (%)",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
@@ -73,6 +74,8 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Operating cash flow − PP&E purchases. Exact subtraction requires the same supported annual period and filing accession, with nonnegative PP&E purchases. Independent of the revenue basis; this measure does not include every investing cash flow.",
   grossMargin:
     "Reported GrossProfit / selected revenue × 100. Requires positive selected revenue and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; negative results and results above 100% are retained.",
+  operatingCashFlowToNetIncome:
+    "Operating cash flow / net income × 100. Requires positive reported net income and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; zero, negative and above-100% results are retained. Independent of the revenue basis.",
 };
 function revenueExplanation(basis: PersonalFinancialRevenueBasisDto): string {
   return basis === "agreement"
@@ -95,6 +98,10 @@ function metricOptionLabel(metric: PersonalFinancialScreenMetricDto): string {
   ].includes(metric)
     ? `${labels[metric]} (USD)`
     : labels[metric];
+}
+
+function isPercentageMetric(metric: PersonalFinancialScreenMetricDto): boolean {
+  return metric === "operatingCashFlowToNetIncome" || metric.endsWith("Margin");
 }
 
 function cashFlowUnknownExplanation(
@@ -121,6 +128,19 @@ function grossMarginUnknownExplanation(
   if (cell.reason === "nonpositive_revenue")
     return "Selected revenue is zero or negative. A positive denominator is required; the reported operands keep their values below.";
   return "Reported gross profit or selected revenue is unresolved. The ratio remains unknown; retained source references are shown below.";
+}
+
+function cashFlowToIncomeUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+): string | null {
+  if (cell.status === "available") return null;
+  if (cell.reason === "period_mismatch")
+    return "The operating cash flow and net income references do not share the same supported annual period (335–395 inclusive days). Compare every source date below.";
+  if (cell.reason === "filing_mismatch")
+    return "The operating cash flow and net income references come from different filing accessions. The ratio remains unknown to avoid mixing filing versions.";
+  if (cell.reason === "nonpositive_net_income")
+    return "Reported net income is zero or negative. A positive net income denominator is required; the reported operands keep their values below.";
+  return "Reported net income or operating cash flow is unresolved. The ratio remains unknown; retained source references are shown below.";
 }
 
 function exactPercentage(value: string): string {
@@ -297,7 +317,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "4.0.0",
+          schemaVersion: "5.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -510,7 +530,7 @@ export function PersonalFinancialScreener({
             Annual financial screen
           </h2>
         </div>
-        <span>Annual · USD and margins</span>
+        <span>Annual · USD and percentages</span>
       </div>
       <p className="market-scope-note">
         Compare calendar-aligned annual SEC facts across the current local
@@ -670,7 +690,7 @@ export function PersonalFinancialScreener({
                 </label>
                 <label>
                   <span>
-                    Threshold ({clause.field.endsWith("Margin") ? "%" : "USD"})
+                    Threshold ({isPercentageMetric(clause.field) ? "%" : "USD"})
                   </span>
                   <input
                     aria-label={`Financial threshold ${String(index + 1)}`}
@@ -681,7 +701,7 @@ export function PersonalFinancialScreener({
                       changeClause(index, { value: event.target.value })
                     }
                     placeholder={
-                      clause.field.endsWith("Margin")
+                      isPercentageMetric(clause.field)
                         ? "15 = 15%"
                         : "1000000000 = $1 billion"
                     }
@@ -996,12 +1016,15 @@ function FinancialResults({
               {metrics.map((metric) => (
                 <th scope="col" key={metric}>
                   {labels[metric]}
-                  {metric !== "grossMargin" && (
-                    <>
-                      <br />
-                      <small>{metric.endsWith("Margin") ? "%" : "USD"}</small>
-                    </>
-                  )}
+                  {metric !== "grossMargin" &&
+                    metric !== "operatingCashFlowToNetIncome" && (
+                      <>
+                        <br />
+                        <small>
+                          {isPercentageMetric(metric) ? "%" : "USD"}
+                        </small>
+                      </>
+                    )}
                 </th>
               ))}
               <th scope="col">Actions</th>
@@ -1122,7 +1145,7 @@ function FinancialCell({
   const display =
     cell.status === "available"
       ? cell.unit === "percent"
-        ? metric === "grossMargin"
+        ? metric === "grossMargin" || metric === "operatingCashFlowToNetIncome"
           ? exactPercentage(cell.value)
           : `${Number(cell.value).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`
         : Number(cell.value).toLocaleString("en-US", {
@@ -1157,6 +1180,19 @@ function FinancialCell({
             </p>
             {cell.status === "unavailable" && (
               <p>{grossMarginUnknownExplanation(cell)}</p>
+            )}
+          </>
+        )}
+        {metric === "operatingCashFlowToNetIncome" && (
+          <>
+            <p>
+              This app calculation compares reported operating cash flow with
+              reported net income. It is not a company-reported cash-conversion
+              measure or a quality score. Working-capital timing and noncash
+              items affect the comparison.
+            </p>
+            {cell.status === "unavailable" && (
+              <p>{cashFlowToIncomeUnknownExplanation(cell)}</p>
             )}
           </>
         )}
@@ -1198,6 +1234,14 @@ function FinancialCell({
                 {source.concept === "GrossProfit"
                   ? "Gross profit numerator"
                   : "Selected revenue denominator"}
+                <br />
+              </>
+            )}
+            {metric === "operatingCashFlowToNetIncome" && (
+              <>
+                {source.concept === "NetCashProvidedByUsedInOperatingActivities"
+                  ? "Operating cash flow numerator"
+                  : "Net income denominator"}
                 <br />
               </>
             )}

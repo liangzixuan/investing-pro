@@ -29,7 +29,7 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.2.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.3.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   netMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.netMargin,
@@ -42,6 +42,11 @@ export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
     expression: "operating_cash_flow - ppe_purchases",
   }),
   grossMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.grossMargin,
+  operatingCashFlowToNetIncome: Object.freeze({
+    formulaId: "operating_cash_flow_to_net_income_percent",
+    formulaVersion: "1.0.0",
+    expression: "operating_cash_flow / net_income * 100",
+  }),
 });
 
 const METRICS = [
@@ -56,6 +61,7 @@ const METRICS = [
   "ppePurchases",
   "operatingCashFlowLessPpePurchases",
   "grossMargin",
+  "operatingCashFlowToNetIncome",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
 const REVENUE_CONCEPTS = [
@@ -230,7 +236,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "4.0.0",
+      schemaVersion: "5.0.0",
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
@@ -300,6 +306,10 @@ function buildMetrics(
       ppePurchases,
     ),
     grossMargin: grossProfitMargin(grossProfit, revenue),
+    operatingCashFlowToNetIncome: cashFlowToNetIncome(
+      operatingCashFlow,
+      netIncome,
+    ),
   };
 }
 
@@ -335,6 +345,57 @@ function grossProfitMargin(
   )
     return unavailable("percent", "filing_mismatch", sources);
   return margin(grossProfit, revenue);
+}
+
+function cashFlowToNetIncome(
+  operatingCashFlow: PersonalFinancialScreenCellDto,
+  netIncome: PersonalFinancialScreenCellDto,
+): PersonalFinancialScreenCellDto {
+  const sources = [...operatingCashFlow.sources, ...netIncome.sources];
+  if (netIncome.status === "unavailable")
+    return unavailable("percent", netIncome.reason, sources);
+  if (operatingCashFlow.status === "unavailable")
+    return unavailable("percent", operatingCashFlow.reason, sources);
+  const first = sources[0]!;
+  // Both operands resolve by CIK; every retained observation must also share
+  // one supported annual period and accession before the ratio is applicable.
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unavailable("percent", "period_mismatch", sources);
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unavailable("percent", "filing_mismatch", sources);
+  const denominator = new ScreenDecimal(netIncome.value);
+  if (!denominator.gt(0))
+    return unavailable("percent", "nonpositive_net_income", sources);
+  const rounded = new ScreenDecimal(operatingCashFlow.value)
+    .div(denominator)
+    .times(100)
+    .toDecimalPlaces(
+      PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces,
+      Decimal.ROUND_HALF_UP,
+    );
+  return {
+    status: "available",
+    unit: "percent",
+    value: rounded.isZero()
+      ? "0.00"
+      : rounded.toFixed(PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces),
+    sources,
+  };
 }
 
 function cashFlowLessPpePurchases(
