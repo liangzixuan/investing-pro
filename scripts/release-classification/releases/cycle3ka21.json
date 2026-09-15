@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "caseNumber": 21,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "163abc39bb4a4e6bfa348b0444c0b95a4dc1c7cf",
+  "featureRevision": "18d047797da625b1db7454bcd541649a509d8959",
+  "featureCount": 143,
+  "closureCount": 144,
+  "featureChanges": [
+    { "path": "docs/RELEASE_CLASSIFICATION.md", "status": "M" },
+    {
+      "path": "docs/adr/0056-durable-personal-local-research-vault.md",
+      "status": "M"
+    },
+    {
+      "path": "packages/local-research-vault/src/windows-owner-only-acl-executor.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/local-research-vault/src/windows-owner-only-acl.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/local-research-vault/src/windows-owner-only-acl.ts",
+      "status": "M"
+    }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka21.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka21.json",
+  "presentation": {
+    "featureDescription": "module-free Windows vault ACL checks",
+    "closureDescription": "module-free Windows vault ACL checks",
+    "inventoryDescription": "module-free Windows vault ACL checks",
+    "testBinding": "moduleFreeWindowsVaultAcl",
+    "routingDescription": "module-free Windows vault ACL checks",
+    "summaryDescription": "module-free Windows vault ACL checks"
+  }
+}

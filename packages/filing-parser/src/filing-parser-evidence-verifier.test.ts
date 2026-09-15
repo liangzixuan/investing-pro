@@ -357,6 +357,10 @@ import {
   isCycle3ka20FeatureTopologyAllowed,
   isCycle3ka20RoutingClosureCommitDiffSetAllowed,
   isCycle3ka20RoutingClosureTopologyAllowed,
+  isCycle3ka21FeatureCommitDiffSetAllowed,
+  isCycle3ka21FeatureTopologyAllowed,
+  isCycle3ka21RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka21RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -1252,6 +1256,10 @@ const CYCLE_3K_A19_ROUTING_CLOSURE_REVISION =
   "12ef0618cb9a5e215bbd0f0cba5fbf91d43f8aec" as const;
 const CYCLE_3K_A20_FEATURE_REVISION =
   "4d7f0c8fc915e4b3e7f2f89a969741041043d1b2" as const;
+const CYCLE_3K_A20_ROUTING_CLOSURE_REVISION =
+  "163abc39bb4a4e6bfa348b0444c0b95a4dc1c7cf" as const;
+const CYCLE_3K_A21_FEATURE_REVISION =
+  "18d047797da625b1db7454bcd541649a509d8959" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -5222,6 +5230,60 @@ const CYCLE_3K_A20_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka20.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A21_FEATURE_TRANSITION = [
+  { path: "docs/RELEASE_CLASSIFICATION.md", status: "M" },
+  {
+    path: "docs/adr/0056-durable-personal-local-research-vault.md",
+    status: "M",
+  },
+  {
+    path: "packages/local-research-vault/src/windows-owner-only-acl-executor.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/local-research-vault/src/windows-owner-only-acl.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/local-research-vault/src/windows-owner-only-acl.ts",
+    status: "M",
+  },
+];
+const CYCLE_3K_A21_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka21.json",
     status: "A",
   },
 ];
@@ -14446,6 +14508,120 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedOperatingCashFlowIncomeRatioClosure = [
+      "142",
+      "142",
+      CYCLE_3K_A20_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A20_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A20_FEATURE_REVISION}`,
+      operatingCashFlowIncomeRatioFeature,
+    ] as const;
+    expect(
+      isCycle3ka20RoutingClosureTopologyAllowed(
+        ...pinnedOperatingCashFlowIncomeRatioClosure,
+      ),
+    ).toBe(true);
+    const moduleFreeWindowsVaultAclFeature = [
+      "143",
+      "143",
+      CYCLE_3K_A21_FEATURE_REVISION,
+      `${CYCLE_3K_A21_FEATURE_REVISION} ${CYCLE_3K_A20_ROUTING_CLOSURE_REVISION}`,
+      pinnedOperatingCashFlowIncomeRatioClosure,
+    ] as const;
+    expect(
+      isCycle3ka21FeatureTopologyAllowed(...moduleFreeWindowsVaultAclFeature),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "142"],
+      [1, "144"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A21_FEATURE_REVISION} ${CYCLE_3K_A20_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A21_FEATURE_REVISION} ${CYCLE_3K_A20_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...moduleFreeWindowsVaultAclFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka21FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka21FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedOperatingCashFlowIncomeRatioClosure: unknown[] = [
+      ...pinnedOperatingCashFlowIncomeRatioClosure,
+    ];
+    tamperedPinnedOperatingCashFlowIncomeRatioClosure[4] =
+      tamperedOperatingCashFlowIncomeRatioFeature;
+    expect(
+      isCycle3ka21FeatureTopologyAllowed(
+        "143",
+        "143",
+        CYCLE_3K_A21_FEATURE_REVISION,
+        `${CYCLE_3K_A21_FEATURE_REVISION} ${CYCLE_3K_A20_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedOperatingCashFlowIncomeRatioClosure as unknown as Parameters<
+          typeof isCycle3ka21FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const moduleFreeWindowsVaultAclClosureRevision = "e".repeat(40);
+    const moduleFreeWindowsVaultAclClosure = [
+      "144",
+      "144",
+      moduleFreeWindowsVaultAclClosureRevision,
+      `${moduleFreeWindowsVaultAclClosureRevision} ${CYCLE_3K_A21_FEATURE_REVISION}`,
+      moduleFreeWindowsVaultAclFeature,
+    ] as const;
+    expect(
+      isCycle3ka21RoutingClosureTopologyAllowed(
+        ...moduleFreeWindowsVaultAclClosure,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "143"],
+      [1, "145"],
+      [2, CYCLE_3K_A21_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${moduleFreeWindowsVaultAclClosureRevision} ${CYCLE_3K_A20_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${moduleFreeWindowsVaultAclClosureRevision} ${CYCLE_3K_A21_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...moduleFreeWindowsVaultAclClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka21RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka21RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedModuleFreeWindowsVaultAclFeature: unknown[] = [
+      ...moduleFreeWindowsVaultAclFeature,
+    ];
+    tamperedModuleFreeWindowsVaultAclFeature[4] =
+      tamperedPinnedOperatingCashFlowIncomeRatioClosure;
+    expect(
+      isCycle3ka21RoutingClosureTopologyAllowed(
+        "144",
+        "144",
+        moduleFreeWindowsVaultAclClosureRevision,
+        `${moduleFreeWindowsVaultAclClosureRevision} ${CYCLE_3K_A21_FEATURE_REVISION}`,
+        tamperedModuleFreeWindowsVaultAclFeature as unknown as Parameters<
+          typeof isCycle3ka21RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes the exact source, evidence, promotion, alias, and routing transitions", () => {
@@ -15172,6 +15348,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A20_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka21FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A21_FEATURE_TRANSITION,
+      5,
+    );
+    expectExactTransition(
+      isCycle3ka21RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A21_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -15319,6 +15505,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A19_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A20_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A20_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A21_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A21_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
